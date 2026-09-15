@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5t | exact custom Generator parameter traversal with distinct final Character preserved as the callee result | complete |
 | 5s | exact unconsumed custom Generator parameter close with retained provenance and O0-erased handler-free delivery | complete |
 | 5r | exact custom single-yield Generator function parameter traversal with private ownership/provenance transfer and parameter debugging | complete |
 | 5q | exact custom single-yield Generator function result with private ownership/provenance transfer and return-value debugging | complete |
@@ -413,6 +414,15 @@ exact suspension has no handler, state, cleanup, effects, or following work, O0
 lowering erases delivery and final Unit while preserving ownership and Generator
 DWARF. Handled close, richer state, nested/general transfer, and libraries remain
 in increment 5.
+Increment 5t extends the transferred custom parameter to the complete
+`Generator Character Unit Character` classifier. The callee's result-valued
+foreach expands the retained yielded Character action and Unit resumption before
+returning the separately retained final Character through the ordinary private
+function result. LLVM `fastcc` selects both token-parameter and descriptor-return
+placement; Generator, yielded Character, final Character, and both frames remain
+debuggable without a continuation object, state machine, foreign runtime, or
+public Generator ABI. Other classifiers and richer state, bodies, transfer, and
+library boundaries remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

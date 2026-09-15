@@ -3115,7 +3115,7 @@ impl Analyzer {
                         && matches!(source, Expression::Identifier(name)
                             if environment.get(self.source.slice(*name)).is_some_and(|facts|
                                 facts.storage_name == self.source.slice(*name)
-                                    && is_character_unit_generator_type(&facts.value_type)))) =>
+                                    && is_admitted_character_generator_type(&facts.value_type)))) =>
                 {
                     let value =
                         self.analyze_root_foreach(source, *binding, body, *span, environment)?;
@@ -9288,7 +9288,7 @@ impl Analyzer {
         }
         let generator_parameters = parameters
             .iter()
-            .filter(|parameter| is_character_unit_generator_type(&parameter.value_type))
+            .filter(|parameter| is_admitted_character_generator_type(&parameter.value_type))
             .collect::<Vec<_>>();
         let character_generator_parameter = if generator_parameters.is_empty() {
             None
@@ -9344,7 +9344,10 @@ impl Analyzer {
                     ..
                 } if characters.len() == 1
                     && locals.is_empty()
-                    && matches!(result.kind, CompilerExpressionKind::Unit)
+                    && matches!(
+                        result.value_type,
+                        CompilerType::Unit | CompilerType::Character
+                    )
             );
             let custom_provenance = custom_generator.then(|| retained.clone());
             if !matches!(
@@ -9396,19 +9399,40 @@ impl Analyzer {
         }
         let mut body = body?;
         if let Some(parameter) = character_generator_parameter {
-            let traverses_parameter = matches!(
-                body.statements.as_slice(),
-                [CompilerStatement::Discard(CompilerExpression {
-                    kind:
-                        CompilerExpressionKind::StringCharactersForeach { source, .. }
-                        | CompilerExpressionKind::CustomCharacterForeach { source, .. },
-                    ..
-                })] if matches!(source.kind, CompilerExpressionKind::Local(ref name)
+            let traversal_source = match (body.statements.as_slice(), &body.result) {
+                (
+                    [
+                        CompilerStatement::Discard(CompilerExpression {
+                            kind:
+                                CompilerExpressionKind::StringCharactersForeach { source, .. }
+                                | CompilerExpressionKind::CustomCharacterForeach { source, .. },
+                            ..
+                        }),
+                    ],
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Unit,
+                        ..
+                    },
+                )
+                | (
+                    [],
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::StringCharactersForeach { source, .. }
+                            | CompilerExpressionKind::CustomCharacterForeach { source, .. },
+                        ..
+                    },
+                ) => Some(source.as_ref()),
+                _ => None,
+            };
+            let traverses_parameter = traversal_source.is_some_and(|source| {
+                matches!(source.kind, CompilerExpressionKind::Local(ref name)
                     if name == &parameter.name)
-            ) && matches!(body.result.kind, CompilerExpressionKind::Unit);
+            });
             let closes_parameter = !character_generator_was_consumed
                 && body.statements.is_empty()
-                && matches!(body.result.kind, CompilerExpressionKind::Unit);
+                && matches!(body.result.kind, CompilerExpressionKind::Unit)
+                && is_character_unit_generator_type(&parameter.value_type);
             if character_generator_was_consumed && traverses_parameter {
                 // Exhaustion consumes the transferred continuation; no close is delivered.
             } else if closes_parameter {
@@ -10931,6 +10955,9 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "Character" => Some(CompilerType::Character),
         "String" => Some(CompilerType::String),
         "GeneratorCharacterUnitUnit" => Some(character_unit_generator_type()),
+        "GeneratorCharacterUnitCharacter" => {
+            Some(character_generator_type(CompilerType::Character))
+        }
         _ => None,
     }
 }
@@ -11253,7 +11280,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Scope | CompilerType::Function)
-        || is_character_unit_generator_type(value_type)
+        || is_admitted_character_generator_type(value_type)
         || compiler_function_result_supported(value_type)
 }
 
@@ -11353,6 +11380,11 @@ fn character_generator_type(result_type: CompilerType) -> CompilerType {
 
 fn is_character_unit_generator_type(value_type: &CompilerType) -> bool {
     is_character_generator_type_with_result(value_type, &CompilerType::Unit)
+}
+
+fn is_admitted_character_generator_type(value_type: &CompilerType) -> bool {
+    is_character_unit_generator_type(value_type)
+        || is_character_generator_type_with_result(value_type, &CompilerType::Character)
 }
 
 fn is_character_generator_type_with_result(
@@ -14313,6 +14345,118 @@ mod tests {
         }
 
         let consumed = "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is pause-once \"T\"\n_ is consume generated\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed).unwrap_err().code,
+            "E-GENERATOR-CONSUMED"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Result-direction provenance and fail-closed transfer shapes stay one scenario.
+    fn models_custom_generator_character_result_parameter_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-PARAMETER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-character-return-parameter.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called result-valued custom Generator consumer is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "generated"
+                && is_character_generator_type_with_result(
+                    value_type,
+                    &CompilerType::Character
+                )
+        ));
+        assert!(function.body.statements.is_empty());
+        assert!(matches!(
+            &function.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomCharacterForeach {
+                    source,
+                    characters,
+                    locals,
+                    parameter,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Character,
+                ..
+            } if matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && characters == &[String::from("Y")]
+                && locals.is_empty()
+                && parameter.value_type == CompilerType::Character
+                && exact_string(result).as_deref() == Some("R")
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type: CompilerType::Character,
+                ..
+            } if matches!(arguments.as_slice(), [CompilerExpression {
+                kind: CompilerExpressionKind::Local(_),
+                value_type,
+                ..
+            }] if is_character_generator_type_with_result(
+                value_type,
+                &CompilerType::Character
+            ))
+        ));
+
+        let distinct = analyze_for_compiler(
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn (generated : Generator Character Unit Character) -> Character\n  generated foreach { character }\n    _ is String character\nfirst is yield-return \"A\"\n_ is consume first\nsecond is yield-return \"B\"\nconsume second\n",
+        )
+        .unwrap();
+        let consumers = distinct
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "consume")
+            .collect::<Vec<_>>();
+        assert_eq!(consumers.len(), 2);
+        assert_ne!(consumers[0].symbol, consumers[1].symbol);
+        let traversals = consumers
+            .iter()
+            .map(|function| match &function.body.result.kind {
+                CompilerExpressionKind::CustomCharacterForeach {
+                    characters, result, ..
+                } => (characters.clone(), exact_string(result)),
+                expression => panic!("expected result-valued traversal, found {expression:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            traversals,
+            [
+                (vec![String::from("A")], Some(String::from("R"))),
+                (vec![String::from("B")], Some(String::from("R"))),
+            ]
+        );
+
+        for source in [
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn static (generated : Generator Character Unit Character) -> Character\n  generated foreach { character }\n    _ is String character\ngenerated is yield-return \"Y\"\nconsume generated\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn (generated : Generator Character Unit Character) -> Character\n  _ is ()\n  generated foreach { character }\n    _ is String character\ngenerated is yield-return \"Y\"\nconsume generated\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn (generated : Generator Character Unit Character) -> Character\n  _ is generated foreach { character }\n    _ is String character\n  \"Q\"\ngenerated is yield-return \"Y\"\nconsume generated\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn (generated : Generator Character Unit Character) -> Character\n  generated foreach { character }\n    _ is String character\nconsume (yield-return \"Y\")\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nignore is fn (generated : Generator Character Unit Character) -> Unit\n  ()\ngenerated is yield-return \"Y\"\nignore generated\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let consumed = "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nconsume is fn (generated : Generator Character Unit Character) -> Character\n  generated foreach { character }\n    _ is String character\ngenerated is yield-return \"Y\"\n_ is consume generated\ngenerated foreach { character }\n  _ is String character\n";
         assert_eq!(
             analyze_for_compiler(consumed).unwrap_err().code,
             "E-GENERATOR-CONSUMED"
