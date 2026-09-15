@@ -1483,6 +1483,59 @@ native-representation identity, and target adapters rather than expose the
 private token, debug slots, Optional/Int object layouts, or checked-program
 node layout.
 
+### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
+
+The compiler SHALL admit a root custom generator with one named `(Int, String)`
+initial parameter and directions
+`Generator (Int, String) Unit (Int, String)`. Its body SHALL consist only of
+one discarded `yield initial` followed by `(8, "done")` as its final expression.
+The shared regression starts the generator with `(7, "item")`; the fresh result
+SHALL be bound and consumed exactly once by a foreach action consisting only of
+the discarded `value = (7, "item")` for its named yielded parameter.
+
+The checked program SHALL retain positional-product arity, source field order,
+the Int and String field classifiers separately in all three Generator
+directions, the initial-parameter yield and suspension, field-wise equality
+action, Unit resumption, distinct final product, declaration provenance, and
+ownership edge. Application SHALL evaluate both initial fields once from left
+to right. Traversal SHALL pass that same immutable product to the action,
+compare its Int and String fields in order, resume with Unit, and only then
+materialize `(8, "done")` as the final product. This order SHALL hold with LLVM
+optimization disabled and SHALL NOT depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the product SHALL use the existing compiler-private LLVM
+aggregate of Topal-owned Int and String pointers, and the root-local Generator
+SHALL remain a compiler-private `i32` ownership token. LLVM SHALL derive
+aggregate placement, alignment, and call lowering from the target triple and
+data layout; the compiler SHALL hard-code no AMD64 register convention. Two
+aligned debug-only product shadows and four lifetime/source anchor stores SHALL
+keep the yielded action value and captured initial inspectable. DWARF and GDB
+SHALL expose the complete
+`Generator (Int, String) Unit (Int, String)` classifier and value, ordered `_0`
+and `_1` product members, the yielded `(7, "item")`, captured initial
+`(7, "item")`, ordered yield/action/resumption/final source locations, and the
+Topal entry frame.
+
+Another product arity, field classifier, order, literal, or direction; literal
+or multiple yields; a final expression or action other than the exact products
+above; labeled products; additional body statements; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no semantic Generator object or
+state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator/product ABI, or
+native-ABI revision. Product equality/display, Int/String storage, and Linux
+syscalls SHALL remain wholly owned by Topal. Future compiled-library metadata
+SHALL encode independent initial and direction classifiers, positional-product
+arity and ordered field identities, field equality, ordered yield/action/
+resume/final provenance, allocation-failure effects, declaration and
+construction sites, captures/effects, ownership/consumption/close state,
+native-representation identity, and target adapters rather than expose the
+private token, debug slots, aggregate/pointer layouts, or checked-program node
+layout.
+
 ### TOPAL-COMPILER-GENERATOR-ENUM-001 — Exact nominal Enum generator directions
 
 The compiler SHALL admit the exact prior declaration

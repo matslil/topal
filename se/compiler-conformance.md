@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
 | 5ag | exact `Range Int` input, yield, membership action, resumption, and narrowed final intersection with ordered private-value debugging | complete |
@@ -487,6 +488,20 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5aj separates positional-product input, yield, and final directions
+through one exact custom `Generator (Int, String) Unit (Int, String)`. The
+checked graph retains product arity and source order, both field classifiers,
+the initial-parameter yield, field-wise equality action, Unit resumption, final
+`(8, "done")`, declaration provenance, and ownership edge independently. O0
+traversal reuses the once-evaluated `(7, "item")` fields for the action, resumes,
+and only then materializes the final product. Two debug-only aligned aggregate
+shadows and four source-anchor stores keep yield, action, captured initial, and
+final lines inspectable. Existing Topal-owned Int/String storage, structural
+equality/display, and Linux syscall writer are reused without a semantic
+Generator runtime, foreign dependency, other-language standard library, public
+ABI, or native-layout revision. Other product arities, fields, orders, shapes,
+directions, state, transfer, close, and libraries remain in increment 5.
+
 Increment 5ai separates nominal Choice input, yield, and final directions
 through one exact custom `Generator Choice Unit Choice`. The checked graph
 retains the Choice identity, ordered First/Second alternatives and private tags,
