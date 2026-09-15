@@ -1587,6 +1587,60 @@ consumption/close state, native-representation identity, and target adapters
 rather than expose the private token, debug slots, scalar tags, or checked-
 program node layout.
 
+### TOPAL-COMPILER-GENERATOR-NESTED-OPTIONAL-001 — Recursive Optional product directions
+
+The compiler SHALL admit a root custom generator with one named
+`Optional (Int, String)` initial parameter and directions
+`Generator Optional (Int, String) Unit Optional (Int, String)`. Its body SHALL
+consist only of one discarded `yield initial` followed by
+`Some (8, "done")`. The shared regression SHALL start the generator with exact
+`Some (7, "item")`; the fresh result SHALL be bound and consumed exactly once
+by a foreach action consisting only of the discarded
+`candidate = (Some (7, "item"))` for its named yielded parameter.
+
+The checked program SHALL retain the nominal Optional identity, Some
+alternative, positional-product arity and order, and Int and String field
+identities separately in all three Generator directions. It SHALL also retain
+the initial-parameter yield and suspension, field-wise Optional equality
+action, Unit resumption, distinct final product, declaration provenance, and
+ownership edge. Application SHALL evaluate both initial payload fields once in
+source order and construct one Optional. Traversal SHALL pass that same
+immutable value to the action, construct the action operand once, compare tags
+before observing Some payloads, compare payload fields in source order, resume
+with Unit, and only then construct `Some (8, "done")`. This order SHALL hold at
+LLVM O0 without relying on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Optional SHALL retain its existing Topal-owned tagged pointer
+header. Each admitted Some product payload SHALL use a Topal-owned aligned
+16-byte allocation containing the existing Int and String pointers in source
+order. The root-local Generator SHALL remain a compiler-private `i32` ownership
+token. LLVM SHALL derive placement, alignment, and call lowering from the
+target triple and data layout; the compiler SHALL hard-code no AMD64 register
+convention. Two aligned debug-only Optional pointer shadows SHALL preserve the
+yielded action value and captured initial lifetime. DWARF and GDB SHALL expose
+the complete recursive Generator classifier and value, the Optional product
+classifier, ordered payload fields, both yielded/captured `Some (7, "item")`
+values, ordered yield/action/resumption/final source locations, and the Topal
+entry frame.
+
+Another Optional payload, product arity, field order, input, action, final,
+direction, yield, or value; None; multiple yields; additional body statements;
+close handling; nested or ordinary-function construction; Generator parameter/
+result transfer; repeated consumption; abandonment; libraries; and external
+boundaries SHALL remain unsupported. The lowering SHALL introduce no semantic
+Generator object or state allocation, generic Optional/product dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator/Optional/product ABI, or native-ABI revision. Optional,
+product, Int, and String allocation, equality, display, and Linux syscalls
+SHALL remain wholly owned by Topal. Future compiled-library metadata SHALL
+encode recursive classifiers, independent directions, nominal alternatives,
+product arity/order, field identities, equality and ordered yield/action/
+resume/final provenance, allocation-failure effects, declaration/construction
+sites, captures/effects, ownership/consumption/close state, native-
+representation identity, and target adapters rather than expose private
+tokens, debug slots, object layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`
