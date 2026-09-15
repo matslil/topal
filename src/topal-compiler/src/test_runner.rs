@@ -31,6 +31,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-close-code-pattern.t",
     "examples/language/custom-generator-close-handler.t",
     "examples/language/custom-generator-close.t",
+    "examples/language/custom-generator-discard-between-yields.t",
     "examples/language/custom-generator-early-return.t",
     "examples/language/custom-generator-final-character.t",
     "examples/language/custom-generator-function-parameter.t",
