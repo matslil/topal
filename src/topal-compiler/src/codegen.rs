@@ -10300,6 +10300,55 @@ mod tests {
     }
 
     #[test]
+    fn emits_custom_generator_function_parameter_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-function-parameter.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called custom Generator consumer is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-function-parameter.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let traversal = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("traversal function has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("traversal function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(i32 0)", function.symbol)));
+        assert_eq!(
+            traversal
+                .matches("call ptr @topal.runtime.string.make")
+                .count(),
+            1
+        );
+        assert!(traversal.contains("alloca i32, align 4"));
+        assert!(traversal.contains("store i32 %arg0"));
+        assert!(traversal.contains("alloca ptr, align 8"));
+        assert!(traversal.contains("#dbg_declare(ptr"));
+        assert!(traversal.contains("ret void"));
+        assert!(!traversal.contains("generator.foreach.loop"));
+        assert!(!traversal.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
     fn emits_custom_generator_function_result_transfer() {
         // TOPAL-GENERATOR-FUNCTION-RESULT-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001

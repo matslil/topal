@@ -889,6 +889,48 @@ private token. This realizes `TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001`,
 `TOPAL-GENERATOR-FUNCTION-RESULT-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5q.
 
+## TOPAL-COMP-CUSTOM-GENERATOR-PARAMETER-001 — Specialized custom continuation parameter
+
+The checked compiler shall admit a top-level call to an ordinary nonrecursive
+function with exactly one named `Generator Character Unit Unit` parameter and
+Unit result when the argument is a named root binding constructed by the exact
+single-yield custom generator admitted by
+`TOPAL-COMP-GENERATOR-SINGLE-YIELD-001`. The function's executable body shall
+consist only of one Character foreach over that parameter with a
+Character-to-Unit action and final Unit. Argument evaluation shall transfer the
+suspended continuation, consume the caller binding, and make the parameter its
+sole owner. Successful traversal shall invoke the action once, resume with Unit,
+reach final Unit, and return without close delivery.
+
+Each call shall create a distinct private specialization. The checked program
+shall map that call's retained declaration, exact Character, suspension/final
+graph, and ownership edge to the parameter only while checking its body, then
+restore the surrounding compiler-session provenance. Distinct calls shall not
+share Characters or continuation provenance, and a caller shall not reuse the
+consumed binding.
+
+On Linux x86-64, LLVM `fastcc` shall choose placement for the private `i32`
+Generator token parameter; the backend shall hard-code no System V register
+placement. DWARF and GDB shall expose the Generator parameter, yielded Character,
+and caller/callee frames. The token shall carry no public or semantic
+continuation state.
+
+Static, anonymous, recursive, nested, multiple-parameter, additional-body,
+direct-expression-argument, multiple-yield, local-state, handled-close,
+unconsumed-parameter, returned-parameter, repeated-use, and library paths shall
+remain rejected before LLVM. The lowering shall introduce no Generator object
+or state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode the
+canonical declaration and directions, suspension/final graph, construction
+evidence, parameter transfer site, capture/effect evidence,
+ownership/consumption/close state, action evidence, and target adapters rather
+than expose the compiler-session side table or private token. This realizes
+`TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5r.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

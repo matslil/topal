@@ -9326,23 +9326,39 @@ impl Analyzer {
                         "Character Generator parameter without closed provenance",
                     )
                 })?;
+            let custom_generator = matches!(
+                &retained.kind,
+                CompilerExpressionKind::CustomCharacterGenerator {
+                    characters,
+                    locals,
+                    close_handler: None,
+                    result,
+                    ..
+                } if characters.len() == 1
+                    && locals.is_empty()
+                    && matches!(result.kind, CompilerExpressionKind::Unit)
+            );
             if !matches!(
                 retained.kind,
                 CompilerExpressionKind::StringCharactersGenerator { .. }
-            ) {
+            ) && !custom_generator
+            {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
-                    "custom Generator function boundary",
+                    "Character Generator parameter beyond built-in traversal or one exact custom suspension",
                 ));
             }
             let previous = self
                 .generator_values
                 .insert(parameter.name.clone(), retained);
-            Some((parameter.name.clone(), previous))
+            Some((parameter.name.clone(), previous, custom_generator))
         } else {
             None
         };
+        let custom_generator_parameter = scoped_generator_value
+            .as_ref()
+            .is_some_and(|(_, _, custom)| *custom);
         let previous_static_context = self.static_context;
         let previous_in_function = self.in_function;
         let consumed_before_body = self.consumed_generators.clone();
@@ -9362,7 +9378,7 @@ impl Analyzer {
         if character_generator_parameter.is_some() {
             self.consumed_generators = consumed_before_body;
         }
-        if let Some((name, previous)) = scoped_generator_value {
+        if let Some((name, previous, _)) = scoped_generator_value {
             if let Some(previous) = previous {
                 self.generator_values.insert(name, previous);
             } else {
@@ -9374,11 +9390,15 @@ impl Analyzer {
             let traverses_parameter = matches!(
                 body.statements.as_slice(),
                 [CompilerStatement::Discard(CompilerExpression {
-                    kind: CompilerExpressionKind::StringCharactersForeach { source, .. },
+                    kind:
+                        CompilerExpressionKind::StringCharactersForeach { source, .. }
+                        | CompilerExpressionKind::CustomCharacterForeach { source, .. },
                     ..
-                })] if matches!(source.kind, CompilerExpressionKind::Local(ref name) if name == &parameter.name)
+                })] if matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == &parameter.name)
             ) && matches!(body.result.kind, CompilerExpressionKind::Unit);
-            let closes_parameter = !character_generator_was_consumed
+            let closes_parameter = !custom_generator_parameter
+                && !character_generator_was_consumed
                 && body.statements.is_empty()
                 && matches!(body.result.kind, CompilerExpressionKind::Unit);
             if character_generator_was_consumed && traverses_parameter {
@@ -14178,6 +14198,107 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Transfer provenance and fail-closed parameter shapes stay one scenario.
+    fn models_custom_generator_function_parameter_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-function-parameter.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called custom Generator consumer is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "generated" && is_character_unit_generator_type(value_type)
+        ));
+        assert!(matches!(
+            function.body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::CustomCharacterForeach {
+                    source,
+                    characters,
+                    locals,
+                    parameter,
+                    result,
+                    ..
+                },
+                ..
+            })] if matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && characters == &[String::from("T")]
+                && locals.is_empty()
+                && parameter.value_type == CompilerType::Character
+                && matches!(result.kind, CompilerExpressionKind::Unit)
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type: CompilerType::Unit,
+                ..
+            } if matches!(arguments.as_slice(), [CompilerExpression {
+                kind: CompilerExpressionKind::Local(_),
+                value_type,
+                ..
+            }] if is_character_unit_generator_type(value_type))
+        ));
+
+        let distinct = analyze_for_compiler(
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\nfirst is pause-once \"A\"\n_ is consume first\nsecond is pause-once \"B\"\nconsume second\n",
+        )
+        .unwrap();
+        let consumers = distinct
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "consume")
+            .collect::<Vec<_>>();
+        assert_eq!(consumers.len(), 2);
+        assert_ne!(consumers[0].symbol, consumers[1].symbol);
+        let traversals = consumers
+            .iter()
+            .map(|function| match &function.body.statements[0] {
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach { characters, .. },
+                    ..
+                }) => characters.clone(),
+                statement => panic!("expected custom traversal, found {statement:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            traversals,
+            [vec![String::from("A")], vec![String::from("B")]]
+        );
+
+        for source in [
+            "use language (version is v0.1)\npause-twice is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is pause-twice \"T\"\nconsume generated\n",
+            "use language (version is v0.1)\ncopy-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  copy : Character is initial\n  _ is yield copy\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is copy-once \"T\"\nconsume generated\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn static (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is pause-once \"T\"\nconsume generated\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  _ is ()\n  generated foreach { character }\n    _ is String character\ngenerated is pause-once \"T\"\nconsume generated\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nignore is fn (generated : Generator Character Unit Unit) -> Unit\n  ()\ngenerated is pause-once \"T\"\nignore generated\n",
+            "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\nconsume (pause-once \"T\")\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let consumed = "use language (version is v0.1)\npause-once is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nconsume is fn (generated : Generator Character Unit Unit) -> Unit\n  generated foreach { character }\n    _ is String character\ngenerated is pause-once \"T\"\n_ is consume generated\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed).unwrap_err().code,
+            "E-GENERATOR-CONSUMED"
+        );
     }
 
     #[test]
