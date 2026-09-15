@@ -154,9 +154,15 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             expression_uses_extended_debug(text)
         }
         CompilerExpressionKind::StringCharactersClose(generator)
-        | CompilerExpressionKind::CustomCharacterClose(generator)
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
+        }
+        CompilerExpressionKind::CustomCharacterClose {
+            generator,
+            provenance,
+            ..
+        } => {
+            expression_uses_extended_debug(generator) || expression_uses_extended_debug(provenance)
         }
         CompilerExpressionKind::CustomCharacterGenerator {
             initial, result, ..
@@ -1142,7 +1148,7 @@ impl<'a> Generator<'a> {
                 self.emit_expression(text, body, environment)
             }
             CompilerExpressionKind::StringCharactersClose(generator)
-            | CompilerExpressionKind::CustomCharacterClose(generator) => {
+            | CompilerExpressionKind::CustomCharacterClose { generator, .. } => {
                 let _ = self.emit_expression(generator, body, environment);
                 LlValue::Unit
             }
@@ -10345,6 +10351,51 @@ mod tests {
         assert!(traversal.contains("ret void"));
         assert!(!traversal.contains("generator.foreach.loop"));
         assert!(!traversal.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_parameter_close_without_runtime_state() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001, TOPAL-GENERATOR-CLOSE-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-CLOSE-001
+        let source = include_str!("../../../examples/language/custom-generator-parameter-close.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "ignore")
+            .expect("called custom Generator closer is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-parameter-close.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(i32 0)", function.symbol)));
+        assert!(close.contains("alloca i32, align 4"));
+        assert!(close.contains("store i32 %arg0"));
+        assert!(close.contains("#dbg_declare(ptr"));
+        assert!(close.contains("ret void"));
+        assert!(!close.contains("topal.runtime.string.make"));
+        assert!(!close.contains("call "));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!llvm.contains("TopalGeneratorErrorHeader"));
+        assert!(!llvm.contains("Result (Unit, lang generator GeneratorErrorCode)"));
         assert!(!llvm.contains("topal.runtime.generator"));
     }
 

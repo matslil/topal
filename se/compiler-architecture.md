@@ -558,6 +558,19 @@ canonical construction, parameter-site, action, capture/effect,
 ownership/consumption/close, and target-adapter metadata instead of this private
 specialization map.
 
+An unconsumed exact custom parameter keeps the same mapping through an explicit
+checked close node that pairs the callee-local Generator with its transferred
+construction provenance. The node preserves declaration identity, exact
+Character, suspension/final graph, ownership edge, and the lexical root close
+domain even though none is materialized as native continuation state. Because
+this first close boundary has a discarded yield result and no handler, locals,
+cleanup, effects, or post-suspension work, O0 lowering proves the close and final
+Unit before erasing both. LLVM still owns private-token placement through
+`fastcc`, while Generator DWARF remains live in the callee. Compiled-library
+support must serialize canonical transfer/close sites, domain, construction,
+suspension, capture/effect/cleanup, ownership, and target-adapter evidence rather
+than depend on the checked-program node layout.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
