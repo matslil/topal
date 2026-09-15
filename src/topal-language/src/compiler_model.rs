@@ -2500,6 +2500,194 @@ fn exact_int_value_generator_action(parameter: &CompilerParameter, body: &Compil
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn exact_one_third_rational_expression(
+    source: &SourceText,
+    expression: &Expression,
+) -> Option<CompilerExpression> {
+    let Expression::Application { items, span } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    let [numerator, denominator] = fields.as_slice() else {
+        return None;
+    };
+    let (Expression::Integer(numerator_span), Expression::Integer(denominator_span)) =
+        (&numerator.value, &denominator.value)
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "Rational"
+        || numerator.label.is_some()
+        || denominator.label.is_some()
+        || parse_integer(source.slice(*numerator_span)).as_ref() != Some(&BigInt::from(1))
+        || parse_integer(source.slice(*denominator_span)).as_ref() != Some(&BigInt::from(3))
+    {
+        return None;
+    }
+    let numerator = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(1)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(1))),
+        rational_value: None,
+        span: *numerator_span,
+    };
+    let denominator = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(3)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(3))),
+        rational_value: None,
+        span: *denominator_span,
+    };
+    Some(CompilerExpression {
+        kind: CompilerExpressionKind::RationalConstruct {
+            numerator: Box::new(numerator),
+            denominator: Box::new(denominator),
+        },
+        value_type: CompilerType::Rational,
+        int_range: None,
+        rational_value: Some(BigRational::new(BigInt::from(1), BigInt::from(3))),
+        span: *span,
+    })
+}
+
+fn exact_rational_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Rational-value custom generator outside one initial yield and final addition",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Rational-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(result_value),
+        Expression::Callable {
+            kind: CallableKind::Plus,
+            ..
+        },
+        increment,
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "Rational-value custom generator final value outside initial + Rational (1, 3)",
+        ));
+    };
+    let Some(increment) = exact_one_third_rational_expression(source, increment) else {
+        return Err(unsupported(
+            source,
+            increment.span(),
+            "Rational-value custom generator final addend outside Rational (1, 3)",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*result_value) != source.slice(parameter.name)
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Rational-value custom generator outside yield initial followed by its exact final addition",
+        ));
+    }
+    let initial = CompilerExpression {
+        kind: CompilerExpressionKind::Local(source.slice(parameter.name).to_owned()),
+        value_type: CompilerType::Rational,
+        int_range: None,
+        rational_value: None,
+        span: *result_value,
+    };
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                left: Box::new(initial),
+                right: Box::new(increment),
+            },
+            value_type: CompilerType::Rational,
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_rational_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+                && exact_one_third_rational_construct(right)
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
+fn exact_one_third_rational_construct(expression: &CompilerExpression) -> bool {
+    let CompilerExpressionKind::RationalConstruct {
+        numerator,
+        denominator,
+    } = &expression.kind
+    else {
+        return false;
+    };
+    matches!(&numerator.kind, CompilerExpressionKind::Int(value)
+        if value == &BigInt::from(1))
+        && matches!(&denominator.kind, CompilerExpressionKind::Int(value)
+            if value == &BigInt::from(3))
+        && expression.rational_value.as_ref()
+            == Some(&BigRational::new(BigInt::from(1), BigInt::from(3)))
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -2549,12 +2737,13 @@ fn collect_character_generators(
             "Boolean" => CompilerType::Boolean,
             "Character" => CompilerType::Character,
             "Int" => CompilerType::Int,
+            "Rational" => CompilerType::Rational,
             "String" => CompilerType::String,
             _ => {
                 return Err(unsupported(
                     source,
                     *span,
-                    "custom generator outside the admitted Boolean, Character, Int, or String initial-input subset",
+                    "custom generator outside the admitted Boolean, Character, Int, Rational, or String initial-input subset",
                 ));
             }
         };
@@ -2580,6 +2769,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Rational
+            && source.slice(*yielded) == "Rational"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "Rational"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_rational_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4192,6 +4419,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Int-value custom generator foreach action outside discarded value + 1",
+                ));
+            }
+            if initial_parameter.value_type == CompilerType::Rational
+                && !exact_rational_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Rational-value custom generator foreach action outside discarded value + Rational (1, 3)",
                 ));
             }
             return Ok(CompilerExpression {
@@ -16540,6 +16776,116 @@ mod tests {
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Int\n  _ is yield initial\n  initial + 2\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 1\n",
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Int\n  _ is yield initial\n  initial + 1\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 2\n",
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Accepted graph and exact rejection matrix stay together.
+    fn models_exact_rationals_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-RATIONAL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-rational-values.t"
+        ))
+        .unwrap();
+        let one_third = BigRational::new(BigInt::from(1), BigInt::from(3));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "next"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::Rational
+                && matches!(initial.kind, CompilerExpressionKind::RationalConstruct { .. })
+                && initial.rational_value.as_ref() == Some(&one_third)
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(
+                    result.kind,
+                    CompilerExpressionKind::Binary {
+                        operation: CompilerBinary::Add,
+                        ref left,
+                        ref right,
+                    } if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "initial")
+                        && matches!(right.kind, CompilerExpressionKind::RationalConstruct { .. })
+                        && right.rational_value.as_ref() == Some(&one_third)
+                )
+                && *generator_type.yield_type == CompilerType::Rational
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::Rational
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Rational,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && parameter.value_type == CompilerType::Rational
+                && matches!(
+                    body.statements.as_slice(),
+                    [CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Add,
+                            left,
+                            right,
+                        },
+                        ..
+                    })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "value")
+                        && matches!(right.kind, CompilerExpressionKind::RationalConstruct { .. })
+                        && right.rational_value.as_ref() == Some(&one_third)
+                )
+                && matches!(
+                    result.kind,
+                    CompilerExpressionKind::Binary {
+                        operation: CompilerBinary::Add,
+                        ref left,
+                        ref right,
+                    } if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "initial")
+                        && matches!(right.kind, CompilerExpressionKind::RationalConstruct { .. })
+                        && right.rational_value.as_ref() == Some(&one_third)
+                )
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield (Rational (1, 3))\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial + (Rational (1, 2))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 2))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Rational\n  _ is yield initial\n  initial + (Rational (1, 3))\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (2, 6))\n",
+            "use language (version is v0.1)\nnext is generator (initial : Rational)\n  yields Rational\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next (Rational (1, 3))\ngenerated foreach { value }\n  _ is value + (Rational (1, 3))\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
