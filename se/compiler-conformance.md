@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5aa | exact explicit final String after one String yield/action and Unit resumption, with separate return provenance and debugging | complete |
 | 5z | exact explicit final String return before any suspension, with zero action invocations and return-site debugging | complete |
 | 5y | one typed discarded String computation after Unit resumption and before the next suspension | complete |
 | 5x | exact distinct final String after String yield/action and Unit resumption | complete |
@@ -478,6 +479,15 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5aa admits an exact explicit String return after one suspension. The
+checked graph retains the initial-parameter yield, Unit resumption, explicit
+return marker, and final String separately. O0 traversal invokes the action
+once with the initial String, resumes, and only then materializes the exact
+return literal. The full Generator, yielded and initial Strings, return site,
+and entry frame remain debuggable without a continuation object, foreign
+runtime, other-language standard library, public ABI, or native-layout
+revision. Other yields, returns, directions, intervening state, transfer,
+close, and libraries remain in increment 5.
 Increment 5z distinguishes an exact explicit String return before the first
 suspension. The checked graph retains the return marker and result separately
 from its empty yield/continuation lists. Application still evaluates the String
