@@ -6050,6 +6050,79 @@ impl<'a> Generator<'a> {
         LlValue::Unit
     }
 
+    fn emit_custom_value_action_debug_address(
+        &mut self,
+        parameter: &CompilerParameter,
+        span: Span,
+        body: &mut FunctionBody,
+    ) -> (String, u64) {
+        let variable = self.debug.local(
+            &parameter.name,
+            parameter.span,
+            &parameter.value_type,
+            body.subprogram,
+        );
+        let llvm_type = llvm_value_type(&parameter.value_type);
+        let alignment = target_value_layout(&parameter.value_type).alignment / 8;
+        let address = body.instruction(
+            &format!("alloca {llvm_type}, align {alignment}"),
+            span,
+            &mut self.debug,
+        );
+        let location = self.debug.location(parameter.span, body.subprogram);
+        body.debug_declare(&address, variable, location);
+        (address, alignment)
+    }
+
+    #[allow(clippy::too_many_arguments)] // Final source scope keeps every checked value explicit.
+    fn emit_custom_value_final_debug(
+        &mut self,
+        declaration_span: Span,
+        initial_parameter: &CompilerParameter,
+        initial: &LlValue,
+        explicit_return: Option<Span>,
+        result_span: Span,
+        traversal_span: Span,
+        body: &mut FunctionBody,
+    ) {
+        if let Some(return_span) = explicit_return {
+            let llvm_type = llvm_value_type(&initial_parameter.value_type);
+            let alignment = target_value_layout(&initial_parameter.value_type).alignment / 8;
+            let address = body.instruction(
+                &format!("alloca {llvm_type}, align {alignment}"),
+                traversal_span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!(
+                    "store {}, ptr {address}, align {alignment}",
+                    initial.argument()
+                ),
+                traversal_span,
+                &mut self.debug,
+            );
+            body.subprogram = self.debug.lexical_block(declaration_span, body.subprogram);
+            let variable = self.debug.local(
+                &initial_parameter.name,
+                initial_parameter.span,
+                &initial_parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(return_span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+        } else if initial_parameter.value_type == CompilerType::Boolean {
+            body.subprogram = self.debug.lexical_block(declaration_span, body.subprogram);
+            let variable = self.debug.local(
+                &initial_parameter.name,
+                initial_parameter.span,
+                &initial_parameter.value_type,
+                body.subprogram,
+            );
+            let location = self.debug.location(result_span, body.subprogram);
+            body.debug_value(initial, variable, location);
+        }
+    }
+
     fn emit_custom_value_foreach(
         &mut self,
         traversal: &CompilerExpression,
@@ -6082,18 +6155,8 @@ impl<'a> Generator<'a> {
             );
             (scope, variable)
         });
-        let debug_address = (!yields.is_empty() && !parameter.discarded).then(|| {
-            let variable = self.debug.local(
-                &parameter.name,
-                parameter.span,
-                &parameter.value_type,
-                body.subprogram,
-            );
-            let address = body.instruction("alloca ptr, align 8", traversal.span, &mut self.debug);
-            let location = self.debug.location(parameter.span, body.subprogram);
-            body.debug_declare(&address, variable, location);
-            address
-        });
+        let debug_address = (!yields.is_empty() && !parameter.discarded)
+            .then(|| self.emit_custom_value_action_debug_address(parameter, traversal.span, body));
         for (index, yielded) in yields.iter().enumerate() {
             let (value, span) = match yielded {
                 CompilerGeneratorYield::Initial(span) => (initial.clone(), *span),
@@ -6101,12 +6164,15 @@ impl<'a> Generator<'a> {
                     (self.emit_expression(value, body, environment), value.span)
                 }
             };
-            if let Some(address) = &debug_address {
-                body.effect(
-                    &format!("store ptr {}, ptr {address}, align 8", value.string()),
-                    span,
-                    &mut self.debug,
+            if let Some((address, alignment)) = &debug_address {
+                let store = format!(
+                    "store {}, ptr {address}, align {alignment}",
+                    value.argument()
                 );
+                body.effect(&store, span, &mut self.debug);
+                if parameter.value_type == CompilerType::Boolean {
+                    body.effect(&store, parameter.span, &mut self.debug);
+                }
             }
             let mut action_environment = environment.clone();
             if !parameter.discarded {
@@ -6133,24 +6199,18 @@ impl<'a> Generator<'a> {
             }
         }
         let parent_scope = body.subprogram;
-        if let Some(return_span) = explicit_return {
-            let address = body.instruction("alloca ptr, align 8", traversal.span, &mut self.debug);
-            body.effect(
-                &format!("store ptr {}, ptr {address}, align 8", initial.string()),
-                traversal.span,
-                &mut self.debug,
-            );
-            body.subprogram = self.debug.lexical_block(*declaration_span, body.subprogram);
-            let variable = self.debug.local(
-                &initial_parameter.name,
-                initial_parameter.span,
-                &initial_parameter.value_type,
-                body.subprogram,
-            );
-            let location = self.debug.location(*return_span, body.subprogram);
-            body.debug_declare(&address, variable, location);
-        }
-        let result = self.emit_expression(result, body, environment);
+        self.emit_custom_value_final_debug(
+            *declaration_span,
+            initial_parameter,
+            &initial,
+            *explicit_return,
+            result.span,
+            traversal.span,
+            body,
+        );
+        let mut result_environment = environment.clone();
+        result_environment.insert(initial_parameter.name.clone(), initial);
+        let result = self.emit_expression(result, body, &result_environment);
         body.subprogram = parent_scope;
         result
     }
@@ -10474,6 +10534,51 @@ mod tests {
         assert!(llvm.contains("name: \"Generator String Unit String\""));
         assert!(llvm.contains("name: \"String\""));
         assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_boolean_values_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-BOOLEAN-001
+        let source = include_str!("../../../examples/language/custom-generator-boolean-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-boolean-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(main.matches("xor i1 true, true").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let yielded = main
+            .find("store i1 true")
+            .expect("foreach retains the yielded Boolean for debugging");
+        let negations = main
+            .match_indices("xor i1 true, true")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let output = main
+            .find("br i1 %")
+            .expect("the final Boolean controls Topal-owned display");
+        assert!(
+            constructed < yielded
+                && yielded < negations[0]
+                && negations[0] < negations[1]
+                && negations[1] < output
+        );
+        assert!(main.contains("alloca i1, align 1"));
+        assert_eq!(main.matches("store i1 true").count(), 2);
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(main.contains("#dbg_value(i1 true"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
+        assert!(llvm.contains("name: \"Generator Boolean Unit Boolean\""));
+        assert!(llvm.contains("name: \"Boolean\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
