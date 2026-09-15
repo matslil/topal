@@ -615,6 +615,23 @@ the independent initial classifier, ordered phase/binding and suspension graph,
 construction/action sites, captures/effects, ownership/close state, and target
 adapter requirements instead of the checked-node or private-token encoding.
 
+The following custom-continuation slice makes the yield direction independent
+by accepting `Generator String Unit Unit` with a String initial value. Checked
+provenance records each suspension as either the once-evaluated initial
+descriptor or an exact String literal, independently of the Generator's initial,
+resume, and final classifiers. Root traversal expands those values, actions, and
+Unit resumptions in source order at O0; it reuses the captured initial SSA value
+instead of evaluating the application operand again and allocates no semantic
+continuation state. The `i32` Generator token remains private debug/ownership
+evidence, while yielded Strings use the existing `topal-native/6` descriptor.
+LLVM continues to own target layout and machine calling-convention placement;
+the frontend embeds no System V register rule, and the Linux runtime remains
+Topal-owned allocator/syscall code with no C/C++ standard library. Compiled
+libraries must eventually serialize independent initial and direction
+classifiers, ordered yield-value provenance, suspension/final graph,
+construction/action sites, captures/effects, ownership/close state, and target
+adapter requirements rather than either compiler-session representation.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

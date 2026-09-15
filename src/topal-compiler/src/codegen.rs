@@ -8,9 +8,9 @@ use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
     CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
-    CompilerGeneratorType, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
-    display_string_literal,
+    CompilerGeneratorType, CompilerGeneratorYield, CompilerModularType, CompilerParameter,
+    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType,
+    CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -174,6 +174,19 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                 || block_uses_extended_debug(prefix)
                 || expression_uses_extended_debug(result)
         }
+        CompilerExpressionKind::CustomValueGenerator {
+            initial,
+            yields,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(initial)
+                || yields.iter().any(|yielded| match yielded {
+                    CompilerGeneratorYield::Initial(_) => false,
+                    CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
+                })
+                || expression_uses_extended_debug(result)
+        }
         CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
@@ -184,6 +197,21 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             ..
         } => {
             expression_uses_extended_debug(source)
+                || block_uses_extended_debug(body)
+                || expression_uses_extended_debug(result)
+        }
+        CompilerExpressionKind::CustomValueForeach {
+            source,
+            yields,
+            body,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(source)
+                || yields.iter().any(|yielded| match yielded {
+                    CompilerGeneratorYield::Initial(_) => false,
+                    CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
+                })
                 || block_uses_extended_debug(body)
                 || expression_uses_extended_debug(result)
         }
@@ -1152,6 +1180,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
@@ -1204,6 +1233,18 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
+                }
+            }
+            CompilerExpressionKind::CustomValueGenerator { initial, .. } => {
+                let initial = self.emit_expression(initial, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked custom construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                    captured_initial: Some(Box::new(initial)),
                 }
             }
             CompilerExpressionKind::CustomCharacterForeach {
@@ -1233,6 +1274,9 @@ impl<'a> Generator<'a> {
                 body.subprogram = parent_scope;
                 value
             }
+            CompilerExpressionKind::CustomValueForeach { .. } => {
+                self.emit_custom_value_foreach(expression, body, environment)
+            }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
                 let CompilerType::Enum(enumeration) = &expression.value_type else {
@@ -1251,6 +1295,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::GeneratorTakeWhile { generator, .. } => {
@@ -1261,6 +1306,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::UnfoldGenerator { seed, .. } => {
@@ -1271,6 +1317,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::IterateGeneratorForeach {
@@ -2207,6 +2254,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         generator: generator.clone(),
+                        captured_initial: None,
                     },
                     CompilerType::Version => {
                         unreachable!("Version function results are not admitted")
@@ -5087,6 +5135,7 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ),
                 generator: generator.clone(),
+                captured_initial: None,
             },
             LlValue::Range { endpoint, .. } => {
                 let endpoint = endpoint.clone();
@@ -5993,6 +6042,60 @@ impl<'a> Generator<'a> {
         LlValue::Unit
     }
 
+    fn emit_custom_value_foreach(
+        &mut self,
+        traversal: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+    ) -> LlValue {
+        let CompilerExpressionKind::CustomValueForeach {
+            source,
+            yields,
+            parameter,
+            body: action,
+            result,
+        } = &traversal.kind
+        else {
+            unreachable!("checked value foreach retains its traversal")
+        };
+        let source = self.emit_expression(source, body, environment);
+        let initial = source.generator_initial().clone();
+        let debug_address = (!yields.is_empty() && !parameter.discarded).then(|| {
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &parameter.value_type,
+                body.subprogram,
+            );
+            let address = body.instruction("alloca ptr, align 8", traversal.span, &mut self.debug);
+            let location = self.debug.location(parameter.span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+            address
+        });
+        for yielded in yields {
+            let (value, span) = match yielded {
+                CompilerGeneratorYield::Initial(span) => (initial.clone(), *span),
+                CompilerGeneratorYield::Value(value) => {
+                    (self.emit_expression(value, body, environment), value.span)
+                }
+            };
+            if let Some(address) = &debug_address {
+                body.effect(
+                    &format!("store ptr {}, ptr {address}, align 8", value.string()),
+                    span,
+                    &mut self.debug,
+                );
+            }
+            let mut action_environment = environment.clone();
+            if !parameter.discarded {
+                action_environment.insert(parameter.name.clone(), value);
+            }
+            let action_value = self.emit_block(action, body, &mut action_environment);
+            debug_assert!(matches!(action_value, LlValue::Unit));
+        }
+        self.emit_expression(result, body, environment)
+    }
+
     fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
         LlValue::Int(self.emit_int_global(value))
     }
@@ -6123,6 +6226,7 @@ enum LlValue {
     Generator {
         value: String,
         generator: CompilerGeneratorType,
+        captured_initial: Option<Box<Self>>,
     },
     Sum {
         tag: String,
@@ -6242,6 +6346,17 @@ impl LlValue {
         value
     }
 
+    fn generator_initial(&self) -> &Self {
+        let Self::Generator {
+            captured_initial: Some(initial),
+            ..
+        } = self
+        else {
+            unreachable!("checked custom value Generator retains its initial value")
+        };
+        initial
+    }
+
     fn string(&self) -> &str {
         let Self::String(value) = self else {
             unreachable!("checked value is String")
@@ -6355,6 +6470,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Generator(generator) => LlValue::Generator {
             value: "0".into(),
             generator: generator.clone(),
+            captured_initial: None,
         },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
@@ -8042,6 +8158,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Generator(generator) => LlValue::Generator {
             value,
             generator: generator.clone(),
+            captured_initial: None,
         },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
@@ -10051,6 +10168,59 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"initial-is-empty\""));
         assert!(llvm.contains("DILocalVariable(name: \"generated\""));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_string_yields_without_runtime_state() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-STRING-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-GENERATOR-STRING-YIELD-001
+        let source = include_str!("../../../examples/language/custom-generator-string-yield.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-string-yield.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            2
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let first_action = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("the first yielded String reaches the action");
+        let literal = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("the second suspension materializes its String literal");
+        let second_action = main
+            .rfind("call i1 @topal.runtime.string.is.empty")
+            .expect("the second yielded String reaches the action");
+        assert!(
+            input < suspended
+                && suspended < first_action
+                && first_action < literal
+                && literal < second_action
+        );
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit Unit\""));
+        assert!(llvm.contains("name: \"String\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
