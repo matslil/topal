@@ -2452,6 +2452,16 @@ impl<'a> Generator<'a> {
             handler.result_binding_span,
             &mut self.debug,
         );
+        if let Some(rule) = handler.error_codes.iter().find(|rule| rule.code == 0) {
+            let _ = body.instruction(
+                &format!("call i32 @topal.runtime.error.code(ptr {error_pointer})"),
+                rule.action.span,
+                &mut self.debug,
+            );
+            let result = self.emit_expression(&rule.action, body, environment);
+            debug_assert!(matches!(result, LlValue::Unit));
+            return result;
+        }
         let error = LlValue::Error(error_pointer);
         let error_type = self.debug.generator_error_type;
         let error_variable = self.debug.local_with_type_id(
@@ -10237,6 +10247,52 @@ mod tests {
         assert!(llvm.contains("name: \"Result (Unit, lang generator GeneratorErrorCode)\""));
         assert!(llvm.contains("name: \"Error (lang generator GeneratorErrorCode)\""));
         assert!(!close.contains("topal.runtime.result.is.error"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_qualified_custom_generator_close_code_pattern() {
+        // TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001,
+        // TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-COMPILER-GENERATOR-CLOSE-CODE-PATTERN-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-close-code-pattern.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close-code-pattern.t").emit();
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        let failure = close
+            .find("call ptr @topal.runtime.result.failure(i32 0")
+            .expect("close materializes the intrinsic failure Result");
+        let payload = close
+            .find("call ptr @topal.runtime.result.payload")
+            .expect("qualified handler observes the failure payload");
+        let code = close
+            .find("call i32 @topal.runtime.error.code")
+            .expect("qualified handler observes the nominal code");
+        let returned = close.find("ret void").expect("handler completes with Unit");
+        assert!(failure < payload && payload < code && code < returned);
+        assert_eq!(close.matches("topal.runtime.error.code").count(), 1);
+        assert!(llvm.contains("DILocalVariable(name: \"resume-result\""));
+        assert!(!llvm.contains("DILocalVariable(name: \"problem\""));
+        assert!(llvm.contains("name: \"lang generator GeneratorErrorCode\""));
+        assert!(llvm.contains("DIEnumerator(name: \"generator-closed\", value: 0)"));
+        assert!(!close.contains("switch i32"));
         assert!(!close.contains("topal.runtime.generator"));
         assert!(!close.contains("call ptr %"));
     }

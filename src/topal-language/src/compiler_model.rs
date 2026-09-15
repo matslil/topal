@@ -759,6 +759,7 @@ pub struct CompilerGeneratorLocal {
 pub struct CompilerGeneratorCloseHandler {
     pub result_binding: String,
     pub result_binding_span: Span,
+    pub error_codes: Vec<CompilerErrorCodeRule>,
     pub error_binding: String,
     pub error_binding_span: Span,
     pub error_action: Box<CompilerExpression>,
@@ -1860,24 +1861,46 @@ fn exact_character_generator_close_handler(
     }
     let mut error = None;
     let mut ok = None;
+    let mut error_codes = Vec::new();
     for rule in rules {
         let Expression::Unit(action_span) = &rule.action else {
             return None;
         };
-        let (binding, destination) = match &rule.matcher {
+        let action = unit_expression(*action_span);
+        match &rule.matcher {
             DecisionMatcher::Result {
                 error: true,
                 binding,
                 ..
-            } if error.is_none() && source.slice(*binding) != "_" => (*binding, &mut error),
+            } if error.is_none() && source.slice(*binding) != "_" => {
+                error = Some((*binding, action));
+            }
             DecisionMatcher::Result {
                 error: false,
                 binding,
                 ..
-            } if ok.is_none() && source.slice(*binding) != "_" => (*binding, &mut ok),
+            } if ok.is_none() && source.slice(*binding) != "_" => {
+                ok = Some((*binding, action));
+            }
+            DecisionMatcher::ErrorCode {
+                namespace,
+                vocabulary,
+                code,
+                ..
+            } if error.is_none() && error_codes.is_empty() => {
+                let (_, code) = generator_error_code(
+                    source.slice(*namespace),
+                    source.slice(*vocabulary),
+                    source.slice(*code),
+                )?;
+                error_codes.push(CompilerErrorCodeRule {
+                    code,
+                    action,
+                    span: rule.span,
+                });
+            }
             _ => return None,
-        };
-        *destination = Some((binding, unit_expression(*action_span)));
+        }
     }
     let (error_binding, error_action) = error?;
     let (ok_binding, ok_action) = ok?;
@@ -1885,6 +1908,7 @@ fn exact_character_generator_close_handler(
     Some(CompilerGeneratorCloseHandler {
         result_binding: source.slice(*result_binding).to_owned(),
         result_binding_span: *result_binding,
+        error_codes,
         error_binding: source.slice(error_binding).to_owned(),
         error_binding_span: error_binding,
         error_action: Box::new(error_action),
@@ -14018,6 +14042,7 @@ mod tests {
         };
         assert_eq!(construction_handler, close_handler);
         assert_eq!(close_handler.result_binding, "resume-result");
+        assert!(close_handler.error_codes.is_empty());
         assert_eq!(close_handler.error_binding, "problem");
         assert_eq!(close_handler.ok_binding, "resumed");
         assert_eq!(
@@ -14044,6 +14069,94 @@ mod tests {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    fn models_qualified_custom_generator_close_code_pattern() {
+        // TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001,
+        // TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-COMPILER-GENERATOR-CLOSE-CODE-PATTERN-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-close-code-pattern.t"
+        ))
+        .unwrap();
+        let abandon = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let [
+            CompilerStatement::Binding(CompilerBinding {
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomCharacterGenerator {
+                                close_handler: Some(construction_handler),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            }),
+            CompilerStatement::Discard(CompilerExpression {
+                kind:
+                    CompilerExpressionKind::CustomCharacterHandledClose {
+                        handler: close_handler,
+                        ..
+                    },
+                ..
+            }),
+        ] = abandon.body.statements.as_slice()
+        else {
+            panic!("function retains one code-qualified handled close")
+        };
+        assert_eq!(construction_handler, close_handler);
+        let [code_rule] = close_handler.error_codes.as_slice() else {
+            panic!("handler retains exactly one qualified close-code rule")
+        };
+        assert_eq!(code_rule.code, 0);
+        assert!(matches!(
+            code_rule.action.kind,
+            CompilerExpressionKind::Unit
+        ));
+        assert_eq!(close_handler.error_binding, "problem");
+        assert_eq!(close_handler.ok_binding, "resumed");
+        assert_eq!(
+            close_handler.error_code_type.name,
+            "lang generator GeneratorErrorCode"
+        );
+
+        for (source, expected) in [
+            (
+                include_str!("../../../examples/language/custom-generator-close-code-pattern.t")
+                    .replace(
+                        "lang generator generator-closed",
+                        "lang arithmetic division-by-zero",
+                    ),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                include_str!("../../../examples/language/custom-generator-close-code-pattern.t")
+                    .replace(
+                        "    Error problem then ()\n    Ok resumed then ()",
+                        "    Ok resumed then ()",
+                    ),
+                "E-UNSUPPORTED-INCOMPLETE-DECISION",
+            ),
+            (
+                include_str!("../../../examples/language/custom-generator-close-code-pattern.t")
+                    .replace(
+                        "    Error problem then ()",
+                        "    Error problem then ()\n    Error ( code is lang generator generator-closed ) then ()",
+                    ),
+                "E-UNREACHABLE-ERROR-CODE-PATTERN",
+            ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&source).unwrap_err().code,
+                expected
             );
         }
     }

@@ -89,6 +89,7 @@ evidence.
 | 5m | exact successful Unit resume-result binding after one custom yield/action, used as final Unit with source-lifetime debugging and no continuation state | complete |
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
+| 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -383,6 +384,12 @@ Result/Error DWARF preserves the code-set identity in GDB. Qualified code
 matching, non-Unit cleanup/effects, successful traversal through this handler,
 multiple owners or yields, transfer, and library boundaries remain in increment
 5.
+Increment 5p admits one qualified `lang generator generator-closed` rule before
+the generic Error fallback. The checked model retains the nominal matcher and
+all branch metadata, while the statically known close edge executes only the
+qualified Unit action without a runtime switch or fallback-binding activation.
+Other code sets and handler forms, dynamic close results, multiple owners or
+yields, transfer, and library boundaries remain in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
