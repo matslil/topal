@@ -6085,7 +6085,7 @@ impl<'a> Generator<'a> {
         traversal_span: Span,
         body: &mut FunctionBody,
     ) {
-        if let Some(return_span) = explicit_return {
+        if explicit_return.is_some() || initial_parameter.value_type == CompilerType::Int {
             let llvm_type = llvm_value_type(&initial_parameter.value_type);
             let alignment = target_value_layout(&initial_parameter.value_type).alignment / 8;
             let address = body.instruction(
@@ -6108,7 +6108,9 @@ impl<'a> Generator<'a> {
                 &initial_parameter.value_type,
                 body.subprogram,
             );
-            let location = self.debug.location(return_span, body.subprogram);
+            let location = self
+                .debug
+                .location(explicit_return.unwrap_or(result_span), body.subprogram);
             body.debug_declare(&address, variable, location);
         } else if initial_parameter.value_type == CompilerType::Boolean {
             body.subprogram = self.debug.lexical_block(declaration_span, body.subprogram);
@@ -10579,6 +10581,52 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"value\""));
         assert!(llvm.contains("name: \"Generator Boolean Unit Boolean\""));
         assert!(llvm.contains("name: \"Boolean\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_arbitrary_precision_ints_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-INT-001
+        let source = include_str!("../../../examples/language/custom-generator-int-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-int-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(main.matches("call ptr @topal.runtime.int.add(").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr @.topal.int.0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let additions = main
+            .match_indices("call ptr @topal.runtime.int.add(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let output = main
+            .find("call void @topal.runtime.int.print")
+            .expect("the final exact Int controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 2);
+        assert!(
+            constructed < debug_stores[0]
+                && debug_stores[0] < additions[0]
+                && additions[0] < debug_stores[1]
+                && debug_stores[1] < additions[1]
+                && additions[1] < output
+        );
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
+        assert!(llvm.contains("name: \"Generator Int Unit Int\""));
+        assert!(llvm.contains("name: \"Int\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

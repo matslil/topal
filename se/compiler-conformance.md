@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ac | exact arbitrary-precision Int input, yield, action, resumption, and final directions with ordered allocation-aware additions and debugging | complete |
 | 5ab | independent Boolean input, yield, and final directions with ordered action/resumption, private `i1`, and source-level debugging | complete |
 | 5aa | exact explicit final String after one String yield/action and Unit resumption, with separate return provenance and debugging | complete |
 | 5z | exact explicit final String return before any suspension, with zero action invocations and return-site debugging | complete |
@@ -480,6 +481,18 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ac separates arbitrary-precision Int input, yield, and final
+directions through one exact custom `Generator Int Unit Int`. The checked graph
+retains the initial Int, initial-parameter yield, Unit resumption, action and
+final exact-one additions, and ownership edge separately. O0 traversal performs
+the action addition before resumption and only then performs the final addition.
+Both direct calls retain the canonical immutable Int representation and
+allocation-failure path; LLVM owns pointer placement and call lowering. Generator
+and exact Int values and the entry frame remain debuggable through Topal's GDB
+printer without semantic Generator state, foreign runtime, other-language
+standard library, public ABI, or native-layout revision. Other shapes,
+directions, state, transfer, close, and libraries remain in increment 5.
+
 Increment 5ab separates Boolean input, yield, and final directions through one
 exact custom `Generator Boolean Unit Boolean`. The checked graph retains the
 initial Boolean, initial-parameter yield, Unit resumption, final negation,

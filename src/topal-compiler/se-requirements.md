@@ -1408,6 +1408,66 @@ layout. This realizes `TOPAL-COMPILER-GENERATOR-BOOLEAN-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-FOREACH-001`, and
 `TOPAL-GENERATOR-FINAL-RETURN-001` for compiler increment 5ab.
 
+## TOPAL-COMP-GENERATOR-INT-001 — Arbitrary-precision Int generator directions
+
+The checked compiler shall admit a root custom generator with one named Int
+initial parameter and directions `Generator Int Unit Int` whose body consists
+only of one discarded `yield initial` followed by `initial + 1` as its distinct
+final expression. One currently admitted Int expression shall start the
+generator, and the fresh result shall be bound and consumed exactly once by an
+Int-to-Unit foreach action consisting only of a discarded `value + 1`.
+
+The checked program shall retain the Int initial classifier separately from all
+three Generator directions, the initial-parameter yield and suspension, both
+typed additions and their exact-one operands, action, and ownership edge.
+Application shall evaluate the initial expression exactly once. Traversal shall
+invoke the action addition exactly once with that retained Int, resume the
+generator with Unit, and only then evaluate the final addition against the
+captured initial value. Both additions shall use the canonical arbitrary-
+precision Int runtime and preserve all values exactly. This order and explicit
+allocation-failure behavior shall hold with LLVM optimization disabled and
+shall not depend on folding, inlining, or dead-code elimination.
+
+Unoptimized LLVM IR shall retain two direct Int-addition calls in source order.
+Unlike the total register-only Boolean action in
+`TOPAL-COMP-GENERATOR-BOOLEAN-001`, LLVM shall not omit the discarded Int
+action: arbitrary-precision addition can allocate and therefore can reach the
+required platform-failure path. LLVM may optimize inside or around the calls
+only when exact values, evaluation order, and allocation failure remain
+observationally equivalent.
+
+On Linux x86-64, every Int shall retain the existing private immutable
+`topal-native/6` canonical sign-and-magnitude pointer representation while the
+root-local Generator remains a compiler-private `i32` ownership token. LLVM
+shall select pointer placement and call lowering from the target triple and
+data layout; the backend shall hard-code no AMD64 register convention. Two
+debug-only aligned pointer slots may anchor the yielded and captured-initial
+source lifetimes without becoming semantic Generator state. DWARF, the Topal
+GDB printer, and GDB shall expose the complete `Generator Int Unit Int`
+classifier and value, the exact yielded Int in the foreach action scope, the
+exact captured initial Int at the final expression, and the Topal entry frame.
+
+Literal, computed, or multiple yields; a final expression other than
+`initial + 1`; additional body statements; multiple parameters; other input,
+yield, resume, or final classifiers; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. The lowering shall introduce no semantic Generator
+object or state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Existing Int values and arithmetic allocations shall
+remain wholly owned by the Topal runtime and Linux syscall layer. Future
+compiled-library metadata shall encode independent initial and direction
+classifiers, ordered Int expression and yield/resume/final provenance, exact
+numeric requirements, declaration/construction/action sites, captures/effects
+including allocation failure, ownership/consumption/close state, native-
+representation identity, and target adapters rather than expose the private
+token, debug slots, Int object layout, or checked-program node layout. This
+realizes `TOPAL-COMPILER-GENERATOR-INT-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FINAL-RETURN-001` for compiler increment 5ac.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted
