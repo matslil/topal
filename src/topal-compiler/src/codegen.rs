@@ -7,9 +7,10 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerGeneratorLocal, CompilerGeneratorType,
-    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule,
-    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
+    CompilerGeneratorType, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -31,6 +32,20 @@ fn program_uses_extended_debug(program: &CompilerProgram) -> bool {
                     .any(|parameter| type_uses_extended_debug(&parameter.value_type))
                 || block_uses_extended_debug(&function.body)
         })
+}
+
+fn program_uses_generator_close_handler(program: &CompilerProgram) -> bool {
+    program.functions.iter().any(|function| {
+        function.body.statements.iter().any(|statement| {
+            matches!(
+                statement,
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterHandledClose { .. },
+                    ..
+                })
+            )
+        })
+    })
 }
 
 fn block_uses_extended_debug(block: &CompilerBlock) -> bool {
@@ -102,6 +117,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorField { .. }
         | CompilerExpressionKind::ResultDecision { .. }
+        | CompilerExpressionKind::CustomCharacterHandledClose { .. }
         | CompilerExpressionKind::OptionalDecision { .. }
         | CompilerExpressionKind::ListDecision { .. }
         | CompilerExpressionKind::ErrorCode(_) => true,
@@ -352,7 +368,11 @@ struct Generator<'a> {
 
 impl<'a> Generator<'a> {
     fn new(program: &'a CompilerProgram, source_name: &'a str) -> Self {
-        let mut debug = DebugInfo::new(source_name, program_uses_extended_debug(program));
+        let mut debug = DebugInfo::new(
+            source_name,
+            program_uses_extended_debug(program),
+            program_uses_generator_close_handler(program),
+        );
         debug.set_source(program.source.clone());
         if !program.function_value_names.is_empty() {
             debug.enum_type(&function_value_enumeration(program));
@@ -1124,6 +1144,14 @@ impl<'a> Generator<'a> {
                 let _ = self.emit_expression(generator, body, environment);
                 LlValue::Unit
             }
+            CompilerExpressionKind::CustomCharacterHandledClose { generator, handler } => self
+                .emit_custom_character_handled_close(
+                    generator,
+                    handler,
+                    body,
+                    environment,
+                    expression.span,
+                ),
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
             }
@@ -2375,6 +2403,77 @@ impl<'a> Generator<'a> {
                 expression.span,
             ),
         }
+    }
+
+    fn emit_custom_character_handled_close(
+        &mut self,
+        generator: &CompilerExpression,
+        handler: &CompilerGeneratorCloseHandler,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let _ = self.emit_expression(generator, body, environment);
+        let domain = self.emit_string_value("root", body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(span.start);
+        let result_pointer = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let result_type = self.debug.result_unit_generator_error_type;
+        let result_variable = self.debug.local_with_type_id(
+            &handler.result_binding,
+            handler.result_binding_span,
+            result_type,
+            body.subprogram,
+        );
+        let result_location = self
+            .debug
+            .location(handler.result_binding_span, body.subprogram);
+        let result_debug_address = body.instruction(
+            "alloca ptr, align 8",
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {result_pointer}, ptr {result_debug_address}, align 8"),
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        body.debug_declare(&result_debug_address, result_variable, result_location);
+
+        let error_pointer = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {result_pointer})"),
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        let error = LlValue::Error(error_pointer);
+        let error_type = self.debug.generator_error_type;
+        let error_variable = self.debug.local_with_type_id(
+            &handler.error_binding,
+            handler.error_binding_span,
+            error_type,
+            body.subprogram,
+        );
+        let error_location = self
+            .debug
+            .location(handler.error_binding_span, body.subprogram);
+        body.debug_value(&error, error_variable, error_location);
+        let _ = body.instruction(
+            &format!("call i32 @topal.runtime.error.code(ptr {})", error.error()),
+            handler.error_action.span,
+            &mut self.debug,
+        );
+        let mut handler_environment = environment.clone();
+        handler_environment.insert(handler.error_binding.clone(), error);
+        let result = self.emit_expression(&handler.error_action, body, &handler_environment);
+        debug_assert!(matches!(result, LlValue::Unit));
+        result
     }
 
     fn emit_result_project(
@@ -6495,6 +6594,7 @@ struct DebugInfo {
     character_type: usize,
     string_type: usize,
     error_type: usize,
+    generator_error_type: usize,
     error_code_type: usize,
     error_domain_type: usize,
     source_location_type: usize,
@@ -6505,6 +6605,7 @@ struct DebugInfo {
     result_rational_type: usize,
     result_string_type: usize,
     result_int_pair_type: usize,
+    result_unit_generator_error_type: usize,
     result_modular_types: Vec<(CompilerModularType, usize)>,
     optional_int_type: usize,
     optional_rational_type: usize,
@@ -6533,7 +6634,7 @@ struct DebugInfo {
 
 impl DebugInfo {
     #[allow(clippy::too_many_lines)] // Initialization keeps the complete emitted DWARF type graph visible.
-    fn new(source_name: &str, extended_types: bool) -> Self {
+    fn new(source_name: &str, extended_types: bool, generator_close_types: bool) -> Self {
         let path = Path::new(source_name);
         let filename = path.file_name().map_or_else(
             || source_name.into(),
@@ -6556,6 +6657,7 @@ impl DebugInfo {
             character_type: 0,
             string_type: 0,
             error_type: 0,
+            generator_error_type: 0,
             error_code_type: 0,
             error_domain_type: 0,
             source_location_type: 0,
@@ -6566,6 +6668,7 @@ impl DebugInfo {
             result_rational_type: 0,
             result_string_type: 0,
             result_int_pair_type: 0,
+            result_unit_generator_error_type: 0,
             result_modular_types: Vec::new(),
             optional_int_type: 0,
             optional_rational_type: 0,
@@ -6627,9 +6730,9 @@ impl DebugInfo {
             debug.file
         ));
         if extended_types {
-            debug.install_string_and_error_types(unsigned64);
+            debug.install_string_and_error_types(unsigned64, generator_close_types);
         }
-        debug.install_aggregate_types(unsigned64, extended_types);
+        debug.install_aggregate_types(unsigned64, extended_types, generator_close_types);
         let less = debug.node("!DIEnumerator(name: \"Less\", value: -1)".into());
         let equal = debug.node("!DIEnumerator(name: \"Equal\", value: 0)".into());
         let greater = debug.node("!DIEnumerator(name: \"Greater\", value: 1)".into());
@@ -6669,11 +6772,16 @@ impl DebugInfo {
         ));
     }
 
-    fn install_aggregate_types(&mut self, unsigned64: usize, extended_types: bool) {
+    fn install_aggregate_types(
+        &mut self,
+        unsigned64: usize,
+        extended_types: bool,
+        generator_close_types: bool,
+    ) {
         self.int_range_type = self.range_type("Range Int", self.int_type, unsigned64);
         self.rational_range_type =
             self.range_type("Range Rational", self.rational_type, unsigned64);
-        self.install_result_types(unsigned64);
+        self.install_result_types(unsigned64, generator_close_types);
         if extended_types {
             self.install_optional_types(unsigned64);
         }
@@ -6740,7 +6848,7 @@ impl DebugInfo {
         ))
     }
 
-    fn install_string_and_error_types(&mut self, unsigned64: usize) {
+    fn install_string_and_error_types(&mut self, unsigned64: usize, generator_close_types: bool) {
         let byte =
             self.node("!DIBasicType(name: \"u8\", size: 8, encoding: DW_ATE_unsigned_char)".into());
         let byte_pointer = self.node(format!(
@@ -6828,6 +6936,37 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error\", file: !{}, baseType: !{error_pointer})",
             self.file
         ));
+
+        if generator_close_types {
+            self.install_generator_error_type();
+        }
+    }
+
+    fn install_generator_error_type(&mut self) {
+        let generator_error_code = self.enum_type(&CompilerEnumType {
+            name: "lang generator GeneratorErrorCode".into(),
+            alternatives: vec!["generator-closed".into()],
+        });
+        let generator_domain = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"domain\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.error_domain_type
+        ));
+        let generator_code = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"code\", file: !{}, baseType: !{generator_error_code}, size: 32, align: 32, offset: 64)",
+            self.file
+        ));
+        let generator_members = self.node(format!("!{{!{generator_domain}, !{generator_code}}}"));
+        let generator_storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalGeneratorErrorHeader\", file: !{}, size: 448, align: 64, elements: !{generator_members})",
+            self.file
+        ));
+        let generator_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{generator_storage}, size: 64, align: 64)"
+        ));
+        self.generator_error_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error (lang generator GeneratorErrorCode)\", file: !{}, baseType: !{generator_pointer})",
+            self.file
+        ));
     }
 
     fn install_source_location_type(&mut self) {
@@ -6887,7 +7026,7 @@ impl DebugInfo {
         ))
     }
 
-    fn install_result_types(&mut self, unsigned64: usize) {
+    fn install_result_types(&mut self, unsigned64: usize, generator_close_types: bool) {
         let result_tag = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
             self.file
@@ -6912,6 +7051,12 @@ impl DebugInfo {
         self.result_rational_type = self.result_type("Rational", result_pointer);
         self.result_string_type = self.result_type("String", result_pointer);
         self.result_int_pair_type = self.result_type("(Int, Int)", result_pointer);
+        if generator_close_types {
+            self.result_unit_generator_error_type = self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_typedef, name: \"Result (Unit, lang generator GeneratorErrorCode)\", file: !{}, baseType: !{result_pointer})",
+                self.file
+            ));
+        }
     }
 
     fn result_type(&mut self, success: &str, pointer: usize) -> usize {
@@ -7510,6 +7655,24 @@ impl DebugInfo {
 
     fn local(&mut self, name: &str, span: Span, value_type: &CompilerType, scope: usize) -> usize {
         self.variable(name, None, span, value_type, scope)
+    }
+
+    fn local_with_type_id(
+        &mut self,
+        name: &str,
+        span: Span,
+        value_type: usize,
+        scope: usize,
+    ) -> usize {
+        let position = self
+            .source
+            .position(span.start.min(self.source.as_str().len()));
+        self.node(format!(
+            "!DILocalVariable(name: \"{}\", scope: !{scope}, file: !{}, line: {}, type: !{value_type})",
+            llvm_string(name),
+            self.file,
+            position.line
+        ))
     }
 
     fn variable(
@@ -10018,7 +10181,62 @@ mod tests {
         assert!(close.contains("ret void"));
         assert!(llvm.contains("DILocalVariable(name: \"generated\""));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!llvm.contains("TopalGeneratorErrorHeader"));
+        assert!(!llvm.contains("Result (Unit, lang generator GeneratorErrorCode)"));
         assert!(!close.contains("topal.runtime.string.make"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_local_custom_generator_close_handler() {
+        // TOPAL-GENERATOR-CLOSE-001, TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-GENERATOR-ERROR-CODE-001,
+        // TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001
+        let source = include_str!("../../../examples/language/custom-generator-close-handler.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close-handler.t").emit();
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        let failure = close
+            .find("call ptr @topal.runtime.result.failure(i32 0")
+            .expect("close materializes the intrinsic failure Result");
+        let payload = close
+            .find("call ptr @topal.runtime.result.payload")
+            .expect("Error handler selects the failure payload");
+        let code = close
+            .find("call i32 @topal.runtime.error.code")
+            .expect("the selected Error remains observable to GDB");
+        let returned = close.find("ret void").expect("handler completes with Unit");
+        assert!(failure < payload && payload < code && code < returned);
+        assert_eq!(
+            close
+                .matches("call ptr @topal.runtime.result.failure(i32 0")
+                .count(),
+            1
+        );
+        assert!(close.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"resume-result\""));
+        assert!(llvm.contains("DILocalVariable(name: \"problem\""));
+        assert!(llvm.contains("name: \"lang generator GeneratorErrorCode\""));
+        assert!(llvm.contains("DIEnumerator(name: \"generator-closed\", value: 0)"));
+        assert!(llvm.contains("name: \"Result (Unit, lang generator GeneratorErrorCode)\""));
+        assert!(llvm.contains("name: \"Error (lang generator GeneratorErrorCode)\""));
+        assert!(!close.contains("topal.runtime.result.is.error"));
         assert!(!close.contains("topal.runtime.generator"));
         assert!(!close.contains("call ptr %"));
     }
