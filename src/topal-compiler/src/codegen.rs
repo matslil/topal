@@ -6111,6 +6111,7 @@ impl<'a> Generator<'a> {
                 initial_parameter.value_type,
                 CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Comparison
                     | CompilerType::Enum(_)
                     | CompilerType::Rational
                     | CompilerType::Optional(_)
@@ -6150,7 +6151,10 @@ impl<'a> Generator<'a> {
             body.debug_declare(&address, variable, location);
             if matches!(
                 initial_parameter.value_type,
-                CompilerType::Enum(_) | CompilerType::Result(_) | CompilerType::Tuple(_)
+                CompilerType::Comparison
+                    | CompilerType::Enum(_)
+                    | CompilerType::Result(_)
+                    | CompilerType::Tuple(_)
             ) {
                 body.effect(
                     &format!("store {initial_operand}, ptr {address}, align {alignment}"),
@@ -6220,7 +6224,10 @@ impl<'a> Generator<'a> {
                     body.effect(&store, parameter.span, &mut self.debug);
                 } else if matches!(
                     parameter.value_type,
-                    CompilerType::Enum(_) | CompilerType::Result(_) | CompilerType::Tuple(_)
+                    CompilerType::Comparison
+                        | CompilerType::Enum(_)
+                        | CompilerType::Result(_)
+                        | CompilerType::Tuple(_)
                 ) {
                     let action_span =
                         action
@@ -10892,6 +10899,54 @@ mod tests {
         assert!(llvm.contains("name: \"Generator Result (Rational, lang arithmetic ArithmeticErrorCode) Unit Result (Rational, lang arithmetic ArithmeticErrorCode)\""));
         assert!(llvm.contains("name: \"Result (Rational, lang arithmetic ArithmeticErrorCode)\""));
         assert!(!main.contains("result.project"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_comparison_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-DECISION-COMPARISON-001, TOPAL-COMPILER-GENERATOR-COMPARISON-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-comparison-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-comparison-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call i32 @topal.runtime.int.compare").count(),
+            3
+        );
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store i32")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let final_comparison = main
+            .rfind("call i32 @topal.runtime.int.compare")
+            .expect("the final Comparison is evaluated after resumption");
+        assert_eq!(debug_stores.len(), 4);
+        assert_eq!(main.matches("alloca i32, align 4").count(), 2);
+        assert!(
+            constructed < debug_stores[0]
+                && debug_stores[0] < debug_stores[1]
+                && debug_stores[1] < debug_stores[2]
+                && debug_stores[2] < debug_stores[3]
+                && debug_stores[3] < final_comparison
+        );
+        assert!(main.contains("icmp eq i32"));
+        assert!(main.contains("switch i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"comparison\""));
+        assert!(llvm.contains("name: \"Generator Comparison Unit Comparison\""));
+        assert!(llvm.contains("name: \"Comparison\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

@@ -27,6 +27,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/constraints-and-derived-capabilities.t",
     "examples/language/constructed-context.t",
     "examples/language/custom-generator-boolean-values.t",
+    "examples/language/custom-generator-comparison-values.t",
     "examples/language/custom-generator-character-return-parameter.t",
     "examples/language/custom-generator-character-return-result.t",
     "examples/language/custom-generator-close-code-pattern.t",
