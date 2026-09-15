@@ -92,6 +92,7 @@ evidence.
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
 | 5ak | exact successful `Result Rational` input/yield, reflexive action, resumption, and structured division-error final with pointer debugging | complete |
 | 5al | exact nominal `Comparison` input/yield, equality action, resumption, and distinct Greater final with ordered scalar debugging | complete |
+| 5am | exact recursive `Optional (Int, String)` input/yield, structural equality action, resumption, and distinct Some final with boxed-payload debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -517,6 +518,20 @@ syscall writer are reused without a semantic Generator runtime, foreign
 dependency, other-language standard library, public ABI, or native-layout
 revision. Other Comparison expressions, values, directions, state, transfer,
 close, and libraries remain in increment 5.
+
+Increment 5am recursively composes the existing Optional and positional-product
+representations through one exact
+`Generator Optional (Int, String) Unit Optional (Int, String)`. Application
+constructs `Some (7, "item")` once; traversal reuses it for the yield, constructs
+the exact action operand, compares tags before fields, resumes with Unit, and
+only then constructs `Some (8, "done")`. Each Some payload is a Topal-owned
+aligned 16-byte pair of the existing Int/String pointers. Existing Optional
+headers, field equality/display, two pointer debug shadows, DWARF recursive type
+names, the Topal GDB renderer, allocator, and Linux syscall writer are reused
+without a semantic Generator runtime, foreign dependency, other-language
+standard library, public ABI, or native-layout revision. Other recursive
+Optional values, directions, state, transfer, close, and libraries remain in
+increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The
