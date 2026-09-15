@@ -1144,18 +1144,63 @@ frame. They SHALL NOT fabricate a yielded action value when no suspension is
 reached.
 
 Implicit zero-yield final expressions, nonliteral or initial-derived returns,
-explicit return after a suspension, Unit or other return classifiers,
-additional body statements, multiple parameters, other input, yield, or resume
-classifiers, close handling, nested or ordinary-function construction,
-Generator parameter/result transfer, repeated consumption, abandonment,
-libraries, and external boundaries SHALL remain unsupported. The lowering
-SHALL introduce no Generator object or semantic state allocation, dispatcher,
-callback, indirect call, unwind dependency, C/C++ runtime, other-language
-standard library, needed library, dynamic relocation, public/library calling
-convention or Generator ABI, or native-ABI revision. Future compiled-library
+explicit return after a suspension beyond the exact case admitted by
+`TOPAL-COMPILER-GENERATOR-RETURN-AFTER-YIELD-001`, Unit or other return
+classifiers, additional body statements, multiple parameters, other input,
+yield, or resume classifiers, close handling, nested or ordinary-function
+construction, Generator parameter/result transfer, repeated consumption,
+abandonment, libraries, and external boundaries SHALL remain unsupported. The
+lowering SHALL introduce no Generator object or semantic state allocation,
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or native-ABI revision.
+Future compiled-library
 metadata SHALL encode explicit versus implicit completion, return expression
 and keyword provenance, reachability and empty-yield evidence, independent
 initial and direction classifiers, declaration/construction/action sites,
+captures/effects, ownership/consumption/close state, and target adapters rather
+than expose the private token, debug shadow, or checked-program node layout.
+
+### TOPAL-COMPILER-GENERATOR-RETURN-AFTER-YIELD-001 — Explicit return after resumption
+
+The compiler SHALL admit a root custom generator with one named String initial
+parameter and directions `Generator String Unit String` whose body consists
+only of one discarded `yield initial` followed by `return` applied to one exact
+String literal. One currently admitted String expression SHALL start the
+generator, and the fresh result SHALL be bound and consumed exactly once by a
+String-to-Unit foreach action whose expression result is the explicitly
+returned String.
+
+The checked program SHALL retain the initial-parameter yield and suspension,
+the explicit-return keyword and source site, and the typed final String as
+separate ordered provenance. Application SHALL evaluate the initial expression
+exactly once. Traversal SHALL invoke the action exactly once with that retained
+String, resume the generator with Unit, and only then materialize and return the
+exact String literal. This order SHALL hold with LLVM optimization disabled and
+SHALL NOT depend on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, the initial, yielded, and returned values SHALL use the
+existing `topal-native/6` String descriptor while the root-local Generator
+remains a compiler-private `i32` ownership token. A debug-only pointer shadow
+MAY keep the initial parameter inspectable at the return site without becoming
+semantic Generator state. LLVM SHALL select target data layout and instruction
+placement; the compiler SHALL hard-code no AMD64 register convention. DWARF
+and GDB SHALL expose the complete `Generator String Unit String` classifier and
+value, the yielded String during its action, the initial String at the explicit
+return, and the Topal entry frame.
+
+Literal or computed yields other than the initial parameter, multiple yields,
+nonliteral or initial-derived returns, intervening statements, Unit or other
+direction classifiers, multiple parameters, close handling, nested or
+ordinary-function construction, Generator parameter/result transfer, repeated
+consumption, abandonment, libraries, and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no Generator object or semantic
+state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator ABI, or native-ABI
+revision. Future compiled-library metadata SHALL encode explicit completion,
+ordered yield/resume/return provenance and reachability, independent initial
+and direction classifiers, declaration/construction/action sites,
 captures/effects, ownership/consumption/close state, and target adapters rather
 than expose the private token, debug shadow, or checked-program node layout.
 
