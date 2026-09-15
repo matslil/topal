@@ -1647,6 +1647,62 @@ or checked-program node layout. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-TYPE-OPTIONAL-BOUNDARY-001` for compiler increment 5af.
 
+## TOPAL-COMP-GENERATOR-RANGE-001 — Exact Range generator directions
+
+The checked compiler shall admit a root custom generator with one named
+`Range Int` initial parameter and directions
+`Generator Range Int Unit Range Int` whose body consists only of one discarded
+`yield initial` followed by `initial and (5 ..= 15)` as its final expression.
+One currently admitted `Range Int` expression shall start the generator; the
+shared regression uses `0 ..= 10`. The fresh result shall be bound and consumed
+exactly once by a foreach action consisting only of the discarded membership
+`5 in interval` for its named yielded parameter.
+
+The checked program shall retain the Range classifier and nominal Int endpoint
+classifier separately from all three Generator directions, the initial-
+parameter yield and suspension, exact membership action, Unit resumption,
+distinct final inclusive-bound construction and intersection, and ownership
+edge. Application shall evaluate and construct its initial expression exactly
+once. Traversal shall pass that same immutable Range value to the action,
+evaluate membership once, resume the generator with Unit, and only then
+construct `5 ..= 15` and intersect it with the initial value. The resulting
+inclusive range shall be `5 ..= 10` for the shared source. This order shall
+hold with LLVM optimization disabled and shall not depend on folding, inlining,
+or dead-code elimination.
+
+On Linux x86-64, the existing compiler-private Range representation shall
+remain an aligned pointer to Topal-owned finite storage containing Int endpoint
+pointers and inclusion flags. The root-local Generator shall remain a compiler-
+private `i32` ownership token. LLVM shall select placement and call lowering
+from the target triple and data layout; the backend shall hard-code no AMD64
+register convention. Two aligned debug-only pointer shadows shall preserve the
+yielded action value and captured initial lifetime. DWARF and GDB shall expose
+the complete `Generator Range Int Unit Range Int` classifier and value, the
+yielded `0 ..= 10`, the captured initial `0 ..= 10`, ordered yield/action/
+resumption/final source locations, and the Topal entry frame.
+
+Literal or multiple yields; a final expression other than the exact
+intersection; additional body statements; another endpoint, action, input,
+yield, resume, or final classifier; close handling; nested or ordinary-function
+construction; Generator parameter/result transfer; repeated consumption;
+abandonment; libraries; and external boundaries shall remain rejected before
+LLVM. The lowering shall introduce no semantic Generator object or state
+allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Range/Int storage, allocation, membership, intersection, display, and
+Linux syscalls shall remain wholly owned by Topal. Future compiled-library
+metadata shall encode independent initial and direction classifiers, the
+nominal endpoint identity, exact bounds, inclusivity, membership and
+intersection operands, ordered yield/action/resume/final provenance,
+allocation-failure effects, declaration/construction sites, captures/effects,
+ownership/consumption/close state, native-representation identity, and target
+adapters rather than expose the private token, debug slots, Range/Int object
+layouts, or checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-RANGE-001`, `TOPAL-GENERATOR-DECLARATION-001`,
+`TOPAL-GENERATOR-SUSPEND-001`, `TOPAL-RANGE-BOUNDS-001`, and
+`TOPAL-RANGE-CLASSIFIER-001` for compiler increment 5ag.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

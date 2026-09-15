@@ -2850,6 +2850,176 @@ fn exact_optional_int_value_generator_action(
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn exact_int_range_literal(
+    source: &SourceText,
+    expression: &Expression,
+    lower_value: i64,
+    upper_value: i64,
+) -> Option<CompilerExpression> {
+    let Expression::Application { items, span } = expression else {
+        return None;
+    };
+    let [
+        Expression::Integer(lower_span),
+        Expression::Callable {
+            kind: CallableKind::RangeInclusive,
+            ..
+        },
+        Expression::Integer(upper_span),
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    let lower_value = BigInt::from(lower_value);
+    let upper_value = BigInt::from(upper_value);
+    if parse_integer(source.slice(*lower_span)).as_ref() != Some(&lower_value)
+        || parse_integer(source.slice(*upper_span)).as_ref() != Some(&upper_value)
+    {
+        return None;
+    }
+    let lower = CompilerExpression {
+        kind: CompilerExpressionKind::Int(lower_value.clone()),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(lower_value)),
+        rational_value: None,
+        span: *lower_span,
+    };
+    let upper = CompilerExpression {
+        kind: CompilerExpressionKind::Int(upper_value.clone()),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(upper_value)),
+        rational_value: None,
+        span: *upper_span,
+    };
+    Some(CompilerExpression {
+        kind: CompilerExpressionKind::Binary {
+            operation: CompilerBinary::RangeInclusive,
+            left: Box::new(lower),
+            right: Box::new(upper),
+        },
+        value_type: CompilerType::Range(Box::new(CompilerType::Int)),
+        int_range: None,
+        rational_value: None,
+        span: *span,
+    })
+}
+
+fn exact_int_range_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Range-Int-value custom generator outside one initial yield and final intersection",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Range-Int-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(result_value),
+        Expression::Identifier(intersection),
+        retained_range,
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "Range-Int-value custom generator final value outside initial and (5 ..= 15)",
+        ));
+    };
+    let Some(retained_range) = exact_int_range_literal(source, retained_range, 5, 15) else {
+        return Err(unsupported(
+            source,
+            retained_range.span(),
+            "Range-Int-value custom generator final intersection outside 5 ..= 15",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*result_value) != source.slice(parameter.name)
+        || source.slice(*intersection) != "and"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Range-Int-value custom generator outside yield initial followed by its exact final intersection",
+        ));
+    }
+    let range_int = CompilerType::Range(Box::new(CompilerType::Int));
+    let initial = CompilerExpression {
+        kind: CompilerExpressionKind::Local(source.slice(parameter.name).to_owned()),
+        value_type: range_int.clone(),
+        int_range: None,
+        rational_value: None,
+        span: *result_value,
+    };
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::And,
+                left: Box::new(initial),
+                right: Box::new(retained_range),
+            },
+            value_type: range_int,
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_int_range_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::In,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Int(ref value)
+                if value == &BigInt::from(5))
+                && matches!(right.kind, CompilerExpressionKind::Local(ref name)
+                    if name == &parameter.name)
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -2901,6 +3071,7 @@ fn collect_character_generators(
             "Character" => CompilerType::Character,
             "Int" => CompilerType::Int,
             "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
+            "RangeInt" => CompilerType::Range(Box::new(CompilerType::Int)),
             "Rational" => CompilerType::Rational,
             "String" => CompilerType::String,
             "Unit" => CompilerType::Unit,
@@ -2908,7 +3079,7 @@ fn collect_character_generators(
                 return Err(unsupported(
                     source,
                     *span,
-                    "custom generator outside the admitted Boolean, Character, Int, Optional Int, Rational, String, or Unit initial-input subset",
+                    "custom generator outside the admitted Boolean, Character, Int, Optional Int, Range Int, Rational, String, or Unit initial-input subset",
                 ));
             }
         };
@@ -2934,6 +3105,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Range(Box::new(CompilerType::Int))
+            && compact_classifier(source.slice(*yielded)) == "RangeInt"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result)) == "RangeInt"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_int_range_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4687,6 +4896,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Optional-Int-value custom generator foreach action outside discarded candidate = Some 7",
+                ));
+            }
+            if initial_parameter.value_type == CompilerType::Range(Box::new(CompilerType::Int))
+                && !exact_int_range_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Range-Int-value custom generator foreach action outside discarded 5 in interval",
                 ));
             }
             return Ok(CompilerExpression {
@@ -17337,6 +17555,135 @@ mod tests {
             "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  Some 8\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
             "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Optional Int\n  _ is yield initial\n  None Int\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 8)\n",
             "use language (version is v0.1)\noptional is generator (initial : Optional Int)\n  yields Optional Int\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is optional (Some 7)\ngenerated foreach { candidate }\n  _ is candidate = (Some 7)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Accepted graph and exact rejection matrix stay together.
+    fn models_int_ranges_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-RANGE-BOUNDS-001, TOPAL-RANGE-CLASSIFIER-001,
+        // TOPAL-COMPILER-GENERATOR-RANGE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-range-values.t"
+        ))
+        .unwrap();
+        let range_int = CompilerType::Range(Box::new(CompilerType::Int));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "narrow"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == range_int
+                && matches!(initial.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::RangeInclusive,
+                    ref left,
+                    ref right,
+                } if matches!(left.kind, CompilerExpressionKind::Int(ref value)
+                    if value == &BigInt::from(0))
+                    && matches!(right.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(10)))
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::And,
+                    ref left,
+                    ref right,
+                } if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                    && matches!(right.kind, CompilerExpressionKind::Binary {
+                        operation: CompilerBinary::RangeInclusive,
+                        ..
+                    }))
+                && result.value_type == range_int
+                && *generator_type.yield_type == range_int
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == range_int
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "interval"
+                && parameter.value_type == range_int
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::In,
+                            left,
+                            right,
+                        },
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Int(ref value)
+                    if value == &BigInt::from(5))
+                    && matches!(right.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "interval"))
+                && matches!(body.result.kind, CompilerExpressionKind::Unit)
+                && matches!(result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::And,
+                    ..
+                })
+                && result.value_type == range_int
+                && value_type == &range_int
+        ));
+
+        let expression_input = analyze_for_compiler(
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield initial\n  initial and (5 ..= 15)\ngenerated is narrow ((0 ..= 12) and (2 ..= 10))\ngenerated foreach { interval }\n  _ is 5 in interval\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &expression_input.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator { initial, .. },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::Binary {
+                operation: CompilerBinary::And,
+                ..
+            })
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield (0 ..= 10)\n  initial and (5 ..= 15)\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n",
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield initial\n  _ is yield initial\n  initial and (5 ..= 15)\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n",
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield initial\n  initial\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n",
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield initial\n  initial and (6 ..= 15)\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n",
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Range Int\n  _ is yield initial\n  initial and (5 ..= 15)\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 6 in interval\n",
+            "use language (version is v0.1)\nnarrow is generator (initial : Range Int)\n  yields Range Int\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is narrow (0 ..= 10)\ngenerated foreach { interval }\n  _ is 5 in interval\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
