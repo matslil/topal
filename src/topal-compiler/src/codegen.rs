@@ -602,12 +602,14 @@ impl<'a> Generator<'a> {
                 body.subprogram,
             );
             let location = self.debug.location(parameter.span, body.subprogram);
-            let retained_string_generator_source = parameter.value_type == CompilerType::String
-                && matches!(&function.result_type, CompilerType::Generator(generator)
+            let retained_character_generator_source = matches!(
+                parameter.value_type,
+                CompilerType::String | CompilerType::Character
+            ) && matches!(&function.result_type, CompilerType::Generator(generator)
                     if generator.yield_type.as_ref() == &CompilerType::Character
                         && generator.resume_type.as_ref() == &CompilerType::Unit
                         && generator.result_type.as_ref() == &CompilerType::Unit);
-            if retained_string_generator_source
+            if retained_character_generator_source
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -10295,6 +10297,45 @@ mod tests {
         assert!(!close.contains("switch i32"));
         assert!(!close.contains("topal.runtime.generator"));
         assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001
+        let source = include_str!("../../../examples/language/custom-generator-function-result.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called custom Generator factory is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-function-result.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let factory = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("custom Generator factory has one private Character argument")
+            .1
+            .split_once("}\n")
+            .expect("custom Generator factory definition terminates")
+            .0;
+
+        assert!(main.contains(&format!("call fastcc i32 @{}(ptr ", function.symbol)));
+        assert!(main.contains("#dbg_value(i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("alloca ptr, align 8"));
+        assert!(factory.contains("store ptr %arg0"));
+        assert!(factory.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("ret i32 0"));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
     }
 
     #[test]

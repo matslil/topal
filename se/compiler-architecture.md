@@ -531,6 +531,19 @@ though no runtime segmentation occurs. Dynamic, recursive, nested, static,
 anonymous, unbound, or compound result paths remain closed, and the side table
 is neither artifact metadata nor a public Generator ABI.
 
+The first custom-continuation result boundary applies the same private transfer
+pattern to a statement-free ordinary Character function whose body directly
+constructs the exact single-yield custom generator from its parameter. Each
+call-specialized symbol keys the retained declaration, exact Character,
+suspension/final graph, and ownership edge; the callee returns only the private
+`i32` observation token through LLVM `fastcc`, and the caller expands its own
+retained traversal after taking ownership. A debug-only Character pointer
+shadow keeps the factory parameter live through the return instruction. The
+side table remains compiler-session evidence rather than a serialized or public
+continuation representation; compiled-library support still requires canonical
+declaration, direction, suspension, capture/effect, ownership/close, and target
+adapter metadata.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

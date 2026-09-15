@@ -431,8 +431,10 @@ abandonment other than the exact function-scope close admitted by
 `TOPAL-COMPILER-GENERATOR-CLOSE-001` SHALL be rejected under the existing local
 linearity boundary.
 Declaration shapes not covered by a later compiler rule, overloads, dynamic
-Character provenance, direct unbound traversal, captures, and function or
-library transfer boundaries SHALL remain unsupported.
+Character provenance, direct unbound traversal, captures, and function transfer
+except for the exact result admitted by
+`TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001` or library transfer boundaries
+SHALL remain unsupported.
 
 On Linux x86-64, the backend SHALL lower the proven yield, action, Unit resume,
 and final Unit as ordered inline code at `-O0`. It MAY use the compiler-private
@@ -734,6 +736,45 @@ ABI, or native-ABI revision. Future compiled-library metadata SHALL preserve
 ordered nominal code matchers and actions together with fallback bindings,
 success/close edges, domain and declaration provenance, suspension,
 cleanup/effect evidence, ownership state, and target adapters canonically.
+
+### TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001 — Specialized custom continuation result
+
+The compiler SHALL admit an ordinary nonrecursive called function with exactly
+one named Character parameter and result classifier
+`Generator Character Unit Unit` when its statement-free body returns a fresh
+instance of the exact single-yield custom generator admitted by
+`TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001`, applied directly to that parameter.
+The top-level call argument SHALL retain one exact Character. Function exit
+SHALL transfer the fresh suspended continuation without close delivery; the
+caller SHALL bind and consume it exactly once through the admitted root
+Character foreach.
+
+Each call SHALL create a distinct private specialization. The checked program
+SHALL retain the generator declaration, exact Character, suspension/final
+graph, and ownership transfer as provenance associated with that private
+symbol. The caller SHALL evaluate its Character argument once. The callee SHALL
+return the compiler-private Generator token, and caller traversal SHALL invoke
+the Character-to-Unit action once, resume with Unit, and finish with Unit using
+only that call's retained provenance. Distinct calls SHALL NOT share provenance.
+
+On Linux x86-64, LLVM `fastcc` SHALL choose placement for the private Character
+descriptor parameter and `i32` Generator result; the compiler SHALL hard-code no
+System V register placement. A debug-only Character parameter shadow SHALL keep
+the source value inspectable through function return. DWARF and GDB SHALL expose
+the Character parameter, Generator result classifier/value, caller traversal
+Character, and both call frames.
+
+Static, anonymous, recursive, nested, multiple-parameter, statement-bearing,
+non-parameter-derived, multiple-yield, local-state, handled-close, unbound-result,
+caller-close, and library paths SHALL remain unsupported. The lowering SHALL
+introduce no Generator object or state allocation, dispatcher, callback,
+indirect call, unwind dependency, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library calling convention
+or Generator ABI, or native-ABI revision. Future compiled-library metadata
+SHALL encode the canonical declaration and directions, suspension/final graph,
+construction evidence, capture/effect evidence, transfer/ownership/close state,
+and target adapters rather than expose the compiler-session side table or
+private token.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
