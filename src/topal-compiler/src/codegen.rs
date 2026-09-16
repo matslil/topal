@@ -212,6 +212,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         }
         CompilerExpressionKind::CustomValueForeach {
             source,
+            transferred_initial,
             prefix,
             yields,
             continuations,
@@ -220,6 +221,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             ..
         } => {
             expression_uses_extended_debug(source)
+                || transferred_initial
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
                 || block_uses_extended_debug(prefix)
                 || yields.iter().any(|yielded| match yielded {
                     CompilerGeneratorYield::Initial(_) => false,
@@ -669,10 +673,16 @@ impl<'a> Generator<'a> {
                     generator.result_type.as_ref(),
                     CompilerType::Unit | CompilerType::Character
                 ));
+            let retained_value_generator_source = parameter.value_type == CompilerType::Int
+                && matches!(&function.result_type, CompilerType::Generator(generator)
+                    if generator.yield_type.as_ref() == &CompilerType::Int
+                        && generator.resume_type.as_ref() == &CompilerType::Unit
+                        && generator.result_type.as_ref() == &CompilerType::String);
             let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
             if retained_character_generator_source
+                || retained_value_generator_source
                 || retained_unused_enum
                 || matches!(
                     parameter.value_type,
@@ -6511,6 +6521,7 @@ impl<'a> Generator<'a> {
     ) -> LlValue {
         let CompilerExpressionKind::CustomValueForeach {
             source,
+            transferred_initial,
             declaration_span,
             initial_parameter,
             additional_initial_parameters,
@@ -6526,7 +6537,11 @@ impl<'a> Generator<'a> {
             unreachable!("checked value foreach retains its traversal")
         };
         let source = self.emit_expression(source, body, environment);
-        let initial = source.generator_initial().clone();
+        let initial = if let Some(transferred_initial) = transferred_initial {
+            self.emit_expression(transferred_initial, body, environment)
+        } else {
+            source.generator_initial().clone()
+        };
         let additional_initials = source.generator_additional_initials().to_vec();
         let traversal_parent_scope = body.subprogram;
         let mut generator_environment = environment.clone();
@@ -13000,5 +13015,74 @@ mod tests {
         }
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_generic_custom_generator_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-generic-function-boundaries.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("factory specialization exists");
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("consumer specialization exists");
+        let llvm =
+            Generator::new(&program, "custom-generator-generic-function-boundaries.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc i32 @{}(ptr %arg0)",
+            make.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i32 %arg0)",
+            consume.symbol
+        )));
+        assert!(llvm.contains(&format!("call fastcc i32 @{}(ptr", make.symbol)));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(i32", consume.symbol)));
+
+        let consume_body = llvm
+            .split_once(&format!(
+                "define internal fastcc ptr @{}(i32 %arg0)",
+                consume.symbol
+            ))
+            .expect("module contains consumer")
+            .1
+            .split_once("\n}\n")
+            .expect("consumer has one body")
+            .0;
+        let action = consume_body
+            .find("call ptr @topal.runtime.int.add")
+            .expect("consumer invokes the checked Int action");
+        let final_string = consume_body[action..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| action + offset)
+            .expect("consumer constructs the final String after resumption");
+        let returned = consume_body[final_string..]
+            .find("ret ptr")
+            .map(|offset| final_string + offset)
+            .expect("consumer returns the final String");
+        assert!(action < final_string && final_string < returned);
+        for expected in [
+            "name: \"Generator Int Unit String\"",
+            "DILocalVariable(name: \"initial\", arg: 1",
+            "DILocalVariable(name: \"generated\", arg: 1",
+            "DILocalVariable(name: \"value\"",
+            "DILocalVariable(name: \"result\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("topal.runtime.generator"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("call i32 %"));
     }
 }
