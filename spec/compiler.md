@@ -979,6 +979,47 @@ suspension/yield/final graph, construction/action sites, capture/effect
 evidence, ownership/consumption/close state, and target adapters rather than
 expose the private token or checked-program node layout.
 
+### TOPAL-COMPILER-GENERATOR-STRING-YIELD-001 — Independent String yield direction
+
+The compiler SHALL admit a root custom generator with one named String initial
+parameter and directions `Generator String Unit Unit`. Its body SHALL contain
+one or more consecutive discarded yields, each yielding either that initial
+parameter or an exact String literal, followed by a final Unit expression. One
+currently admitted String expression SHALL start the generator, and the fresh
+result SHALL be bound and consumed exactly once by a String-to-Unit foreach
+action.
+
+The checked program SHALL retain the initial classifier separately from the
+three Generator directions and SHALL retain ordered per-yield value provenance,
+declaration and suspension spans, final Unit, action, and ownership edge.
+Application SHALL evaluate the initial String expression exactly once.
+Traversal SHALL deliver that retained descriptor for an initial-parameter yield,
+materialize each exact literal at its suspension point, invoke the action and
+resume with Unit after every yield, and complete with Unit. This source order
+SHALL hold with LLVM optimization disabled and SHALL NOT depend on constant
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, yielded values SHALL use the existing `topal-native/6` String
+descriptor while the root-local Generator remains a compiler-private `i32`
+ownership token. LLVM SHALL select target data layout and instruction placement;
+the compiler SHALL hard-code no AMD64 register convention. DWARF and GDB SHALL
+expose the complete Generator and each yielded String while its action executes,
+plus the Topal entry frame.
+
+Other input, yield, resume, or final classifiers; multiple parameters; computed
+yields; intervening or post-suspension body state; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no Generator object or semantic state
+allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or native-ABI revision.
+Future compiled-library metadata SHALL encode the initial and direction
+classifiers independently, ordered per-yield values and provenance, declaration,
+suspension/final graph, construction/action sites, capture/effect evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+private token or checked-program node layout.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve
