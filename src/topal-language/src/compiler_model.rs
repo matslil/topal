@@ -2815,6 +2815,48 @@ fn exact_optional_int_string_literal(
     })
 }
 
+fn exact_optional_int_string_none_literal(
+    source: &SourceText,
+    expression: &Expression,
+) -> Option<CompilerExpression> {
+    let Expression::Application { items, span } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    let [int_field, string_field] = fields.as_slice() else {
+        return None;
+    };
+    let (Expression::Identifier(int_type), Expression::Identifier(string_type)) =
+        (&int_field.value, &string_field.value)
+    else {
+        return None;
+    };
+    if source.slice(*constructor) != "None"
+        || int_field.label.is_some()
+        || string_field.label.is_some()
+        || source.slice(*int_type) != "Int"
+        || source.slice(*string_type) != "String"
+    {
+        return None;
+    }
+    Some(CompilerExpression {
+        kind: CompilerExpressionKind::OptionalNone,
+        value_type: CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+            CompilerType::Int,
+            CompilerType::String,
+        ]))),
+        int_range: None,
+        rational_value: None,
+        span: *span,
+    })
+}
+
 fn exact_optional_int_string_value(
     expression: &CompilerExpression,
     expected_int: i64,
@@ -2830,6 +2872,15 @@ fn exact_optional_int_string_value(
                 if matches!(fields.as_slice(), [int, text]
                     if exact_int(int).as_ref() == Some(&BigInt::from(expected_int))
                         && exact_string(text).as_deref() == Some(expected_text))))
+}
+
+fn exact_optional_int_string_none_value(expression: &CompilerExpression) -> bool {
+    expression.value_type
+        == CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+            CompilerType::Int,
+            CompilerType::String,
+        ])))
+        && matches!(expression.kind, CompilerExpressionKind::OptionalNone)
 }
 
 fn exact_nested_optional_value_generator_body(
@@ -2876,13 +2927,15 @@ fn exact_nested_optional_value_generator_body(
             "nested Optional-value custom generator outside yield initial followed by Some (8, \"done\")",
         ));
     }
-    let result = exact_optional_int_string_literal(source, result, 8, "done").ok_or_else(|| {
-        unsupported(
-            source,
-            result.span(),
-            "nested Optional-value custom generator final expression outside Some (8, \"done\")",
-        )
-    })?;
+    let result = exact_optional_int_string_literal(source, result, 8, "done")
+        .or_else(|| exact_optional_int_string_none_literal(source, result))
+        .ok_or_else(|| {
+            unsupported(
+                source,
+                result.span(),
+                "nested Optional-value custom generator final expression outside Some (8, \"done\") or None (Int, String)",
+            )
+        })?;
     Ok(ExactValueGeneratorBody {
         yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
         continuations: Vec::new(),
@@ -2910,6 +2963,102 @@ fn exact_nested_optional_value_generator_action(
                 && left.value_type == parameter.value_type
                 && exact_optional_int_string_value(right, 7, "item")
         )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
+fn exact_nested_optional_value_generator_foreach_body(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    statements: &[Statement],
+) -> Result<CompilerBlock, Diagnostic> {
+    let [
+        Statement::Discard {
+            span,
+            value:
+                Expression::Application {
+                    items,
+                    span: expression_span,
+                },
+        },
+    ] = statements
+    else {
+        return Err(unsupported(
+            source,
+            parameter.span,
+            "nested Optional-value custom generator foreach action",
+        ));
+    };
+    let [
+        Expression::Identifier(left),
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        right,
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "nested Optional-value custom generator foreach equality action",
+        ));
+    };
+    if parameter.discarded || source.slice(*left) != parameter.name {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "nested Optional-value custom generator foreach named candidate action",
+        ));
+    }
+    let right = exact_optional_int_string_literal(source, right, 7, "item")
+        .or_else(|| exact_optional_int_string_none_literal(source, right))
+        .ok_or_else(|| {
+            unsupported(
+                source,
+                right.span(),
+                "nested Optional-value custom generator foreach comparison operand",
+            )
+        })?;
+    Ok(CompilerBlock {
+        statements: vec![CompilerStatement::Discard(CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                left: Box::new(CompilerExpression {
+                    kind: CompilerExpressionKind::Local(parameter.name.clone()),
+                    value_type: parameter.value_type.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span: *left,
+                }),
+                right: Box::new(right),
+            },
+            value_type: CompilerType::Boolean,
+            int_range: None,
+            rational_value: None,
+            span: *expression_span,
+        })],
+        result: unit_expression(*span),
+    })
+}
+
+fn exact_nested_none_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    !parameter.discarded
+        && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+            CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    left,
+                    right,
+                },
+                ..
+            }
+        )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+            if name == &parameter.name)
+            && left.value_type == parameter.value_type
+            && exact_optional_int_string_none_value(right))
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
@@ -6251,6 +6400,7 @@ impl Analyzer {
                 CompilerExpressionKind::CustomValueGenerator {
                     declaration_span,
                     initial_parameter,
+                    initial,
                     yields,
                     continuations,
                     explicit_return,
@@ -6362,13 +6512,20 @@ impl Analyzer {
                     CompilerType::Int,
                     CompilerType::String,
                 ])))
-                && !exact_nested_optional_value_generator_action(&parameter, &body)
             {
-                return Err(unsupported(
-                    &self.source,
-                    span,
-                    "nested Optional-value custom generator foreach action outside discarded candidate = Some (7, \"item\")",
-                ));
+                let some_graph = exact_optional_int_string_value(&initial, 7, "item")
+                    && exact_optional_int_string_value(&result, 8, "done")
+                    && exact_nested_optional_value_generator_action(&parameter, &body);
+                let none_graph = exact_optional_int_string_none_value(&initial)
+                    && exact_optional_int_string_none_value(&result)
+                    && exact_nested_none_value_generator_action(&parameter, &body);
+                if !some_graph && !none_graph {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "nested Optional-value custom generator outside an exact all-Some or all-None input/yield/action/final graph",
+                    ));
+                }
             }
             if initial_parameter.value_type == nested_result_product_type()
                 && !exact_nested_result_value_generator_action(&parameter, &body)
@@ -6604,6 +6761,19 @@ impl Analyzer {
         if value_type == CompilerType::Nat {
             let body =
                 exact_nat_value_generator_foreach_body(&self.source, &parameter, statements)?;
+            return Ok((parameter, body));
+        }
+        if value_type
+            == CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+                CompilerType::Int,
+                CompilerType::String,
+            ])))
+        {
+            let body = exact_nested_optional_value_generator_foreach_body(
+                &self.source,
+                &parameter,
+                statements,
+            )?;
             return Ok((parameter, body));
         }
         if value_type == CompilerType::Result(Box::new(CompilerType::Rational)) {
@@ -11590,6 +11760,24 @@ impl Analyzer {
         self.analyze_resolved_call(items, span, environment, function_index, &function_name)
     }
 
+    fn analyze_custom_generator_argument(
+        &mut self,
+        argument: &Expression,
+        initial_type: &CompilerType,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if initial_type
+            == &CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+                CompilerType::Int,
+                CompilerType::String,
+            ])))
+            && let Some(value) = exact_optional_int_string_none_literal(&self.source, argument)
+        {
+            return Ok(value);
+        }
+        self.analyze_expression(argument, environment)
+    }
+
     fn analyze_custom_generator_call(
         &mut self,
         items: &[Expression],
@@ -11625,7 +11813,11 @@ impl Analyzer {
                 format!("no `{generator_name}` generator overload accepts this input"),
             ));
         };
-        let argument = self.analyze_expression(argument, environment)?;
+        let argument = self.analyze_custom_generator_argument(
+            argument,
+            &declaration.initial_parameter.value_type,
+            environment,
+        )?;
         let initial = adapt_custom_generator_initial(
             &self.source,
             &declaration.initial_parameter,
@@ -15122,11 +15314,12 @@ fn adapt_custom_generator_initial(
             CompilerType::String,
         ])))
         && !exact_optional_int_string_value(argument, 7, "item")
+        && !exact_optional_int_string_none_value(argument)
     {
         return Err(unsupported(
             source,
             argument.span,
-            "nested Optional custom generator input outside exact Some (7, \"item\")",
+            "nested Optional custom generator input outside exact Some (7, \"item\") or None (Int, String)",
         ));
     }
     if parameter.value_type == CompilerType::Comparison
@@ -19449,6 +19642,97 @@ mod tests {
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  Some (8, \"done\")\ngenerated is pair (Some (8, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"item\"))\n",
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  Some (8, \"done\")\ngenerated is pair (Some (7, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"other\"))\n",
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is pair (Some (7, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"item\"))\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Recursive absent Optional graph and rejection matrix stay together.
+    fn models_nested_absent_optional_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-NONE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-nested-none-values.t"
+        ))
+        .unwrap();
+        let optional_product = CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+            CompilerType::Int,
+            CompilerType::String,
+        ])));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "absent"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == optional_product
+                && exact_optional_int_string_none_value(initial)
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_optional_int_string_none_value(result)
+                && *generator_type.yield_type == optional_product
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == optional_product
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "candidate"
+                && parameter.value_type == optional_product
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Equal,
+                            left,
+                            right,
+                        },
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "candidate")
+                    && exact_optional_int_string_none_value(right))
+                && exact_optional_int_string_none_value(result)
+                && value_type == &optional_product
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield (None (Int, String))\n  None (Int, String)\ngenerated is absent (None (Int, String))\ngenerated foreach { candidate }\n  _ is candidate = (None (Int, String))\n",
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  _ is yield initial\n  None (Int, String)\ngenerated is absent (None (Int, String))\ngenerated foreach { candidate }\n  _ is candidate = (None (Int, String))\n",
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  Some (8, \"done\")\ngenerated is absent (None (Int, String))\ngenerated foreach { candidate }\n  _ is candidate = (None (Int, String))\n",
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  None (Int, String)\ngenerated is absent (Some (7, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (None (Int, String))\n",
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  None (Int, String)\ngenerated is absent (None (Int, String))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"item\"))\n",
+            "use language (version is v0.1)\nabsent is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  None (Int, Int)\ngenerated is absent (None (Int, String))\ngenerated foreach { candidate }\n  _ is candidate = (None (Int, String))\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

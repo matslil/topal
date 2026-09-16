@@ -11457,6 +11457,58 @@ mod tests {
     }
 
     #[test]
+    fn emits_nested_absent_optional_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-NONE-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-nested-none-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-nested-none-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let absent = main
+            .match_indices("call ptr @topal.runtime.optional.none()")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        assert_eq!(absent.len(), 3);
+        assert_eq!(main.matches("alloca ptr, align 8").count(), 2);
+        assert!(!main.contains("call ptr @topal.platform.allocate(i64 16)"));
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let action = main
+            .find("optional.product.equal.payload")
+            .expect("foreach retains the guarded structural equality path");
+        let output = main
+            .rfind("call i1 @topal.runtime.optional.is.some(")
+            .expect("the final absent Optional controls Topal-owned display");
+        assert!(
+            absent[0] < constructed
+                && constructed < absent[1]
+                && absent[1] < action
+                && action < absent[2]
+                && absent[2] < output
+        );
+        assert!(main.contains("and i1"));
+        assert!(main.contains("optional.product.equal.tag"));
+        assert!(main.contains("phi i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(
+            llvm.contains("name: \"Generator Optional (Int, String) Unit Optional (Int, String)\"")
+        );
+        assert!(llvm.contains("name: \"Optional (Int, String)\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nested_result_product_across_custom_generator_directions() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-TYPE-RESULT-001, TOPAL-TYPE-PRODUCT-001,

@@ -5834,6 +5834,21 @@
       "cpu_time_ns": 9113619,
       "memory_peak_bytes": 18100224,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nested_absent_optional_across_custom_generator_directions": {
+      "cpu_time_ns": 6159699,
+      "memory_peak_bytes": 18440192,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_nested_none_values_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 328497459,
+      "memory_peak_bytes": 58302464,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nested_absent_optional_across_custom_generator_directions": {
+      "cpu_time_ns": 7598579,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
     }
   }
 }

@@ -94,6 +94,7 @@ evidence.
 | 5al | exact nominal `Comparison` input/yield, equality action, resumption, and distinct Greater final with ordered scalar debugging | complete |
 | 5am | exact recursive `Optional (Int, String)` input/yield, structural equality action, resumption, and distinct Some final with boxed-payload debugging | complete |
 | 5an | exact successful recursive `Result ((Int, String), ArithmeticErrorCode)` input/yield, structural equality action, resumption, and distinct successful final with boxed-payload debugging | complete |
+| 5ao | exact absent recursive `Optional (Int, String)` input/yield, tag equality action, resumption, and absent final with full-classifier debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -548,6 +549,18 @@ a semantic Generator runtime, foreign dependency, other-language standard
 library, public ABI, or native-layout revision. Errors and other recursive
 Result values, directions, state, transfer, close, and libraries remain in
 increment 5.
+
+Increment 5ao preserves the recursive `Optional (Int, String)` classifier
+through one exact all-None Generator graph. Application constructs one absent
+Optional; traversal reuses it for the yield, constructs the exact absent action
+operand, compares tags without observing payload storage, resumes with Unit,
+and only then constructs the absent final. Existing Optional headers, tag
+equality/display, two pointer debug shadows, DWARF recursive type names, the
+Topal GDB renderer, allocator, and Linux syscall writer are reused without a
+product-payload allocation, semantic Generator runtime, foreign dependency,
+other-language standard library, public ABI, or native-layout revision. Mixed
+Some/None graphs and other recursive Optional values, directions, state,
+transfer, close, and libraries remain in increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The
