@@ -661,7 +661,11 @@ impl<'a> Generator<'a> {
                     generator.result_type.as_ref(),
                     CompilerType::Unit | CompilerType::Character
                 ));
+            let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
+                && function.body.statements.is_empty()
+                && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
             if retained_character_generator_source
+                || retained_unused_enum
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -12205,6 +12209,75 @@ mod tests {
         assert!(llvm.contains("name: \"Result (Unit, lang generator GeneratorErrorCode)\""));
         assert!(llvm.contains("name: \"Error (lang generator GeneratorErrorCode)\""));
         assert!(!close.contains("topal.runtime.result.is.error"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_generator_local_function_during_custom_close() {
+        // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+        // TOPAL-GENERATOR-CLOSE-001, TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-CLOSE-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-local-close-handler.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let cleanup = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cleanup")
+            .expect("generator-local cleanup function is retained");
+        let abandon = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("calling abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-local-close-handler.t").emit();
+        let local = llvm
+            .split_once(&format!("define internal fastcc void @{}", cleanup.symbol))
+            .expect("module contains the private generator-local cleanup function")
+            .1
+            .split_once("\n}\n")
+            .expect("local cleanup function has a complete definition")
+            .0;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                abandon.symbol
+            ))
+            .expect("abandon function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("abandon function definition terminates")
+            .0;
+
+        assert!(local.contains("(i32 %arg0) nounwind noinline"));
+        assert!(local.contains("store i32 %arg0"));
+        assert!(local.contains("#dbg_declare(ptr"));
+        assert!(local.contains("ret void"));
+        let failure = close
+            .find("call ptr @topal.runtime.result.failure(i32 0")
+            .expect("close materializes the intrinsic failure Result");
+        let payload = close
+            .find("call ptr @topal.runtime.result.payload")
+            .expect("qualified handler observes the failure payload");
+        let code = close
+            .find("call i32 @topal.runtime.error.code")
+            .expect("qualified handler observes the nominal code");
+        let call_text = format!("call fastcc void @{}(i32 0)", cleanup.symbol);
+        let call = close
+            .find(&call_text)
+            .expect("close branch directly invokes cleanup Closed");
+        let returned = close
+            .find("ret void")
+            .expect("abandon completes after local cleanup");
+        assert!(failure < payload && payload < code && code < call && call < returned);
+        assert!(!close.contains(&format!("call fastcc void @{}(i32 1)", cleanup.symbol)));
+        assert!(llvm.contains("DISubprogram(name: \"cleanup\""));
+        assert!(llvm.contains(&format!("linkageName: \"{}\"", cleanup.symbol)));
+        assert!(llvm.contains("DILocalVariable(name: \"choice\", arg: 1"));
+        assert!(llvm.contains("name: \"CloseChoice\""));
+        assert!(llvm.contains("DIEnumerator(name: \"Closed\", value: 0)"));
+        assert!(llvm.contains("DIEnumerator(name: \"Continued\", value: 1)"));
         assert!(!close.contains("topal.runtime.generator"));
         assert!(!close.contains("call ptr %"));
     }

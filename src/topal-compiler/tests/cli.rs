@@ -3100,6 +3100,84 @@ fn custom_generator_local_function_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn custom_generator_local_close_handler_is_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+    // TOPAL-GENERATOR-CLOSE-001, TOPAL-GENERATOR-CLOSE-HANDLER-001,
+    // TOPAL-COMPILER-GENERATOR-LOCAL-CLOSE-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-local-close-handler");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-local-close-handler.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"()\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-local-close-handler.t:17",
+            "-ex",
+            "break custom-generator-local-close-handler.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis 'resume-result'",
+            "-ex",
+            "print 'resume-result'",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis choice",
+            "-ex",
+            "print choice",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = Result (Unit, lang generator GeneratorErrorCode)",
+        "Error ( domain is root, code is generator-closed )",
+        "type = enum CloseChoice",
+        "Closed",
+        "custom-generator-local-close-handler.t:17",
+        "custom-generator-local-close-handler.t:14",
+        "topal.fn.cleanup.0",
+        "topal.fn.abandon.1",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn custom_generator_int_values_are_freestanding_exact_and_debuggable() {
     // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
     // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-INT-001,

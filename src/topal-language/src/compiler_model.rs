@@ -1967,6 +1967,305 @@ fn exact_character_generator_close_handler(
     })
 }
 
+fn exact_generator_local_close_call(
+    source: &SourceText,
+    expression: &Expression,
+    alternative: &str,
+    value: u32,
+    enumeration: &CompilerEnumType,
+) -> Option<CompilerExpression> {
+    let Expression::Application { items, span } = expression else {
+        return None;
+    };
+    let [
+        Expression::Identifier(function),
+        Expression::Identifier(argument),
+    ] = items.as_slice()
+    else {
+        return None;
+    };
+    if source.slice(*function) != "cleanup" || source.slice(*argument) != alternative {
+        return None;
+    }
+    Some(CompilerExpression {
+        kind: CompilerExpressionKind::Call {
+            symbol: String::new(),
+            arguments: vec![CompilerExpression {
+                kind: CompilerExpressionKind::Enum(value),
+                value_type: CompilerType::Enum(enumeration.clone()),
+                int_range: None,
+                rational_value: None,
+                span: *argument,
+            }],
+        },
+        value_type: CompilerType::Unit,
+        int_range: None,
+        rational_value: None,
+        span: *span,
+    })
+}
+
+#[allow(clippy::too_many_lines)] // Exact restored declaration and close branches form one proof.
+fn exact_character_generator_local_close_handler(
+    source: &SourceText,
+    initial: Span,
+    body: &[Statement],
+    span: Span,
+) -> Result<(CompilerGeneratorCloseHandler, CompilerFunction), Diagnostic> {
+    let [
+        enum_statement,
+        function_statement,
+        binding_statement,
+        decision_statement,
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "generator-local close body outside one enum, function, bound yield, and Result decision",
+        ));
+    };
+    let Some(EnumSource {
+        name: enum_name,
+        alternatives,
+        ..
+    }) = enum_declaration(source, enum_statement)
+    else {
+        return Err(unsupported(source, span, "generator-local close enum"));
+    };
+    if source.slice(enum_name) != "CloseChoice"
+        || alternatives.len() != 2
+        || alternatives[0].0 != "Closed"
+        || alternatives[1].0 != "Continued"
+    {
+        return Err(unsupported(
+            source,
+            enum_name,
+            "generator-local close enum outside CloseChoice (Closed, Continued)",
+        ));
+    }
+    let enumeration = CompilerEnumType {
+        name: String::from("CloseChoice"),
+        alternatives: vec![String::from("Closed"), String::from("Continued")],
+    };
+
+    let Statement::Function {
+        name: function_name,
+        is_static: false,
+        parameters,
+        result,
+        effect_bound: None,
+        clauses,
+        body: function_body,
+        span: function_span,
+    } = function_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(function_statement),
+            "generator-local close function declaration",
+        ));
+    };
+    let [function_parameter] = parameters.as_slice() else {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local close function arity",
+        ));
+    };
+    if source.slice(*function_name) != "cleanup"
+        || !function_parameter.fields.is_empty()
+        || function_parameter.default.is_some()
+        || function_parameter.qualifier.is_some()
+        || source.slice(function_parameter.name) != "choice"
+        || source.slice(function_parameter.classifier) != "CloseChoice"
+        || source.slice(*result) != "Unit"
+        || **clauses != FunctionClauses::default()
+    {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local close function outside cleanup (choice : CloseChoice) -> Unit",
+        ));
+    }
+    let [Statement::Expression(Expression::Unit(function_result_span))] = function_body.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local cleanup body outside Unit",
+        ));
+    };
+
+    let Statement::Binding {
+        name: result_binding,
+        classifier: None,
+        value: Expression::Application {
+            items: yield_items, ..
+        },
+    } = binding_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(binding_statement),
+            "generator-local close result binding",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yielded),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(binding_statement),
+            "generator-local close yield",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yielded) != source.slice(initial)
+        || source.slice(*result_binding) != "resume-result"
+        || source.slice(*result_binding) == source.slice(initial)
+    {
+        return Err(unsupported(
+            source,
+            statement_span(binding_statement),
+            "generator-local close outside resume-result is yield initial",
+        ));
+    }
+
+    let Statement::Expression(Expression::DecisionTable {
+        subject,
+        rules,
+        span: decision_span,
+    }) = decision_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(decision_statement),
+            "generator-local close Result decision",
+        ));
+    };
+    let Expression::Identifier(subject_name) = subject.as_ref() else {
+        return Err(unsupported(
+            source,
+            subject.span(),
+            "generator-local close Result subject",
+        ));
+    };
+    let [closed_rule, error_rule, ok_rule] = rules.as_slice() else {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local close Result branches",
+        ));
+    };
+    let (
+        DecisionMatcher::ErrorCode {
+            namespace,
+            vocabulary,
+            code,
+            ..
+        },
+        DecisionMatcher::Result {
+            error: true,
+            binding: error_binding,
+            ..
+        },
+        DecisionMatcher::Result {
+            error: false,
+            binding: ok_binding,
+            ..
+        },
+    ) = (&closed_rule.matcher, &error_rule.matcher, &ok_rule.matcher)
+    else {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local close Result branch order",
+        ));
+    };
+    if source.slice(*subject_name) != source.slice(*result_binding)
+        || source.slice(*namespace) != "lang"
+        || source.slice(*vocabulary) != "generator"
+        || source.slice(*code) != "generator-closed"
+        || source.slice(*error_binding) != "problem"
+        || source.slice(*ok_binding) != "resumed"
+    {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local close outside the retained qualified Result branches",
+        ));
+    }
+    let closed_action =
+        exact_generator_local_close_call(source, &closed_rule.action, "Closed", 0, &enumeration)
+            .ok_or_else(|| {
+                unsupported(
+                    source,
+                    closed_rule.action.span(),
+                    "generator-local close action outside cleanup Closed",
+                )
+            })?;
+    let Expression::Unit(error_action_span) = &error_rule.action else {
+        return Err(unsupported(
+            source,
+            error_rule.action.span(),
+            "generator-local fallback close action outside Unit",
+        ));
+    };
+    let ok_action =
+        exact_generator_local_close_call(source, &ok_rule.action, "Continued", 1, &enumeration)
+            .ok_or_else(|| {
+                unsupported(
+                    source,
+                    ok_rule.action.span(),
+                    "generator-local successful-resume action outside cleanup Continued",
+                )
+            })?;
+    let (error_code_type, code) = generator_error_code("lang", "generator", "generator-closed")
+        .expect("the intrinsic generator close code exists");
+    let local_parameter = CompilerParameter {
+        name: String::from("choice"),
+        discarded: false,
+        value_type: CompilerType::Enum(enumeration),
+        int_range: None,
+        span: function_parameter.name,
+    };
+    Ok((
+        CompilerGeneratorCloseHandler {
+            result_binding: String::from("resume-result"),
+            result_binding_span: *result_binding,
+            error_codes: vec![CompilerErrorCodeRule {
+                code,
+                action: closed_action,
+                span: closed_rule.span,
+            }],
+            error_binding: String::from("problem"),
+            error_binding_span: *error_binding,
+            error_action: Box::new(unit_expression(*error_action_span)),
+            ok_binding: String::from("resumed"),
+            ok_binding_span: *ok_binding,
+            ok_action: Box::new(ok_action),
+            error_code_type,
+            span: *decision_span,
+        },
+        CompilerFunction {
+            source_name: String::from("cleanup"),
+            symbol: String::new(),
+            parameters: vec![local_parameter],
+            result_type: CompilerType::Unit,
+            body: CompilerBlock {
+                statements: Vec::new(),
+                result: unit_expression(*function_result_span),
+            },
+            span: *function_span,
+            is_static: false,
+            declared_effects: None,
+        },
+    ))
+}
+
 #[allow(clippy::too_many_lines)] // The exact prefix and yield shape is rejected as one atomic proof.
 fn exact_string_input_generator_body(
     source: &SourceText,
@@ -5740,32 +6039,54 @@ fn collect_character_generators(
             );
             continue;
         }
-        if source.slice(*result) == "Unit"
-            && let Some(close_handler) =
+        if source.slice(*result) == "Unit" {
+            let close = if body
+                .first()
+                .and_then(|statement| enum_declaration(source, statement))
+                .is_some()
+            {
+                if enums.contains_key("CloseChoice") {
+                    return Err(unsupported(
+                        source,
+                        *span,
+                        "generator-local CloseChoice beside a root CloseChoice declaration",
+                    ));
+                }
+                let (handler, function) = exact_character_generator_local_close_handler(
+                    source,
+                    parameter.name,
+                    body,
+                    *span,
+                )?;
+                Some((handler, Some(function)))
+            } else {
                 exact_character_generator_close_handler(source, parameter.name, body)
-        {
-            generators.insert(
-                name_text,
-                GeneratorSource {
-                    name: *name,
-                    span: *span,
-                    initial_parameter,
-                    prefix: CompilerBlock {
-                        statements: Vec::new(),
+                    .map(|handler| (handler, None))
+            };
+            if let Some((close_handler, local_function)) = close {
+                generators.insert(
+                    name_text,
+                    GeneratorSource {
+                        name: *name,
+                        span: *span,
+                        initial_parameter,
+                        prefix: CompilerBlock {
+                            statements: Vec::new(),
+                            result: unit_expression(*result),
+                        },
+                        literal_characters: None,
+                        value_yields: None,
+                        value_continuations: Vec::new(),
+                        explicit_return: None,
+                        yield_count: 1,
+                        local: None,
+                        local_function,
+                        close_handler: Some(close_handler),
                         result: unit_expression(*result),
                     },
-                    literal_characters: None,
-                    value_yields: None,
-                    value_continuations: Vec::new(),
-                    explicit_return: None,
-                    yield_count: 1,
-                    local: None,
-                    local_function: None,
-                    close_handler: Some(close_handler),
-                    result: unit_expression(*result),
-                },
-            );
-            continue;
+                );
+                continue;
+            }
         }
         let Some((final_statement, yields)) = body.split_last() else {
             return Err(unsupported(
@@ -12690,7 +13011,33 @@ impl Analyzer {
             vec![character; declaration.yield_count]
         };
         let locals = declaration.local.into_iter().collect();
-        let close_handler = declaration.close_handler;
+        let mut close_handler = declaration.close_handler;
+        if let Some(mut function) = declaration.local_function {
+            let symbol = self.reserve_function_symbol(&function.source_name);
+            let handler = close_handler
+                .as_mut()
+                .expect("checked Character generator-local function has a close handler");
+            for rule in &mut handler.error_codes {
+                if let CompilerExpressionKind::Call {
+                    symbol: call_symbol,
+                    ..
+                } = &mut rule.action.kind
+                {
+                    call_symbol.clone_from(&symbol);
+                }
+            }
+            for action in [&mut handler.error_action, &mut handler.ok_action] {
+                if let CompilerExpressionKind::Call {
+                    symbol: call_symbol,
+                    ..
+                } = &mut action.kind
+                {
+                    call_symbol.clone_from(&symbol);
+                }
+            }
+            function.symbol = symbol;
+            self.instances.push(function);
+        }
         let result = declaration.result;
         let value_type = character_generator_type(result.value_type.clone());
         Ok(CompilerExpression {
@@ -15856,6 +16203,10 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Not(value) => compiler_expression_is_closed_with(value, bound),
         CompilerExpressionKind::CustomCharacterHandledClose { generator, handler } => {
             compiler_expression_is_closed_with(generator, bound)
+                && handler
+                    .error_codes
+                    .iter()
+                    .all(|rule| compiler_expression_is_closed_with(&rule.action, bound))
                 && compiler_expression_is_closed_with(&handler.error_action, bound)
                 && compiler_expression_is_closed_with(&handler.ok_action, bound)
         }
@@ -18439,6 +18790,131 @@ mod tests {
             assert_eq!(
                 analyze_for_compiler(&source).unwrap_err().code,
                 expected
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Restored declarations and exact rejection matrix form one contract.
+    fn models_generator_local_declarations_during_custom_close() {
+        // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+        // TOPAL-GENERATOR-CLOSE-001, TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-CLOSE-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-local-close-handler.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let cleanup = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cleanup")
+            .expect("generator-local cleanup function is retained");
+        let abandon = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("calling abandon function is instantiated");
+        assert!(cleanup.symbol.starts_with("topal.fn.cleanup."));
+        assert_eq!(cleanup.result_type, CompilerType::Unit);
+        assert!(matches!(
+            cleanup.body.result.kind,
+            CompilerExpressionKind::Unit
+        ));
+        assert!(matches!(
+            cleanup.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::Enum(CompilerEnumType {
+                    name: enum_name,
+                    alternatives,
+                }),
+                ..
+            }] if name == "choice"
+                && enum_name == "CloseChoice"
+                && alternatives == &[String::from("Closed"), String::from("Continued")]
+        ));
+
+        let [
+            CompilerStatement::Binding(CompilerBinding {
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomCharacterGenerator {
+                                close_handler: Some(construction_handler),
+                                ..
+                            },
+                        ..
+                    },
+                ..
+            }),
+            CompilerStatement::Discard(CompilerExpression {
+                kind:
+                    CompilerExpressionKind::CustomCharacterHandledClose {
+                        handler: close_handler,
+                        ..
+                    },
+                ..
+            }),
+        ] = abandon.body.statements.as_slice()
+        else {
+            panic!("function retains one locally handled custom close")
+        };
+        assert_eq!(construction_handler, close_handler);
+        let [closed_rule] = close_handler.error_codes.as_slice() else {
+            panic!("local close handler retains its qualified close branch")
+        };
+        assert_eq!(closed_rule.code, 0);
+        let symbol = cleanup.symbol.as_str();
+        assert!(matches!(
+            &closed_rule.action.kind,
+            CompilerExpressionKind::Call {
+                symbol: call_symbol,
+                arguments,
+            } if call_symbol == symbol
+                && matches!(arguments.as_slice(), [CompilerExpression {
+                    kind: CompilerExpressionKind::Enum(0),
+                    value_type: CompilerType::Enum(_),
+                    ..
+                }])
+        ));
+        assert!(matches!(
+            close_handler.error_action.kind,
+            CompilerExpressionKind::Unit
+        ));
+        assert!(matches!(
+            &close_handler.ok_action.kind,
+            CompilerExpressionKind::Call {
+                symbol: call_symbol,
+                arguments,
+            } if call_symbol == symbol
+                && matches!(arguments.as_slice(), [CompilerExpression {
+                    kind: CompilerExpressionKind::Enum(1),
+                    value_type: CompilerType::Enum(_),
+                    ..
+                }])
+        ));
+
+        for malformed in [
+            source.replace(
+                "CloseChoice is Enum ( Closed, Continued )",
+                "CloseChoice is Enum ( Continued, Closed )",
+            ),
+            source.replace("choice : CloseChoice", "choice : Boolean"),
+            source.replace("    ()\n  resume-result", "    choice\n  resume-result"),
+            source.replace(
+                "resume-result is yield initial",
+                "resume-result is yield false",
+            ),
+            source.replace("then cleanup Closed", "then cleanup Continued"),
+            source.replace("Error problem then ()", "Error problem then cleanup Closed"),
+            source.replace("then cleanup Continued", "then cleanup Closed"),
+            source.replace(
+                "handle-close is generator",
+                "CloseChoice is Enum ( Closed, Continued )\nhandle-close is generator",
+            ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&malformed).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
             );
         }
     }
