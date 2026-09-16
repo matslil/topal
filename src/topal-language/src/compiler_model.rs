@@ -2913,6 +2913,199 @@ fn exact_nested_optional_value_generator_action(
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn nested_result_product_type() -> CompilerType {
+    CompilerType::Result(Box::new(CompilerType::Tuple(vec![
+        CompilerType::Int,
+        CompilerType::String,
+    ])))
+}
+
+fn exact_nested_result_product_literal(
+    source: &SourceText,
+    expression: &Expression,
+    expected_int: i64,
+    expected_text: &str,
+) -> Option<CompilerExpression> {
+    let span = expression.span();
+    let payload =
+        exact_int_string_product_literal(source, expression, expected_int, expected_text)?;
+    Some(CompilerExpression {
+        kind: CompilerExpressionKind::ResultSuccess(Box::new(payload)),
+        value_type: nested_result_product_type(),
+        int_range: None,
+        rational_value: None,
+        span,
+    })
+}
+
+fn exact_nested_result_product_value(
+    expression: &CompilerExpression,
+    expected_int: i64,
+    expected_text: &str,
+) -> bool {
+    expression.value_type == nested_result_product_type()
+        && matches!(&expression.kind, CompilerExpressionKind::ResultSuccess(payload)
+            if matches!(&payload.kind, CompilerExpressionKind::Tuple(fields)
+                if matches!(fields.as_slice(), [int, text]
+                    if exact_int(int).as_ref() == Some(&BigInt::from(expected_int))
+                        && exact_string(text).as_deref() == Some(expected_text))))
+}
+
+fn exact_nested_result_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(result),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "nested Result-value custom generator outside one initial yield and final (8, \"done\")",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "nested Result-value custom generator yield outside its initial parameter",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "nested Result-value custom generator outside yield initial followed by (8, \"done\")",
+        ));
+    }
+    let result =
+        exact_nested_result_product_literal(source, result, 8, "done").ok_or_else(|| {
+            unsupported(
+                source,
+                result.span(),
+                "nested Result-value custom generator final expression outside (8, \"done\")",
+            )
+        })?;
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result,
+    })
+}
+
+fn exact_nested_result_value_generator_foreach_body(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    statements: &[Statement],
+) -> Result<CompilerBlock, Diagnostic> {
+    let [
+        Statement::Discard {
+            span,
+            value:
+                Expression::Application {
+                    items,
+                    span: expression_span,
+                },
+        },
+    ] = statements
+    else {
+        return Err(unsupported(
+            source,
+            parameter.span,
+            "nested Result-value custom generator foreach action outside discarded candidate = (7, \"item\")",
+        ));
+    };
+    let [
+        Expression::Identifier(left),
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        right,
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "nested Result-value custom generator foreach action outside discarded candidate = (7, \"item\")",
+        ));
+    };
+    if parameter.discarded || source.slice(*left) != parameter.name {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "nested Result-value custom generator foreach action outside discarded candidate = (7, \"item\")",
+        ));
+    }
+    let right = exact_nested_result_product_literal(source, right, 7, "item").ok_or_else(|| {
+        unsupported(
+            source,
+            right.span(),
+            "nested Result-value custom generator foreach comparison outside (7, \"item\")",
+        )
+    })?;
+    Ok(CompilerBlock {
+        statements: vec![CompilerStatement::Discard(CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                left: Box::new(CompilerExpression {
+                    kind: CompilerExpressionKind::Local(parameter.name.clone()),
+                    value_type: parameter.value_type.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span: *left,
+                }),
+                right: Box::new(right),
+            },
+            value_type: CompilerType::Boolean,
+            int_range: None,
+            rational_value: None,
+            span: *expression_span,
+        })],
+        result: unit_expression(*span),
+    })
+}
+
+fn exact_nested_result_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    parameter.value_type == nested_result_product_type()
+        && !parameter.discarded
+        && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+            CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    left,
+                    right,
+                },
+                ..
+            }
+        )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+            if name == &parameter.name)
+            && left.value_type == parameter.value_type
+            && exact_nested_result_product_value(right, 7, "item"))
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 #[allow(clippy::too_many_lines)] // Exact syntax, provenance, and every rejection stay together.
 fn exact_result_rational_value_generator_body(
     source: &SourceText,
@@ -4003,6 +4196,9 @@ fn collect_character_generators(
             ]))),
             "RangeInt" => CompilerType::Range(Box::new(CompilerType::Int)),
             "Rational" => CompilerType::Rational,
+            "Result((Int,String),langarithmeticArithmeticErrorCode)" => {
+                nested_result_product_type()
+            }
             "Result(Rational,langarithmeticArithmeticErrorCode)" => {
                 CompilerType::Result(Box::new(CompilerType::Rational))
             }
@@ -4019,7 +4215,7 @@ fn collect_character_generators(
                     unsupported(
                         source,
                         *span,
-                        "custom generator outside the admitted Boolean, Character, Comparison, Choice Enum, Int, Nat, Optional Int, Optional (Int, String), Range Int, Rational, Result Rational, String, Unit, or (Int, String) initial-input subset",
+                        "custom generator outside the admitted Boolean, Character, Comparison, Choice Enum, Int, Nat, Optional Int, Optional (Int, String), Range Int, Rational, Result Rational, Result (Int, String), String, Unit, or (Int, String) initial-input subset",
                     )
                 })?,
         };
@@ -4319,6 +4515,46 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_nested_optional_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == nested_result_product_type()
+            && compact_classifier(source.slice(*yielded))
+                == "Result((Int,String),langarithmeticArithmeticErrorCode)"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result))
+                == "Result((Int,String),langarithmeticArithmeticErrorCode)"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_nested_result_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -6134,6 +6370,15 @@ impl Analyzer {
                     "nested Optional-value custom generator foreach action outside discarded candidate = Some (7, \"item\")",
                 ));
             }
+            if initial_parameter.value_type == nested_result_product_type()
+                && !exact_nested_result_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "nested Result-value custom generator foreach action outside discarded candidate = (7, \"item\")",
+                ));
+            }
             if initial_parameter.value_type == CompilerType::Range(Box::new(CompilerType::Int))
                 && !exact_int_range_value_generator_action(&parameter, &body)
             {
@@ -6363,6 +6608,14 @@ impl Analyzer {
         }
         if value_type == CompilerType::Result(Box::new(CompilerType::Rational)) {
             let body = exact_result_rational_value_generator_foreach_body(
+                &self.source,
+                &parameter,
+                statements,
+            )?;
+            return Ok((parameter, body));
+        }
+        if value_type == nested_result_product_type() {
+            let body = exact_nested_result_value_generator_foreach_body(
                 &self.source,
                 &parameter,
                 statements,
@@ -14838,6 +15091,31 @@ fn adapt_custom_generator_initial(
     generator_name: &str,
     call_span: Span,
 ) -> Result<CompilerExpression, Diagnostic> {
+    if parameter.value_type == nested_result_product_type()
+        && !matches!(&argument.kind, CompilerExpressionKind::Tuple(_))
+    {
+        return Err(unsupported(
+            source,
+            argument.span,
+            "nested Result custom generator input outside exact (7, \"item\")",
+        ));
+    }
+    if parameter.value_type == nested_result_product_type() {
+        let wrapped = CompilerExpression {
+            kind: CompilerExpressionKind::ResultSuccess(Box::new(argument.clone())),
+            value_type: parameter.value_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span: argument.span,
+        };
+        if !exact_nested_result_product_value(&wrapped, 7, "item") {
+            return Err(unsupported(
+                source,
+                argument.span,
+                "nested Result custom generator input outside exact (7, \"item\")",
+            ));
+        }
+    }
     if parameter.value_type
         == CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
             CompilerType::Int,
@@ -19171,6 +19449,94 @@ mod tests {
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  Some (8, \"done\")\ngenerated is pair (Some (8, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"item\"))\n",
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Optional (Int, String)\n  _ is yield initial\n  Some (8, \"done\")\ngenerated is pair (Some (7, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"other\"))\n",
             "use language (version is v0.1)\npair is generator (initial : Optional (Int, String))\n  yields Optional (Int, String)\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is pair (Some (7, \"item\"))\ngenerated foreach { candidate }\n  _ is candidate = (Some (7, \"item\"))\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Recursive Result/product graph and rejection matrix stay together.
+    fn models_nested_result_product_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-RESULT-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-nested-result-values.t"
+        ))
+        .unwrap();
+        let result_product = nested_result_product_type();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "pair"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == result_product
+                && exact_nested_result_product_value(initial, 7, "item")
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_nested_result_product_value(result, 8, "done")
+                && *generator_type.yield_type == result_product
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == result_product
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "candidate"
+                && parameter.value_type == result_product
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Equal,
+                            left,
+                            right,
+                        },
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "candidate")
+                    && exact_nested_result_product_value(right, 7, "item"))
+                && exact_nested_result_product_value(result, 8, "done")
+                && value_type == &result_product
+        ));
+
+        for source in [
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  _ is yield (7, \"item\")\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"item\")\n",
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"item\")\n",
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  (9, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"item\")\n",
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (8, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"item\")\n",
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"other\")\n",
+            "use language (version is v0.1)\npair is generator (initial : Result ((Int, String), lang arithmetic ArithmeticErrorCode))\n  yields Result ((Int, String), lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is pair (7, \"item\")\ngenerated foreach { candidate }\n  _ is candidate = (7, \"item\")\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

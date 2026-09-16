@@ -354,6 +354,20 @@ class _TopalResultPrinter:
                 f"({_TopalIntPrinter(quotient).to_string()}, "
                 f"{_TopalIntPrinter(remainder).to_string()})"
             )
+        if self._success == "(Int, String)":
+            try:
+                pair = bytes(inferior.read_memory(payload, 16))
+            except gdb.MemoryError:
+                return "<unreadable Result success product>"
+            integer = int.from_bytes(pair[0:8], "little")
+            text = int.from_bytes(pair[8:16], "little")
+            if not integer or not text:
+                return "<invalid null Result success product field>"
+            integer = _TopalIntPrinter(integer).to_string()
+            text = _TopalStringPrinter(text).to_string()
+            if integer.startswith("<") or text.startswith("<"):
+                return f"<invalid Result success product: ({integer}, {text})>"
+            return f"({integer}, {text})"
         try:
             success_type = gdb.lookup_type(self._success).strip_typedefs()
         except gdb.error:
@@ -657,6 +671,11 @@ def _lookup_topal_value(value):
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):
         return _TopalResultPrinter(value, value_type[len(prefix) : -len(suffix)])
+    compact_prefix = "Result("
+    if value_type.startswith(compact_prefix) and value_type.endswith(suffix):
+        return _TopalResultPrinter(
+            value, value_type[len(compact_prefix) : -len(suffix)]
+        )
     generator_suffix = ", lang generator GeneratorErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(generator_suffix):
         return _TopalResultPrinter(

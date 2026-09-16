@@ -4193,6 +4193,34 @@ impl<'a> Generator<'a> {
             | (LlValue::Range { value, .. }, CompilerType::Range(_))
             | (LlValue::Result { value, .. }, CompilerType::Result(_)) => value.clone(),
             (LlValue::Tuple(fields), CompilerType::Tuple(types))
+                if types.as_slice() == [CompilerType::Int, CompilerType::String] =>
+            {
+                let [integer, text] = fields.as_slice() else {
+                    unreachable!("checked Result product payload has two fields")
+                };
+                let storage = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 16)",
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {}, ptr {storage}, align 8", integer.integer()),
+                    span,
+                    &mut self.debug,
+                );
+                let text_address = body.instruction(
+                    &format!("getelementptr i8, ptr {storage}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store ptr {}, ptr {text_address}, align 8", text.string()),
+                    span,
+                    &mut self.debug,
+                );
+                storage
+            }
+            (LlValue::Tuple(fields), CompilerType::Tuple(types))
                 if matches!(types.as_slice(), [CompilerType::Int, CompilerType::Int]) =>
             {
                 let [quotient, remainder] = fields.as_slice() else {
@@ -4274,6 +4302,26 @@ impl<'a> Generator<'a> {
                 value: payload.into(),
                 success: nested.as_ref().clone(),
             },
+            CompilerType::Tuple(types)
+                if types.as_slice() == [CompilerType::Int, CompilerType::String] =>
+            {
+                let integer = body.instruction(
+                    &format!("load ptr, ptr {payload}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let text_address = body.instruction(
+                    &format!("getelementptr i8, ptr {payload}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let text = body.instruction(
+                    &format!("load ptr, ptr {text_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![LlValue::Int(integer), LlValue::String(text)])
+            }
             CompilerType::Tuple(types)
                 if matches!(types.as_slice(), [CompilerType::Int, CompilerType::Int]) =>
             {
@@ -4528,6 +4576,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Exhaustive structural value lowering keeps representation pairs visible.
     fn emit_equal(
         &mut self,
         left: &LlValue,
@@ -4598,6 +4647,16 @@ impl<'a> Generator<'a> {
                     payload: right_payload,
                 },
             ) => self.emit_optional_equal(left, right, payload, right_payload, body, span),
+            (
+                LlValue::Result {
+                    value: left,
+                    success,
+                },
+                LlValue::Result {
+                    value: right,
+                    success: right_success,
+                },
+            ) => self.emit_result_equal(left, right, success, right_success, body, span),
             (LlValue::Int(_), LlValue::Int(_))
             | (LlValue::Modular { .. }, LlValue::Modular { .. })
             | (LlValue::Rational(_), LlValue::Rational(_)) => {
@@ -4654,6 +4713,70 @@ impl<'a> Generator<'a> {
         };
         body.instruction(
             &format!("call i1 @topal.runtime.list.{runtime}.equal(ptr {left}, ptr {right})"),
+            span,
+            &mut self.debug,
+        )
+    }
+
+    fn emit_result_equal(
+        &mut self,
+        left: &str,
+        right: &str,
+        success: &CompilerType,
+        right_success: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(success, right_success);
+        assert!(matches!(success, CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::String]));
+        let left_error = body.instruction(
+            &format!("call i1 @topal.runtime.result.is.error(ptr {left})"),
+            span,
+            &mut self.debug,
+        );
+        let right_error = body.instruction(
+            &format!("call i1 @topal.runtime.result.is.error(ptr {right})"),
+            span,
+            &mut self.debug,
+        );
+        let any_error = body.instruction(
+            &format!("or i1 {left_error}, {right_error}"),
+            span,
+            &mut self.debug,
+        );
+        let failure = body.label("result.product.equal.error");
+        let success_label = body.label("result.product.equal.payload");
+        let merge = body.label("result.product.equal.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {any_error}, label %{failure}, label %{success_label}"),
+            location,
+        );
+        body.start_block(&success_label);
+        let left_payload = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {left})"),
+            span,
+            &mut self.debug,
+        );
+        let right_payload = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {right})"),
+            span,
+            &mut self.debug,
+        );
+        let left_value = self.result_success_value(&left_payload, success, body, span);
+        let right_value = self.result_success_value(&right_payload, success, body, span);
+        let payload_equal = self.emit_equal(&left_value, &right_value, body, span);
+        let success_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+        body.start_block(&failure);
+        let failure_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+        body.start_block(&merge);
+        body.instruction(
+            &format!(
+                "phi i1 [ {payload_equal}, %{success_predecessor} ], [ false, %{failure_predecessor} ]"
+            ),
             span,
             &mut self.debug,
         )
@@ -7084,6 +7207,8 @@ struct DebugInfo {
     result_string_type: usize,
     result_int_pair_type: usize,
     result_unit_generator_error_type: usize,
+    result_header_pointer_type: usize,
+    result_types: Vec<(CompilerType, usize)>,
     result_modular_types: Vec<(CompilerModularType, usize)>,
     optional_int_type: usize,
     optional_rational_type: usize,
@@ -7147,6 +7272,8 @@ impl DebugInfo {
             result_string_type: 0,
             result_int_pair_type: 0,
             result_unit_generator_error_type: 0,
+            result_header_pointer_type: 0,
+            result_types: Vec::new(),
             result_modular_types: Vec::new(),
             optional_int_type: 0,
             optional_rational_type: 0,
@@ -7524,6 +7651,7 @@ impl DebugInfo {
         let result_pointer = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{result_storage}, size: 64, align: 64)"
         ));
+        self.result_header_pointer_type = result_pointer;
         self.result_int_type = self.result_type("Int", result_pointer);
         self.result_nat_type = self.result_type("Nat", result_pointer);
         self.result_rational_type = self.result_type("Rational", result_pointer);
@@ -7664,9 +7792,7 @@ impl DebugInfo {
                 };
                 self.result_modular_type(modular)
             }
-            CompilerType::Result(_) => {
-                unreachable!("unsupported Result success type reached codegen")
-            }
+            CompilerType::Result(success) => self.dynamic_result_type(success),
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => {
                 self.optional_int_type
             }
@@ -7741,6 +7867,20 @@ impl DebugInfo {
         }
         let type_id = self.optional_type(&payload.name(), self.optional_header_pointer_type);
         self.optional_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn dynamic_result_type(&mut self, success: &CompilerType) -> usize {
+        let value_type = CompilerType::Result(Box::new(success.clone()));
+        if let Some((_, type_id)) = self
+            .result_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let type_id = self.result_type(&success.name(), self.result_header_pointer_type);
+        self.result_types.push((value_type, type_id));
         type_id
     }
 
@@ -11312,6 +11452,67 @@ mod tests {
             llvm.contains("name: \"Generator Optional (Int, String) Unit Optional (Int, String)\"")
         );
         assert!(llvm.contains("name: \"Optional (Int, String)\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_nested_result_product_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-RESULT-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-RESULT-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-nested-result-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-nested-result-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let boxes = main
+            .match_indices("call ptr @topal.platform.allocate(i64 16)")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let results = main
+            .match_indices("call ptr @topal.runtime.result.success(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        assert_eq!(boxes.len(), 3);
+        assert_eq!(results.len(), 3);
+        assert_eq!(main.matches("alloca ptr, align 8").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let action = main
+            .find("result.product.equal.payload")
+            .expect("foreach structurally compares the successful product payload");
+        let output = main
+            .rfind("call i1 @topal.runtime.result.is.error(")
+            .expect("the final Result controls Topal-owned display");
+        assert!(
+            boxes[0] < results[0]
+                && results[0] < constructed
+                && constructed < boxes[1]
+                && boxes[1] < results[1]
+                && results[1] < action
+                && action < boxes[2]
+                && boxes[2] < results[2]
+                && results[2] < output
+        );
+        assert!(main.contains("call i32 @topal.runtime.int.compare"));
+        assert!(main.contains("call i1 @topal.runtime.string.equal"));
+        assert!(main.contains("phi i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(llvm.contains(
+            "name: \"Generator Result ((Int, String), lang arithmetic ArithmeticErrorCode) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)\""
+        ));
+        assert!(
+            llvm.contains("name: \"Result ((Int, String), lang arithmetic ArithmeticErrorCode)\"")
+        );
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
