@@ -3004,6 +3004,102 @@ fn custom_generator_final_decision_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn custom_generator_local_function_is_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+    // TOPAL-GENERATOR-SUSPEND-001, TOPAL-FUNCTION-ORDINARY-001,
+    // TOPAL-COMPILER-GENERATOR-LOCAL-FUNCTION-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-local-function");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-local-function.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"\"accepted\"\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-local-function.t:17",
+            "-ex",
+            "break custom-generator-local-function.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "nexti",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "nexti",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = enum Generator Boolean Unit String",
+        "$1 = <Generator Boolean Unit String>",
+        "type = Boolean",
+        "$2 = true",
+        "$3 = true",
+        "type = enum Choice",
+        "$4 = Accepted",
+        "custom-generator-local-function.t:17",
+        "custom-generator-local-function.t:21",
+        "custom-generator-local-function.t:18",
+        "custom-generator-local-function.t:14",
+        "topal.fn.label.0",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn custom_generator_int_values_are_freestanding_exact_and_debuggable() {
     // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
     // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-INT-001,

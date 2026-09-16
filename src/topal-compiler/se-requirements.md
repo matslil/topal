@@ -2049,6 +2049,55 @@ program nodes. This realizes
 `TOPAL-TYPE-RESULT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler increment
 5aq.
 
+## TOPAL-COMP-GENERATOR-LOCAL-FUNCTION-001 — Retained local declarations
+
+The checked compiler shall admit the unchanged
+`examples/language/custom-generator-local-function.t` regression: an exact
+root `Generator Boolean Unit String` whose body declares local
+`Choice is Enum (Accepted, Rejected)`, declares local
+`label (value : Choice) -> String` with the complete accepted/rejected String
+mapping, yields its named Boolean initial parameter once, and calls
+`label Accepted` after Unit resumption. The fresh generator shall be consumed
+exactly once by the discarded `not value` foreach action.
+
+The checked model shall retain the local nominal identity and ordered
+alternatives, local function signature and Enum decision, initial-parameter
+yield, post-resume direct call and argument, source provenance, and ownership
+edge separately. The local names shall be unavailable to the root and consumer
+environments. Application shall evaluate the initial Boolean once. Traversal
+shall run the action, resume with Unit, directly invoke the retained function,
+and use its String result only afterward. The O0 IR shall preserve this order
+without relying on an LLVM optimization.
+
+The Linux x86-64 backend shall use the existing private `i32` representations
+for Choice and the root-local Generator token. It shall emit `label` as an
+internal, non-inlined `fastcc` definition with a direct call and no closure or
+environment object. LLVM shall own target argument, return, stack, and register
+placement. DWARF and GDB shall expose the complete Generator classifier and
+value, yielded and captured Booleans, ordered yield/action/resume/call source
+locations, the local function subprogram, its nominal Choice parameter and
+Accepted value, and both the local-function and Topal entry frames.
+
+Another local declaration, enum name/alternative/order, function signature or
+body, capture, final call or argument, generator direction, action, yield,
+result or ownership path; close handling; parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. This shall add no semantic Generator object or state
+allocation, closure environment, dispatcher, callback, indirect call, unwind
+dependency, foreign runtime, C/C++ runtime, other-language standard library,
+needed library, dynamic relocation, public/library calling convention,
+Generator/function/Choice ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode lexical declaration identity and parent
+scope, nominal alternatives, function signature and checked body graph,
+capture set, suspension reachability, direct-call and ordered yield/action/
+resume/final provenance, effects, ownership/consumption/close state,
+native-representation identity, and target adapters rather than expose private
+symbols, tags, tokens, debug slots, object layouts, or checked-program nodes.
+This realizes `TOPAL-COMPILER-GENERATOR-LOCAL-FUNCTION-001`,
+`TOPAL-GENERATOR-LOCAL-FUNCTION-001`, `TOPAL-GENERATOR-LOCAL-ENUM-001`,
+`TOPAL-GENERATOR-SUSPEND-001`, `TOPAL-FUNCTION-ORDINARY-001`, and
+`TOPAL-TYPE-ENUM-001` for compiler increment 5ar.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named
