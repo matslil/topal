@@ -93,6 +93,7 @@ evidence.
 | 5ak | exact successful `Result Rational` input/yield, reflexive action, resumption, and structured division-error final with pointer debugging | complete |
 | 5al | exact nominal `Comparison` input/yield, equality action, resumption, and distinct Greater final with ordered scalar debugging | complete |
 | 5am | exact recursive `Optional (Int, String)` input/yield, structural equality action, resumption, and distinct Some final with boxed-payload debugging | complete |
+| 5an | exact successful recursive `Result ((Int, String), ArithmeticErrorCode)` input/yield, structural equality action, resumption, and distinct successful final with boxed-payload debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -531,6 +532,21 @@ names, the Topal GDB renderer, allocator, and Linux syscall writer are reused
 without a semantic Generator runtime, foreign dependency, other-language
 standard library, public ABI, or native-layout revision. Other recursive
 Optional values, directions, state, transfer, close, and libraries remain in
+increment 5.
+
+Increment 5an recursively composes the existing Result and positional-product
+representations through one exact successful
+`Generator Result ((Int, String), lang arithmetic ArithmeticErrorCode) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)`.
+Application constructs the implicit success `(7, "item")` once; traversal
+reuses it for the yield, constructs the exact action success operand, checks
+success tags before fields, resumes with Unit, and only then constructs the
+implicit success `(8, "done")`. Each success payload is a Topal-owned aligned
+16-byte pair of the existing Int/String pointers. Existing Result headers,
+field equality/display, two pointer debug shadows, DWARF recursive type names,
+the Topal GDB renderer, allocator, and Linux syscall writer are reused without
+a semantic Generator runtime, foreign dependency, other-language standard
+library, public ABI, or native-layout revision. Errors and other recursive
+Result values, directions, state, transfer, close, and libraries remain in
 increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
