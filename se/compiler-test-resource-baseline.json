@@ -1626,6 +1626,86 @@
       "cpu_time_ns": 147224,
       "memory_peak_bytes": 18595840,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-suspension.t": {
+      "cpu_time_ns": 123145500,
+      "memory_peak_bytes": 41693184,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-suspension.t": {
+      "cpu_time_ns": 146802,
+      "memory_peak_bytes": 18493440,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-resume-binding.t": {
+      "cpu_time_ns": 123773240,
+      "memory_peak_bytes": 41783296,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-resume-binding.t": {
+      "cpu_time_ns": 141545,
+      "memory_peak_bytes": 18440192,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-close.t": {
+      "cpu_time_ns": 123819200,
+      "memory_peak_bytes": 41746432,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-close.t": {
+      "cpu_time_ns": 133380,
+      "memory_peak_bytes": 18493440,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-close-handler.t": {
+      "cpu_time_ns": 124953560,
+      "memory_peak_bytes": 41938944,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-close-handler.t": {
+      "cpu_time_ns": 154032,
+      "memory_peak_bytes": 18632704,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-close-code-pattern.t": {
+      "cpu_time_ns": 124247480,
+      "memory_peak_bytes": 41787392,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-close-code-pattern.t": {
+      "cpu_time_ns": 156538,
+      "memory_peak_bytes": 18477056,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-function-result.t": {
+      "cpu_time_ns": 123489720,
+      "memory_peak_bytes": 41627648,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-function-result.t": {
+      "cpu_time_ns": 140687,
+      "memory_peak_bytes": 18505728,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-function-parameter.t": {
+      "cpu_time_ns": 122916600,
+      "memory_peak_bytes": 41844736,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-function-parameter.t": {
+      "cpu_time_ns": 139980,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-parameter-close.t": {
+      "cpu_time_ns": 124616780,
+      "memory_peak_bytes": 41836544,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-parameter-close.t": {
+      "cpu_time_ns": 133486,
+      "memory_peak_bytes": 18513920,
+      "samples_per_test": 500
     }
   }
 }
