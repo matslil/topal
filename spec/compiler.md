@@ -1908,6 +1908,59 @@ effects, ownership/consumption/close state, native-representation identity, and
 target adapters rather than expose private symbols, tags, tokens, debug slots,
 object layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-LOCAL-CLOSE-001 — Restored declarations on close
+
+The compiler SHALL admit the shared
+`custom-generator-local-close-handler.t` regression: a root
+`Generator Character Unit Unit` whose body declares local
+`CloseChoice is Enum (Closed, Continued)`, declares the local ordinary
+`cleanup (choice : CloseChoice) -> Unit` with a Unit body, binds
+`resume-result is yield initial`, and decides that Result with the ordered
+qualified `generator-closed`, fallback Error, and Ok branches from the shared
+source. One ordinary `abandon` function SHALL construct a fresh instance and
+close it by reaching function-scope Unit without consuming the yield.
+
+The checked program SHALL retain the local nominal identity and ordered
+alternatives, local function signature and checked Unit body, yield-result
+binding and complete ordered decision, direct cleanup calls and arguments,
+declaration and call provenance, and generator ownership/close edge as
+separate facts. Close delivery SHALL restore the generator-local declaration
+state active at suspension, select only the qualified close branch, directly
+call `cleanup Closed`, complete the generator, and only then return from
+`abandon`. The local declarations SHALL NOT enter the consumer or root name
+environment. This order SHALL hold at LLVM O0 without relying on folding,
+inlining, or dead-code elimination.
+
+On Linux x86-64, CloseChoice and the function-local Generator SHALL use
+compiler-private declaration-ordered `i32` values. `cleanup` SHALL be emitted
+as an internal, non-inlined `fastcc` definition and invoked by a direct call
+after Topal-owned Result payload and error-code selection. A target-aligned
+debugger-only shadow SHALL preserve its otherwise-unused enum parameter. LLVM
+SHALL derive machine argument, return, stack, alignment, and register placement
+from the target triple and data layout; the compiler SHALL hard-code no AMD64
+calling-convention placement. DWARF and GDB SHALL expose the close Result and
+code, the local function subprogram, its complete nominal CloseChoice parameter
+and Closed value, ordered close/call locations, and the cleanup, abandon, and
+Topal entry frames.
+
+Another local declaration, enum name, alternative or order; another function
+name, signature, body, capture, call or argument; another yield, Result subject,
+branch, matcher, order or action; another generator direction, result or
+ownership path; successful traversal; multiple yields or owned generators;
+Generator parameter/result transfer; libraries; and external boundaries SHALL
+remain unsupported. The lowering SHALL introduce no semantic Generator object
+or state allocation, closure object, environment allocation, close dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator/function/Choice ABI, or native-ABI revision. Future
+compiled-library metadata SHALL encode lexical declaration identity and parent
+scope, nominal alternatives, function signature and checked body graph,
+capture set, suspension and close reachability, ordered Result matchers and
+fallback, direct-call and close-site provenance, lexical domain, effects,
+ownership/consumption state, native-representation identity, and target
+adapters rather than expose private symbols, tags, tokens, debug slots, object
+layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`
