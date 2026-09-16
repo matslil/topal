@@ -83,6 +83,7 @@ evidence.
 | 5g | root single-yield custom `Generator Character Unit Unit` declaration, application, suspension, local foreach consumption, and debugging through ordered inline lowering | complete |
 | 5h | consecutive custom Character yields with exact action/resume ordering, finite inline expansion, and no continuation object or runtime | complete |
 | 5i | one exact generator-local Character alias retained across admitted yields, caller non-escape, and lexical DWARF inspection without semantic state storage | complete |
+| 5j | exact custom Character generator completion before its first yield, zero action invocations, and direct final Unit without continuation state | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -334,7 +335,12 @@ the initial parameter before those yields. Its checked identity never enters
 the caller environment, and a generator lexical DWARF shadow makes the exact
 preserved value inspectable during traversal without becoming semantic
 continuation storage. Other local computation, captures, close handling, and
-general continuation state remain in increment 5.
+general continuation state remained in increment 5. Increment 5j admits the
+empty suspension sequence whose exact body returns Unit immediately. The
+checked action is invoked zero times, and O0 lowering produces final Unit
+directly without action code or debug storage. Non-Unit final results, explicit
+early returns, captures, close handling, and general continuation state remain
+in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias

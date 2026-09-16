@@ -428,9 +428,9 @@ Root `foreach` SHALL consume one locally bound admitted instance, invoke its
 capture-free Character-to-Unit action exactly once with the yielded value,
 resume the generator with Unit, and produce its final Unit. Repeated use and
 abandonment SHALL be rejected under the existing local linearity boundary.
-Other declaration shapes, overloads, dynamic Character provenance, direct
-unbound traversal, captures, and function or library boundaries SHALL remain
-unsupported.
+Declaration shapes not covered by a later compiler rule, overloads, dynamic
+Character provenance, direct unbound traversal, captures, and function or
+library boundaries SHALL remain unsupported.
 
 On Linux x86-64, the backend SHALL lower the proven yield, action, Unit resume,
 and final Unit as ordered inline code at `-O0`. It MAY use the compiler-private
@@ -456,10 +456,11 @@ the next retained yield or, after the final yield, to the final Unit.
 Root `foreach` SHALL consume one locally bound admitted instance and invoke its
 capture-free Character-to-Unit action exactly once for every retained yield in
 source order. It SHALL resume with Unit after every action and return Unit only
-after the final resumption. Zero-yield declarations, ordinary statements
-between yields, different yield expressions, overloads, dynamic Character
-provenance, captures, close handling, and function or library boundaries SHALL
-remain unsupported.
+after the final resumption. Exact pre-yield Unit completion SHALL instead obey
+`TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001`. Ordinary statements between
+yields, different yield expressions, overloads, dynamic Character provenance,
+captures, close handling, and function or library boundaries SHALL remain
+unsupported.
 
 On Linux x86-64, the backend SHALL expand the finite proven sequence into
 ordered inline action blocks with erased Unit resumptions at `-O0`; this
@@ -503,6 +504,36 @@ compiled-library metadata SHALL identify local state canonically with the
 declaration, directions, ordered suspension graph, capture/effect evidence,
 ownership/close behavior, and target adapters rather than expose the
 executable-local debug shadow.
+
+### TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001 — Completion before suspension
+
+The compiler SHALL admit the existing root custom Character-generator
+directions when the entire body is final Unit and therefore reaches its
+declared Unit result before any yield. Application SHALL evaluate and classify
+the initial Character exactly once, create a fresh linear Generator, and retain
+an empty suspension sequence plus completed Unit as compile-session provenance.
+The absence of a yield SHALL NOT skip static checking of the
+Character-to-Unit `foreach` action.
+
+Root `foreach` SHALL consume one locally bound admitted instance, invoke the
+action zero times, and produce the generator's final Unit directly. Repeated
+use and abandonment SHALL remain rejected under the existing local linearity
+boundary. Additional body statements, generator locals, explicit return, other
+input/yield/resume/result classifiers, non-Unit final values, overloads,
+captures, close handling, and function or library boundaries SHALL remain
+unsupported unless another compiler rule admits them.
+
+On Linux x86-64, the backend SHALL evaluate the initial Character once and
+lower the empty suspension sequence and final Unit without an action block or
+action-parameter debug storage. The compiler-private Generator observation
+token MAY remain for ownership and GDB identity, but SHALL NOT represent
+continuation state. This O0 semantic lowering SHALL NOT depend on dead-code
+elimination or introduce a Generator object, state allocation, dispatcher,
+callback, indirect call, foreign runtime, other-language standard library,
+needed library, dynamic relocation, public/library Generator ABI, or native-ABI
+revision. Future compiled-library metadata SHALL encode the
+terminal-before-suspension graph, final value, directions, ownership/close
+behavior, and target adapters canonically.
 
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
