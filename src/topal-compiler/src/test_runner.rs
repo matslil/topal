@@ -199,6 +199,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-utf8-byte-count.t",
     "examples/language/strings-and-products.t",
     "examples/language/task-declaration-order.t",
+    "examples/language/task-message-transactions.t",
     "examples/language/traversal-control.t",
     "examples/language/tuple-decision-results.t",
     "examples/language/tuple-equality.t",

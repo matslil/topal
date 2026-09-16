@@ -4588,8 +4588,9 @@ stable source-ordered transaction identity for every admitted send. The
 admitted handlers are one exact Nat initializer, Nat-addition Unit events,
 current-Nat requests with an empty error vocabulary, and an optional declared
 no-op terminate handler. Other state schemas, handler bodies, observable
-MessageContext, streams, overlapping delivery, queue overflow, and termination
-delivery remain rejected with stable diagnostics.
+MessageContext, streams outside `TOPAL-COMP-TASK-STREAM-001`, overlapping
+delivery, queue overflow, and termination delivery remain rejected with stable
+diagnostics.
 
 Construction shall evaluate the initial Nat once and allocate a fresh
 Topal-owned instance with a distinct nonzero identity, active lifecycle tag,
@@ -4622,6 +4623,44 @@ private LLVM types, object layouts, and symbol names. This realizes
 `TOPAL-TASK-HANDLER-001`, `TOPAL-TASK-STATE-001`,
 `TOPAL-TASK-LIFECYCLE-001`, and `TOPAL-TASK-MESSAGE-001` for increment 7b2.
 
+## TOPAL-COMP-TASK-STREAM-001 — Closed one-yield task stream transaction
+
+The checked compiler shall admit the unchanged task-message-transactions
+regression as compiler increment 7b3. In addition to the direct-task metadata,
+it shall retain an ordinary stream handler with discarded MessageContext and
+Unit payload, Nat yield, Unit resumption, `Result (Unit, ())` final return, the
+owning task instance, and one stable source-ordered transaction identity. The
+admitted body is exactly one yield of the current private Nat state followed by
+Unit. Other directions, bodies, context observation, multiple yields,
+post-resumption state access or mutation, effectful traversal actions,
+abandonment, close delivery, overlap, and termination interaction remain
+rejected with stable diagnostics.
+
+Stream construction shall capture the task capability without loading state.
+Its single traversal shall load state at the source yield after the preceding
+event commit, perform one inert Unit resumption, commit a successful Unit final
+Result, and complete before the following request begins. Since no admitted
+code can observe the resume carrier, retain a continuation, or access task
+state after resumption, generated O0 code may inline the suspension and erase
+those carriers after the checked model records the complete stream directions
+and transaction. This semantic lowering shall not depend on LLVM optimization.
+
+The Linux x86-64 backend shall reuse the private task, exact Nat, and Result
+runtime representations and add no foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or native ABI revision. Task and
+Generator DWARF plus the bundled GDB renderers shall expose the owning task,
+private state, affine stream directions, stream binding, and source yield.
+Functional evidence shall include checked-model metadata and rejection tests,
+ordered O0 LLVM, exact interpreter differential, complete compiler corpus,
+freestanding ELF/DWARF/GDB inspection, and separate build/run resource
+baselines. Future compiled-library metadata shall carry stream directions,
+transaction/suspension identity, state-authority release and reacquisition,
+ownership/consumption, close/termination behavior, effects, authorities, debug
+provenance, and native adapter requirements independently of private LLVM
+types, layouts, and symbols. This realizes
+`TOPAL-COMPILER-TASK-STREAM-001`, `TOPAL-TASK-HANDLER-001`, and
+`TOPAL-TASK-MESSAGE-001` for increment 7b3.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
@@ -4635,7 +4674,8 @@ modular-success Result objects, `List Effect`, `List Int`,
 `List (String, Int)`, exact-extent `Array Int`, `Set Int`, `Bag Int`, and
 `Map (String, Int)` container values, describe source-declared nominal enums,
 native `SerializationStream` descriptors,
-nominal direct Task instances with identity, lifecycle state, and private Nat state,
+nominal direct Task instances with identity, lifecycle state, and private Nat
+state, affine task-stream Generator directions and bindings,
 retained Constraint identities and refined Int bindings with their semantic
 names, distinguish
 selected overload and static-function frames, and pass automated GDB

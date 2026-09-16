@@ -15075,4 +15075,59 @@ mod tests {
         }
         assert!(!llvm.contains("@malloc"));
     }
+
+    #[test]
+    fn emits_one_yield_task_stream_as_an_ordered_affine_transaction() {
+        // TOPAL-TASK-HANDLER-001, TOPAL-TASK-MESSAGE-001,
+        // TOPAL-COMPILER-TASK-STREAM-001
+        let source = include_str!("../../../examples/language/task-message-transactions.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "task-message-transactions.t").emit();
+        let constructed = llvm
+            .find("call ptr @topal.runtime.task.make")
+            .expect("start constructs the stream-capable task");
+        let event_load = llvm[constructed..]
+            .find("call ptr @topal.runtime.task.state.load")
+            .map(|offset| constructed + offset)
+            .expect("event loads private state");
+        let replaced = llvm[event_load..]
+            .find("call void @topal.runtime.task.state.replace")
+            .map(|offset| event_load + offset)
+            .expect("event commits private state");
+        let stream_load = llvm[replaced..]
+            .find("call ptr @topal.runtime.task.state.load")
+            .map(|offset| replaced + offset)
+            .expect("stream yield loads the committed state");
+        let stream_result = llvm[stream_load..]
+            .find("call ptr @topal.runtime.result.success(ptr null)")
+            .map(|offset| stream_load + offset)
+            .expect("stream completion commits its Unit result");
+        let request_load = llvm[stream_result..]
+            .find("call ptr @topal.runtime.task.state.load")
+            .map(|offset| stream_result + offset)
+            .expect("following request executes after stream completion");
+        assert!(
+            constructed < event_load
+                && event_load < replaced
+                && replaced < stream_load
+                && stream_load < stream_result
+                && stream_result < request_load
+        );
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.task.state.load")
+                .count(),
+            3,
+            "stream construction must capture the task without observing state"
+        );
+        for expected in [
+            "DW_TAG_typedef, name: \"Counter\"",
+            "DW_TAG_structure_type, name: \"TopalTask.Counter\"",
+            "DW_TAG_enumeration_type, name: \"Generator Nat Unit Result (Unit, ())\"",
+            "DILocalVariable(name: \"stream\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("@malloc"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
 }
