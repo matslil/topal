@@ -1141,15 +1141,17 @@ plus the Topal entry frame.
 
 Other input, yield, or resume classifiers; final classifiers beyond the exact
 String result admitted by `TOPAL-COMP-GENERATOR-FINAL-STRING-001`; multiple
-parameters; computed yields; intervening or post-suspension body state; close
-handling; nested or ordinary-function construction; Generator parameter/result
-transfer; repeated consumption; abandonment; libraries; and external boundaries
-shall remain rejected before LLVM. The lowering shall introduce no Generator
-object or semantic state allocation, dispatcher, callback, indirect call,
-unwind dependency, C/C++ runtime, other-language standard library, needed
-library, dynamic relocation, public/library calling convention or Generator
-ABI, or `topal-native/6` revision. Future compiled-library metadata shall encode
-the initial and direction classifiers independently, ordered per-yield values and
+parameters; computed yields; intervening or post-suspension body state beyond
+the exact one-discard continuation admitted by
+`TOPAL-COMP-GENERATOR-RESUME-DISCARD-001`; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. The lowering shall introduce no Generator object or
+semantic state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode the
+initial and direction classifiers independently, ordered per-yield values and
 provenance, declaration, suspension/final graph, construction/action sites,
 capture/effect evidence, ownership/consumption/close state, and target adapters
 rather than expose the private token or checked-program node layout. This
@@ -1204,6 +1206,56 @@ realizes `TOPAL-COMPILER-GENERATOR-FINAL-STRING-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
 `TOPAL-GENERATOR-FINAL-RETURN-001`, and `TOPAL-GENERATOR-FOREACH-001` for
 compiler increment 5x.
+
+## TOPAL-COMP-GENERATOR-RESUME-DISCARD-001 — Post-resume discarded computation
+
+The checked compiler shall admit a root custom generator with one named String
+initial parameter and directions `Generator String Unit Unit` whose body
+extends the yield forms of `TOPAL-COMP-GENERATOR-STRING-YIELD-001` with exactly
+one discarded `empty? initial` computation. At least one yield shall precede
+that computation and at least one yield shall follow it. The body shall end in
+Unit. One currently admitted String expression shall start the generator, and
+the fresh result shall be bound and consumed exactly once by a String-to-Unit
+foreach action.
+
+The checked program shall retain the computation as a typed continuation block
+with its source span and exact successful-resumption ordinal, separately from
+the initial value, ordered yield provenance, action, final Unit, and ownership
+edge. Application shall evaluate the initial expression exactly once. Traversal
+shall deliver and act on each preceding yield, resume it with Unit, execute the
+discarded emptiness computation against the captured initial String, and only
+then reach the following suspension. This order shall hold with LLVM
+optimization disabled and shall not depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the initial and yielded values shall use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. LLVM shall select target data layout and
+instruction placement; the backend shall hard-code no AMD64 register
+convention. DWARF and GDB shall expose the complete
+`Generator String Unit Unit` classifier and value, each yielded String during
+its action, the captured initial String during the post-resume computation, its
+source location, and the Topal entry frame.
+
+Bindings, more than one continuation computation, a computation before the
+first or after the final yield, operands other than the initial parameter,
+computed continuation expressions, non-Unit final values, other input, yield,
+or resume classifiers, close handling, nested or ordinary-function
+construction, Generator parameter/result transfer, repeated consumption,
+abandonment, libraries, and external boundaries shall remain rejected before
+LLVM. The lowering shall introduce no Generator object or semantic state
+allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Future compiled-library metadata shall encode the initial and
+direction classifiers independently, ordered yields, the continuation block
+and successful-resumption ordinal, expression provenance and source sites,
+declaration/suspension/final graph, action, capture/effect evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+private token or checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-RESUME-DISCARD-001`,
+`TOPAL-GENERATOR-BODY-STATEMENT-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5y.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 

@@ -647,6 +647,23 @@ distinct final-value expression and provenance, graph sites, captures/effects,
 ownership/close state, and target adapters instead of compile-session nodes or
 tokens.
 
+The next resumption-continuation slice records one ordinary discarded String
+emptiness computation between suspensions. The checked graph stores a typed
+continuation block and its successful-resumption ordinal separately from the
+once-evaluated initial descriptor, ordered yields, action, and final Unit. At O0
+the expanded traversal invokes the first action, resumes with Unit, enters a
+generator-lexical block that observes the captured initial String, and only
+then materializes the following yield. The initial String, both action values,
+full Generator classifier, continuation source site, private `i32` ownership
+token, and entry frame remain available to DWARF/GDB without allocating a
+semantic continuation object. LLVM still controls target layout and register
+placement, while Topal-owned allocator/syscall code provides Linux integration
+without a C/C++ standard library. Future compiled-library metadata must encode
+ordered body phases, successful-resumption ordinals, expression provenance,
+initial and direction classifiers, suspension/final sites, captures/effects,
+ownership/close state, and target adapters rather than compiler-session blocks
+or tokens.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by

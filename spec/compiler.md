@@ -1008,14 +1008,16 @@ plus the Topal entry frame.
 
 Other input, yield, or resume classifiers; final classifiers beyond the exact
 String result admitted by `TOPAL-COMPILER-GENERATOR-FINAL-STRING-001`; multiple
-parameters; computed yields; intervening or post-suspension body state; close
-handling; nested or ordinary-function construction; Generator parameter/result
-transfer; repeated consumption; abandonment; libraries; and external boundaries
-SHALL remain unsupported. The lowering SHALL introduce no Generator object or
-semantic state allocation, dispatcher, callback, indirect call, unwind
-dependency, C/C++ runtime, other-language standard library, needed library,
-dynamic relocation, public/library calling convention or Generator ABI, or
-native-ABI revision.
+parameters; computed yields; intervening or post-suspension body state beyond
+the exact one-discard continuation admitted by
+`TOPAL-COMPILER-GENERATOR-RESUME-DISCARD-001`; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no Generator object or semantic
+state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator ABI, or native-ABI
+revision.
 Future compiled-library metadata SHALL encode the initial and direction
 classifiers independently, ordered per-yield values and provenance, declaration,
 suspension/final graph, construction/action sites, capture/effect evidence,
@@ -1062,6 +1064,53 @@ ABI, or native-ABI revision. Future compiled-library metadata SHALL encode the
 initial and direction classifiers independently, ordered yield provenance, the
 distinct final-value expression and provenance, declaration, suspension/final
 graph, construction/action sites, capture/effect evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+private token or checked-program node layout.
+
+### TOPAL-COMPILER-GENERATOR-RESUME-DISCARD-001 — Post-resume discarded computation
+
+The compiler SHALL admit a root custom generator with one named String initial
+parameter and directions `Generator String Unit Unit` whose body extends the
+yield forms of `TOPAL-COMPILER-GENERATOR-STRING-YIELD-001` with exactly one
+discarded `empty? initial` computation. At least one yield SHALL precede that
+computation and at least one yield SHALL follow it. The body SHALL end in Unit.
+One currently admitted String expression SHALL start the generator, and the
+fresh result SHALL be bound and consumed exactly once by a String-to-Unit
+foreach action.
+
+The checked program SHALL retain the computation as a typed continuation block
+with its source span and exact successful-resumption ordinal, separately from
+the initial value, ordered yield provenance, action, final Unit, and ownership
+edge. Application SHALL evaluate the initial expression exactly once. Traversal
+SHALL deliver and act on each preceding yield, resume it with Unit, execute the
+discarded emptiness computation against the captured initial String, and only
+then reach the following suspension. This order SHALL hold with LLVM
+optimization disabled and SHALL NOT depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the initial and yielded values SHALL use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. LLVM SHALL select target data layout and
+instruction placement; the compiler SHALL hard-code no AMD64 register
+convention. DWARF and GDB SHALL expose the complete
+`Generator String Unit Unit` classifier and value, each yielded String during
+its action, the captured initial String during the post-resume computation, its
+source location, and the Topal entry frame.
+
+Bindings, more than one continuation computation, a computation before the
+first or after the final yield, operands other than the initial parameter,
+computed continuation expressions, non-Unit final values, other input, yield,
+or resume classifiers, close handling, nested or ordinary-function
+construction, Generator parameter/result transfer, repeated consumption,
+abandonment, libraries, and external boundaries SHALL remain unsupported. The
+lowering SHALL introduce no Generator object or semantic state allocation,
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or native-ABI revision.
+Future compiled-library metadata SHALL encode the initial and direction
+classifiers independently, ordered yields, the continuation block and
+successful-resumption ordinal, expression provenance and source sites,
+declaration/suspension/final graph, action, capture/effect evidence,
 ownership/consumption/close state, and target adapters rather than expose the
 private token or checked-program node layout.
 
