@@ -553,6 +553,41 @@ ownership, close, and target-adapter evidence. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5h.
 
+## TOPAL-COMP-GENERATOR-LOCAL-BINDING-001 — Exact local Character state
+
+The checked compiler shall admit the existing custom Character generator when
+its body begins with exactly one explicitly classified, immutable Character
+binding whose value is the sole initial Character parameter, followed by one
+or more consecutive discarded yields of that local and final Unit. Application
+shall evaluate the initial operand once, evaluate the alias binding in the
+generator scope before the first suspension, and retain the local identity and
+exact Character value as compile-session provenance. The local shall remain
+available to every retained yield and shall never enter the caller's checked
+environment.
+
+Root foreach shall preserve the existing linear consumption and ordered
+action/Unit-resumption behavior. The Linux x86-64 backend shall materialize the
+proven immutable Character value and expose a debug-only pointer shadow for the
+local in a generator lexical DWARF scope before the first action. That shadow
+may persist across the admitted yields but shall be out of scope after the
+traversal. This mandatory O0 lowering shall not depend on optimization or
+introduce a semantic continuation object, state allocation, dispatcher,
+callback, indirect call, unwind support, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision.
+
+Unclassified or differently classified locals, non-identity initializers,
+additional or inter-yield statements, dynamic Character provenance, captures,
+resume bindings, close handling, and function or library boundaries shall
+remain rejected before LLVM. Future compiled-library metadata shall encode
+canonical local-state identities and types with the declaration, suspension
+graph, directions, captures/effects, ownership/close behavior, and target
+adapters rather than serialize this executable-local debug shadow. This
+realizes `TOPAL-COMPILER-GENERATOR-LOCAL-BINDING-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-LOCAL-BINDING-001`,
+`TOPAL-GENERATOR-SUSPEND-001`, and `TOPAL-GENERATOR-FOREACH-001` for compiler
+increment 5i.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted
