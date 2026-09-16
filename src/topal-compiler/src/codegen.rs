@@ -10916,6 +10916,64 @@ mod tests {
     }
 
     #[test]
+    fn emits_custom_generator_final_boolean_decision_after_resumption() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-DECISION-001
+        let source = include_str!("../../../examples/language/custom-generator-final-decision.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-final-decision.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let yielded = main
+            .find("store i1 true")
+            .expect("foreach retains the yielded Boolean for debugging");
+        let action = main
+            .find("xor i1 true, true")
+            .expect("foreach action executes before the generator final decision");
+        let decision = main
+            .find("br i1 true, label %decision.true")
+            .expect("final result retains its O0 Boolean decision");
+        let selected = main
+            .find("phi ptr")
+            .expect("the final decision joins its two String actions");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("the selected final String reaches Topal-owned display");
+        assert!(
+            constructed < yielded
+                && yielded < action
+                && action < decision
+                && decision < selected
+                && selected < output
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(main.contains("decision.true"));
+        assert!(main.contains("decision.false"));
+        assert!(main.contains("decision.merge"));
+        assert!(main.contains("alloca i1, align 1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(main.contains("#dbg_value(i1 true"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
+        assert!(llvm.contains("name: \"Generator Boolean Unit String\""));
+        assert!(llvm.contains("name: \"Boolean\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_arbitrary_precision_ints_across_custom_generator_directions() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-INT-001

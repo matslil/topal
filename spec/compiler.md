@@ -1698,6 +1698,54 @@ captures/effects, ownership/consumption/close state, native-representation
 identity, and target adapters rather than expose private tokens, debug slots,
 object layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-FINAL-DECISION-001 — Post-resume final Boolean decision
+
+The compiler SHALL admit a root custom generator with one named Boolean
+initial parameter and directions `Generator Boolean Unit String`. Its body
+SHALL consist only of one discarded `yield initial` followed by a complete
+decision on `initial` whose `true` action is the exact String `"accepted"` and
+whose `otherwise` action is the exact String `"rejected"`. The shared
+regression SHALL start the generator with `true`; the fresh result SHALL be
+bound and consumed exactly once by a foreach action consisting only of the
+discarded `not value` for its named yielded parameter.
+
+The checked program SHALL retain the independent Boolean yield and String
+final directions, the initial-parameter suspension, action, Unit resumption,
+decision subject and ordered alternatives/actions, declaration provenance, and
+ownership edge. Application SHALL evaluate the initial Boolean once. Traversal
+SHALL pass that same value to the action, resume with Unit, evaluate the
+captured initial as the decision subject once, execute exactly the selected
+String action, and return that String as the final/root value. LLVM O0 SHALL
+retain a direct conditional branch, distinct true/false String blocks, and a
+typed join without relying on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, the Boolean SHALL remain a private `i1`, each selected String
+SHALL use the existing Topal-owned immutable descriptor, and the root-local
+Generator SHALL remain a compiler-private `i32` ownership token. LLVM SHALL
+derive placement, alignment, branch lowering, and calls from the target triple
+and data layout; the compiler SHALL hard-code no AMD64 register convention. An
+aligned debug-only Boolean shadow SHALL preserve the yielded action value.
+DWARF and GDB SHALL expose the complete Generator classifier and value, yielded
+and captured Boolean values, ordered yield/action/decision source locations,
+and the Topal entry frame.
+
+Another input classifier, yield, action, decision subject, matcher order,
+String action, direction, value, or final expression; multiple yields; additional body
+statements; close handling; nested or ordinary-function construction;
+Generator parameter/result transfer; repeated consumption; abandonment;
+libraries; and external boundaries SHALL remain unsupported. The lowering
+SHALL introduce no semantic Generator object or state allocation, generic
+decision or Generator dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator/String ABI, or
+native-ABI revision. Boolean decisions, String construction/display, and Linux
+syscalls SHALL remain wholly owned by Topal. Future compiled-library metadata
+SHALL encode independent directions, ordered decision matchers/actions,
+subject/final provenance, declaration/construction sites, captures/effects,
+ownership/consumption/close state, native-representation identity, and target
+adapters rather than expose private tokens, debug slots, LLVM blocks, object
+layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-NESTED-NONE-001 — Absent recursive Optional directions
 
 The compiler SHALL admit a root custom generator with one named

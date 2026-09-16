@@ -2308,6 +2308,7 @@ fn exact_string_value_generator_body(
 fn exact_boolean_value_generator_body(
     source: &SourceText,
     parameter: &FunctionParameter,
+    result_classifier: Span,
     body: &[Statement],
     span: Span,
 ) -> Result<ExactValueGeneratorBody, Diagnostic> {
@@ -2320,16 +2321,13 @@ fn exact_boolean_value_generator_body(
                 },
             ..
         },
-        Statement::Expression(Expression::Application {
-            items: result_items,
-            span: result_span,
-        }),
+        Statement::Expression(result_expression),
     ] = body
     else {
         return Err(unsupported(
             source,
             span,
-            "Boolean-value custom generator outside one initial yield and final negation",
+            "Boolean-yield custom generator outside one initial yield and an admitted final expression",
         ));
     };
     let [
@@ -2343,26 +2341,13 @@ fn exact_boolean_value_generator_body(
             "Boolean-value custom generator yield outside its initial parameter",
         ));
     };
-    let [
-        Expression::Identifier(not_operation),
-        Expression::Identifier(result_value),
-    ] = result_items.as_slice()
-    else {
-        return Err(unsupported(
-            source,
-            *result_span,
-            "Boolean-value custom generator final value outside not initial",
-        ));
-    };
     if source.slice(*yield_operation) != "yield"
         || source.slice(*yield_value) != source.slice(parameter.name)
-        || source.slice(*not_operation) != "not"
-        || source.slice(*result_value) != source.slice(parameter.name)
     {
         return Err(unsupported(
             source,
             span,
-            "Boolean-value custom generator outside yield initial followed by not initial",
+            "Boolean-yield custom generator outside yield initial",
         ));
     }
     let initial = CompilerExpression {
@@ -2372,17 +2357,155 @@ fn exact_boolean_value_generator_body(
         rational_value: None,
         span: parameter.name,
     };
+    let result = exact_boolean_generator_result(
+        source,
+        parameter,
+        result_classifier,
+        result_expression,
+        initial,
+    )?;
     Ok(ExactValueGeneratorBody {
         yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
         continuations: Vec::new(),
         explicit_return: None,
-        result: CompilerExpression {
-            kind: CompilerExpressionKind::Not(Box::new(initial)),
-            value_type: CompilerType::Boolean,
-            int_range: None,
-            rational_value: None,
-            span: *result_span,
+        result,
+    })
+}
+
+fn exact_boolean_generator_result(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    result_classifier: Span,
+    result_expression: &Expression,
+    initial: CompilerExpression,
+) -> Result<CompilerExpression, Diagnostic> {
+    match source.slice(result_classifier) {
+        "Boolean" => {
+            let Expression::Application {
+                items: result_items,
+                span: result_span,
+            } = result_expression
+            else {
+                return Err(unsupported(
+                    source,
+                    result_expression.span(),
+                    "Boolean-value custom generator final value outside not initial",
+                ));
+            };
+            let [
+                Expression::Identifier(not_operation),
+                Expression::Identifier(result_value),
+            ] = result_items.as_slice()
+            else {
+                return Err(unsupported(
+                    source,
+                    *result_span,
+                    "Boolean-value custom generator final value outside not initial",
+                ));
+            };
+            if source.slice(*not_operation) != "not"
+                || source.slice(*result_value) != source.slice(parameter.name)
+            {
+                return Err(unsupported(
+                    source,
+                    *result_span,
+                    "Boolean-value custom generator outside yield initial followed by not initial",
+                ));
+            }
+            Ok(CompilerExpression {
+                kind: CompilerExpressionKind::Not(Box::new(initial)),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span: *result_span,
+            })
+        }
+        "String" => {
+            exact_boolean_string_generator_decision(source, parameter, result_expression, initial)
+        }
+        _ => Err(unsupported(
+            source,
+            result_classifier,
+            "Boolean-yield custom generator result outside Boolean or String",
+        )),
+    }
+}
+
+fn exact_boolean_string_generator_decision(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    expression: &Expression,
+    initial: CompilerExpression,
+) -> Result<CompilerExpression, Diagnostic> {
+    let Expression::DecisionTable {
+        subject,
+        rules,
+        span,
+    } = expression
+    else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            "Boolean-yield custom generator final String outside its exact decision",
+        ));
+    };
+    let Expression::Identifier(subject_name) = subject.as_ref() else {
+        return Err(unsupported(
+            source,
+            subject.span(),
+            "Boolean-yield custom generator final decision subject",
+        ));
+    };
+    let [when_true_rule, otherwise_rule] = rules.as_slice() else {
+        return Err(unsupported(
+            source,
+            *span,
+            "Boolean-yield custom generator final decision rules",
+        ));
+    };
+    let (
+        DecisionMatcher::Boolean { value: true, .. },
+        Expression::String(when_true_literal),
+        DecisionMatcher::Otherwise(_),
+        Expression::String(when_false_literal),
+    ) = (
+        &when_true_rule.matcher,
+        &when_true_rule.action,
+        &otherwise_rule.matcher,
+        &otherwise_rule.action,
+    )
+    else {
+        return Err(unsupported(
+            source,
+            *span,
+            "Boolean-yield custom generator final decision outside true then String followed by otherwise String",
+        ));
+    };
+    let when_true = exact_string_literal_expression(source, *when_true_literal)?;
+    let when_false = exact_string_literal_expression(source, *when_false_literal)?;
+    if source.slice(*subject_name) != source.slice(parameter.name)
+        || exact_string(&when_true).as_deref() != Some("accepted")
+        || exact_string(&when_false).as_deref() != Some("rejected")
+    {
+        return Err(unsupported(
+            source,
+            *span,
+            "Boolean-yield custom generator final decision outside initial, accepted, and rejected",
+        ));
+    }
+    Ok(CompilerExpression {
+        kind: CompilerExpressionKind::BooleanDecision {
+            subject: Box::new(CompilerExpression {
+                span: *subject_name,
+                ..initial
+            }),
+            when_true: Box::new(when_true),
+            when_false: Box::new(when_false),
         },
+        value_type: CompilerType::String,
+        int_range: None,
+        rational_value: None,
+        span: *span,
     })
 }
 
@@ -4382,14 +4505,14 @@ fn collect_character_generators(
             && initial_type == CompilerType::Boolean
             && source.slice(*yielded) == "Boolean"
             && source.slice(*resumed) == "Unit"
-            && source.slice(*result) == "Boolean"
+            && matches!(source.slice(*result), "Boolean" | "String")
         {
             let ExactValueGeneratorBody {
                 yields: value_yields,
                 continuations: value_continuations,
                 explicit_return,
                 result: final_value,
-            } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            } = exact_boolean_value_generator_body(source, parameter, *result, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -18907,6 +19030,122 @@ mod tests {
             "use language (version is v0.1)\ninvert is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> Boolean\n  _ is yield initial\n  _ is yield initial\n  not initial\ngenerated is invert true\ngenerated foreach { value }\n  _ is not value\n",
             "use language (version is v0.1)\ninvert is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> Boolean\n  _ is yield initial\n  initial\ngenerated is invert true\ngenerated foreach { value }\n  _ is not value\n",
             "use language (version is v0.1)\ninvert is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is invert true\ngenerated foreach { value }\n  _ is not value\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Exact post-resume decision and rejection matrix stay together.
+    fn models_custom_generator_final_boolean_decision() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-DECISION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-final-decision.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "describe"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::Boolean
+                && matches!(initial.kind, CompilerExpressionKind::Boolean(true))
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(
+                    result.kind,
+                    CompilerExpressionKind::BooleanDecision {
+                        ref subject,
+                        ref when_true,
+                        ref when_false,
+                    } if matches!(subject.kind, CompilerExpressionKind::Local(ref name)
+                            if name == "initial")
+                        && exact_string(when_true).as_deref() == Some("accepted")
+                        && exact_string(when_false).as_deref() == Some("rejected")
+                )
+                && *generator_type.yield_type == CompilerType::Boolean
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::String
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::String,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && parameter.value_type == CompilerType::Boolean
+                && matches!(
+                    body.statements.as_slice(),
+                    [CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::Not(value),
+                        ..
+                    })] if matches!(value.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "value")
+                )
+                && matches!(
+                    result.kind,
+                    CompilerExpressionKind::BooleanDecision {
+                        ref subject,
+                        ref when_true,
+                        ref when_false,
+                    } if matches!(subject.kind, CompilerExpressionKind::Local(ref name)
+                            if name == "initial")
+                        && exact_string(when_true).as_deref() == Some("accepted")
+                        && exact_string(when_false).as_deref() == Some("rejected")
+                )
+        ));
+
+        let dynamic = analyze_for_compiler(
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield initial\n  initial\n    true then \"accepted\"\n    otherwise \"rejected\"\ngenerated is describe (not false)\ngenerated foreach { value }\n  _ is not value\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &dynamic.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator { initial, .. },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::Not(_))
+        ));
+
+        for source in [
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield false\n  initial\n    true then \"accepted\"\n    otherwise \"rejected\"\ngenerated is describe true\ngenerated foreach { value }\n  _ is not value\n",
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield initial\n  initial\n    false then \"rejected\"\n    otherwise \"accepted\"\ngenerated is describe true\ngenerated foreach { value }\n  _ is not value\n",
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield initial\n  initial\n    true then \"yes\"\n    otherwise \"rejected\"\ngenerated is describe true\ngenerated foreach { value }\n  _ is not value\n",
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield initial\n  \"accepted\"\ngenerated is describe true\ngenerated foreach { value }\n  _ is not value\n",
+            "use language (version is v0.1)\ndescribe is generator (initial : Boolean)\n  yields Boolean\n  resumes Unit\n  -> String\n  _ is yield initial\n  not initial\n    true then \"accepted\"\n    otherwise \"rejected\"\ngenerated is describe true\ngenerated foreach { value }\n  _ is not value\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
