@@ -568,15 +568,22 @@ impl<'a> Generator<'a> {
                 body.subprogram,
             );
             let location = self.debug.location(parameter.span, body.subprogram);
-            if matches!(
-                parameter.value_type,
-                CompilerType::Scope
-                    | CompilerType::Function
-                    | CompilerType::Generator(_)
-                    | CompilerType::Tuple(_)
-                    | CompilerType::Record(_)
-                    | CompilerType::Sum(_)
-            ) {
+            let retained_string_generator_source = parameter.value_type == CompilerType::String
+                && matches!(&function.result_type, CompilerType::Generator(generator)
+                    if generator.yield_type.as_ref() == &CompilerType::Character
+                        && generator.resume_type.as_ref() == &CompilerType::Unit
+                        && generator.result_type.as_ref() == &CompilerType::Unit);
+            if retained_string_generator_source
+                || matches!(
+                    parameter.value_type,
+                    CompilerType::Scope
+                        | CompilerType::Function
+                        | CompilerType::Generator(_)
+                        | CompilerType::Tuple(_)
+                        | CompilerType::Record(_)
+                        | CompilerType::Sum(_)
+                )
+            {
                 self.emit_aggregate_debug_shadow(
                     &argument,
                     &parameter.value_type,
@@ -2069,10 +2076,17 @@ impl<'a> Generator<'a> {
                     | CompilerType::Capability
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
-                    | CompilerType::TraversalControl(_)
-                    | CompilerType::Generator(_) => {
+                    | CompilerType::TraversalControl(_) => {
                         unreachable!("checked functions do not return this static object kind")
                     }
+                    CompilerType::Generator(ref generator) => LlValue::Generator {
+                        value: body.instruction(
+                            &format!("call fastcc i32 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        generator: generator.clone(),
+                    },
                     CompilerType::Version => {
                         unreachable!("Version function results are not admitted")
                     }
@@ -9720,6 +9734,52 @@ mod tests {
         assert!(traversal.contains("ret void"));
         assert!(!traversal.contains("generator.foreach.loop"));
         assert!(!traversal.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_specialized_string_character_generator_result_transfer() {
+        // TOPAL-STRING-CHARACTERS-FOREACH-001,
+        // TOPAL-STRING-CHARACTERS-GENERATOR-001,
+        // TOPAL-STRING-CHARACTERS-RESULT-001,
+        // TOPAL-COMPILER-STRING-CHARACTERS-RESULT-001
+        let source = include_str!("../../../examples/language/string-character-generator-result.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "generate")
+            .expect("called generator factory is instantiated");
+        let llvm = Generator::new(&program, "string-character-generator-result.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let factory = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("generator factory has one private String argument")
+            .1
+            .split_once("}\n")
+            .expect("generator factory definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            4
+        );
+        assert!(main.contains(&format!("call fastcc i32 @{}(ptr ", function.symbol)));
+        assert!(main.contains("#dbg_value(i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("alloca ptr, align 8"));
+        assert!(factory.contains("store ptr %arg0"));
+        assert!(factory.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("ret i32 0"));
+        assert!(!factory.contains("topal.runtime.string.make"));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("topal.runtime.generator"));
     }
 

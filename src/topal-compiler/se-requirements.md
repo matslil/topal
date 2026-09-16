@@ -1925,7 +1925,8 @@ lowering shall create no semantic traversal collection, Generator object or
 token, generic Generator runtime, callback, indirect call, host Unicode or
 locale dependency, C/C++ runtime, other-language standard library, needed
 library, dynamic relocation, public/library Generator ABI, or
-`topal-native/6` revision. Dynamic Strings, function-returned or
+`topal-native/6` revision. Dynamic Strings, function-returned Character
+generators outside `TOPAL-COMP-STRING-CHARACTERS-RESULT-001`, other
 non-specializable Character generators, and captures remain rejected. Future
 library metadata shall carry canonical Generator, pinned-segmentation,
 action-evidence, ownership, and target-adapter identities rather than this
@@ -1956,8 +1957,9 @@ The token and compiler-held provenance shall require no Generator object,
 continuation-state allocation, generic Generator runtime, callback, indirect
 call, host Unicode/locale dependency, C/C++ runtime, other-language standard
 library, needed library, dynamic relocation, public/library Generator ABI, or
-`topal-native/6` revision. Function result transfer, general parameter use, and
-external boundaries remain rejected pending canonical Generator, segmentation,
+`topal-native/6` revision. General function result transfer outside
+`TOPAL-COMP-STRING-CHARACTERS-RESULT-001`, general parameter use, and external
+boundaries remain rejected pending canonical Generator, segmentation,
 operation/evidence, ownership, close, and target-adapter metadata. This realizes
 `TOPAL-COMPILER-STRING-CHARACTERS-GENERATOR-001`,
 `TOPAL-STRING-CHARACTERS-COLLECT-001`,
@@ -2047,14 +2049,49 @@ The specialization shall add no Generator object/runtime, state allocation,
 dispatcher, callback, indirect call, host Unicode/locale dependency, C/C++
 runtime, other-language standard library, needed library, dynamic relocation,
 public/library calling convention or Generator ABI, or `topal-native/6`
-revision. Dynamic/transformed provenance, function results,
-multiple/additional parameters, nested calls, other bodies, and external
-boundaries remain rejected pending canonical Generator, segmentation,
-action-evidence, ownership, and target-adapter metadata. This realizes
+revision. Dynamic/transformed provenance, general function results outside
+`TOPAL-COMP-STRING-CHARACTERS-RESULT-001`, multiple/additional parameters,
+nested calls, other bodies, and external boundaries remain rejected pending
+canonical Generator, segmentation, action-evidence, ownership, and
+target-adapter metadata. This realizes
 `TOPAL-COMPILER-STRING-CHARACTERS-PARAMETER-001`,
 `TOPAL-STRING-CHARACTERS-FOREACH-001`, and the relevant transfer obligations of
 `TOPAL-STRING-CHARACTERS-GENERATOR-001` and
 `TOPAL-STRING-CHARACTERS-PARAMETER-001` for compiler increment 4b3d-o.
+
+## TOPAL-COMP-STRING-CHARACTERS-RESULT-001 — Specialized function result
+
+The checked compiler shall admit an ordinary nonrecursive called function with
+exactly one named String parameter and result classifier
+`Generator Character Unit Unit` when its body has no statements and returns
+exactly `characters parameter`. Its top-level call argument shall have a closed
+exact String value. Function exit shall transfer the fresh continuation without
+close delivery, and the caller shall bind and consume the result exactly once
+through an admitted Character traversal.
+
+Every call shall create a distinct private specialization. The compiler shall
+retain that argument's pinned ordered Character sequence beside its private
+symbol only for checking. The caller shall evaluate the String once; the callee
+shall observe its existing immutable descriptor and return the existing private
+Generator token; caller traversal shall receive only that call's sequence.
+
+On Linux x86-64, LLVM `fastcc` shall select the private String argument and
+`i32` Generator-result placement without hard-coded System V registers.
+DWARF/GDB shall expose the String parameter, Generator result classifier/value,
+caller Character binding, and call frames.
+
+The specialization shall add no Generator object/runtime, state allocation,
+dispatcher, callback, indirect call, host Unicode/locale dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Dynamic/transformed arguments, anonymous/static/recursive/nested or
+multi-parameter functions, other result bodies, unbound results, general close
+handling, and external boundaries remain rejected pending canonical Generator,
+segmentation, construction evidence, ownership, close, and target-adapter
+metadata. This realizes `TOPAL-COMPILER-STRING-CHARACTERS-RESULT-001`,
+`TOPAL-STRING-CHARACTERS-RESULT-001`, and the relevant linear/traversal
+obligations of `TOPAL-STRING-CHARACTERS-GENERATOR-001` and
+`TOPAL-STRING-CHARACTERS-FOREACH-001` for compiler increment 4b3d-p.
 
 ## TOPAL-COMP-UNICODE-FOLD-001 — Closed pinned-Unicode operations
 
