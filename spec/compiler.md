@@ -776,6 +776,83 @@ construction evidence, capture/effect evidence, transfer/ownership/close state,
 and target adapters rather than expose the compiler-session side table or
 private token.
 
+### TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001 — Specialized custom continuation parameter
+
+The compiler SHALL admit a top-level call to an ordinary nonrecursive function
+with exactly one named `Generator Character Unit Unit` parameter and Unit result
+when the argument is a named root binding constructed by the exact single-yield
+custom generator admitted by `TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001`. The
+function's executable body SHALL consist only of one Character foreach over that
+parameter with a Character-to-Unit action and final Unit. Argument evaluation
+SHALL transfer the suspended continuation, consume the caller binding, and make
+the parameter its sole owner. Successful traversal SHALL invoke the action once,
+resume with Unit, reach final Unit, and return without close delivery.
+
+Each call SHALL create a distinct private specialization. The checked program
+SHALL map that call's retained declaration, exact Character, suspension/final
+graph, and ownership edge to the parameter only while checking its body, then
+restore the surrounding compiler-session provenance. Distinct calls SHALL NOT
+share Characters or continuation provenance, and a caller SHALL NOT reuse the
+consumed binding.
+
+On Linux x86-64, LLVM `fastcc` SHALL choose placement for the private `i32`
+Generator token parameter; the compiler SHALL hard-code no System V register
+placement. DWARF and GDB SHALL expose the Generator parameter, yielded Character,
+and caller/callee frames. The token SHALL carry no public or semantic
+continuation state.
+
+Static, anonymous, recursive, nested, multiple-parameter, additional-body,
+direct-expression-argument, multiple-yield, local-state, handled-close,
+unconsumed-parameter, returned-parameter, repeated-use, and library paths SHALL
+remain unsupported. The lowering SHALL introduce no Generator object or state
+allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or native-ABI revision.
+Future compiled-library metadata SHALL encode the canonical declaration and
+directions, suspension/final graph, construction evidence, parameter transfer
+site, capture/effect evidence, ownership/consumption/close state, action evidence,
+and target adapters rather than expose the compiler-session side table or
+private token.
+
+### TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-CLOSE-001 — Closing a transferred custom parameter
+
+The compiler SHALL extend the exact custom Generator parameter specialization
+of `TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001` to a statement-free Unit
+function body that leaves the transferred parameter unconsumed. Function exit
+SHALL consume and close that same suspended continuation. The caller binding
+SHALL remain consumed, and neither caller nor callee SHALL subsequently traverse
+or resume it.
+
+The checked close node SHALL retain the callee parameter together with the
+call-specialized custom construction provenance: declaration identity, exact
+Character, directions, suspension/final graph, and ownership edge. Its close
+domain SHALL be the lexical root namespace of the admitted function, separate
+from the qualified generator declaration provenance. Distinct calls SHALL retain
+distinct close provenance.
+
+Because the admitted yield result is discarded and the exact continuation has
+no handler, local state, cleanup, effect, or work after suspension, O0 lowering
+MAY erase close delivery and final Unit after proving the explicit close node.
+This erasure is semantic lowering, not an LLVM optimization. On Linux x86-64,
+LLVM `fastcc` SHALL choose placement for the private `i32` Generator token
+parameter; the compiler SHALL hard-code no System V register placement. DWARF
+and GDB SHALL preserve the Generator parameter and caller/callee frames through
+the close edge.
+
+Handled or bound-yield close, multiple yields, local state, cleanup/effects,
+non-Unit results, explicit return, additional body statements, traversal before
+exit, static/anonymous/recursive/nested/multiple-parameter calls,
+direct-expression arguments, repeated caller use, and library paths SHALL remain
+unsupported. The lowering SHALL introduce no Generator object or state
+allocation, close dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or native-ABI revision.
+Future compiled-library metadata SHALL encode the canonical declaration and
+directions, suspension/final graph, construction evidence, parameter transfer
+and close sites, lexical close domain, capture/effect/cleanup evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+compiler-session provenance or private token.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve

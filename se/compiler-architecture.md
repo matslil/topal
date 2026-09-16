@@ -544,6 +544,33 @@ continuation representation; compiled-library support still requires canonical
 declaration, direction, suspension, capture/effect, ownership/close, and target
 adapter metadata.
 
+The first custom-continuation parameter boundary reverses that private mapping
+for one root-owned exact single-yield instance. Before checking each ordinary
+consumer specialization, the frontend maps the caller's retained declaration,
+Character, suspension/final graph, and ownership edge to the sole Generator
+parameter; it restores the compiler-session map afterward while leaving the
+caller binding consumed. The caller passes only the compiler-private `i32`
+observation token through LLVM `fastcc`, and the callee expands the retained
+Character action, Unit resume, and final Unit directly. Generator and Character
+debug shadows preserve source inspection across both frames. This adds no
+continuation representation or public ABI; compiled-library transfer will need
+canonical construction, parameter-site, action, capture/effect,
+ownership/consumption/close, and target-adapter metadata instead of this private
+specialization map.
+
+An unconsumed exact custom parameter keeps the same mapping through an explicit
+checked close node that pairs the callee-local Generator with its transferred
+construction provenance. The node preserves declaration identity, exact
+Character, suspension/final graph, ownership edge, and the lexical root close
+domain even though none is materialized as native continuation state. Because
+this first close boundary has a discarded yield result and no handler, locals,
+cleanup, effects, or post-suspension work, O0 lowering proves the close and final
+Unit before erasing both. LLVM still owns private-token placement through
+`fastcc`, while Generator DWARF remains live in the callee. Compiled-library
+support must serialize canonical transfer/close sites, domain, construction,
+suspension, capture/effect/cleanup, ownership, and target-adapter evidence rather
+than depend on the checked-program node layout.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
