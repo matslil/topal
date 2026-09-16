@@ -2829,6 +2829,44 @@ generator members, `use`, packages, and compiled-library environments remain
 deferred. This realizes `TOPAL-COMPILER-NAMESPACE-BOUNDARY-001` and
 `TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001` for increment 6b2b1.
 
+## TOPAL-COMP-NAMESPACE-GENERATOR-001 — Static qualified generator application
+
+For a source-root `root` value or retained root alias, the checked compiler
+model shall include every generator declaration visible in that namespace
+snapshot, preserving namespace identity, source-ordered overloads, declared
+directions, checked body graph, and source provenance. A qualified application
+shall resolve only in that captured generator set, apply the existing checked
+generator rules, evaluate each input exactly once, and create a fresh affine
+continuation with the same ownership and close obligations as an unqualified
+application. A declaration introduced after an alias binding shall remain
+absent from that alias while remaining available through a later live `root`.
+
+The initial Linux x86-64 subset shall qualify every custom-generator graph that
+the compiler otherwise admits; the unchanged
+`examples/language/namespace-generator.t` regression exercises the existing
+single-Character-yield O0 path, and checked tests shall also cover qualified
+overload preservation. Namespace selection shall be complete before LLVM
+lowering; the backend shall reuse the selected checked graph and inline
+suspension traversal while preserving Scope, Generator, yielded values, and
+source locations in DWARF/GDB. Native tests shall cover alias and direct-root
+selection, snapshot exclusion, fresh linear consumption, exact interpreter
+output, freestanding artifacts, and separate resource baselines.
+
+This shall add no runtime namespace lookup/table, continuation object,
+callback, indirect dispatch, foreign dependency, C/C++ runtime, other-language
+standard library, public generator ABI, or `topal-native/6` revision. A future
+compiled-library interface that publishes such a member shall carry stable
+namespace and revision identity, visibility, the generator overload signature,
+checked directions and body graph, capture/effect/linearity/ownership facts,
+close and suspension behavior, semantic representation identity, and a
+versioned target adapter; it shall not expose compiler-private tags or symbols
+as portable identity. Non-root/external namespaces, Scope parameters or results
+whose selected members are generators, generator shapes the compiler does not
+otherwise admit, dynamic or escaping qualified generator values, packages, and
+source/compiled libraries remain deferred. This realizes
+`TOPAL-COMPILER-NAMESPACE-GENERATOR-001` and
+`TOPAL-NAMESPACE-GENERATOR-001` for increment 6b2b2a.
+
 ## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
 
 The checked compiler model shall admit an already-visible ordinary or static

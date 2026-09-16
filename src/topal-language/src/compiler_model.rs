@@ -530,6 +530,7 @@ pub enum CompilerExpressionKind {
     },
     CustomCharacterGenerator {
         declaration: String,
+        declaration_namespace: String,
         declaration_span: Span,
         initial_parameter: Box<CompilerParameter>,
         initial: Box<CompilerExpression>,
@@ -541,6 +542,7 @@ pub enum CompilerExpressionKind {
     },
     CustomValueGenerator {
         declaration: String,
+        declaration_namespace: String,
         declaration_span: Span,
         initial_parameter: Box<CompilerParameter>,
         initial: Box<CompilerExpression>,
@@ -1052,6 +1054,7 @@ struct BindingFacts {
 struct CompilerNamespaceFacts {
     name: String,
     functions: BTreeMap<String, Vec<FunctionSource>>,
+    generators: BTreeMap<String, Vec<GeneratorSource>>,
     bindings: BTreeMap<String, CompilerDataMemberFacts>,
 }
 
@@ -9867,6 +9870,23 @@ impl Analyzer {
             if self.functions.contains_key(&member_name) {
                 return self.analyze_resolved_call(remaining, span, environment, 0, &member_name);
             }
+            if let Some(declarations) = self.generators.get(&member_name).cloned() {
+                let visible = declarations
+                    .into_iter()
+                    .filter(|declaration| declaration.span.end <= span.start)
+                    .collect::<Vec<_>>();
+                if !visible.is_empty() {
+                    return self.analyze_custom_generator_call_from(
+                        remaining,
+                        span,
+                        environment,
+                        0,
+                        &member_name,
+                        &visible,
+                        "root",
+                    );
+                }
+            }
             if remaining.len() == 1
                 && !self.in_function
                 && let Some(facts) = self.root_bindings.get(&member_name)
@@ -9898,6 +9918,19 @@ impl Analyzer {
                     &member_name,
                     declarations,
                     &[],
+                );
+            }
+            if let Some(declarations) = namespace.generators.get(&member_name) {
+                let declarations = declarations.clone();
+                let namespace_name = namespace.name.clone();
+                return self.analyze_custom_generator_call_from(
+                    remaining,
+                    span,
+                    environment,
+                    0,
+                    &member_name,
+                    &declarations,
+                    &namespace_name,
                 );
             }
             if remaining.len() == 1
@@ -12953,6 +12986,18 @@ impl Analyzer {
                         (!visible.is_empty()).then(|| (name.clone(), visible))
                     })
                     .collect(),
+                generators: self
+                    .generators
+                    .iter()
+                    .filter_map(|(name, declarations)| {
+                        let visible = declarations
+                            .iter()
+                            .filter(|declaration| declaration.span.end <= capture_position)
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        (!visible.is_empty()).then(|| (name.clone(), visible))
+                    })
+                    .collect(),
             })),
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.namespace.clone())
@@ -14473,7 +14518,6 @@ impl Analyzer {
         self.analyze_expression(argument, environment)
     }
 
-    #[allow(clippy::too_many_lines)] // Value and Character generator instantiation paths stay adjacent.
     fn analyze_custom_generator_call(
         &mut self,
         items: &[Expression],
@@ -14487,12 +14531,34 @@ impl Analyzer {
             .get(generator_name)
             .expect("selected custom generator overload set exists")
             .clone();
+        self.analyze_custom_generator_call_from(
+            items,
+            span,
+            environment,
+            generator_index,
+            generator_name,
+            &declarations,
+            "root",
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Value and Character generator instantiation paths stay adjacent.
+    fn analyze_custom_generator_call_from(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        generator_index: usize,
+        generator_name: &str,
+        declarations: &[GeneratorSource],
+        declaration_namespace: &str,
+    ) -> Result<CompilerExpression, Diagnostic> {
         let argument_sources = items
             .iter()
             .enumerate()
             .filter_map(|(index, item)| (index != generator_index).then_some(item))
             .collect::<Vec<_>>();
-        let arguments = if let [declaration] = declarations.as_slice()
+        let arguments = if let [declaration] = declarations
             && declaration.additional_initial_parameters.is_empty()
             && let [argument] = argument_sources.as_slice()
         {
@@ -14510,7 +14576,7 @@ impl Analyzer {
         let flattened_arguments = flattened_product_arguments(&argument_sources, &arguments);
         let is_overload_set = declarations.len() > 1;
         let mut selected = None;
-        for declaration in &declarations {
+        for declaration in declarations {
             let parameter_count = 1 + declaration.additional_initial_parameters.len();
             let candidate_arguments = if parameter_count > 1
                 && let Some(flattened) = &flattened_arguments
@@ -14634,6 +14700,7 @@ impl Analyzer {
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::CustomValueGenerator {
                     declaration: self.source.slice(declaration.name).to_owned(),
+                    declaration_namespace: declaration_namespace.to_owned(),
                     declaration_span: declaration.span,
                     initial_parameter: Box::new(declaration.initial_parameter),
                     initial: Box::new(initial),
@@ -14696,6 +14763,7 @@ impl Analyzer {
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::CustomCharacterGenerator {
                 declaration: self.source.slice(declaration.name).to_owned(),
+                declaration_namespace: declaration_namespace.to_owned(),
                 declaration_span: declaration.span,
                 initial_parameter: Box::new(declaration.initial_parameter),
                 initial: Box::new(initial),
@@ -25607,6 +25675,113 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn models_namespace_qualified_generator_application() {
+        // TOPAL-COMPILER-NAMESPACE-GENERATOR-001,
+        // TOPAL-NAMESPACE-GENERATOR-001, TOPAL-NAMESPACE-SNAPSHOT-001,
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FOREACH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/namespace-generator.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    name: api,
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::Root,
+                        value_type: CompilerType::Scope,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Binding(CompilerBinding {
+                    name: generated,
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            declaration_namespace,
+                            characters,
+                            ..
+                        },
+                        value_type,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        source,
+                        characters: yielded,
+                        ..
+                    },
+                    ..
+                })
+            ] if api == "api"
+                && generated == "generated"
+                && declaration == "once"
+                && declaration_namespace == "root"
+                && characters == &[String::from("T")]
+                && is_character_unit_generator_type(value_type)
+                && matches!(source.kind, CompilerExpressionKind::Local(_))
+                && yielded == &[String::from("T")]
+        ));
+
+        let direct = analyze_for_compiler(
+            "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is root once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        let CompilerStatement::Binding(CompilerBinding { value, .. }) = &direct.main.statements[0]
+        else {
+            panic!("expected a directly qualified generator binding")
+        };
+        assert!(matches!(
+            &value.kind,
+            CompilerExpressionKind::CustomCharacterGenerator {
+                declaration_namespace,
+                ..
+            } if declaration_namespace == "root"
+        ));
+
+        let qualified_overloads =
+            include_str!("../../../examples/language/custom-generator-overloads.t")
+                .replace(
+                    "unary-generated is select 7",
+                    "api is root\nunary-generated is api select 7",
+                )
+                .replace(
+                    "binary-generated is select (7, \"item\")",
+                    "binary-generated is api select (7, \"item\")",
+                );
+        let overloads = analyze_for_compiler(&qualified_overloads).unwrap();
+        let selected_namespaces = overloads
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| {
+                let CompilerStatement::Binding(CompilerBinding { value, .. }) = statement else {
+                    return None;
+                };
+                let CompilerExpressionKind::CustomValueGenerator {
+                    declaration_namespace,
+                    ..
+                } = &value.kind
+                else {
+                    return None;
+                };
+                Some(declaration_namespace.as_str())
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(selected_namespaces, ["root", "root"]);
+
+        let stale = analyze_for_compiler(
+            "use language (version is v0.1)\napi is root\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is api once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        )
+        .unwrap_err();
+        assert_eq!(stale.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

@@ -10844,6 +10844,35 @@ mod tests {
     }
 
     #[test]
+    fn emits_namespace_qualified_generator_without_runtime_lookup() {
+        // TOPAL-COMPILER-NAMESPACE-GENERATOR-001,
+        // TOPAL-NAMESPACE-GENERATOR-001, TOPAL-GENERATOR-FOREACH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/namespace-generator.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "namespace-generator.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("name: \"Scope\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("topal.runtime.namespace"));
+        assert!(!main.contains("topal.runtime.scope"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_namespace_data_members_as_stable_ssa_references() {
         // TOPAL-COMPILER-NAMESPACE-DATA-001, TOPAL-NAMESPACE-SNAPSHOT-001
         let program = analyze_for_compiler(
