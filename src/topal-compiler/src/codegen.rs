@@ -165,8 +165,15 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             expression_uses_extended_debug(generator) || expression_uses_extended_debug(provenance)
         }
         CompilerExpressionKind::CustomCharacterGenerator {
-            initial, result, ..
-        } => expression_uses_extended_debug(initial) || expression_uses_extended_debug(result),
+            initial,
+            prefix,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(initial)
+                || block_uses_extended_debug(prefix)
+                || expression_uses_extended_debug(result)
+        }
         CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
         }
@@ -1166,8 +1173,31 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
             }
-            CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
-                let _ = self.emit_expression(initial, body, environment);
+            CompilerExpressionKind::CustomCharacterGenerator {
+                declaration_span,
+                initial_parameter,
+                initial,
+                prefix,
+                ..
+            } => {
+                let initial = self.emit_expression(initial, body, environment);
+                if !prefix.statements.is_empty() {
+                    let parent_scope = body.subprogram;
+                    body.subprogram = self.debug.lexical_block(*declaration_span, parent_scope);
+                    let variable = self.debug.local(
+                        &initial_parameter.name,
+                        initial_parameter.span,
+                        &initial_parameter.value_type,
+                        body.subprogram,
+                    );
+                    let location = self.debug.location(initial_parameter.span, body.subprogram);
+                    body.debug_value(&initial, variable, location);
+                    let mut prefix_environment = environment.clone();
+                    prefix_environment.insert(initial_parameter.name.clone(), initial);
+                    let prefix_result = self.emit_block(prefix, body, &mut prefix_environment);
+                    debug_assert!(matches!(prefix_result, LlValue::Unit));
+                    body.subprogram = parent_scope;
+                }
                 let CompilerType::Generator(generator) = &expression.value_type else {
                     unreachable!("checked custom construction retains its Generator type")
                 };
@@ -9974,6 +10004,53 @@ mod tests {
         assert!(main.contains("#dbg_declare(ptr"));
         assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_string_input_prefix_before_suspension() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-STRING-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-GENERATOR-STRING-INPUT-001
+        let source = include_str!("../../../examples/language/custom-generator-string-input.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-string-input.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            1
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let predicate = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("generator application executes the retained prefix");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let yielded = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("traversal materializes the yielded Character");
+        assert!(input < predicate && predicate < suspended && suspended < yielded);
+        assert!(main.contains("#dbg_value(ptr"));
+        assert!(main.contains("#dbg_value(i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"initial-is-empty\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
