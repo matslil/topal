@@ -2161,6 +2161,57 @@ final-result evidence, native-representation identity, and target adapters
 rather than compiler-session specializations, private tokens, debug slots,
 object layouts, or checked nodes.
 
+### TOPAL-COMPILER-GENERATOR-LIST-FUNCTION-BOUNDARY-001 — Specialized List continuation transfer
+
+The compiler SHALL admit the shared `custom-generator-list-values.t`
+regression. The admitted `relay` declaration SHALL have the exact classifier
+`Generator List Int Unit List Int`. It SHALL yield its initial List once,
+resume with Unit, and return `initial append 9`. The ordinary `make` function
+SHALL accept one `List Int` and return a fresh instance of that continuation
+without closing it. The ordinary `consume` function SHALL accept sole
+ownership, traverse it exactly once with the discarded `entry-count values`
+action, bind its final List, and return that List. The root call SHALL pass
+exact `one 7` through `make`, bind and transfer the continuation to `consume`,
+and produce `Entry ( 7, Entry ( 9, Empty ) )`.
+
+The checked program SHALL retain the recursive List identity, Int element
+classifier, immutable node order, complete Generator directions, declaration
+and construction provenance, exact specialized input, suspension, action,
+final append graph, both function-transfer edges, and consumption edge. The
+caller List SHALL be evaluated once and substituted for the factory-local
+input in transferred provenance without reevaluation. Factory exit and
+consumer entry SHALL NOT deliver close. The entry-count action SHALL complete
+before Unit resumption; only afterward SHALL the final singleton be allocated,
+appended through the existing immutable List operation, and returned. This
+order SHALL hold at LLVM O0 without inlining, folding, or dead-code elimination.
+
+On Linux x86-64, the specialized factory SHALL use the existing Topal-owned
+private `List Int` pointer parameter and return an `i32` Generator token. The
+consumer SHALL accept that token and return the existing private List pointer.
+LLVM `fastcc`, the target triple, and target data layout SHALL determine
+physical placement and alignment; the compiler SHALL hard-code no System V
+register or return placement. A target-aligned factory parameter shadow and
+List action/final-lifetime shadows SHALL retain otherwise compile-time-only
+values. DWARF/GDB SHALL expose the complete Generator classifier, initial,
+yielded and final Lists, ordinary-function frames, and Topal entry frame.
+
+Other List element classifiers, inputs, declarations, factory/consumer shapes,
+actions, final operations or values, yields, directions, arities, recursion,
+nesting, repeated use, abandonment, close paths, packages, libraries, and
+external boundaries SHALL remain unsupported. The lowering SHALL introduce no
+semantic Generator object/state allocation, runtime transfer or traversal
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, foreign allocator, needed library, dynamic
+relocation, public/library calling convention, Generator/List ABI, or native-
+ABI revision. Future compiled-library metadata SHALL encode recursive nominal
+List identity, element classifier, immutable operation and allocation effects,
+complete Generator directions, declaration/body/suspension graph,
+construction and both transfer sites, exact or symbolic captures,
+action/final-operation provenance, ownership/consumption/close state,
+native-representation identity, and target adapters rather than private
+tokens, node pointers/layouts, debug slots, compiler specializations, or
+checked nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`

@@ -3466,6 +3466,139 @@ fn exact_int_string_product(
     ) && expression.value_type == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
 }
 
+fn exact_singleton_int_list(expression: &CompilerExpression, expected: i64) -> bool {
+    expression.value_type == int_list_type()
+        && matches!(
+            &expression.kind,
+            CompilerExpressionKind::ListEntry { value, remaining }
+                if exact_int(value) == Some(BigInt::from(expected))
+                    && remaining.value_type == int_list_type()
+                    && matches!(remaining.kind, CompilerExpressionKind::ListEmpty)
+        )
+}
+
+fn exact_int_list_append(expression: &CompilerExpression, list_name: &str, expected: i64) -> bool {
+    expression.value_type == int_list_type()
+        && matches!(
+            &expression.kind,
+            CompilerExpressionKind::ListAppend { list, value }
+                if list.value_type == int_list_type()
+                    && matches!(&list.kind, CompilerExpressionKind::Local(name)
+                        if name == list_name)
+                    && exact_int(value) == Some(BigInt::from(expected))
+        )
+}
+
+fn exact_list_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "List-Int-value custom generator outside one initial yield and final initial append 9",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "List-Int-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(result_list),
+        Expression::Identifier(append),
+        Expression::Integer(appended),
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "List-Int-value custom generator final expression outside initial append 9",
+        ));
+    };
+    let parameter_name = source.slice(parameter.name);
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != parameter_name
+        || source.slice(*result_list) != parameter_name
+        || source.slice(*append) != "append"
+        || source.slice(*appended) != "9"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "List-Int-value custom generator outside yield initial followed by initial append 9",
+        ));
+    }
+    let list_type = int_list_type();
+    let list = CompilerExpression {
+        kind: CompilerExpressionKind::Local(parameter_name.to_owned()),
+        value_type: list_type.clone(),
+        int_range: None,
+        rational_value: None,
+        span: *result_list,
+    };
+    let value = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(9)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(9))),
+        rational_value: None,
+        span: *appended,
+    };
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::ListAppend {
+                list: Box::new(list),
+                value: Box::new(value),
+            },
+            value_type: list_type,
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_list_value_generator_action(parameter: &CompilerParameter, body: &CompilerBlock) -> bool {
+    parameter.value_type == int_list_type()
+        && !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::ListEntryCount(value),
+                ..
+            })] if value.value_type == parameter.value_type
+                && matches!(&value.kind, CompilerExpressionKind::Local(name)
+                    if name == &parameter.name)
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 fn exact_int_string_product_literal(
     source: &SourceText,
     expression: &Expression,
@@ -5338,7 +5471,10 @@ fn exact_value_boundary_generator_source(source: &SourceText, generator: &Genera
     let nested = source.slice(generator.name) == "pairs"
         && generator.initial_parameter.value_type == nested_optional_product_type()
         && exact_nested_result_product_value(&generator.result, 8, "done");
-    (scalar || product || nested)
+    let list = source.slice(generator.name) == "relay"
+        && generator.initial_parameter.value_type == int_list_type()
+        && exact_int_list_append(&generator.result, "initial", 9);
+    (scalar || product || nested || list)
         && generator.initial_parameter.name == "initial"
         && generator.additional_initial_parameters.is_empty()
         && generator.prefix.statements.is_empty()
@@ -5677,6 +5813,7 @@ fn collect_character_generators(
             "Character" => CompilerType::Character,
             "Comparison" => CompilerType::Comparison,
             "Int" => CompilerType::Int,
+            "ListInt" => int_list_type(),
             "Nat" => CompilerType::Nat,
             "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
             "Optional(Int,String)" => CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
@@ -5715,7 +5852,7 @@ fn collect_character_generators(
                     unsupported(
                         source,
                         *span,
-                        "custom generator outside the admitted Boolean, Character, Comparison, Choice Enum, Int, Nat, Optional Int, Optional (Int, String), recursive nominal product, Range Int, Rational, Result Rational, Result (Int, String), String, Unit, or (Int, String) initial-input subset",
+                        "custom generator outside the admitted Boolean, Character, Comparison, Choice Enum, Int, List Int, Nat, Optional Int, Optional (Int, String), recursive nominal product, Range Int, Rational, Result Rational, Result (Int, String), String, Unit, or (Int, String) initial-input subset",
                     )
                 })?,
         };
@@ -5738,6 +5875,47 @@ fn collect_character_generators(
                 *span,
                 format!("generator overload `{name_text}` has the same input classifiers"),
             ));
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == int_list_type()
+            && compact_classifier(source.slice(*yielded)) == "ListInt"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result)) == "ListInt"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_list_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    local_function: None,
+                    close_handler: None,
+                    result: final_value,
+                });
+            continue;
         }
         if parameter.fields.is_empty()
             && parameter.default.is_none()
@@ -7685,7 +7863,8 @@ impl Analyzer {
                                             || exact_int_string_product(result, 8, "done")
                                             || exact_nested_result_product_value(
                                                 result, 8, "done"
-                                            )))
+                                            )
+                                            || exact_int_list_append(result, "initial", 9)))
                         );
                         if value.value_type != CompilerType::Unit && !admitted_typed_result {
                             return Err(unsupported(
@@ -8034,6 +8213,15 @@ impl Analyzer {
                     &self.source,
                     span,
                     "Nat-value custom generator foreach action outside discarded value + 1",
+                ));
+            }
+            if initial_parameter.value_type == int_list_type()
+                && !exact_list_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "List-Int-value custom generator foreach action outside discarded entry-count values",
                 ));
             }
             if matches!(initial_parameter.value_type, CompilerType::Enum(_))
@@ -14314,6 +14502,16 @@ impl Analyzer {
             }] if returns_value_boundary_generator
                 && name == "initial"
                 && value_type == &nested_optional_product_type()
+        ) || matches!(
+            parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                discarded: false,
+                value_type,
+                ..
+            }] if returns_value_boundary_generator
+                && name == "initial"
+                && value_type == &int_list_type()
         );
         if returns_generator
             && (self.in_function
@@ -14418,7 +14616,11 @@ impl Analyzer {
                     || (declaration == "pairs"
                         && initial_parameter.value_type == nested_optional_product_type()
                         && exact_optional_int_string_value(initial, 7, "item")
-                        && exact_nested_result_product_value(result, 8, "done")))
+                        && exact_nested_result_product_value(result, 8, "done"))
+                    || (declaration == "relay"
+                        && initial_parameter.value_type == int_list_type()
+                        && exact_singleton_int_list(initial, 7)
+                        && exact_int_list_append(result, "initial", 9)))
                     && initial_parameter.name == "initial"
                     && additional_initial_parameters.is_empty()
                     && prefix.statements.is_empty()
@@ -14706,6 +14908,34 @@ impl Analyzer {
                         && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
                         && continuations.is_empty()
                         && exact_nested_result_product_value(result, 8, "done")
+                }
+                (
+                    CompilerType::List(element),
+                    CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        additional_initial_parameters,
+                        prefix,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                ) => {
+                    returns_value_boundary_generator
+                        && element.as_ref() == &CompilerType::Int
+                        && declaration == "relay"
+                        && initial_parameter.name == "initial"
+                        && initial_parameter.value_type == parameter.value_type
+                        && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                        && additional_initial_parameters.is_empty()
+                        && prefix.statements.is_empty()
+                        && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                        && continuations.is_empty()
+                        && exact_int_list_append(result, "initial", 9)
                 }
                 _ => false,
             };
@@ -16163,6 +16393,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "GeneratorOptional(Int,String)UnitResult((Int,String),langarithmeticArithmeticErrorCode)" => {
             Some(nested_boundary_generator_type())
         }
+        "GeneratorListIntUnitListInt" => Some(list_boundary_generator_type()),
         _ => None,
     }
 }
@@ -16603,6 +16834,18 @@ fn nested_boundary_generator_type() -> CompilerType {
     })
 }
 
+fn int_list_type() -> CompilerType {
+    CompilerType::List(Box::new(CompilerType::Int))
+}
+
+fn list_boundary_generator_type() -> CompilerType {
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(int_list_type()),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(int_list_type()),
+    })
+}
+
 fn character_unit_generator_type() -> CompilerType {
     character_generator_type(CompilerType::Unit)
 }
@@ -16636,6 +16879,7 @@ fn is_admitted_value_boundary_generator_type(value_type: &CompilerType) -> bool 
             && result_type.as_ref() == &CompilerType::String
     ) || value_type == &product_boundary_generator_type()
         || value_type == &nested_boundary_generator_type()
+        || value_type == &list_boundary_generator_type()
 }
 
 fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
@@ -16647,6 +16891,7 @@ fn is_admitted_function_value_result_type(value_type: &CompilerType) -> bool {
     value_type == &CompilerType::String
         || compiler_int_string_pair(value_type)
         || value_type == &nested_result_product_type()
+        || value_type == &int_list_type()
 }
 
 fn is_character_generator_type_with_result(
@@ -17280,6 +17525,26 @@ fn adapt_call_argument(
     }
 }
 
+fn validate_list_custom_generator_initial(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    argument: &CompilerExpression,
+    generator_name: &str,
+) -> Result<(), Diagnostic> {
+    if parameter.value_type == int_list_type()
+        && !exact_singleton_int_list(argument, 7)
+        && !matches!(&argument.kind, CompilerExpressionKind::Local(name)
+            if generator_name == "relay" && name == "initial")
+    {
+        return Err(unsupported(
+            source,
+            argument.span,
+            "List Int custom generator input outside exact one 7 or the admitted factory parameter",
+        ));
+    }
+    Ok(())
+}
+
 fn adapt_custom_generator_initial(
     source: &SourceText,
     parameter: &CompilerParameter,
@@ -17287,6 +17552,7 @@ fn adapt_custom_generator_initial(
     generator_name: &str,
     call_span: Span,
 ) -> Result<CompilerExpression, Diagnostic> {
+    validate_list_custom_generator_initial(source, parameter, argument, generator_name)?;
     if parameter.value_type == nested_result_product_type()
         && !matches!(&argument.kind, CompilerExpressionKind::Tuple(_))
     {
@@ -26359,6 +26625,168 @@ mod tests {
                 "consume (pairs (Some (7, \"item\")))",
                 1,
             ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Factory, traversal, and List provenance form one boundary scenario.
+    fn models_custom_generator_list_values() {
+        // TOPAL-GENERATOR-DECLARATION-001,
+        // TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-GENERATOR-FOREACH-RESULT-001,
+        // TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-LIST-APPEND-001,
+        // TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-COMPILER-GENERATOR-LIST-FUNCTION-BOUNDARY-001
+        let source = include_str!("../../../examples/language/custom-generator-list-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("List Generator factory is specialized");
+        assert!(matches!(
+            make.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "initial" && value_type == &int_list_type()
+        ));
+        assert_eq!(make.result_type, list_boundary_generator_type());
+        assert!(make.body.statements.is_empty());
+        assert!(matches!(
+            &make.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    prefix,
+                    yields,
+                    continuations,
+                    explicit_return: None,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if declaration == "relay"
+                && initial_parameter.name == "initial"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && additional_initial_parameters.is_empty()
+                && prefix.statements.is_empty()
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_int_list_append(result, "initial", 9)
+                && value_type == &list_boundary_generator_type()
+        ));
+
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("List Generator consumer is specialized");
+        assert!(matches!(
+            consume.parameters.as_slice(),
+            [CompilerParameter { name, value_type, .. }]
+                if name == "generated" && value_type == &list_boundary_generator_type()
+        ));
+        assert!(matches!(
+            consume.body.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomValueForeach {
+                                source,
+                                transferred_initial: Some(initial),
+                                yields,
+                                parameter,
+                                body,
+                                result,
+                                ..
+                            },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "result"
+                && matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && exact_singleton_int_list(initial, 7)
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "values"
+                && exact_list_value_generator_action(parameter, body)
+                && exact_int_list_append(result, "initial", 9)
+                && value_type == &int_list_type()
+        ));
+        assert!(matches!(
+            &consume.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(name),
+                value_type,
+                ..
+            } if name == "result" && value_type == &int_list_type()
+        ));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { arguments, .. },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "generated"
+                && value_type == &list_boundary_generator_type()
+                && matches!(arguments.as_slice(), [argument]
+                    if exact_singleton_int_list(argument, 7))
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type,
+                ..
+            } if value_type == &int_list_type()
+                && matches!(arguments.as_slice(), [CompilerExpression {
+                    kind: CompilerExpressionKind::Local(name),
+                    value_type,
+                    ..
+                }] if name.starts_with("topal.root.")
+                    && value_type == &list_boundary_generator_type())
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_custom_generator_list_values() {
+        // TOPAL-GENERATOR-DECLARATION-001,
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-LIST-APPEND-001,
+        // TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-COMPILER-GENERATOR-LIST-FUNCTION-BOUNDARY-001
+        let source = include_str!("../../../examples/language/custom-generator-list-values.t");
+        for invalid in [
+            source.replacen("make (one 7)", "make (one 8)", 1),
+            source.replacen("relay initial", "relay (one 8)", 1),
+            source.replacen("initial append 9", "initial append 8", 1),
+            source.replacen("entry-count values", "empty? values", 1),
+            source.replacen("consume generated", "consume (relay (one 7))", 1),
         ] {
             assert_eq!(
                 analyze_for_compiler(&invalid).unwrap_err().code,
