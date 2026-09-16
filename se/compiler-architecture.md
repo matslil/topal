@@ -875,6 +875,19 @@ and compiled libraries require canonical declaration/direction/suspension,
 capture/effect, ownership/close, and target-adapter metadata rather than this
 executable-local proof.
 
+The adjacent repeated-suspension slice generalizes that proof to consecutive
+discarded yields of the same initial Character. The checked model retains an
+ordered finite yield sequence; construction still evaluates the source value
+once and represents suspension at its first entry. Root foreach expands one
+inline action block per retained yield and places the erased Unit resumption
+between blocks before final Unit. This is frontend-owned O0 ordering rather
+than LLVM loop-unrolling policy. It reuses the private ownership/debug token and
+one Character debug shadow without allocating a continuation or establishing a
+library ABI. Ordinary inter-yield state, dynamic yielded values, captures,
+close handling, and external boundaries still require the canonical suspension
+graph, environment/effect, ownership/close, and target-adapter metadata planned
+for general generators.
+
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
 model. Its private LLVM carrier is one non-packed literal struct containing an

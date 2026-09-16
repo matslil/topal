@@ -520,6 +520,39 @@ This realizes `TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5g.
 
+## TOPAL-COMP-GENERATOR-MULTIPLE-YIELD-001 — Repeated custom suspensions
+
+The checked compiler shall generalize the admitted root Character generator to
+one or more consecutive discarded yields of its sole initial Character followed
+by final Unit. It shall retain the exact source-ordered yield sequence as
+compile-session provenance. Application shall still evaluate the initial
+operand exactly once and stop at the first suspension; each successful Unit
+resumption shall advance to the next retained yield or the final Unit.
+
+Root foreach shall consume one locally bound instance and invoke its
+capture-free Character-to-Unit action exactly once for each yielded value in
+source order. It shall resume with Unit after every action, including the final
+action before returning Unit. Existing repeated-use and abandonment rejection
+shall continue to apply. Zero yields, ordinary statements between yields,
+different yield expressions, overloads, dynamic Character provenance,
+captures, close handling, and function or library boundaries shall remain
+rejected before LLVM.
+
+The Linux x86-64 backend shall expand the finite proven sequence as ordered
+inline action blocks with an erased Unit resumption between adjacent blocks.
+This is mandatory O0 semantic lowering, not loop unrolling delegated to LLVM.
+The existing compiler-private Generator observation token and debug-only
+Character shadow may be reused, but no token shall act as continuation state.
+Generated code shall add no Generator object or state allocation, dispatcher,
+callback, indirect call, unwind support, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall describe the
+ordered suspension graph and its canonical declaration/direction, effect,
+ownership, close, and target-adapter evidence. This realizes
+`TOPAL-COMPILER-GENERATOR-MULTIPLE-YIELD-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5h.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted
