@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5af | nominal `Optional Int` input, yield, equality action, resumption, and final directions with ordered private-value debugging | complete |
 | 5ae | payload-free Unit input, yield, identity action, resumption, and final directions with ordered debug-only lifetime anchors | complete |
 | 5ad | exact canonical Rational input, yield, action, resumption, and final directions with ordered allocation-aware construction/addition and debugging | complete |
 | 5ac | exact arbitrary-precision Int input, yield, action, resumption, and final directions with ordered allocation-aware additions and debugging | complete |
@@ -483,6 +484,22 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5af separates nominal `Optional Int` input, yield, and final
+directions through one exact custom `Generator Optional Int Unit Optional Int`.
+The checked graph retains the Optional classifier and Int payload classifier,
+initial-parameter yield, exact `Some 7` equality action, Unit resumption, final
+`None Int`, and ownership edge independently. O0 traversal constructs the
+input once, preserves the yielded pointer, evaluates the action comparison,
+resumes, and only then constructs and displays the final alternative. Two
+debug-only aligned pointer shadows keep the yielded action value and captured
+initial inspectable at their source lifetimes. The existing Topal-owned
+Optional/Int representation, allocator, equality, display, Linux syscall
+writer, DWARF types, and GDB printers are reused without a semantic Generator
+runtime, foreign dependency, other-language standard library, public ABI, or
+native-layout revision. Other Optional payloads, body/action expressions,
+shapes, directions, state, transfer, close, and libraries remain in increment
+5.
+
 Increment 5ae separates payload-free Unit input, yield, and final directions
 through one exact custom `Generator Unit Unit Unit`. The checked graph retains
 the Unit initial, initial-parameter yield, named identity action, Unit

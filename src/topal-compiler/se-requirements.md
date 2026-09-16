@@ -1591,6 +1591,62 @@ realizes `TOPAL-COMPILER-GENERATOR-UNIT-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, and `TOPAL-GENERATOR-FOREACH-001` for
 compiler increment 5ae.
 
+## TOPAL-COMP-GENERATOR-OPTIONAL-001 — Nominal Optional generator directions
+
+The checked compiler shall admit a root custom generator with one named
+`Optional Int` initial parameter and directions
+`Generator Optional Int Unit Optional Int` whose body consists only of one
+discarded `yield initial` followed by `None Int` as its final expression. One
+currently admitted `Optional Int` expression shall start the generator; the
+shared regression uses `(Some 7)`. The fresh result shall be bound and consumed
+exactly once by a foreach action consisting only of the discarded equality
+`candidate = (Some 7)` for its named yielded parameter.
+
+The checked program shall retain the nominal Optional classifier and its Int
+payload classifier separately from all three Generator directions, the
+initial-parameter yield and suspension, the exact Some construction and
+equality action, Unit resumption, distinct final None construction, and
+ownership edge. Application shall construct the initial Optional exactly once.
+Traversal shall pass that same immutable Optional value to the action, evaluate
+the exact right operand and equality once, resume the generator with Unit, and
+only then construct the final None value. This order shall hold with LLVM
+optimization disabled and shall not depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the existing compiler-private Optional representation shall
+remain an aligned pointer to Topal-owned tagged storage with an Int payload
+pointer for Some and a null payload for None. The root-local Generator shall
+remain a compiler-private `i32` ownership token. LLVM shall select placement
+and call lowering from the target triple and data layout; the backend shall
+hard-code no AMD64 register convention. Two aligned debug-only pointer shadows
+shall preserve the yielded action value and captured initial lifetime. DWARF
+and GDB shall expose the complete `Generator Optional Int Unit Optional Int`
+classifier and value, the yielded `Some 7`, the captured initial `Some 7`,
+ordered yield/action/resumption/final source locations, and the Topal entry
+frame.
+
+Literal or multiple yields; a final expression other than exact `None Int`;
+additional body statements; another Optional payload, action, input, yield,
+resume, or final classifier; close handling; nested or ordinary-function
+construction; Generator parameter/result transfer; repeated consumption;
+abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. The lowering shall introduce no semantic Generator
+object or state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Optional storage, allocation, equality, display, and
+Linux syscalls shall remain wholly owned by Topal. Future compiled-library
+metadata shall encode independent initial and direction classifiers, the
+nominal Optional and payload identities, exact alternatives and action
+operands, ordered yield/action/resume/final provenance, allocation-failure
+effects, declaration and construction sites, captures/effects, ownership/
+consumption/close state, native-representation identity, and target adapters
+rather than expose the private token, debug slots, Optional/Int object layouts,
+or checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-OPTIONAL-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-TYPE-OPTIONAL-BOUNDARY-001` for compiler increment 5af.
+
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 
 The compiler shall preserve source-ordered overload sets whose admitted

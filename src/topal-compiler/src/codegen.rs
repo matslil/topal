@@ -6109,7 +6109,7 @@ impl<'a> Generator<'a> {
         } else if explicit_return.is_some()
             || matches!(
                 initial_parameter.value_type,
-                CompilerType::Int | CompilerType::Rational
+                CompilerType::Int | CompilerType::Rational | CompilerType::Optional(_)
             )
         {
             let llvm_type = llvm_value_type(&initial_parameter.value_type);
@@ -10766,6 +10766,78 @@ mod tests {
         assert!(llvm.contains("name: \"Unit\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("topal.platform.allocate"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_optional_int_values_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-OPTIONAL-BOUNDARY-001, TOPAL-COMPILER-GENERATOR-OPTIONAL-001
+        let source = include_str!("../../../examples/language/custom-generator-optional-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-optional-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.optional.some(")
+                .count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.optional.int.equal(")
+                .count(),
+            1
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.optional.none()")
+                .count(),
+            1
+        );
+        let initial = main
+            .find("call ptr @topal.runtime.optional.some(")
+            .expect("generator application evaluates its Optional input");
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr %v0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let action_some = main
+            .match_indices("call ptr @topal.runtime.optional.some(")
+            .nth(1)
+            .expect("foreach constructs the canonical Optional action operand")
+            .0;
+        let action = main
+            .find("call i1 @topal.runtime.optional.int.equal(")
+            .expect("foreach compares the yielded Optional value");
+        let result = main
+            .find("call ptr @topal.runtime.optional.none()")
+            .expect("generator materializes its final Optional alternative");
+        let output = main
+            .find("call i1 @topal.runtime.optional.is.some(")
+            .expect("the final Optional controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 2);
+        assert!(
+            initial < constructed
+                && constructed < debug_stores[0]
+                && debug_stores[0] < action_some
+                && action_some < action
+                && action < debug_stores[1]
+                && debug_stores[1] < result
+                && result < output
+        );
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(llvm.contains("name: \"Generator Optional Int Unit Optional Int\""));
+        assert!(llvm.contains("name: \"Optional Int\""));
+        assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
 
