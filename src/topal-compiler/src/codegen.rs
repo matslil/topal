@@ -5,13 +5,13 @@ use std::path::Path;
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::{
-    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
-    CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
-    CompilerGeneratorType, CompilerGeneratorYield, CompilerListIndexOperation,
-    CompilerListZipOperation, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
-    display_string_literal,
+    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerContainerKind, CompilerEnumRule,
+    CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField, CompilerExpression,
+    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler,
+    CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
+    CompilerListIndexOperation, CompilerListZipOperation, CompilerMapCollisionPolicy,
+    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule,
+    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -71,7 +71,13 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::TraversalControl(_) => true,
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
-        | CompilerType::List(endpoint) => type_uses_extended_debug(endpoint),
+        | CompilerType::List(endpoint)
+        | CompilerType::Set(endpoint)
+        | CompilerType::Bag(endpoint) => type_uses_extended_debug(endpoint),
+        CompilerType::Array { element, .. } => type_uses_extended_debug(element),
+        CompilerType::Map { key, value } => {
+            type_uses_extended_debug(key) || type_uses_extended_debug(value)
+        }
         CompilerType::Generator(generator) => {
             type_uses_extended_debug(&generator.yield_type)
                 || type_uses_extended_debug(&generator.resume_type)
@@ -280,6 +286,10 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ListUnzip(value)
         | CompilerExpressionKind::ListEntries(value)
         | CompilerExpressionKind::ListCollectString(value)
+        | CompilerExpressionKind::ContainerCollect { source: value, .. }
+        | CompilerExpressionKind::ContainerEntryCount(value)
+        | CompilerExpressionKind::ContainerEmpty(value)
+        | CompilerExpressionKind::ArrayAt { array: value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
@@ -334,6 +344,18 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             ..
         }
         | CompilerExpressionKind::ListConcat { left, right }
+        | CompilerExpressionKind::SetContains {
+            set: left,
+            value: right,
+        }
+        | CompilerExpressionKind::BagMultiplicity {
+            bag: left,
+            value: right,
+        }
+        | CompilerExpressionKind::MapLookup {
+            mapping: left,
+            key: right,
+        }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
             denominator: right,
@@ -446,6 +468,7 @@ enum ListIntRuntimeFragment {
     Core,
     RangeSelection,
     Sequence,
+    FundamentalContainers,
     NestedIntStringCore,
 }
 
@@ -544,6 +567,13 @@ impl<'a> Generator<'a> {
         }
         if self
             .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::FundamentalContainers)
+        {
+            module.push_str(FUNDAMENTAL_CONTAINERS_RUNTIME);
+            module.push('\n');
+        }
+        if self
+            .list_int_runtime_fragments
             .contains(&ListIntRuntimeFragment::NestedIntStringCore)
         {
             module.push_str(LIST_NESTED_INT_STRING_CORE_RUNTIME);
@@ -564,6 +594,7 @@ impl<'a> Generator<'a> {
         module
     }
 
+    #[allow(clippy::too_many_lines)] // Keep one exhaustive source-result to LLVM return mapping.
     fn emit_function(&mut self, function: &CompilerFunction) {
         let return_type = llvm_type(&function.result_type);
         let parameter_types = function
@@ -611,7 +642,8 @@ impl<'a> Generator<'a> {
             | LlValue::Result { value, .. }
             | LlValue::Optional { value, .. }
             | LlValue::TraversalControl { value, .. }
-            | LlValue::List { value, .. } => {
+            | LlValue::List { value, .. }
+            | LlValue::Container { value, .. } => {
                 body.terminator(&format!("ret ptr {value}"), location);
             }
             LlValue::Comparison(value)
@@ -1068,6 +1100,7 @@ impl<'a> Generator<'a> {
         ));
     }
 
+    #[allow(clippy::too_many_lines)] // Keep binding/debug policy ordered beside source statements.
     fn emit_block(
         &mut self,
         block: &CompilerBlock,
@@ -1092,6 +1125,28 @@ impl<'a> Generator<'a> {
                         };
                         self.emit_aggregate_debug_shadow(
                             machine_value,
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
+                    } else if matches!(
+                        binding.value.value_type,
+                        CompilerType::Array { .. }
+                            | CompilerType::Set(_)
+                            | CompilerType::Bag(_)
+                            | CompilerType::Map { .. }
+                    ) {
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        self.emit_aggregate_debug_shadow(
+                            value.container_pointer(),
                             &binding.value.value_type,
                             variable,
                             location,
@@ -1747,6 +1802,7 @@ impl<'a> Generator<'a> {
                         if matches!(
                             fields.as_slice(),
                             [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                                | [CompilerType::String, CompilerType::Int]
                         ) =>
                     {
                         (24, 16)
@@ -1775,13 +1831,17 @@ impl<'a> Generator<'a> {
                         if matches!(
                             field_types.as_slice(),
                             [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                                | [CompilerType::String, CompilerType::Int]
                         ) =>
                     {
                         let [left, right] = values.as_slice() else {
                             unreachable!("checked List pair value retains two fields")
                         };
                         body.effect(
-                            &format!("store ptr {}, ptr {node}, align 8", left.integer()),
+                            &format!(
+                                "store ptr {}, ptr {node}, align 8",
+                                left.int_or_string_pointer()
+                            ),
                             expression.span,
                             &mut self.debug,
                         );
@@ -1793,11 +1853,7 @@ impl<'a> Generator<'a> {
                         body.effect(
                             &format!(
                                 "store ptr {}, ptr {right_address}, align 8",
-                                match &field_types[1] {
-                                    CompilerType::Int => right.integer(),
-                                    CompilerType::String => right.string(),
-                                    _ => unreachable!(),
-                                }
+                                right.int_or_string_pointer()
                             ),
                             expression.span,
                             &mut self.debug,
@@ -2415,6 +2471,131 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::ContainerCollect {
+                source,
+                kind,
+                map_policy,
+            } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let source = self.emit_expression(source, body, environment);
+                let call = match kind {
+                    CompilerContainerKind::Array => format!(
+                        "call ptr @topal.runtime.container.array.int.collect(ptr {})",
+                        source.list_pointer()
+                    ),
+                    CompilerContainerKind::Set => format!(
+                        "call ptr @topal.runtime.container.set.int.collect(ptr {})",
+                        source.list_pointer()
+                    ),
+                    CompilerContainerKind::Bag => format!(
+                        "call ptr @topal.runtime.container.bag.int.collect(ptr {})",
+                        source.list_pointer()
+                    ),
+                    CompilerContainerKind::Map => {
+                        let keep_last =
+                            matches!(map_policy, Some(CompilerMapCollisionPolicy::KeepLast));
+                        format!(
+                            "call ptr @topal.runtime.container.map.string-int.collect(ptr {}, i1 {keep_last})",
+                            source.list_pointer()
+                        )
+                    }
+                };
+                LlValue::Container {
+                    value: body.instruction(&call, expression.span, &mut self.debug),
+                    value_type: expression.value_type.clone(),
+                }
+            }
+            CompilerExpressionKind::ContainerEntryCount(container) => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let container = self.emit_expression(container, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.container.entry.count(ptr {})",
+                        container.container_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::ContainerEmpty(container) => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let container = self.emit_expression(container, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.container.empty(ptr {})",
+                        container.container_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::ArrayAt { array, index } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let array = self.emit_expression(array, body, environment);
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.container.array.int.at(ptr {}, i64 {index})",
+                            array.container_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::SetContains { set, value } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let set = self.emit_expression(set, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.container.set.int.contains(ptr {}, ptr {})",
+                        set.container_pointer(),
+                        value.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::BagMultiplicity { bag, value } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let bag = self.emit_expression(bag, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.container.bag.int.multiplicity(ptr {}, ptr {})",
+                        bag.container_pointer(),
+                        value.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
+            CompilerExpressionKind::MapLookup { mapping, key } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::FundamentalContainers);
+                let mapping = self.emit_expression(mapping, body, environment);
+                let key = self.emit_expression(key, body, environment);
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.container.map.string-int.lookup(ptr {}, ptr {})",
+                            mapping.container_pointer(),
+                            key.string()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: CompilerType::Int,
+                }
+            }
             CompilerExpressionKind::ListFold {
                 list,
                 initial,
@@ -2778,6 +2959,17 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         element: element.as_ref().clone(),
+                    },
+                    CompilerType::Array { .. }
+                    | CompilerType::Set(_)
+                    | CompilerType::Bag(_)
+                    | CompilerType::Map { .. } => LlValue::Container {
+                        value: body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        value_type: expression.value_type.clone(),
                     },
                     CompilerType::Tuple(ref field_types) => {
                         let aggregate_type = llvm_value_type(&expression.value_type);
@@ -6026,6 +6218,17 @@ impl<'a> Generator<'a> {
                     element,
                 }
             }
+            LlValue::Container { value_type, .. } => {
+                let value_type = value_type.clone();
+                LlValue::Container {
+                    value: body.instruction(
+                        &format!("phi ptr {}", incoming(LlValue::container_pointer)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    value_type,
+                }
+            }
             LlValue::Sum { sum, .. } => {
                 let sum = sum.clone();
                 let tags = branches
@@ -6253,6 +6456,9 @@ impl<'a> Generator<'a> {
             LlValue::List { value, element } => {
                 self.emit_print_list(value, element, body, span);
             }
+            LlValue::Container { value, value_type } => {
+                self.emit_print_container(value, value_type, body, span);
+            }
             LlValue::String(value) => {
                 body.effect(
                     &format!("call void @topal.runtime.string.print(ptr {value})"),
@@ -6323,6 +6529,316 @@ impl<'a> Generator<'a> {
                 self.emit_print_record(fields, order, body, span);
             }
         }
+    }
+
+    fn emit_print_container(
+        &mut self,
+        container: &str,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        match value_type {
+            CompilerType::Array { element, .. } => {
+                let entries = self.emit_container_entries(container, 8, body, span);
+                self.emit_print_sequence_container("Array", &entries, element, body, span);
+            }
+            CompilerType::Set(element) => {
+                let entries = self.emit_container_entries(container, 8, body, span);
+                self.emit_print_sequence_container("Set", &entries, element, body, span);
+            }
+            CompilerType::Bag(element) if element.as_ref() == &CompilerType::Int => {
+                let entries = self.emit_container_entries(container, 16, body, span);
+                self.emit_print_bag(&entries, body, span);
+            }
+            CompilerType::Map {
+                key,
+                value: map_value,
+            } if key.as_ref() == &CompilerType::String
+                && map_value.as_ref() == &CompilerType::Int =>
+            {
+                let entries = self.emit_container_entries(container, 8, body, span);
+                self.emit_print_map(&entries, body, span);
+            }
+            _ => unreachable!("checked fundamental container has an admitted printer"),
+        }
+    }
+
+    fn emit_container_entries(
+        &mut self,
+        container: &str,
+        offset: usize,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        let address = body.instruction(
+            &format!("getelementptr i8, ptr {container}, i64 {offset}"),
+            span,
+            &mut self.debug,
+        );
+        body.instruction(
+            &format!("load ptr, ptr {address}, align 8"),
+            span,
+            &mut self.debug,
+        )
+    }
+
+    fn emit_print_sequence_container(
+        &mut self,
+        name: &str,
+        entries: &str,
+        element: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
+        debug_assert!(matches!(element, CompilerType::Int | CompilerType::String));
+        self.emit_write_literal(&format!("{name} ("), body, span);
+        let initial = body.current_block.clone();
+        let loop_label = body.label("print.container.loop");
+        let entry = body.label("print.container.entry");
+        let first = body.label("print.container.first");
+        let separator = body.label("print.container.separator");
+        let render = body.label("print.container.render");
+        let advance = body.label("print.container.advance");
+        let done = body.label("print.container.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let next_name = format!("%{render}.next");
+        let current = body.instruction(
+            &format!("phi ptr [{entries}, %{initial}], [{next_name}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let is_first = body.instruction(
+            &format!("phi i1 [true, %{initial}], [false, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{entry}"),
+            location,
+        );
+
+        body.start_block(&entry);
+        body.terminator(
+            &format!("br i1 {is_first}, label %{first}, label %{separator}"),
+            location,
+        );
+        body.start_block(&first);
+        body.terminator(&format!("br label %{render}"), location);
+        body.start_block(&separator);
+        self.emit_write_literal(", ", body, span);
+        body.terminator(&format!("br label %{render}"), location);
+
+        body.start_block(&render);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let value = match element {
+            CompilerType::Int => LlValue::Int(value),
+            CompilerType::String => LlValue::String(value),
+            _ => unreachable!("checked sequence container element is supported"),
+        };
+        self.emit_print(&value, body, span);
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_name,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&advance);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        self.emit_write_literal(")", body, span);
+    }
+
+    fn emit_print_bag(&mut self, entries: &str, body: &mut FunctionBody, span: Span) {
+        self.emit_write_literal("Bag (", body, span);
+        let initial = body.current_block.clone();
+        let loop_label = body.label("print.bag.loop");
+        let entry = body.label("print.bag.entry");
+        let first = body.label("print.bag.first");
+        let separator = body.label("print.bag.separator");
+        let render = body.label("print.bag.render");
+        let advance = body.label("print.bag.advance");
+        let done = body.label("print.bag.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let next_name = format!("%{render}.next");
+        let current = body.instruction(
+            &format!("phi ptr [{entries}, %{initial}], [{next_name}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let is_first = body.instruction(
+            &format!("phi i1 [true, %{initial}], [false, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{entry}"),
+            location,
+        );
+        body.start_block(&entry);
+        body.terminator(
+            &format!("br i1 {is_first}, label %{first}, label %{separator}"),
+            location,
+        );
+        body.start_block(&first);
+        body.terminator(&format!("br label %{render}"), location);
+        body.start_block(&separator);
+        self.emit_write_literal(", ", body, span);
+        body.terminator(&format!("br label %{render}"), location);
+
+        body.start_block(&render);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let count_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        let count = body.instruction(
+            &format!("load i64, ptr {count_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let count = body.instruction(
+            &format!("call ptr @topal.runtime.int.from.u64(i64 {count})"),
+            span,
+            &mut self.debug,
+        );
+        self.emit_print(
+            &LlValue::Tuple(vec![LlValue::Int(value), LlValue::Int(count)]),
+            body,
+            span,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 16"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_name,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&advance);
+        body.terminator(&format!("br label %{loop_label}"), location);
+        body.start_block(&done);
+        self.emit_write_literal(")", body, span);
+    }
+
+    fn emit_print_map(&mut self, entries: &str, body: &mut FunctionBody, span: Span) {
+        self.emit_write_literal("Map (", body, span);
+        let initial = body.current_block.clone();
+        let loop_label = body.label("print.map.loop");
+        let entry = body.label("print.map.entry");
+        let first = body.label("print.map.first");
+        let separator = body.label("print.map.separator");
+        let render = body.label("print.map.render");
+        let advance = body.label("print.map.advance");
+        let done = body.label("print.map.done");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let next_name = format!("%{render}.next");
+        let current = body.instruction(
+            &format!("phi ptr [{entries}, %{initial}], [{next_name}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let is_first = body.instruction(
+            &format!("phi i1 [true, %{initial}], [false, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{entry}"),
+            location,
+        );
+        body.start_block(&entry);
+        body.terminator(
+            &format!("br i1 {is_first}, label %{first}, label %{separator}"),
+            location,
+        );
+        body.start_block(&first);
+        body.terminator(&format!("br label %{render}"), location);
+        body.start_block(&separator);
+        self.emit_write_literal(", ", body, span);
+        body.terminator(&format!("br label %{render}"), location);
+
+        body.start_block(&render);
+        let key = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let value_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        let value = body.instruction(
+            &format!("load ptr, ptr {value_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        self.emit_print(
+            &LlValue::Tuple(vec![LlValue::String(key), LlValue::Int(value)]),
+            body,
+            span,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 16"),
+            span,
+            &mut self.debug,
+        );
+        body.named_instruction(
+            &next_name,
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{advance}"), location);
+        body.start_block(&advance);
+        body.terminator(&format!("br label %{loop_label}"), location);
+        body.start_block(&done);
+        self.emit_write_literal(")", body, span);
     }
 
     fn emit_print_record(
@@ -6625,6 +7141,7 @@ impl<'a> Generator<'a> {
                 if matches!(
                     fields.as_slice(),
                     [CompilerType::Int, CompilerType::Int | CompilerType::String,]
+                        | [CompilerType::String, CompilerType::Int]
                 ) =>
             {
                 let left = body.instruction(
@@ -6644,7 +7161,11 @@ impl<'a> Generator<'a> {
                 );
                 (
                     LlValue::Tuple(vec![
-                        LlValue::Int(left),
+                        match &fields[0] {
+                            CompilerType::Int => LlValue::Int(left),
+                            CompilerType::String => LlValue::String(left),
+                            _ => unreachable!(),
+                        },
                         match &fields[1] {
                             CompilerType::Int => LlValue::Int(right),
                             CompilerType::String => LlValue::String(right),
@@ -7377,6 +7898,10 @@ enum LlValue {
         value: String,
         element: CompilerType,
     },
+    Container {
+        value: String,
+        value_type: CompilerType,
+    },
     String(String),
     Tuple(Vec<Self>),
     Record {
@@ -7499,6 +8024,13 @@ impl LlValue {
         value
     }
 
+    fn int_or_string_pointer(&self) -> &str {
+        match self {
+            Self::Int(value) | Self::String(value) => value,
+            _ => unreachable!("checked List pair field is Int or String"),
+        }
+    }
+
     fn range(&self) -> (&str, &CompilerType) {
         let Self::Range { value, endpoint } = self else {
             unreachable!("checked value is Range")
@@ -7542,6 +8074,13 @@ impl LlValue {
         value
     }
 
+    fn container_pointer(&self) -> &str {
+        let Self::Container { value, .. } = self else {
+            unreachable!("checked value is a fundamental container")
+        };
+        value
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
@@ -7562,7 +8101,8 @@ impl LlValue {
             | Self::Result { value, .. }
             | Self::Optional { value, .. }
             | Self::TraversalControl { value, .. }
-            | Self::List { value, .. } => {
+            | Self::List { value, .. }
+            | Self::Container { value, .. } => {
                 format!("ptr {value}")
             }
             Self::Comparison(value)
@@ -7627,6 +8167,13 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::List(element) => LlValue::List {
             value: "null".into(),
             element: element.as_ref().clone(),
+        },
+        value_type @ (CompilerType::Array { .. }
+        | CompilerType::Set(_)
+        | CompilerType::Bag(_)
+        | CompilerType::Map { .. }) => LlValue::Container {
+            value: "null".into(),
+            value_type: value_type.clone(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
         CompilerType::Refined { base, .. } => zero_machine_value(base),
@@ -7841,7 +8388,8 @@ impl FunctionBody {
             | LlValue::Result { value, .. }
             | LlValue::Optional { value, .. }
             | LlValue::TraversalControl { value, .. }
-            | LlValue::List { value, .. } => {
+            | LlValue::List { value, .. }
+            | LlValue::Container { value, .. } => {
                 format!("ptr {value}")
             }
             LlValue::Comparison(value)
@@ -7929,6 +8477,7 @@ struct DebugInfo {
     enum_types: BTreeMap<String, usize>,
     modular_types: Vec<(CompilerModularType, usize)>,
     list_types: Vec<(CompilerType, usize)>,
+    container_types: Vec<(CompilerType, usize)>,
     refined_types: Vec<(CompilerType, usize)>,
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
@@ -7994,6 +8543,7 @@ impl DebugInfo {
             enum_types: BTreeMap::new(),
             modular_types: Vec::new(),
             list_types: Vec::new(),
+            container_types: Vec::new(),
             refined_types: Vec::new(),
             tuple_types: Vec::new(),
             record_types: Vec::new(),
@@ -8424,6 +8974,7 @@ impl DebugInfo {
         id
     }
 
+    #[allow(clippy::too_many_lines)] // Keep the exhaustive semantic-type to DWARF mapping visible.
     fn type_id(&mut self, value_type: &CompilerType) -> usize {
         match value_type {
             CompilerType::Unit => self.unit_type,
@@ -8518,6 +9069,10 @@ impl DebugInfo {
             CompilerType::Optional(payload) => self.dynamic_optional_type(payload),
             CompilerType::TraversalControl(payload) => self.traversal_control_type(payload),
             CompilerType::List(element) => self.list_type(element),
+            CompilerType::Array { .. }
+            | CompilerType::Set(_)
+            | CompilerType::Bag(_)
+            | CompilerType::Map { .. } => self.container_type(value_type),
             CompilerType::Refined { constraint, base } => self.refined_type(constraint, base),
             CompilerType::Tuple(fields) => self.tuple_type(fields),
             CompilerType::Record(fields) => self.record_type(fields),
@@ -8708,6 +9263,62 @@ impl DebugInfo {
             self.file
         ));
         self.list_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn container_type(&mut self, value_type: &CompilerType) -> usize {
+        if let Some((_, type_id)) = self
+            .container_types
+            .iter()
+            .find(|(known, _)| known == value_type)
+        {
+            return *type_id;
+        }
+        let entry_count = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"entry_count\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let opaque_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{}, size: 64, align: 64)",
+            self.unsigned64_type
+        ));
+        let mut members = vec![entry_count];
+        let (entries_offset, storage_size) = if matches!(value_type, CompilerType::Bag(_)) {
+            let distinct_count = self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_member, name: \"distinct_count\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+                self.file, self.unsigned64_type
+            ));
+            members.push(distinct_count);
+            (128, 192)
+        } else {
+            (64, 128)
+        };
+        let entries = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"entries\", file: !{}, baseType: !{opaque_pointer}, size: 64, align: 64, offset: {entries_offset})",
+            self.file
+        ));
+        members.push(entries);
+        let elements = self.node(format!(
+            "!{{{}}}",
+            members
+                .iter()
+                .map(|member| format!("!{member}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalContainer.{}\", file: !{}, size: {storage_size}, align: 64, elements: !{elements})",
+            llvm_string(&value_type.name()), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&value_type.name()),
+            self.file
+        ));
+        self.container_types.push((value_type.clone(), type_id));
         type_id
     }
 
@@ -9145,6 +9756,10 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
         | CompilerType::List(_)
+        | CompilerType::Array { .. }
+        | CompilerType::Set(_)
+        | CompilerType::Bag(_)
+        | CompilerType::Map { .. }
         | CompilerType::Character
         | CompilerType::String => TargetValueLayout {
             size: 64,
@@ -9267,7 +9882,11 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Result(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
-        | CompilerType::List(_) => "ptr".into(),
+        | CompilerType::List(_)
+        | CompilerType::Array { .. }
+        | CompilerType::Set(_)
+        | CompilerType::Bag(_)
+        | CompilerType::Map { .. } => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -9385,6 +10004,13 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             element: element.as_ref().clone(),
         },
+        value_type @ (CompilerType::Array { .. }
+        | CompilerType::Set(_)
+        | CompilerType::Bag(_)
+        | CompilerType::Map { .. }) => LlValue::Container {
+            value,
+            value_type: value_type.clone(),
+        },
         CompilerType::Refined { base, .. } => machine_value(base, value),
         CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {
             unreachable!("aggregate machine values require structural lowering")
@@ -9417,6 +10043,7 @@ const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll
 const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
 const LIST_INT_RANGE_SELECTION_RUNTIME: &str = include_str!("runtime/list_int_range_selection.ll");
 const LIST_INT_SEQUENCE_RUNTIME: &str = include_str!("runtime/list_int_sequence.ll");
+const FUNDAMENTAL_CONTAINERS_RUNTIME: &str = include_str!("runtime/fundamental_containers.ll");
 const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
     include_str!("runtime/list_nested_int_string_core.ll");
 
@@ -9593,6 +10220,47 @@ mod tests {
         assert!(llvm.contains("xor i1"));
         assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
         assert!(llvm.contains("DW_TAG_typedef, name: \"List String\""));
+        assert!(!llvm.contains("declare i8* @malloc"));
+        assert!(!llvm.contains("declare i32 @printf"));
+    }
+
+    #[test]
+    fn emits_fundamental_containers_as_private_o0_collections() {
+        // TOPAL-ARRAY-COLLECT-001, TOPAL-SET-COLLECT-001,
+        // TOPAL-BAG-COLLECT-001, TOPAL-MAP-COLLECT-001,
+        // TOPAL-COLLECTION-ENTRY-COUNT-001,
+        // TOPAL-COLLECTION-EMPTY-PREDICATE-001,
+        // TOPAL-ARRAY-GET-CHECKED-001, TOPAL-MAP-LOOKUP-001,
+        // TOPAL-SET-CONTAINS-001, TOPAL-BAG-MULTIPLICITY-001,
+        // TOPAL-COMPILER-FUNDAMENTAL-CONTAINERS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/fundamental-containers.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "fundamental-containers.t").emit();
+
+        for helper in [
+            "container.array.int.collect",
+            "container.set.int.collect",
+            "container.bag.int.collect",
+            "container.map.string-int.collect",
+            "container.entry.count",
+            "container.empty",
+            "container.array.int.at",
+            "container.set.int.contains",
+            "container.bag.int.multiplicity",
+            "container.map.string-int.lookup",
+        ] {
+            assert!(llvm.contains(helper), "missing {helper}");
+        }
+        for value_type in ["Array 3 Int", "Set Int", "Bag Int", "Map (String, Int)"] {
+            assert!(
+                llvm.contains(&format!("DW_TAG_typedef, name: \"{value_type}\"")),
+                "missing debug type {value_type}"
+            );
+        }
+        assert!(llvm.contains("%topal.ContainerSequenceHeader = type { i64, ptr }"));
+        assert!(llvm.contains("%topal.ContainerBagHeader = type { i64, i64, ptr }"));
         assert!(!llvm.contains("declare i8* @malloc"));
         assert!(!llvm.contains("declare i32 @printf"));
     }

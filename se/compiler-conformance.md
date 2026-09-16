@@ -97,6 +97,7 @@ evidence.
 | 5ao | exact absent recursive `Optional (Int, String)` input/yield, tag equality action, resumption, and absent final with full-classifier debugging | complete |
 | 5ap | exact Boolean input/yield/action and post-resume Boolean decision selecting a distinct final String with branch and value debugging | complete |
 | 5aq | exact recursive nominal `(Optional Choice, Result (Choice, ArithmeticErrorCode))` input/yield, guarded structural action, resumption, and distinct final alternatives with complete recursive debugging | complete |
+| 5az | closed fundamental Array/Set/Bag/Map construction, explicit Map collision policy, counts and checked queries, unpublished mutable builders, private immutable publication, and semantic debugging | complete |
 | 5ay | complete closed ordered `List Int` sequence vocabulary, contextual `List String`, checked positions, explicit zip policies, ordered traversal/removal/collection, private immutable lowering, and semantic debugging | complete |
 | 5ax | exact `Generator List Int Unit List Int` construction, function-result and function-parameter ownership transfer, count-before-append ordering, private target-derived calls, and complete recursive List debugging | complete |
 | 5aw | exact `Generator Optional (Int, String) Unit Result ((Int, String), ArithmeticErrorCode)` construction, function-result and function-parameter ownership transfer, tag-gated field action, private target-derived calls, and complete recursive-value debugging | complete |

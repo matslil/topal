@@ -101,6 +101,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/finite-exact-division-and-comparison.t",
     "examples/language/finite-range-observation.t",
     "examples/language/forward-function-declarations.t",
+    "examples/language/fundamental-containers.t",
     "examples/language/function-classifier.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-effect-bound.t",

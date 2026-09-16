@@ -10,15 +10,16 @@ mod trace;
 
 pub use compiler_model::{
     CompilerBinary, CompilerBinding, CompilerBlock, CompilerCapability, CompilerComparisonRule,
-    CompilerConstraint, CompilerEffectRow, CompilerEnumRule, CompilerEnumType,
-    CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerFunctionView, CompilerGeneratorCloseHandler,
-    CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield, CompilerIdentity,
-    CompilerInterface, CompilerInterfaceImplementation, CompilerInterfaceOperation,
-    CompilerInterfaceOperationEvidence, CompilerLanguageContext, CompilerListIndexOperation,
-    CompilerListZipOperation, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType,
-    CompilerTypeView, CompilerTypeViewForm, CompilerValidation, IntRange, analyze_for_compiler,
+    CompilerConstraint, CompilerContainerKind, CompilerEffectRow, CompilerEnumRule,
+    CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField, CompilerExpression,
+    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerFunctionView,
+    CompilerGeneratorCloseHandler, CompilerGeneratorLocal, CompilerGeneratorType,
+    CompilerGeneratorYield, CompilerIdentity, CompilerInterface, CompilerInterfaceImplementation,
+    CompilerInterfaceOperation, CompilerInterfaceOperationEvidence, CompilerLanguageContext,
+    CompilerListIndexOperation, CompilerListZipOperation, CompilerMapCollisionPolicy,
+    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement,
+    CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType, CompilerTypeView,
+    CompilerTypeViewForm, CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

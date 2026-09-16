@@ -9936,3 +9936,141 @@ fn complete_list_sequence_operations_are_freestanding_and_debuggable() {
         assert!(text.contains(expected), "missing {expected:?}: {text}");
     }
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One boundary checks all four fundamental containers and debugger views.
+fn fundamental_containers_are_freestanding_shared_and_debuggable() {
+    // TOPAL-ARRAY-COLLECT-001, TOPAL-SET-COLLECT-001,
+    // TOPAL-BAG-COLLECT-001, TOPAL-MAP-COLLECT-001,
+    // TOPAL-COLLECTION-ENTRY-COUNT-001,
+    // TOPAL-COLLECTION-EMPTY-PREDICATE-001,
+    // TOPAL-ARRAY-GET-CHECKED-001, TOPAL-MAP-LOOKUP-001,
+    // TOPAL-SET-CONTAINS-001, TOPAL-BAG-MULTIPLICITY-001,
+    // TOPAL-COMPILER-FUNDAMENTAL-CONTAINERS-001,
+    // TOPAL-COMPILER-ABI-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-fundamental-containers");
+    let executable = directory.join("application");
+    let shared = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/fundamental-containers.t");
+    let source_text = fs::read_to_string(&shared).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        shared.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let policies_source = directory.join("map-collision-policies.t");
+    let policies_executable = directory.join("map-collision-policies");
+    let policies_text = "use language (version is v0.1)\npairs : List (String, Int) is Entry ((\"Ada\", 1), Entry ((\"Ada\", 2), Empty))\nunique : List (String, Int) is Entry ((\"Ada\", 1), Entry ((\"Lin\", 2), Empty))\n(collect-map pairs resolving keep-first, collect-map pairs resolving keep-last, collect-map unique resolving reject)\n";
+    fs::write(&policies_source, policies_text).unwrap();
+    let policies_expected = Session::new()
+        .evaluate_source_file(policies_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        policies_executable.to_str().unwrap(),
+        policies_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&policies_executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, policies_expected.as_bytes());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break fundamental-containers.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "whatis pairs",
+            "-ex",
+            "print pairs",
+            "-ex",
+            "whatis array",
+            "-ex",
+            "print array",
+            "-ex",
+            "whatis members",
+            "-ex",
+            "print members",
+            "-ex",
+            "whatis occurrences",
+            "-ex",
+            "print occurrences",
+            "-ex",
+            "whatis scores",
+            "-ex",
+            "print scores",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List(String, Int)",
+        "$1 = Entry ( (\"Ada\", 10), Entry ( (\"Lin\", 8), Entry ( (\"Ada\", 11), Empty ) ) )",
+        "type = Array 3 Int",
+        "$2 = Array (2, 1, 2)",
+        "type = Set Int",
+        "$3 = Set (2, 1)",
+        "type = Bag Int",
+        "$4 = Bag ((2, 2), (1, 1))",
+        "type = Map(String, Int)",
+        "$5 = Map ((\"Ada\", 11), (\"Lin\", 8))",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}

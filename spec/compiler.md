@@ -3343,6 +3343,49 @@ types, pair/record shapes, count evidence, operation and predicate semantics,
 ordering, fallibility, allocation effects, ownership, native representation,
 and target adapters without publishing private node offsets or helper names.
 
+### TOPAL-COMPILER-FUNDAMENTAL-CONTAINERS-001 — Closed fundamental containers
+
+The compiler SHALL admit the complete shared `fundamental-containers.t`
+regression. It SHALL construct `Array 3 Int`, `Set Int`, and `Bag Int` from the
+exact finite source `List Int`, and `Map (String, Int)` from the exact finite
+pair List under the stated `keep-last` policy. The checked operation family
+SHALL also support `reject` and `keep-first`. Array SHALL preserve List order
+and extent; Set SHALL eliminate equal entries; Bag SHALL retain total count and
+positive multiplicity for each distinct entry; Map SHALL resolve equal keys by
+the explicit policy. Set, Bag, and Map physical traversal order SHALL NOT create
+a source-language ordering guarantee.
+
+The checked model SHALL preserve container kind, element/key/value classifiers,
+exact Array extent, and Map collision policy. A duplicate exact String key with
+`reject` SHALL diagnose `E-MAP-KEY-COLLISION` before LLVM emission. An admitted
+Array index SHALL be a closed nonnegative exact position. Generic `entry-count`
+and `empty?`, `array-at?`, `set-contains?`, `bag-multiplicity`, and `map-lookup`
+SHALL produce the values required by their container rules. Every source
+operand SHALL be evaluated once in source order, and correctness SHALL remain
+independent of optimization.
+
+On Linux x86-64, each value SHALL use a module-private pointer-backed header.
+Array MAY retain its immutable source List. Set, Bag, and Map construction MAY
+mutate fresh unreachable nodes only until the result is complete; no published
+node SHALL be mutated. Helpers SHALL call the canonical exact Int comparator,
+String equality, Optional constructors, and Topal Linux mapping allocator.
+LLVM SHALL determine physical target placement from the qualified triple and
+data layout. No representation in this rule SHALL become a public calling
+convention or compiled-library ABI.
+
+DWARF and the bundled GDB renderer SHALL expose the semantic container types,
+counts, entries, multiplicities, keys, and values through bounded validating
+inspection. This rule SHALL add no undefined symbol, needed library, dynamic
+relocation, foreign allocator, host container, C/C++ runtime, other-language
+standard library, stable private layout, or native ABI revision. Dynamic Array
+positions, dynamically discovered `reject` collisions, other element/key/value
+classifiers, general function or library boundaries, persistence,
+serialization, and reclamation beyond process lifetime remain deferred. Future
+library metadata SHALL identify container kind, classifiers, exact extent,
+equality/collision policy, ordering, query fallibility, allocation effects,
+ownership, native representation, and target adapters without publishing
+private offsets or helper symbols.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed
