@@ -2500,6 +2500,198 @@ fn exact_int_value_generator_action(parameter: &CompilerParameter, body: &Compil
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn exact_nat_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Nat-value custom generator outside one initial yield and final increment",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Nat-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(result_value),
+        Expression::Callable {
+            kind: CallableKind::Plus,
+            ..
+        },
+        Expression::Integer(increment),
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "Nat-value custom generator final value outside initial + 1",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*result_value) != source.slice(parameter.name)
+        || parse_integer(source.slice(*increment)).as_ref() != Some(&BigInt::from(1))
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Nat-value custom generator outside yield initial followed by initial + 1",
+        ));
+    }
+    let initial = CompilerExpression {
+        kind: CompilerExpressionKind::Local(source.slice(parameter.name).to_owned()),
+        value_type: CompilerType::Nat,
+        int_range: None,
+        rational_value: None,
+        span: *result_value,
+    };
+    let one = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(1)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(1))),
+        rational_value: None,
+        span: *increment,
+    };
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                left: Box::new(initial),
+                right: Box::new(one),
+            },
+            value_type: CompilerType::Nat,
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_nat_value_generator_action(parameter: &CompilerParameter, body: &CompilerBlock) -> bool {
+    !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    left,
+                    right,
+                },
+                ..
+            })] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+                && matches!(right.kind, CompilerExpressionKind::Int(ref value)
+                    if value == &BigInt::from(1))
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
+fn exact_nat_value_generator_foreach_body(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    statements: &[Statement],
+) -> Result<CompilerBlock, Diagnostic> {
+    let [
+        Statement::Discard {
+            span,
+            value:
+                Expression::Application {
+                    items,
+                    span: expression_span,
+                },
+        },
+    ] = statements
+    else {
+        return Err(unsupported(
+            source,
+            parameter.span,
+            "Nat-value custom generator foreach action outside discarded value + 1",
+        ));
+    };
+    let [
+        Expression::Identifier(value),
+        Expression::Callable {
+            kind: CallableKind::Plus,
+            ..
+        },
+        Expression::Integer(increment),
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "Nat-value custom generator foreach action outside discarded value + 1",
+        ));
+    };
+    if parameter.discarded
+        || source.slice(*value) != parameter.name
+        || parse_integer(source.slice(*increment)).as_ref() != Some(&BigInt::from(1))
+    {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "Nat-value custom generator foreach action outside discarded value + 1",
+        ));
+    }
+    let left = CompilerExpression {
+        kind: CompilerExpressionKind::Local(parameter.name.clone()),
+        value_type: CompilerType::Nat,
+        int_range: None,
+        rational_value: None,
+        span: *value,
+    };
+    let right = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(1)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(1))),
+        rational_value: None,
+        span: *increment,
+    };
+    Ok(CompilerBlock {
+        statements: vec![CompilerStatement::Discard(CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                left: Box::new(left),
+                right: Box::new(right),
+            },
+            value_type: CompilerType::Nat,
+            int_range: None,
+            rational_value: None,
+            span: *expression_span,
+        })],
+        result: unit_expression(*span),
+    })
+}
+
 fn exact_one_third_rational_expression(
     source: &SourceText,
     expression: &Expression,
@@ -3070,6 +3262,7 @@ fn collect_character_generators(
             "Boolean" => CompilerType::Boolean,
             "Character" => CompilerType::Character,
             "Int" => CompilerType::Int,
+            "Nat" => CompilerType::Nat,
             "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
             "RangeInt" => CompilerType::Range(Box::new(CompilerType::Int)),
             "Rational" => CompilerType::Rational,
@@ -3079,7 +3272,7 @@ fn collect_character_generators(
                 return Err(unsupported(
                     source,
                     *span,
-                    "custom generator outside the admitted Boolean, Character, Int, Optional Int, Range Int, Rational, String, or Unit initial-input subset",
+                    "custom generator outside the admitted Boolean, Character, Int, Nat, Optional Int, Range Int, Rational, String, or Unit initial-input subset",
                 ));
             }
         };
@@ -3105,6 +3298,44 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Nat
+            && source.slice(*yielded) == "Nat"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "Nat"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_nat_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4871,6 +5102,15 @@ impl Analyzer {
                     "Int-value custom generator foreach action outside discarded value + 1",
                 ));
             }
+            if initial_parameter.value_type == CompilerType::Nat
+                && !exact_nat_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Nat-value custom generator foreach action outside discarded value + 1",
+                ));
+            }
             if initial_parameter.value_type == CompilerType::Rational
                 && !exact_rational_value_generator_action(&parameter, &body)
             {
@@ -5120,6 +5360,11 @@ impl Analyzer {
             int_range: None,
             span: binding,
         };
+        if value_type == CompilerType::Nat {
+            let body =
+                exact_nat_value_generator_foreach_body(&self.source, &parameter, statements)?;
+            return Ok((parameter, body));
+        }
         let mut body_environment = BTreeMap::new();
         if !parameter.discarded {
             body_environment.insert(
@@ -17253,6 +17498,134 @@ mod tests {
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Int\n  _ is yield initial\n  initial + 2\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 1\n",
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Int\n  _ is yield initial\n  initial + 1\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 2\n",
             "use language (version is v0.1)\nnext is generator (initial : Int)\n  yields Int\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next 41\ngenerated foreach { value }\n  _ is value + 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Accepted graph and exact rejection matrix stay together.
+    fn models_nonnegative_nats_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-NUM-NAT-CONSTRUCT-001, TOPAL-COMPILER-GENERATOR-NAT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-nat-values.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "next"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::Nat
+                && matches!(initial.kind, CompilerExpressionKind::IntToNat(ref value)
+                    if matches!(value.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(7)))
+                && initial.value_type == CompilerType::Nat
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    ref left,
+                    ref right,
+                } if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                    && left.value_type == CompilerType::Nat
+                    && matches!(right.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(1)))
+                && result.value_type == CompilerType::Nat
+                && *generator_type.yield_type == CompilerType::Nat
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::Nat
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Nat,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && parameter.value_type == CompilerType::Nat
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Add,
+                            left,
+                            right,
+                        },
+                        value_type: CompilerType::Nat,
+                        ..
+                    }
+                )] if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "value")
+                    && left.value_type == CompilerType::Nat
+                    && matches!(right.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(1)))
+                && matches!(result.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    ref left,
+                    ref right,
+                } if matches!(left.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                    && left.value_type == CompilerType::Nat
+                    && matches!(right.kind, CompilerExpressionKind::Int(ref value)
+                        if value == &BigInt::from(1)))
+                && result.value_type == CompilerType::Nat
+        ));
+
+        let expression_input = analyze_for_compiler(
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial + 1\ngenerated is next (Nat (6 + 1))\ngenerated foreach { value }\n  _ is value + 1\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &expression_input.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator { initial, .. },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::IntToNat(ref value)
+                if matches!(value.kind, CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    ..
+                }))
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield (Nat 1)\n  initial + 1\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  _ is yield initial\n  initial + 1\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial + 2\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Nat\n  _ is yield initial\n  initial + 1\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 2\n",
+            "use language (version is v0.1)\nnext is generator (initial : Nat)\n  yields Nat\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is next (Nat 7)\ngenerated foreach { value }\n  _ is value + 1\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

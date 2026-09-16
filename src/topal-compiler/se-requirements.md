@@ -1647,6 +1647,62 @@ or checked-program node layout. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-TYPE-OPTIONAL-BOUNDARY-001` for compiler increment 5af.
 
+## TOPAL-COMP-GENERATOR-NAT-001 — Exact Nat generator directions
+
+The checked compiler shall admit a root custom generator with one named `Nat`
+initial parameter and directions `Generator Nat Unit Nat` whose body consists
+only of one discarded `yield initial` followed by `initial + 1` as its final
+expression. One currently admitted `Nat` expression shall start the generator;
+the shared regression uses the statically proven construction `Nat 7`. The
+fresh result shall be bound and consumed exactly once by a foreach action
+consisting only of the discarded `value + 1` for its named yielded parameter.
+
+The checked program shall retain the Nat refinement identity separately from
+its underlying exact Int representation and from all three Generator
+directions, the proof-bearing input construction, initial-parameter yield and
+suspension, exact action and final additions, Unit resumption, and ownership
+edge. Application shall evaluate its initial expression exactly once. For the
+shared closed input, construction shall preserve the nonnegative proof without
+a runtime validation call. Traversal shall pass that same immutable Nat value
+to the action, add exact one once, resume with Unit, and only then add exact one
+to the captured initial for the final Nat value `8`. This order shall hold with
+LLVM optimization disabled and shall not depend on folding, inlining, or dead-
+code elimination.
+
+On Linux x86-64, Nat shall retain its existing compiler-private representation
+as an aligned pointer to Topal-owned arbitrary-precision Int storage; the
+nonnegative constraint shall not introduce a native unsigned-integer ABI. The
+root-local Generator shall remain a compiler-private `i32` ownership token.
+LLVM shall select placement and call lowering from the target triple and data
+layout; the backend shall hard-code no AMD64 register convention. Two aligned
+debug-only pointer shadows shall preserve the yielded action value and captured
+initial lifetime. DWARF and GDB shall expose the complete
+`Generator Nat Unit Nat` classifier and value, the yielded Nat `7`, the
+captured initial Nat `7`, ordered yield/action/resumption/final source
+locations, and the Topal entry frame.
+
+Literal or multiple yields; a final expression or action other than the exact
+increments; additional body statements; another input, yield, resume, or final
+classifier; general Nat arithmetic outside this exact graph; close handling;
+nested or ordinary-function construction; Generator parameter/result transfer;
+repeated consumption; abandonment; libraries; and external boundaries shall
+remain rejected before LLVM. The lowering shall introduce no semantic Generator
+object or state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI,
+unsigned machine arithmetic, or `topal-native/6` revision. Exact integer
+storage, allocation, addition, display, and Linux syscalls shall remain wholly
+owned by Topal. Future compiled-library metadata shall encode independent
+initial and direction classifiers, Nat refinement/proof and underlying Int
+identities, validation provenance, exact addition operands, ordered yield/
+action/resume/final provenance, allocation-failure effects, declaration/
+construction sites, captures/effects, ownership/consumption/close state,
+native-representation identity, and target adapters rather than expose the
+private token, debug slots, Int object layout, or checked-program node layout.
+This realizes `TOPAL-COMPILER-GENERATOR-NAT-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-NUM-NAT-CONSTRUCT-001` for compiler increment 5ah.
+
 ## TOPAL-COMP-GENERATOR-RANGE-001 — Exact Range generator directions
 
 The checked compiler shall admit a root custom generator with one named

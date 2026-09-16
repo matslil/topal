@@ -1483,6 +1483,59 @@ native-representation identity, and target adapters rather than expose the
 private token, debug slots, Optional/Int object layouts, or checked-program
 node layout.
 
+### TOPAL-COMPILER-GENERATOR-NAT-001 — Exact Nat generator directions
+
+The compiler SHALL admit a root custom generator with one named `Nat` initial
+parameter and directions `Generator Nat Unit Nat` whose body consists only of
+one discarded `yield initial` followed by `initial + 1` as its final expression.
+One currently admitted `Nat` expression SHALL start the generator; the shared
+regression uses the statically proven construction `Nat 7`. The fresh result
+SHALL be bound and consumed exactly once by a foreach action consisting only of
+the discarded `value + 1` for its named yielded parameter.
+
+The checked program SHALL retain the Nat refinement identity separately from
+its underlying exact Int representation and from all three Generator
+directions, the proof-bearing input construction, initial-parameter yield and
+suspension, exact action and final additions, Unit resumption, and ownership
+edge. Application SHALL evaluate its initial expression exactly once. For the
+shared closed input, construction SHALL preserve the nonnegative proof without
+a runtime validation call. Traversal SHALL pass that same immutable Nat value
+to the action, add exact one once, resume with Unit, and only then add exact one
+to the captured initial for the final Nat value `8`. This order SHALL hold with
+LLVM optimization disabled and SHALL NOT depend on folding, inlining, or dead-
+code elimination.
+
+On Linux x86-64, Nat SHALL retain its existing compiler-private representation
+as an aligned pointer to Topal-owned arbitrary-precision Int storage; the
+nonnegative constraint SHALL NOT introduce a native unsigned-integer ABI. The
+root-local Generator SHALL remain a compiler-private `i32` ownership token.
+LLVM SHALL select placement and call lowering from the target triple and data
+layout; the compiler SHALL hard-code no AMD64 register convention. Two aligned
+debug-only pointer shadows SHALL preserve the yielded action value and captured
+initial lifetime. DWARF and GDB SHALL expose the complete
+`Generator Nat Unit Nat` classifier and value, the yielded Nat `7`, the
+captured initial Nat `7`, ordered yield/action/resumption/final source
+locations, and the Topal entry frame.
+
+Literal or multiple yields; a final expression or action other than the exact
+increments; additional body statements; another input, yield, resume, or final
+classifier; general Nat arithmetic outside this exact graph; close handling;
+nested or ordinary-function construction; Generator parameter/result transfer;
+repeated consumption; abandonment; libraries; and external boundaries SHALL
+remain unsupported. The lowering SHALL introduce no semantic Generator object
+or state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator ABI, unsigned
+machine arithmetic, or native-ABI revision. Exact integer storage, allocation,
+addition, display, and Linux syscalls SHALL remain wholly owned by Topal. Future
+compiled-library metadata SHALL encode independent initial and direction
+classifiers, Nat refinement/proof and underlying Int identities, validation
+provenance, exact addition operands, ordered yield/action/resume/final
+provenance, allocation-failure effects, declaration/construction sites,
+captures/effects, ownership/consumption/close state, native-representation
+identity, and target adapters rather than expose the private token, debug slots,
+Int object layout, or checked-program node layout.
+
 ### TOPAL-COMPILER-GENERATOR-RANGE-001 — Exact Range generator directions
 
 The compiler SHALL admit a root custom generator with one named `Range Int`

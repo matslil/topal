@@ -6110,6 +6110,7 @@ impl<'a> Generator<'a> {
             || matches!(
                 initial_parameter.value_type,
                 CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::Optional(_)
                     | CompilerType::Range(_)
@@ -10658,6 +10659,53 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"value\""));
         assert!(llvm.contains("name: \"Generator Int Unit Int\""));
         assert!(llvm.contains("name: \"Int\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_nonnegative_nats_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-NUM-NAT-CONSTRUCT-001, TOPAL-COMPILER-GENERATOR-NAT-001
+        let source = include_str!("../../../examples/language/custom-generator-nat-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-nat-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(main.matches("call ptr @topal.runtime.int.add(").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr @.topal.int.0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let additions = main
+            .match_indices("call ptr @topal.runtime.int.add(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let output = main
+            .find("call void @topal.runtime.int.print")
+            .expect("the final exact Nat controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 2);
+        assert!(
+            constructed < debug_stores[0]
+                && debug_stores[0] < additions[0]
+                && additions[0] < debug_stores[1]
+                && debug_stores[1] < additions[1]
+                && additions[1] < output
+        );
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(!main.contains("@topal.runtime.int.try.to.nat"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
+        assert!(llvm.contains("name: \"Generator Nat Unit Nat\""));
+        assert!(llvm.contains("name: \"Nat\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
