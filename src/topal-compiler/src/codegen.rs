@@ -6085,7 +6085,12 @@ impl<'a> Generator<'a> {
         traversal_span: Span,
         body: &mut FunctionBody,
     ) {
-        if explicit_return.is_some() || initial_parameter.value_type == CompilerType::Int {
+        if explicit_return.is_some()
+            || matches!(
+                initial_parameter.value_type,
+                CompilerType::Int | CompilerType::Rational
+            )
+        {
             let llvm_type = llvm_value_type(&initial_parameter.value_type);
             let alignment = target_value_layout(&initial_parameter.value_type).alignment / 8;
             let address = body.instruction(
@@ -10627,6 +10632,68 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"value\""));
         assert!(llvm.contains("name: \"Generator Int Unit Int\""));
         assert!(llvm.contains("name: \"Int\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_exact_rationals_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-RATIONAL-001
+        let source = include_str!("../../../examples/language/custom-generator-rational-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-rational-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.rational.make(")
+                .count(),
+            3
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.rational.add(")
+                .count(),
+            2
+        );
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr %v0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let rational_constructions = main
+            .match_indices("call ptr @topal.runtime.rational.make(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let additions = main
+            .match_indices("call ptr @topal.runtime.rational.add(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let output = main
+            .find("call void @topal.runtime.rational.print")
+            .expect("the final exact Rational controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 2);
+        assert!(
+            rational_constructions[0] < constructed
+                && constructed < debug_stores[0]
+                && debug_stores[0] < rational_constructions[1]
+                && rational_constructions[1] < additions[0]
+                && additions[0] < debug_stores[1]
+                && debug_stores[1] < rational_constructions[2]
+                && rational_constructions[2] < additions[1]
+                && additions[1] < output
+        );
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\""));
+        assert!(llvm.contains("name: \"Generator Rational Unit Rational\""));
+        assert!(llvm.contains("name: \"Rational\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

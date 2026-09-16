@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ad | exact canonical Rational input, yield, action, resumption, and final directions with ordered allocation-aware construction/addition and debugging | complete |
 | 5ac | exact arbitrary-precision Int input, yield, action, resumption, and final directions with ordered allocation-aware additions and debugging | complete |
 | 5ab | independent Boolean input, yield, and final directions with ordered action/resumption, private `i1`, and source-level debugging | complete |
 | 5aa | exact explicit final String after one String yield/action and Unit resumption, with separate return provenance and debugging | complete |
@@ -481,6 +482,19 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ad separates exact Rational input, yield, and final directions
+through one exact custom `Generator Rational Unit Rational`. The checked graph
+retains the initial Rational, initial-parameter yield, Unit resumption, action
+and final one-third constructors/additions, and ownership edge separately. O0
+traversal performs the action construction/addition before resumption and only
+then performs the final construction/addition. All direct calls retain the
+canonical immutable Rational/Int representations and allocation-failure path;
+LLVM owns pointer placement and call lowering. Generator and exact Rational
+values and the entry frame remain debuggable through Topal's GDB printer without
+semantic Generator state, foreign runtime, other-language standard library,
+public ABI, or native-layout revision. Other shapes, directions, state,
+transfer, close, and libraries remain in increment 5.
+
 Increment 5ac separates arbitrary-precision Int input, yield, and final
 directions through one exact custom `Generator Int Unit Int`. The checked graph
 retains the initial Int, initial-parameter yield, Unit resumption, action and
