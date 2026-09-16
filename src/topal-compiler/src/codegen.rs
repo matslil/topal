@@ -11076,6 +11076,64 @@ mod tests {
     }
 
     #[test]
+    fn emits_generator_local_enum_and_direct_function_after_resumption() {
+        // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-FUNCTION-ORDINARY-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-FUNCTION-001
+        let source = include_str!("../../../examples/language/custom-generator-local-function.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-local-function.t").emit();
+        let local = llvm
+            .split_once("define internal fastcc ptr @topal.fn.label.0")
+            .expect("module contains the private generator-local function")
+            .1
+            .split_once("\n}\n")
+            .expect("local function has a complete definition")
+            .0;
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert!(local.contains("(i32 %arg0) nounwind noinline"));
+        assert!(local.contains("#dbg_value(i32 %arg0"));
+        assert!(local.contains("switch i32 %arg0"));
+        assert!(local.contains("i32 0, label %enum.decision.alternative.0"));
+        assert!(local.contains("i32 1, label %enum.decision.alternative.1"));
+        assert_eq!(
+            local.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(local.contains("phi ptr"));
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let yielded = main
+            .find("store i1 true")
+            .expect("foreach retains the yielded Boolean for debugging");
+        let action = main
+            .find("xor i1 true, true")
+            .expect("foreach action executes before resumption");
+        let call = main
+            .find("call fastcc ptr @topal.fn.label.0(i32 0)")
+            .expect("resumption invokes the retained local function directly");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("the local function result reaches Topal-owned display");
+        assert!(constructed < yielded && yielded < action && action < call && call < output);
+        assert!(llvm.contains("DISubprogram(name: \"label\""));
+        assert!(llvm.contains("linkageName: \"topal.fn.label.0\""));
+        assert!(llvm.contains("DILocalVariable(name: \"value\", arg: 1"));
+        assert!(llvm.contains("name: \"Choice\""));
+        assert!(llvm.contains("name: \"Accepted\""));
+        assert!(llvm.contains("name: \"Rejected\""));
+        assert!(llvm.contains("name: \"Generator Boolean Unit String\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+        assert!(!llvm.contains("define fastcc ptr @topal.fn.label.0"));
+    }
+
+    #[test]
     fn emits_arbitrary_precision_ints_across_custom_generator_directions() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-COMPILER-GENERATOR-INT-001

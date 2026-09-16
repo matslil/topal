@@ -1856,6 +1856,58 @@ declaration/construction sites, captures/effects, ownership/consumption/close
 state, native-representation identity, and target adapters rather than expose
 private tokens, debug slots, object layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-LOCAL-FUNCTION-001 — Retained local declarations
+
+The compiler SHALL admit the shared `custom-generator-local-function.t`
+regression: a root `Generator Boolean Unit String` whose body declares the
+local enum `Choice is Enum (Accepted, Rejected)`, declares the local ordinary
+function `label (value : Choice) -> String` with the complete mapping Accepted
+to `"accepted"` and Rejected to `"rejected"`, yields its named Boolean initial
+parameter once, and calls `label Accepted` after Unit resumption. The fresh
+generator SHALL be consumed exactly once by the existing discarded `not value`
+foreach action.
+
+The checked program SHALL retain the local Choice identity and ordered
+alternatives, the local function signature and checked Enum decision, the
+initial-parameter yield, the post-resume call and argument, declaration and
+call provenance, and the generator ownership edge as separate facts. The
+local declarations SHALL be available to the resumed continuation but SHALL
+not enter the consumer or root name environment. Application SHALL evaluate
+the initial Boolean once. Traversal SHALL deliver it to the action, resume with
+Unit, directly call the retained function with Accepted, and only then display
+the returned String. This order SHALL hold at LLVM O0 without relying on
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Choice SHALL use its private declaration-ordered `i32` tag and
+the root-local Generator SHALL remain a compiler-private `i32` ownership token.
+The local function SHALL be emitted as an internal, non-inlined `fastcc`
+definition and invoked by a direct call. LLVM SHALL derive machine argument,
+return, stack, and register placement from the target triple and data layout;
+the compiler SHALL hard-code no AMD64 calling convention placement. The
+function and its Choice parameter SHALL have a DWARF subprogram, nominal enum
+type and source location. GDB SHALL expose the Generator and Boolean values,
+ordered yield/action/resumption/call locations, the `label` frame, its Accepted
+argument, and the Topal entry frame.
+
+Another local enum name, alternative or order; another function name,
+signature, decision, matcher, action, argument or final call; captures beyond
+this exact lexical declaration state; another input, action, direction, yield
+or result; multiple yields; additional body statements; close handling;
+Generator parameter/result transfer; repeated consumption; abandonment;
+libraries; and external boundaries SHALL remain unsupported. The lowering
+SHALL introduce no semantic Generator object or state allocation, closure
+object, environment allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator/function/
+Choice ABI, or native-ABI revision. Enum selection, String allocation/display,
+and Linux syscalls SHALL remain wholly owned by Topal. Future compiled-library
+metadata SHALL encode lexical declaration identity, parent scope, nominal
+alternatives, function signature and checked body graph, capture set,
+suspension reachability, direct-call and yield/action/resume/final provenance,
+effects, ownership/consumption/close state, native-representation identity, and
+target adapters rather than expose private symbols, tags, tokens, debug slots,
+object layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`

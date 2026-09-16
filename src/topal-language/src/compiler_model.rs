@@ -868,6 +868,7 @@ struct GeneratorSource {
     explicit_return: Option<Span>,
     yield_count: usize,
     local: Option<CompilerGeneratorLocal>,
+    local_function: Option<CompilerFunction>,
     close_handler: Option<CompilerGeneratorCloseHandler>,
     result: CompilerExpression,
 }
@@ -2370,6 +2371,290 @@ fn exact_boolean_value_generator_body(
         explicit_return: None,
         result,
     })
+}
+
+#[allow(clippy::too_many_lines)] // Exact local declarations and fail-closed shape checks stay together.
+fn exact_boolean_local_function_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<(ExactValueGeneratorBody, CompilerFunction), Diagnostic> {
+    let [
+        enum_statement,
+        function_statement,
+        yield_statement,
+        final_statement,
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Boolean-yield generator-local declaration body outside one enum, function, initial yield, and final call",
+        ));
+    };
+    let Some(EnumSource {
+        name: enum_name,
+        alternatives,
+        ..
+    }) = enum_declaration(source, enum_statement)
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "generator-local enum declaration",
+        ));
+    };
+    if source.slice(enum_name) != "Choice"
+        || alternatives.len() != 2
+        || alternatives[0].0 != "Accepted"
+        || alternatives[1].0 != "Rejected"
+    {
+        return Err(unsupported(
+            source,
+            enum_name,
+            "generator-local enum outside Choice (Accepted, Rejected)",
+        ));
+    }
+    let enumeration = CompilerEnumType {
+        name: String::from("Choice"),
+        alternatives: vec![String::from("Accepted"), String::from("Rejected")],
+    };
+    let Statement::Function {
+        name: function_name,
+        is_static: false,
+        parameters,
+        result,
+        effect_bound: None,
+        clauses,
+        body: function_body,
+        span: function_span,
+    } = function_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(function_statement),
+            "generator-local function declaration",
+        ));
+    };
+    let [function_parameter] = parameters.as_slice() else {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local function arity",
+        ));
+    };
+    if source.slice(*function_name) != "label"
+        || !function_parameter.fields.is_empty()
+        || function_parameter.default.is_some()
+        || function_parameter.qualifier.is_some()
+        || source.slice(function_parameter.name) != "value"
+        || source.slice(function_parameter.classifier) != "Choice"
+        || source.slice(*result) != "String"
+        || **clauses != FunctionClauses::default()
+    {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local function outside label (value : Choice) -> String",
+        ));
+    }
+    let [
+        Statement::Expression(Expression::DecisionTable {
+            subject,
+            rules,
+            span: decision_span,
+        }),
+    ] = function_body.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *function_span,
+            "generator-local label body",
+        ));
+    };
+    let Expression::Identifier(subject_name) = subject.as_ref() else {
+        return Err(unsupported(
+            source,
+            subject.span(),
+            "generator-local label decision subject",
+        ));
+    };
+    let [accepted_rule, rejected_rule] = rules.as_slice() else {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local label decision rules",
+        ));
+    };
+    let (
+        DecisionMatcher::Identifier(accepted_matcher),
+        Expression::String(accepted_literal),
+        DecisionMatcher::Identifier(rejected_matcher),
+        Expression::String(rejected_literal),
+    ) = (
+        &accepted_rule.matcher,
+        &accepted_rule.action,
+        &rejected_rule.matcher,
+        &rejected_rule.action,
+    )
+    else {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local label decision shape",
+        ));
+    };
+    let accepted = exact_string_literal_expression(source, *accepted_literal)?;
+    let rejected = exact_string_literal_expression(source, *rejected_literal)?;
+    if source.slice(*subject_name) != "value"
+        || source.slice(*accepted_matcher) != "Accepted"
+        || source.slice(*rejected_matcher) != "Rejected"
+        || exact_string(&accepted).as_deref() != Some("accepted")
+        || exact_string(&rejected).as_deref() != Some("rejected")
+    {
+        return Err(unsupported(
+            source,
+            *decision_span,
+            "generator-local label decision outside the retained Choice mapping",
+        ));
+    }
+    let Statement::Discard {
+        value:
+            Expression::Application {
+                items: yield_items,
+                span: yield_span,
+            },
+        ..
+    } = yield_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(yield_statement),
+            "generator-local initial yield",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "generator-local initial yield",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+    {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "generator-local initial yield",
+        ));
+    }
+    let Statement::Expression(Expression::Application {
+        items: final_items,
+        span: final_span,
+    }) = final_statement
+    else {
+        return Err(unsupported(
+            source,
+            statement_span(final_statement),
+            "generator-local final call",
+        ));
+    };
+    let [
+        Expression::Identifier(final_function),
+        Expression::Identifier(final_argument),
+    ] = final_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *final_span,
+            "generator-local final call",
+        ));
+    };
+    if source.slice(*final_function) != "label" || source.slice(*final_argument) != "Accepted" {
+        return Err(unsupported(
+            source,
+            *final_span,
+            "generator-local final call outside label Accepted",
+        ));
+    }
+    let local_parameter = CompilerParameter {
+        name: String::from("value"),
+        discarded: false,
+        value_type: CompilerType::Enum(enumeration.clone()),
+        int_range: None,
+        span: function_parameter.name,
+    };
+    let function = CompilerFunction {
+        source_name: String::from("label"),
+        symbol: String::new(),
+        parameters: vec![local_parameter.clone()],
+        result_type: CompilerType::String,
+        body: CompilerBlock {
+            statements: Vec::new(),
+            result: CompilerExpression {
+                kind: CompilerExpressionKind::EnumDecision {
+                    subject: Box::new(CompilerExpression {
+                        kind: CompilerExpressionKind::Local(local_parameter.name.clone()),
+                        value_type: local_parameter.value_type.clone(),
+                        int_range: None,
+                        rational_value: None,
+                        span: *subject_name,
+                    }),
+                    rules: vec![
+                        CompilerEnumRule {
+                            value: 0,
+                            action: accepted,
+                            span: accepted_rule.span,
+                        },
+                        CompilerEnumRule {
+                            value: 1,
+                            action: rejected,
+                            span: rejected_rule.span,
+                        },
+                    ],
+                    otherwise: None,
+                },
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span: *decision_span,
+            },
+        },
+        span: *function_span,
+        is_static: false,
+        declared_effects: None,
+    };
+    let result = CompilerExpression {
+        kind: CompilerExpressionKind::Call {
+            symbol: String::new(),
+            arguments: vec![CompilerExpression {
+                kind: CompilerExpressionKind::Enum(0),
+                value_type: CompilerType::Enum(enumeration),
+                int_range: None,
+                rational_value: None,
+                span: *final_argument,
+            }],
+        },
+        value_type: CompilerType::String,
+        int_range: None,
+        rational_value: None,
+        span: *final_span,
+    };
+    Ok((
+        ExactValueGeneratorBody {
+            yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+            continuations: Vec::new(),
+            explicit_return: None,
+            result,
+        },
+        function,
+    ))
 }
 
 fn exact_boolean_generator_result(
@@ -4803,12 +5088,33 @@ fn collect_character_generators(
             && source.slice(*resumed) == "Unit"
             && matches!(source.slice(*result), "Boolean" | "String")
         {
+            let (exact_body, local_function) = if body
+                .first()
+                .and_then(|statement| enum_declaration(source, statement))
+                .is_some()
+            {
+                if enums.contains_key("Choice") {
+                    return Err(unsupported(
+                        source,
+                        *span,
+                        "generator-local Choice beside a root Choice declaration",
+                    ));
+                }
+                let (body, function) =
+                    exact_boolean_local_function_generator_body(source, parameter, body, *span)?;
+                (body, Some(function))
+            } else {
+                (
+                    exact_boolean_value_generator_body(source, parameter, *result, body, *span)?,
+                    None,
+                )
+            };
             let ExactValueGeneratorBody {
                 yields: value_yields,
                 continuations: value_continuations,
                 explicit_return,
                 result: final_value,
-            } = exact_boolean_value_generator_body(source, parameter, *result, body, *span)?;
+            } = exact_body;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -4826,6 +5132,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function,
                     close_handler: None,
                     result: final_value,
                 },
@@ -4870,6 +5177,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -4908,6 +5216,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -4948,6 +5257,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -4986,6 +5296,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5026,6 +5337,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5064,6 +5376,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5102,6 +5415,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5144,6 +5458,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5184,6 +5499,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5222,6 +5538,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5260,6 +5577,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5298,6 +5616,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5336,6 +5655,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5374,6 +5694,7 @@ fn collect_character_generators(
                     explicit_return,
                     yield_count,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: final_value,
                 },
@@ -5412,6 +5733,7 @@ fn collect_character_generators(
                     explicit_return: None,
                     yield_count: 1,
                     local: None,
+                    local_function: None,
                     close_handler: None,
                     result: unit_expression(*result),
                 },
@@ -5438,6 +5760,7 @@ fn collect_character_generators(
                     explicit_return: None,
                     yield_count: 1,
                     local: None,
+                    local_function: None,
                     close_handler: Some(close_handler),
                     result: unit_expression(*result),
                 },
@@ -5660,6 +5983,7 @@ fn collect_character_generators(
                 explicit_return: None,
                 yield_count,
                 local,
+                local_function: None,
                 close_handler: None,
                 result: final_value,
             },
@@ -12265,6 +12589,7 @@ impl Analyzer {
         self.analyze_expression(argument, environment)
     }
 
+    #[allow(clippy::too_many_lines)] // Value and Character generator instantiation paths stay adjacent.
     fn analyze_custom_generator_call(
         &mut self,
         items: &[Expression],
@@ -12315,7 +12640,20 @@ impl Analyzer {
         if let Some(yields) = declaration.value_yields {
             let continuations = declaration.value_continuations;
             let explicit_return = declaration.explicit_return;
-            let result = declaration.result;
+            let mut result = declaration.result;
+            if let Some(mut function) = declaration.local_function {
+                let symbol = self.reserve_function_symbol(&function.source_name);
+                let CompilerExpressionKind::Call {
+                    symbol: result_symbol,
+                    ..
+                } = &mut result.kind
+                else {
+                    unreachable!("checked generator-local function retains its final call")
+                };
+                result_symbol.clone_from(&symbol);
+                function.symbol = symbol;
+                self.instances.push(function);
+            }
             let yield_type = declaration.initial_parameter.value_type.clone();
             let value_type = CompilerType::Generator(CompilerGeneratorType {
                 yield_type: Box::new(yield_type),
@@ -19525,6 +19863,130 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Retained declarations, traversal, and rejection matrix form one model contract.
+    fn models_generator_local_enum_and_function_across_suspension() {
+        // TOPAL-GENERATOR-LOCAL-FUNCTION-001, TOPAL-GENERATOR-LOCAL-ENUM-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-FUNCTION-ORDINARY-001,
+        // TOPAL-COMPILER-GENERATOR-LOCAL-FUNCTION-001
+        let source = include_str!("../../../examples/language/custom-generator-local-function.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let [function] = program.functions.as_slice() else {
+            panic!("one retained generator-local function instance")
+        };
+        assert_eq!(function.source_name, "label");
+        assert!(function.symbol.starts_with("topal.fn.label."));
+        assert_eq!(function.result_type, CompilerType::String);
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::Enum(CompilerEnumType {
+                    name: enum_name,
+                    alternatives,
+                }),
+                ..
+            }] if name == "value"
+                && enum_name == "Choice"
+                && alternatives == &[String::from("Accepted"), String::from("Rejected")]
+        ));
+        assert!(matches!(
+            &function.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::EnumDecision {
+                    subject,
+                    rules,
+                    otherwise: None,
+                },
+                value_type: CompilerType::String,
+                ..
+            } if matches!(subject.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "value")
+                && matches!(rules.as_slice(), [accepted, rejected]
+                    if accepted.value == 0
+                        && exact_string(&accepted.action).as_deref() == Some("accepted")
+                        && rejected.value == 1
+                        && exact_string(&rejected.action).as_deref() == Some("rejected"))
+        ));
+        let symbol = function.symbol.as_str();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        yields,
+                        result,
+                        ..
+                    },
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "describe"
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && matches!(result.kind,
+                    CompilerExpressionKind::Call { symbol: ref call_symbol, ref arguments }
+                        if call_symbol == symbol
+                            && matches!(arguments.as_slice(), [CompilerExpression {
+                                kind: CompilerExpressionKind::Enum(0),
+                                value_type: CompilerType::Enum(_),
+                                ..
+                            }]))
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::String,
+                ..
+            } if parameter.name == "value"
+                && matches!(body.statements.as_slice(),
+                    [CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::Not(value),
+                        ..
+                    })] if matches!(value.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "value"))
+                && matches!(result.kind,
+                    CompilerExpressionKind::Call { symbol: ref call_symbol, .. }
+                        if call_symbol == symbol)
+        ));
+
+        for malformed in [
+            source.replace(
+                "Choice is Enum ( Accepted, Rejected )",
+                "Choice is Enum ( Rejected, Accepted )",
+            ),
+            source.replace("value : Choice", "value : Boolean"),
+            source.replace("Rejected then \"rejected\"", "Rejected then \"declined\""),
+            source.replace("_ is yield initial", "_ is yield false"),
+            source.replace("label Accepted", "label Rejected"),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&malformed).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let escaped = format!(
+            "{}label Accepted\n",
+            source
+                .split_once("generated is")
+                .expect("fixture constructs its generator")
+                .0
+        );
+        assert_eq!(
+            analyze_for_compiler(&escaped).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
