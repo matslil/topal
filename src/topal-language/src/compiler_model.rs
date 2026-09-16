@@ -486,6 +486,18 @@ pub enum CompilerExpressionKind {
         parameter: CompilerParameter,
         body: Box<CompilerBlock>,
     },
+    CustomSingleYieldGenerator {
+        declaration: String,
+        declaration_span: Span,
+        initial: Box<CompilerExpression>,
+        character: String,
+    },
+    CustomSingleYieldForeach {
+        source: Box<CompilerExpression>,
+        character: String,
+        parameter: CompilerParameter,
+        body: Box<CompilerBlock>,
+    },
     ErrorCode(u32),
     IntToModular {
         value: Box<CompilerExpression>,
@@ -774,6 +786,12 @@ struct FunctionSource {
 }
 
 #[derive(Clone)]
+struct GeneratorSource {
+    name: Span,
+    span: Span,
+}
+
+#[derive(Clone)]
 struct CompilerRecursionProof {
     rule: &'static str,
     nat_step_parameters: BTreeSet<usize>,
@@ -919,6 +937,7 @@ struct Analyzer {
     interfaces: InterfaceTypes,
     interface_implementations: Vec<CompilerInterfaceImplementation>,
     functions: BTreeMap<String, Vec<FunctionSource>>,
+    generators: BTreeMap<String, GeneratorSource>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
@@ -957,6 +976,7 @@ impl Analyzer {
             interfaces: BTreeMap::new(),
             interface_implementations: Vec::new(),
             functions: BTreeMap::new(),
+            generators: BTreeMap::new(),
             instances: Vec::new(),
             active_calls: Vec::new(),
             active_recursive_functions: BTreeMap::new(),
@@ -1042,6 +1062,13 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         &parsed.statements,
         &reserved_names,
         &mut analyzer.functions,
+    )?;
+    collect_single_yield_generators(
+        &source,
+        &parsed.statements,
+        &reserved_names,
+        &analyzer.functions,
+        &mut analyzer.generators,
     )?;
     let mut environment = BTreeMap::new();
     let main = analyzer.analyze_block(
@@ -1756,6 +1783,112 @@ fn collect_functions(
     Ok(())
 }
 
+fn collect_single_yield_generators(
+    source: &SourceText,
+    statements: &[Statement],
+    reserved_names: &BTreeSet<String>,
+    functions: &BTreeMap<String, Vec<FunctionSource>>,
+    generators: &mut BTreeMap<String, GeneratorSource>,
+) -> Result<(), Diagnostic> {
+    for statement in statements {
+        let Statement::Generator {
+            name,
+            parameters,
+            yielded,
+            resumed,
+            result,
+            body,
+            span,
+        } = statement
+        else {
+            continue;
+        };
+        let name_text = source.slice(*name).to_owned();
+        if reserved_names.contains(&name_text) || functions.contains_key(&name_text) {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-BINDING",
+                *name,
+                format!("`{name_text}` is already declared in this scope"),
+            ));
+        }
+        if generators.contains_key(&name_text) {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-GENERATOR-OVERLOAD",
+                *span,
+                format!("generator overload `{name_text}` has the same input classifiers"),
+            ));
+        }
+        let [parameter] = parameters.as_slice() else {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator with other than one initial parameter",
+            ));
+        };
+        if !parameter.fields.is_empty()
+            || parameter.default.is_some()
+            || parameter.qualifier.is_some()
+            || source.slice(parameter.classifier) != "Character"
+            || source.slice(*yielded) != "Character"
+            || source.slice(*resumed) != "Unit"
+            || source.slice(*result) != "Unit"
+        {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator outside the single Character-yield/Unit-resume/Unit-result subset",
+            ));
+        }
+        let [
+            Statement::Discard {
+                value:
+                    Expression::Application {
+                        items: yield_items, ..
+                    },
+                ..
+            },
+            Statement::Expression(Expression::Unit(_)),
+        ] = body.as_slice()
+        else {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator body outside one discarded yield followed by Unit",
+            ));
+        };
+        let [
+            Expression::Identifier(yield_operation),
+            Expression::Identifier(yielded_value),
+        ] = yield_items.as_slice()
+        else {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator yield expression",
+            ));
+        };
+        if source.slice(*yield_operation) != "yield"
+            || source.slice(*yielded_value) != source.slice(parameter.name)
+        {
+            return Err(unsupported(
+                source,
+                *span,
+                "custom generator body outside yielding its initial parameter once",
+            ));
+        }
+        generators.insert(
+            name_text,
+            GeneratorSource {
+                name: *name,
+                span: *span,
+            },
+        );
+    }
+    Ok(())
+}
+
 fn compiler_declared_effect_row(
     source: &SourceText,
     effect_bound: Option<Span>,
@@ -2208,6 +2341,7 @@ impl Analyzer {
             statement,
             Statement::LanguageSelection { .. }
                 | Statement::Function { .. }
+                | Statement::Generator { .. }
                 | Statement::Interface { .. }
                 | Statement::InterfaceImplementation { .. }
         ) || matches!(statement, Statement::Published { declaration, .. } if matches!(declaration.as_ref(), Statement::Function { .. } | Statement::Interface { .. }))
@@ -2444,6 +2578,7 @@ impl Analyzer {
                         || (kind == BlockKind::TopLevel
                             && (name_text == "root"
                                 || self.functions.contains_key(&name_text)
+                                || self.generators.contains_key(&name_text)
                                 || self.enums.contains_key(&name_text)
                                 || self.enum_alternatives.contains_key(&name_text)
                                 || self.sums.contains_key(&name_text)
@@ -2588,7 +2723,8 @@ impl Analyzer {
                             CompilerExpressionKind::IterateGenerator { .. }
                             | CompilerExpressionKind::GeneratorTakeWhile { .. }
                             | CompilerExpressionKind::UnfoldGenerator { .. }
-                            | CompilerExpressionKind::StringCharactersGenerator { .. } => {
+                            | CompilerExpressionKind::StringCharactersGenerator { .. }
+                            | CompilerExpressionKind::CustomSingleYieldGenerator { .. } => {
                                 Some(value.clone())
                             }
                             _ => None,
@@ -2848,7 +2984,7 @@ impl Analyzer {
         if let Some(CompilerExpression {
             kind: CompilerExpressionKind::StringCharactersGenerator { characters, .. },
             ..
-        }) = retained_generator
+        }) = retained_generator.clone()
         {
             let source_value = self.analyze_expression(source, environment)?;
             require_type(
@@ -2864,6 +3000,33 @@ impl Analyzer {
                 statements,
                 span,
             );
+        }
+        if let Some(CompilerExpression {
+            kind: CompilerExpressionKind::CustomSingleYieldGenerator { character, .. },
+            ..
+        }) = retained_generator
+        {
+            let source_value = self.analyze_expression(source, environment)?;
+            require_type(
+                &self.source,
+                source_value.span,
+                &character_unit_generator_type(),
+                &source_value.value_type,
+            )?;
+            let (parameter, body) =
+                self.analyze_unit_foreach_body(binding, statements, CompilerType::Character)?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::CustomSingleYieldForeach {
+                    source: Box::new(source_value),
+                    character,
+                    parameter,
+                    body: Box::new(body),
+                },
+                value_type: CompilerType::Unit,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
         }
         self.analyze_bounded_int_iterate_foreach(source, binding, statements, span, environment)
     }
@@ -7951,6 +8114,23 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        let generator = items.iter().enumerate().find_map(|(index, item)| {
+            let Expression::Identifier(name) = item else {
+                return None;
+            };
+            let name = self.source.slice(*name);
+            (!environment.contains_key(name) && self.generators.contains_key(name))
+                .then_some((index, name.to_owned()))
+        });
+        if let Some((generator_index, generator_name)) = generator {
+            return self.analyze_single_yield_generator_call(
+                items,
+                span,
+                environment,
+                generator_index,
+                &generator_name,
+            );
+        }
         let function = items.iter().enumerate().find_map(|(index, item)| {
             let Expression::Identifier(name) = item else {
                 return None;
@@ -7963,6 +8143,66 @@ impl Analyzer {
             return Err(unsupported(&self.source, span, "application"));
         };
         self.analyze_resolved_call(items, span, environment, function_index, &function_name)
+    }
+
+    fn analyze_single_yield_generator_call(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        generator_index: usize,
+        generator_name: &str,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let declaration = self
+            .generators
+            .get(generator_name)
+            .expect("selected custom generator declaration exists")
+            .clone();
+        let arguments = items
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| (index != generator_index).then_some(item))
+            .collect::<Vec<_>>();
+        let [argument] = arguments.as_slice() else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
+                span,
+                format!("no `{generator_name}` generator overload accepts this input"),
+            ));
+        };
+        let argument = self.analyze_expression(argument, environment)?;
+        let initial =
+            adapt_call_argument(&CompilerType::Character, &argument).ok_or_else(|| {
+                source_diagnostic(
+                    &self.source,
+                    "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
+                    span,
+                    format!(
+                        "no `{generator_name}` generator overload accepts `{}`",
+                        argument.value_type.name()
+                    ),
+                )
+            })?;
+        let character = Self::known_string_value(&initial, environment).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                initial.span,
+                "dynamic Character custom generator input",
+            )
+        })?;
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::CustomSingleYieldGenerator {
+                declaration: self.source.slice(declaration.name).to_owned(),
+                declaration_span: declaration.span,
+                initial: Box::new(initial),
+                character,
+            },
+            value_type: character_unit_generator_type(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     fn analyze_resolved_call(
@@ -8667,6 +8907,16 @@ impl Analyzer {
                         "Character Generator parameter without closed provenance",
                     )
                 })?;
+            if !matches!(
+                retained.kind,
+                CompilerExpressionKind::StringCharactersGenerator { .. }
+            ) {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "custom Generator function boundary",
+                ));
+            }
             let previous = self
                 .generator_values
                 .insert(parameter.name.clone(), retained);
@@ -10960,6 +11210,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::UnfoldGenerator { .. }
         | CompilerExpressionKind::StringCharactersGenerator { .. }
         | CompilerExpressionKind::StringCharactersForeach { .. }
+        | CompilerExpressionKind::CustomSingleYieldGenerator { .. }
+        | CompilerExpressionKind::CustomSingleYieldForeach { .. }
         | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
         CompilerExpressionKind::IntToModular { value, .. }
@@ -12797,6 +13049,86 @@ mod tests {
             "E-GENERATOR-CONSUMED"
         );
         let abandoned = "use language (version is v0.1)\ngenerated : Generator Character Unit Unit is characters \"a\"\n";
+        assert_eq!(
+            analyze_for_compiler(abandoned).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let function_boundary = "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nignore is fn (generated : Generator Character Unit Unit) -> Unit\n  ()\ngenerated is once \"T\"\nignore generated\n";
+        assert_eq!(
+            analyze_for_compiler(function_boundary).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let dynamic = "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\nidentity is fn (character : Character) -> Character\n  character\ninitial is identity \"T\"\ngenerated is once initial\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(dynamic).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_root_single_yield_custom_generator() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-SINGLE-YIELD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-single-yield-generator.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    name,
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomSingleYieldGenerator {
+                            declaration,
+                            initial,
+                            character,
+                            ..
+                        },
+                        value_type,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomSingleYieldForeach {
+                        source,
+                        character: yielded,
+                        parameter,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if name == "generated"
+                && declaration == "once"
+                && initial.value_type == CompilerType::Character
+                && character == "T"
+                && is_character_unit_generator_type(value_type)
+                && matches!(source.kind, CompilerExpressionKind::Local(_))
+                && yielded == "T"
+                && parameter.name == "character"
+                && parameter.value_type == CompilerType::Character
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nonce is generator (initial : Character, other : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is once (\"T\", \"U\")\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  initial\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let consumed_twice = "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is once \"T\"\ngenerated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed_twice).unwrap_err().code,
+            "E-GENERATOR-CONSUMED"
+        );
+        let abandoned = "use language (version is v0.1)\nonce is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is once \"T\"\n";
         assert_eq!(
             analyze_for_compiler(abandoned).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
