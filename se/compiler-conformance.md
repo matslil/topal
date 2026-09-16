@@ -96,6 +96,7 @@ evidence.
 | 5an | exact successful recursive `Result ((Int, String), ArithmeticErrorCode)` input/yield, structural equality action, resumption, and distinct successful final with boxed-payload debugging | complete |
 | 5ao | exact absent recursive `Optional (Int, String)` input/yield, tag equality action, resumption, and absent final with full-classifier debugging | complete |
 | 5ap | exact Boolean input/yield/action and post-resume Boolean decision selecting a distinct final String with branch and value debugging | complete |
+| 5aq | exact recursive nominal `(Optional Choice, Result (Choice, ArithmeticErrorCode))` input/yield, guarded structural action, resumption, and distinct final alternatives with complete recursive debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -574,6 +575,21 @@ and Linux syscall writer are reused without a semantic Generator runtime,
 foreign dependency, other-language standard library, public ABI, or native-
 layout revision. Other decision subjects, matchers, actions, results, generator
 shapes, state, transfer, close, and libraries remain in increment 5.
+
+Increment 5aq recursively preserves one declared `Choice is Enum (First,
+Second)` through the Optional and arithmetic Result fields of an exact
+`Generator (Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode)) Unit (Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode))`.
+Application constructs `(Some First, First)` once; traversal reuses it for the
+yield, constructs the exact action operand, compares Optional and Result tags
+before loading boxed Choice tags, resumes with Unit, and only then constructs
+`(Some Second, Second)` as the final/root value. Six Topal-owned four-byte enum
+boxes compose with existing Optional/Result headers and the private aggregate.
+Two aggregate debug shadows, specialized recursive DWARF headers, the Topal GDB
+renderer, allocator, and Linux syscall writer expose the complete classifier
+and values without a semantic Generator runtime, foreign dependency,
+other-language standard library, public ABI, or native-layout revision. Other
+recursive nominal graphs, values, directions, state, transfer, close, and
+libraries remain in increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The

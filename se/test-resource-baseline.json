@@ -5864,6 +5864,21 @@
       "cpu_time_ns": 5931260,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_recursive_nominal_values_across_custom_generator_directions": {
+      "cpu_time_ns": 8649940,
+      "memory_peak_bytes": 18563072,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_recursive_nominal_values_are_freestanding_and_debuggable": {
+      "cpu_time_ns": 327575039,
+      "memory_peak_bytes": 58810368,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_recursive_nominal_values_across_custom_generator_directions": {
+      "cpu_time_ns": 9999420,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 50
     }
   }
 }

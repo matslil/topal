@@ -1986,6 +1986,69 @@ object layouts, or checked-program nodes. This realizes
 `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler
 increment 5ao.
 
+## TOPAL-COMP-GENERATOR-RECURSIVE-NOMINAL-001 — Recursive nominal value directions
+
+The checked compiler shall admit the declaration
+`Choice is Enum (First, Second)` and a root custom generator with one named
+`(Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode))`
+initial parameter and the same yield and result directions with Unit
+resumption. Its body shall consist only of one discarded `yield initial`
+followed by `(Some Second, Second)`. The shared regression shall start the
+generator with exact `(Some First, First)`; the fresh result shall be bound and
+consumed exactly once by a foreach action consisting only of the discarded
+`candidate = (Some First, First)` for its named yielded parameter.
+
+The checked program shall retain the nominal Choice identity and ordered First/
+Second alternatives inside both recursive fields, the Optional and Result
+identities, arithmetic error vocabulary, product arity/order, initial-parameter
+yield and suspension, guarded structural-equality action, Unit resumption,
+distinct final alternatives, declaration provenance, and ownership edge
+separately in all three Generator directions. Application shall construct the
+initial recursive product once. Traversal shall pass that same immutable value
+to the action, separately construct its comparison operand, compare Optional
+and Result tags before loading their boxed Choice tags, resume with Unit, and
+only then construct the final recursive product. This order shall hold at LLVM
+O0 without relying on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, each admitted Choice payload inside Optional or Result shall
+use a Topal-owned aligned four-byte box composed with the existing tagged
+pointer header; six boxes shall be constructed across input, action, and final
+values. The product shall remain a private two-pointer aggregate and the root-
+local Generator a compiler-private `i32` ownership token. LLVM shall derive
+placement, alignment, and call lowering from the target triple and data layout;
+the backend shall hard-code no AMD64 register convention. Two aligned debug-
+only aggregate shadows shall preserve the yielded action value and captured
+initial lifetime. DWARF and GDB shall expose the complete recursive Generator
+classifier and value, ordered product members, Optional and Result classifiers,
+the nested Choice identity and alternatives, yielded/captured values, ordered
+yield/action/resumption/final source locations, and the Topal entry frame.
+
+A None or error value, mixed alternative, another Enum declaration or order,
+recursive field classifier, product arity/order, error vocabulary, input,
+action, final, direction, yield, or value; multiple yields; additional body
+statements; close handling; nested or ordinary-function construction;
+Generator parameter/result transfer; repeated consumption; abandonment;
+libraries; and external boundaries shall remain rejected before LLVM. The
+lowering shall introduce no semantic Generator object or state allocation,
+generic recursive/Optional/Result dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator/product/
+Optional/Result/Choice ABI, or `topal-native/6` revision. Enum boxing, Optional
+and Result construction/equality, display, and Linux syscalls shall remain
+wholly owned by Topal. Future compiled-library metadata shall encode recursive
+nominal identity, ordered alternatives, error vocabularies, product arity/order
+and field identities, independent directions, success/absence evidence,
+equality and ordered yield/action/resume/final provenance, allocation-failure
+effects, declaration/construction sites, captures/effects, ownership/
+consumption/close state, native-representation identity, and target adapters
+rather than expose private tokens, debug slots, object layouts, or checked-
+program nodes. This realizes
+`TOPAL-COMPILER-GENERATOR-RECURSIVE-NOMINAL-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-TYPE-ENUM-001`, `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
+`TOPAL-TYPE-RESULT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler increment
+5aq.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named

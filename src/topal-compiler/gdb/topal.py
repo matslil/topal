@@ -312,6 +312,33 @@ class _TopalSourceLocationPrinter:
         return f"(line is {line}, column is {column})"
 
 
+def _render_boxed_enum(payload, type_name, context):
+    """Render a compiler-private boxed enum payload when DWARF retains its type."""
+
+    try:
+        enum_type = gdb.lookup_type(type_name).strip_typedefs()
+    except gdb.error:
+        try:
+            enum_type = gdb.lookup_type(f"enum {type_name}").strip_typedefs()
+        except gdb.error:
+            return None
+    if enum_type.code != gdb.TYPE_CODE_ENUM:
+        return None
+    if not payload:
+        return f"<invalid null {context}>"
+    try:
+        encoded = bytes(gdb.selected_inferior().read_memory(payload, 4))
+    except gdb.MemoryError:
+        return f"<unreadable {context}>"
+    value = int.from_bytes(encoded, "little")
+    alternatives = {
+        int(field.enumval): field.name for field in enum_type.fields()
+    }
+    if value not in alternatives:
+        return f"<invalid {context} tag {value}>"
+    return alternatives[value]
+
+
 class _TopalResultPrinter:
     """Render a topal-native Result through its statically known success type."""
 
@@ -343,6 +370,11 @@ class _TopalResultPrinter:
             return _TopalStringPrinter(payload).to_string()
         if self._success == "Unit":
             return "()"
+        enum_rendered = _render_boxed_enum(
+            payload, self._success, "Result success enum"
+        )
+        if enum_rendered is not None:
+            return enum_rendered
         if self._success == "(Int, Int)":
             try:
                 pair = bytes(inferior.read_memory(payload, 16))
@@ -459,7 +491,11 @@ class _TopalOptionalPrinter:
                 return f"<invalid Optional product: ({integer}, {text})>"
             rendered = f"({integer}, {text})"
         else:
-            return f"<unsupported Optional payload type {self._payload_type}>"
+            rendered = _render_boxed_enum(
+                payload, self._payload_type, "Optional enum payload"
+            )
+            if rendered is None:
+                return f"<unsupported Optional payload type {self._payload_type}>"
         return f"Some {rendered}"
 
 
