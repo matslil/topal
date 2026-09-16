@@ -159,6 +159,19 @@ class _TopalErrorCodePrinter:
         return codes.get(code, f"<invalid arithmetic Error code {code}>")
 
 
+class _TopalGeneratorErrorCodePrinter:
+    """Render the closed generator ErrorCode vocabulary."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        code = int(self._value)
+        if code == 0:
+            return "generator-closed"
+        return f"<invalid generator Error code {code}>"
+
+
 class _TopalRationalPrinter:
     """Render a canonical topal-native Rational object."""
 
@@ -242,10 +255,11 @@ class _TopalRangePrinter:
 
 
 class _TopalErrorPrinter:
-    """Render a structured topal-native arithmetic Error object."""
+    """Render a structured topal-native Error object."""
 
-    def __init__(self, address):
+    def __init__(self, address, code_vocabulary="arithmetic"):
         self._address = address
+        self._code_vocabulary = code_vocabulary
 
     def to_string(self):
         address = int(self._address)
@@ -261,7 +275,12 @@ class _TopalErrorPrinter:
         if not domain_address:
             return "<invalid Error domain>"
         domain = _TopalStringPrinter(domain_address, quoted=False).to_string()
-        code = _TopalErrorCodePrinter(code).to_string()
+        code_printer = (
+            _TopalGeneratorErrorCodePrinter
+            if self._code_vocabulary == "generator"
+            else _TopalErrorCodePrinter
+        )
+        code = code_printer(code).to_string()
         if domain.startswith("<"):
             return f"<invalid Error domain: {domain}>"
         if code.startswith("<"):
@@ -296,9 +315,10 @@ class _TopalSourceLocationPrinter:
 class _TopalResultPrinter:
     """Render a topal-native Result through its statically known success type."""
 
-    def __init__(self, value, success):
+    def __init__(self, value, success, error_vocabulary="arithmetic"):
         self._value = value
         self._success = success
+        self._error_vocabulary = error_vocabulary
 
     def to_string(self):
         address = int(self._value)
@@ -312,7 +332,7 @@ class _TopalResultPrinter:
         tag = int.from_bytes(header[0:8], "little")
         payload = int.from_bytes(header[8:16], "little")
         if tag == 1:
-            return _TopalErrorPrinter(payload).to_string()
+            return _TopalErrorPrinter(payload, self._error_vocabulary).to_string()
         if tag != 0:
             return f"<invalid Result tag {tag}>"
         if self._success in ("Int", "Nat"):
@@ -321,6 +341,8 @@ class _TopalResultPrinter:
             return _TopalRationalPrinter(payload).to_string()
         if self._success == "String":
             return _TopalStringPrinter(payload).to_string()
+        if self._success == "Unit":
+            return "()"
         if self._success == "(Int, Int)":
             try:
                 pair = bytes(inferior.read_memory(payload, 16))
@@ -582,8 +604,12 @@ def _lookup_topal_value(value):
         return _TopalStringPrinter(value)
     if value_type == "Error":
         return _TopalErrorPrinter(value)
+    if value_type == "Error (lang generator GeneratorErrorCode)":
+        return _TopalErrorPrinter(value, "generator")
     if value_type == "lang arithmetic ArithmeticErrorCode":
         return _TopalErrorCodePrinter(value)
+    if value_type == "lang generator GeneratorErrorCode":
+        return _TopalGeneratorErrorCodePrinter(value)
     if value_type == "ErrorDomain":
         return _TopalStringPrinter(value, quoted=False)
     if value_type == "SourceLocation":
@@ -615,6 +641,13 @@ def _lookup_topal_value(value):
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):
         return _TopalResultPrinter(value, value_type[len(prefix) : -len(suffix)])
+    generator_suffix = ", lang generator GeneratorErrorCode)"
+    if value_type.startswith(prefix) and value_type.endswith(generator_suffix):
+        return _TopalResultPrinter(
+            value,
+            value_type[len(prefix) : -len(generator_suffix)],
+            "generator",
+        )
     if storage_type.startswith("struct TopalUnion."):
         return _TopalSumPrinter(value)
     if storage_type.startswith("struct TopalVariant."):
