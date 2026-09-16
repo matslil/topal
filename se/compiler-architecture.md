@@ -531,6 +531,139 @@ though no runtime segmentation occurs. Dynamic, recursive, nested, static,
 anonymous, unbound, or compound result paths remain closed, and the side table
 is neither artifact metadata nor a public Generator ABI.
 
+The first custom-continuation result boundary applies the same private transfer
+pattern to a statement-free ordinary Character function whose body directly
+constructs the exact single-yield custom generator from its parameter. Each
+call-specialized symbol keys the retained declaration, exact Character,
+suspension/final graph, and ownership edge; the callee returns only the private
+`i32` observation token through LLVM `fastcc`, and the caller expands its own
+retained traversal after taking ownership. A debug-only Character pointer
+shadow keeps the factory parameter live through the return instruction. The
+side table remains compiler-session evidence rather than a serialized or public
+continuation representation; compiled-library support still requires canonical
+declaration, direction, suspension, capture/effect, ownership/close, and target
+adapter metadata.
+
+The first custom-continuation parameter boundary reverses that private mapping
+for one root-owned exact single-yield instance. Before checking each ordinary
+consumer specialization, the frontend maps the caller's retained declaration,
+Character, suspension/final graph, and ownership edge to the sole Generator
+parameter; it restores the compiler-session map afterward while leaving the
+caller binding consumed. The caller passes only the compiler-private `i32`
+observation token through LLVM `fastcc`, and the callee expands the retained
+Character action, Unit resume, and final Unit directly. Generator and Character
+debug shadows preserve source inspection across both frames. This adds no
+continuation representation or public ABI; compiled-library transfer will need
+canonical construction, parameter-site, action, capture/effect,
+ownership/consumption/close, and target-adapter metadata instead of this private
+specialization map.
+
+An unconsumed exact custom parameter keeps the same mapping through an explicit
+checked close node that pairs the callee-local Generator with its transferred
+construction provenance. The node preserves declaration identity, exact
+Character, suspension/final graph, ownership edge, and the lexical root close
+domain even though none is materialized as native continuation state. Because
+this first close boundary has a discarded yield result and no handler, locals,
+cleanup, effects, or post-suspension work, O0 lowering proves the close and final
+Unit before erasing both. LLVM still owns private-token placement through
+`fastcc`, while Generator DWARF remains live in the callee. Compiled-library
+support must serialize canonical transfer/close sites, domain, construction,
+suspension, capture/effect/cleanup, ownership, and target-adapter evidence rather
+than depend on the checked-program node layout.
+
+The same private parameter mapping now preserves a distinct final Character
+when the complete Generator classifier is
+`Generator Character Unit Character`. The caller still transfers only the
+compiler-private `i32` ownership token with LLVM `fastcc`; the callee expands
+the retained yielded Character action, Unit resumption, and final Character in
+that semantic order, then returns the ordinary immutable Character descriptor.
+LLVM's target lowering selects both argument and return placement, so the
+frontend embeds no AMD64 register convention. Generator, yielded-Character,
+and function-result DWARF remain truthful even though no continuation object or
+state machine exists. A compiled library must carry the canonical full
+classifier, declaration, separate yield/final graph, construction/transfer
+sites, action, capture/effect and ownership/close evidence, plus target-adapter
+requirements; neither the private token nor the compile-session provenance map
+is a serializable ABI.
+
+The matching custom-continuation result boundary carries that complete
+`Generator Character Unit Character` identity out of a statement-free factory.
+The factory receives its exact Character as an ordinary immutable descriptor,
+returns only the private `i32` ownership token with LLVM `fastcc`, and keys the
+yield/final/suspension evidence by its private symbol. After binding the token,
+the caller expands the retained yielded Character action and Unit resumption,
+then materializes the distinct final Character. A Character parameter shadow,
+Generator return type, and caller yield shadow keep both frames and all value
+directions inspectable in GDB. The per-symbol map remains compile-session
+specialization evidence: compiled-library support must serialize canonical
+classifier, declaration, construction/result-transfer sites, yield/final graph,
+action, capture/effect, ownership/close, and target-adapter metadata instead of
+the token or map representation.
+
+The next custom-continuation slice makes the initial direction independent by
+accepting a String for `Generator Character Unit Unit`. Its checked provenance
+stores the classified initial parameter and a small ordered pre-suspension
+block separately from the Character yield and Unit resume/final directions.
+At application, O0 lowering evaluates the existing immutable String descriptor
+once, calls the Topal-owned emptiness operation, retains Boolean debug evidence,
+and only then exposes the private `i32` suspension token. Later traversal
+materializes the exact Character action and Unit resume without a continuation
+object or semantic state allocation. LLVM owns target data layout and machine
+instruction selection; neither the frontend nor the Topal syscall runtime
+embeds a System V register rule. Compiled libraries must eventually serialize
+the independent initial classifier, ordered phase/binding and suspension graph,
+construction/action sites, captures/effects, ownership/close state, and target
+adapter requirements instead of the checked-node or private-token encoding.
+
+The following custom-continuation slice makes the yield direction independent
+by accepting `Generator String Unit Unit` with a String initial value. Checked
+provenance records each suspension as either the once-evaluated initial
+descriptor or an exact String literal, independently of the Generator's initial,
+resume, and final classifiers. Root traversal expands those values, actions, and
+Unit resumptions in source order at O0; it reuses the captured initial SSA value
+instead of evaluating the application operand again and allocates no semantic
+continuation state. The `i32` Generator token remains private debug/ownership
+evidence, while yielded Strings use the existing `topal-native/6` descriptor.
+LLVM continues to own target layout and machine calling-convention placement;
+the frontend embeds no System V register rule, and the Linux runtime remains
+Topal-owned allocator/syscall code with no C/C++ standard library. Compiled
+libraries must eventually serialize independent initial and direction
+classifiers, ordered yield-value provenance, suspension/final graph,
+construction/action sites, captures/effects, ownership/close state, and target
+adapter requirements rather than either compiler-session representation.
+
+The next value-continuation slice carries an exact distinct final String through
+`Generator String Unit String`. The checked graph keeps that final expression
+and classifier separate from the once-evaluated input, ordered yields, and Unit
+resume edges. O0 traversal expands each yield/action/resume before creating the
+final immutable String descriptor, so source semantics do not depend on an LLVM
+optimization or a semantic continuation allocation. The full Generator
+classifier, private `i32` ownership token, yielded value, final-expression source
+location, and entry frame remain represented in DWARF. LLVM retains control of
+target layout and register placement, and the Linux runtime remains Topal-owned
+allocator/syscall code with no C/C++ standard library. Compiled libraries must
+eventually serialize independent direction classifiers, ordered yields, the
+distinct final-value expression and provenance, graph sites, captures/effects,
+ownership/close state, and target adapters instead of compile-session nodes or
+tokens.
+
+The next resumption-continuation slice records one ordinary discarded String
+emptiness computation between suspensions. The checked graph stores a typed
+continuation block and its successful-resumption ordinal separately from the
+once-evaluated initial descriptor, ordered yields, action, and final Unit. At O0
+the expanded traversal invokes the first action, resumes with Unit, enters a
+generator-lexical block that observes the captured initial String, and only
+then materializes the following yield. The initial String, both action values,
+full Generator classifier, continuation source site, private `i32` ownership
+token, and entry frame remain available to DWARF/GDB without allocating a
+semantic continuation object. LLVM still controls target layout and register
+placement, while Topal-owned allocator/syscall code provides Linux integration
+without a C/C++ standard library. Future compiled-library metadata must encode
+ordered body phases, successful-resumption ordinals, expression provenance,
+initial and direction classifiers, suspension/final sites, captures/effects,
+ownership/close state, and target adapters rather than compiler-session blocks
+or tokens.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
@@ -913,6 +1046,83 @@ in O0 IR and does not rely on LLVM dead-code elimination. No continuation
 storage is needed; a compiled-library form will nevertheless need a canonical
 terminal-before-suspension graph and final-value metadata so another compiler
 can distinguish completion from a suspended state safely.
+
+The first distinct-result slice keeps suspension provenance and final-value
+provenance separate for an exact `Generator Character Unit Character`. The
+checked plan records the initial Character as the single yielded value and a
+closed Character literal as the final result. Construction evaluates only the
+initial value and stops at the yield. Root foreach expands the action and erased
+Unit resumption before materializing the final Character, then returns that
+value through the ordinary native Character descriptor path. This sequencing
+is frontend-owned at O0; LLVM handles instruction selection and physical
+placement but is not asked to infer coroutine control flow. The private
+ownership token and yielded-value debug shadow remain independent of the final
+value, and no continuation or public Generator layout is introduced. A future
+compiled-library form must identify result classifiers and final-value graph
+nodes canonically alongside suspension and ownership metadata.
+
+The post-resume-local slice replaces the single undifferentiated local list
+with checked activation-stage evidence. A local records how many successful
+Unit resumptions precede its introduction, so construction stops at the first
+yield without evaluating later state and root traversal can expand prefix
+actions, resumptions, local activation, and suffix yields in source order. For
+the admitted immutable Character alias, the executable still needs no semantic
+continuation storage: lowering introduces its lexical DWARF shadow only at the
+recorded stage, after the preceding action/resumption and before the following
+yield action. The stage number is compiler evidence rather than a runtime
+program counter or ABI field. General body computation, mutable or multiple
+locals, captures, close paths, and external boundaries still require canonical
+suspension-graph transitions, environment ownership, cleanup, and target
+adapters in compiled-library metadata.
+
+The exact resume-binding slice uses the same activation evidence for an erased
+Unit local. Its checked stage follows the sole yielded Character's successful
+action/resumption edge; construction therefore has no binding yet, and root
+traversal introduces the name only after the action returns Unit. Because the
+final expression is that immutable Unit, no semantic value storage is needed.
+The backend emits a debug-only `i8` shadow at the activation point so GDB can
+observe source lifetime while the generated behavior remains direct O0 control
+flow. This success edge stays distinct from the `generator-closed` abandonment
+edge. A compiled-library form must encode both edge kinds and resume-local
+activation canonically rather than expose the debug shadow or a target-specific
+continuation layout.
+
+The first custom-close slice relies on existing call specialization to retain
+the root caller's exact Character in a function-local single-yield generator.
+The checked function block appends an explicit close after the unconsumed
+Generator binding and before final Unit. Because this exact generator has no
+handler, cleanup, effect, or post-yield work, its intrinsic close error is
+consumed at the generator boundary and both close value and final Unit erase in
+native code. The compiler-private Generator observation token still carries
+ownership and DWARF identity, not continuation state. General close lowering
+requires canonical success/close edges, lexical close domain, declaration
+provenance, cleanup/effect ordering, environment ownership, and target adapters
+in compiled-library metadata.
+
+The first handled-close slice extends that descriptor with the bound yield
+Result, complete Error/Ok Unit actions, their binding activation and source
+spans, and the nominal generator Error-code set. An exact function-scope close
+materializes `Error(domain = root, code = generator-closed)` through the
+Topal-owned Result/Error allocator path, selects the Error payload directly,
+and runs its Unit action before function completion. The success action remains
+checked metadata but is unreachable on this statically known close edge. DWARF
+uses generator-specific Result/Error types so debugger rendering cannot confuse
+the overlapping private numeric tag with an arithmetic Error code. General
+handler lowering still requires a canonical suspension/branch graph, cleanup
+and effect ordering, code-set identity, environment ownership, and target
+adapters in compiled-library metadata.
+
+The first qualified close-code slice adds an ordered nominal code matcher to
+that checked handler descriptor. Because the admitted abandonment edge is known
+to deliver `lang generator GeneratorErrorCode.generator-closed`, O0 lowering
+selects the qualified Unit action directly after materializing and observing the
+Topal-owned Error; it emits no decision switch and does not activate the generic
+Error fallback binding. This selection depends on code-set identity rather than
+the overlapping private numeric tag, lexical Error domain, or generator
+declaration provenance. General compiled-library handling therefore needs
+canonical ordered code matchers, fallbacks, code-set identities, branch
+activation, and the existing suspension, effect, ownership, and target-adapter
+metadata.
 
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked

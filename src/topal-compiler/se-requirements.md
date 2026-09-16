@@ -500,10 +500,13 @@ later source execution. The admitted exact body has no later computation.
 Root foreach shall consume one locally bound instance, invoke its capture-free
 Character-to-Unit action exactly once with the yielded Character, resume with
 Unit, and return the distinct final Unit. The source shall use the existing
-one-consumption local Generator boundary; repeated use and abandonment shall
-remain rejected. Declaration shapes not covered by a later compiler rule,
-overloads, dynamic Character provenance, direct traversal without a retained
-local, non-Unit actions, captures, and function or library boundaries shall be
+one-consumption local Generator boundary; repeated use and abandonment other
+than the exact function-scope close admitted by
+`TOPAL-COMP-GENERATOR-CLOSE-001` shall remain rejected. Declaration shapes not
+covered by a later compiler rule, overloads, dynamic Character provenance,
+direct traversal without a retained local, non-Unit actions, captures, and
+function transfer except for the exact result admitted by
+`TOPAL-COMP-CUSTOM-GENERATOR-RESULT-001` or library transfer boundaries shall be
 rejected before LLVM.
 
 The Linux x86-64 backend shall evaluate the initial Character once, lower the
@@ -535,10 +538,11 @@ capture-free Character-to-Unit action exactly once for each yielded value in
 source order. It shall resume with Unit after every action, including the final
 action before returning Unit. Existing repeated-use and abandonment rejection
 shall continue to apply. Exact pre-yield Unit completion is governed by
-`TOPAL-COMP-GENERATOR-EARLY-RETURN-001`; ordinary statements between yields,
-different yield expressions, overloads, dynamic Character provenance,
-captures, close handling, and function or library boundaries shall remain
-rejected before LLVM.
+`TOPAL-COMP-GENERATOR-EARLY-RETURN-001`; ordinary statements between yields
+other than the exact local activation admitted by
+`TOPAL-COMP-GENERATOR-SUSPENSION-001`, different yield expressions, overloads,
+dynamic Character provenance, captures, close handling, and function or
+library boundaries shall remain rejected before LLVM.
 
 The Linux x86-64 backend shall expand the finite proven sequence as ordered
 inline action blocks with an erased Unit resumption between adjacent blocks.
@@ -579,9 +583,11 @@ library, needed library, dynamic relocation, public/library Generator ABI, or
 `topal-native/6` revision.
 
 Unclassified or differently classified locals, non-identity initializers,
-additional or inter-yield statements, dynamic Character provenance, captures,
-resume bindings, close handling, and function or library boundaries shall
-remain rejected before LLVM. Future compiled-library metadata shall encode
+additional statements not admitted by `TOPAL-COMP-GENERATOR-SUSPENSION-001`,
+dynamic Character provenance, captures, resume bindings other than the exact
+Unit success binding admitted by `TOPAL-COMP-GENERATOR-RESUME-BINDING-001`,
+close handling, and function or library boundaries shall remain rejected
+before LLVM. Future compiled-library metadata shall encode
 canonical local-state identities and types with the declaration, suspension
 graph, directions, captures/effects, ownership/close behavior, and target
 adapters rather than serialize this executable-local debug shadow. This
@@ -622,6 +628,634 @@ behavior, and target adapters canonically. This realizes
 `TOPAL-COMPILER-GENERATOR-EARLY-RETURN-001`,
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-EARLY-RETURN-001`, and
 `TOPAL-GENERATOR-FOREACH-001` for compiler increment 5j.
+
+## TOPAL-COMP-GENERATOR-FINAL-CHARACTER-001 — Distinct final Character
+
+The checked compiler shall admit one root custom generator with a Character
+input, Character yield, Unit resume, and Character final result when its body
+is exactly one discarded yield of the initial parameter followed by an exact
+closed Character literal. Application shall evaluate the initial Character
+once, retain the yielded value and separate final value as compile-session
+provenance, and stop at the yield without evaluating the final expression.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, invoke its checked Character-to-Unit action exactly once with the
+yielded Character, resume with Unit, then evaluate and produce the distinct
+final Character. The final expression shall not be emitted before the action
+and resumption. Existing repeated-use and abandonment rejection shall continue
+to apply. Binding the non-Unit foreach result, zero or multiple yields, a local
+alias, dynamic or non-Character final expressions, other directions, overloads,
+captures, close handling, and function or library boundaries shall remain
+rejected before LLVM.
+
+On Linux x86-64, the backend shall lower the yield/action/resume sequence and
+final Character materialization in that explicit order at O0. It may retain
+the compiler-private Generator observation token and existing debug-only
+yielded-Character shadow, but neither shall carry the final value or act as
+continuation state. Generated DWARF shall expose the full
+`Generator Character Unit Character` direction identity and yielded Character
+to GDB. The lowering shall introduce no Generator object, state allocation,
+dispatcher, callback, indirect call, unwind support, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode the result classifier and final-value
+node alongside canonical declaration, direction, suspension, effect,
+ownership/close, and target-adapter evidence. This realizes
+`TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`,
+`TOPAL-GENERATOR-SUSPEND-001`, and `TOPAL-GENERATOR-FOREACH-001` for compiler
+increment 5k.
+
+## TOPAL-COMP-GENERATOR-SUSPENSION-001 — Post-resume local activation
+
+The checked compiler shall admit the Unit-final custom Character-generator
+subset when its body contains one or more discarded yields of the sole initial
+Character, then exactly one explicitly classified immutable Character binding
+initialized from that initial parameter, one or more discarded yields of the
+local, and final Unit. It shall retain the local identity, classifier, source
+span, exact Character value, and the number of successful resumptions before
+activation. Starting the generator shall stop at its first yield and shall not
+evaluate the post-yield binding.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, complete each prefix action and Unit resumption, activate the local
+only after the last prefix resumption, then observe the local yields in source
+order before final Unit. The local shall remain absent from the caller's
+checked environment. A local without a later yield, a second local, a
+non-identity initializer, a yield of the wrong active value, other ordinary
+statements, dynamic Character provenance, captures, resume bindings other than
+the exact Unit success binding admitted by
+`TOPAL-COMP-GENERATOR-RESUME-BINDING-001`, close handling, and function or
+library boundaries shall remain rejected before LLVM.
+
+On Linux x86-64, the backend shall emit the completed prefix action and erased
+Unit resumption before local materialization and its lexical DWARF declaration,
+then emit that declaration before the next yield action at O0. The checked
+resumption count shall guide source-order expansion but shall not become a
+runtime program counter or public layout. This lowering shall not depend on
+optimization or introduce a Generator object, semantic continuation state,
+dispatcher, callback, indirect call, unwind support, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall identify each local activation transition
+canonically with the declaration, directions, ordered suspension graph,
+captures/effects, ownership/close behavior, and target adapters. This realizes
+`TOPAL-COMPILER-GENERATOR-SUSPENSION-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-BODY-STATEMENT-001`,
+`TOPAL-GENERATOR-LOCAL-BINDING-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5l.
+
+## TOPAL-COMP-GENERATOR-RESUME-BINDING-001 — Exact Unit resumption
+
+The checked compiler shall admit the root custom
+`Generator Character Unit Unit` subset when its body is exactly one named,
+optionally Unit-classified binding of `yield` applied to the sole initial
+Character, followed by that binding as the final Unit expression. It shall
+retain the yielded Character and a distinct Unit local whose activation follows
+one successful resumption. Starting the generator shall stop at the yield
+without introducing or evaluating the resume binding.
+
+Direct root foreach over one locally bound admitted instance shall consume the
+Generator, invoke its Character-to-Unit action once, resume with Unit, make
+that Unit available under the generator-local name, and only then use it as the
+final result. The name shall remain absent from the caller's checked
+environment. A wrong or discarded binding name, non-Unit classifier, different
+yielded value, additional yield or body statement, different final expression,
+dynamic Character provenance, captures, close handling, and function or
+library boundaries shall remain rejected before LLVM.
+
+On Linux x86-64, the backend shall emit the action before a debug-only `i8`
+shadow for the successfully resumed Unit and expose that binding as Unit to GDB
+at its source line at O0. The erased success value shall not create semantic
+continuation state or conflate ordinary Unit resumption with the distinct
+`generator-closed` close edge. The lowering shall not depend on optimization or
+introduce a Generator object, state machine, dispatcher, callback, indirect
+call, unwind support, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library Generator ABI, or `topal-native/6`
+revision. Future compiled-library metadata shall encode success and close
+edges, resume-local activation, the declaration and directions, suspension
+identity, captures/effects, ownership/close behavior, and target adapters
+canonically. This realizes `TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-GENERATOR-RESUME-BINDING-001`, and `TOPAL-GENERATOR-FOREACH-001` for
+compiler increment 5m.
+
+## TOPAL-COMP-GENERATOR-CLOSE-001 — Exact function-scope abandonment
+
+The checked compiler shall admit one call-specialized ordinary function whose
+body binds one fresh instance of the exact single-yield custom
+`Generator Character Unit Unit` and then reaches final Unit without consuming
+it. The initial Character shall retain its exact caller provenance. Function
+scope exit shall consume the suspended Generator, deliver `generator-closed`
+with lexical domain `root`, retain the root generator declaration as separate
+provenance, and complete the handler-free generator boundary before returning
+Unit.
+
+The checked function body shall contain an explicit custom close after the
+Generator binding and before its final expression. Root abandonment, multiple
+owned generators, multiple yields, generator locals, and close handlers or
+other post-yield work except for the exact handler admitted by
+`TOPAL-COMP-GENERATOR-CLOSE-HANDLER-001`, dynamic Character provenance without
+call specialization, static or anonymous functions, explicit return, non-Unit
+final results, Generator parameter/result transfer, and library boundaries
+shall remain rejected before LLVM.
+
+On Linux x86-64, the backend may erase the intrinsic close value and final Unit
+for this handler-free, effect-free body after preserving their checked O0
+order; the expected close signal has no source observer at the generator
+boundary. The compiler-private ownership/debug token shall be consumed
+conceptually and remain visible as `Generator Character Unit Unit` in the
+function's DWARF scope. The lowering shall not introduce a Generator object,
+continuation state, close dispatcher, callback, indirect call, unwind support,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode the close site and lexical domain,
+generator declaration provenance, close/success edges, suspension identity,
+cleanup/effect evidence, ownership state, and target adapters canonically.
+This realizes `TOPAL-COMPILER-GENERATOR-CLOSE-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-CLOSE-001`, and
+`TOPAL-GENERATOR-ERROR-CODE-001` for compiler increment 5n.
+
+## TOPAL-COMP-GENERATOR-CLOSE-HANDLER-001 — Exact close-result handling
+
+The checked compiler shall generalize the admitted function-local custom close
+to one root generator declaration whose body binds its sole Character yield
+result and immediately selects a complete `Error`/`Ok` decision with Unit
+actions. The checked generator construction shall retain the yield-result
+binding, Error and Ok binding identities and spans, both branch actions, and
+the nominal `lang generator GeneratorErrorCode` set containing
+`generator-closed`.
+
+When the exact generator is abandoned by the admitted ordinary Unit function,
+its checked close shall deliver
+`Error(domain = root, code = generator-closed)`, select and execute only the
+Error action, finish the generator boundary, and then return the function's
+final Unit. The successful Unit-resume action shall remain explicit metadata but
+shall not execute on this close edge. Root abandonment, successful foreach,
+qualified close-code patterns except for the exact matcher admitted by
+`TOPAL-COMP-GENERATOR-CLOSE-CODE-PATTERN-001`, non-Unit handler actions, handler
+work beyond the exact decision, multiple yields or owners, generator locals,
+dynamic provenance, transfer boundaries, and library boundaries shall remain
+rejected before LLVM.
+
+On Linux x86-64, O0 lowering shall materialize the intrinsic failure through
+Topal-owned Result/Error and allocator primitives, statically select its Error
+payload, and preserve source order independently of LLVM optimization. DWARF
+shall expose the yield Result and selected Error with the generator Error-code
+vocabulary so GDB renders `generator-closed`, not an unrelated nominal code.
+The lowering shall not introduce a Generator object, continuation state, close
+dispatcher, callback, indirect call, unwind dependency, C/C++ runtime,
+other-language standard library, needed library, dynamic relocation,
+public/library Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode handler branches and binding activation
+together with the close site/domain, declaration provenance, success/close
+edges, suspension, cleanup/effect evidence, ownership state, and target adapters
+canonically. This realizes `TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001`,
+`TOPAL-GENERATOR-CLOSE-HANDLER-001`, `TOPAL-GENERATOR-CLOSE-001`, and
+`TOPAL-GENERATOR-ERROR-CODE-001` for compiler increment 5o.
+
+## TOPAL-COMP-GENERATOR-CLOSE-CODE-PATTERN-001 — Qualified close-code selection
+
+The checked compiler shall generalize the admitted exact close handler to one
+qualified `Error ( code is lang generator generator-closed )` Unit rule before
+its generic Error fallback, together with the complete Ok Unit rule. The
+checked handler shall retain the qualified rule's nominal code-set identity,
+alternative, source span, and action separately from the generic Error
+binding/action and Ok binding/action.
+
+For the statically known close edge, the backend shall select and execute only
+the qualified code action. Selection shall use the nominal
+`lang generator GeneratorErrorCode.generator-closed` identity, not the lexical
+Error domain or generator declaration provenance. The generic Error fallback
+binding and Ok binding shall remain inactive. O0 lowering may resolve this known
+selection directly without a runtime decision switch, but shall still
+materialize the Topal-owned Result/Error failure and preserve the nominal code
+observation and action source location for GDB.
+
+Other qualified codes or vocabularies, code rules after the generic Error
+fallback, missing fallbacks, multiple qualified rules, non-Unit actions,
+successful traversal, dynamic close results, multiple yields or owners,
+transfer boundaries, and library boundaries shall remain rejected before LLVM.
+The lowering shall not add a Generator object, continuation state, dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall
+preserve ordered nominal code matchers and actions together with fallback
+bindings, success/close edges, domain and declaration provenance, suspension,
+cleanup/effect evidence, ownership state, and target adapters canonically. This
+realizes `TOPAL-COMPILER-GENERATOR-CLOSE-CODE-PATTERN-001`,
+`TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001`,
+`TOPAL-GENERATOR-CLOSE-HANDLER-001`, and `TOPAL-DECISION-ERROR-CODE-001` for
+compiler increment 5p.
+
+## TOPAL-COMP-CUSTOM-GENERATOR-RESULT-001 — Specialized custom continuation result
+
+The checked compiler shall admit an ordinary nonrecursive called function with
+exactly one named Character parameter and result classifier
+`Generator Character Unit Unit` when its statement-free body returns a fresh
+instance of the exact single-yield custom generator admitted by
+`TOPAL-COMP-GENERATOR-SINGLE-YIELD-001`, applied directly to that parameter. The
+top-level call argument shall retain one exact Character. Function exit shall
+transfer the fresh suspended continuation without close delivery; the caller
+shall bind and consume it exactly once through the admitted root Character
+foreach.
+
+Each call shall create a distinct private specialization. The checked program
+shall retain the generator declaration, exact Character, suspension/final
+graph, and ownership transfer as provenance associated with that private
+symbol. The caller shall evaluate its Character argument once. The callee shall
+return the compiler-private Generator token, and caller traversal shall invoke
+the Character-to-Unit action once, resume with Unit, and finish with Unit using
+only that call's retained provenance. Distinct calls shall not share provenance.
+
+On Linux x86-64, LLVM `fastcc` shall choose placement for the private Character
+descriptor parameter and `i32` Generator result; the backend shall hard-code no
+System V register placement. A debug-only Character parameter shadow shall keep
+the source value inspectable through function return. DWARF and GDB shall expose
+the Character parameter, Generator result classifier/value, caller traversal
+Character, and both call frames.
+
+Static, anonymous, recursive, nested, multiple-parameter, statement-bearing,
+non-parameter-derived, multiple-yield, local-state, handled-close, unbound-result,
+caller-close, and library paths shall remain rejected before LLVM. The lowering
+shall introduce no Generator object or state allocation, dispatcher, callback,
+indirect call, unwind dependency, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library calling convention
+or Generator ABI, or `topal-native/6` revision. Future compiled-library metadata
+shall encode the canonical declaration and directions, suspension/final graph,
+construction evidence, capture/effect evidence, transfer/ownership/close state,
+and target adapters rather than expose the compiler-session side table or
+private token. This realizes `TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001`,
+`TOPAL-GENERATOR-FUNCTION-RESULT-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5q.
+
+## TOPAL-COMP-CUSTOM-GENERATOR-PARAMETER-001 — Specialized custom continuation parameter
+
+The checked compiler shall admit a top-level call to an ordinary nonrecursive
+function with exactly one named `Generator Character Unit Unit` parameter and
+Unit result when the argument is a named root binding constructed by the exact
+single-yield custom generator admitted by
+`TOPAL-COMP-GENERATOR-SINGLE-YIELD-001`. The function's executable body shall
+consist only of one Character foreach over that parameter with a
+Character-to-Unit action and final Unit. Argument evaluation shall transfer the
+suspended continuation, consume the caller binding, and make the parameter its
+sole owner. Successful traversal shall invoke the action once, resume with Unit,
+reach final Unit, and return without close delivery.
+
+Each call shall create a distinct private specialization. The checked program
+shall map that call's retained declaration, exact Character, suspension/final
+graph, and ownership edge to the parameter only while checking its body, then
+restore the surrounding compiler-session provenance. Distinct calls shall not
+share Characters or continuation provenance, and a caller shall not reuse the
+consumed binding.
+
+On Linux x86-64, LLVM `fastcc` shall choose placement for the private `i32`
+Generator token parameter; the backend shall hard-code no System V register
+placement. DWARF and GDB shall expose the Generator parameter, yielded Character,
+and caller/callee frames. The token shall carry no public or semantic
+continuation state.
+
+Static, anonymous, recursive, nested, multiple-parameter, additional-body,
+direct-expression-argument, multiple-yield, local-state, handled-close,
+unconsumed-parameter, returned-parameter, repeated-use, and library paths shall
+remain rejected before LLVM. The lowering shall introduce no Generator object
+or state allocation, dispatcher, callback, indirect call, unwind dependency,
+C/C++ runtime, other-language standard library, needed library, dynamic
+relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode the
+canonical declaration and directions, suspension/final graph, construction
+evidence, parameter transfer site, capture/effect evidence,
+ownership/consumption/close state, action evidence, and target adapters rather
+than expose the compiler-session side table or private token. This realizes
+`TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5r.
+
+## TOPAL-COMP-CUSTOM-GENERATOR-PARAMETER-CLOSE-001 — Closing a transferred custom parameter
+
+The checked compiler shall extend the exact custom Generator parameter
+specialization of `TOPAL-COMP-CUSTOM-GENERATOR-PARAMETER-001` to a
+statement-free Unit function body that leaves the transferred parameter
+unconsumed. Function exit shall consume and close that same suspended
+continuation. The caller binding shall remain consumed, and neither caller nor
+callee shall subsequently traverse or resume it.
+
+The checked close node shall retain the callee parameter together with the
+call-specialized custom construction provenance: declaration identity, exact
+Character, directions, suspension/final graph, and ownership edge. Its close
+domain shall be the lexical root namespace of the admitted function, separate
+from the qualified generator declaration provenance. Distinct calls shall retain
+distinct close provenance.
+
+Because the admitted yield result is discarded and the exact continuation has
+no handler, local state, cleanup, effect, or work after suspension, O0 lowering
+may erase close delivery and final Unit after proving the explicit close node.
+This erasure is semantic lowering, not an LLVM optimization. On Linux x86-64,
+LLVM `fastcc` shall choose placement for the private `i32` Generator token
+parameter; the backend shall hard-code no System V register placement. DWARF
+and GDB shall preserve the Generator parameter and caller/callee frames through
+the close edge.
+
+Handled or bound-yield close, multiple yields, local state, cleanup/effects,
+non-Unit results, explicit return, additional body statements, traversal before
+exit, static/anonymous/recursive/nested/multiple-parameter calls,
+direct-expression arguments, repeated caller use, and library paths shall remain
+rejected before LLVM. The lowering shall introduce no Generator object or state
+allocation, close dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Future compiled-library metadata shall encode the canonical
+declaration and directions, suspension/final graph, construction evidence,
+parameter transfer and close sites, lexical close domain,
+capture/effect/cleanup evidence, ownership/consumption/close state, and target
+adapters rather than expose the compiler-session provenance or private token.
+This realizes `TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-CLOSE-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`, and `TOPAL-GENERATOR-CLOSE-001` for
+compiler increment 5s.
+
+## TOPAL-COMP-CUSTOM-GENERATOR-CHARACTER-RESULT-PARAMETER-001 — Transferred final Character
+
+The checked compiler shall extend the exact custom Generator parameter
+specialization of `TOPAL-COMP-CUSTOM-GENERATOR-PARAMETER-001` to one named
+`Generator Character Unit Character` parameter and Character function result.
+The argument shall be a named root binding of the exact single-yield,
+distinct-final-Character generator admitted by
+`TOPAL-COMP-GENERATOR-FINAL-CHARACTER-001`. The function body shall be exactly
+a result-valued Character foreach over that parameter with a
+Character-to-Unit action. Argument evaluation shall consume the caller binding
+and transfer sole ownership to the callee.
+
+Successful traversal shall invoke the action once with the retained yielded
+Character, resume with Unit, evaluate the separately retained final Character,
+and return that final Character as the ordinary function result. It shall not
+deliver close. The checked program shall preserve the exact Generator
+classifier, declaration, yield and final values, suspension/resumption order,
+action, and ownership transfer for each private call specialization. Distinct
+calls shall not share yielded or final provenance, and the caller shall not
+reuse the consumed Generator binding.
+
+On Linux x86-64, LLVM `fastcc` shall choose placement for the private `i32`
+Generator token parameter and ordinary Character descriptor result; the
+backend shall hard-code no System V register or return placement. O0 lowering
+shall expand the action and Unit resumption before materializing and returning
+the final Character, independently of LLVM optimization. DWARF and GDB shall
+expose the complete Generator classifier, callee-owned parameter, yielded
+Character, final Character result, and caller/callee frames.
+
+Static, anonymous, recursive, nested, multiple-parameter, additional-body,
+direct-expression-argument, multiple-yield, generator-local, handled or
+unconsumed, alternate-result, repeated-use, returned-continuation, and library
+paths shall remain rejected before LLVM. The lowering shall introduce no
+Generator object or state allocation, dispatcher, callback, indirect call,
+unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall
+encode the canonical classifier and directions, declaration, distinct
+yield/final graph, construction and parameter-transfer sites, action,
+capture/effect evidence, ownership/consumption/close state, and target adapters
+rather than expose the compiler-session specialization or private token. This
+realizes
+`TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-PARAMETER-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`,
+`TOPAL-GENERATOR-FINAL-RETURN-001`, and `TOPAL-GENERATOR-FOREACH-001` for
+compiler increment 5t.
+
+## TOPAL-COMP-CUSTOM-GENERATOR-CHARACTER-RESULT-001 — Returning a continuation with final Character
+
+The checked compiler shall extend the exact custom Generator result
+specialization of `TOPAL-COMP-CUSTOM-GENERATOR-RESULT-001` to an ordinary
+nonrecursive function whose result classifier is
+`Generator Character Unit Character`. The function shall have exactly one
+named Character parameter and a statement-free body that directly applies the
+exact single-yield, distinct-final-Character generator admitted by
+`TOPAL-COMP-GENERATOR-FINAL-CHARACTER-001` to that parameter. The top-level call
+shall supply one exact Character and bind the returned continuation before
+consuming it.
+
+Function exit shall transfer the fresh continuation without close delivery.
+The checked program shall associate the generator declaration, exact yielded
+and final Characters, suspension/resumption graph, and ownership transfer with
+the private call specialization. Caller traversal shall invoke the
+Character-to-Unit action once, resume with Unit, then produce the separately
+retained final Character. The caller binding shall be consumed exactly once,
+and no result provenance shall be shared with another private specialization.
+
+On Linux x86-64, LLVM `fastcc` shall choose placement for the ordinary
+Character descriptor parameter and private `i32` Generator result; the backend
+shall hard-code no System V register or return placement. The factory shall
+return only the private ownership token. O0 caller lowering shall expand the
+retained action and Unit resumption before materializing the final Character,
+independently of LLVM optimization. DWARF and GDB shall expose the Character
+factory parameter, complete Generator return classifier and value, yielded
+Character, and caller/factory frames.
+
+Static, anonymous, recursive, nested, multiple-parameter, statement-bearing,
+non-parameter-derived, multiple-yield, generator-local, handled-close,
+unbound-result, caller-close, parameter-transfer composition, repeated-use, and
+library paths shall remain rejected before LLVM. The lowering shall introduce
+no Generator object or state allocation, dispatcher, callback, indirect call,
+unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall encode
+the canonical classifier and directions, declaration, distinct yield/final
+graph, construction and function-result transfer sites, action, capture/effect
+evidence, ownership/consumption/close state, and target adapters rather than
+expose the compiler-session returned-provenance table or private token. This
+realizes `TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001`,
+`TOPAL-GENERATOR-FUNCTION-RESULT-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5u.
+
+## TOPAL-COMP-GENERATOR-STRING-INPUT-001 — Independent String initial input
+
+The checked compiler shall admit a root custom generator whose one named
+initial parameter is String while its directions are
+`Generator Character Unit Unit`. Its body shall bind the result of
+`empty? initial` to one named Boolean before one discarded yield of an exact
+Character literal and a final Unit expression. One currently admitted String
+expression shall start the generator, and the fresh result shall be bound and
+consumed exactly once by a Character-to-Unit foreach action.
+
+The checked program shall retain the String parameter independently of the
+three Generator directions, the ordered pre-suspension block and Boolean
+binding, the exact yielded Character, declaration and suspension spans, final
+Unit, and the ownership edge. Generator application shall evaluate the String
+operand once and execute its emptiness predicate before exposing the suspended
+Generator binding. Traversal shall then invoke the action once, resume with
+Unit, and complete with Unit. These steps shall hold with LLVM optimization
+disabled and shall not depend on constant folding or dead-code elimination.
+
+On Linux x86-64, the String descriptor and Boolean prefix value shall use the
+existing `topal-native/6` representations, while the root-local Generator shall
+remain a compiler-private `i32` ownership token. LLVM shall select target data
+layout and instruction placement; the backend shall hard-code no AMD64
+register convention. DWARF and GDB shall expose the String initial value while
+the prefix executes, the Boolean prefix binding metadata, the complete
+Generator value, the yielded Character, and the Topal entry frame.
+
+Other initial classifiers, multiple parameters, alternate prefix operations,
+unnamed or differently classified prefix bindings, computed or non-Character
+yields, multiple yields, non-Unit resume or final directions, local state after
+the yield, close handling, nested or ordinary-function construction, Generator
+parameter/result transfer, repeated consumption, abandonment, libraries, and
+external boundaries shall remain rejected before LLVM. The lowering shall
+introduce no Generator object or semantic state allocation, dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode the initial classifier separately from
+all three directions, the ordered pre-suspension operation and binding,
+declaration, suspension/yield/final graph, construction/action sites,
+capture/effect evidence, ownership/consumption/close state, and target adapters
+rather than expose the private token or checked-program node layout. This
+realizes `TOPAL-COMPILER-GENERATOR-STRING-INPUT-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-GENERATOR-FOREACH-001`, and `TOPAL-STRING-EMPTY-PREDICATE-001` for
+compiler increment 5v.
+
+## TOPAL-COMP-GENERATOR-STRING-YIELD-001 — Independent String yield direction
+
+The checked compiler shall admit a root custom generator with one named String
+initial parameter and directions `Generator String Unit Unit`. Its body shall
+contain one or more consecutive discarded yields, each yielding either that
+initial parameter or an exact String literal, followed by a final Unit
+expression. One currently admitted String expression shall start the generator,
+and the fresh result shall be bound and consumed exactly once by a String-to-Unit
+foreach action.
+
+The checked program shall retain the initial classifier separately from the
+three Generator directions and shall retain ordered per-yield value provenance,
+declaration and suspension spans, final Unit, action, and ownership edge.
+Application shall evaluate the initial String expression exactly once. Traversal
+shall deliver that retained descriptor for an initial-parameter yield,
+materialize each exact literal at its suspension point, invoke the action and
+resume with Unit after every yield, and complete with Unit. This source order
+shall hold with LLVM optimization disabled and shall not depend on constant
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, yielded values shall use the existing `topal-native/6` String
+descriptor while the root-local Generator remains a compiler-private `i32`
+ownership token. LLVM shall select target data layout and instruction placement;
+the backend shall hard-code no AMD64 register convention. DWARF and GDB shall
+expose the complete Generator and each yielded String while its action executes,
+plus the Topal entry frame.
+
+Other input, yield, or resume classifiers; final classifiers beyond the exact
+String result admitted by `TOPAL-COMP-GENERATOR-FINAL-STRING-001`; multiple
+parameters; computed yields; intervening or post-suspension body state beyond
+the exact one-discard continuation admitted by
+`TOPAL-COMP-GENERATOR-RESUME-DISCARD-001`; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries shall remain
+rejected before LLVM. The lowering shall introduce no Generator object or
+semantic state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode the
+initial and direction classifiers independently, ordered per-yield values and
+provenance, declaration, suspension/final graph, construction/action sites,
+capture/effect evidence, ownership/consumption/close state, and target adapters
+rather than expose the private token or checked-program node layout. This
+realizes `TOPAL-COMPILER-GENERATOR-STRING-YIELD-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-GENERATOR-FOREACH-001`, and `TOPAL-STRING-EMPTY-PREDICATE-001` for
+compiler increment 5w.
+
+## TOPAL-COMP-GENERATOR-FINAL-STRING-001 — Distinct final String
+
+The checked compiler shall admit a root custom generator with one named String
+initial parameter and directions `Generator String Unit String`. Its body shall
+contain one or more consecutive discarded String yields in the forms admitted
+by `TOPAL-COMP-GENERATOR-STRING-YIELD-001`, followed by one exact String literal
+as its distinct final expression. One currently admitted String expression
+shall start the generator, and the fresh result shall be bound and consumed
+exactly once by a String-to-Unit foreach action whose expression result is the
+final String.
+
+The checked program shall retain the final String expression and classifier
+separately from the initial value, ordered yield provenance, Unit resume
+direction, declaration and suspension spans, action, and ownership edge.
+Application shall evaluate the initial expression exactly once. Traversal shall
+deliver every yield, invoke its action, resume with Unit, and only then
+materialize and return the final String. This order shall hold with LLVM
+optimization disabled and shall not depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the input, yielded, and final values shall use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. LLVM shall select target data layout and
+instruction placement; the backend shall hard-code no AMD64 register
+convention. DWARF and GDB shall expose the complete
+`Generator String Unit String` classifier and value, the yielded String during
+its action, the final expression source location, and the Topal entry frame.
+
+Nonliteral or initial-derived final values; other input, yield, resume, or final
+classifiers; multiple parameters; computed yields; intervening body state;
+close handling; nested or ordinary-function construction; Generator
+parameter/result transfer; repeated consumption; abandonment; libraries; and
+external boundaries shall remain rejected before LLVM. The lowering shall
+introduce no Generator object or semantic state allocation, dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode the initial and direction classifiers
+independently, ordered yield provenance, the distinct final-value expression
+and provenance, declaration, suspension/final graph, construction/action sites,
+capture/effect evidence, ownership/consumption/close state, and target adapters
+rather than expose the private token or checked-program node layout. This
+realizes `TOPAL-COMPILER-GENERATOR-FINAL-STRING-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`,
+`TOPAL-GENERATOR-FINAL-RETURN-001`, and `TOPAL-GENERATOR-FOREACH-001` for
+compiler increment 5x.
+
+## TOPAL-COMP-GENERATOR-RESUME-DISCARD-001 — Post-resume discarded computation
+
+The checked compiler shall admit a root custom generator with one named String
+initial parameter and directions `Generator String Unit Unit` whose body
+extends the yield forms of `TOPAL-COMP-GENERATOR-STRING-YIELD-001` with exactly
+one discarded `empty? initial` computation. At least one yield shall precede
+that computation and at least one yield shall follow it. The body shall end in
+Unit. One currently admitted String expression shall start the generator, and
+the fresh result shall be bound and consumed exactly once by a String-to-Unit
+foreach action.
+
+The checked program shall retain the computation as a typed continuation block
+with its source span and exact successful-resumption ordinal, separately from
+the initial value, ordered yield provenance, action, final Unit, and ownership
+edge. Application shall evaluate the initial expression exactly once. Traversal
+shall deliver and act on each preceding yield, resume it with Unit, execute the
+discarded emptiness computation against the captured initial String, and only
+then reach the following suspension. This order shall hold with LLVM
+optimization disabled and shall not depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the initial and yielded values shall use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. LLVM shall select target data layout and
+instruction placement; the backend shall hard-code no AMD64 register
+convention. DWARF and GDB shall expose the complete
+`Generator String Unit Unit` classifier and value, each yielded String during
+its action, the captured initial String during the post-resume computation, its
+source location, and the Topal entry frame.
+
+Bindings, more than one continuation computation, a computation before the
+first or after the final yield, operands other than the initial parameter,
+computed continuation expressions, non-Unit final values, other input, yield,
+or resume classifiers, close handling, nested or ordinary-function
+construction, Generator parameter/result transfer, repeated consumption,
+abandonment, libraries, and external boundaries shall remain rejected before
+LLVM. The lowering shall introduce no Generator object or semantic state
+allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator ABI, or `topal-native/6`
+revision. Future compiled-library metadata shall encode the initial and
+direction classifiers independently, ordered yields, the continuation block
+and successful-resumption ordinal, expression provenance and source sites,
+declaration/suspension/final graph, action, capture/effect evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+private token or checked-program node layout. This realizes
+`TOPAL-COMPILER-GENERATOR-RESUME-DISCARD-001`,
+`TOPAL-GENERATOR-BODY-STATEMENT-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-GENERATOR-FOREACH-001` for compiler increment 5y.
 
 ## TOPAL-COMP-FUNCTION-001 — Scalar overloads and static functions
 

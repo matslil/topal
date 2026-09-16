@@ -7,9 +7,10 @@ use num_rational::BigRational;
 use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerFallible, CompilerFunction, CompilerGeneratorType, CompilerModularType,
-    CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType,
-    CompilerType, CompilerValidation, display_string_literal,
+    CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
+    CompilerGeneratorType, CompilerGeneratorYield, CompilerModularType, CompilerParameter,
+    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType,
+    CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -31,6 +32,20 @@ fn program_uses_extended_debug(program: &CompilerProgram) -> bool {
                     .any(|parameter| type_uses_extended_debug(&parameter.value_type))
                 || block_uses_extended_debug(&function.body)
         })
+}
+
+fn program_uses_generator_close_handler(program: &CompilerProgram) -> bool {
+    program.functions.iter().any(|function| {
+        function.body.statements.iter().any(|statement| {
+            matches!(
+                statement,
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterHandledClose { .. },
+                    ..
+                })
+            )
+        })
+    })
 }
 
 fn block_uses_extended_debug(block: &CompilerBlock) -> bool {
@@ -102,6 +117,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::StringEmpty
         | CompilerExpressionKind::ErrorField { .. }
         | CompilerExpressionKind::ResultDecision { .. }
+        | CompilerExpressionKind::CustomCharacterHandledClose { .. }
         | CompilerExpressionKind::OptionalDecision { .. }
         | CompilerExpressionKind::ListDecision { .. }
         | CompilerExpressionKind::ErrorCode(_) => true,
@@ -141,12 +157,71 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
         }
-        CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
-            expression_uses_extended_debug(initial)
+        CompilerExpressionKind::CustomCharacterClose {
+            generator,
+            provenance,
+            ..
+        } => {
+            expression_uses_extended_debug(generator) || expression_uses_extended_debug(provenance)
         }
-        CompilerExpressionKind::StringCharactersForeach { source, body, .. }
-        | CompilerExpressionKind::CustomCharacterForeach { source, body, .. } => {
+        CompilerExpressionKind::CustomCharacterGenerator {
+            initial,
+            prefix,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(initial)
+                || block_uses_extended_debug(prefix)
+                || expression_uses_extended_debug(result)
+        }
+        CompilerExpressionKind::CustomValueGenerator {
+            initial,
+            yields,
+            continuations,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(initial)
+                || yields.iter().any(|yielded| match yielded {
+                    CompilerGeneratorYield::Initial(_) => false,
+                    CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
+                })
+                || continuations
+                    .iter()
+                    .any(|continuation| block_uses_extended_debug(&continuation.body))
+                || expression_uses_extended_debug(result)
+        }
+        CompilerExpressionKind::StringCharactersForeach { source, body, .. } => {
             expression_uses_extended_debug(source) || block_uses_extended_debug(body)
+        }
+        CompilerExpressionKind::CustomCharacterForeach {
+            source,
+            body,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(source)
+                || block_uses_extended_debug(body)
+                || expression_uses_extended_debug(result)
+        }
+        CompilerExpressionKind::CustomValueForeach {
+            source,
+            yields,
+            continuations,
+            body,
+            result,
+            ..
+        } => {
+            expression_uses_extended_debug(source)
+                || yields.iter().any(|yielded| match yielded {
+                    CompilerGeneratorYield::Initial(_) => false,
+                    CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
+                })
+                || continuations
+                    .iter()
+                    .any(|continuation| block_uses_extended_debug(&continuation.body))
+                || block_uses_extended_debug(body)
+                || expression_uses_extended_debug(result)
         }
         CompilerExpressionKind::IterateGeneratorForeach {
             generator, body, ..
@@ -342,7 +417,11 @@ struct Generator<'a> {
 
 impl<'a> Generator<'a> {
     fn new(program: &'a CompilerProgram, source_name: &'a str) -> Self {
-        let mut debug = DebugInfo::new(source_name, program_uses_extended_debug(program));
+        let mut debug = DebugInfo::new(
+            source_name,
+            program_uses_extended_debug(program),
+            program_uses_generator_close_handler(program),
+        );
         debug.set_source(program.source.clone());
         if !program.function_value_names.is_empty() {
             debug.enum_type(&function_value_enumeration(program));
@@ -572,12 +651,17 @@ impl<'a> Generator<'a> {
                 body.subprogram,
             );
             let location = self.debug.location(parameter.span, body.subprogram);
-            let retained_string_generator_source = parameter.value_type == CompilerType::String
-                && matches!(&function.result_type, CompilerType::Generator(generator)
-                    if generator.yield_type.as_ref() == &CompilerType::Character
-                        && generator.resume_type.as_ref() == &CompilerType::Unit
-                        && generator.result_type.as_ref() == &CompilerType::Unit);
-            if retained_string_generator_source
+            let retained_character_generator_source = matches!(
+                parameter.value_type,
+                CompilerType::String | CompilerType::Character
+            ) && matches!(&function.result_type, CompilerType::Generator(generator)
+            if generator.yield_type.as_ref() == &CompilerType::Character
+                && generator.resume_type.as_ref() == &CompilerType::Unit
+                && matches!(
+                    generator.result_type.as_ref(),
+                    CompilerType::Unit | CompilerType::Character
+                ));
+            if retained_character_generator_source
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -1104,26 +1188,71 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
                 self.emit_expression(text, body, environment)
             }
-            CompilerExpressionKind::StringCharactersClose(generator) => {
+            CompilerExpressionKind::StringCharactersClose(generator)
+            | CompilerExpressionKind::CustomCharacterClose { generator, .. } => {
                 let _ = self.emit_expression(generator, body, environment);
                 LlValue::Unit
             }
+            CompilerExpressionKind::CustomCharacterHandledClose { generator, handler } => self
+                .emit_custom_character_handled_close(
+                    generator,
+                    handler,
+                    body,
+                    environment,
+                    expression.span,
+                ),
             CompilerExpressionKind::StringCharactersForeach { .. } => {
                 self.emit_string_characters_foreach(expression, body, environment)
             }
-            CompilerExpressionKind::CustomCharacterGenerator { initial, .. } => {
-                let _ = self.emit_expression(initial, body, environment);
+            CompilerExpressionKind::CustomCharacterGenerator {
+                declaration_span,
+                initial_parameter,
+                initial,
+                prefix,
+                ..
+            } => {
+                let initial = self.emit_expression(initial, body, environment);
+                if !prefix.statements.is_empty() {
+                    let parent_scope = body.subprogram;
+                    body.subprogram = self.debug.lexical_block(*declaration_span, parent_scope);
+                    let variable = self.debug.local(
+                        &initial_parameter.name,
+                        initial_parameter.span,
+                        &initial_parameter.value_type,
+                        body.subprogram,
+                    );
+                    let location = self.debug.location(initial_parameter.span, body.subprogram);
+                    body.debug_value(&initial, variable, location);
+                    let mut prefix_environment = environment.clone();
+                    prefix_environment.insert(initial_parameter.name.clone(), initial);
+                    let prefix_result = self.emit_block(prefix, body, &mut prefix_environment);
+                    debug_assert!(matches!(prefix_result, LlValue::Unit));
+                    body.subprogram = parent_scope;
+                }
                 let CompilerType::Generator(generator) = &expression.value_type else {
                     unreachable!("checked custom construction retains its Generator type")
                 };
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
+                }
+            }
+            CompilerExpressionKind::CustomValueGenerator { initial, .. } => {
+                let initial = self.emit_expression(initial, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked custom construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                    captured_initial: Some(Box::new(initial)),
                 }
             }
             CompilerExpressionKind::CustomCharacterForeach {
@@ -1133,12 +1262,13 @@ impl<'a> Generator<'a> {
                 locals,
                 parameter,
                 body: action,
+                result,
             } => {
                 let parent_scope = body.subprogram;
                 if !locals.is_empty() {
                     body.subprogram = self.debug.lexical_block(*declaration_span, parent_scope);
                 }
-                let result = self.emit_character_sequence_foreach(
+                let _ = self.emit_character_sequence_foreach(
                     source,
                     characters,
                     locals.first(),
@@ -1148,8 +1278,12 @@ impl<'a> Generator<'a> {
                     environment,
                     expression.span,
                 );
+                let value = self.emit_expression(result, body, environment);
                 body.subprogram = parent_scope;
-                result
+                value
+            }
+            CompilerExpressionKind::CustomValueForeach { .. } => {
+                self.emit_custom_value_foreach(expression, body, environment)
             }
             CompilerExpressionKind::ErrorCode(value) => LlValue::ErrorCode(value.to_string()),
             CompilerExpressionKind::Enum(value) => {
@@ -1169,6 +1303,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::GeneratorTakeWhile { generator, .. } => {
@@ -1179,6 +1314,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::UnfoldGenerator { seed, .. } => {
@@ -1189,6 +1325,7 @@ impl<'a> Generator<'a> {
                 LlValue::Generator {
                     value: "0".into(),
                     generator: generator.clone(),
+                    captured_initial: None,
                 }
             }
             CompilerExpressionKind::IterateGeneratorForeach {
@@ -2125,6 +2262,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         generator: generator.clone(),
+                        captured_initial: None,
                     },
                     CompilerType::Version => {
                         unreachable!("Version function results are not admitted")
@@ -2362,6 +2500,87 @@ impl<'a> Generator<'a> {
                 expression.span,
             ),
         }
+    }
+
+    fn emit_custom_character_handled_close(
+        &mut self,
+        generator: &CompilerExpression,
+        handler: &CompilerGeneratorCloseHandler,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let _ = self.emit_expression(generator, body, environment);
+        let domain = self.emit_string_value("root", body, span);
+        let source = self.emit_string_value(self.source_name, body, span);
+        let position = self.program.source.position(span.start);
+        let result_pointer = body.instruction(
+            &format!(
+                "call ptr @topal.runtime.result.failure(i32 0, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                position.line, position.column
+            ),
+            span,
+            &mut self.debug,
+        );
+        let result_type = self.debug.result_unit_generator_error_type;
+        let result_variable = self.debug.local_with_type_id(
+            &handler.result_binding,
+            handler.result_binding_span,
+            result_type,
+            body.subprogram,
+        );
+        let result_location = self
+            .debug
+            .location(handler.result_binding_span, body.subprogram);
+        let result_debug_address = body.instruction(
+            "alloca ptr, align 8",
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store ptr {result_pointer}, ptr {result_debug_address}, align 8"),
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        body.debug_declare(&result_debug_address, result_variable, result_location);
+
+        let error_pointer = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {result_pointer})"),
+            handler.result_binding_span,
+            &mut self.debug,
+        );
+        if let Some(rule) = handler.error_codes.iter().find(|rule| rule.code == 0) {
+            let _ = body.instruction(
+                &format!("call i32 @topal.runtime.error.code(ptr {error_pointer})"),
+                rule.action.span,
+                &mut self.debug,
+            );
+            let result = self.emit_expression(&rule.action, body, environment);
+            debug_assert!(matches!(result, LlValue::Unit));
+            return result;
+        }
+        let error = LlValue::Error(error_pointer);
+        let error_type = self.debug.generator_error_type;
+        let error_variable = self.debug.local_with_type_id(
+            &handler.error_binding,
+            handler.error_binding_span,
+            error_type,
+            body.subprogram,
+        );
+        let error_location = self
+            .debug
+            .location(handler.error_binding_span, body.subprogram);
+        body.debug_value(&error, error_variable, error_location);
+        let _ = body.instruction(
+            &format!("call i32 @topal.runtime.error.code(ptr {})", error.error()),
+            handler.error_action.span,
+            &mut self.debug,
+        );
+        let mut handler_environment = environment.clone();
+        handler_environment.insert(handler.error_binding.clone(), error);
+        let result = self.emit_expression(&handler.error_action, body, &handler_environment);
+        debug_assert!(matches!(result, LlValue::Unit));
+        result
     }
 
     fn emit_result_project(
@@ -4924,6 +5143,7 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ),
                 generator: generator.clone(),
+                captured_initial: None,
             },
             LlValue::Range { endpoint, .. } => {
                 let endpoint = endpoint.clone();
@@ -5741,7 +5961,7 @@ impl<'a> Generator<'a> {
         &mut self,
         source: &CompilerExpression,
         characters: &[String],
-        generator_local: Option<&CompilerParameter>,
+        generator_local: Option<&CompilerGeneratorLocal>,
         parameter: &CompilerParameter,
         action: &CompilerBlock,
         body: &mut FunctionBody,
@@ -5749,15 +5969,7 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let _ = self.emit_expression(source, body, environment);
-        let generator_local_address = generator_local.map(|local| {
-            let variable =
-                self.debug
-                    .local(&local.name, local.span, &local.value_type, body.subprogram);
-            let address = body.instruction("alloca ptr, align 8", local.span, &mut self.debug);
-            let location = self.debug.location(local.span, body.subprogram);
-            body.debug_declare(&address, variable, location);
-            address
-        });
+        let mut generator_local_address = None;
         let debug_address = (!characters.is_empty() && !parameter.discarded).then(|| {
             let variable = self.debug.local(
                 &parameter.name,
@@ -5771,14 +5983,33 @@ impl<'a> Generator<'a> {
             address
         });
         for (index, character) in characters.iter().enumerate() {
+            if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Character
+                && local.activation_after_resumptions == index
+            {
+                let parameter = &local.parameter;
+                let variable = self.debug.local(
+                    &parameter.name,
+                    parameter.span,
+                    &parameter.value_type,
+                    body.subprogram,
+                );
+                let address =
+                    body.instruction("alloca ptr, align 8", parameter.span, &mut self.debug);
+                let location = self.debug.location(parameter.span, body.subprogram);
+                body.debug_declare(&address, variable, location);
+                generator_local_address = Some(address);
+            }
             let value = LlValue::String(self.emit_string_value(character, body, span));
             let mut action_environment = environment.clone();
-            if index == 0
-                && let (Some(local), Some(address)) = (generator_local, &generator_local_address)
+            if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Character
+                && local.activation_after_resumptions == index
+                && let Some(address) = &generator_local_address
             {
                 body.effect(
                     &format!("store ptr {}, ptr {address}, align 8", value.string()),
-                    local.span,
+                    local.parameter.span,
                     &mut self.debug,
                 );
             }
@@ -5794,8 +6025,113 @@ impl<'a> Generator<'a> {
             }
             let action_value = self.emit_block(action, body, &mut action_environment);
             debug_assert!(matches!(action_value, LlValue::Unit));
+            if let Some(local) = generator_local
+                && local.parameter.value_type == CompilerType::Unit
+                && local.activation_after_resumptions == index + 1
+            {
+                let parameter = &local.parameter;
+                let variable = self.debug.local(
+                    &parameter.name,
+                    parameter.span,
+                    &parameter.value_type,
+                    body.subprogram,
+                );
+                let address =
+                    body.instruction("alloca i8, align 1", parameter.span, &mut self.debug);
+                let location = self.debug.location(parameter.span, body.subprogram);
+                body.debug_declare(&address, variable, location);
+                body.effect(
+                    &format!("store i8 0, ptr {address}, align 1"),
+                    parameter.span,
+                    &mut self.debug,
+                );
+            }
         }
         LlValue::Unit
+    }
+
+    fn emit_custom_value_foreach(
+        &mut self,
+        traversal: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+    ) -> LlValue {
+        let CompilerExpressionKind::CustomValueForeach {
+            source,
+            declaration_span,
+            initial_parameter,
+            yields,
+            continuations,
+            parameter,
+            body: action,
+            result,
+        } = &traversal.kind
+        else {
+            unreachable!("checked value foreach retains its traversal")
+        };
+        let source = self.emit_expression(source, body, environment);
+        let initial = source.generator_initial().clone();
+        let continuation_debug = (!continuations.is_empty()).then(|| {
+            let scope = self.debug.lexical_block(*declaration_span, body.subprogram);
+            let variable = self.debug.local(
+                &initial_parameter.name,
+                initial_parameter.span,
+                &initial_parameter.value_type,
+                scope,
+            );
+            (scope, variable)
+        });
+        let debug_address = (!yields.is_empty() && !parameter.discarded).then(|| {
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &parameter.value_type,
+                body.subprogram,
+            );
+            let address = body.instruction("alloca ptr, align 8", traversal.span, &mut self.debug);
+            let location = self.debug.location(parameter.span, body.subprogram);
+            body.debug_declare(&address, variable, location);
+            address
+        });
+        for (index, yielded) in yields.iter().enumerate() {
+            let (value, span) = match yielded {
+                CompilerGeneratorYield::Initial(span) => (initial.clone(), *span),
+                CompilerGeneratorYield::Value(value) => {
+                    (self.emit_expression(value, body, environment), value.span)
+                }
+            };
+            if let Some(address) = &debug_address {
+                body.effect(
+                    &format!("store ptr {}, ptr {address}, align 8", value.string()),
+                    span,
+                    &mut self.debug,
+                );
+            }
+            let mut action_environment = environment.clone();
+            if !parameter.discarded {
+                action_environment.insert(parameter.name.clone(), value);
+            }
+            let action_value = self.emit_block(action, body, &mut action_environment);
+            debug_assert!(matches!(action_value, LlValue::Unit));
+            if let Some(continuation) = continuations
+                .iter()
+                .find(|continuation| continuation.after_resumptions == index + 1)
+            {
+                let parent_scope = body.subprogram;
+                if let Some((scope, variable)) = continuation_debug {
+                    body.subprogram = scope;
+                    let location = self.debug.location(initial_parameter.span, body.subprogram);
+                    body.debug_value(&initial, variable, location);
+                }
+                let mut continuation_environment = environment.clone();
+                continuation_environment.insert(initial_parameter.name.clone(), initial.clone());
+                let continuation_value =
+                    self.emit_block(&continuation.body, body, &mut continuation_environment);
+                debug_assert!(matches!(continuation_value, LlValue::Unit));
+                body.subprogram = parent_scope;
+            }
+        }
+        self.emit_expression(result, body, environment)
     }
 
     fn emit_int_literal(&mut self, value: &BigInt) -> LlValue {
@@ -5928,6 +6264,7 @@ enum LlValue {
     Generator {
         value: String,
         generator: CompilerGeneratorType,
+        captured_initial: Option<Box<Self>>,
     },
     Sum {
         tag: String,
@@ -6047,6 +6384,17 @@ impl LlValue {
         value
     }
 
+    fn generator_initial(&self) -> &Self {
+        let Self::Generator {
+            captured_initial: Some(initial),
+            ..
+        } = self
+        else {
+            unreachable!("checked custom value Generator retains its initial value")
+        };
+        initial
+    }
+
     fn string(&self) -> &str {
         let Self::String(value) = self else {
             unreachable!("checked value is String")
@@ -6160,6 +6508,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Generator(generator) => LlValue::Generator {
             value: "0".into(),
             generator: generator.clone(),
+            captured_initial: None,
         },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
@@ -6450,6 +6799,7 @@ struct DebugInfo {
     character_type: usize,
     string_type: usize,
     error_type: usize,
+    generator_error_type: usize,
     error_code_type: usize,
     error_domain_type: usize,
     source_location_type: usize,
@@ -6460,6 +6810,7 @@ struct DebugInfo {
     result_rational_type: usize,
     result_string_type: usize,
     result_int_pair_type: usize,
+    result_unit_generator_error_type: usize,
     result_modular_types: Vec<(CompilerModularType, usize)>,
     optional_int_type: usize,
     optional_rational_type: usize,
@@ -6488,7 +6839,7 @@ struct DebugInfo {
 
 impl DebugInfo {
     #[allow(clippy::too_many_lines)] // Initialization keeps the complete emitted DWARF type graph visible.
-    fn new(source_name: &str, extended_types: bool) -> Self {
+    fn new(source_name: &str, extended_types: bool, generator_close_types: bool) -> Self {
         let path = Path::new(source_name);
         let filename = path.file_name().map_or_else(
             || source_name.into(),
@@ -6511,6 +6862,7 @@ impl DebugInfo {
             character_type: 0,
             string_type: 0,
             error_type: 0,
+            generator_error_type: 0,
             error_code_type: 0,
             error_domain_type: 0,
             source_location_type: 0,
@@ -6521,6 +6873,7 @@ impl DebugInfo {
             result_rational_type: 0,
             result_string_type: 0,
             result_int_pair_type: 0,
+            result_unit_generator_error_type: 0,
             result_modular_types: Vec::new(),
             optional_int_type: 0,
             optional_rational_type: 0,
@@ -6582,9 +6935,9 @@ impl DebugInfo {
             debug.file
         ));
         if extended_types {
-            debug.install_string_and_error_types(unsigned64);
+            debug.install_string_and_error_types(unsigned64, generator_close_types);
         }
-        debug.install_aggregate_types(unsigned64, extended_types);
+        debug.install_aggregate_types(unsigned64, extended_types, generator_close_types);
         let less = debug.node("!DIEnumerator(name: \"Less\", value: -1)".into());
         let equal = debug.node("!DIEnumerator(name: \"Equal\", value: 0)".into());
         let greater = debug.node("!DIEnumerator(name: \"Greater\", value: 1)".into());
@@ -6624,11 +6977,16 @@ impl DebugInfo {
         ));
     }
 
-    fn install_aggregate_types(&mut self, unsigned64: usize, extended_types: bool) {
+    fn install_aggregate_types(
+        &mut self,
+        unsigned64: usize,
+        extended_types: bool,
+        generator_close_types: bool,
+    ) {
         self.int_range_type = self.range_type("Range Int", self.int_type, unsigned64);
         self.rational_range_type =
             self.range_type("Range Rational", self.rational_type, unsigned64);
-        self.install_result_types(unsigned64);
+        self.install_result_types(unsigned64, generator_close_types);
         if extended_types {
             self.install_optional_types(unsigned64);
         }
@@ -6695,7 +7053,7 @@ impl DebugInfo {
         ))
     }
 
-    fn install_string_and_error_types(&mut self, unsigned64: usize) {
+    fn install_string_and_error_types(&mut self, unsigned64: usize, generator_close_types: bool) {
         let byte =
             self.node("!DIBasicType(name: \"u8\", size: 8, encoding: DW_ATE_unsigned_char)".into());
         let byte_pointer = self.node(format!(
@@ -6783,6 +7141,37 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error\", file: !{}, baseType: !{error_pointer})",
             self.file
         ));
+
+        if generator_close_types {
+            self.install_generator_error_type();
+        }
+    }
+
+    fn install_generator_error_type(&mut self) {
+        let generator_error_code = self.enum_type(&CompilerEnumType {
+            name: "lang generator GeneratorErrorCode".into(),
+            alternatives: vec!["generator-closed".into()],
+        });
+        let generator_domain = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"domain\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.error_domain_type
+        ));
+        let generator_code = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"code\", file: !{}, baseType: !{generator_error_code}, size: 32, align: 32, offset: 64)",
+            self.file
+        ));
+        let generator_members = self.node(format!("!{{!{generator_domain}, !{generator_code}}}"));
+        let generator_storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalGeneratorErrorHeader\", file: !{}, size: 448, align: 64, elements: !{generator_members})",
+            self.file
+        ));
+        let generator_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{generator_storage}, size: 64, align: 64)"
+        ));
+        self.generator_error_type = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Error (lang generator GeneratorErrorCode)\", file: !{}, baseType: !{generator_pointer})",
+            self.file
+        ));
     }
 
     fn install_source_location_type(&mut self) {
@@ -6842,7 +7231,7 @@ impl DebugInfo {
         ))
     }
 
-    fn install_result_types(&mut self, unsigned64: usize) {
+    fn install_result_types(&mut self, unsigned64: usize, generator_close_types: bool) {
         let result_tag = self.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 0)",
             self.file
@@ -6867,6 +7256,12 @@ impl DebugInfo {
         self.result_rational_type = self.result_type("Rational", result_pointer);
         self.result_string_type = self.result_type("String", result_pointer);
         self.result_int_pair_type = self.result_type("(Int, Int)", result_pointer);
+        if generator_close_types {
+            self.result_unit_generator_error_type = self.node(format!(
+                "!DIDerivedType(tag: DW_TAG_typedef, name: \"Result (Unit, lang generator GeneratorErrorCode)\", file: !{}, baseType: !{result_pointer})",
+                self.file
+            ));
+        }
     }
 
     fn result_type(&mut self, success: &str, pointer: usize) -> usize {
@@ -7467,6 +7862,24 @@ impl DebugInfo {
         self.variable(name, None, span, value_type, scope)
     }
 
+    fn local_with_type_id(
+        &mut self,
+        name: &str,
+        span: Span,
+        value_type: usize,
+        scope: usize,
+    ) -> usize {
+        let position = self
+            .source
+            .position(span.start.min(self.source.as_str().len()));
+        self.node(format!(
+            "!DILocalVariable(name: \"{}\", scope: !{scope}, file: !{}, line: {}, type: !{value_type})",
+            llvm_string(name),
+            self.file,
+            position.line
+        ))
+    }
+
     fn variable(
         &mut self,
         name: &str,
@@ -7783,6 +8196,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Generator(generator) => LlValue::Generator {
             value,
             generator: generator.clone(),
+            captured_initial: None,
         },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
@@ -9751,6 +10165,204 @@ mod tests {
     }
 
     #[test]
+    fn emits_custom_generator_string_input_prefix_before_suspension() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-STRING-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-GENERATOR-STRING-INPUT-001
+        let source = include_str!("../../../examples/language/custom-generator-string-input.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-string-input.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            1
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let predicate = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("generator application executes the retained prefix");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let yielded = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("traversal materializes the yielded Character");
+        assert!(input < predicate && predicate < suspended && suspended < yielded);
+        assert!(main.contains("#dbg_value(ptr"));
+        assert!(main.contains("#dbg_value(i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"initial-is-empty\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_string_yields_without_runtime_state() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-STRING-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-GENERATOR-STRING-YIELD-001
+        let source = include_str!("../../../examples/language/custom-generator-string-yield.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-string-yield.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            2
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let first_action = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("the first yielded String reaches the action");
+        let literal = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("the second suspension materializes its String literal");
+        let second_action = main
+            .rfind("call i1 @topal.runtime.string.is.empty")
+            .expect("the second yielded String reaches the action");
+        assert!(
+            input < suspended
+                && suspended < first_action
+                && first_action < literal
+                && literal < second_action
+        );
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit Unit\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_final_string_after_resumption() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-STRING-001
+        let source = include_str!("../../../examples/language/custom-generator-string-return.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-string-return.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            1
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let action = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("the yielded String reaches the action");
+        let result = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("traversal materializes the distinct final String");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("the final String is observed as the program result");
+        assert!(input < suspended && suspended < action && action < result && result < output);
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit String\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_discarded_computation_between_string_yields() {
+        // TOPAL-GENERATOR-BODY-STATEMENT-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-COMPILER-GENERATOR-RESUME-DISCARD-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-discard-between-yields.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-discard-between-yields.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        let predicates = main
+            .match_indices("call i1 @topal.runtime.string.is.empty")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        assert_eq!(predicates.len(), 3);
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let literal = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("the second suspension materializes its String literal");
+        assert!(
+            input < suspended
+                && suspended < predicates[0]
+                && predicates[0] < predicates[1]
+                && predicates[1] < literal
+                && literal < predicates[2]
+        );
+        assert!(main.contains("#dbg_value(ptr"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit Unit\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_multiple_yield_custom_generator_in_source_order() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-GENERATOR-FOREACH-001,
@@ -9805,6 +10417,38 @@ mod tests {
     }
 
     #[test]
+    fn emits_distinct_custom_generator_final_character_after_action() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-FINAL-RETURN-001,
+        // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-FINAL-CHARACTER-001
+        let source = include_str!("../../../examples/language/custom-generator-final-character.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-final-character.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            3
+        );
+        let action_store = main.find("store ptr").expect("yield action is invoked");
+        let final_value = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("final Character is materialized");
+        assert!(action_store < final_value);
+        assert!(main.contains("#dbg_value(i32 0"));
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 1);
+        assert_eq!(main.matches("store ptr").count(), 1);
+        assert!(llvm.contains("name: \"Generator Character Unit Character\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_custom_generator_local_binding_in_lexical_debug_scope() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-LOCAL-BINDING-001,
         // TOPAL-GENERATOR-SUSPEND-001, TOPAL-GENERATOR-FOREACH-001,
@@ -9831,6 +10475,478 @@ mod tests {
         assert!(!main.contains("generator.foreach.loop"));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_post_resume_local_before_the_next_custom_yield() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-BODY-STATEMENT-001,
+        // TOPAL-GENERATOR-LOCAL-BINDING-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-COMPILER-GENERATOR-SUSPENSION-001
+        let source = include_str!("../../../examples/language/custom-generator-suspension.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-suspension.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let materializations = main
+            .match_indices("call ptr @topal.runtime.string.make")
+            .map(|(position, _)| position)
+            .collect::<Vec<_>>();
+        let local_declaration = main
+            .match_indices("#dbg_declare(ptr")
+            .nth(1)
+            .expect("post-resume local has a distinct debug declaration")
+            .0;
+        let first_action = main
+            .find("store ptr")
+            .expect("first yield action is invoked");
+
+        assert_eq!(materializations.len(), 3);
+        assert!(materializations[1] < first_action);
+        assert!(first_action < local_declaration);
+        assert!(local_declaration < materializations[2]);
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
+        assert_eq!(main.matches("store ptr").count(), 3);
+        assert!(llvm.contains("DILocalVariable(name: \"copy\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Character\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_unit_resume_binding_after_the_custom_action() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-RESUME-BINDING-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-RESUME-BINDING-001
+        let source = include_str!("../../../examples/language/custom-generator-resume-binding.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-resume-binding.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let action_store = main.find("store ptr").expect("yield action is invoked");
+        let resumed_store = main
+            .find("store i8 0")
+            .expect("successful Unit resume has debug storage");
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert!(action_store < resumed_store);
+        assert_eq!(main.matches("#dbg_declare(ptr").count(), 2);
+        assert_eq!(main.matches("store ptr").count(), 1);
+        assert_eq!(main.matches("store i8 0").count(), 1);
+        assert!(llvm.contains("DILocalVariable(name: \"resumed\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(llvm.contains("name: \"Unit\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_local_custom_generator_close_without_runtime_state() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-CLOSE-001,
+        // TOPAL-GENERATOR-ERROR-CODE-001, TOPAL-COMPILER-GENERATOR-CLOSE-001
+        let source = include_str!("../../../examples/language/custom-generator-close.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(ptr", function.symbol)));
+        assert!(close.contains("#dbg_value(i32 0"));
+        assert!(close.contains("ret void"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!llvm.contains("TopalGeneratorErrorHeader"));
+        assert!(!llvm.contains("Result (Unit, lang generator GeneratorErrorCode)"));
+        assert!(!close.contains("topal.runtime.string.make"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_local_custom_generator_close_handler() {
+        // TOPAL-GENERATOR-CLOSE-001, TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-GENERATOR-ERROR-CODE-001,
+        // TOPAL-COMPILER-GENERATOR-CLOSE-HANDLER-001
+        let source = include_str!("../../../examples/language/custom-generator-close-handler.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close-handler.t").emit();
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        let failure = close
+            .find("call ptr @topal.runtime.result.failure(i32 0")
+            .expect("close materializes the intrinsic failure Result");
+        let payload = close
+            .find("call ptr @topal.runtime.result.payload")
+            .expect("Error handler selects the failure payload");
+        let code = close
+            .find("call i32 @topal.runtime.error.code")
+            .expect("the selected Error remains observable to GDB");
+        let returned = close.find("ret void").expect("handler completes with Unit");
+        assert!(failure < payload && payload < code && code < returned);
+        assert_eq!(
+            close
+                .matches("call ptr @topal.runtime.result.failure(i32 0")
+                .count(),
+            1
+        );
+        assert!(close.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"resume-result\""));
+        assert!(llvm.contains("DILocalVariable(name: \"problem\""));
+        assert!(llvm.contains("name: \"lang generator GeneratorErrorCode\""));
+        assert!(llvm.contains("DIEnumerator(name: \"generator-closed\", value: 0)"));
+        assert!(llvm.contains("name: \"Result (Unit, lang generator GeneratorErrorCode)\""));
+        assert!(llvm.contains("name: \"Error (lang generator GeneratorErrorCode)\""));
+        assert!(!close.contains("topal.runtime.result.is.error"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_qualified_custom_generator_close_code_pattern() {
+        // TOPAL-GENERATOR-CLOSE-CODE-PATTERN-001,
+        // TOPAL-GENERATOR-CLOSE-HANDLER-001,
+        // TOPAL-COMPILER-GENERATOR-CLOSE-CODE-PATTERN-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-close-code-pattern.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "abandon")
+            .expect("called abandon function is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-close-code-pattern.t").emit();
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private Character parameter")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        let failure = close
+            .find("call ptr @topal.runtime.result.failure(i32 0")
+            .expect("close materializes the intrinsic failure Result");
+        let payload = close
+            .find("call ptr @topal.runtime.result.payload")
+            .expect("qualified handler observes the failure payload");
+        let code = close
+            .find("call i32 @topal.runtime.error.code")
+            .expect("qualified handler observes the nominal code");
+        let returned = close.find("ret void").expect("handler completes with Unit");
+        assert!(failure < payload && payload < code && code < returned);
+        assert_eq!(close.matches("topal.runtime.error.code").count(), 1);
+        assert!(llvm.contains("DILocalVariable(name: \"resume-result\""));
+        assert!(!llvm.contains("DILocalVariable(name: \"problem\""));
+        assert!(llvm.contains("name: \"lang generator GeneratorErrorCode\""));
+        assert!(llvm.contains("DIEnumerator(name: \"generator-closed\", value: 0)"));
+        assert!(!close.contains("switch i32"));
+        assert!(!close.contains("topal.runtime.generator"));
+        assert!(!close.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_custom_generator_function_parameter_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-function-parameter.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called custom Generator consumer is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-function-parameter.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let traversal = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("traversal function has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("traversal function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(i32 0)", function.symbol)));
+        assert_eq!(
+            traversal
+                .matches("call ptr @topal.runtime.string.make")
+                .count(),
+            1
+        );
+        assert!(traversal.contains("alloca i32, align 4"));
+        assert!(traversal.contains("store i32 %arg0"));
+        assert!(traversal.contains("alloca ptr, align 8"));
+        assert!(traversal.contains("#dbg_declare(ptr"));
+        assert!(traversal.contains("ret void"));
+        assert!(!traversal.contains("generator.foreach.loop"));
+        assert!(!traversal.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_character_result_parameter_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-PARAMETER-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-character-return-parameter.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called result-valued custom Generator consumer is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-character-return-parameter.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let traversal = llvm
+            .split_once(&format!(
+                "define internal fastcc ptr @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("result-valued traversal has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("result-valued traversal definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc ptr @{}(i32 0)", function.symbol)));
+        assert_eq!(
+            traversal
+                .matches("call ptr @topal.runtime.string.make")
+                .count(),
+            2
+        );
+        let yielded = traversal
+            .find("call ptr @topal.runtime.string.make")
+            .expect("callee materializes the yielded Character");
+        let returned = traversal
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("callee materializes the final Character");
+        let return_instruction = traversal
+            .find("ret ptr")
+            .expect("callee returns the final Character descriptor");
+        assert!(yielded < returned && returned < return_instruction);
+        assert!(traversal.contains("alloca i32, align 4"));
+        assert!(traversal.contains("store i32 %arg0"));
+        assert!(traversal.contains("alloca ptr, align 8"));
+        assert!(traversal.contains("#dbg_declare(ptr"));
+        assert!(!traversal.contains("generator.foreach.loop"));
+        assert!(!traversal.contains("call ptr %"));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Character\""));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_parameter_close_without_runtime_state() {
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001, TOPAL-GENERATOR-CLOSE-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-PARAMETER-CLOSE-001
+        let source = include_str!("../../../examples/language/custom-generator-parameter-close.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "ignore")
+            .expect("called custom Generator closer is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-parameter-close.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let close = llvm
+            .split_once(&format!(
+                "define internal fastcc void @{}(i32 %arg0)",
+                function.symbol
+            ))
+            .expect("close function has one private ownership token")
+            .1
+            .split_once("}\n")
+            .expect("close function definition terminates")
+            .0;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            1
+        );
+        assert!(main.contains(&format!("call fastcc void @{}(i32 0)", function.symbol)));
+        assert!(close.contains("alloca i32, align 4"));
+        assert!(close.contains("store i32 %arg0"));
+        assert!(close.contains("#dbg_declare(ptr"));
+        assert!(close.contains("ret void"));
+        assert!(!close.contains("topal.runtime.string.make"));
+        assert!(!close.contains("call "));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Unit\""));
+        assert!(!llvm.contains("TopalGeneratorErrorHeader"));
+        assert!(!llvm.contains("Result (Unit, lang generator GeneratorErrorCode)"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-RESULT-001
+        let source = include_str!("../../../examples/language/custom-generator-function-result.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called custom Generator factory is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-function-result.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let factory = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("custom Generator factory has one private Character argument")
+            .1
+            .split_once("}\n")
+            .expect("custom Generator factory definition terminates")
+            .0;
+
+        assert!(main.contains(&format!("call fastcc i32 @{}(ptr ", function.symbol)));
+        assert!(main.contains("#dbg_value(i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("alloca ptr, align 8"));
+        assert!(factory.contains("store ptr %arg0"));
+        assert!(factory.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("ret i32 0"));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_custom_generator_character_result_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-character-return-result.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called result-valued custom Generator factory is instantiated");
+        let llvm = Generator::new(&program, "custom-generator-character-return-result.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+        let factory = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                function.symbol
+            ))
+            .expect("custom Generator factory has one private Character argument")
+            .1
+            .split_once("}\n")
+            .expect("custom Generator factory definition terminates")
+            .0;
+
+        assert_eq!(main.matches("call fastcc i32").count(), 1);
+        assert!(main.contains(&format!("call fastcc i32 @{}(ptr ", function.symbol)));
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            3
+        );
+        let transfer = main
+            .find("call fastcc i32")
+            .expect("caller receives the private ownership token");
+        let yielded = main[transfer..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| transfer + offset)
+            .expect("caller materializes the yielded Character after transfer");
+        let returned = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("caller materializes the final Character");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("caller prints the final Character");
+        assert!(transfer < yielded && yielded < returned && returned < output);
+        assert!(main.contains("#dbg_value(i32"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("alloca ptr, align 8"));
+        assert!(factory.contains("store ptr %arg0"));
+        assert!(factory.contains("#dbg_declare(ptr"));
+        assert!(factory.contains("ret i32 0"));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("name: \"Generator Character Unit Character\""));
+        assert!(!llvm.contains("topal.runtime.generator"));
     }
 
     #[test]
