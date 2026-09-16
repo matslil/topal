@@ -531,6 +531,46 @@ though no runtime segmentation occurs. Dynamic, recursive, nested, static,
 anonymous, unbound, or compound result paths remain closed, and the side table
 is neither artifact metadata nor a public Generator ABI.
 
+The first custom-continuation result boundary applies the same private transfer
+pattern to a statement-free ordinary Character function whose body directly
+constructs the exact single-yield custom generator from its parameter. Each
+call-specialized symbol keys the retained declaration, exact Character,
+suspension/final graph, and ownership edge; the callee returns only the private
+`i32` observation token through LLVM `fastcc`, and the caller expands its own
+retained traversal after taking ownership. A debug-only Character pointer
+shadow keeps the factory parameter live through the return instruction. The
+side table remains compiler-session evidence rather than a serialized or public
+continuation representation; compiled-library support still requires canonical
+declaration, direction, suspension, capture/effect, ownership/close, and target
+adapter metadata.
+
+The first custom-continuation parameter boundary reverses that private mapping
+for one root-owned exact single-yield instance. Before checking each ordinary
+consumer specialization, the frontend maps the caller's retained declaration,
+Character, suspension/final graph, and ownership edge to the sole Generator
+parameter; it restores the compiler-session map afterward while leaving the
+caller binding consumed. The caller passes only the compiler-private `i32`
+observation token through LLVM `fastcc`, and the callee expands the retained
+Character action, Unit resume, and final Unit directly. Generator and Character
+debug shadows preserve source inspection across both frames. This adds no
+continuation representation or public ABI; compiled-library transfer will need
+canonical construction, parameter-site, action, capture/effect,
+ownership/consumption/close, and target-adapter metadata instead of this private
+specialization map.
+
+An unconsumed exact custom parameter keeps the same mapping through an explicit
+checked close node that pairs the callee-local Generator with its transferred
+construction provenance. The node preserves declaration identity, exact
+Character, suspension/final graph, ownership edge, and the lexical root close
+domain even though none is materialized as native continuation state. Because
+this first close boundary has a discarded yield result and no handler, locals,
+cleanup, effects, or post-suspension work, O0 lowering proves the close and final
+Unit before erasing both. LLVM still owns private-token placement through
+`fastcc`, while Generator DWARF remains live in the callee. Compiled-library
+support must serialize canonical transfer/close sites, domain, construction,
+suspension, capture/effect/cleanup, ownership, and target-adapter evidence rather
+than depend on the checked-program node layout.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
@@ -953,6 +993,43 @@ flow. This success edge stays distinct from the `generator-closed` abandonment
 edge. A compiled-library form must encode both edge kinds and resume-local
 activation canonically rather than expose the debug shadow or a target-specific
 continuation layout.
+
+The first custom-close slice relies on existing call specialization to retain
+the root caller's exact Character in a function-local single-yield generator.
+The checked function block appends an explicit close after the unconsumed
+Generator binding and before final Unit. Because this exact generator has no
+handler, cleanup, effect, or post-yield work, its intrinsic close error is
+consumed at the generator boundary and both close value and final Unit erase in
+native code. The compiler-private Generator observation token still carries
+ownership and DWARF identity, not continuation state. General close lowering
+requires canonical success/close edges, lexical close domain, declaration
+provenance, cleanup/effect ordering, environment ownership, and target adapters
+in compiled-library metadata.
+
+The first handled-close slice extends that descriptor with the bound yield
+Result, complete Error/Ok Unit actions, their binding activation and source
+spans, and the nominal generator Error-code set. An exact function-scope close
+materializes `Error(domain = root, code = generator-closed)` through the
+Topal-owned Result/Error allocator path, selects the Error payload directly,
+and runs its Unit action before function completion. The success action remains
+checked metadata but is unreachable on this statically known close edge. DWARF
+uses generator-specific Result/Error types so debugger rendering cannot confuse
+the overlapping private numeric tag with an arithmetic Error code. General
+handler lowering still requires a canonical suspension/branch graph, cleanup
+and effect ordering, code-set identity, environment ownership, and target
+adapters in compiled-library metadata.
+
+The first qualified close-code slice adds an ordered nominal code matcher to
+that checked handler descriptor. Because the admitted abandonment edge is known
+to deliver `lang generator GeneratorErrorCode.generator-closed`, O0 lowering
+selects the qualified Unit action directly after materializing and observing the
+Topal-owned Error; it emits no decision switch and does not activate the generic
+Error fallback binding. This selection depends on code-set identity rather than
+the overlapping private numeric tag, lexical Error domain, or generator
+declaration provenance. General compiled-library handling therefore needs
+canonical ordered code matchers, fallbacks, code-set identities, branch
+activation, and the existing suspension, effect, ownership, and target-adapter
+metadata.
 
 An admitted root-scope labeled `Union` or positional `Variant` retains its
 nominal identity and declaration-ordered payload classifiers in the checked
