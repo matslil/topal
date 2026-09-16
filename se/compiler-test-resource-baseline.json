@@ -1706,6 +1706,66 @@
       "cpu_time_ns": 133486,
       "memory_peak_bytes": 18513920,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-character-return-parameter.t": {
+      "cpu_time_ns": 122916580,
+      "memory_peak_bytes": 41844736,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-character-return-parameter.t": {
+      "cpu_time_ns": 144750,
+      "memory_peak_bytes": 18448384,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-character-return-result.t": {
+      "cpu_time_ns": 123931440,
+      "memory_peak_bytes": 41705472,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-character-return-result.t": {
+      "cpu_time_ns": 143626,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-string-input.t": {
+      "cpu_time_ns": 122021820,
+      "memory_peak_bytes": 41738240,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-string-input.t": {
+      "cpu_time_ns": 140084,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-string-yield.t": {
+      "cpu_time_ns": 122960840,
+      "memory_peak_bytes": 41676800,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-string-yield.t": {
+      "cpu_time_ns": 140685,
+      "memory_peak_bytes": 18632704,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-string-return.t": {
+      "cpu_time_ns": 121635140,
+      "memory_peak_bytes": 41648128,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-string-return.t": {
+      "cpu_time_ns": 138182,
+      "memory_peak_bytes": 18444288,
+      "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-discard-between-yields.t": {
+      "cpu_time_ns": 123730780,
+      "memory_peak_bytes": 41676800,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-discard-between-yields.t": {
+      "cpu_time_ns": 143120,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
     }
   }
 }

@@ -90,6 +90,12 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5y | one typed discarded String computation after Unit resumption and before the next suspension | complete |
+| 5x | exact distinct final String after String yield/action and Unit resumption | complete |
+| 5w | independent String yield direction with ordered initial/literal suspensions and String action debugging | complete |
+| 5v | independent String initial input with an ordered emptiness prefix before one custom Character suspension | complete |
+| 5u | exact custom Generator function result with distinct final Character preserved through caller traversal | complete |
+| 5t | exact custom Generator parameter traversal with distinct final Character preserved as the callee result | complete |
 | 5s | exact unconsumed custom Generator parameter close with retained provenance and O0-erased handler-free delivery | complete |
 | 5r | exact custom single-yield Generator function parameter traversal with private ownership/provenance transfer and parameter debugging | complete |
 | 5q | exact custom single-yield Generator function result with private ownership/provenance transfer and return-value debugging | complete |
@@ -413,6 +419,64 @@ exact suspension has no handler, state, cleanup, effects, or following work, O0
 lowering erases delivery and final Unit while preserving ownership and Generator
 DWARF. Handled close, richer state, nested/general transfer, and libraries remain
 in increment 5.
+Increment 5t extends the transferred custom parameter to the complete
+`Generator Character Unit Character` classifier. The callee's result-valued
+foreach expands the retained yielded Character action and Unit resumption before
+returning the separately retained final Character through the ordinary private
+function result. LLVM `fastcc` selects both token-parameter and descriptor-return
+placement; Generator, yielded Character, final Character, and both frames remain
+debuggable without a continuation object, state machine, foreign runtime, or
+public Generator ABI. Other classifiers and richer state, bodies, transfer, and
+library boundaries remain in increment 5.
+Increment 5u admits the matching complete classifier as a fresh ordinary
+function result. A private-symbol provenance entry transfers the exact
+declaration, yielded and final Characters, suspension graph, and ownership to
+the caller while the factory returns only an LLVM `fastcc` `i32` token. Caller
+traversal expands the action and Unit resume before its distinct final Character;
+factory and caller values remain debuggable without public continuation state,
+a foreign runtime, or a Generator ABI. Richer factories, composed transfers,
+other classifiers, general state, and libraries remain in increment 5.
+Increment 5v separates the initial direction by admitting one root custom
+`Generator Character Unit Unit` with a String input and a checked
+`empty? initial` Boolean binding before suspension. Application evaluates the
+existing String descriptor once and executes that Topal-owned operation before
+exposing the private token; traversal then performs the exact Character action
+and Unit resume/final path. Initial, prefix-binding, Generator, yielded-Character,
+and entry-frame debug evidence remains available without a continuation object,
+foreign runtime, other-language standard library, public ABI, or native-layout
+revision. Other shapes, directions, transfers, state, and libraries remain in
+increment 5.
+Increment 5w separates the yield direction by admitting one root custom
+`Generator String Unit Unit`. Application evaluates its String input once;
+traversal reuses that descriptor for an initial-value suspension, materializes
+the following exact String literal at its own suspension, and performs each
+String action and Unit resume before final Unit. The private `i32` token remains
+debug/ownership evidence rather than continuation state. Generator and both
+yielded Strings remain inspectable without a foreign runtime, other-language
+standard library, public ABI, or native-layout revision. Computed yields, body
+state, other directions, transfer, close, and library boundaries remain in
+increment 5.
+Increment 5x preserves a distinct exact final String through
+`Generator String Unit String`. The checked graph separates that final
+expression from the once-evaluated initial String, yield provenance, and Unit
+resume edge. O0 traversal performs the String action and resumption before
+materializing and returning the final descriptor, which becomes the root output.
+The full classifier, Generator value, yielded String, final source position, and
+entry frame remain debuggable without a continuation object, foreign runtime,
+other-language standard library, public ABI, or native-layout revision.
+Nonliteral finals, other directions, body state, transfer, close, and libraries
+remain in increment 5.
+Increment 5y retains one exact ordinary discarded computation between String
+suspensions. The checked graph records its typed continuation block and
+successful-resumption ordinal separately from the initial value and ordered
+yields. O0 traversal invokes the first action, resumes with Unit, evaluates
+`empty? initial`, and only then reaches the next suspension and action. The
+Generator, yielded Strings, captured initial String, continuation source site,
+and entry frame remain debuggable without a continuation object, foreign
+runtime, other-language standard library, public ABI, or native-layout
+revision. Bindings, additional or differently placed computations, other
+directions, non-Unit finals, transfer, close, and libraries remain in increment
+5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
