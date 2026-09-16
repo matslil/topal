@@ -48,6 +48,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-string-return.t",
     "examples/language/custom-generator-string-yield.t",
     "examples/language/custom-generator-suspension.t",
+    "examples/language/custom-generator-unit-values.t",
     "examples/language/custom-multiple-yield-generator.t",
     "examples/language/custom-single-yield-generator.t",
     "examples/language/decreasing-int-recursion.t",
