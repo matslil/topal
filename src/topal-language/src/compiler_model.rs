@@ -5335,7 +5335,10 @@ fn exact_value_boundary_generator_source(source: &SourceText, generator: &Genera
         && generator.initial_parameter.value_type
             == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
         && exact_int_string_product(&generator.result, 8, "done");
-    (scalar || product)
+    let nested = source.slice(generator.name) == "pairs"
+        && generator.initial_parameter.value_type == nested_optional_product_type()
+        && exact_nested_result_product_value(&generator.result, 8, "done");
+    (scalar || product || nested)
         && generator.initial_parameter.name == "initial"
         && generator.additional_initial_parameters.is_empty()
         && generator.prefix.statements.is_empty()
@@ -6083,6 +6086,48 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_int_range_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    local_function: None,
+                    close_handler: None,
+                    result: final_value,
+                });
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == nested_optional_product_type()
+            && compact_classifier(source.slice(*yielded)) == "Optional(Int,String)"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result))
+                == "Result((Int,String),langarithmeticArithmeticErrorCode)"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_nested_result_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators
                 .entry(name_text)
@@ -7637,7 +7682,10 @@ impl Analyzer {
                                 if matches!(exact_string(result).as_deref(), Some("unary" | "binary"))
                                     || (kind == BlockKind::Function
                                         && (exact_string(result).as_deref() == Some("done")
-                                            || exact_int_string_product(result, 8, "done")))
+                                            || exact_int_string_product(result, 8, "done")
+                                            || exact_nested_result_product_value(
+                                                result, 8, "done"
+                                            )))
                         );
                         if value.value_type != CompilerType::Unit && !admitted_typed_result {
                             return Err(unsupported(
@@ -8065,11 +8113,14 @@ impl Analyzer {
                 let none_graph = exact_optional_int_string_none_value(&initial)
                     && exact_optional_int_string_none_value(&result)
                     && exact_nested_none_value_generator_action(&parameter, &body);
-                if !some_graph && !none_graph {
+                let mixed_graph = exact_optional_int_string_value(&initial, 7, "item")
+                    && exact_nested_result_product_value(&result, 8, "done")
+                    && exact_nested_optional_value_generator_action(&parameter, &body);
+                if !some_graph && !none_graph && !mixed_graph {
                     return Err(unsupported(
                         &self.source,
                         span,
-                        "nested Optional-value custom generator outside an exact all-Some or all-None input/yield/action/final graph",
+                        "nested Optional-value custom generator outside an exact all-Some, all-None, or admitted Result-final input/yield/action/final graph",
                     ));
                 }
             }
@@ -14253,6 +14304,16 @@ impl Analyzer {
             }] if returns_value_boundary_generator
                 && name == "initial"
                 && fields == &[CompilerType::Int, CompilerType::String]
+        ) || matches!(
+            parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                discarded: false,
+                value_type,
+                ..
+            }] if returns_value_boundary_generator
+                && name == "initial"
+                && value_type == &nested_optional_product_type()
         );
         if returns_generator
             && (self.in_function
@@ -14353,7 +14414,11 @@ impl Analyzer {
                         && initial_parameter.value_type
                             == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
                         && exact_int_string_product(initial, 7, "item")
-                        && exact_int_string_product(result, 8, "done")))
+                        && exact_int_string_product(result, 8, "done"))
+                    || (declaration == "pairs"
+                        && initial_parameter.value_type == nested_optional_product_type()
+                        && exact_optional_int_string_value(initial, 7, "item")
+                        && exact_nested_result_product_value(result, 8, "done")))
                     && initial_parameter.name == "initial"
                     && additional_initial_parameters.is_empty()
                     && prefix.statements.is_empty()
@@ -14613,6 +14678,34 @@ impl Analyzer {
                         && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
                         && continuations.is_empty()
                         && exact_int_string_product(result, 8, "done")
+                }
+                (
+                    CompilerType::Optional(payload),
+                    CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        additional_initial_parameters,
+                        prefix,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                ) => {
+                    returns_value_boundary_generator
+                        && CompilerType::Optional(payload.clone()) == nested_optional_product_type()
+                        && declaration == "pairs"
+                        && initial_parameter.name == "initial"
+                        && initial_parameter.value_type == parameter.value_type
+                        && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                        && additional_initial_parameters.is_empty()
+                        && prefix.statements.is_empty()
+                        && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                        && continuations.is_empty()
+                        && exact_nested_result_product_value(result, 8, "done")
                 }
                 _ => false,
             };
@@ -16067,6 +16160,9 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         }
         "GeneratorIntUnitString" => Some(value_boundary_generator_type()),
         "Generator(Int,String)Unit(Int,String)" => Some(product_boundary_generator_type()),
+        "GeneratorOptional(Int,String)UnitResult((Int,String),langarithmeticArithmeticErrorCode)" => {
+            Some(nested_boundary_generator_type())
+        }
         _ => None,
     }
 }
@@ -16142,7 +16238,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::String
                     | CompilerType::Error
                     | CompilerType::SourceLocation
-            )
+            ) || compiler_int_string_pair(payload)
         }
         CompilerType::Result(success) => {
             matches!(
@@ -16155,7 +16251,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
             ) || matches!(
                 success.as_ref(),
                 CompilerType::Tuple(fields)
-                    if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int])
+                    if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int | CompilerType::String])
             )
         }
         _ => true,
@@ -16492,6 +16588,21 @@ fn product_boundary_generator_type() -> CompilerType {
     })
 }
 
+fn nested_optional_product_type() -> CompilerType {
+    CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+        CompilerType::Int,
+        CompilerType::String,
+    ])))
+}
+
+fn nested_boundary_generator_type() -> CompilerType {
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(nested_optional_product_type()),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(nested_result_product_type()),
+    })
+}
+
 fn character_unit_generator_type() -> CompilerType {
     character_generator_type(CompilerType::Unit)
 }
@@ -16524,6 +16635,7 @@ fn is_admitted_value_boundary_generator_type(value_type: &CompilerType) -> bool 
             && resume_type.as_ref() == &CompilerType::Unit
             && result_type.as_ref() == &CompilerType::String
     ) || value_type == &product_boundary_generator_type()
+        || value_type == &nested_boundary_generator_type()
 }
 
 fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
@@ -16532,7 +16644,9 @@ fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
 }
 
 fn is_admitted_function_value_result_type(value_type: &CompilerType) -> bool {
-    value_type == &CompilerType::String || compiler_int_string_pair(value_type)
+    value_type == &CompilerType::String
+        || compiler_int_string_pair(value_type)
+        || value_type == &nested_result_product_type()
 }
 
 fn is_character_generator_type_with_result(
@@ -17205,6 +17319,8 @@ fn adapt_custom_generator_initial(
         ])))
         && !exact_optional_int_string_value(argument, 7, "item")
         && !exact_optional_int_string_none_value(argument)
+        && !matches!(&argument.kind, CompilerExpressionKind::Local(name)
+            if generator_name == "pairs" && name == "initial")
     {
         return Err(unsupported(
             source,
@@ -26073,6 +26189,176 @@ mod tests {
             source.replacen("(8, \"done\")", "(9, \"done\")", 1),
             source.replacen("value = (7, \"item\")", "value = (8, \"item\")", 1),
             source.replacen("consume generated", "consume (pairs (7, \"item\"))", 1),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Recursive factory and consumer provenance form one boundary scenario.
+    fn models_custom_generator_nested_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+        // TOPAL-TYPE-RESULT-001,
+        // TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-nested-function-boundaries.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("nested Generator factory is specialized");
+        assert!(matches!(
+            make.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "initial" && value_type == &nested_optional_product_type()
+        ));
+        assert_eq!(make.result_type, nested_boundary_generator_type());
+        assert!(make.body.statements.is_empty());
+        assert!(matches!(
+            &make.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    prefix,
+                    yields,
+                    continuations,
+                    explicit_return: None,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if declaration == "pairs"
+                && initial_parameter.name == "initial"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && additional_initial_parameters.is_empty()
+                && prefix.statements.is_empty()
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_nested_result_product_value(result, 8, "done")
+                && value_type == &nested_boundary_generator_type()
+        ));
+
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("nested Generator consumer is specialized");
+        assert!(matches!(
+            consume.parameters.as_slice(),
+            [CompilerParameter { name, value_type, .. }]
+                if name == "generated" && value_type == &nested_boundary_generator_type()
+        ));
+        assert!(matches!(
+            consume.body.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomValueForeach {
+                                source,
+                                transferred_initial: Some(initial),
+                                yields,
+                                parameter,
+                                body,
+                                result,
+                                ..
+                            },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "result"
+                && matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && exact_optional_int_string_value(initial, 7, "item")
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && exact_nested_optional_value_generator_action(parameter, body)
+                && exact_nested_result_product_value(result, 8, "done")
+                && value_type == &nested_result_product_type()
+        ));
+        assert!(matches!(
+            &consume.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(name),
+                value_type,
+                ..
+            } if name == "result" && value_type == &nested_result_product_type()
+        ));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { arguments, .. },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "generated"
+                && value_type == &nested_boundary_generator_type()
+                && matches!(arguments.as_slice(), [argument]
+                    if exact_optional_int_string_value(argument, 7, "item"))
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type,
+                ..
+            } if value_type == &nested_result_product_type()
+                && matches!(arguments.as_slice(), [CompilerExpression {
+                    kind: CompilerExpressionKind::Local(name),
+                    value_type,
+                    ..
+                }] if name.starts_with("topal.root.")
+                    && value_type == &nested_boundary_generator_type())
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_custom_generator_nested_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+        // TOPAL-TYPE-RESULT-001,
+        // TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-nested-function-boundaries.t"
+        );
+        for invalid in [
+            source.replacen("make (Some (7, \"item\"))", "make (Some (8, \"item\"))", 1),
+            source.replacen("pairs initial", "pairs (Some (8, \"item\"))", 1),
+            source.replacen("(8, \"done\")", "(9, \"done\")", 1),
+            source.replacen(
+                "value = (Some (7, \"item\"))",
+                "value = (Some (8, \"item\"))",
+                1,
+            ),
+            source.replacen(
+                "consume generated",
+                "consume (pairs (Some (7, \"item\")))",
+                1,
+            ),
         ] {
             assert_eq!(
                 analyze_for_compiler(&invalid).unwrap_err().code,
