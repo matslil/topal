@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ag | exact `Range Int` input, yield, membership action, resumption, and narrowed final intersection with ordered private-value debugging | complete |
 | 5af | nominal `Optional Int` input, yield, equality action, resumption, and final directions with ordered private-value debugging | complete |
 | 5ae | payload-free Unit input, yield, identity action, resumption, and final directions with ordered debug-only lifetime anchors | complete |
 | 5ad | exact canonical Rational input, yield, action, resumption, and final directions with ordered allocation-aware construction/addition and debugging | complete |
@@ -484,6 +485,22 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ag separates exact `Range Int` input, yield, and final directions
+through one custom `Generator Range Int Unit Range Int`. The checked graph
+retains the Range and Int endpoint classifiers, initial-parameter yield, exact
+`5 in interval` action, Unit resumption, final intersection with `5 ..= 15`,
+and ownership edge independently. O0 traversal constructs the input once,
+preserves the yielded pointer, evaluates membership, resumes, and only then
+constructs the retained bound and intersects it with the initial range. Two
+debug-only aligned pointer shadows keep the yielded interval and captured
+initial inspectable at their source lifetimes. The existing Topal-owned
+Range/Int representation, allocator, membership, intersection, display, Linux
+syscall writer, DWARF types, and GDB printers are reused without a semantic
+Generator runtime, foreign dependency, other-language standard library,
+public ABI, or native-layout revision. Other Range endpoints, body/action
+expressions, shapes, directions, state, transfer, close, and libraries remain
+in increment 5.
+
 Increment 5af separates nominal `Optional Int` input, yield, and final
 directions through one exact custom `Generator Optional Int Unit Optional Int`.
 The checked graph retains the Optional classifier and Int payload classifier,

@@ -6109,7 +6109,10 @@ impl<'a> Generator<'a> {
         } else if explicit_return.is_some()
             || matches!(
                 initial_parameter.value_type,
-                CompilerType::Int | CompilerType::Rational | CompilerType::Optional(_)
+                CompilerType::Int
+                    | CompilerType::Rational
+                    | CompilerType::Optional(_)
+                    | CompilerType::Range(_)
             )
         {
             let llvm_type = llvm_value_type(&initial_parameter.value_type);
@@ -10837,6 +10840,78 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
         assert!(llvm.contains("name: \"Generator Optional Int Unit Optional Int\""));
         assert!(llvm.contains("name: \"Optional Int\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_int_ranges_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-RANGE-BOUNDS-001, TOPAL-RANGE-CLASSIFIER-001,
+        // TOPAL-COMPILER-GENERATOR-RANGE-001
+        let source = include_str!("../../../examples/language/custom-generator-range-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-range-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.range.make(").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.range.int.contains(")
+                .count(),
+            1
+        );
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.range.int.intersection(")
+                .count(),
+            1
+        );
+        let initial = main
+            .find("call ptr @topal.runtime.range.make(")
+            .expect("generator application evaluates its Range input");
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let debug_stores = main
+            .match_indices("store ptr %v0")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let action = main
+            .find("call i1 @topal.runtime.range.int.contains(")
+            .expect("foreach evaluates membership over the yielded Range");
+        let final_range = main
+            .match_indices("call ptr @topal.runtime.range.make(")
+            .nth(1)
+            .expect("generator constructs its exact final intersection operand")
+            .0;
+        let intersection = main
+            .find("call ptr @topal.runtime.range.int.intersection(")
+            .expect("generator computes its final narrowed Range");
+        let output = main
+            .find("call void @topal.runtime.range.int.print(")
+            .expect("the final Range controls Topal-owned display");
+        assert_eq!(debug_stores.len(), 2);
+        assert!(
+            initial < constructed
+                && constructed < debug_stores[0]
+                && debug_stores[0] < action
+                && action < debug_stores[1]
+                && debug_stores[1] < final_range
+                && final_range < intersection
+                && intersection < output
+        );
+        assert!(main.contains("alloca ptr, align 8"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"interval\""));
+        assert!(llvm.contains("name: \"Generator Range Int Unit Range Int\""));
+        assert!(llvm.contains("name: \"Range Int\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }
