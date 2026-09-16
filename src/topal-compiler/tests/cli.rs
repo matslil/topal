@@ -9698,3 +9698,119 @@ fn nested_custom_generator_function_boundaries_are_freestanding_and_debuggable()
         assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
     }
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session verifies List transfer, traversal, append, result, and frames.
+fn list_custom_generator_function_boundaries_are_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-DECLARATION-001,
+    // TOPAL-GENERATOR-SUSPEND-001,
+    // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+    // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+    // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+    // TOPAL-GENERATOR-FOREACH-RESULT-001,
+    // TOPAL-TYPE-LIST-CONSTRUCT-001,
+    // TOPAL-LIST-APPEND-001,
+    // TOPAL-LIST-ENTRY-COUNT-001,
+    // TOPAL-COMPILER-GENERATOR-LIST-FUNCTION-BOUNDARY-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-list-values");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-list-values.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"Entry ( 7, Entry ( 9, Empty ) )\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-list-values.t:16",
+            "-ex",
+            "break custom-generator-list-values.t:20",
+            "-ex",
+            "break custom-generator-list-values.t:13",
+            "-ex",
+            "break custom-generator-list-values.t:21",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "whatis values",
+            "-ex",
+            "print values",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis result",
+            "-ex",
+            "print result",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "topal.fn.make.0 (initial=Entry ( 7, Empty ))",
+        "type = List Int",
+        "$1 = Entry ( 7, Empty )",
+        "type = enum Generator List Int Unit List Int",
+        "$2 = <Generator List Int Unit List Int>",
+        "$3 = Entry ( 7, Empty )",
+        "$4 = Entry ( 7, Empty )",
+        "$5 = Entry ( 7, Entry ( 9, Empty ) )",
+        "custom-generator-list-values.t:13",
+        "custom-generator-list-values.t:16",
+        "custom-generator-list-values.t:20",
+        "custom-generator-list-values.t:21",
+        "custom-generator-list-values.t:23",
+        "custom-generator-list-values.t:24",
+        "in topal.main",
+        "in _start",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
+    }
+}

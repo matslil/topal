@@ -690,6 +690,14 @@ impl<'a> Generator<'a> {
                         && matches!(generator.result_type.as_ref(), CompilerType::Result(success)
                             if matches!(success.as_ref(), CompilerType::Tuple(fields)
                                 if fields == &[CompilerType::Int, CompilerType::String]))
+                )
+                || matches!(
+                    (&parameter.value_type, &function.result_type),
+                    (CompilerType::List(element), CompilerType::Generator(generator))
+                        if element.as_ref() == &CompilerType::Int
+                            && generator.yield_type.as_ref() == &parameter.value_type
+                            && generator.resume_type.as_ref() == &CompilerType::Unit
+                            && generator.result_type.as_ref() == &parameter.value_type
                 );
             let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
                 && function.body.statements.is_empty()
@@ -6467,6 +6475,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Optional(_)
                     | CompilerType::Range(_)
                     | CompilerType::Result(_)
+                    | CompilerType::List(_)
                     | CompilerType::Tuple(_)
             )
         {
@@ -6504,6 +6513,7 @@ impl<'a> Generator<'a> {
                 CompilerType::Comparison
                     | CompilerType::Enum(_)
                     | CompilerType::Result(_)
+                    | CompilerType::List(_)
                     | CompilerType::Tuple(_)
             ) {
                 body.effect(
@@ -6642,6 +6652,7 @@ impl<'a> Generator<'a> {
                     CompilerType::Comparison
                         | CompilerType::Enum(_)
                         | CompilerType::Result(_)
+                        | CompilerType::List(_)
                         | CompilerType::Tuple(_)
                 ) {
                     let action_span =
@@ -13272,6 +13283,96 @@ mod tests {
             "DILocalVariable(name: \"initial\", arg: 1",
             "DILocalVariable(name: \"generated\", arg: 1",
             "DILocalVariable(name: \"value\"",
+            "DILocalVariable(name: \"result\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("topal.runtime.generator"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("call i32 %"));
+    }
+
+    #[test]
+    fn emits_list_custom_generator_function_boundaries() {
+        // TOPAL-GENERATOR-DECLARATION-001,
+        // TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-GENERATOR-FOREACH-RESULT-001,
+        // TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-LIST-APPEND-001,
+        // TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-COMPILER-GENERATOR-LIST-FUNCTION-BOUNDARY-001
+        let source = include_str!("../../../examples/language/custom-generator-list-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("List factory specialization exists");
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("List consumer specialization exists");
+        let llvm = Generator::new(&program, "custom-generator-list-values.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc i32 @{}(ptr %arg0)",
+            make.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i32 %arg0)",
+            consume.symbol
+        )));
+        assert!(llvm.contains(&format!("call fastcc i32 @{}(ptr", make.symbol)));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(i32", consume.symbol)));
+
+        let make_body = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                make.symbol
+            ))
+            .expect("module contains List factory")
+            .1
+            .split_once("\n}\n")
+            .expect("List factory has one body")
+            .0;
+        assert!(make_body.contains("alloca ptr, align 8"));
+        assert!(make_body.contains("#dbg_declare"));
+
+        let consume_body = llvm
+            .split_once(&format!(
+                "define internal fastcc ptr @{}(i32 %arg0)",
+                consume.symbol
+            ))
+            .expect("module contains List consumer")
+            .1
+            .split_once("\n}\n")
+            .expect("List consumer has one body")
+            .0;
+        let action = consume_body
+            .find("call ptr @topal.runtime.list.int.entry.count")
+            .expect("consumer observes the yielded List before resumption");
+        let appended_node = consume_body[action..]
+            .find("call ptr @topal.platform.allocate(i64 16)")
+            .map(|offset| action + offset)
+            .expect("consumer constructs the appended singleton after resumption");
+        let final_list = consume_body[appended_node..]
+            .find("call ptr @topal.runtime.list.int.concat")
+            .map(|offset| appended_node + offset)
+            .expect("consumer appends after constructing the singleton");
+        let returned = consume_body[final_list..]
+            .find("ret ptr")
+            .map(|offset| final_list + offset)
+            .expect("consumer returns the final List");
+        assert!(action < appended_node && appended_node < final_list && final_list < returned);
+        for expected in [
+            "name: \"Generator List Int Unit List Int\"",
+            "name: \"List Int\"",
+            "DILocalVariable(name: \"initial\", arg: 1",
+            "DILocalVariable(name: \"generated\", arg: 1",
+            "DILocalVariable(name: \"values\"",
             "DILocalVariable(name: \"result\"",
         ] {
             assert!(llvm.contains(expected), "missing {expected:?}");

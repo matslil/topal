@@ -46,6 +46,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-compound-function-boundaries.t",
     "examples/language/custom-generator-generic-function-boundaries.t",
     "examples/language/custom-generator-int-values.t",
+    "examples/language/custom-generator-list-values.t",
     "examples/language/custom-generator-local-binding.t",
     "examples/language/custom-generator-local-close-handler.t",
     "examples/language/custom-generator-local-function.t",
