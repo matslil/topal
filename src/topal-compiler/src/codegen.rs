@@ -1548,7 +1548,12 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::OptionalSome(value) => {
                 let payload_value = self.emit_expression(value, body, environment);
-                let payload = optional_payload_pointer(&payload_value);
+                let payload = self.emit_optional_payload_pointer(
+                    &payload_value,
+                    &value.value_type,
+                    body,
+                    value.span,
+                );
                 LlValue::Optional {
                     value: body.instruction(
                         &format!("call ptr @topal.runtime.optional.some(ptr {payload})"),
@@ -2701,6 +2706,26 @@ impl<'a> Generator<'a> {
                 value,
                 element: element.as_ref().clone(),
             },
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::String] =>
+            {
+                let integer = body.instruction(
+                    &format!("load ptr, ptr {value}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let text_address = body.instruction(
+                    &format!("getelementptr i8, ptr {value}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let text = body.instruction(
+                    &format!("load ptr, ptr {text_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![LlValue::Int(integer), LlValue::String(text)])
+            }
             CompilerType::Tuple(fields)
                 if matches!(
                     fields.as_slice(),
@@ -4187,6 +4212,44 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn emit_optional_payload_pointer(
+        &mut self,
+        value: &LlValue,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        if let (LlValue::Tuple(fields), CompilerType::Tuple(types)) = (value, value_type)
+            && matches!(types.as_slice(), [CompilerType::Int, CompilerType::String])
+        {
+            let [integer, text] = fields.as_slice() else {
+                unreachable!("checked Optional product payload has two fields")
+            };
+            let storage = body.instruction(
+                "call ptr @topal.platform.allocate(i64 16)",
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {}, ptr {storage}, align 8", integer.integer()),
+                span,
+                &mut self.debug,
+            );
+            let text_address = body.instruction(
+                &format!("getelementptr i8, ptr {storage}, i64 8"),
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {}, ptr {text_address}, align 8", text.string()),
+                span,
+                &mut self.debug,
+            );
+            return storage;
+        }
+        optional_payload_pointer(value).to_owned()
+    }
+
     fn result_success_value(
         &mut self,
         payload: &str,
@@ -4610,6 +4673,67 @@ impl<'a> Generator<'a> {
             CompilerType::Int => "optional.int.equal",
             CompilerType::Rational => "optional.rational.equal",
             CompilerType::String => "optional.string.equal",
+            CompilerType::Tuple(fields)
+                if fields.as_slice() == [CompilerType::Int, CompilerType::String] =>
+            {
+                let left_some = body.instruction(
+                    &format!("call i1 @topal.runtime.optional.is.some(ptr {left})"),
+                    span,
+                    &mut self.debug,
+                );
+                let right_some = body.instruction(
+                    &format!("call i1 @topal.runtime.optional.is.some(ptr {right})"),
+                    span,
+                    &mut self.debug,
+                );
+                let both_some = body.instruction(
+                    &format!("and i1 {left_some}, {right_some}"),
+                    span,
+                    &mut self.debug,
+                );
+                let payload_label = body.label("optional.product.equal.payload");
+                let tag_label = body.label("optional.product.equal.tag");
+                let merge_label = body.label("optional.product.equal.merge");
+                let location = self.debug.location(span, body.subprogram);
+                body.terminator(
+                    &format!("br i1 {both_some}, label %{payload_label}, label %{tag_label}"),
+                    location,
+                );
+                body.start_block(&payload_label);
+                let left_payload = body.instruction(
+                    &format!("call ptr @topal.runtime.optional.payload(ptr {left})"),
+                    span,
+                    &mut self.debug,
+                );
+                let right_payload = body.instruction(
+                    &format!("call ptr @topal.runtime.optional.payload(ptr {right})"),
+                    span,
+                    &mut self.debug,
+                );
+                let left_value =
+                    self.emit_optional_payload_value(left_payload, payload, body, span);
+                let right_value =
+                    self.emit_optional_payload_value(right_payload, payload, body, span);
+                let payload_equal = self.emit_equal(&left_value, &right_value, body, span);
+                let payload_predecessor = body.current_block.clone();
+                body.terminator(&format!("br label %{merge_label}"), location);
+                body.start_block(&tag_label);
+                let tags_equal = body.instruction(
+                    &format!("icmp eq i1 {left_some}, {right_some}"),
+                    span,
+                    &mut self.debug,
+                );
+                let tag_predecessor = body.current_block.clone();
+                body.terminator(&format!("br label %{merge_label}"), location);
+                body.start_block(&merge_label);
+                return body.instruction(
+                    &format!(
+                        "phi i1 [ {payload_equal}, %{payload_predecessor} ], [ {tags_equal}, %{tag_predecessor} ]"
+                    ),
+                    span,
+                    &mut self.debug,
+                );
+            }
             _ => unreachable!("checked Optional equality has canonical evidence"),
         };
         body.instruction(
@@ -11129,6 +11253,65 @@ mod tests {
         assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
         assert!(llvm.contains("name: \"Generator Optional Int Unit Optional Int\""));
         assert!(llvm.contains("name: \"Optional Int\""));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_nested_optional_product_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-OPTIONAL-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-nested-optional-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-nested-optional-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let boxes = main
+            .match_indices("call ptr @topal.platform.allocate(i64 16)")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        let optional_values = main
+            .match_indices("call ptr @topal.runtime.optional.some(")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        assert_eq!(boxes.len(), 3);
+        assert_eq!(optional_values.len(), 3);
+        assert_eq!(main.matches("alloca ptr, align 8").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let action = main
+            .find("optional.product.equal.payload")
+            .expect("foreach structurally compares the Optional product payload");
+        let output = main
+            .rfind("call i1 @topal.runtime.optional.is.some(")
+            .expect("the final Optional controls Topal-owned display");
+        assert!(
+            boxes[0] < optional_values[0]
+                && optional_values[0] < constructed
+                && constructed < boxes[1]
+                && boxes[1] < optional_values[1]
+                && optional_values[1] < action
+                && action < boxes[2]
+                && boxes[2] < optional_values[2]
+                && optional_values[2] < output
+        );
+        assert!(main.contains("call i32 @topal.runtime.int.compare"));
+        assert!(main.contains("call i1 @topal.runtime.string.equal"));
+        assert!(main.contains("phi i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(
+            llvm.contains("name: \"Generator Optional (Int, String) Unit Optional (Int, String)\"")
+        );
+        assert!(llvm.contains("name: \"Optional (Int, String)\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

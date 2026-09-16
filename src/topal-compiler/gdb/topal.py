@@ -430,6 +430,20 @@ class _TopalOptionalPrinter:
             if first.startswith("<") or rest.startswith("<"):
                 return f"<invalid Optional List decomposition: ({first}, {rest})>"
             rendered = f"({first}, {rest})"
+        elif self._payload_type == "(Int, String)":
+            try:
+                pair = bytes(inferior.read_memory(payload, 16))
+            except gdb.MemoryError:
+                return "<unreadable Optional product>"
+            integer = int.from_bytes(pair[0:8], "little")
+            text = int.from_bytes(pair[8:16], "little")
+            if not integer or not text:
+                return "<invalid null Optional product field>"
+            integer = _TopalIntPrinter(integer).to_string()
+            text = _TopalStringPrinter(text).to_string()
+            if integer.startswith("<") or text.startswith("<"):
+                return f"<invalid Optional product: ({integer}, {text})>"
+            rendered = f"({integer}, {text})"
         else:
             return f"<unsupported Optional payload type {self._payload_type}>"
         return f"Some {rendered}"
@@ -621,6 +635,8 @@ def _lookup_topal_value(value):
     optional_prefix = "Optional "
     if value_type.startswith(optional_prefix):
         return _TopalOptionalPrinter(value, value_type[len(optional_prefix) :])
+    if value_type.startswith("Optional("):
+        return _TopalOptionalPrinter(value, value_type[len("Optional") :])
     traversal_prefix = "TraversalControl "
     if value_type.startswith(traversal_prefix) and storage_type.startswith(
         "struct TopalTraversalControl."
