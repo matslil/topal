@@ -3637,6 +3637,56 @@ state-authority release/reacquisition, ownership and consumption, close and
 termination behavior, effects and authorities, debug provenance, and native
 adapter requirements independently of LLVM types, layouts, and symbols.
 
+### TOPAL-COMPILER-EXTERNAL-LOCATION-001 — Closed checked external location
+
+The compiler SHALL admit the unchanged `external-layout-location.t` regression
+as one closed external-storage graph. The checked model SHALL retain the exact
+identities, semantic classifiers, storage sizes, encoding families, byte order,
+access policy, alignment, product packing and fields, tagged-sum tags and
+placement, array extent, element layout, and stride of its five layout
+declarations. It SHALL also retain the address-range cache policy, minimum
+physical access size, medium, inclusive bounds and value identity; the
+address-offset range identity, byte alignment and checked value; and the
+location subtype, layout identity, range identity, and offset.
+
+Construction SHALL prove nonnegative ordered bounds, positive aligned offset,
+range membership, complete layout fit, physical-access compatibility, and exact
+32-bit unsigned representability of the stored Nat. The admitted source write
+and following read SHALL remain distinct source-ordered operations at O0 and
+SHALL produce the same layout-backed Nat snapshot as the interpreter. Unknown,
+missing, duplicate, inapplicable, inconsistent, dynamic, unrepresentable, or
+unsupported layout fields and values SHALL fail before LLVM lowering. Other
+layout families, dynamic construction, general byte encoding/decoding,
+uninitialized reads, public/function/persistent/library location boundaries,
+and general fallible access SHALL remain rejected.
+
+The source declares an abstract address range but grants no Linux device,
+mapping, or native-adapter authority. Generated code therefore SHALL NOT
+dereference the numeric MMIO address or silently claim host-device integration.
+Linux x86-64 lowering SHALL use a private Topal-owned location header containing
+the semantic range start, offset, initialization state, and immutable semantic
+snapshot; ordered noinline Topal runtime calls SHALL perform the admitted write
+and read. Allocation and termination SHALL use the existing direct Linux
+syscalls, with no C/C++ runtime, other-language standard library, foreign
+allocator, undefined symbol, or public ABI. Real MMIO requires a future
+explicit platform adapter and remains outside this increment.
+
+LLVM SHALL own the private header's physical layout, pointer placement, register
+selection, and instruction scheduling. The frontend's schema validation,
+authority rejection, source ordering, and representability proof SHALL hold at
+O0 and SHALL NOT depend on optional LLVM optimization. DWARF SHALL expose the
+nominal layout-backed value and Location header, address evidence,
+initialization state, stored snapshot, source bindings, access operations, and
+frames. The validating GDB renderer SHALL bound its reads and reject null,
+unreadable, noncanonical, or inconsistent private state.
+
+Future compiled-library metadata SHALL encode the language and schema revision,
+layout identity and complete field graph, semantic type identity, sizes,
+encoding, byte order, access and alignment, range/offset/location identities,
+medium and ordering, effects and authorities, fallibility, ownership/lifetime,
+platform-adapter requirement, and debug provenance independently of LLVM types,
+private headers, target layouts, and symbols.
+
 ### TOPAL-COMPILER-STATIC-INTROSPECTION-001 — Closed static introspection foundation
 
 For a v0.1 source context without optional features, the compiler SHALL admit

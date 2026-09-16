@@ -2086,6 +2086,16 @@
       "cpu_time_ns": 164262,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/external-layout-location.t": {
+      "cpu_time_ns": 125899740,
+      "memory_peak_bytes": 41521152,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/external-layout-location.t": {
+      "cpu_time_ns": 151442,
+      "memory_peak_bytes": 18669568,
+      "samples_per_test": 500
     }
   }
 }

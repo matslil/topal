@@ -406,6 +406,28 @@ value. This is a fused compiler-created producer/consumer representation, not a
 general runtime protocol parser, and malformed private state takes the
 corruption exit. Arbitrary or external streams remain outside this increment.
 
+The closed external-location increment retains layout, range, offset, and
+location semantics in frontend metadata rather than encoding them as LLVM
+types. Its source graph names an MMIO medium but grants no Linux device mapping,
+resource capability, or native-adapter authority. The executable consequently
+must not convert `0x40000000 + 32` to a host pointer. It uses a Topal-owned
+process-private header containing arbitrary-precision range-start and offset
+evidence, an initialization tag, and the immutable semantic Nat snapshot. The
+write and read remain separate noinline calls in source order at `-O0`; this is
+the interpreter-equivalent authority-free model, not a real-MMIO optimization
+or integration claim. An adapter-backed implementation will require explicit
+platform-package authority, volatile/atomic ordering appropriate to the device,
+fallible error translation, and target-qualified address rules.
+
+The private header is expressed as an ordinary LLVM structure with opaque
+pointers. LLVM therefore continues to own physical layout, instruction
+selection, registers, and scheduling, while the frontend owns schema
+validation, representability, fit, authority rejection, and access order. The
+runtime allocates only through the existing Linux `mmap` syscall boundary and
+adds no foreign symbol or language runtime. DWARF describes the nominal
+layout-backed Nat and Location header; the bundled renderer bounds all reads and
+validates pointers, initialization state, and the stored semantic value.
+
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
 encoding, normalize text, or consult a locale. A private unsigned-64-to-Int
@@ -1576,7 +1598,7 @@ validated semantic interface.
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, and bundled renderers for private Int, Rational, finite exact Range, modular, active sum, and native-stream values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, checked external Location headers, and bundled renderers for private Int, Rational, finite exact Range, modular, active sum, native-stream, and location values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

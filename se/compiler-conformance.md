@@ -140,7 +140,8 @@ evidence.
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
 | 7b2 | closed direct root tasks with one private Nat state, distinct identity, immediate FIFO event/request transactions, and debugging | complete |
 | 7b3 | closed one-yield task stream with affine ownership, immediate FIFO transaction ordering, erased inert resumption, and debugging | complete |
-| 7b | nonempty effects and inference, resources, layout construction and encoding, locations, general tasks, observable contexts, general streams, overlapping scheduling, termination, time, static flow, and platform packages | planned |
+| 7b4 | closed five-layout graph, checked range/offset/location construction, ordered process-owned UInt32LE write/read, and debugging | complete |
+| 7b | nonempty effects and inference, resources, general layout construction and encoding, adapter-backed locations and MMIO, general tasks, observable contexts, general streams, overlapping scheduling, termination, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
 | 8a2 | closed Int-constraint proof/rejection, dynamic predicate evaluation, refined base operations, existing Result/Error integration, and debugging | complete |
@@ -787,9 +788,14 @@ task, and stable transaction identity; traversal loads committed state at the
 source yield and completes before a later request. Its inert resumption and
 absence of post-resume state access prove that a continuation carrier is
 unobservable, so O0 lowering inlines the suspension without relying on LLVM
-optimization. 7b retains nonempty effect execution/inference, layout
-construction and encoding, observable/general tasks, general streams,
-termination, overlapping scheduling, and the remaining platform-semantic work.
+optimization. 7b4 retains and validates the closed scalar, text, product, sum,
+array, range, offset, and location metadata graph; because the source grants no
+device-adapter authority, it models the ordered UInt32LE write/read with a
+Topal-owned process-private location instead of dereferencing the numeric MMIO
+address or claiming host-device integration. 7b retains nonempty effect
+execution/inference, general layout construction and encoding, adapter-backed
+locations and MMIO, observable/general tasks, general streams, termination,
+overlapping scheduling, and the remaining platform-semantic work.
 Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;
 8a1 adds closed named Constraint-object metadata and private observation tags;

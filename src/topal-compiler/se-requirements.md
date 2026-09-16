@@ -4661,6 +4661,50 @@ types, layouts, and symbols. This realizes
 `TOPAL-COMPILER-TASK-STREAM-001`, `TOPAL-TASK-HANDLER-001`, and
 `TOPAL-TASK-MESSAGE-001` for increment 7b3.
 
+## TOPAL-COMP-EXTERNAL-LOCATION-001 — Closed checked external location
+
+The checked compiler shall admit the unchanged external-layout-location
+regression as compiler increment 7b4. It shall retain target-independent
+metadata for the complete five-layout graph, including identities, semantic
+classifiers, sizes, encodings, endianness, access, alignment, product fields and
+packing, tagged-sum tags and placement, array extent, element layout and stride.
+It shall likewise retain the address-range identity, policies, medium, minimum
+access size and inclusive bounds; the offset subtype's exact range identity,
+alignment and checked value; and the Location subtype, layout and offset.
+
+The checker shall reject missing, extra, duplicate, inconsistent, dynamic, or
+unsupported fields; unrepresentable UInt32LE values; invalid bounds, offsets,
+fit, alignment, or access; and every non-closed location flow. The admitted
+write and read shall be distinct, source ordered, and exactly differential with
+the interpreter. General encoders/decoders, fallible hardware access,
+uninitialized reads, other layout families, and function, persistent, public,
+serialized, or compiled-library location boundaries remain unsupported.
+
+Because the source grants no Linux device mapping or native-adapter authority,
+the backend shall not dereference the numeric MMIO address. It shall allocate a
+private process-owned Topal Location header through the existing Linux syscall
+allocator and preserve range start, offset, initialization state, and the
+immutable semantic Nat snapshot. Noinline Topal runtime write/read calls shall
+preserve O0 ordering. This explicitly models only the authority-free regression
+and does not claim real MMIO integration; that requires a future typed platform
+adapter. The executable shall add no C/C++ runtime, other-language standard
+library, foreign allocator, undefined symbol, dynamic dependency, public ABI,
+or native ABI revision.
+
+DWARF and the bounded validating GDB renderer shall expose the nominal
+UInt32LE-backed Nat, nominal ControlLocation, semantic address evidence,
+initialization state, stored value, source operations, and frames. Functional
+evidence shall cover metadata retention and rejection, ordered O0 LLVM, exact
+interpreter differential, freestanding ELF and DWARF/GDB inspection, the full
+compiler corpus, and separate build/run resource baselines. Future library
+metadata shall carry the complete language/schema/layout/range/offset/location,
+ordering, effect, authority, fallibility, ownership, platform-adapter, and debug
+contracts independently of LLVM types, layouts, headers, and symbols. This
+realizes `TOPAL-COMPILER-EXTERNAL-LOCATION-001`, `TOPAL-LAYOUT-SIZE-001`,
+`TOPAL-LAYOUT-CONSTRUCT-001`, `TOPAL-ADDRESS-RANGE-001`,
+`TOPAL-LOCATION-CONSTRUCT-001`, `TOPAL-LOCATION-READ-001`, and
+`TOPAL-LOCATION-WRITE-001` for increment 7b4.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
@@ -4676,6 +4720,8 @@ modular-success Result objects, `List Effect`, `List Int`,
 native `SerializationStream` descriptors,
 nominal direct Task instances with identity, lifecycle state, and private Nat
 state, affine task-stream Generator directions and bindings,
+nominal layout-backed Nat and checked Location headers with address evidence,
+initialization state, and stored snapshot,
 retained Constraint identities and refined Int bindings with their semantic
 names, distinguish
 selected overload and static-function frames, and pass automated GDB

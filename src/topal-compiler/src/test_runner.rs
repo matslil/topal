@@ -98,6 +98,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/explicit-multi-parameter-decreases.t",
     "examples/language/exhaustive-boolean-decisions.t",
     "examples/language/exhaustive-error-code-decisions.t",
+    "examples/language/external-layout-location.t",
     "examples/language/finite-exact-division-and-comparison.t",
     "examples/language/finite-range-observation.t",
     "examples/language/forward-function-declarations.t",
@@ -347,5 +348,44 @@ fn render_error(error: CompileError, identity: &str) -> String {
     match error {
         CompileError::Diagnostic(diagnostic) => diagnostic.render(identity),
         error => error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+    use std::fs;
+    use std::path::Path;
+
+    use super::SHARED_REGRESSIONS;
+
+    #[test]
+    fn shared_regression_manifest_covers_the_entire_canonical_corpus() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let language_examples = root.join("examples/language");
+        let canonical = fs::read_dir(&language_examples)
+            .expect("canonical language regression directory must be readable")
+            .map(|entry| {
+                entry
+                    .expect("language regression entry must be readable")
+                    .path()
+            })
+            .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
+            .map(|path| {
+                path.strip_prefix(&root)
+                    .expect("language regression must be below the repository root")
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect::<Vec<_>>();
+        let listed = SHARED_REGRESSIONS
+            .iter()
+            .map(|identity| (*identity).to_owned())
+            .collect::<Vec<_>>();
+        let unique = listed.iter().collect::<BTreeSet<_>>();
+        let canonical = canonical.iter().collect::<BTreeSet<_>>();
+
+        assert_eq!(unique.len(), listed.len(), "manifest contains duplicates");
+        assert_eq!(unique, canonical);
     }
 }
