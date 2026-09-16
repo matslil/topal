@@ -494,6 +494,7 @@ pub enum CompilerExpressionKind {
     Effect,
     TypeValue(u32),
     Root,
+    LintNamespace,
     FunctionValue(u32),
     Identity(CompilerIdentity),
     TypeView(CompilerTypeView),
@@ -945,6 +946,7 @@ pub struct CompilerConstraint {
 pub struct CompilerProgram {
     pub source: SourceText,
     pub language_version: LanguageVersion,
+    pub language_features: Vec<String>,
     pub main: CompilerBlock,
     pub function_value_names: Vec<String>,
     pub constraints: Vec<CompilerConstraint>,
@@ -1156,6 +1158,7 @@ impl Analyzer {
     fn new(
         source: SourceText,
         language_version: LanguageVersion,
+        language_features: Vec<String>,
         enums: EnumTypes,
         enum_alternatives: EnumAlternativeBindings,
         sums: SumTypes,
@@ -1164,7 +1167,7 @@ impl Analyzer {
         Self {
             source,
             language_version,
-            language_features: Vec::new(),
+            language_features,
             enums,
             enum_alternatives,
             sums,
@@ -1211,7 +1214,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
             error.message.clone(),
         ));
     }
-    let language_version = compiler_language_version(&source, &parsed.statements)?;
+    let (language_version, language_features) =
+        compiler_language_context(&source, &parsed.statements)?;
     reject_later_language_selections(&source, &parsed.statements)?;
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
@@ -1246,6 +1250,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     let mut analyzer = Analyzer::new(
         source.clone(),
         language_version,
+        language_features,
         enums,
         enum_alternatives,
         sums,
@@ -1285,6 +1290,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     Ok(CompilerProgram {
         source,
         language_version,
+        language_features: analyzer.language_features,
         main,
         function_value_names,
         constraints: analyzer.constraints,
@@ -1294,10 +1300,10 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     })
 }
 
-fn compiler_language_version(
+fn compiler_language_context(
     source: &SourceText,
     statements: &[Statement],
-) -> Result<LanguageVersion, Diagnostic> {
+) -> Result<(LanguageVersion, Vec<String>), Diagnostic> {
     let Some(Statement::LanguageSelection {
         version, features, ..
     }) = statements.first()
@@ -1313,15 +1319,30 @@ fn compiler_language_version(
         .slice(*version)
         .parse()
         .map_err(|message| source_diagnostic(source, "E-LANGUAGE-VERSION", *version, message))?;
-    if language_version != LanguageVersion::DESIGN_0 || !features.is_empty() {
+    if language_version != LanguageVersion::DESIGN_0 {
         return Err(source_diagnostic(
             source,
             "E-COMPILER-UNSUPPORTED",
             *version,
-            "the native compiler increment supports language version v0.1 without optional features",
+            "the native compiler increment supports language version v0.1",
         ));
     }
-    Ok(language_version)
+    let mut language_features = BTreeSet::new();
+    for feature in features {
+        let feature_name = source.slice(*feature);
+        if feature_name != "lint" {
+            return Err(source_diagnostic(
+                source,
+                "E-COMPILER-UNSUPPORTED",
+                *feature,
+                format!(
+                    "the native compiler increment does not support the `{feature_name}` language feature"
+                ),
+            ));
+        }
+        language_features.insert(feature_name.to_owned());
+    }
+    Ok((language_version, language_features.into_iter().collect()))
 }
 
 fn reject_later_language_selections(
@@ -9359,6 +9380,7 @@ impl Analyzer {
                     rational_value: None,
                     span,
                 },
+                "lint" => self.analyze_lint_namespace(*operation, span)?,
                 _ => return Ok(None),
             };
             return Ok(Some(value));
@@ -9417,6 +9439,32 @@ impl Analyzer {
         }
 
         Ok(None)
+    }
+
+    fn analyze_lint_namespace(
+        &self,
+        operation: Span,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if !self
+            .language_features
+            .iter()
+            .any(|feature| feature == "lint")
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-LINT-VARIANT",
+                operation,
+                "the `lang lint` namespace requires the `lint` language feature",
+            ));
+        }
+        Ok(CompilerExpression {
+            kind: CompilerExpressionKind::LintNamespace,
+            value_type: CompilerType::Scope,
+            int_range: None,
+            rational_value: None,
+            span,
+        })
     }
 
     fn analyze_static_introspection_relation(
@@ -12998,6 +13046,12 @@ impl Analyzer {
                         (!visible.is_empty()).then(|| (name.clone(), visible))
                     })
                     .collect(),
+            })),
+            CompilerExpressionKind::LintNamespace => Ok(Some(CompilerNamespaceFacts {
+                name: "lang lint".into(),
+                bindings: BTreeMap::new(),
+                functions: BTreeMap::new(),
+                generators: BTreeMap::new(),
             })),
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.namespace.clone())
@@ -18161,6 +18215,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
+        | CompilerExpressionKind::LintNamespace
         | CompilerExpressionKind::FunctionValue(_)
         | CompilerExpressionKind::Identity(_)
         | CompilerExpressionKind::TypeView(_)
@@ -26059,6 +26114,45 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_the_authority_free_lint_language_variant() {
+        // TOPAL-SYN-CONTEXT-001, TOPAL-LINT-VARIANT-001,
+        // TOPAL-COMPILER-LINT-VARIANT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/lint-language-variant.t"
+        ))
+        .unwrap();
+        assert_eq!(program.language_features, ["lint"]);
+        assert_eq!(program.main.result.value_type, CompilerType::Scope);
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::LintNamespace
+        ));
+
+        let context = analyze_for_compiler(
+            "use language (version is v0.1, features is (lint, lint))\ncontext is lang context\nlang lint\n",
+        )
+        .unwrap();
+        assert_eq!(context.language_features, ["lint"]);
+        let [CompilerStatement::Binding(context_binding)] = context.main.statements.as_slice()
+        else {
+            panic!("the selected context retains one static binding")
+        };
+        let CompilerExpressionKind::LanguageContext(context) = &context_binding.value.kind else {
+            panic!("lang context retains checked feature metadata")
+        };
+        assert_eq!(context.features, ["lint"]);
+
+        let missing =
+            analyze_for_compiler("use language (version is v0.1)\nlang lint\n").unwrap_err();
+        assert_eq!(missing.code, "E-LINT-VARIANT");
+        let unsupported = analyze_for_compiler(
+            "use language (version is v0.1, features is (debug, lint))\nlang lint\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

@@ -10,6 +10,7 @@ evidence.
 | ---: | --- | --- |
 | 1 | LLVM 22 pipeline, Linux x86-64 freestanding startup/syscalls, O0, DWARF/GDB, native metadata, Unit/Boolean/bounded exact Int/positional products, immutable bindings, eager Boolean and checked integer operations, ordinary nonrecursive function specialization, Boolean decisions | complete |
 | 1a | shared validation and runtime erasure of legacy warning and structured diagnostic-identity controls | complete |
+| 1b | canonical `lint` language-feature retention and the empty authority-free `lang lint` Scope with exact display and debugging | complete |
 | 2a | arbitrary finite `Int` representation, literals, negation, absolute value, addition, subtraction, multiplication, equality, ordering, decimal output, GDB rendering, and freestanding allocation | complete |
 | 2b | finite `Int` identities/division/modulo/power, finite exact `Rational`, static zero-divisor diagnostics, exact equality/ordering, and direct three-way comparison | complete |
 | 2c-a | ordered comparison matchers and exhaustive decisions over `Comparison` values | complete |
@@ -169,7 +170,12 @@ range evidence proved that its exact result fit the initial signed 64-bit
 representation. Increment 1a retains the shared diagnostic-control validation
 and erases valid controls before LLVM because they have no runtime semantics;
 future compiler warnings must consult their source-scoped identities at
-publication. Increment 2a removes the integer boundary with a freestanding Topal
+publication. Increment 1b retains the canonical `lint` variant identity in the
+checked program and exposes its empty `lang lint` namespace as a private Scope
+alternative without importing lint execution or host authority. Future library
+interfaces must record their language revision, feature set, vocabulary, and
+authority independently of this representation. Increment 2a removes the
+integer boundary with a freestanding Topal
 numeric runtime and a private, dynamically sized representation. Increment 2b
 adds finite exact division and Rational values. Increment 2c-a adds the fully
 normative Comparison decision forms; 2c-b1 adds the initial typed arithmetic
