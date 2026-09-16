@@ -502,6 +502,9 @@ pub enum CompilerExpressionKind {
         declaration_span: Span,
         initial_parameter: Box<CompilerParameter>,
         initial: Box<CompilerExpression>,
+        additional_initial_parameters: Vec<CompilerParameter>,
+        additional_initials: Vec<CompilerExpression>,
+        prefix: Box<CompilerBlock>,
         yields: Vec<CompilerGeneratorYield>,
         continuations: Vec<CompilerGeneratorContinuation>,
         explicit_return: Option<Span>,
@@ -529,6 +532,8 @@ pub enum CompilerExpressionKind {
         source: Box<CompilerExpression>,
         declaration_span: Span,
         initial_parameter: Box<CompilerParameter>,
+        additional_initial_parameters: Vec<CompilerParameter>,
+        prefix: Box<CompilerBlock>,
         yields: Vec<CompilerGeneratorYield>,
         continuations: Vec<CompilerGeneratorContinuation>,
         explicit_return: Option<Span>,
@@ -861,6 +866,8 @@ struct GeneratorSource {
     name: Span,
     span: Span,
     initial_parameter: CompilerParameter,
+    additional_initial_parameters: Vec<CompilerParameter>,
+    yield_parameter: usize,
     prefix: CompilerBlock,
     literal_characters: Option<Vec<String>>,
     value_yields: Option<Vec<CompilerGeneratorYield>>,
@@ -1019,7 +1026,7 @@ struct Analyzer {
     interfaces: InterfaceTypes,
     interface_implementations: Vec<CompilerInterfaceImplementation>,
     functions: BTreeMap<String, Vec<FunctionSource>>,
-    generators: BTreeMap<String, GeneratorSource>,
+    generators: BTreeMap<String, Vec<GeneratorSource>>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
@@ -5277,6 +5284,303 @@ fn exact_int_range_value_generator_action(
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn exact_string_overload_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    parameter.value_type == CompilerType::String
+        && !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::StringEmptyPredicate(value),
+                ..
+            })] if matches!(value.kind, CompilerExpressionKind::Local(ref name)
+                if name == &parameter.name)
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
+fn generator_input_types(generator: &GeneratorSource) -> Vec<&CompilerType> {
+    std::iter::once(&generator.initial_parameter.value_type)
+        .chain(
+            generator
+                .additional_initial_parameters
+                .iter()
+                .map(|parameter| &parameter.value_type),
+        )
+        .collect()
+}
+
+fn register_generator(
+    source: &SourceText,
+    generators: &mut BTreeMap<String, Vec<GeneratorSource>>,
+    name: &str,
+    generator: GeneratorSource,
+) -> Result<(), Diagnostic> {
+    let signature = generator_input_types(&generator);
+    let overloads = generators.entry(name.to_owned()).or_default();
+    if overloads
+        .iter()
+        .any(|candidate| generator_input_types(candidate) == signature)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-DUPLICATE-GENERATOR-OVERLOAD",
+            generator.span,
+            format!("generator overload `{name}` has the same input classifiers"),
+        ));
+    }
+    overloads.push(generator);
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The admitted declaration and complete retained body graph are validated together.
+fn exact_int_string_generator_overload(
+    source: &SourceText,
+    name: Span,
+    parameters: &[FunctionParameter],
+    yielded: Span,
+    resumed: Span,
+    result: Span,
+    body: &[Statement],
+    span: Span,
+) -> Result<GeneratorSource, Diagnostic> {
+    let [value_parameter, suffix_parameter] = parameters else {
+        return Err(unsupported(
+            source,
+            span,
+            "multi-input custom generator outside two ordered operands",
+        ));
+    };
+    if !value_parameter.fields.is_empty()
+        || value_parameter.default.is_some()
+        || value_parameter.qualifier.is_some()
+        || !suffix_parameter.fields.is_empty()
+        || suffix_parameter.default.is_some()
+        || suffix_parameter.qualifier.is_some()
+        || source.slice(value_parameter.name) != "value"
+        || source.slice(value_parameter.classifier) != "Int"
+        || source.slice(suffix_parameter.name) != "suffix"
+        || source.slice(suffix_parameter.classifier) != "String"
+        || source.slice(yielded) != "String"
+        || source.slice(resumed) != "Unit"
+        || source.slice(result) != "String"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "multi-input custom generator outside (value : Int, suffix : String) yielding String, resuming Unit, and returning String",
+        ));
+    }
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: prefix_items,
+                    span: prefix_span,
+                },
+            ..
+        },
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(final_expression),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "multi-input custom generator outside one prefix increment, suffix yield, and final String",
+        ));
+    };
+    let [
+        Expression::Identifier(prefix_value),
+        Expression::Callable {
+            kind: CallableKind::Plus,
+            ..
+        },
+        Expression::Integer(increment),
+    ] = prefix_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *prefix_span,
+            "multi-input custom generator prefix outside value + 1",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "multi-input custom generator yield outside suffix",
+        ));
+    };
+    let final_value = exact_string_literal_expression(source, final_expression.span())?;
+    if source.slice(*prefix_value) != "value"
+        || parse_integer(source.slice(*increment)).as_ref() != Some(&BigInt::from(1))
+        || source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != "suffix"
+        || exact_string(&final_value).as_deref() != Some("binary")
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "multi-input custom generator outside the retained value/suffix graph",
+        ));
+    }
+    let value = CompilerParameter {
+        name: String::from("value"),
+        discarded: false,
+        value_type: CompilerType::Int,
+        int_range: None,
+        span: value_parameter.name,
+    };
+    let suffix = CompilerParameter {
+        name: String::from("suffix"),
+        discarded: false,
+        value_type: CompilerType::String,
+        int_range: None,
+        span: suffix_parameter.name,
+    };
+    let prefix_value = CompilerExpression {
+        kind: CompilerExpressionKind::Local(value.name.clone()),
+        value_type: CompilerType::Int,
+        int_range: None,
+        rational_value: None,
+        span: *prefix_value,
+    };
+    let one = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(1)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(1))),
+        rational_value: None,
+        span: *increment,
+    };
+    Ok(GeneratorSource {
+        name,
+        span,
+        initial_parameter: value,
+        additional_initial_parameters: vec![suffix.clone()],
+        yield_parameter: 1,
+        prefix: CompilerBlock {
+            statements: vec![CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Add,
+                    left: Box::new(prefix_value),
+                    right: Box::new(one),
+                },
+                value_type: CompilerType::Int,
+                int_range: None,
+                rational_value: None,
+                span: *prefix_span,
+            })],
+            result: unit_expression(*prefix_span),
+        },
+        literal_characters: None,
+        value_yields: Some(vec![CompilerGeneratorYield::Value(Box::new(
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(suffix.name.clone()),
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span: *yield_value,
+            },
+        ))]),
+        value_continuations: Vec::new(),
+        explicit_return: None,
+        yield_count: 1,
+        local: None,
+        local_function: None,
+        close_handler: None,
+        result: final_value,
+    })
+}
+
+fn exact_unary_int_string_generator_overload(
+    source: &SourceText,
+    name: Span,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<GeneratorSource, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(final_expression),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "unary overloaded generator outside one value yield and final String",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "unary overloaded generator yield outside value",
+        ));
+    };
+    let final_value = exact_string_literal_expression(source, final_expression.span())?;
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || exact_string(&final_value).as_deref() != Some("unary")
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "unary overloaded generator outside yield value followed by unary",
+        ));
+    }
+    Ok(GeneratorSource {
+        name,
+        span,
+        initial_parameter: CompilerParameter {
+            name: source.slice(parameter.name).to_owned(),
+            discarded: false,
+            value_type: CompilerType::Int,
+            int_range: None,
+            span: parameter.name,
+        },
+        additional_initial_parameters: Vec::new(),
+        yield_parameter: 0,
+        prefix: CompilerBlock {
+            statements: Vec::new(),
+            result: unit_expression(span),
+        },
+        literal_characters: None,
+        value_yields: Some(vec![CompilerGeneratorYield::Initial(*yield_span)]),
+        value_continuations: Vec::new(),
+        explicit_return: None,
+        yield_count: 1,
+        local: None,
+        local_function: None,
+        close_handler: None,
+        result: final_value,
+    })
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -5284,7 +5588,7 @@ fn collect_character_generators(
     reserved_names: &BTreeSet<String>,
     enums: &EnumTypes,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
-    generators: &mut BTreeMap<String, GeneratorSource>,
+    generators: &mut BTreeMap<String, Vec<GeneratorSource>>,
 ) -> Result<(), Diagnostic> {
     for statement in statements {
         let Statement::Generator {
@@ -5308,13 +5612,12 @@ fn collect_character_generators(
                 format!("`{name_text}` is already declared in this scope"),
             ));
         }
-        if generators.contains_key(&name_text) {
-            return Err(source_diagnostic(
-                source,
-                "E-DUPLICATE-GENERATOR-OVERLOAD",
-                *span,
-                format!("generator overload `{name_text}` has the same input classifiers"),
-            ));
+        if parameters.len() == 2 {
+            let generator = exact_int_string_generator_overload(
+                source, *name, parameters, *yielded, *resumed, *result, body, *span,
+            )?;
+            register_generator(source, generators, &name_text, generator)?;
+            continue;
         }
         let [parameter] = parameters.as_slice() else {
             return Err(unsupported(
@@ -5378,6 +5681,33 @@ fn collect_character_generators(
             int_range: None,
             span: parameter.name,
         };
+        if generators.get(&name_text).is_some_and(|overloads| {
+            overloads.iter().any(|candidate| {
+                candidate.additional_initial_parameters.is_empty()
+                    && candidate.initial_parameter.value_type == initial_type
+            })
+        }) {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-GENERATOR-OVERLOAD",
+                *span,
+                format!("generator overload `{name_text}` has the same input classifiers"),
+            ));
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Int
+            && source.slice(*yielded) == "Int"
+            && source.slice(*resumed) == "Unit"
+            && source.slice(*result) == "String"
+        {
+            let generator =
+                exact_unary_int_string_generator_overload(source, *name, parameter, body, *span)?;
+            register_generator(source, generators, &name_text, generator)?;
+            continue;
+        }
         if parameter.fields.is_empty()
             && parameter.default.is_none()
             && parameter.qualifier.is_none()
@@ -5415,12 +5745,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_body;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5434,8 +5767,7 @@ fn collect_character_generators(
                     local_function,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5460,12 +5792,15 @@ fn collect_character_generators(
                 *span,
             )?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5479,8 +5814,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5499,12 +5833,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_comparison_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5518,8 +5855,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5540,12 +5876,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_result_rational_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5559,8 +5898,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5579,12 +5917,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_int_string_product_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5598,8 +5939,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5620,12 +5960,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_enum_value_generator_body(source, parameter, enumeration, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5639,8 +5982,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5659,12 +6001,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_nat_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5678,8 +6023,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5698,12 +6042,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_int_range_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5717,8 +6064,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5741,12 +6087,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_nested_optional_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5760,8 +6109,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5782,12 +6130,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_nested_result_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5801,8 +6152,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5821,12 +6171,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_optional_int_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5840,8 +6193,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5860,12 +6212,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_unit_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5879,8 +6234,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5899,12 +6253,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_rational_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5918,8 +6275,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5938,12 +6294,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_int_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5957,8 +6316,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if parameter.fields.is_empty()
@@ -5977,12 +6335,15 @@ fn collect_character_generators(
                 result: final_value,
             } = exact_string_value_generator_body(source, parameter, *result, body, *span)?;
             let yield_count = value_yields.len();
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix: CompilerBlock {
                         statements: Vec::new(),
                         result: unit_expression(*result),
@@ -5996,8 +6357,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: final_value,
-                },
-            );
+                });
             continue;
         }
         if !parameter.fields.is_empty()
@@ -6019,12 +6379,15 @@ fn collect_character_generators(
         if initial_type == CompilerType::String {
             let (prefix, literal_characters) =
                 exact_string_input_generator_body(source, parameter, body, *span)?;
-            generators.insert(
-                name_text,
-                GeneratorSource {
+            generators
+                .entry(name_text)
+                .or_default()
+                .push(GeneratorSource {
                     name: *name,
                     span: *span,
                     initial_parameter,
+                    additional_initial_parameters: Vec::new(),
+                    yield_parameter: 0,
                     prefix,
                     literal_characters: Some(literal_characters),
                     value_yields: None,
@@ -6035,8 +6398,7 @@ fn collect_character_generators(
                     local_function: None,
                     close_handler: None,
                     result: unit_expression(*result),
-                },
-            );
+                });
             continue;
         }
         if source.slice(*result) == "Unit" {
@@ -6064,12 +6426,15 @@ fn collect_character_generators(
                     .map(|handler| (handler, None))
             };
             if let Some((close_handler, local_function)) = close {
-                generators.insert(
-                    name_text,
-                    GeneratorSource {
+                generators
+                    .entry(name_text)
+                    .or_default()
+                    .push(GeneratorSource {
                         name: *name,
                         span: *span,
                         initial_parameter,
+                        additional_initial_parameters: Vec::new(),
+                        yield_parameter: 0,
                         prefix: CompilerBlock {
                             statements: Vec::new(),
                             result: unit_expression(*result),
@@ -6083,8 +6448,7 @@ fn collect_character_generators(
                         local_function,
                         close_handler: Some(close_handler),
                         result: unit_expression(*result),
-                    },
-                );
+                    });
                 continue;
             }
         }
@@ -6288,12 +6652,15 @@ fn collect_character_generators(
                 "Character-final custom generator outside one direct initial-parameter yield",
             ));
         }
-        generators.insert(
-            name_text,
-            GeneratorSource {
+        generators
+            .entry(name_text)
+            .or_default()
+            .push(GeneratorSource {
                 name: *name,
                 span: *span,
                 initial_parameter,
+                additional_initial_parameters: Vec::new(),
+                yield_parameter: 0,
                 prefix: CompilerBlock {
                     statements: Vec::new(),
                     result: unit_expression(*result),
@@ -6307,8 +6674,7 @@ fn collect_character_generators(
                 local_function: None,
                 close_handler: None,
                 result: final_value,
-            },
-        );
+            });
     }
     Ok(())
 }
@@ -7219,11 +7585,16 @@ impl Analyzer {
                     let value =
                         self.analyze_root_foreach(source, *binding, body, *span, environment)?;
                     if let Some((name, classifier)) = foreach_result {
-                        if value.value_type != CompilerType::Unit {
+                        let admitted_typed_result = matches!(
+                            &value.kind,
+                            CompilerExpressionKind::CustomValueForeach { result, .. }
+                                if matches!(exact_string(result).as_deref(), Some("unary" | "binary"))
+                        );
+                        if value.value_type != CompilerType::Unit && !admitted_typed_result {
                             return Err(unsupported(
                                 &self.source,
                                 *span,
-                                "binding a non-Unit custom generator final result",
+                                "binding a non-Unit custom generator final result outside the admitted overload set",
                             ));
                         }
                         let name_text = self.source.slice(*name).to_owned();
@@ -7250,16 +7621,16 @@ impl Analyzer {
                                 &self.source,
                                 *classifier,
                                 &expected,
-                                &CompilerType::Unit,
+                                &value.value_type,
                             )?;
                         }
                         let storage_name = format!("topal.root.{}.{}", name.start, name_text);
                         let facts = BindingFacts {
                             storage_name: storage_name.clone(),
                             runtime_bound: true,
-                            value_type: CompilerType::Unit,
-                            int_range: None,
-                            rational_value: None,
+                            value_type: value.value_type.clone(),
+                            int_range: value.int_range.clone(),
+                            rational_value: value.rational_value.clone(),
                             string_value: None,
                             closed_int_range: None,
                             record_fields: BTreeMap::new(),
@@ -7509,6 +7880,8 @@ impl Analyzer {
                     declaration_span,
                     initial_parameter,
                     initial,
+                    additional_initial_parameters,
+                    prefix,
                     yields,
                     continuations,
                     explicit_return,
@@ -7532,13 +7905,23 @@ impl Analyzer {
                 statements,
                 generator_type.yield_type.as_ref().clone(),
             )?;
-            if initial_parameter.value_type == CompilerType::Int
+            if additional_initial_parameters.is_empty()
+                && initial_parameter.value_type == CompilerType::Int
                 && !exact_int_value_generator_action(&parameter, &body)
             {
                 return Err(unsupported(
                     &self.source,
                     span,
                     "Int-value custom generator foreach action outside discarded value + 1",
+                ));
+            }
+            if !additional_initial_parameters.is_empty()
+                && !exact_string_overload_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "multi-input String-yield custom generator foreach action outside empty? value",
                 ));
             }
             if initial_parameter.value_type == CompilerType::Nat
@@ -7667,6 +8050,8 @@ impl Analyzer {
                     source: Box::new(source_value),
                     declaration_span,
                     initial_parameter,
+                    additional_initial_parameters,
+                    prefix,
                     yields,
                     continuations,
                     explicit_return,
@@ -12919,11 +13304,113 @@ impl Analyzer {
         generator_index: usize,
         generator_name: &str,
     ) -> Result<CompilerExpression, Diagnostic> {
-        let declaration = self
+        let declarations = self
             .generators
             .get(generator_name)
-            .expect("selected custom generator declaration exists")
+            .expect("selected custom generator overload set exists")
             .clone();
+        let argument_sources = items
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| (index != generator_index).then_some(item))
+            .collect::<Vec<_>>();
+        let arguments = if let [declaration] = declarations.as_slice()
+            && declaration.additional_initial_parameters.is_empty()
+            && let [argument] = argument_sources.as_slice()
+        {
+            vec![self.analyze_custom_generator_argument(
+                argument,
+                &declaration.initial_parameter.value_type,
+                environment,
+            )?]
+        } else {
+            argument_sources
+                .iter()
+                .map(|argument| self.analyze_expression(argument, environment))
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        let flattened_arguments = flattened_product_arguments(&argument_sources, &arguments);
+        let is_overload_set = declarations.len() > 1;
+        let mut selected = None;
+        for declaration in &declarations {
+            let parameter_count = 1 + declaration.additional_initial_parameters.len();
+            let candidate_arguments = if parameter_count > 1
+                && let Some(flattened) = &flattened_arguments
+            {
+                flattened.as_slice()
+            } else {
+                arguments.as_slice()
+            };
+            if candidate_arguments.len() != parameter_count {
+                continue;
+            }
+            let mut initials = Vec::with_capacity(parameter_count);
+            for (parameter, argument) in std::iter::once(&declaration.initial_parameter)
+                .chain(&declaration.additional_initial_parameters)
+                .zip(candidate_arguments)
+            {
+                match adapt_custom_generator_initial(
+                    &self.source,
+                    parameter,
+                    argument,
+                    generator_name,
+                    span,
+                ) {
+                    Ok(initial) => initials.push(initial),
+                    Err(diagnostic) if diagnostic.code == "E-NO-APPLICABLE-GENERATOR-OVERLOAD" => {
+                        initials.clear();
+                        break;
+                    }
+                    Err(diagnostic) => return Err(diagnostic),
+                }
+            }
+            if initials.len() == parameter_count {
+                selected = Some((declaration.clone(), initials));
+                break;
+            }
+        }
+        let Some((declaration, mut initials)) = selected else {
+            let actual = arguments
+                .iter()
+                .map(|argument| argument.value_type.name())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let available = declarations
+                .iter()
+                .map(|declaration| {
+                    let inputs = std::iter::once(&declaration.initial_parameter)
+                        .chain(&declaration.additional_initial_parameters)
+                        .map(|parameter| parameter.value_type.name())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("({inputs})")
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+            return Err(source_diagnostic(
+                &self.source,
+                "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
+                span,
+                format!(
+                    "no `{generator_name}` generator overload accepts ({actual}); available input signatures: {available}"
+                ),
+            ));
+        };
+        let admitted_initials = if declaration.additional_initial_parameters.is_empty() {
+            matches!(initials.as_slice(), [initial]
+                if exact_int(initial) == Some(BigInt::from(7)))
+        } else {
+            matches!(initials.as_slice(), [value, suffix]
+                if exact_int(value) == Some(BigInt::from(7))
+                    && exact_string(suffix).as_deref() == Some("item"))
+        };
+        if is_overload_set && !admitted_initials {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "custom generator overload input outside exact 7 or (7, \"item\")",
+            ));
+        }
         if self.in_function
             && (!declaration.prefix.statements.is_empty() || declaration.value_yields.is_some())
         {
@@ -12933,31 +13420,8 @@ impl Analyzer {
                 "custom generator with an independent value direction outside a direct root construction",
             ));
         }
-        let arguments = items
-            .iter()
-            .enumerate()
-            .filter_map(|(index, item)| (index != generator_index).then_some(item))
-            .collect::<Vec<_>>();
-        let [argument] = arguments.as_slice() else {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
-                span,
-                format!("no `{generator_name}` generator overload accepts this input"),
-            ));
-        };
-        let argument = self.analyze_custom_generator_argument(
-            argument,
-            &declaration.initial_parameter.value_type,
-            environment,
-        )?;
-        let initial = adapt_custom_generator_initial(
-            &self.source,
-            &declaration.initial_parameter,
-            &argument,
-            generator_name,
-            span,
-        )?;
+        let initial = initials.remove(0);
+        let additional_initials = initials;
         if let Some(yields) = declaration.value_yields {
             let continuations = declaration.value_continuations;
             let explicit_return = declaration.explicit_return;
@@ -12975,7 +13439,12 @@ impl Analyzer {
                 function.symbol = symbol;
                 self.instances.push(function);
             }
-            let yield_type = declaration.initial_parameter.value_type.clone();
+            let yield_type = std::iter::once(&declaration.initial_parameter)
+                .chain(&declaration.additional_initial_parameters)
+                .nth(declaration.yield_parameter)
+                .expect("checked generator yield parameter exists")
+                .value_type
+                .clone();
             let value_type = CompilerType::Generator(CompilerGeneratorType {
                 yield_type: Box::new(yield_type),
                 resume_type: Box::new(CompilerType::Unit),
@@ -12987,6 +13456,9 @@ impl Analyzer {
                     declaration_span: declaration.span,
                     initial_parameter: Box::new(declaration.initial_parameter),
                     initial: Box::new(initial),
+                    additional_initial_parameters: declaration.additional_initial_parameters,
+                    additional_initials,
+                    prefix: Box::new(declaration.prefix),
                     yields,
                     continuations,
                     explicit_return,
@@ -24916,6 +25388,142 @@ mod tests {
         let source = "use language (version is v0.1)\nuse library std (version is v0.1)\n()\n";
         assert_eq!(
             analyze_for_compiler(source).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_ordered_custom_generator_overloads_and_final_result_bindings() {
+        // TOPAL-GENERATOR-OVERLOAD-001, TOPAL-GENERATOR-FOREACH-RESULT-001,
+        // TOPAL-COMPILER-GENERATOR-OVERLOAD-001
+        let source = include_str!("../../../examples/language/custom-generator-overloads.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let [
+            CompilerStatement::Binding(unary_generator),
+            CompilerStatement::Binding(unary_result),
+            CompilerStatement::Binding(binary_generator),
+            CompilerStatement::Binding(binary_result),
+        ] = program.main.statements.as_slice()
+        else {
+            panic!("overload regression retains four ordered root bindings")
+        };
+        assert!(matches!(
+            &unary_generator.value,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    additional_initials,
+                    yields,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Generator(generator),
+                ..
+            } if declaration == "select"
+                && initial_parameter.value_type == CompilerType::Int
+                && exact_int(initial) == Some(BigInt::from(7))
+                && additional_initial_parameters.is_empty()
+                && additional_initials.is_empty()
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && exact_string(result).as_deref() == Some("unary")
+                && *generator.yield_type == CompilerType::Int
+                && *generator.result_type == CompilerType::String
+        ));
+        assert!(matches!(
+            &binary_generator.value,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    additional_initials,
+                    prefix,
+                    yields,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::Generator(generator),
+                ..
+            } if initial_parameter.name == "value"
+                && exact_int(initial) == Some(BigInt::from(7))
+                && matches!(additional_initial_parameters.as_slice(), [parameter]
+                    if parameter.name == "suffix"
+                        && parameter.value_type == CompilerType::String)
+                && matches!(additional_initials.as_slice(), [suffix]
+                    if exact_string(suffix).as_deref() == Some("item"))
+                && matches!(prefix.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Binary {
+                            operation: CompilerBinary::Add,
+                            ..
+                        },
+                        ..
+                    }
+                )])
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Value(value)]
+                    if matches!(value.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "suffix"))
+                && exact_string(result).as_deref() == Some("binary")
+                && *generator.yield_type == CompilerType::String
+                && *generator.result_type == CompilerType::String
+        ));
+        for binding in [unary_result, binary_result] {
+            assert_eq!(binding.value.value_type, CompilerType::String);
+            assert!(matches!(
+                binding.value.kind,
+                CompilerExpressionKind::CustomValueForeach { .. }
+            ));
+        }
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Tuple(values),
+                value_type: CompilerType::Tuple(types),
+                ..
+            } if values.len() == 2
+                && types == &[CompilerType::String, CompilerType::String]
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_custom_generator_overload_boundaries() {
+        // TOPAL-GENERATOR-OVERLOAD-001, TOPAL-GENERATOR-FOREACH-RESULT-001,
+        // TOPAL-COMPILER-GENERATOR-OVERLOAD-001
+        let source = include_str!("../../../examples/language/custom-generator-overloads.t");
+        let duplicate = source.replacen(
+            "select is generator ( value : Int, suffix : String )",
+            "select is generator ( value : Int )",
+            1,
+        );
+        assert_eq!(
+            analyze_for_compiler(&duplicate).unwrap_err().code,
+            "E-DUPLICATE-GENERATOR-OVERLOAD"
+        );
+
+        let reversed = source.replacen("select (7, \"item\")", "select (\"item\", 7)", 1);
+        let reversed = analyze_for_compiler(&reversed).unwrap_err();
+        assert_eq!(reversed.code, "E-NO-APPLICABLE-GENERATOR-OVERLOAD");
+        assert!(reversed.message.contains("(String, Int)"));
+        assert!(reversed.message.contains("(Int); (Int, String)"));
+
+        let wrong_result = source.replacen("binary-result : String", "binary-result : Int", 1);
+        assert_eq!(
+            analyze_for_compiler(&wrong_result).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+
+        let altered_prefix = source.replacen("_ is value + 1", "_ is value + 2", 1);
+        assert_eq!(
+            analyze_for_compiler(&altered_prefix).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+
+        let altered_input = source.replacen("select 7", "select 8", 1);
+        assert_eq!(
+            analyze_for_compiler(&altered_input).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }
