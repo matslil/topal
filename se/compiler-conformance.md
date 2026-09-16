@@ -89,6 +89,10 @@ evidence.
 | 5m | exact successful Unit resume-result binding after one custom yield/action, used as final Unit with source-lifetime debugging and no continuation state | complete |
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
+| 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5s | exact unconsumed custom Generator parameter close with retained provenance and O0-erased handler-free delivery | complete |
+| 5r | exact custom single-yield Generator function parameter traversal with private ownership/provenance transfer and parameter debugging | complete |
+| 5q | exact custom single-yield Generator function result with private ownership/provenance transfer and return-value debugging | complete |
 | 5 | generators, suspension, closure environments, linear close/resume behavior | planned |
 | 6a | executable `root` Scope identity and direct qualified ordinary/static root-function calls | complete |
 | 6b1 | source-root function namespace aliases, typed Scope aliases, alias chains, declaration snapshots, and qualified overload preservation | complete |
@@ -383,6 +387,32 @@ Result/Error DWARF preserves the code-set identity in GDB. Qualified code
 matching, non-Unit cleanup/effects, successful traversal through this handler,
 multiple owners or yields, transfer, and library boundaries remain in increment
 5.
+Increment 5p admits one qualified `lang generator generator-closed` rule before
+the generic Error fallback. The checked model retains the nominal matcher and
+all branch metadata, while the statically known close edge executes only the
+qualified Unit action without a runtime switch or fallback-binding activation.
+Other code sets and handler forms, dynamic close results, multiple owners or
+yields, transfer, and library boundaries remain in increment 5.
+Increment 5q admits one statement-free ordinary Character factory returning a
+fresh exact single-yield custom Generator. Call-specialized checked provenance
+and LLVM `fastcc` transfer ownership into one caller traversal without close or
+public continuation state; Character-parameter and Generator-return DWARF remain
+inspectable through the boundary. Parameter transfer, other factory shapes,
+dynamic/general continuation results, and libraries remain in increment 5.
+Increment 5r admits one root-owned exact single-yield custom Generator argument
+to a call-specialized ordinary consumer whose only executable body is traversal
+of that parameter. The caller binding is consumed, checked provenance is mapped
+to the sole callee owner, and LLVM `fastcc` carries only a private `i32` token;
+the callee expands the retained Character action and Unit completion directly.
+Unconsumed-parameter close, other states or directions, nested/general transfer,
+and libraries remain in increment 5.
+Increment 5s admits the same transferred parameter when its Unit body leaves the
+continuation unconsumed. The checked model records an explicit custom close with
+the call-specialized construction provenance and lexical root domain. Since the
+exact suspension has no handler, state, cleanup, effects, or following work, O0
+lowering erases delivery and final Unit while preserving ownership and Generator
+DWARF. Handled close, richer state, nested/general transfer, and libraries remain
+in increment 5.
 Increment 6a resolves the executable root
 Scope identity and direct qualified root functions entirely in
 the frontend; 6b1 retains source-root function snapshots, typed aliases, alias
