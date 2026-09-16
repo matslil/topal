@@ -1641,6 +1641,63 @@ sites, captures/effects, ownership/consumption/close state, native-
 representation identity, and target adapters rather than expose private
 tokens, debug slots, object layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-NESTED-RESULT-001 — Recursive Result product directions
+
+The compiler SHALL admit a root custom generator with one named
+`Result ((Int, String), lang arithmetic ArithmeticErrorCode)` initial parameter
+and the same yield and result directions with Unit resumption. Its body SHALL
+consist only of one discarded `yield initial` followed by `(8, "done")`. The
+shared regression SHALL start the generator with exact `(7, "item")`; the fresh
+result SHALL be bound and consumed exactly once by a foreach action consisting
+only of the discarded `candidate = (7, "item")` for its named yielded
+parameter. Each product SHALL satisfy its explicit Result contract as an
+implicit success value.
+
+The checked program SHALL retain the nominal Result and arithmetic-error
+vocabulary identities, success alternative, positional-product arity and
+order, and Int and String field identities separately in all three Generator
+directions. It SHALL also retain the initial-parameter yield and suspension,
+success-gated field equality action, Unit resumption, distinct final product,
+declaration provenance, and ownership edge. Application SHALL evaluate both
+initial payload fields once in source order and construct one successful
+Result. Traversal SHALL pass that same immutable value to the action, construct
+the action success operand once, inspect both success/error tags before
+observing success payloads, compare payload fields in source order, resume with
+Unit, and only then construct the successful `(8, "done")`. This order SHALL
+hold at LLVM O0 without relying on folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Result SHALL retain its existing Topal-owned tagged pointer
+header. Each admitted successful product payload SHALL use a Topal-owned
+aligned 16-byte allocation containing the existing Int and String pointers in
+source order. The root-local Generator SHALL remain a compiler-private `i32`
+ownership token. LLVM SHALL derive placement, alignment, and call lowering
+from the target triple and data layout; the compiler SHALL hard-code no AMD64
+register convention. Two aligned debug-only Result pointer shadows SHALL
+preserve the yielded action value and captured initial lifetime. DWARF and GDB
+SHALL expose the complete recursive Generator classifier and value, the Result
+product classifier, ordered payload fields, both yielded/captured `(7,
+"item")` values, ordered yield/action/resumption/final source locations, and
+the Topal entry frame.
+
+An Error value, another Result success type, product arity, field order, input,
+action, final, direction, yield, or value; multiple yields; additional body
+statements; close handling; nested or ordinary-function construction;
+Generator parameter/result transfer; repeated consumption; abandonment;
+libraries; and external boundaries SHALL remain unsupported. The lowering
+SHALL introduce no semantic Generator object or state allocation, generic
+Result/product dispatcher, callback, indirect call, unwind dependency, C/C++
+runtime, other-language standard library, needed library, dynamic relocation,
+public/library calling convention or Generator/Result/product ABI, or native-
+ABI revision. Result, product, Int, and String allocation, equality, display,
+and Linux syscalls SHALL remain wholly owned by Topal. Future compiled-library
+metadata SHALL encode recursive classifiers, independent directions, nominal
+alternatives/error vocabularies, product arity/order, field identities,
+success/error evidence, equality and ordered yield/action/resume/final
+provenance, allocation-failure effects, declaration/construction sites,
+captures/effects, ownership/consumption/close state, native-representation
+identity, and target adapters rather than expose private tokens, debug slots,
+object layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`
