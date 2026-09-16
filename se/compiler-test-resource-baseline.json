@@ -1936,6 +1936,16 @@
       "cpu_time_ns": 137964,
       "memory_peak_bytes": 18518016,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-recursive-nominal-values.t": {
+      "cpu_time_ns": 124414420,
+      "memory_peak_bytes": 42713088,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-recursive-nominal-values.t": {
+      "cpu_time_ns": 177755,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
     }
   }
 }

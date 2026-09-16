@@ -2706,6 +2706,14 @@ impl<'a> Generator<'a> {
                 value,
                 element: element.as_ref().clone(),
             },
+            CompilerType::Enum(enumeration) => LlValue::Enum {
+                value: body.instruction(
+                    &format!("load i32, ptr {value}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: enumeration.clone(),
+            },
             CompilerType::Tuple(fields)
                 if fields.as_slice() == [CompilerType::Int, CompilerType::String] =>
             {
@@ -4192,6 +4200,21 @@ impl<'a> Generator<'a> {
             | (LlValue::String(value), CompilerType::String)
             | (LlValue::Range { value, .. }, CompilerType::Range(_))
             | (LlValue::Result { value, .. }, CompilerType::Result(_)) => value.clone(),
+            (LlValue::Enum { value, enumeration }, CompilerType::Enum(expected_enumeration))
+                if enumeration == expected_enumeration =>
+            {
+                let storage = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 4)",
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store i32 {value}, ptr {storage}, align 4"),
+                    span,
+                    &mut self.debug,
+                );
+                storage
+            }
             (LlValue::Tuple(fields), CompilerType::Tuple(types))
                 if types.as_slice() == [CompilerType::Int, CompilerType::String] =>
             {
@@ -4247,6 +4270,22 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         span: Span,
     ) -> String {
+        if let (LlValue::Enum { value, enumeration }, CompilerType::Enum(expected_enumeration)) =
+            (value, value_type)
+            && enumeration == expected_enumeration
+        {
+            let storage = body.instruction(
+                "call ptr @topal.platform.allocate(i64 4)",
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store i32 {value}, ptr {storage}, align 4"),
+                span,
+                &mut self.debug,
+            );
+            return storage;
+        }
         if let (LlValue::Tuple(fields), CompilerType::Tuple(types)) = (value, value_type)
             && matches!(types.as_slice(), [CompilerType::Int, CompilerType::String])
         {
@@ -4301,6 +4340,14 @@ impl<'a> Generator<'a> {
             CompilerType::Result(nested) => LlValue::Result {
                 value: payload.into(),
                 success: nested.as_ref().clone(),
+            },
+            CompilerType::Enum(enumeration) => LlValue::Enum {
+                value: body.instruction(
+                    &format!("load i32, ptr {payload}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: enumeration.clone(),
             },
             CompilerType::Tuple(types)
                 if types.as_slice() == [CompilerType::Int, CompilerType::String] =>
@@ -4728,8 +4775,11 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         debug_assert_eq!(success, right_success);
-        assert!(matches!(success, CompilerType::Tuple(fields)
-            if fields.as_slice() == [CompilerType::Int, CompilerType::String]));
+        assert!(
+            matches!(success, CompilerType::Enum(_))
+                || matches!(success, CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::Int, CompilerType::String])
+        );
         let left_error = body.instruction(
             &format!("call i1 @topal.runtime.result.is.error(ptr {left})"),
             span,
@@ -4796,8 +4846,10 @@ impl<'a> Generator<'a> {
             CompilerType::Int => "optional.int.equal",
             CompilerType::Rational => "optional.rational.equal",
             CompilerType::String => "optional.string.equal",
-            CompilerType::Tuple(fields)
-                if fields.as_slice() == [CompilerType::Int, CompilerType::String] =>
+            payload
+                if matches!(payload, CompilerType::Enum(_))
+                    || matches!(payload, CompilerType::Tuple(fields)
+                        if fields.as_slice() == [CompilerType::Int, CompilerType::String]) =>
             {
                 let left_some = body.instruction(
                     &format!("call i1 @topal.runtime.optional.is.some(ptr {left})"),
@@ -7865,7 +7917,32 @@ impl DebugInfo {
         {
             return *type_id;
         }
-        let type_id = self.optional_type(&payload.name(), self.optional_header_pointer_type);
+        if !matches!(payload, CompilerType::Enum(_)) {
+            let type_id = self.optional_type(&payload.name(), self.optional_header_pointer_type);
+            self.optional_types.push((value_type, type_id));
+            return type_id;
+        }
+        let payload_type = self.type_id(payload);
+        let payload_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{payload_type}, size: 64, align: 64)"
+        ));
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"tag\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let payload_member = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{payload_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload_member}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalOptional.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&payload.name()), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.optional_type(&payload.name(), pointer);
         self.optional_types.push((value_type, type_id));
         type_id
     }
@@ -7879,7 +7956,32 @@ impl DebugInfo {
         {
             return *type_id;
         }
-        let type_id = self.result_type(&success.name(), self.result_header_pointer_type);
+        if !matches!(success, CompilerType::Enum(_)) {
+            let type_id = self.result_type(&success.name(), self.result_header_pointer_type);
+            self.result_types.push((value_type, type_id));
+            return type_id;
+        }
+        let success_type = self.type_id(success);
+        let success_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{success_type}, size: 64, align: 64)"
+        ));
+        let tag = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"is_error\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let payload = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"payload\", file: !{}, baseType: !{success_pointer}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{tag}, !{payload}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalResult.{}\", file: !{}, size: 128, align: 64, elements: !{members})",
+            llvm_string(&success.name()), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.result_type(&success.name(), pointer);
         self.result_types.push((value_type, type_id));
         type_id
     }
@@ -11623,6 +11725,73 @@ mod tests {
         assert!(
             llvm.contains("name: \"Result ((Int, String), lang arithmetic ArithmeticErrorCode)\"")
         );
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_recursive_nominal_values_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-ENUM-001, TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+        // TOPAL-TYPE-RESULT-001, TOPAL-COMPILER-GENERATOR-RECURSIVE-NOMINAL-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-recursive-nominal-values.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-recursive-nominal-values.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let boxes = main
+            .match_indices("call ptr @topal.platform.allocate(i64 4)")
+            .map(|(offset, _)| offset)
+            .collect::<Vec<_>>();
+        assert_eq!(boxes.len(), 6);
+        assert_eq!(main.matches("store i32 0").count(), 4);
+        assert_eq!(main.matches("store i32 1").count(), 2);
+        assert_eq!(main.matches("alloca { ptr, ptr }, align 8").count(), 2);
+        let constructed = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private token");
+        let optional_action = main
+            .find("optional.product.equal.payload")
+            .expect("Optional equality observes the nominal payload only after its tag");
+        let result_action = main
+            .find("result.product.equal.payload")
+            .expect("Result equality observes the nominal success only after its tag");
+        let output = main
+            .rfind("call i1 @topal.runtime.optional.is.some(")
+            .expect("the final recursive value controls Topal-owned display");
+        assert!(
+            boxes[0] < boxes[1]
+                && boxes[1] < constructed
+                && constructed < boxes[2]
+                && boxes[2] < boxes[3]
+                && boxes[3] < optional_action
+                && optional_action < result_action
+                && result_action < boxes[4]
+                && boxes[4] < boxes[5]
+                && boxes[5] < output
+        );
+        assert!(main.contains("optional.product.equal.tag"));
+        assert!(main.contains("result.product.equal.error"));
+        assert!(main.matches("load i32, ptr").count() >= 6);
+        assert_eq!(main.matches("icmp eq i32").count(), 2);
+        assert!(main.contains("phi i1"));
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"candidate\""));
+        assert!(llvm.contains(
+            "name: \"Generator (Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode)) Unit (Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode))\""
+        ));
+        assert!(llvm.contains(
+            "name: \"(Optional Choice, Result (Choice, lang arithmetic ArithmeticErrorCode))\""
+        ));
+        assert!(llvm.contains("name: \"Optional Choice\""));
+        assert!(llvm.contains("name: \"Result (Choice, lang arithmetic ArithmeticErrorCode)\""));
+        assert!(llvm.contains("name: \"Choice\""));
         assert!(!main.contains("topal.runtime.generator"));
         assert!(!main.contains("call ptr %"));
     }

@@ -53,6 +53,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-parameter-close.t",
     "examples/language/custom-generator-range-values.t",
     "examples/language/custom-generator-rational-values.t",
+    "examples/language/custom-generator-recursive-nominal-values.t",
     "examples/language/custom-generator-resume-binding.t",
     "examples/language/custom-generator-return-after-yield.t",
     "examples/language/custom-generator-string-input.t",
