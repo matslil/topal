@@ -3298,6 +3298,51 @@ and equality, deeper recursion, outer `rest`/`uncons`, other product shapes and
 element classifiers, remaining List algorithms, reclamation beyond process
 lifetime, and versioned library metadata/adapters remain deferred.
 
+### TOPAL-COMPILER-LIST-SEQUENCE-001 — Closed ordered List sequences
+
+The compiler SHALL admit the complete shared
+`list-sequence-operations.t` regression. For exact finite `List Int` sources it
+SHALL implement single-entry and bulk `insert-at`, `split-at`, `take`, `drop`,
+indexed `remove`, range and predicate `remove-indexes`, predicate
+`remove-values`, all three zip policies, `unzip`, ordered `foreach`, `entries`,
+and List identity collection. It SHALL also construct `List String` and collect
+its entries into one String in traversal order. Every operation SHALL preserve
+the source Lists, evaluate operands once in source order, visit entries in List
+order, and produce the same canonical value as the interpreter.
+
+The checked representation SHALL preserve exact source counts for admitted
+closed List bindings. It SHALL diagnose a closed boundary, index, or range that
+violates `TOPAL-LIST-BOUNDARY-CHECK-001` with
+`E-LIST-BOUNDARY-OUT-OF-RANGE` before LLVM generation. Until general dependent
+count evidence is implemented, a position not known exactly SHALL be rejected
+rather than clamped or compiled with unsound assumptions. `zip-exact` SHALL
+remain a generated Result operation: unequal runtime counts SHALL produce
+`out-of-range` in lexical domain `root.zip-exact(List,List)`. Predicate removal
+and foreach SHALL execute their checked bodies once for each visited entry or
+zero-based index and SHALL retain source order at O0.
+
+On Linux x86-64, Int and String List nodes SHALL each contain payload and
+remaining pointers; Int-pair nodes SHALL contain both payload pointers and the
+remaining pointer; indexed-entry nodes SHALL contain the two Int pointers,
+canonical field-order evidence, and the remaining pointer. These layouts and
+their alignment SHALL remain private and SHALL be described to LLVM and DWARF
+from the checked target layout. Direct generated loops and module-private
+helpers SHALL copy only required prefixes, share immutable suffixes where
+valid, allocate complete result nodes through the Topal Linux mapping boundary,
+and concatenate String data through the Topal String runtime. Correctness SHALL
+NOT depend on inlining, folding, vectorization, dead-code elimination, a host
+container, callback, indirect call, or foreign runtime.
+
+DWARF and the bundled GDB renderer SHALL expose the semantic Int, String,
+pair, and indexed-entry List classifiers and complete bounded values. This rule
+SHALL add no undefined symbol, needed library, dynamic relocation, foreign
+allocator, C/C++ runtime, other-language standard library, public calling
+convention, stable List layout, compiled-library ABI, or native ABI revision.
+Future compiled-library metadata SHALL identify recursive List and element
+types, pair/record shapes, count evidence, operation and predicate semantics,
+ordering, fallibility, allocation effects, ownership, native representation,
+and target adapters without publishing private node offsets or helper names.
+
 ### TOPAL-COMPILER-TUPLE-RESULT-001 — Private positional-product results
 
 An ordinary or static function result classified by a recursively composed

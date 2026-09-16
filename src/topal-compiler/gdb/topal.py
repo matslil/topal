@@ -546,7 +546,12 @@ class _TopalListPrinter:
         entries = []
         visited = set()
         pair_types = ("(Int, Int)", "(Int, String)")
-        node_size = 24 if self._element_type in pair_types else 16
+        indexed_entry_type = "(index : Int, value : Int)"
+        node_size = (
+            32
+            if self._element_type == indexed_entry_type
+            else 24 if self._element_type in pair_types else 16
+        )
         while address:
             if address in visited:
                 return "<cyclic List>"
@@ -569,6 +574,14 @@ class _TopalListPrinter:
                 rendered = _TopalIntPrinter(payload).to_string()
                 if rendered.startswith("<"):
                     return f"<invalid List Int entry: {rendered}>"
+                entries.append(rendered)
+            elif self._element_type == "String":
+                payload = int.from_bytes(node[0:8], "little")
+                if not payload:
+                    return "<invalid null List String entry>"
+                rendered = _TopalStringPrinter(payload).to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid List String entry: {rendered}>"
                 entries.append(rendered)
             elif self._element_type == "(Int, Int)":
                 left = int.from_bytes(node[0:8], "little")
@@ -599,6 +612,20 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid nested List entry: {rendered}>"
                 entries.append(rendered)
+            elif self._element_type == indexed_entry_type:
+                index = int.from_bytes(node[0:8], "little")
+                value = int.from_bytes(node[8:16], "little")
+                index_order = int.from_bytes(node[16:20], "little")
+                value_order = int.from_bytes(node[20:24], "little")
+                if not index or not value:
+                    return "<invalid null List indexed entry field>"
+                if (index_order, value_order) != (0, 1):
+                    return "<invalid List indexed entry field order>"
+                index = _TopalIntPrinter(index).to_string()
+                value = _TopalIntPrinter(value).to_string()
+                if index.startswith("<") or value.startswith("<"):
+                    return f"<invalid List indexed entry: ({index}, {value})>"
+                entries.append(f"(index is {index}, value is {value})")
             else:
                 return f"<unsupported List element type {self._element_type}>"
             address = int.from_bytes(node[node_size - 8 : node_size], "little")

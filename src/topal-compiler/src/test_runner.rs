@@ -127,6 +127,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/layout-payload-placement.t",
     "examples/language/list-containment.t",
     "examples/language/list-removal.t",
+    "examples/language/list-sequence-operations.t",
     "examples/language/lists.t",
     "examples/language/modular-checked-construction.t",
     "examples/language/modular-numbers.t",
