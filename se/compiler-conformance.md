@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
 | 5ag | exact `Range Int` input, yield, membership action, resumption, and narrowed final intersection with ordered private-value debugging | complete |
 | 5af | nominal `Optional Int` input, yield, equality action, resumption, and final directions with ordered private-value debugging | complete |
@@ -486,6 +487,20 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ai separates nominal Choice input, yield, and final directions
+through one exact custom `Generator Choice Unit Choice`. The checked graph
+retains the Choice identity, ordered First/Second alternatives and private tags,
+initial-parameter yield, exact equality action, Unit resumption, final Second,
+declaration provenance, and ownership edge independently. O0 traversal reuses
+the once-evaluated First tag for the action, resumes, and only then selects the
+final Second tag. Two debug-only aligned `i32` shadows and four source-anchor
+stores keep yield, action, captured initial, and final lines inspectable even
+when LLVM folds the constant comparison and selection. The existing Topal-owned
+Enum comparison/display and Linux syscall writer are reused without a semantic
+Generator runtime, foreign dependency, other-language standard library, public
+ABI, or native-layout revision. Other Enum declarations, alternatives, shapes,
+directions, state, transfer, close, and libraries remain in increment 5.
+
 Increment 5ah separates nominal Nat input, yield, and final directions through
 one exact custom `Generator Nat Unit Nat`. The checked graph retains the Nat
 refinement and underlying exact Int representation, statically proven input,

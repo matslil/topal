@@ -5744,6 +5744,21 @@
       "cpu_time_ns": 6195560,
       "memory_peak_bytes": 18370560,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_nominal_enum_across_custom_generator_directions": {
+      "cpu_time_ns": 6937700,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_enum_values_are_freestanding_nominal_and_debuggable": {
+      "cpu_time_ns": 322074200,
+      "memory_peak_bytes": 58179584,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_nominal_enum_across_custom_generator_directions": {
+      "cpu_time_ns": 6117340,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
     }
   }
 }
