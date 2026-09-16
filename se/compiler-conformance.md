@@ -90,6 +90,7 @@ evidence.
 | 5n | exact function-local custom Generator abandonment with checked close ordering, erased handler-free completion, and function-scope debugging | complete |
 | 5o | exact function-local custom Generator close handling with nominal close Result/Error materialization, statically selected Error action, and generator-code debugging | complete |
 | 5p | exact qualified `generator-closed` handler rule with nominal static selection, inactive fallback binding, and source-level debugging | complete |
+| 5ak | exact successful `Result Rational` input/yield, reflexive action, resumption, and structured division-error final with pointer debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -488,6 +489,21 @@ runtime, other-language standard library, public ABI, or native-layout
 revision. Bindings, additional or differently placed computations, other
 directions, non-Unit finals, transfer, close, and libraries remain in increment
 5.
+Increment 5ak separates Result input, yield, and final directions through one
+exact custom Generator of `Result Rational` values. The checked graph retains
+the nominal Result/success/error identities, exact Rational 1 success evidence,
+initial-parameter yield, proved self-equality action, Unit resumption, final
+source-located division failure, declaration provenance, and ownership edge.
+O0 traversal reuses the once-promoted success for the action, resumes, and only
+then constructs the structured division-by-zero Error. Two debug-only aligned
+pointer shadows and four source-anchor stores keep yield, action, captured
+initial, and final lines inspectable. Existing Topal-owned Result/Rational/Error
+storage, display, and Linux syscall writer are reused without generic inlined
+Result propagation, a semantic Generator runtime, foreign dependency, other-
+language standard library, public ABI, or native-layout revision. Other Result
+identities, values, shapes, directions, state, transfer, close, and libraries
+remain in increment 5.
+
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The
 checked graph retains product arity and source order, both field classifiers,

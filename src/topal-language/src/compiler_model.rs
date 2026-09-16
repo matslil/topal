@@ -2587,6 +2587,209 @@ fn exact_int_string_product_value_generator_action(
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+#[allow(clippy::too_many_lines)] // Exact syntax, provenance, and every rejection stay together.
+fn exact_result_rational_value_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<ExactValueGeneratorBody, Diagnostic> {
+    let [
+        Statement::Discard {
+            value:
+                Expression::Application {
+                    items: yield_items,
+                    span: yield_span,
+                },
+            ..
+        },
+        Statement::Expression(Expression::Application {
+            items: result_items,
+            span: result_span,
+        }),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "Result-Rational-value custom generator outside one initial yield and final division by Rational 0",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::Identifier(yield_value),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *yield_span,
+            "Result-Rational-value custom generator yield outside its initial parameter",
+        ));
+    };
+    let [
+        Expression::Identifier(result_value),
+        Expression::Callable {
+            kind: CallableKind::Divide,
+            ..
+        },
+        Expression::Application {
+            items: zero_items,
+            span: zero_span,
+        },
+    ] = result_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *result_span,
+            "Result-Rational-value custom generator final expression",
+        ));
+    };
+    let [
+        Expression::Identifier(constructor),
+        Expression::Integer(zero_literal),
+    ] = zero_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *zero_span,
+            "Result-Rational-value custom generator divisor",
+        ));
+    };
+    if source.slice(*yield_operation) != "yield"
+        || source.slice(*yield_value) != source.slice(parameter.name)
+        || source.slice(*result_value) != source.slice(parameter.name)
+        || source.slice(*constructor) != "Rational"
+        || parse_integer(source.slice(*zero_literal)).as_ref() != Some(&BigInt::from(0))
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "Result-Rational-value custom generator outside yield initial followed by initial / (Rational 0)",
+        ));
+    }
+    let result_type = CompilerType::Result(Box::new(CompilerType::Rational));
+    let one_int = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(1)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(1))),
+        rational_value: None,
+        span: *result_value,
+    };
+    let one = CompilerExpression {
+        kind: CompilerExpressionKind::IntToRational(Box::new(one_int)),
+        value_type: CompilerType::Rational,
+        int_range: None,
+        rational_value: Some(BigRational::from_integer(BigInt::from(1))),
+        span: *result_value,
+    };
+    let zero_int = CompilerExpression {
+        kind: CompilerExpressionKind::Int(BigInt::from(0)),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(BigInt::from(0))),
+        rational_value: None,
+        span: *zero_literal,
+    };
+    let zero = CompilerExpression {
+        kind: CompilerExpressionKind::IntToRational(Box::new(zero_int)),
+        value_type: CompilerType::Rational,
+        int_range: None,
+        rational_value: Some(BigRational::from_integer(BigInt::from(0))),
+        span: *zero_span,
+    };
+    Ok(ExactValueGeneratorBody {
+        yields: vec![CompilerGeneratorYield::Initial(*yield_span)],
+        continuations: Vec::new(),
+        explicit_return: None,
+        result: CompilerExpression {
+            kind: CompilerExpressionKind::Fallible {
+                operation: CompilerFallible::RationalDivide,
+                left: Box::new(one),
+                right: Box::new(zero),
+                error_span: *zero_span,
+            },
+            value_type: result_type,
+            int_range: None,
+            rational_value: None,
+            span: *result_span,
+        },
+    })
+}
+
+fn exact_result_rational_value_generator_foreach_body(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    statements: &[Statement],
+) -> Result<CompilerBlock, Diagnostic> {
+    let [
+        Statement::Discard {
+            span,
+            value:
+                Expression::Application {
+                    items,
+                    span: expression_span,
+                },
+        },
+    ] = statements
+    else {
+        return Err(unsupported(
+            source,
+            parameter.span,
+            "Result-Rational-value custom generator foreach action outside discarded candidate = candidate",
+        ));
+    };
+    let [
+        Expression::Identifier(left),
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        Expression::Identifier(right),
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "Result-Rational-value custom generator foreach action outside discarded candidate = candidate",
+        ));
+    };
+    if parameter.discarded
+        || source.slice(*left) != parameter.name
+        || source.slice(*right) != parameter.name
+    {
+        return Err(unsupported(
+            source,
+            *expression_span,
+            "Result-Rational-value custom generator foreach action outside discarded candidate = candidate",
+        ));
+    }
+    Ok(CompilerBlock {
+        statements: vec![CompilerStatement::Discard(CompilerExpression {
+            kind: CompilerExpressionKind::Boolean(true),
+            value_type: CompilerType::Boolean,
+            int_range: None,
+            rational_value: None,
+            span: *expression_span,
+        })],
+        result: unit_expression(*span),
+    })
+}
+
+fn exact_result_rational_value_generator_action(
+    parameter: &CompilerParameter,
+    body: &CompilerBlock,
+) -> bool {
+    parameter.value_type == CompilerType::Result(Box::new(CompilerType::Rational))
+        && !parameter.discarded
+        && matches!(
+            body.statements.as_slice(),
+            [CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::Boolean(true),
+                ..
+            })]
+        )
+        && matches!(body.result.kind, CompilerExpressionKind::Unit)
+}
+
 fn exact_int_value_generator_body(
     source: &SourceText,
     parameter: &FunctionParameter,
@@ -3469,6 +3672,9 @@ fn collect_character_generators(
             "OptionalInt" => CompilerType::Optional(Box::new(CompilerType::Int)),
             "RangeInt" => CompilerType::Range(Box::new(CompilerType::Int)),
             "Rational" => CompilerType::Rational,
+            "Result(Rational,langarithmeticArithmeticErrorCode)" => {
+                CompilerType::Result(Box::new(CompilerType::Rational))
+            }
             "String" => CompilerType::String,
             "Unit" => CompilerType::Unit,
             "(Int,String)" => {
@@ -3482,7 +3688,7 @@ fn collect_character_generators(
                     unsupported(
                         source,
                         *span,
-                        "custom generator outside the admitted Boolean, Character, Choice Enum, Int, Nat, Optional Int, Range Int, Rational, String, Unit, or (Int, String) initial-input subset",
+                        "custom generator outside the admitted Boolean, Character, Choice Enum, Int, Nat, Optional Int, Range Int, Rational, Result Rational, String, Unit, or (Int, String) initial-input subset",
                     )
                 })?,
         };
@@ -3508,6 +3714,46 @@ fn collect_character_generators(
                 explicit_return,
                 result: final_value,
             } = exact_boolean_value_generator_body(source, parameter, body, *span)?;
+            let yield_count = value_yields.len();
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
+                    value_yields: Some(value_yields),
+                    value_continuations,
+                    explicit_return,
+                    yield_count,
+                    local: None,
+                    close_handler: None,
+                    result: final_value,
+                },
+            );
+            continue;
+        }
+        if parameter.fields.is_empty()
+            && parameter.default.is_none()
+            && parameter.qualifier.is_none()
+            && source.slice(parameter.name) != "_"
+            && initial_type == CompilerType::Result(Box::new(CompilerType::Rational))
+            && compact_classifier(source.slice(*yielded))
+                == "Result(Rational,langarithmeticArithmeticErrorCode)"
+            && source.slice(*resumed) == "Unit"
+            && compact_classifier(source.slice(*result))
+                == "Result(Rational,langarithmeticArithmeticErrorCode)"
+        {
+            let ExactValueGeneratorBody {
+                yields: value_yields,
+                continuations: value_continuations,
+                explicit_return,
+                result: final_value,
+            } = exact_result_rational_value_generator_body(source, parameter, body, *span)?;
             let yield_count = value_yields.len();
             generators.insert(
                 name_text,
@@ -5418,6 +5664,16 @@ impl Analyzer {
                     "(Int, String)-value custom generator foreach action outside discarded value = (7, \"item\")",
                 ));
             }
+            if initial_parameter.value_type
+                == CompilerType::Result(Box::new(CompilerType::Rational))
+                && !exact_result_rational_value_generator_action(&parameter, &body)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "Result-Rational-value custom generator foreach action outside discarded candidate = candidate",
+                ));
+            }
             if initial_parameter.value_type == CompilerType::Rational
                 && !exact_rational_value_generator_action(&parameter, &body)
             {
@@ -5670,6 +5926,14 @@ impl Analyzer {
         if value_type == CompilerType::Nat {
             let body =
                 exact_nat_value_generator_foreach_body(&self.source, &parameter, statements)?;
+            return Ok((parameter, body));
+        }
+        if value_type == CompilerType::Result(Box::new(CompilerType::Rational)) {
+            let body = exact_result_rational_value_generator_foreach_body(
+                &self.source,
+                &parameter,
+                statements,
+            )?;
             return Ok((parameter, body));
         }
         let mut body_environment = BTreeMap::new();
@@ -10676,18 +10940,13 @@ impl Analyzer {
             ));
         };
         let argument = self.analyze_expression(argument, environment)?;
-        let initial = adapt_call_argument(&declaration.initial_parameter.value_type, &argument)
-            .ok_or_else(|| {
-                source_diagnostic(
-                    &self.source,
-                    "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
-                    span,
-                    format!(
-                        "no `{generator_name}` generator overload accepts `{}`",
-                        argument.value_type.name()
-                    ),
-                )
-            })?;
+        let initial = adapt_custom_generator_initial(
+            &self.source,
+            &declaration.initial_parameter,
+            &argument,
+            generator_name,
+            span,
+        )?;
         if let Some(yields) = declaration.value_yields {
             let continuations = declaration.value_continuations;
             let explicit_return = declaration.explicit_return;
@@ -14134,6 +14393,49 @@ fn adapt_call_argument(
         }
         _ => None,
     }
+}
+
+fn adapt_custom_generator_initial(
+    source: &SourceText,
+    parameter: &CompilerParameter,
+    argument: &CompilerExpression,
+    generator_name: &str,
+    call_span: Span,
+) -> Result<CompilerExpression, Diagnostic> {
+    if parameter.value_type == CompilerType::Result(Box::new(CompilerType::Rational))
+        && argument.rational_value.as_ref() != Some(&BigRational::from_integer(BigInt::from(1)))
+    {
+        return Err(unsupported(
+            source,
+            argument.span,
+            "Result-Rational custom generator input outside the exact proven-success Rational 1 subset",
+        ));
+    }
+    adapt_call_argument(&parameter.value_type, argument)
+        .or_else(|| {
+            let CompilerType::Result(success) = &parameter.value_type else {
+                return None;
+            };
+            let success = adapt_call_argument(success, argument)?;
+            Some(CompilerExpression {
+                kind: CompilerExpressionKind::ResultSuccess(Box::new(success)),
+                value_type: parameter.value_type.clone(),
+                int_range: None,
+                rational_value: None,
+                span: argument.span,
+            })
+        })
+        .ok_or_else(|| {
+            source_diagnostic(
+                source,
+                "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
+                call_span,
+                format!(
+                    "no `{generator_name}` generator overload accepts `{}`",
+                    argument.value_type.name()
+                ),
+            )
+        })
 }
 
 fn flattened_product_arguments(
@@ -18134,6 +18436,107 @@ mod tests {
             "use language (version is v0.1)\npair is generator (initial : (Int, String))\n  yields (Int, String)\n  resumes Unit\n  -> (Int, String)\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { value }\n  _ is value = (8, \"item\")\n",
             "use language (version is v0.1)\npair is generator (initial : (Int, String))\n  yields (Int, String)\n  resumes Unit\n  -> (Int, String)\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { value }\n  _ is value = (7, \"other\")\n",
             "use language (version is v0.1)\npair is generator (initial : (Int, String))\n  yields (String, Int)\n  resumes Unit\n  -> (Int, String)\n  _ is yield initial\n  (8, \"done\")\ngenerated is pair (7, \"item\")\ngenerated foreach { value }\n  _ is value = (7, \"item\")\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Result propagation graph and rejection matrix stay together.
+    fn models_result_rational_across_custom_generator_directions() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-TYPE-RESULT-001, TOPAL-COMPILER-GENERATOR-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-result-values.t"
+        ))
+        .unwrap();
+        let result_type = CompilerType::Result(Box::new(CompilerType::Rational));
+        let one = BigRational::from_integer(BigInt::from(1));
+        let zero = BigRational::from_integer(BigInt::from(0));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "attempt"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == result_type
+                && matches!(&initial.kind, CompilerExpressionKind::ResultSuccess(value)
+                    if value.rational_value.as_ref() == Some(&one))
+                && initial.value_type == result_type
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && matches!(&result.kind, CompilerExpressionKind::Fallible {
+                    operation: CompilerFallible::RationalDivide,
+                    left,
+                    right,
+                    ..
+                } if left.rational_value.as_ref() == Some(&one)
+                    && right.rational_value.as_ref() == Some(&zero))
+                && result.value_type == result_type
+                && *generator_type.yield_type == result_type
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == result_type
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "candidate"
+                && parameter.value_type == result_type
+                && matches!(body.statements.as_slice(), [CompilerStatement::Discard(
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Boolean(true),
+                        value_type: CompilerType::Boolean,
+                        ..
+                    }
+                )])
+                && matches!(&result.kind, CompilerExpressionKind::Fallible {
+                    operation: CompilerFallible::RationalDivide,
+                    left,
+                    right,
+                    ..
+                } if left.rational_value.as_ref() == Some(&one)
+                    && right.rational_value.as_ref() == Some(&zero))
+                && result.value_type == result_type
+                && value_type == &result_type
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield (Rational 1)\n  initial / (Rational 0)\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  _ is yield initial\n  initial / (Rational 0)\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial / (Rational 1)\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial / (Rational 0)\ngenerated is attempt (Rational 2)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  _ is yield initial\n  initial / (Rational 0)\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n  _ is candidate = candidate\n",
+            "use language (version is v0.1)\nattempt is generator (initial : Result (Rational, lang arithmetic ArithmeticErrorCode))\n  yields Result (Rational, lang arithmetic ArithmeticErrorCode)\n  resumes Unit\n  -> Unit\n  _ is yield initial\n  ()\ngenerated is attempt (Rational 1)\ngenerated foreach { candidate }\n  _ is candidate = candidate\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

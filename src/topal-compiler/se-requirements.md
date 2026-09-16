@@ -1647,6 +1647,63 @@ or checked-program node layout. This realizes
 `TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
 `TOPAL-TYPE-OPTIONAL-BOUNDARY-001` for compiler increment 5af.
 
+## TOPAL-COMP-GENERATOR-RESULT-001 — Exact Result generator directions
+
+The checked compiler shall admit a root custom generator with one named
+`Result (Rational, lang arithmetic ArithmeticErrorCode)` initial parameter and
+matching yield and final directions, with Unit resumption. Its body shall
+consist only of one discarded `yield initial` followed by
+`initial / (Rational 0)`. The shared regression shall start the generator with
+the exact proven-success expression `Rational 1`; the fresh result shall be
+bound and consumed exactly once by a foreach action consisting only of the
+discarded self-equality `candidate = candidate` for its named yielded
+parameter.
+
+The checked program shall retain the nominal Result and Rational success
+identities separately in all three Generator directions, the proven-success
+promotion, initial-parameter yield and suspension, reflexive action, Unit
+resumption, structured fallible final division, source-located error
+provenance, declaration provenance, and ownership edge. Application shall
+evaluate and promote Rational 1 exactly once. Traversal shall pass that same
+immutable successful Result to the action, prove its self-equality without
+inspecting or duplicating the payload, resume with Unit, and only then perform
+the exact division by zero and produce the structured failure Result. This
+order shall hold with LLVM optimization disabled and shall not depend on
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, Result and Rational shall retain their existing Topal-owned
+compiler-private pointer representations, and the root-local Generator shall
+remain a compiler-private `i32` ownership token. LLVM shall derive placement,
+alignment, and call lowering from the target triple and data layout; the
+backend shall hard-code no AMD64 register convention. Two aligned debug-only
+pointer shadows and four lifetime/source anchor stores shall keep the yielded
+action value and captured initial inspectable. DWARF and GDB shall expose the
+complete Result-bearing Generator classifier and value, the yielded successful
+Rational 1 Result, captured initial Result, ordered yield/action/resumption/
+final source locations, and the Topal entry frame.
+
+Another Result success/error classifier, input expression or value, direction,
+yield, final operation, divisor, or action; multiple yields; additional body
+statements; general inlined Result projection/propagation; close handling;
+nested or ordinary-function construction; Generator parameter/result transfer;
+repeated consumption; abandonment; libraries; and external boundaries shall
+remain rejected before LLVM. The lowering shall introduce no semantic
+Generator object or state allocation, dispatcher, callback, indirect call,
+unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator/
+Result ABI, or `topal-native/6` revision. Result/Rational storage, allocation,
+failure construction, display, and Linux syscalls shall remain wholly owned by
+Topal. Future compiled-library metadata shall encode independent initial and
+direction classifiers, nominal Result/success/error identities, success
+evidence, fallible-operation and source-error provenance, ordered yield/action/
+resume/final provenance, allocation-failure effects, declaration/construction
+sites, captures/effects, ownership/consumption/close state, native-
+representation identity, and target adapters rather than expose the private
+token, debug slots, pointer/object layouts, or checked-program node layout.
+This realizes `TOPAL-COMPILER-GENERATOR-RESULT-001`,
+`TOPAL-GENERATOR-DECLARATION-001`, `TOPAL-GENERATOR-SUSPEND-001`, and
+`TOPAL-TYPE-RESULT-001` for compiler increment 5ak.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named
