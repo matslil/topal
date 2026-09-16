@@ -1796,8 +1796,10 @@ entry frame.
 
 Another Optional payload, product arity, field order, input, action, final,
 direction, yield, or value; None; multiple yields; additional body statements;
-close handling; nested or ordinary-function construction; Generator parameter/
-result transfer; repeated consumption; abandonment; libraries; and external
+close handling; nested construction; ordinary-function construction or
+Generator parameter/result transfer outside
+`TOPAL-COMP-GENERATOR-NESTED-FUNCTION-BOUNDARY-001`; repeated consumption;
+abandonment; libraries; and external
 boundaries shall remain rejected before LLVM. The lowering shall introduce no
 semantic Generator object or state allocation, generic Optional/product
 dispatcher, callback, indirect call, unwind dependency, C/C++ runtime, other-
@@ -1856,8 +1858,9 @@ the Topal entry frame.
 
 An Error value, another Result success type, product arity, field order, input,
 action, final, direction, yield, or value; multiple yields; additional body
-statements; close handling; nested or ordinary-function construction;
-Generator parameter/result transfer; repeated consumption; abandonment;
+statements; close handling; nested construction; ordinary-function construction
+or Generator parameter/result transfer outside
+`TOPAL-COMP-GENERATOR-NESTED-FUNCTION-BOUNDARY-001`; repeated consumption; abandonment;
 libraries; and external boundaries shall remain rejected before LLVM. The
 lowering shall introduce no semantic Generator object or state allocation,
 generic Result/product dispatcher, callback, indirect call, unwind dependency,
@@ -2308,6 +2311,68 @@ nodes. This realizes
 `TOPAL-GENERATOR-FUNCTION-PARAMETER-001`,
 `TOPAL-GENERATOR-FOREACH-RESULT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler
 increment 5av.
+
+## TOPAL-COMP-GENERATOR-NESTED-FUNCTION-BOUNDARY-001 — Specialized recursive-value continuation transfer
+
+The checked compiler shall admit the unchanged
+`examples/language/custom-generator-nested-function-boundaries.t` regression.
+Its exact `pairs` declaration shall be
+`Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)`.
+It shall yield its initial Some product once, resume with Unit, and return the
+successful product `(8, "done")`. The ordinary `make` function shall accept
+exact `Optional (Int, String)` and return the fresh continuation without
+closing it. The ordinary `consume` function shall receive sole ownership,
+traverse it with the exact discarded `value = (Some (7, "item"))` action, bind
+the final Result, and return it. The root graph shall pass exact
+`Some (7, "item")` through both transfer edges and print `(8, "done")`.
+
+The checked model shall preserve the nominal Optional and Result identities,
+arithmetic-error vocabulary, success evidence, positional-product arity and
+field order, and independent Generator directions. It shall separately retain
+declaration, parameter-derived construction, exact call-specialized input,
+suspension, tag-gated and field-wise action, Unit resumption, final-result
+graph, both function-transfer edges, and once-only consumption. The
+factory-local input shall be replaced by the already evaluated caller Optional
+without reevaluation. Factory exit and consumer entry shall not deliver close.
+Optional tag checks, Int/String field equality, successful Result construction,
+and return shall remain ordered at LLVM O0 without relying on inlining,
+folding, or dead-code elimination.
+
+On Linux x86-64, the private factory shall lower from the existing Topal-owned
+Optional pointer to an `i32` ownership token, and the private consumer shall
+lower from that token to the existing Topal-owned Result pointer. Product
+payloads shall retain their Topal-owned aligned Int/String pointer storage.
+LLVM `fastcc`, the target triple, and target data layout shall determine
+placement and alignment; no AMD64 register or return convention shall be
+hard-coded. A target-aligned factory parameter shadow shall retain the
+otherwise compile-time-only input lifetime. DWARF/GDB shall expose the complete
+Generator classifier, Optional and Result product classifiers, error
+vocabulary, initial/yield/final values, ordinary-function frames, and Topal
+entry frame.
+
+Other nested classifiers, alternatives, product shapes, inputs, declarations,
+factories, consumers, actions, results, arities, recursion, nesting, repeated
+use, abandonment, close handling, packages, libraries, and external boundaries
+shall remain rejected before LLVM. This shall add no semantic Generator object
+or state allocation, transfer/traversal dispatcher, callback, indirect call,
+unwind dependency, foreign runtime, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library calling convention,
+Generator/Optional/Result/product ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall encode nominal wrapper identities and
+alternatives, error vocabulary, recursive product arity/order/field identities,
+complete Generator directions, declaration/body/suspension graphs,
+construction and transfer sites, exact or symbolic captures, tag and
+field-operation provenance, effects, ownership/consumption/close state,
+final-result evidence, native-representation identity, and target adapters
+rather than private specializations, tokens, debug slots, object layouts, or
+checked-program nodes. This realizes
+`TOPAL-COMPILER-GENERATOR-NESTED-FUNCTION-BOUNDARY-001`,
+`TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001`,
+`TOPAL-GENERATOR-FUNCTION-RESULT-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`,
+`TOPAL-GENERATOR-FOREACH-RESULT-001`, `TOPAL-TYPE-OPTIONAL-CONSTRUCT-001`,
+`TOPAL-TYPE-RESULT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler increment
+5aw.
 
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 

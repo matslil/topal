@@ -677,7 +677,20 @@ impl<'a> Generator<'a> {
                 && matches!(&function.result_type, CompilerType::Generator(generator)
                     if generator.yield_type.as_ref() == &CompilerType::Int
                         && generator.resume_type.as_ref() == &CompilerType::Unit
-                        && generator.result_type.as_ref() == &CompilerType::String);
+                        && generator.result_type.as_ref() == &CompilerType::String)
+                || matches!(
+                    (&parameter.value_type, &function.result_type),
+                    (
+                        CompilerType::Optional(payload),
+                        CompilerType::Generator(generator)
+                    ) if matches!(payload.as_ref(), CompilerType::Tuple(fields)
+                            if fields == &[CompilerType::Int, CompilerType::String])
+                        && generator.yield_type.as_ref() == &parameter.value_type
+                        && generator.resume_type.as_ref() == &CompilerType::Unit
+                        && matches!(generator.result_type.as_ref(), CompilerType::Result(success)
+                            if matches!(success.as_ref(), CompilerType::Tuple(fields)
+                                if fields == &[CompilerType::Int, CompilerType::String]))
+                );
             let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
@@ -13167,5 +13180,104 @@ mod tests {
         assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("call i32 %"));
         assert!(!llvm.contains("call { ptr, ptr } %"));
+    }
+
+    #[test]
+    fn emits_nested_custom_generator_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+        // TOPAL-TYPE-RESULT-001,
+        // TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-NESTED-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-nested-function-boundaries.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("nested factory specialization exists");
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("nested consumer specialization exists");
+        let llvm = Generator::new(&program, "custom-generator-nested-function-boundaries.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc i32 @{}(ptr %arg0)",
+            make.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i32 %arg0)",
+            consume.symbol
+        )));
+        assert!(llvm.contains(&format!("call fastcc i32 @{}(ptr", make.symbol)));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(i32", consume.symbol)));
+
+        let make_body = llvm
+            .split_once(&format!(
+                "define internal fastcc i32 @{}(ptr %arg0)",
+                make.symbol
+            ))
+            .expect("module contains nested factory")
+            .1
+            .split_once("\n}\n")
+            .expect("nested factory has one body")
+            .0;
+        assert!(make_body.contains("alloca ptr, align 8"));
+        assert!(make_body.contains("#dbg_declare"));
+
+        let consume_body = llvm
+            .split_once(&format!(
+                "define internal fastcc ptr @{}(i32 %arg0)",
+                consume.symbol
+            ))
+            .expect("module contains nested consumer")
+            .1
+            .split_once("\n}\n")
+            .expect("nested consumer has one body")
+            .0;
+        let optional_tags = consume_body
+            .find("call i1 @topal.runtime.optional.is.some")
+            .expect("consumer checks Optional tags before payload access");
+        let int_action = consume_body[optional_tags..]
+            .find("call i32 @topal.runtime.int.compare")
+            .map(|offset| optional_tags + offset)
+            .expect("consumer compares the yielded product Int field");
+        let string_action = consume_body[int_action..]
+            .find("call i1 @topal.runtime.string.equal")
+            .map(|offset| int_action + offset)
+            .expect("consumer compares the yielded product String field after the Int field");
+        let final_result = consume_body[string_action..]
+            .find("call ptr @topal.runtime.result.success")
+            .map(|offset| string_action + offset)
+            .expect("consumer constructs the successful final Result after resumption");
+        let returned = consume_body[final_result..]
+            .find("ret ptr")
+            .map(|offset| final_result + offset)
+            .expect("consumer returns the final Result");
+        assert!(
+            optional_tags < int_action
+                && int_action < string_action
+                && string_action < final_result
+                && final_result < returned
+        );
+        for expected in [
+            "name: \"Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)\"",
+            "name: \"Optional (Int, String)\"",
+            "name: \"Result ((Int, String), lang arithmetic ArithmeticErrorCode)\"",
+            "DILocalVariable(name: \"initial\", arg: 1",
+            "DILocalVariable(name: \"generated\", arg: 1",
+            "DILocalVariable(name: \"value\"",
+            "DILocalVariable(name: \"result\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("topal.runtime.generator"));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("call i32 %"));
     }
 }

@@ -50,6 +50,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-local-close-handler.t",
     "examples/language/custom-generator-local-function.t",
     "examples/language/custom-generator-nat-values.t",
+    "examples/language/custom-generator-nested-function-boundaries.t",
     "examples/language/custom-generator-nested-none-values.t",
     "examples/language/custom-generator-nested-optional-values.t",
     "examples/language/custom-generator-nested-result-values.t",

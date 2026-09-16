@@ -9596,3 +9596,105 @@ fn compound_custom_generator_function_boundaries_are_freestanding_and_debuggable
         assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
     }
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session verifies recursive factory, transfer, traversal, result, and frames.
+fn nested_custom_generator_function_boundaries_are_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+    // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+    // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+    // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+    // TOPAL-TYPE-RESULT-001,
+    // TOPAL-TYPE-PRODUCT-001,
+    // TOPAL-COMPILER-GENERATOR-NESTED-FUNCTION-BOUNDARY-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-nested-function-boundaries");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-nested-function-boundaries.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(8, \"done\")\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-nested-function-boundaries.t:17",
+            "-ex",
+            "break custom-generator-nested-function-boundaries.t:21",
+            "-ex",
+            "break custom-generator-nested-function-boundaries.t:22",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis result",
+            "-ex",
+            "print result",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "topal.fn.make.0 (initial=Some (7, \"item\"))",
+        "type = Optional(Int, String)",
+        "$1 = Some (7, \"item\")",
+        "type = enum Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)",
+        "$2 = <Generator Optional (Int, String) Unit Result ((Int, String), lang arithmetic ArithmeticErrorCode)>",
+        "$3 = Some (7, \"item\")",
+        "type = Result ((Int, String), lang arithmetic ArithmeticErrorCode)",
+        "$4 = (8, \"done\")",
+        "custom-generator-nested-function-boundaries.t:17",
+        "custom-generator-nested-function-boundaries.t:21",
+        "custom-generator-nested-function-boundaries.t:22",
+        "custom-generator-nested-function-boundaries.t:24",
+        "custom-generator-nested-function-boundaries.t:25",
+        "in topal.main",
+        "in _start",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
+    }
+}
