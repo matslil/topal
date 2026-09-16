@@ -5654,6 +5654,21 @@
       "cpu_time_ns": 5257380,
       "memory_peak_bytes": 18366464,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_arbitrary_precision_ints_across_custom_generator_directions": {
+      "cpu_time_ns": 6740320,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_int_values_are_freestanding_exact_and_debuggable": {
+      "cpu_time_ns": 324202560,
+      "memory_peak_bytes": 58576896,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_arbitrary_precision_ints_across_custom_generator_directions": {
+      "cpu_time_ns": 5457940,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }
