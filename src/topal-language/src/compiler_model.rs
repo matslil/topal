@@ -489,7 +489,9 @@ pub enum CompilerExpressionKind {
     CustomCharacterGenerator {
         declaration: String,
         declaration_span: Span,
+        initial_parameter: Box<CompilerParameter>,
         initial: Box<CompilerExpression>,
+        prefix: Box<CompilerBlock>,
         characters: Vec<String>,
         locals: Vec<CompilerGeneratorLocal>,
         close_handler: Option<CompilerGeneratorCloseHandler>,
@@ -825,6 +827,9 @@ struct FunctionSource {
 struct GeneratorSource {
     name: Span,
     span: Span,
+    initial_parameter: CompilerParameter,
+    prefix: CompilerBlock,
+    literal_characters: Option<Vec<String>>,
     yield_count: usize,
     local: Option<CompilerGeneratorLocal>,
     close_handler: Option<CompilerGeneratorCloseHandler>,
@@ -1924,6 +1929,121 @@ fn exact_character_generator_close_handler(
     })
 }
 
+#[allow(clippy::too_many_lines)] // The exact prefix and yield shape is rejected as one atomic proof.
+fn exact_string_input_generator_body(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    body: &[Statement],
+    span: Span,
+) -> Result<(CompilerBlock, Vec<String>), Diagnostic> {
+    let [
+        Statement::Binding {
+            name: binding_name,
+            classifier: Some(binding_classifier),
+            value:
+                Expression::Application {
+                    items: predicate_items,
+                    span: predicate_span,
+                },
+        },
+        Statement::Discard {
+            value: Expression::Application {
+                items: yield_items, ..
+            },
+            ..
+        },
+        Statement::Expression(Expression::Unit(final_span)),
+    ] = body
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "String-input custom generator outside one empty? binding followed by one Character yield",
+        ));
+    };
+    let [
+        Expression::Identifier(predicate),
+        Expression::Identifier(predicate_operand),
+    ] = predicate_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "String-input custom generator predicate outside empty? initial",
+        ));
+    };
+    let [
+        Expression::Identifier(yield_operation),
+        Expression::String(yield_literal),
+    ] = yield_items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            span,
+            "String-input custom generator yield outside one Character literal",
+        ));
+    };
+    if source.slice(*binding_name) == "_"
+        || source.slice(*binding_name) == source.slice(parameter.name)
+        || source.slice(*binding_classifier) != "Boolean"
+        || source.slice(*predicate) != "empty?"
+        || source.slice(*predicate_operand) != source.slice(parameter.name)
+        || source.slice(*yield_operation) != "yield"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "String-input custom generator outside one named Boolean empty? initial binding",
+        ));
+    }
+    let character = parse_string(source.slice(*yield_literal)).ok_or_else(|| {
+        source_diagnostic(
+            source,
+            "E-STRING-LITERAL",
+            *yield_literal,
+            "invalid string literal delimiter",
+        )
+    })?;
+    let count = character_count(character);
+    if count != 1 {
+        return Err(source_diagnostic(
+            source,
+            "E-CHARACTER-CLASSIFIER",
+            *yield_literal,
+            format!(
+                "Character requires exactly one user-perceived character, but this String contains {count}"
+            ),
+        ));
+    }
+    let initial = CompilerExpression {
+        kind: CompilerExpressionKind::Local(source.slice(parameter.name).to_owned()),
+        value_type: CompilerType::String,
+        int_range: None,
+        rational_value: None,
+        span: parameter.name,
+    };
+    let predicate = CompilerExpression {
+        kind: CompilerExpressionKind::StringEmptyPredicate(Box::new(initial)),
+        value_type: CompilerType::Boolean,
+        int_range: None,
+        rational_value: None,
+        span: *predicate_span,
+    };
+    let binding_name_text = source.slice(*binding_name).to_owned();
+    Ok((
+        CompilerBlock {
+            statements: vec![CompilerStatement::Binding(CompilerBinding {
+                name: binding_name_text.clone(),
+                storage_name: binding_name_text,
+                value: predicate,
+                span: *binding_name,
+            })],
+            result: unit_expression(*final_span),
+        },
+        vec![character.to_owned()],
+    ))
+}
+
 #[allow(clippy::too_many_lines)] // Exact declaration and every retained yield stay fail-closed together.
 fn collect_character_generators(
     source: &SourceText,
@@ -1969,19 +2089,58 @@ fn collect_character_generators(
                 "custom generator with other than one initial parameter",
             ));
         };
+        let initial_type = match source.slice(parameter.classifier) {
+            "Character" => CompilerType::Character,
+            "String" => CompilerType::String,
+            _ => {
+                return Err(unsupported(
+                    source,
+                    *span,
+                    "custom generator outside the admitted Character or String initial-input subset",
+                ));
+            }
+        };
         if !parameter.fields.is_empty()
             || parameter.default.is_some()
             || parameter.qualifier.is_some()
-            || source.slice(parameter.classifier) != "Character"
             || source.slice(*yielded) != "Character"
             || source.slice(*resumed) != "Unit"
-            || !matches!(source.slice(*result), "Unit" | "Character")
+            || !matches!(
+                (&initial_type, source.slice(*result)),
+                (CompilerType::Character, "Unit" | "Character") | (CompilerType::String, "Unit")
+            )
         {
             return Err(unsupported(
                 source,
                 *span,
-                "custom generator outside the Character-yield/Unit-resume/admitted-result subset",
+                "custom generator outside the Character-yield/Unit-resume/admitted initial/result subset",
             ));
+        }
+        let initial_parameter = CompilerParameter {
+            name: source.slice(parameter.name).to_owned(),
+            discarded: false,
+            value_type: initial_type.clone(),
+            int_range: None,
+            span: parameter.name,
+        };
+        if initial_type == CompilerType::String {
+            let (prefix, literal_characters) =
+                exact_string_input_generator_body(source, parameter, body, *span)?;
+            generators.insert(
+                name_text,
+                GeneratorSource {
+                    name: *name,
+                    span: *span,
+                    initial_parameter,
+                    prefix,
+                    literal_characters: Some(literal_characters),
+                    yield_count: 1,
+                    local: None,
+                    close_handler: None,
+                    result: unit_expression(*result),
+                },
+            );
+            continue;
         }
         if source.slice(*result) == "Unit"
             && let Some(close_handler) =
@@ -1992,6 +2151,12 @@ fn collect_character_generators(
                 GeneratorSource {
                     name: *name,
                     span: *span,
+                    initial_parameter,
+                    prefix: CompilerBlock {
+                        statements: Vec::new(),
+                        result: unit_expression(*result),
+                    },
+                    literal_characters: None,
                     yield_count: 1,
                     local: None,
                     close_handler: Some(close_handler),
@@ -2205,6 +2370,12 @@ fn collect_character_generators(
             GeneratorSource {
                 name: *name,
                 span: *span,
+                initial_parameter,
+                prefix: CompilerBlock {
+                    statements: Vec::new(),
+                    result: unit_expression(*result),
+                },
+                literal_characters: None,
                 yield_count,
                 local,
                 close_handler: None,
@@ -3281,12 +3452,14 @@ impl Analyzer {
                 .flatten()
                 .and_then(|generator| match &generator.kind {
                     CompilerExpressionKind::CustomCharacterGenerator {
+                        prefix,
                         characters,
                         locals,
                         close_handler,
                         result,
                         ..
-                    } if characters.len() == 1
+                    } if prefix.statements.is_empty()
+                        && characters.len() == 1
                         && locals.is_empty()
                         && result.value_type == CompilerType::Unit =>
                     {
@@ -8577,6 +8750,13 @@ impl Analyzer {
             .get(generator_name)
             .expect("selected custom generator declaration exists")
             .clone();
+        if self.in_function && !declaration.prefix.statements.is_empty() {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "String-input custom generator outside a direct root construction",
+            ));
+        }
         let arguments = items
             .iter()
             .enumerate()
@@ -8591,8 +8771,8 @@ impl Analyzer {
             ));
         };
         let argument = self.analyze_expression(argument, environment)?;
-        let initial =
-            adapt_call_argument(&CompilerType::Character, &argument).ok_or_else(|| {
+        let initial = adapt_call_argument(&declaration.initial_parameter.value_type, &argument)
+            .ok_or_else(|| {
                 source_diagnostic(
                     &self.source,
                     "E-NO-APPLICABLE-GENERATOR-OVERLOAD",
@@ -8603,14 +8783,18 @@ impl Analyzer {
                     ),
                 )
             })?;
-        let character = Self::known_string_value(&initial, environment).ok_or_else(|| {
-            unsupported(
-                &self.source,
-                initial.span,
-                "dynamic Character custom generator input",
-            )
-        })?;
-        let characters = vec![character; declaration.yield_count];
+        let characters = if let Some(characters) = declaration.literal_characters {
+            characters
+        } else {
+            let character = Self::known_string_value(&initial, environment).ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    initial.span,
+                    "dynamic Character custom generator input",
+                )
+            })?;
+            vec![character; declaration.yield_count]
+        };
         let locals = declaration.local.into_iter().collect();
         let close_handler = declaration.close_handler;
         let result = declaration.result;
@@ -8619,7 +8803,9 @@ impl Analyzer {
             kind: CompilerExpressionKind::CustomCharacterGenerator {
                 declaration: self.source.slice(declaration.name).to_owned(),
                 declaration_span: declaration.span,
+                initial_parameter: Box::new(declaration.initial_parameter),
                 initial: Box::new(initial),
+                prefix: Box::new(declaration.prefix),
                 characters,
                 locals,
                 close_handler,
@@ -9259,7 +9445,7 @@ impl Analyzer {
             });
         }
         let result_type = self.parse_classifier(declaration.result)?;
-        let returns_character_generator = is_character_unit_generator_type(&result_type);
+        let returns_character_generator = is_admitted_character_generator_type(&result_type);
         if !compiler_function_result_supported(&result_type) && !returns_character_generator {
             return Err(unsupported(
                 &self.source,
@@ -9337,12 +9523,14 @@ impl Analyzer {
             let custom_generator = matches!(
                 &retained.kind,
                 CompilerExpressionKind::CustomCharacterGenerator {
+                    prefix,
                     characters,
                     locals,
                     close_handler: None,
                     result,
                     ..
-                } if characters.len() == 1
+                } if prefix.statements.is_empty()
+                    && characters.len() == 1
                     && locals.is_empty()
                     && matches!(
                         result.value_type,
@@ -9502,6 +9690,7 @@ impl Analyzer {
                     CompilerType::Character,
                     CompilerExpressionKind::CustomCharacterGenerator {
                         initial,
+                        prefix,
                         characters,
                         locals,
                         close_handler,
@@ -9511,10 +9700,14 @@ impl Analyzer {
                 ) => {
                     matches!(initial.kind, CompilerExpressionKind::Local(ref name)
                         if name == &parameter.name)
+                        && prefix.statements.is_empty()
                         && characters.len() == 1
                         && locals.is_empty()
                         && close_handler.is_none()
-                        && matches!(result.kind, CompilerExpressionKind::Unit)
+                        && matches!(
+                            result.value_type,
+                            CompilerType::Unit | CompilerType::Character
+                        )
                 }
                 _ => false,
             };
@@ -14691,6 +14884,233 @@ mod tests {
             unbound_result
                 .message
                 .contains("unbound returned Generator and close delivery")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Final-direction provenance and fail-closed factory shapes stay one scenario.
+    fn models_custom_generator_character_result_function_result_transfer() {
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FINAL-RETURN-001, TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-CUSTOM-GENERATOR-CHARACTER-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-character-return-result.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called result-valued custom Generator factory is instantiated");
+        assert!(matches!(
+            function.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::Character,
+                ..
+            }] if name == "initial"
+        ));
+        assert!(is_character_generator_type_with_result(
+            &function.result_type,
+            &CompilerType::Character
+        ));
+        assert!(function.body.statements.is_empty());
+        assert!(matches!(
+            &function.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomCharacterGenerator {
+                    declaration,
+                    initial,
+                    characters,
+                    locals,
+                    close_handler: None,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if declaration == "yield-return"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && characters == &[String::from("Y")]
+                && locals.is_empty()
+                && exact_string(result).as_deref() == Some("R")
+                && is_character_generator_type_with_result(
+                    value_type,
+                    &CompilerType::Character
+                )
+        ));
+        assert!(matches!(
+            (program.main.statements.as_slice(), &program.main.result),
+            (
+                [CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::Call { .. },
+                        value_type,
+                        ..
+                    },
+                    ..
+                })],
+                CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        source,
+                        characters,
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Character,
+                    ..
+                }
+            ) if is_character_generator_type_with_result(
+                    value_type,
+                    &CompilerType::Character
+                )
+                && matches!(source.kind, CompilerExpressionKind::Local(_))
+                && characters == &[String::from("Y")]
+                && exact_string(result).as_deref() == Some("R")
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn static (initial : Character) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character, ignored : Int) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make (\"Y\", 0)\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return \"Q\"\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  _ is ()\n  yield-return initial\ngenerated is make \"Y\"\ngenerated foreach { character }\n  _ is String character\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let unbound_result = analyze_for_compiler(
+            "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return initial\nmake \"Y\"\n",
+        )
+        .unwrap_err();
+        assert_eq!(unbound_result.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unbound_result
+                .message
+                .contains("unbound returned Generator and close delivery")
+        );
+
+        let consumed = "use language (version is v0.1)\nyield-return is generator (initial : Character)\n  yields Character\n  resumes Unit\n  -> Character\n  _ is yield initial\n  \"R\"\nmake is fn (initial : Character) -> Generator Character Unit Character\n  yield-return initial\ngenerated is make \"Y\"\n_ is generated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Pre-yield state and the fail-closed String-input shapes form one scenario.
+    fn models_custom_generator_string_initial_input() {
+        // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
+        // TOPAL-GENERATOR-FOREACH-001, TOPAL-STRING-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-GENERATOR-STRING-INPUT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-string-input.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    name,
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::CustomCharacterGenerator {
+                            declaration,
+                            initial_parameter,
+                            initial,
+                            prefix,
+                            characters,
+                            locals,
+                            result,
+                            ..
+                        },
+                        value_type,
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterForeach {
+                        characters: yielded,
+                        parameter,
+                        body,
+                        ..
+                    },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if name == "generated"
+                && declaration == "from-text"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::String
+                && exact_string(initial).as_deref() == Some("Topal")
+                && matches!(
+                    prefix.as_ref(),
+                    CompilerBlock {
+                        statements,
+                        result: CompilerExpression {
+                            kind: CompilerExpressionKind::Unit,
+                            ..
+                        },
+                    } if matches!(
+                        statements.as_slice(),
+                        [CompilerStatement::Binding(CompilerBinding {
+                            name,
+                            value: CompilerExpression {
+                                kind: CompilerExpressionKind::StringEmptyPredicate(operand),
+                                value_type: CompilerType::Boolean,
+                                ..
+                            },
+                            ..
+                        })] if name == "initial-is-empty"
+                            && matches!(operand.kind, CompilerExpressionKind::Local(ref name)
+                                if name == "initial")
+                    )
+                )
+                && characters == &[String::from("T")]
+                && locals.is_empty()
+                && matches!(result.kind, CompilerExpressionKind::Unit)
+                && is_character_unit_generator_type(value_type)
+                && yielded == &[String::from("T")]
+                && parameter.name == "character"
+                && parameter.value_type == CompilerType::Character
+                && body.result.value_type == CompilerType::Unit
+        ));
+
+        let dynamic = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Boolean is empty? initial\n  _ is yield \"T\"\n  ()\ngenerated is from-text (identity \"Topal\")\ngenerated foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            &dynamic.main.statements[0],
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomCharacterGenerator { initial, .. },
+                    ..
+                },
+                ..
+            }) if matches!(initial.kind, CompilerExpressionKind::Call { .. })
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  _ is yield \"T\"\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Int is empty? initial\n  _ is yield \"T\"\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Boolean is empty? \"\"\n  _ is yield \"T\"\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Boolean is empty? initial\n  _ is yield initial\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\n",
+            "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Boolean is empty? initial\n  _ is yield \"T\"\n  ()\nmake is fn (text : String) -> Unit\n  generated is from-text text\n  generated foreach { character }\n    _ is String character\nmake \"Topal\"\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+
+        let consumed_twice = "use language (version is v0.1)\nfrom-text is generator (initial : String)\n  yields Character\n  resumes Unit\n  -> Unit\n  tested : Boolean is empty? initial\n  _ is yield \"T\"\n  ()\ngenerated is from-text \"Topal\"\ngenerated foreach { character }\n  _ is String character\ngenerated foreach { character }\n  _ is String character\n";
+        assert_eq!(
+            analyze_for_compiler(consumed_twice).unwrap_err().code,
+            "E-GENERATOR-CONSUMED"
         );
     }
 
