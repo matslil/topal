@@ -664,6 +664,23 @@ initial and direction classifiers, suspension/final sites, captures/effects,
 ownership/close state, and target adapters rather than compiler-session blocks
 or tokens.
 
+The next completion slice distinguishes an explicit `return "..."` reached
+before any suspension from an implicit generator final expression. Checked
+provenance carries the return keyword/site, exact String result, independent
+directions, and empty yield/continuation evidence. Application still evaluates
+its initial String once; root traversal observes the explicit completion,
+invokes no action, and materializes the result descriptor directly at O0. A
+debug-only stack shadow keeps the otherwise unused initial parameter live at
+the return site without creating semantic Generator state. The full classifier,
+private `i32` ownership token, initial value, return location, and entry frame
+remain available to DWARF/GDB, while no yielded action binding is fabricated.
+LLVM owns target layout and register placement, and Linux integration continues
+through Topal-owned allocator/syscall code without a C/C++ standard library.
+Future compiled-library metadata must distinguish explicit/implicit completion,
+return provenance, reachability and empty-yield evidence, direction
+classifiers, graph sites, captures/effects, ownership/close state, and target
+adapters rather than checked nodes or debug storage.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
