@@ -36,6 +36,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/custom-generator-discard-between-yields.t",
     "examples/language/custom-generator-early-return.t",
     "examples/language/custom-generator-enum-values.t",
+    "examples/language/custom-generator-final-decision.t",
     "examples/language/custom-generator-product-values.t",
     "examples/language/custom-generator-result-values.t",
     "examples/language/custom-generator-explicit-return.t",

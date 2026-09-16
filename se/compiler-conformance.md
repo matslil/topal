@@ -95,6 +95,7 @@ evidence.
 | 5am | exact recursive `Optional (Int, String)` input/yield, structural equality action, resumption, and distinct Some final with boxed-payload debugging | complete |
 | 5an | exact successful recursive `Result ((Int, String), ArithmeticErrorCode)` input/yield, structural equality action, resumption, and distinct successful final with boxed-payload debugging | complete |
 | 5ao | exact absent recursive `Optional (Int, String)` input/yield, tag equality action, resumption, and absent final with full-classifier debugging | complete |
+| 5ap | exact Boolean input/yield/action and post-resume Boolean decision selecting a distinct final String with branch and value debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |
@@ -561,6 +562,18 @@ product-payload allocation, semantic Generator runtime, foreign dependency,
 other-language standard library, public ABI, or native-layout revision. Mixed
 Some/None graphs and other recursive Optional values, directions, state,
 transfer, close, and libraries remain in increment 5.
+
+Increment 5ap preserves an exact `Generator Boolean Unit String` across one
+initial-Boolean suspension and a post-resume complete Boolean decision. The
+once-evaluated true input reaches the action, Unit resumption precedes the
+decision, and the selected `"accepted"` branch becomes the final root String.
+LLVM O0 retains the direct conditional branch, two String-producing blocks,
+and pointer join. Existing Boolean/String lowering, an aligned debug-only `i1`
+shadow, Generator and captured-value DWARF, the Topal GDB renderer, allocator,
+and Linux syscall writer are reused without a semantic Generator runtime,
+foreign dependency, other-language standard library, public ABI, or native-
+layout revision. Other decision subjects, matchers, actions, results, generator
+shapes, state, transfer, close, and libraries remain in increment 5.
 
 Increment 5aj separates positional-product input, yield, and final directions
 through one exact custom `Generator (Int, String) Unit (Int, String)`. The
