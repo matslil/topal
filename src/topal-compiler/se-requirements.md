@@ -2253,6 +2253,62 @@ nodes. This realizes `TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001`,
 `TOPAL-GENERATOR-FUNCTION-RESULT-001`, and
 `TOPAL-GENERATOR-FUNCTION-PARAMETER-001` for compiler increment 5au.
 
+## TOPAL-COMP-GENERATOR-COMPOUND-FUNCTION-BOUNDARY-001 — Specialized positional-product continuation transfer
+
+The checked compiler shall admit the unchanged
+`examples/language/custom-generator-compound-function-boundaries.t` regression.
+Its exact `pairs` declaration shall be
+`Generator (Int, String) Unit (Int, String)`, yield its positional-product input
+once, resume with Unit, and return `(8, "done")`. The ordinary `make` function
+shall accept `(Int, String)` and return the fresh continuation without closing
+it. The ordinary `consume` function shall receive sole ownership, traverse it
+once with the exact discarded `value = (7, "item")` action, bind the final
+product, and return it. The root graph shall pass exact `(7, "item")` through
+`make`, bind the continuation, transfer it to `consume`, and print
+`(8, "done")`.
+
+The checked model shall preserve product arity, field order and classifiers in
+the initial, yield, and final directions together with declaration,
+parameter-derived construction, exact call-specialized input, suspension,
+field-wise action, Unit resumption, final-result graph, both function-transfer
+edges, and once-only consumption. The factory-local input name shall be
+specialized to the already evaluated caller aggregate without reevaluation.
+Factory exit and consumer entry shall not deliver close. Ordered Int equality,
+String equality, final-product construction, and return shall hold at LLVM O0
+without inlining, folding, or dead-code elimination.
+
+On Linux x86-64, the private factory shall lower from the existing LLVM
+aggregate of Topal-owned Int and String pointers to an `i32` ownership token;
+the private consumer shall lower from that token to the aggregate. LLVM
+`fastcc`, the target triple, and target data layout shall determine aggregate
+placement, alignment, and return lowering; no AMD64 register or return
+convention shall be hard-coded. Target-aligned debug shadows shall expose the
+factory product, complete Generator parameter, yielded product, final product,
+ordered `_0` and `_1` fields, ordinary-function frames, and Topal entry frame
+in DWARF/GDB.
+
+Other product shapes, field classifiers or order, inputs, declarations,
+factories, consumers, actions, results, arities, recursion, nesting, repeated
+use, abandonment, close handling, packages, libraries, and external boundaries
+shall remain rejected before LLVM. This shall add no semantic Generator object
+or state allocation, transfer/traversal dispatcher, callback, indirect call,
+unwind dependency, foreign runtime, C/C++ runtime, other-language standard
+library, needed library, dynamic relocation, public/library calling convention,
+Generator/product ABI, or `topal-native/6` revision. Future compiled-library
+metadata shall encode canonical product arity, order, field identities,
+complete Generator directions, declaration/body/suspension graphs,
+construction and transfer sites, exact or symbolic captures, field-wise
+operations, effects, ownership/consumption/close state, final-result provenance,
+native-representation identity, and target adapters rather than private
+specializations, tokens, debug slots, aggregate layouts, or checked-program
+nodes. This realizes
+`TOPAL-COMPILER-GENERATOR-COMPOUND-FUNCTION-BOUNDARY-001`,
+`TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001`,
+`TOPAL-GENERATOR-FUNCTION-RESULT-001`,
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001`,
+`TOPAL-GENERATOR-FOREACH-RESULT-001`, and `TOPAL-TYPE-PRODUCT-001` for compiler
+increment 5av.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named
@@ -2289,8 +2345,9 @@ Topal entry frame.
 
 Another product arity, field classifier, order, literal, or direction; literal
 or multiple yields; a final expression or action other than the exact products
-above; labeled products; additional body statements; close handling; nested or
-ordinary-function construction; Generator parameter/result transfer; repeated
+above; labeled products; additional body statements; close handling; nested
+construction; ordinary-function construction or Generator parameter/result
+transfer outside `TOPAL-COMP-GENERATOR-COMPOUND-FUNCTION-BOUNDARY-001`; repeated
 consumption; abandonment; libraries; and external boundaries shall remain
 rejected before LLVM. The lowering shall introduce no semantic Generator
 object or state allocation, dispatcher, callback, indirect call, unwind

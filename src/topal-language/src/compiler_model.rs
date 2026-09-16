@@ -3452,6 +3452,20 @@ fn exact_int_string_product_value_generator_action(
         && matches!(body.result.kind, CompilerExpressionKind::Unit)
 }
 
+fn exact_int_string_product(
+    expression: &CompilerExpression,
+    expected_int: i64,
+    expected_text: &str,
+) -> bool {
+    matches!(
+        &expression.kind,
+        CompilerExpressionKind::Tuple(fields)
+            if matches!(fields.as_slice(), [int, text]
+                if exact_int(int) == Some(BigInt::from(expected_int))
+                    && exact_string(text).as_deref() == Some(expected_text))
+    ) && expression.value_type == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+}
+
 fn exact_int_string_product_literal(
     source: &SourceText,
     expression: &Expression,
@@ -5314,9 +5328,15 @@ fn generator_input_types(generator: &GeneratorSource) -> Vec<&CompilerType> {
 }
 
 fn exact_value_boundary_generator_source(source: &SourceText, generator: &GeneratorSource) -> bool {
-    source.slice(generator.name) == "numbers"
-        && generator.initial_parameter.name == "initial"
+    let scalar = source.slice(generator.name) == "numbers"
         && generator.initial_parameter.value_type == CompilerType::Int
+        && exact_string(&generator.result).as_deref() == Some("done");
+    let product = source.slice(generator.name) == "pairs"
+        && generator.initial_parameter.value_type
+            == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        && exact_int_string_product(&generator.result, 8, "done");
+    (scalar || product)
+        && generator.initial_parameter.name == "initial"
         && generator.additional_initial_parameters.is_empty()
         && generator.prefix.statements.is_empty()
         && matches!(
@@ -5325,7 +5345,6 @@ fn exact_value_boundary_generator_source(source: &SourceText, generator: &Genera
         )
         && generator.value_continuations.is_empty()
         && generator.explicit_return.is_none()
-        && exact_string(&generator.result).as_deref() == Some("done")
 }
 
 fn register_generator(
@@ -7617,7 +7636,8 @@ impl Analyzer {
                             CompilerExpressionKind::CustomValueForeach { result, .. }
                                 if matches!(exact_string(result).as_deref(), Some("unary" | "binary"))
                                     || (kind == BlockKind::Function
-                                        && exact_string(result).as_deref() == Some("done"))
+                                        && (exact_string(result).as_deref() == Some("done")
+                                            || exact_int_string_product(result, 8, "done")))
                         );
                         if value.value_type != CompilerType::Unit && !admitted_typed_result {
                             return Err(unsupported(
@@ -14223,6 +14243,16 @@ impl Analyzer {
                 value_type: CompilerType::Int,
                 ..
             }] if returns_value_boundary_generator && name == "initial"
+        ) || matches!(
+            parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                discarded: false,
+                value_type: CompilerType::Tuple(fields),
+                ..
+            }] if returns_value_boundary_generator
+                && name == "initial"
+                && fields == &[CompilerType::Int, CompilerType::String]
         );
         if returns_generator
             && (self.in_function
@@ -14315,15 +14345,20 @@ impl Analyzer {
                     explicit_return: None,
                     result,
                     ..
-                } if declaration == "numbers"
-                    && initial_parameter.name == "initial"
+                } if ((declaration == "numbers"
                     && initial_parameter.value_type == CompilerType::Int
                     && exact_int(initial) == Some(BigInt::from(7))
+                    && exact_string(result).as_deref() == Some("done"))
+                    || (declaration == "pairs"
+                        && initial_parameter.value_type
+                            == CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+                        && exact_int_string_product(initial, 7, "item")
+                        && exact_int_string_product(result, 8, "done")))
+                    && initial_parameter.name == "initial"
                     && additional_initial_parameters.is_empty()
                     && prefix.statements.is_empty()
                     && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
                     && continuations.is_empty()
-                    && exact_string(result).as_deref() == Some("done")
                     && is_admitted_value_boundary_generator_type(&retained.value_type)
             );
             let custom_generator = custom_character_generator || custom_value_generator;
@@ -14408,7 +14443,7 @@ impl Analyzer {
                             value:
                                 CompilerExpression {
                                     kind: CompilerExpressionKind::CustomValueForeach { source, .. },
-                                    value_type: CompilerType::String,
+                                    value_type: binding_type,
                                     ..
                                 },
                             ..
@@ -14416,10 +14451,16 @@ impl Analyzer {
                     ],
                     CompilerExpression {
                         kind: CompilerExpressionKind::Local(result_name),
-                        value_type: CompilerType::String,
+                        value_type: result_type,
                         ..
                     },
-                ) if binding_name == "result" && result_name == "result" => Some(source.as_ref()),
+                ) if binding_name == "result"
+                    && result_name == "result"
+                    && binding_type == result_type
+                    && is_admitted_function_value_result_type(binding_type) =>
+                {
+                    Some(source.as_ref())
+                }
                 _ => None,
             };
             let traverses_parameter = traversal_source.is_some_and(|source| {
@@ -14487,7 +14528,7 @@ impl Analyzer {
         }
         let returned_generator_value = if returns_generator {
             let [parameter] = parameters.as_slice() else {
-                unreachable!("checked Generator result has one scalar parameter")
+                unreachable!("checked Generator result has one admitted parameter")
             };
             let returns_fresh_generator = match (&parameter.value_type, &body.result.kind) {
                 (
@@ -14544,6 +14585,34 @@ impl Analyzer {
                         && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
                         && continuations.is_empty()
                         && exact_string(result).as_deref() == Some("done")
+                }
+                (
+                    CompilerType::Tuple(fields),
+                    CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        additional_initial_parameters,
+                        prefix,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                ) => {
+                    returns_value_boundary_generator
+                        && fields == &[CompilerType::Int, CompilerType::String]
+                        && declaration == "pairs"
+                        && initial_parameter.name == "initial"
+                        && initial_parameter.value_type == parameter.value_type
+                        && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                        && additional_initial_parameters.is_empty()
+                        && prefix.statements.is_empty()
+                        && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                        && continuations.is_empty()
+                        && exact_int_string_product(result, 8, "done")
                 }
                 _ => false,
             };
@@ -15997,6 +16066,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
             Some(character_generator_type(CompilerType::Character))
         }
         "GeneratorIntUnitString" => Some(value_boundary_generator_type()),
+        "Generator(Int,String)Unit(Int,String)" => Some(product_boundary_generator_type()),
         _ => None,
     }
 }
@@ -16413,6 +16483,15 @@ fn value_boundary_generator_type() -> CompilerType {
     })
 }
 
+fn product_boundary_generator_type() -> CompilerType {
+    let product = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String]);
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(product.clone()),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(product),
+    })
+}
+
 fn character_unit_generator_type() -> CompilerType {
     character_generator_type(CompilerType::Unit)
 }
@@ -16444,12 +16523,16 @@ fn is_admitted_value_boundary_generator_type(value_type: &CompilerType) -> bool 
         }) if yield_type.as_ref() == &CompilerType::Int
             && resume_type.as_ref() == &CompilerType::Unit
             && result_type.as_ref() == &CompilerType::String
-    )
+    ) || value_type == &product_boundary_generator_type()
 }
 
 fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
     is_admitted_character_generator_type(value_type)
         || is_admitted_value_boundary_generator_type(value_type)
+}
+
+fn is_admitted_function_value_result_type(value_type: &CompilerType) -> bool {
+    value_type == &CompilerType::String || compiler_int_string_pair(value_type)
 }
 
 fn is_character_generator_type_with_result(
@@ -25832,6 +25915,164 @@ mod tests {
             source.replacen("\"done\"", "\"later\"", 1),
             source.replacen("value + 1", "value + 2", 1),
             source.replacen("consume generated", "consume (numbers 7)", 1),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Aggregate factory and consumer provenance form one boundary scenario.
+    fn models_custom_generator_compound_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-COMPOUND-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-compound-function-boundaries.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("compound Generator factory is specialized");
+        assert!(matches!(
+            make.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type,
+                ..
+            }] if name == "initial" && compiler_int_string_pair(value_type)
+        ));
+        assert_eq!(make.result_type, product_boundary_generator_type());
+        assert!(make.body.statements.is_empty());
+        assert!(matches!(
+            &make.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    prefix,
+                    yields,
+                    continuations,
+                    explicit_return: None,
+                    result,
+                    ..
+                },
+                value_type,
+                ..
+            } if declaration == "pairs"
+                && initial_parameter.name == "initial"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && additional_initial_parameters.is_empty()
+                && prefix.statements.is_empty()
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_int_string_product(result, 8, "done")
+                && value_type == &product_boundary_generator_type()
+        ));
+
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("compound Generator consumer is specialized");
+        assert!(matches!(
+            consume.parameters.as_slice(),
+            [CompilerParameter { name, value_type, .. }]
+                if name == "generated" && value_type == &product_boundary_generator_type()
+        ));
+        assert!(matches!(
+            consume.body.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomValueForeach {
+                                source,
+                                transferred_initial: Some(initial),
+                                yields,
+                                parameter,
+                                body,
+                                result,
+                                ..
+                            },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "result"
+                && matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && exact_int_string_product(initial, 7, "item")
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && exact_int_string_product_value_generator_action(parameter, body)
+                && exact_int_string_product(result, 8, "done")
+                && compiler_int_string_pair(value_type)
+        ));
+        assert!(matches!(
+            &consume.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(name),
+                value_type,
+                ..
+            } if name == "result" && compiler_int_string_pair(value_type)
+        ));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { arguments, .. },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "generated"
+                && value_type == &product_boundary_generator_type()
+                && matches!(arguments.as_slice(), [argument]
+                    if exact_int_string_product(argument, 7, "item"))
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type,
+                ..
+            } if compiler_int_string_pair(value_type)
+                && matches!(arguments.as_slice(), [CompilerExpression {
+                    kind: CompilerExpressionKind::Local(name),
+                    value_type,
+                    ..
+                }] if name.starts_with("topal.root.")
+                    && value_type == &product_boundary_generator_type())
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_custom_generator_compound_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-GENERATOR-COMPOUND-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-compound-function-boundaries.t"
+        );
+        for invalid in [
+            source.replacen("make (7, \"item\")", "make (8, \"item\")", 1),
+            source.replacen("pairs initial", "pairs (8, \"item\")", 1),
+            source.replacen("(8, \"done\")", "(9, \"done\")", 1),
+            source.replacen("value = (7, \"item\")", "value = (8, \"item\")", 1),
+            source.replacen("consume generated", "consume (pairs (7, \"item\"))", 1),
         ] {
             assert_eq!(
                 analyze_for_compiler(&invalid).unwrap_err().code,
