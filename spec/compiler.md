@@ -4130,6 +4130,43 @@ ABI revision. Other bases, captured or dependent predicates, evidence across
 function or persistent/public aggregate machine boundaries, and dynamically
 selected constraint identities remain outside this increment.
 
+### TOPAL-COMPILER-NATIVE-SERIALIZATION-001 — Closed canonical native streams
+
+For a compiler-created, authority-free value that is statically known as
+literal Unit or Boolean, exact Int, known String, or one direct Tuple or Record
+whose fields are those supported scalar values, the compiler SHALL admit
+`version (lang serialize) value`, the reusable
+`lang version (lang serialize)` operation, and `lang deserialize stream`. It SHALL
+derive exactly one finite canonical protocol 1.0 stream under
+`TOPAL-SER-HEADER-001` through `TOPAL-SER-CANON-001`, using the selected Topal
+language revision, target little-endian value encoding, recursive first-use
+type-definition order, and source declaration order for Record fields.
+
+At O0, serialization SHALL evaluate the source value exactly once. Linux
+x86-64 lowering SHALL place the already validated expected bytes in immutable
+executable storage, copy them into private Topal-owned stream storage, and create
+a private Topal-owned `{data, byte_count}` descriptor for that copy. The
+published copy SHALL thereafter be treated as immutable. Before deserialization
+returns the retained once-evaluated value, generated code SHALL compare the
+descriptor byte count and every byte in the copy with the canonical immutable
+expected stream. A mismatch SHALL terminate through the compiler-runtime
+corruption path and SHALL NOT expose the value.
+
+This increment SHALL NOT parse arbitrary runtime streams, admit externally
+supplied streams, infer unknown scalar contents, serialize nested or indirect
+aggregates or other classifiers, or permit a SerializationStream across a function,
+persistent, public, or compiled-library machine boundary. It SHALL NOT link a
+foreign serialization implementation, C/C++ runtime, or other-language
+standard library, and SHALL NOT depend on an optional LLVM optimization.
+
+DWARF SHALL expose `SerializationStream` as a pointer to an inspectable private
+header containing the byte address and count. The bundled GDB renderer SHALL
+bound memory reads, validate `TOPALSER` magic, and render the canonical byte
+count. Any future compiled-library interface carrying this operation SHALL
+identify the protocol revision, language identity and revision, canonical type
+identities and schemas, field order, byte-order contract, and authority profile
+independently of private LLVM types, descriptors, and native symbols.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

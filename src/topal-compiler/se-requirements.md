@@ -4536,6 +4536,47 @@ machine boundaries, and dynamic constraint identities remain rejected. This
 realizes `TOPAL-COMPILER-CONSTRAINT-VALIDATE-001` and
 `TOPAL-TYPE-CONSTRAINT-VALIDATE-001` for compiler increment 8a2.
 
+## TOPAL-COMP-NATIVE-SERIALIZATION-001 — Closed canonical native streams
+
+The checked compiler shall admit both version-selected forms of `lang
+serialize` and `lang deserialize` for compiler-created, authority-free streams
+whose complete value is statically known as literal Unit or Boolean, exact Int,
+known String, or one direct Tuple or Record whose fields are those supported
+scalar values. It shall derive the bytes
+through the shared canonical protocol implementation, using Topal protocol 1.0,
+the selected language identity and revision, target little-endian value
+encoding, declaration-ordered Record fields, and one finite value event.
+
+Serialization shall still evaluate the source value exactly once at O0. The
+Linux x86-64 backend shall retain the canonical expected bytes in immutable
+executable storage, copy them into private Topal-owned stream storage, and
+construct a Topal-owned private descriptor containing the copy's address and
+byte count. The published copy shall thereafter be treated as immutable. Before
+`lang deserialize` exposes the retained value, generated code shall validate the
+descriptor length and every copied stream byte against the compile-time-validated
+canonical bytes. A mismatch shall take the compiler-runtime corruption exit. The
+implementation shall not replace this mandatory work with an LLVM optimization
+or call a host serialization library.
+
+Dynamic Boolean, Int, and String values, nested or indirect aggregate values, other
+returnable classifiers, arbitrary or externally supplied streams, and
+serialization across function, persistent, public, or library boundaries
+remain rejected with a stable compiler diagnostic. A future compiled-library
+interface carrying native serialization shall identify the protocol revision,
+language identity and revision, canonical type identities and schemas, field
+order, byte-order contract, and authority profile independently of the private
+descriptor layout, LLVM type, and native symbol spelling.
+
+Tests shall compile the unchanged interpreter regression, compare exact output,
+inspect the checked stream and O0 LLVM, validate the shared corpus and separate
+resource baselines, and verify canonical magic, runtime validation, freestanding
+ELF, DWARF, GDB, undefined symbols, needed libraries, and relocations. The GDB
+renderer shall bound reads and validate stream magic before rendering the byte
+count. This shall add no foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-NATIVE-SERIALIZATION-001` and `TOPAL-SER-SCOPE-001` through
+`TOPAL-SER-DESER-001` for compiler increment 8b1.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
@@ -4548,6 +4589,7 @@ renderers for private arbitrary-precision Int, Rational, `Range Int`,
 modular-success Result objects, `List Effect`, `List Int`,
 `List (String, Int)`, exact-extent `Array Int`, `Set Int`, `Bag Int`, and
 `Map (String, Int)` container values, describe source-declared nominal enums,
+native `SerializationStream` descriptors,
 retained Constraint identities and refined Int bindings with their semantic
 names, distinguish
 selected overload and static-function frames, and pass automated GDB

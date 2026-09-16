@@ -66,6 +66,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
         | CompilerType::Version
+        | CompilerType::SerializationStream(_)
         | CompilerType::Modular(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_) => true,
@@ -104,6 +105,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
+        | CompilerType::NativeSerializer(_)
         | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
@@ -264,6 +266,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::Serialize { value, .. }
+        | CompilerExpressionKind::Deserialize(value)
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::ModularValidate { value, .. }
         | CompilerExpressionKind::Negate(value)
@@ -450,6 +454,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::Capability(_)
+        | CompilerExpressionKind::NativeSerializer(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -632,6 +637,7 @@ impl<'a> Generator<'a> {
             }
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
             LlValue::Version { value, .. }
+            | LlValue::SerializationStream { stream: value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -1241,9 +1247,47 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::Identity(_)
             | CompilerExpressionKind::TypeView(_)
             | CompilerExpressionKind::FunctionView(_)
-            | CompilerExpressionKind::LanguageContext(_) => LlValue::Unit,
+            | CompilerExpressionKind::LanguageContext(_)
+            | CompilerExpressionKind::NativeSerializer(_) => LlValue::Unit,
             CompilerExpressionKind::Capability(capability) => {
                 LlValue::StaticDisplay(capability.display())
+            }
+            CompilerExpressionKind::Serialize { bytes, value } => {
+                let value = self.emit_expression(value, body, environment);
+                let (expected, byte_count) = self.emit_raw_bytes_global(bytes);
+                let stream = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.serialization.make(ptr {expected}, i64 {byte_count})"
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::SerializationStream {
+                    stream,
+                    expected,
+                    byte_count: byte_count.to_string(),
+                    value: Box::new(value),
+                }
+            }
+            CompilerExpressionKind::Deserialize(stream) => {
+                let stream = self.emit_expression(stream, body, environment);
+                let LlValue::SerializationStream {
+                    stream,
+                    expected,
+                    byte_count,
+                    value,
+                } = stream
+                else {
+                    unreachable!("checked deserialize operand retains its native stream")
+                };
+                body.effect(
+                    &format!(
+                        "call void @topal.runtime.serialization.verify(ptr {stream}, ptr {expected}, i64 {byte_count})"
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                *value
             }
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
@@ -2852,6 +2896,8 @@ impl<'a> Generator<'a> {
                     | CompilerType::FunctionView
                     | CompilerType::LanguageContext
                     | CompilerType::Capability
+                    | CompilerType::NativeSerializer(_)
+                    | CompilerType::SerializationStream(_)
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
                     | CompilerType::TraversalControl(_) => {
@@ -6102,6 +6148,43 @@ impl<'a> Generator<'a> {
             LlValue::Version { .. } => {
                 unreachable!("Version decision results are not admitted")
             }
+            LlValue::SerializationStream { .. } => {
+                let payload_branches = branches
+                    .iter()
+                    .map(|(branch, predecessor)| {
+                        let LlValue::SerializationStream { value, .. } = branch else {
+                            unreachable!(
+                                "checked decision branches share a SerializationStream type"
+                            )
+                        };
+                        (value.as_ref().clone(), predecessor.clone())
+                    })
+                    .collect::<Vec<_>>();
+                LlValue::SerializationStream {
+                    stream: body.instruction(
+                        &format!(
+                            "phi ptr {}",
+                            incoming(LlValue::serialization_stream_pointer)
+                        ),
+                        span,
+                        &mut self.debug,
+                    ),
+                    expected: body.instruction(
+                        &format!(
+                            "phi ptr {}",
+                            incoming(LlValue::serialization_expected_pointer)
+                        ),
+                        span,
+                        &mut self.debug,
+                    ),
+                    byte_count: body.instruction(
+                        &format!("phi i64 {}", incoming(LlValue::serialization_byte_count)),
+                        span,
+                        &mut self.debug,
+                    ),
+                    value: Box::new(self.emit_decision_phi(&payload_branches, body, span)),
+                }
+            }
             LlValue::Int(_) => LlValue::Int(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::integer)),
                 span,
@@ -6353,6 +6436,15 @@ impl<'a> Generator<'a> {
             }
             LlValue::Version { display, .. } | LlValue::StaticDisplay(display) => {
                 self.emit_write_literal(display, body, span);
+            }
+            LlValue::SerializationStream { byte_count, .. } => {
+                self.emit_write_literal("SerializationStream ( ", body, span);
+                body.effect(
+                    &format!("call void @topal.runtime.u64.print(i64 {byte_count})"),
+                    span,
+                    &mut self.debug,
+                );
+                self.emit_write_literal(" bytes )", body, span);
             }
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
@@ -7295,14 +7387,18 @@ impl<'a> Generator<'a> {
     }
 
     fn emit_bytes_global(&mut self, text: &str) -> (String, usize) {
+        self.emit_raw_bytes_global(text.as_bytes())
+    }
+
+    fn emit_raw_bytes_global(&mut self, bytes: &[u8]) -> (String, usize) {
         let name = format!(".topal.bytes.{}", self.next_global);
         self.next_global += 1;
         self.globals.push(format!(
             "@{name} = private unnamed_addr constant [{} x i8] c\"{}\", align 1",
-            text.len(),
-            llvm_bytes(text.as_bytes())
+            bytes.len(),
+            llvm_bytes(bytes)
         ));
-        (format!("@{name}"), text.len())
+        (format!("@{name}"), bytes.len())
     }
 
     fn emit_string_literal(&mut self, text: &str, body: &mut FunctionBody, span: Span) -> LlValue {
@@ -7857,6 +7953,12 @@ enum LlValue {
         value: String,
         display: String,
     },
+    SerializationStream {
+        stream: String,
+        expected: String,
+        byte_count: String,
+        value: Box<Self>,
+    },
     Int(String),
     Modular {
         value: String,
@@ -8086,6 +8188,27 @@ impl LlValue {
         value
     }
 
+    fn serialization_stream_pointer(&self) -> &str {
+        let Self::SerializationStream { stream, .. } = self else {
+            unreachable!("checked value is a SerializationStream")
+        };
+        stream
+    }
+
+    fn serialization_expected_pointer(&self) -> &str {
+        let Self::SerializationStream { expected, .. } = self else {
+            unreachable!("checked value is a SerializationStream")
+        };
+        expected
+    }
+
+    fn serialization_byte_count(&self) -> &str {
+        let Self::SerializationStream { byte_count, .. } = self else {
+            unreachable!("checked value is a SerializationStream")
+        };
+        byte_count
+    }
+
     fn argument(&self) -> String {
         match self {
             Self::Unit => "i8 0".into(),
@@ -8095,6 +8218,7 @@ impl LlValue {
             Self::Completed(value) | Self::Effect(value) => format!("i8 {value}"),
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Version { value, .. }
+            | Self::SerializationStream { stream: value, .. }
             | Self::Int(value)
             | Self::Modular { value, .. }
             | Self::Rational(value)
@@ -8123,6 +8247,7 @@ impl LlValue {
     }
 }
 
+#[allow(clippy::too_many_lines)] // Every admitted representation has an explicit neutral machine value.
 fn zero_machine_value(value_type: &CompilerType) -> LlValue {
     match value_type {
         CompilerType::Unit => LlValue::Unit,
@@ -8220,6 +8345,8 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
+        | CompilerType::NativeSerializer(_)
+        | CompilerType::SerializationStream(_)
         | CompilerType::Constraint => {
             unreachable!("static object values are not admitted in sum payloads")
         }
@@ -8382,6 +8509,7 @@ impl FunctionBody {
             LlValue::Completed(value) | LlValue::Effect(value) => format!("i8 {value}"),
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Version { value, .. }
+            | LlValue::SerializationStream { stream: value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -8446,6 +8574,7 @@ struct DebugInfo {
     int_type: usize,
     nat_type: usize,
     version_type: usize,
+    serialization_stream_type: usize,
     rational_type: usize,
     character_type: usize,
     string_type: usize,
@@ -8512,6 +8641,7 @@ impl DebugInfo {
             int_type: 0,
             nat_type: 0,
             version_type: 0,
+            serialization_stream_type: 0,
             rational_type: 0,
             character_type: 0,
             string_type: 0,
@@ -8571,6 +8701,7 @@ impl DebugInfo {
         ));
         let unsigned64 = debug.install_base_integer_types();
         debug.version_type = debug.install_version_type();
+        debug.serialization_stream_type = debug.install_serialization_stream_type(unsigned64);
         let numerator = debug.node(format!(
             "!DIDerivedType(tag: DW_TAG_member, name: \"numerator\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
             debug.file, debug.int_type
@@ -8706,6 +8837,34 @@ impl DebugInfo {
         ));
         self.node(format!(
             "!DIDerivedType(tag: DW_TAG_typedef, name: \"Version\", file: !{}, baseType: !{pointer})",
+            self.file
+        ))
+    }
+
+    fn install_serialization_stream_type(&mut self, unsigned64: usize) -> usize {
+        let byte =
+            self.node("!DIBasicType(name: \"u8\", size: 8, encoding: DW_ATE_unsigned_char)".into());
+        let byte_pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{byte}, size: 64, align: 64)"
+        ));
+        let data = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"data\", file: !{}, baseType: !{byte_pointer}, size: 64, align: 64, offset: 0)",
+            self.file
+        ));
+        let byte_count = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"byte_count\", file: !{}, baseType: !{unsigned64}, size: 64, align: 64, offset: 64)",
+            self.file
+        ));
+        let members = self.node(format!("!{{!{data}, !{byte_count}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalSerializationStreamHeader\", file: !{}, size: 128, align: 64, elements: !{members})",
+            self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"SerializationStream\", file: !{}, baseType: !{pointer})",
             self.file
         ))
     }
@@ -8995,9 +9154,11 @@ impl DebugInfo {
             | CompilerType::TypeView
             | CompilerType::FunctionView
             | CompilerType::LanguageContext
-            | CompilerType::Capability => {
+            | CompilerType::Capability
+            | CompilerType::NativeSerializer(_) => {
                 unreachable!("static-only compiler values have no runtime debug type")
             }
+            CompilerType::SerializationStream(_) => self.serialization_stream_type,
             CompilerType::Constraint => *self
                 .enum_types
                 .get("Constraint")
@@ -9745,10 +9906,12 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
-        | CompilerType::Capability => {
+        | CompilerType::Capability
+        | CompilerType::NativeSerializer(_) => {
             unreachable!("static-only compiler values have no target value layout")
         }
         CompilerType::Version
+        | CompilerType::SerializationStream(_)
         | CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Modular(_)
@@ -9847,6 +10010,7 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
+        | CompilerType::NativeSerializer(_)
         | CompilerType::Generator(_) => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
@@ -9868,12 +10032,14 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
-        | CompilerType::Capability => {
+        | CompilerType::Capability
+        | CompilerType::NativeSerializer(_) => {
             unreachable!("static-only compiler values have no LLVM value type")
         }
         CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
         CompilerType::Boolean => "i1".into(),
         CompilerType::Version
+        | CompilerType::SerializationStream(_)
         | CompilerType::Int
         | CompilerType::Nat
         | CompilerType::Modular(_)
@@ -9957,8 +10123,12 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
-        | CompilerType::Capability => {
+        | CompilerType::Capability
+        | CompilerType::NativeSerializer(_) => {
             unreachable!("static-only compiler values have no machine representation")
+        }
+        CompilerType::SerializationStream(_) => {
+            unreachable!("SerializationStream function boundaries are not admitted")
         }
         CompilerType::Version => {
             unreachable!("Version function boundaries are not admitted")
@@ -11051,6 +11221,47 @@ mod tests {
         let debug_llvm = Generator::new(&debug_program, "lint-scope-debug.t").emit();
         assert!(debug_llvm.contains("!DIEnumerator(name: \"<namespace root>\", value: 0)"));
         assert!(debug_llvm.contains("!DIEnumerator(name: \"<namespace lang lint>\", value: 1)"));
+    }
+
+    #[test]
+    fn embeds_and_validates_canonical_native_serialization() {
+        // TOPAL-SER-HEADER-001 through TOPAL-SER-DESER-001,
+        // TOPAL-COMPILER-NATIVE-SERIALIZATION-001,
+        // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/native-serialization.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "native-serialization.t").emit();
+
+        assert!(llvm.contains("%topal.SerializationStreamStorage = type { ptr, i64 }"));
+        assert!(llvm.contains(&llvm_bytes(b"TOPALSER")));
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.serialization.make")
+                .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches("call void @topal.runtime.serialization.verify")
+                .count(),
+            1
+        );
+        assert!(llvm.contains("%copy = call ptr @topal.platform.allocate(i64 %length)"));
+        assert!(llvm.contains("%actual.byte = load i8, ptr %actual.pointer"));
+        assert!(llvm.contains("%expected.byte = load i8, ptr %expected.pointer"));
+        assert!(llvm.contains("define internal void @topal.runtime.u64.print"));
+        assert!(llvm.contains("name: \"SerializationStream\""));
+        assert!(llvm.contains("name: \"TopalSerializationStreamHeader\""));
+        assert!(llvm.contains("name: \"byte_count\""));
+        assert!(!llvm.contains("declare ptr @serialize"));
+        assert!(!llvm.contains("declare ptr @deserialize"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let display =
+            analyze_for_compiler("use language (version is v0.1)\nv0.1 (lang serialize) true\n")
+                .unwrap();
+        let display_llvm = Generator::new(&display, "native-stream-display.t").emit();
+        assert!(display_llvm.contains("call void @topal.runtime.u64.print(i64 "));
     }
 
     #[test]

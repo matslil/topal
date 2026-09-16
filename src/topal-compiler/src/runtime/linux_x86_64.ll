@@ -12,6 +12,7 @@
 %topal.OptionalStorage = type { i64, ptr }
 %topal.ErrorStorage = type { ptr, i32, i32, ptr, ptr, ptr, i64, i64 }
 %topal.SourceLocationStorage = type { ptr, ptr }
+%topal.SerializationStreamStorage = type { ptr, i64 }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -66,6 +67,74 @@ failure:
   unreachable
 }
 
+define internal ptr @topal.runtime.serialization.make(ptr %data, i64 %length) nounwind noinline {
+entry:
+  %stream = call ptr @topal.platform.allocate(i64 16)
+  %data.pointer = getelementptr %topal.SerializationStreamStorage, ptr %stream, i32 0, i32 0
+  %length.pointer = getelementptr %topal.SerializationStreamStorage, ptr %stream, i32 0, i32 1
+  %empty = icmp eq i64 %length, 0
+  br i1 %empty, label %publish.empty, label %copy.start
+copy.start:
+  %copy = call ptr @topal.platform.allocate(i64 %length)
+  br label %copy.loop
+copy.loop:
+  %index = phi i64 [ 0, %copy.start ], [ %next, %copy.loop ]
+  %source.pointer = getelementptr i8, ptr %data, i64 %index
+  %target.pointer = getelementptr i8, ptr %copy, i64 %index
+  %byte = load i8, ptr %source.pointer, align 1
+  store i8 %byte, ptr %target.pointer, align 1
+  %next = add i64 %index, 1
+  %complete = icmp eq i64 %next, %length
+  br i1 %complete, label %publish.copy, label %copy.loop
+publish.copy:
+  store ptr %copy, ptr %data.pointer, align 8
+  br label %publish.length
+publish.empty:
+  store ptr null, ptr %data.pointer, align 8
+  br label %publish.length
+publish.length:
+  store i64 %length, ptr %length.pointer, align 8
+  ret ptr %stream
+}
+
+define internal void @topal.runtime.serialization.verify(ptr %stream, ptr %expected, i64 %expected.length) nounwind noinline {
+entry:
+  %stream.valid = icmp ne ptr %stream, null
+  br i1 %stream.valid, label %load, label %failure
+load:
+  %data.pointer = getelementptr %topal.SerializationStreamStorage, ptr %stream, i32 0, i32 0
+  %length.pointer = getelementptr %topal.SerializationStreamStorage, ptr %stream, i32 0, i32 1
+  %data = load ptr, ptr %data.pointer, align 8
+  %length = load i64, ptr %length.pointer, align 8
+  %length.matches = icmp eq i64 %length, %expected.length
+  br i1 %length.matches, label %check.empty, label %failure
+check.empty:
+  %empty = icmp eq i64 %expected.length, 0
+  br i1 %empty, label %done, label %check.pointers
+check.pointers:
+  %data.valid = icmp ne ptr %data, null
+  %expected.valid = icmp ne ptr %expected, null
+  %pointers.valid = and i1 %data.valid, %expected.valid
+  br i1 %pointers.valid, label %loop, label %failure
+loop:
+  %index = phi i64 [ 0, %check.pointers ], [ %next, %advance ]
+  %actual.pointer = getelementptr i8, ptr %data, i64 %index
+  %expected.pointer = getelementptr i8, ptr %expected, i64 %index
+  %actual.byte = load i8, ptr %actual.pointer, align 1
+  %expected.byte = load i8, ptr %expected.pointer, align 1
+  %matches = icmp eq i8 %actual.byte, %expected.byte
+  br i1 %matches, label %advance, label %failure
+advance:
+  %next = add i64 %index, 1
+  %complete = icmp eq i64 %next, %expected.length
+  br i1 %complete, label %done, label %loop
+failure:
+  call void @topal.platform.exit(i64 70)
+  unreachable
+done:
+  ret void
+}
+
 define internal void @topal.platform.write_all(ptr %buffer, i64 %length) nounwind noinline {
 entry:
   %empty = icmp eq i64 %length, 0
@@ -90,6 +159,34 @@ failure:
   call void @topal.platform.exit(i64 74)
   unreachable
 done:
+  ret void
+}
+
+define internal void @topal.runtime.u64.print(i64 %value) nounwind noinline {
+entry:
+  %buffer = alloca [20 x i8], align 1
+  %zero = icmp eq i64 %value, 0
+  br i1 %zero, label %write.zero, label %convert
+write.zero:
+  %zero.pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 19
+  store i8 48, ptr %zero.pointer, align 1
+  call void @topal.platform.write_all(ptr %zero.pointer, i64 1)
+  ret void
+convert:
+  %remaining = phi i64 [ %value, %entry ], [ %quotient, %convert ]
+  %position = phi i64 [ 20, %entry ], [ %next.position, %convert ]
+  %digit = urem i64 %remaining, 10
+  %quotient = udiv i64 %remaining, 10
+  %next.position = sub i64 %position, 1
+  %pointer = getelementptr [20 x i8], ptr %buffer, i64 0, i64 %next.position
+  %digit.byte = trunc i64 %digit to i8
+  %ascii = add i8 %digit.byte, 48
+  store i8 %ascii, ptr %pointer, align 1
+  %complete = icmp eq i64 %quotient, 0
+  br i1 %complete, label %write, label %convert
+write:
+  %length = sub i64 20, %next.position
+  call void @topal.platform.write_all(ptr %pointer, i64 %length)
   ret void
 }
 
