@@ -1006,17 +1006,62 @@ the compiler SHALL hard-code no AMD64 register convention. DWARF and GDB SHALL
 expose the complete Generator and each yielded String while its action executes,
 plus the Topal entry frame.
 
-Other input, yield, resume, or final classifiers; multiple parameters; computed
-yields; intervening or post-suspension body state; close handling; nested or
-ordinary-function construction; Generator parameter/result transfer; repeated
-consumption; abandonment; libraries; and external boundaries SHALL remain
-unsupported. The lowering SHALL introduce no Generator object or semantic state
-allocation, dispatcher, callback, indirect call, unwind dependency, C/C++
-runtime, other-language standard library, needed library, dynamic relocation,
-public/library calling convention or Generator ABI, or native-ABI revision.
+Other input, yield, or resume classifiers; final classifiers beyond the exact
+String result admitted by `TOPAL-COMPILER-GENERATOR-FINAL-STRING-001`; multiple
+parameters; computed yields; intervening or post-suspension body state; close
+handling; nested or ordinary-function construction; Generator parameter/result
+transfer; repeated consumption; abandonment; libraries; and external boundaries
+SHALL remain unsupported. The lowering SHALL introduce no Generator object or
+semantic state allocation, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+native-ABI revision.
 Future compiled-library metadata SHALL encode the initial and direction
 classifiers independently, ordered per-yield values and provenance, declaration,
 suspension/final graph, construction/action sites, capture/effect evidence,
+ownership/consumption/close state, and target adapters rather than expose the
+private token or checked-program node layout.
+
+### TOPAL-COMPILER-GENERATOR-FINAL-STRING-001 — Distinct final String
+
+The compiler SHALL admit a root custom generator with one named String initial
+parameter and directions `Generator String Unit String`. Its body SHALL contain
+one or more consecutive discarded String yields in the forms admitted by
+`TOPAL-COMPILER-GENERATOR-STRING-YIELD-001`, followed by one exact String literal
+as its distinct final expression. One currently admitted String expression SHALL
+start the generator, and the fresh result SHALL be bound and consumed exactly
+once by a String-to-Unit foreach action whose expression result is the final
+String.
+
+The checked program SHALL retain the final String expression and classifier
+separately from the initial value, ordered yield provenance, Unit resume
+direction, declaration and suspension spans, action, and ownership edge.
+Application SHALL evaluate the initial expression exactly once. Traversal SHALL
+deliver every yield, invoke its action, resume with Unit, and only then
+materialize and return the final String. This order SHALL hold with LLVM
+optimization disabled and SHALL NOT depend on folding, inlining, or dead-code
+elimination.
+
+On Linux x86-64, the input, yielded, and final values SHALL use the existing
+`topal-native/6` String descriptor while the root-local Generator remains a
+compiler-private `i32` ownership token. LLVM SHALL select target data layout and
+instruction placement; the compiler SHALL hard-code no AMD64 register
+convention. DWARF and GDB SHALL expose the complete
+`Generator String Unit String` classifier and value, the yielded String during
+its action, the final expression source location, and the Topal entry frame.
+
+Nonliteral or initial-derived final values; other input, yield, resume, or final
+classifiers; multiple parameters; computed yields; intervening body state;
+close handling; nested or ordinary-function construction; Generator
+parameter/result transfer; repeated consumption; abandonment; libraries; and
+external boundaries SHALL remain unsupported. The lowering SHALL introduce no
+Generator object or semantic state allocation, dispatcher, callback, indirect
+call, unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator
+ABI, or native-ABI revision. Future compiled-library metadata SHALL encode the
+initial and direction classifiers independently, ordered yield provenance, the
+distinct final-value expression and provenance, declaration, suspension/final
+graph, construction/action sites, capture/effect evidence,
 ownership/consumption/close state, and target adapters rather than expose the
 private token or checked-program node layout.
 

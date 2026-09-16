@@ -632,6 +632,21 @@ classifiers, ordered yield-value provenance, suspension/final graph,
 construction/action sites, captures/effects, ownership/close state, and target
 adapter requirements rather than either compiler-session representation.
 
+The next value-continuation slice carries an exact distinct final String through
+`Generator String Unit String`. The checked graph keeps that final expression
+and classifier separate from the once-evaluated input, ordered yields, and Unit
+resume edges. O0 traversal expands each yield/action/resume before creating the
+final immutable String descriptor, so source semantics do not depend on an LLVM
+optimization or a semantic continuation allocation. The full Generator
+classifier, private `i32` ownership token, yielded value, final-expression source
+location, and entry frame remain represented in DWARF. LLVM retains control of
+target layout and register placement, and the Linux runtime remains Topal-owned
+allocator/syscall code with no C/C++ standard library. Compiled libraries must
+eventually serialize independent direction classifiers, ordered yields, the
+distinct final-value expression and provenance, graph sites, captures/effects,
+ownership/close state, and target adapters instead of compile-session nodes or
+tokens.
+
 Closed universal casing, full case folding, NFC/NFD normalization, and
 canonical equivalence follow the same frontend/runtime boundary. The checked
 frontend evaluates them through `topal-source`, whose Unicode data is pinned by
