@@ -5444,6 +5444,81 @@
       "cpu_time_ns": 5969960,
       "memory_peak_bytes": 18366464,
       "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_function_local_custom_generator_close_handler": {
+      "cpu_time_ns": 6088420,
+      "memory_peak_bytes": 18284544,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_close_handler_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 324547520,
+      "memory_peak_bytes": 58077184,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_function_local_custom_generator_close_handler": {
+      "cpu_time_ns": 5921280,
+      "memory_peak_bytes": 18436096,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_qualified_custom_generator_close_code_pattern": {
+      "cpu_time_ns": 5900639,
+      "memory_peak_bytes": 18292736,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::custom_generator_close_code_pattern_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 325630480,
+      "memory_peak_bytes": 58183680,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_qualified_custom_generator_close_code_pattern": {
+      "cpu_time_ns": 6777200,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_custom_generator_function_result_transfer": {
+      "cpu_time_ns": 6038420,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::returned_custom_generator_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 321865800,
+      "memory_peak_bytes": 58425344,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_custom_generator_function_result_transfer": {
+      "cpu_time_ns": 9479139,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_custom_generator_function_parameter_transfer": {
+      "cpu_time_ns": 5603579,
+      "memory_peak_bytes": 18132992,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::transferred_custom_generator_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 318209580,
+      "memory_peak_bytes": 58544128,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_custom_generator_function_parameter_transfer": {
+      "cpu_time_ns": 11055739,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
+    },
+    "topal-compiler::lib:topal_compiler::codegen::tests::emits_custom_generator_parameter_close_without_runtime_state": {
+      "cpu_time_ns": 6190120,
+      "memory_peak_bytes": 18214912,
+      "samples_per_test": 50
+    },
+    "topal-compiler::test:cli::transferred_custom_generator_close_is_freestanding_and_debuggable": {
+      "cpu_time_ns": 323406919,
+      "memory_peak_bytes": 58142720,
+      "samples_per_test": 50
+    },
+    "topal-language::lib:topal_language::compiler_model::tests::models_custom_generator_parameter_close_transfer": {
+      "cpu_time_ns": 9864280,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 50
     }
   }
 }
