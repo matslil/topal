@@ -9287,3 +9287,113 @@ fn dynamic_modular_results_are_freestanding_and_debuggable() {
     );
     assert!(text.contains("topal.main"), "{text}");
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One GDB session verifies both overload selections and both typed final bindings.
+fn custom_generator_overloads_are_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-OVERLOAD-001, TOPAL-GENERATOR-FOREACH-RESULT-001,
+    // TOPAL-COMPILER-GENERATOR-OVERLOAD-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-overloads");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-overloads.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(\"unary\", \"binary\")\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-overloads.t:20",
+            "-ex",
+            "break custom-generator-overloads.t:29",
+            "-ex",
+            "break topal.runtime.string.print",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis 'binary-generated'",
+            "-ex",
+            "print 'binary-generated'",
+            "-ex",
+            "whatis 'unary-generated'",
+            "-ex",
+            "print 'unary-generated'",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "whatis suffix",
+            "-ex",
+            "print suffix",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis 'unary-result'",
+            "-ex",
+            "print 'unary-result'",
+            "-ex",
+            "whatis 'binary-result'",
+            "-ex",
+            "print 'binary-result'",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = enum Generator String Unit String",
+        "<Generator String Unit String>",
+        "type = enum Generator Int Unit String",
+        "<Generator Int Unit String>",
+        "type = Int",
+        "$3 = 7",
+        "type = String",
+        "$4 = \"item\"",
+        "$5 = \"item\"",
+        "$6 = \"unary\"",
+        "$7 = \"binary\"",
+        "custom-generator-overloads.t:20",
+        "custom-generator-overloads.t:29",
+        "custom-generator-overloads.t:30",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}

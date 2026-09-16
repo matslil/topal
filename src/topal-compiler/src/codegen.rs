@@ -176,12 +176,18 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         }
         CompilerExpressionKind::CustomValueGenerator {
             initial,
+            additional_initials,
+            prefix,
             yields,
             continuations,
             result,
             ..
         } => {
             expression_uses_extended_debug(initial)
+                || additional_initials
+                    .iter()
+                    .any(expression_uses_extended_debug)
+                || block_uses_extended_debug(prefix)
                 || yields.iter().any(|yielded| match yielded {
                     CompilerGeneratorYield::Initial(_) => false,
                     CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
@@ -206,6 +212,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         }
         CompilerExpressionKind::CustomValueForeach {
             source,
+            prefix,
             yields,
             continuations,
             body,
@@ -213,6 +220,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             ..
         } => {
             expression_uses_extended_debug(source)
+                || block_uses_extended_debug(prefix)
                 || yields.iter().any(|yielded| match yielded {
                     CompilerGeneratorYield::Initial(_) => false,
                     CompilerGeneratorYield::Value(value) => expression_uses_extended_debug(value),
@@ -1193,6 +1201,7 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: None,
+                    captured_additional_initials: Vec::new(),
                 }
             }
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
@@ -1246,10 +1255,19 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: None,
+                    captured_additional_initials: Vec::new(),
                 }
             }
-            CompilerExpressionKind::CustomValueGenerator { initial, .. } => {
+            CompilerExpressionKind::CustomValueGenerator {
+                initial,
+                additional_initials,
+                ..
+            } => {
                 let initial = self.emit_expression(initial, body, environment);
+                let additional_initials = additional_initials
+                    .iter()
+                    .map(|initial| self.emit_expression(initial, body, environment))
+                    .collect();
                 let CompilerType::Generator(generator) = &expression.value_type else {
                     unreachable!("checked custom construction retains its Generator type")
                 };
@@ -1257,6 +1275,7 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: Some(Box::new(initial)),
+                    captured_additional_initials: additional_initials,
                 }
             }
             CompilerExpressionKind::CustomCharacterForeach {
@@ -1308,6 +1327,7 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: None,
+                    captured_additional_initials: Vec::new(),
                 }
             }
             CompilerExpressionKind::GeneratorTakeWhile { generator, .. } => {
@@ -1319,6 +1339,7 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: None,
+                    captured_additional_initials: Vec::new(),
                 }
             }
             CompilerExpressionKind::UnfoldGenerator { seed, .. } => {
@@ -1330,6 +1351,7 @@ impl<'a> Generator<'a> {
                     value: "0".into(),
                     generator: generator.clone(),
                     captured_initial: None,
+                    captured_additional_initials: Vec::new(),
                 }
             }
             CompilerExpressionKind::IterateGeneratorForeach {
@@ -2272,6 +2294,7 @@ impl<'a> Generator<'a> {
                         ),
                         generator: generator.clone(),
                         captured_initial: None,
+                        captured_additional_initials: Vec::new(),
                     },
                     CompilerType::Version => {
                         unreachable!("Version function results are not admitted")
@@ -5447,6 +5470,7 @@ impl<'a> Generator<'a> {
                 ),
                 generator: generator.clone(),
                 captured_initial: None,
+                captured_additional_initials: Vec::new(),
             },
             LlValue::Range { endpoint, .. } => {
                 let endpoint = endpoint.clone();
@@ -6478,6 +6502,7 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Ordered captures, suspensions, action scopes, and final-value debug lifetimes remain adjacent.
     fn emit_custom_value_foreach(
         &mut self,
         traversal: &CompilerExpression,
@@ -6488,6 +6513,8 @@ impl<'a> Generator<'a> {
             source,
             declaration_span,
             initial_parameter,
+            additional_initial_parameters,
+            prefix,
             yields,
             continuations,
             explicit_return,
@@ -6500,6 +6527,50 @@ impl<'a> Generator<'a> {
         };
         let source = self.emit_expression(source, body, environment);
         let initial = source.generator_initial().clone();
+        let additional_initials = source.generator_additional_initials().to_vec();
+        let traversal_parent_scope = body.subprogram;
+        let mut generator_environment = environment.clone();
+        generator_environment.insert(initial_parameter.name.clone(), initial.clone());
+        for (parameter, value) in additional_initial_parameters
+            .iter()
+            .zip(&additional_initials)
+        {
+            generator_environment.insert(parameter.name.clone(), value.clone());
+        }
+        if !additional_initial_parameters.is_empty() || !prefix.statements.is_empty() {
+            body.subprogram = self
+                .debug
+                .lexical_block(*declaration_span, traversal_parent_scope);
+            for (parameter, value) in std::iter::once(initial_parameter.as_ref())
+                .chain(additional_initial_parameters)
+                .zip(std::iter::once(&initial).chain(&additional_initials))
+            {
+                let variable = self.debug.local(
+                    &parameter.name,
+                    parameter.span,
+                    &parameter.value_type,
+                    body.subprogram,
+                );
+                let llvm_type = llvm_value_type(&parameter.value_type);
+                let alignment = target_value_layout(&parameter.value_type).alignment / 8;
+                let address = body.instruction(
+                    &format!("alloca {llvm_type}, align {alignment}"),
+                    parameter.span,
+                    &mut self.debug,
+                );
+                let location = self.debug.location(parameter.span, body.subprogram);
+                body.debug_declare(&address, variable, location);
+                let operand =
+                    self.emit_machine_operand(value, &parameter.value_type, body, parameter.span);
+                body.effect(
+                    &format!("store {operand}, ptr {address}, align {alignment}"),
+                    parameter.span,
+                    &mut self.debug,
+                );
+            }
+            let prefix_value = self.emit_block(prefix, body, &mut generator_environment);
+            debug_assert!(matches!(prefix_value, LlValue::Unit));
+        }
         let continuation_debug = (!continuations.is_empty()).then(|| {
             let scope = self.debug.lexical_block(*declaration_span, body.subprogram);
             let variable = self.debug.local(
@@ -6510,14 +6581,27 @@ impl<'a> Generator<'a> {
             );
             (scope, variable)
         });
-        let debug_address = (!yields.is_empty() && !parameter.discarded)
-            .then(|| self.emit_custom_value_action_debug_address(parameter, traversal.span, body));
+        let generator_scope = body.subprogram;
+        let action_scope = if additional_initial_parameters.is_empty() {
+            generator_scope
+        } else {
+            self.debug
+                .lexical_block(parameter.span, traversal_parent_scope)
+        };
+        let debug_address = (!yields.is_empty() && !parameter.discarded).then(|| {
+            body.subprogram = action_scope;
+            let address =
+                self.emit_custom_value_action_debug_address(parameter, traversal.span, body);
+            body.subprogram = generator_scope;
+            address
+        });
         for (index, yielded) in yields.iter().enumerate() {
             let (value, span) = match yielded {
                 CompilerGeneratorYield::Initial(span) => (initial.clone(), *span),
-                CompilerGeneratorYield::Value(value) => {
-                    (self.emit_expression(value, body, environment), value.span)
-                }
+                CompilerGeneratorYield::Value(value) => (
+                    self.emit_expression(value, body, &generator_environment),
+                    value.span,
+                ),
             };
             if let Some((address, alignment)) = &debug_address {
                 let operand = self.emit_machine_operand(&value, &parameter.value_type, body, span);
@@ -6549,8 +6633,10 @@ impl<'a> Generator<'a> {
             if !parameter.discarded {
                 action_environment.insert(parameter.name.clone(), value);
             }
+            body.subprogram = action_scope;
             let action_value = self.emit_block(action, body, &mut action_environment);
             debug_assert!(matches!(action_value, LlValue::Unit));
+            body.subprogram = generator_scope;
             if let Some(continuation) = continuations
                 .iter()
                 .find(|continuation| continuation.after_resumptions == index + 1)
@@ -6561,28 +6647,27 @@ impl<'a> Generator<'a> {
                     let location = self.debug.location(initial_parameter.span, body.subprogram);
                     body.debug_value(&initial, variable, location);
                 }
-                let mut continuation_environment = environment.clone();
-                continuation_environment.insert(initial_parameter.name.clone(), initial.clone());
+                let mut continuation_environment = generator_environment.clone();
                 let continuation_value =
                     self.emit_block(&continuation.body, body, &mut continuation_environment);
                 debug_assert!(matches!(continuation_value, LlValue::Unit));
                 body.subprogram = parent_scope;
             }
         }
-        let parent_scope = body.subprogram;
-        self.emit_custom_value_final_debug(
-            *declaration_span,
-            initial_parameter,
-            &initial,
-            *explicit_return,
-            result.span,
-            traversal.span,
-            body,
-        );
-        let mut result_environment = environment.clone();
-        result_environment.insert(initial_parameter.name.clone(), initial);
+        if additional_initial_parameters.is_empty() {
+            self.emit_custom_value_final_debug(
+                *declaration_span,
+                initial_parameter,
+                &initial,
+                *explicit_return,
+                result.span,
+                traversal.span,
+                body,
+            );
+        }
+        let result_environment = generator_environment;
         let result = self.emit_expression(result, body, &result_environment);
-        body.subprogram = parent_scope;
+        body.subprogram = traversal_parent_scope;
         result
     }
 
@@ -6717,6 +6802,7 @@ enum LlValue {
         value: String,
         generator: CompilerGeneratorType,
         captured_initial: Option<Box<Self>>,
+        captured_additional_initials: Vec<Self>,
     },
     Sum {
         tag: String,
@@ -6847,6 +6933,17 @@ impl LlValue {
         initial
     }
 
+    fn generator_additional_initials(&self) -> &[Self] {
+        let Self::Generator {
+            captured_additional_initials,
+            ..
+        } = self
+        else {
+            unreachable!("checked custom value Generator retains its captured inputs")
+        };
+        captured_additional_initials
+    }
+
     fn string(&self) -> &str {
         let Self::String(value) = self else {
             unreachable!("checked value is String")
@@ -6961,6 +7058,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             value: "0".into(),
             generator: generator.clone(),
             captured_initial: None,
+            captured_additional_initials: Vec::new(),
         },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
@@ -8716,6 +8814,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             generator: generator.clone(),
             captured_initial: None,
+            captured_additional_initials: Vec::new(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
@@ -12839,5 +12938,67 @@ mod tests {
         assert!(llvm.contains(
             "DW_TAG_typedef, name: \"Result (ByteCounter, lang arithmetic ArithmeticErrorCode)\""
         ));
+    }
+
+    #[test]
+    fn emits_ordered_custom_generator_overloads_and_typed_results() {
+        // TOPAL-GENERATOR-OVERLOAD-001, TOPAL-GENERATOR-FOREACH-RESULT-001,
+        // TOPAL-COMPILER-GENERATOR-OVERLOAD-001
+        let source = include_str!("../../../examples/language/custom-generator-overloads.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-overloads.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        let unary_action = main
+            .find("call ptr @topal.runtime.int.add(ptr @.topal.int.0")
+            .expect("unary selection executes its Int action");
+        let unary_final = main[unary_action..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| unary_action + offset)
+            .expect("unary traversal constructs its final String after the action");
+        let binary_input = main[unary_final + 1..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| unary_final + 1 + offset)
+            .expect("binary application constructs suffix once");
+        let binary_prefix = main[binary_input..]
+            .find("call ptr @topal.runtime.int.add")
+            .map(|offset| binary_input + offset)
+            .expect("binary declaration prefix executes before its yield");
+        let binary_action = main[binary_prefix..]
+            .find("call i1 @topal.runtime.string.is.empty")
+            .map(|offset| binary_prefix + offset)
+            .expect("binary String action executes after its prefix and yield");
+        let binary_final = main[binary_action..]
+            .find("call ptr @topal.runtime.string.make")
+            .map(|offset| binary_action + offset)
+            .expect("binary traversal constructs its final String last");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("both bound results reach Topal-owned output");
+        assert!(
+            unary_action < unary_final
+                && unary_final < binary_input
+                && binary_input < binary_prefix
+                && binary_prefix < binary_action
+                && binary_action < binary_final
+                && binary_final < output
+        );
+        assert_eq!(main.matches("#dbg_value(i32 0").count(), 2);
+        for expected in [
+            "DILocalVariable(name: \"unary-generated\"",
+            "DILocalVariable(name: \"unary-result\"",
+            "DILocalVariable(name: \"binary-generated\"",
+            "DILocalVariable(name: \"binary-result\"",
+            "DILocalVariable(name: \"suffix\"",
+            "name: \"Generator Int Unit String\"",
+            "name: \"Generator String Unit String\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
     }
 }

@@ -97,6 +97,7 @@ evidence.
 | 5ao | exact absent recursive `Optional (Int, String)` input/yield, tag equality action, resumption, and absent final with full-classifier debugging | complete |
 | 5ap | exact Boolean input/yield/action and post-resume Boolean decision selecting a distinct final String with branch and value debugging | complete |
 | 5aq | exact recursive nominal `(Optional Choice, Result (Choice, ArithmeticErrorCode))` input/yield, guarded structural action, resumption, and distinct final alternatives with complete recursive debugging | complete |
+| 5at | source-ordered unary and positional-product custom Generator overload selection, ordered multi-input capture, distinct yield directions, and typed foreach final-result bindings with complete debugging | complete |
 | 5aj | exact `(Int, String)` input, yield, equality action, resumption, and distinct final product with ordered aggregate debugging | complete |
 | 5ai | exact nominal `Choice` input, yield, equality action, resumption, and distinct final alternative with ordered private-value debugging | complete |
 | 5ah | exact `Nat` input, yield, increment action, resumption, and incremented final with ordered private-value debugging | complete |

@@ -2152,6 +2152,56 @@ This realizes `TOPAL-COMPILER-GENERATOR-LOCAL-CLOSE-001`,
 `TOPAL-GENERATOR-ERROR-CODE-001`, `TOPAL-FUNCTION-ORDINARY-001`, and
 `TOPAL-TYPE-ENUM-001` for compiler increment 5as.
 
+## TOPAL-COMP-GENERATOR-OVERLOAD-001 — Ordered inputs and typed traversal results
+
+The checked compiler shall admit the unchanged
+`examples/language/custom-generator-overloads.t` regression. It declares, in
+source order, one `select (Int)` overload yielding Int and one
+`select (Int, String)` overload yielding String; both resume with Unit and
+return String. Application shall evaluate its argument once, flatten an
+unlabeled positional product for the binary candidate, select the first
+complete ordered classifier match, and bind the selected operands in
+declaration order. The admitted calls shall use exact `7` and `(7, "item")`
+inputs respectively. A duplicate ordered input signature shall be rejected even
+when its yield, resume, result, or body differs.
+
+The checked model shall retain each overload as a distinct declaration with
+ordered input classifiers, parameters, captured values, yield/result
+directions, body graph, declaration provenance, and ownership edge. The unary
+traversal shall yield its Int input, run the exact increment action, resume
+with Unit, and bind final String `"unary"`. The binary traversal shall observe
+its Int prefix before yielding the captured suffix, run the exact String
+emptiness action, resume with Unit, and bind final String `"binary"`. Each
+typed foreach result binding shall be a fresh ordinary root binding available
+only after traversal completion. All ordering shall hold at LLVM O0 without
+folding, inlining, or dead-code elimination.
+
+On Linux x86-64, the overload set and captured input vectors shall remain
+checked compile-session data. Each root-local Generator shall use the existing
+private `i32` ownership token, while Int and String retain their Topal-owned
+pointer representations. LLVM shall derive physical placement and alignment
+from the target triple and data layout; no AMD64 register convention shall be
+hard-coded. Target-aligned debugger-only input and action shadows shall expose
+both Generator classifiers, ordered binary inputs, yielded values, typed final
+bindings, source locations, and the Topal entry frame in DWARF/GDB.
+
+Other arities, classifiers, input values, bodies, directions, argument packaging, actions,
+results, nested/function construction, parameter/result transfer, repeated
+consumption, abandonment, close handling, libraries, and external boundaries
+shall remain rejected before LLVM. This shall add no semantic Generator object
+or state allocation, overload dispatcher, callback, indirect call, unwind
+dependency, foreign runtime, C/C++ runtime, other-language standard library,
+needed library, dynamic relocation, public/library calling convention,
+Generator ABI, or `topal-native/6` revision. Future compiled-library metadata
+shall encode declaration order, complete ordered input classifiers, packaging,
+independent directions, body and suspension graphs, captures, effects,
+ownership/consumption/close state, typed final-result provenance,
+native-representation identity, and target adapters rather than private tokens,
+debug slots, pointer layouts, or checked-program nodes. This realizes
+`TOPAL-COMPILER-GENERATOR-OVERLOAD-001`, `TOPAL-GENERATOR-OVERLOAD-001`,
+`TOPAL-GENERATOR-FOREACH-RESULT-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`, and
+`TOPAL-TYPE-PRODUCT-001` for compiler increment 5at.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named

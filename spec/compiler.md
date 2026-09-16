@@ -1961,6 +1961,49 @@ ownership/consumption state, native-representation identity, and target
 adapters rather than expose private symbols, tags, tokens, debug slots, object
 layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-OVERLOAD-001 — Ordered overload selection and result binding
+
+The compiler SHALL admit the shared `custom-generator-overloads.t` regression
+with source-ordered `select (Int)` and `select (Int, String)` declarations.
+Application SHALL evaluate its argument exactly once, flatten one unlabeled
+positional product for a multi-input candidate, select the first declaration
+whose complete ordered input classifiers accept the argument, and bind every
+selected operand in declaration order. The admitted unary and binary calls
+SHALL use exact `7` and `(7, "item")` inputs. A duplicate complete input signature
+SHALL be rejected independently of yield, resume, result, or body differences.
+
+The unary instance SHALL yield its captured Int, execute the admitted Int
+action, resume with Unit, and bind its final String. The binary instance SHALL
+execute its admitted Int prefix, yield its captured String suffix, execute the
+admitted String action, resume with Unit, and bind its final String. A foreach
+result classifier SHALL match the selected generator result classifier, and
+the fresh result binding SHALL become available only after traversal completes.
+The compiler SHALL retain declaration order, ordered parameters and captures,
+independent directions, body/suspension graph, final-result provenance, and
+the ownership edge as separate checked facts. The generated O0 instruction
+order SHALL NOT depend on an LLVM optimization.
+
+On Linux x86-64, overload selection and capture vectors SHALL remain compiler
+data. Generator values SHALL keep the private `i32` ownership token; admitted
+Int and String values SHALL keep their Topal-owned pointer representations.
+LLVM SHALL derive placement and alignment from the target triple and data
+layout. DWARF/GDB SHALL expose both selected Generator classifiers, ordered
+binary inputs, yielded action values, typed final-result bindings, and source
+frames through target-aligned debug-only shadows.
+
+Other overload arities, classifiers, input values, packages, bodies, directions, actions,
+results, nested/function construction, transfer, close paths, libraries, and
+external boundaries SHALL remain unsupported. The lowering SHALL introduce no
+semantic Generator object/state allocation, runtime overload dispatcher,
+callback, indirect call, unwind dependency, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention or Generator ABI, or native-ABI revision. Future compiled-library
+metadata SHALL encode source declaration order, complete ordered input
+classifiers and packaging, independent directions, body/suspension graphs,
+captures, effects, ownership/consumption/close state, typed result provenance,
+native-representation identity, and target adapters rather than private tokens,
+debug slots, object layouts, or checked-program nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`
