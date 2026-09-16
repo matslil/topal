@@ -1204,6 +1204,57 @@ and direction classifiers, declaration/construction/action sites,
 captures/effects, ownership/consumption/close state, and target adapters rather
 than expose the private token, debug shadow, or checked-program node layout.
 
+### TOPAL-COMPILER-GENERATOR-BOOLEAN-001 — Boolean generator directions
+
+The compiler SHALL admit a root custom generator with one named Boolean initial
+parameter and directions `Generator Boolean Unit Boolean` whose body consists
+only of one discarded `yield initial` followed by `not initial` as its distinct
+final expression. One currently admitted Boolean expression SHALL start the
+generator, and the fresh result SHALL be bound and consumed exactly once by a
+Boolean-to-Unit foreach action whose expression result is the final Boolean.
+
+The checked program SHALL retain the Boolean initial classifier separately from
+all three Generator directions, the initial-parameter yield and suspension, the
+typed final negation, action, and ownership edge. Application SHALL evaluate
+the initial expression exactly once. Traversal SHALL invoke the action exactly
+once with that retained Boolean, resume the generator with Unit, and only then
+evaluate the final negation against the captured initial value. This order
+SHALL hold with LLVM optimization disabled and SHALL NOT depend on folding,
+inlining, or dead-code elimination.
+
+Unoptimized LLVM IR SHALL retain the action negation before the final negation.
+Mandatory target instruction selection MAY omit the unused action result only
+because Boolean negation is total and effect-free; this SHALL NOT generalize to
+an action with an observable effect. The independently emitted debug lifetime
+anchor SHALL keep the yielded value inspectable even when no machine
+instruction is selected for that pure result.
+
+On Linux x86-64, each Boolean SHALL use LLVM `i1` in the existing private
+`topal-native/6` representation while the root-local Generator remains a
+compiler-private `i32` ownership token. A debug-only aligned `i1` stack shadow
+MAY anchor the yielded value's source lifetime without becoming semantic
+Generator state. LLVM SHALL select physical register or stack placement and
+instruction selection; the compiler SHALL hard-code no AMD64 register
+convention. DWARF and GDB SHALL expose the complete
+`Generator Boolean Unit Boolean` classifier and value, the yielded Boolean in
+the foreach action scope, the captured initial Boolean at the final expression,
+and the Topal entry frame.
+
+Literal, computed, or multiple yields; a final expression other than
+`not initial`; additional body statements; multiple parameters; other input,
+yield, resume, or final classifiers; close handling; nested or
+ordinary-function construction; Generator parameter/result transfer; repeated
+consumption; abandonment; libraries; and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no Generator object or semantic
+state allocation, Boolean helper, dispatcher, callback, indirect call, unwind
+dependency, C/C++ runtime, other-language standard library, needed library,
+dynamic relocation, public/library calling convention or Generator ABI, or
+native-ABI revision. Future compiled-library metadata SHALL encode independent
+initial and direction classifiers, ordered Boolean expression and
+yield/resume/final provenance, declaration/construction/action sites,
+captures/effects, ownership/consumption/close state, and target adapters rather
+than expose the private token, debug shadow, or checked-program node layout.
+
 ### TOPAL-COMPILER-FUNCTION-001 — Selected scalar function identities
 
 Within the admitted scalar-function subset, the compiler SHALL preserve
