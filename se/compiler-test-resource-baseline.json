@@ -1976,6 +1976,16 @@
       "cpu_time_ns": 157252,
       "memory_peak_bytes": 18518016,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/custom-generator-generic-function-boundaries.t": {
+      "cpu_time_ns": 125168120,
+      "memory_peak_bytes": 41672704,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/custom-generator-generic-function-boundaries.t": {
+      "cpu_time_ns": 140472,
+      "memory_peak_bytes": 18509824,
+      "samples_per_test": 500
     }
   }
 }

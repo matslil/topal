@@ -530,6 +530,7 @@ pub enum CompilerExpressionKind {
     },
     CustomValueForeach {
         source: Box<CompilerExpression>,
+        transferred_initial: Option<Box<CompilerExpression>>,
         declaration_span: Span,
         initial_parameter: Box<CompilerParameter>,
         additional_initial_parameters: Vec<CompilerParameter>,
@@ -5312,6 +5313,21 @@ fn generator_input_types(generator: &GeneratorSource) -> Vec<&CompilerType> {
         .collect()
 }
 
+fn exact_value_boundary_generator_source(source: &SourceText, generator: &GeneratorSource) -> bool {
+    source.slice(generator.name) == "numbers"
+        && generator.initial_parameter.name == "initial"
+        && generator.initial_parameter.value_type == CompilerType::Int
+        && generator.additional_initial_parameters.is_empty()
+        && generator.prefix.statements.is_empty()
+        && matches!(
+            generator.value_yields.as_deref(),
+            Some([CompilerGeneratorYield::Initial(_)])
+        )
+        && generator.value_continuations.is_empty()
+        && generator.explicit_return.is_none()
+        && exact_string(&generator.result).as_deref() == Some("done")
+}
+
 fn register_generator(
     source: &SourceText,
     generators: &mut BTreeMap<String, Vec<GeneratorSource>>,
@@ -5543,14 +5559,21 @@ fn exact_unary_int_string_generator_overload(
         ));
     };
     let final_value = exact_string_literal_expression(source, final_expression.span())?;
+    let final_string = exact_string(&final_value);
+    let exact_shape = (source.slice(name) == "select"
+        && source.slice(parameter.name) == "value"
+        && final_string.as_deref() == Some("unary"))
+        || (source.slice(name) == "numbers"
+            && source.slice(parameter.name) == "initial"
+            && final_string.as_deref() == Some("done"));
     if source.slice(*yield_operation) != "yield"
         || source.slice(*yield_value) != source.slice(parameter.name)
-        || exact_string(&final_value).as_deref() != Some("unary")
+        || !exact_shape
     {
         return Err(unsupported(
             source,
             span,
-            "unary overloaded generator outside yield value followed by unary",
+            "unary Int-to-String generator outside an admitted overload or function-boundary graph",
         ));
     }
     Ok(GeneratorSource {
@@ -7576,11 +7599,15 @@ impl Analyzer {
                     span,
                 } if kind == BlockKind::TopLevel
                     || (kind == BlockKind::Function
-                        && foreach_result.is_none()
                         && matches!(source, Expression::Identifier(name)
-                            if environment.get(self.source.slice(*name)).is_some_and(|facts|
-                                facts.storage_name == self.source.slice(*name)
-                                    && is_admitted_character_generator_type(&facts.value_type)))) =>
+                        if environment.get(self.source.slice(*name)).is_some_and(|facts|
+                            facts.storage_name == self.source.slice(*name)
+                                && ((foreach_result.is_none()
+                                    && is_admitted_character_generator_type(&facts.value_type))
+                                    || (foreach_result.is_some()
+                                        && is_admitted_value_boundary_generator_type(
+                                            &facts.value_type
+                                        )))))) =>
                 {
                     let value =
                         self.analyze_root_foreach(source, *binding, body, *span, environment)?;
@@ -7589,12 +7616,14 @@ impl Analyzer {
                             &value.kind,
                             CompilerExpressionKind::CustomValueForeach { result, .. }
                                 if matches!(exact_string(result).as_deref(), Some("unary" | "binary"))
+                                    || (kind == BlockKind::Function
+                                        && exact_string(result).as_deref() == Some("done"))
                         );
                         if value.value_type != CompilerType::Unit && !admitted_typed_result {
                             return Err(unsupported(
                                 &self.source,
                                 *span,
-                                "binding a non-Unit custom generator final result outside the admitted overload set",
+                                "binding a non-Unit custom generator final result outside admitted overload and function-boundary paths",
                             ));
                         }
                         let name_text = self.source.slice(*name).to_owned();
@@ -7624,7 +7653,11 @@ impl Analyzer {
                                 &value.value_type,
                             )?;
                         }
-                        let storage_name = format!("topal.root.{}.{}", name.start, name_text);
+                        let storage_name = if kind == BlockKind::TopLevel {
+                            format!("topal.root.{}.{}", name.start, name_text)
+                        } else {
+                            name_text.clone()
+                        };
                         let facts = BindingFacts {
                             storage_name: storage_name.clone(),
                             runtime_bound: true,
@@ -7639,10 +7672,12 @@ impl Analyzer {
                             static_capability: None,
                         };
                         environment.insert(name_text.clone(), facts.clone());
-                        self.root_bindings.insert(
-                            name_text.clone(),
-                            CompilerDataMemberFacts::from_binding(&facts, span.end),
-                        );
+                        if kind == BlockKind::TopLevel {
+                            self.root_bindings.insert(
+                                name_text.clone(),
+                                CompilerDataMemberFacts::from_binding(&facts, span.end),
+                            );
+                        }
                         declared.insert(name_text.clone());
                         lowered.push(CompilerStatement::Binding(CompilerBinding {
                             name: name_text,
@@ -8048,6 +8083,7 @@ impl Analyzer {
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::CustomValueForeach {
                     source: Box::new(source_value),
+                    transferred_initial: self.in_function.then_some(initial),
                     declaration_span,
                     initial_parameter,
                     additional_initial_parameters,
@@ -13411,8 +13447,11 @@ impl Analyzer {
                 "custom generator overload input outside exact 7 or (7, \"item\")",
             ));
         }
+        let admitted_function_boundary =
+            self.in_function && exact_value_boundary_generator_source(&self.source, &declaration);
         if self.in_function
             && (!declaration.prefix.statements.is_empty() || declaration.value_yields.is_some())
+            && !admitted_function_boundary
         {
             return Err(unsupported(
                 &self.source,
@@ -14159,37 +14198,49 @@ impl Analyzer {
         }
         let result_type = self.parse_classifier(declaration.result)?;
         let returns_character_generator = is_admitted_character_generator_type(&result_type);
-        if !compiler_function_result_supported(&result_type) && !returns_character_generator {
+        let returns_value_boundary_generator =
+            is_admitted_value_boundary_generator_type(&result_type);
+        let returns_generator = returns_character_generator || returns_value_boundary_generator;
+        if !compiler_function_result_supported(&result_type) && !returns_generator {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
                 "non-scalar function result",
             ));
         }
-        if returns_character_generator
+        let admitted_factory_parameter = matches!(
+            parameters.as_slice(),
+            [CompilerParameter {
+                discarded: false,
+                value_type: CompilerType::String | CompilerType::Character,
+                ..
+            }] if returns_character_generator
+        ) || matches!(
+            parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                discarded: false,
+                value_type: CompilerType::Int,
+                ..
+            }] if returns_value_boundary_generator && name == "initial"
+        );
+        if returns_generator
             && (self.in_function
                 || generalize_parameters
                 || declaration.is_static
-                || !matches!(
-                    parameters.as_slice(),
-                    [CompilerParameter {
-                        discarded: false,
-                        value_type: CompilerType::String | CompilerType::Character,
-                        ..
-                    }]
-                ))
+                || !admitted_factory_parameter)
         {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
-                "Character Generator result beyond one specialized ordinary String or Character function",
+                "Generator result beyond one admitted specialized ordinary factory",
             ));
         }
         let generator_parameters = parameters
             .iter()
-            .filter(|parameter| is_admitted_character_generator_type(&parameter.value_type))
+            .filter(|parameter| is_admitted_function_generator_type(&parameter.value_type))
             .collect::<Vec<_>>();
-        let character_generator_parameter = if generator_parameters.is_empty() {
+        let generator_parameter = if generator_parameters.is_empty() {
             None
         } else {
             let parameter = generator_parameters[0];
@@ -14206,20 +14257,21 @@ impl Analyzer {
             }
             Some(parameter.clone())
         };
-        let scoped_generator_value = if let Some(parameter) = &character_generator_parameter {
+        let scoped_generator_value = if let Some(parameter) = &generator_parameter {
             if self.in_function {
-                return Err(unsupported(
-                    &self.source,
-                    parameter.span,
-                    "nested Character Generator parameter transfer",
-                ));
+                let feature = if is_admitted_character_generator_type(&parameter.value_type) {
+                    "nested Character Generator parameter transfer"
+                } else {
+                    "nested Generator parameter transfer"
+                };
+                return Err(unsupported(&self.source, parameter.span, feature));
             }
             let argument = &arguments[0];
             let CompilerExpressionKind::Local(storage_name) = &argument.kind else {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
-                    "non-local Character Generator parameter transfer",
+                    "non-local Generator parameter transfer",
                 ));
             };
             let retained = self
@@ -14230,10 +14282,10 @@ impl Analyzer {
                     unsupported(
                         &self.source,
                         argument.span,
-                        "Character Generator parameter without closed provenance",
+                        "Generator parameter without closed provenance",
                     )
                 })?;
-            let custom_generator = matches!(
+            let custom_character_generator = matches!(
                 &retained.kind,
                 CompilerExpressionKind::CustomCharacterGenerator {
                     prefix,
@@ -14250,16 +14302,41 @@ impl Analyzer {
                         CompilerType::Unit | CompilerType::Character
                     )
             );
+            let custom_value_generator = matches!(
+                &retained.kind,
+                CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    prefix,
+                    yields,
+                    continuations,
+                    explicit_return: None,
+                    result,
+                    ..
+                } if declaration == "numbers"
+                    && initial_parameter.name == "initial"
+                    && initial_parameter.value_type == CompilerType::Int
+                    && exact_int(initial) == Some(BigInt::from(7))
+                    && additional_initial_parameters.is_empty()
+                    && prefix.statements.is_empty()
+                    && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                    && continuations.is_empty()
+                    && exact_string(result).as_deref() == Some("done")
+                    && is_admitted_value_boundary_generator_type(&retained.value_type)
+            );
+            let custom_generator = custom_character_generator || custom_value_generator;
             let custom_provenance = custom_generator.then(|| retained.clone());
             if !matches!(
-                retained.kind,
+                &retained.kind,
                 CompilerExpressionKind::StringCharactersGenerator { .. }
             ) && !custom_generator
             {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
-                    "Character Generator parameter beyond built-in traversal or one exact custom suspension",
+                    "Generator parameter beyond an admitted built-in or exact custom suspension",
                 ));
             }
             let previous = self
@@ -14285,10 +14362,10 @@ impl Analyzer {
         );
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
-        let character_generator_was_consumed = character_generator_parameter
+        let generator_was_consumed = generator_parameter
             .as_ref()
             .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
-        if character_generator_parameter.is_some() {
+        if generator_parameter.is_some() {
             self.consumed_generators = consumed_before_body;
         }
         if let Some((name, previous, _)) = scoped_generator_value {
@@ -14299,7 +14376,7 @@ impl Analyzer {
             }
         }
         let mut body = body?;
-        if let Some(parameter) = character_generator_parameter {
+        if let Some(parameter) = generator_parameter {
             let traversal_source = match (body.statements.as_slice(), &body.result) {
                 (
                     [
@@ -14324,17 +14401,36 @@ impl Analyzer {
                         ..
                     },
                 ) => Some(source.as_ref()),
+                (
+                    [
+                        CompilerStatement::Binding(CompilerBinding {
+                            name: binding_name,
+                            value:
+                                CompilerExpression {
+                                    kind: CompilerExpressionKind::CustomValueForeach { source, .. },
+                                    value_type: CompilerType::String,
+                                    ..
+                                },
+                            ..
+                        }),
+                    ],
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Local(result_name),
+                        value_type: CompilerType::String,
+                        ..
+                    },
+                ) if binding_name == "result" && result_name == "result" => Some(source.as_ref()),
                 _ => None,
             };
             let traverses_parameter = traversal_source.is_some_and(|source| {
                 matches!(source.kind, CompilerExpressionKind::Local(ref name)
                     if name == &parameter.name)
             });
-            let closes_parameter = !character_generator_was_consumed
+            let closes_parameter = !generator_was_consumed
                 && body.statements.is_empty()
                 && matches!(body.result.kind, CompilerExpressionKind::Unit)
                 && is_character_unit_generator_type(&parameter.value_type);
-            if character_generator_was_consumed && traverses_parameter {
+            if generator_was_consumed && traverses_parameter {
                 // Exhaustion consumes the transferred continuation; no close is delivered.
             } else if closes_parameter {
                 let close_span = body.result.span;
@@ -14389,9 +14485,9 @@ impl Analyzer {
                 &body.result.value_type,
             )?;
         }
-        let returned_generator_value = if returns_character_generator {
+        let returned_generator_value = if returns_generator {
             let [parameter] = parameters.as_slice() else {
-                unreachable!("checked Character Generator result has one scalar parameter")
+                unreachable!("checked Generator result has one scalar parameter")
             };
             let returns_fresh_generator = match (&parameter.value_type, &body.result.kind) {
                 (
@@ -14422,16 +14518,52 @@ impl Analyzer {
                             CompilerType::Unit | CompilerType::Character
                         )
                 }
+                (
+                    CompilerType::Int,
+                    CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        additional_initial_parameters,
+                        prefix,
+                        yields,
+                        continuations,
+                        explicit_return: None,
+                        result,
+                        ..
+                    },
+                ) => {
+                    returns_value_boundary_generator
+                        && declaration == "numbers"
+                        && initial_parameter.name == "initial"
+                        && initial_parameter.value_type == CompilerType::Int
+                        && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                        && additional_initial_parameters.is_empty()
+                        && prefix.statements.is_empty()
+                        && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                        && continuations.is_empty()
+                        && exact_string(result).as_deref() == Some("done")
+                }
                 _ => false,
             };
             if !body.statements.is_empty() || !returns_fresh_generator {
                 return Err(unsupported(
                     &self.source,
                     body.result.span,
-                    "Character Generator result beyond one fresh parameter-derived continuation",
+                    "Generator result beyond one fresh parameter-derived continuation",
                 ));
             }
-            Some(body.result.clone())
+            let mut returned = body.result.clone();
+            if returns_value_boundary_generator {
+                let CompilerExpressionKind::CustomValueGenerator { initial, .. } =
+                    &mut returned.kind
+                else {
+                    unreachable!("checked value Generator result retains its construction")
+                };
+                **initial = arguments[0].clone();
+            }
+            Some(returned)
         } else {
             None
         };
@@ -15864,6 +15996,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "GeneratorCharacterUnitCharacter" => {
             Some(character_generator_type(CompilerType::Character))
         }
+        "GeneratorIntUnitString" => Some(value_boundary_generator_type()),
         _ => None,
     }
 }
@@ -16186,7 +16319,7 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Scope | CompilerType::Function)
-        || is_admitted_character_generator_type(value_type)
+        || is_admitted_function_generator_type(value_type)
         || compiler_function_result_supported(value_type)
 }
 
@@ -16272,6 +16405,14 @@ fn int_unit_generator_type() -> CompilerType {
     })
 }
 
+fn value_boundary_generator_type() -> CompilerType {
+    CompilerType::Generator(CompilerGeneratorType {
+        yield_type: Box::new(CompilerType::Int),
+        resume_type: Box::new(CompilerType::Unit),
+        result_type: Box::new(CompilerType::String),
+    })
+}
+
 fn character_unit_generator_type() -> CompilerType {
     character_generator_type(CompilerType::Unit)
 }
@@ -16291,6 +16432,24 @@ fn is_character_unit_generator_type(value_type: &CompilerType) -> bool {
 fn is_admitted_character_generator_type(value_type: &CompilerType) -> bool {
     is_character_unit_generator_type(value_type)
         || is_character_generator_type_with_result(value_type, &CompilerType::Character)
+}
+
+fn is_admitted_value_boundary_generator_type(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Generator(CompilerGeneratorType {
+            yield_type,
+            resume_type,
+            result_type,
+        }) if yield_type.as_ref() == &CompilerType::Int
+            && resume_type.as_ref() == &CompilerType::Unit
+            && result_type.as_ref() == &CompilerType::String
+    )
+}
+
+fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
+    is_admitted_character_generator_type(value_type)
+        || is_admitted_value_boundary_generator_type(value_type)
 }
 
 fn is_character_generator_type_with_result(
@@ -25526,5 +25685,158 @@ mod tests {
             analyze_for_compiler(&altered_input).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // Factory and consumer ownership provenance form one boundary scenario.
+    fn models_custom_generator_generic_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+        // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+        // TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-generic-function-boundaries.t"
+        );
+        let program = analyze_for_compiler(source).unwrap();
+        let make = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .expect("called Generator factory is specialized");
+        assert!(matches!(
+            make.parameters.as_slice(),
+            [CompilerParameter {
+                name,
+                value_type: CompilerType::Int,
+                ..
+            }] if name == "initial"
+        ));
+        assert!(is_admitted_value_boundary_generator_type(&make.result_type));
+        assert!(make.body.statements.is_empty());
+        assert!(matches!(
+            &make.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueGenerator {
+                    declaration,
+                    initial_parameter,
+                    initial,
+                    additional_initial_parameters,
+                    prefix,
+                    yields,
+                    continuations,
+                    explicit_return: None,
+                    result,
+                    ..
+                },
+                ..
+            } if declaration == "numbers"
+                && initial_parameter.name == "initial"
+                && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "initial")
+                && additional_initial_parameters.is_empty()
+                && prefix.statements.is_empty()
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && exact_string(result).as_deref() == Some("done")
+        ));
+
+        let consume = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "consume")
+            .expect("called Generator consumer is specialized");
+        assert!(matches!(
+            consume.parameters.as_slice(),
+            [CompilerParameter { name, value_type, .. }]
+                if name == "generated"
+                    && is_admitted_value_boundary_generator_type(value_type)
+        ));
+        assert!(matches!(
+            consume.body.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind:
+                            CompilerExpressionKind::CustomValueForeach {
+                                source,
+                                transferred_initial: Some(initial),
+                                yields,
+                                parameter,
+                                body,
+                                result,
+                                ..
+                            },
+                        value_type: CompilerType::String,
+                        ..
+                    },
+                ..
+            })] if name == "result"
+                && matches!(source.kind, CompilerExpressionKind::Local(ref name)
+                    if name == "generated")
+                && exact_int(initial) == Some(BigInt::from(7))
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && parameter.name == "value"
+                && exact_int_value_generator_action(parameter, body)
+                && exact_string(result).as_deref() == Some("done")
+        ));
+        assert!(matches!(
+            &consume.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Local(name),
+                value_type: CompilerType::String,
+                ..
+            } if name == "result"
+        ));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value:
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { arguments, .. },
+                        value_type,
+                        ..
+                    },
+                ..
+            })] if name == "generated"
+                && is_admitted_value_boundary_generator_type(value_type)
+                && matches!(arguments.as_slice(), [argument]
+                    if exact_int(argument) == Some(BigInt::from(7)))
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Call { arguments, .. },
+                value_type: CompilerType::String,
+                ..
+            } if matches!(arguments.as_slice(), [CompilerExpression {
+                kind: CompilerExpressionKind::Local(name),
+                value_type,
+                ..
+            }] if name.starts_with("topal.root.")
+                && is_admitted_value_boundary_generator_type(value_type))
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_custom_generator_generic_function_boundaries() {
+        // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+        // TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001
+        let source = include_str!(
+            "../../../examples/language/custom-generator-generic-function-boundaries.t"
+        );
+        for invalid in [
+            source.replacen("make 7", "make 8", 1),
+            source.replacen("numbers initial", "numbers (initial + 1)", 1),
+            source.replacen("\"done\"", "\"later\"", 1),
+            source.replacen("value + 1", "value + 2", 1),
+            source.replacen("consume generated", "consume (numbers 7)", 1),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 }

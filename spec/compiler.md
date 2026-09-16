@@ -2004,6 +2004,52 @@ captures, effects, ownership/consumption/close state, typed result provenance,
 native-representation identity, and target adapters rather than private tokens,
 debug slots, object layouts, or checked-program nodes.
 
+### TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001 — Specialized scalar continuation transfer
+
+The compiler SHALL admit the shared
+`custom-generator-generic-function-boundaries.t` regression. The admitted
+`numbers` declaration SHALL have the exact classifier
+`Generator Int Unit String`, yield its Int input once, resume with Unit, and
+return String `"done"`. The ordinary `make` function SHALL accept one Int and
+return a fresh instance of that continuation without closing it. The ordinary
+`consume` function SHALL accept sole ownership of that continuation, traverse
+it exactly once with the admitted Int increment action, bind its final String,
+and return that String. The root call SHALL pass exact Int `7` through `make`,
+bind the returned continuation, transfer it to `consume`, and produce
+`"done"`.
+
+The checked program SHALL retain the complete Generator classifier,
+declaration and construction provenance, exact specialized input, suspension
+and final-result graph, function-result transfer, function-parameter transfer,
+and consumption edge independently of the private machine token. The caller
+binding SHALL be consumed by the parameter transfer. Factory exit and consumer
+entry SHALL NOT deliver close. The consumer action, Unit resumption, final
+String construction, and return SHALL remain source ordered at LLVM O0 and
+SHALL NOT depend on inlining, constant folding, or dead-code elimination.
+
+On Linux x86-64, the specialized factory SHALL use a private target-lowered Int
+pointer parameter and `i32` Generator-token result, while the consumer SHALL use
+the matching private token parameter and Topal String pointer result. LLVM
+`fastcc`, the target triple, and the target data layout SHALL determine physical
+placement and alignment; the compiler SHALL hard-code no System V register or
+return placement. DWARF/GDB SHALL expose the factory Int, the complete Generator
+parameter and value, yielded Int action value, final String binding, and both
+ordinary-function and Topal entry frames.
+
+Other Generator classifiers, inputs, declarations, factory/consumer shapes,
+actions, results, arities, recursion, nesting, repeated use, abandonment,
+close paths, packages, libraries, and external boundaries SHALL remain
+unsupported. The lowering SHALL introduce no semantic Generator object/state
+allocation, runtime transfer or traversal dispatcher, callback, indirect call,
+unwind dependency, C/C++ runtime, other-language standard library, needed
+library, dynamic relocation, public/library calling convention or Generator
+ABI, or native-ABI revision. Future compiled-library metadata SHALL encode the
+canonical complete classifier and directions, declaration/body/suspension
+graph, construction and both transfer sites, exact or symbolic captures,
+effects, ownership/consumption/close state, final-result provenance,
+native-representation identity, and target adapters rather than compiler-session
+specializations, private tokens, debug slots, pointer layouts, or checked nodes.
+
 ### TOPAL-COMPILER-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The compiler SHALL admit a root custom generator with one named `(Int, String)`

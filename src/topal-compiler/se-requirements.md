@@ -2202,6 +2202,57 @@ debug slots, pointer layouts, or checked-program nodes. This realizes
 `TOPAL-GENERATOR-FOREACH-RESULT-001`, `TOPAL-GENERATOR-FINAL-RETURN-001`, and
 `TOPAL-TYPE-PRODUCT-001` for compiler increment 5at.
 
+## TOPAL-COMP-GENERATOR-FUNCTION-BOUNDARY-001 — Specialized scalar continuation transfer
+
+The checked compiler shall admit the unchanged
+`examples/language/custom-generator-generic-function-boundaries.t` regression.
+Its exact `numbers` declaration shall be `Generator Int Unit String`, yield its
+Int input once, resume with Unit, and return String `"done"`. The ordinary
+single-Int `make` function shall return a fresh continuation without closing
+it. The ordinary single-Generator `consume` function shall receive sole
+ownership, traverse it once with the exact discarded `value + 1` action, bind
+the final String, and return it. The root graph shall pass exact Int `7` through
+`make`, bind the returned continuation, transfer it to `consume`, and print
+`"done"`.
+
+The checked model shall preserve the complete Generator classifier,
+declaration, parameter-derived construction, exact call-specialized input,
+single suspension, Unit resumption, final-result graph, function-result edge,
+function-parameter edge, and once-only consumption as separate facts. The
+returned-provenance specialization shall replace the factory-local input name
+with the already evaluated exact caller operand before checking the consumer;
+it shall not reevaluate the source call. Factory exit and consumer entry shall
+not deliver close. Consumer action, resumption, final String construction, and
+return shall remain ordered at LLVM O0 without relying on inlining, constant
+folding, or dead-code elimination.
+
+On Linux x86-64, the private factory shall lower as one Topal Int pointer to an
+`i32` ownership token, and the private consumer as that token to one Topal
+String pointer. LLVM `fastcc`, the target triple, and target data layout shall
+select physical placement and alignment; no AMD64 register or return placement
+shall be hard-coded. Target-aligned debug-only shadows shall keep the factory
+Int, complete Generator consumer parameter, yielded Int action value, final
+String binding, ordinary-function frames, and Topal entry frame visible in
+DWARF/GDB.
+
+Other Generator classifiers, inputs, declaration/body shapes, factory or
+consumer forms, actions, results, arities, recursion, nesting, repeated use,
+abandonment, close handling, packages, libraries, and external boundaries
+shall remain rejected before LLVM. This shall add no semantic Generator object
+or state allocation, runtime transfer/traversal dispatcher, callback, indirect
+call, unwind dependency, foreign runtime, C/C++ runtime, other-language
+standard library, needed library, dynamic relocation, public/library calling
+convention, Generator ABI, or `topal-native/6` revision. Future compiled-library
+metadata shall encode complete classifiers and directions, declaration and
+body/suspension graphs, construction and transfer sites, exact or symbolic
+captures, effects, ownership/consumption/close state, final-result provenance,
+native-representation identity, and target adapters rather than private
+specializations, tokens, debug slots, pointer layouts, or checked-program
+nodes. This realizes `TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001`,
+`TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001`,
+`TOPAL-GENERATOR-FUNCTION-RESULT-001`, and
+`TOPAL-GENERATOR-FUNCTION-PARAMETER-001` for compiler increment 5au.
+
 ## TOPAL-COMP-GENERATOR-PRODUCT-001 — Exact positional-product generator directions
 
 The checked compiler shall admit a root custom generator with one named

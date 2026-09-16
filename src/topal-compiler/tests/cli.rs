@@ -9397,3 +9397,103 @@ fn custom_generator_overloads_are_freestanding_and_debuggable() {
         assert!(text.contains(expected), "missing {expected:?}: {text}");
     }
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session verifies factory, transfer, traversal, result, and frames.
+fn generic_custom_generator_function_boundaries_are_freestanding_and_debuggable() {
+    // TOPAL-GENERATOR-FUNCTION-CLASSIFIER-001,
+    // TOPAL-GENERATOR-FUNCTION-RESULT-001,
+    // TOPAL-GENERATOR-FUNCTION-PARAMETER-001,
+    // TOPAL-COMPILER-GENERATOR-FUNCTION-BOUNDARY-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-custom-generator-generic-function-boundaries");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/custom-generator-generic-function-boundaries.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"\"done\"\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break custom-generator-generic-function-boundaries.t:16",
+            "-ex",
+            "break custom-generator-generic-function-boundaries.t:20",
+            "-ex",
+            "break custom-generator-generic-function-boundaries.t:21",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis initial",
+            "-ex",
+            "print initial",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis result",
+            "-ex",
+            "print result",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "topal.fn.make.0 (initial=7)",
+        "type = Int",
+        "$1 = 7",
+        "type = enum Generator Int Unit String",
+        "$2 = <Generator Int Unit String>",
+        "$3 = 7",
+        "type = String",
+        "$4 = \"done\"",
+        "topal.fn.consume.1 (generated=<Generator Int Unit String>)",
+        "custom-generator-generic-function-boundaries.t:16",
+        "custom-generator-generic-function-boundaries.t:20",
+        "custom-generator-generic-function-boundaries.t:21",
+        "custom-generator-generic-function-boundaries.t:23",
+        "custom-generator-generic-function-boundaries.t:24",
+        "in topal.main",
+        "in _start",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
+    }
+}
