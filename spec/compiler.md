@@ -3561,6 +3561,46 @@ independently of its private tag. This increment SHALL require no layout
 runtime, allocator, foreign dependency, C/C++ runtime, other-language standard
 library, needed library, dynamic relocation, or native ABI revision.
 
+### TOPAL-COMPILER-TASK-DIRECT-001 — Closed direct task transactions
+
+The compiler SHALL admit a root task classifier and definition containing one
+private `Nat` state field, `start (Nat) -> Completed`, zero or more ordinary
+`MessageContext`-discarding `Nat`-payload Unit event handlers whose sole action
+adds the payload to that state, zero or more `MessageContext`-discarding Unit
+request handlers returning the current state as `Result (Nat, ())`, and an
+optional declared no-op `terminate (String) -> Unit`. Construction SHALL
+evaluate the start operand exactly once, initialize the private state, and
+produce a fresh instance with a distinct nonzero identity. An event followed
+by a request SHALL commit the complete replacement state before the request
+observes it.
+
+For this closed single-root subset, the compiler SHALL use a deterministic
+immediate FIFO scheduler. Because every admitted handler explicitly discards
+`MessageContext`, the checked model SHALL retain each source-ordered operation
+and stable transaction identity while generated O0 code MAY erase the
+unobservable context value and queue storage. Such erasure is a checked
+language lowering, not an optional LLVM optimization. The declared queue bound
+and scheduling policy SHALL remain in target-independent task metadata. Task
+streams, overlapping delivery, observable context, queue overflow, and
+termination delivery SHALL remain rejected.
+
+Linux x86-64 lowering SHALL allocate a private Topal-owned instance containing
+identity, lifecycle state, and the current arbitrary-precision Nat pointer.
+State replacement SHALL store a newly computed immutable Nat only after the
+addition completes. This private object SHALL NOT define a public, foreign,
+persistent, serialized, function, or compiled-library ABI. LLVM SHALL select
+all physical calling and data-layout details; no C/C++ runtime or
+other-language standard library may be linked.
+
+DWARF SHALL expose the source task classifier, identity, lifecycle state, and
+named private state. The bundled GDB renderer SHALL bound its read and validate
+identity, lifecycle tag, and state pointer before rendering. Future
+compiled-library metadata for tasks SHALL identify the language and metadata
+revision, nominal task and definition identities, queue and scheduler policy,
+state schema, handler kind and complete signature, context/transaction model,
+effects and authorities, ownership and termination contract, debug provenance,
+and native-representation adapter independently of LLVM types and symbols.
+
 ### TOPAL-COMPILER-STATIC-INTROSPECTION-001 — Closed static introspection foundation
 
 For a v0.1 source context without optional features, the compiler SHALL admit
