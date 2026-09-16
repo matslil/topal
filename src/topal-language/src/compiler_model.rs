@@ -2191,14 +2191,7 @@ fn exact_string_value_generator_body(
             ));
         }
     };
-    if explicit_return.is_some() {
-        if !yield_statements.is_empty() {
-            return Err(unsupported(
-                source,
-                span,
-                "explicit String return after a custom generator suspension",
-            ));
-        }
+    if explicit_return.is_some() && yield_statements.is_empty() {
         return Ok(ExactStringGeneratorBody {
             yields: Vec::new(),
             continuations: Vec::new(),
@@ -2294,10 +2287,19 @@ fn exact_string_value_generator_body(
             "String-yield custom generator discarded computation without a following suspension",
         ));
     }
+    if explicit_return.is_some()
+        && !matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "explicit String return outside exactly one initial-parameter suspension",
+        ));
+    }
     Ok(ExactStringGeneratorBody {
         yields,
         continuations,
-        explicit_return: None,
+        explicit_return,
         result,
     })
 }
@@ -15937,8 +15939,91 @@ mod tests {
             "use language (version is v0.1)\ndone is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  \"done\"\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
             "use language (version is v0.1)\ndone is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  return initial\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
             "use language (version is v0.1)\ndone is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  return ()\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
-            "use language (version is v0.1)\ndone is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  _ is yield initial\n  return \"done\"\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
             "use language (version is v0.1)\ndone is generator (initial : String)\n  yields String\n  resumes Unit\n  -> Unit\n  return ()\ngenerated is done \"unused\"\ngenerated foreach { text }\n  _ is empty? text\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    fn models_explicit_string_return_after_generator_resumption() {
+        // TOPAL-GENERATOR-EXPLICIT-RETURN-001, TOPAL-GENERATOR-RESUMPTION-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-RETURN-AFTER-YIELD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/custom-generator-return-after-yield.t"
+        ))
+        .unwrap();
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding {
+                name,
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::CustomValueGenerator {
+                        declaration,
+                        initial_parameter,
+                        initial,
+                        yields,
+                        continuations,
+                        explicit_return: Some(return_span),
+                        result,
+                        ..
+                    },
+                    value_type: CompilerType::Generator(generator_type),
+                    ..
+                },
+                ..
+            })] if name == "generated"
+                && declaration == "finish"
+                && initial_parameter.name == "initial"
+                && initial_parameter.value_type == CompilerType::String
+                && exact_string(initial).as_deref() == Some("item")
+                && matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && program.source.slice(*return_span) == "return"
+                && exact_string(result).as_deref() == Some("done")
+                && *generator_type.yield_type == CompilerType::String
+                && *generator_type.resume_type == CompilerType::Unit
+                && *generator_type.result_type == CompilerType::String
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::CustomValueForeach {
+                    yields,
+                    continuations,
+                    explicit_return: Some(return_span),
+                    parameter,
+                    body,
+                    result,
+                    ..
+                },
+                value_type: CompilerType::String,
+                ..
+            } if matches!(yields.as_slice(), [CompilerGeneratorYield::Initial(_)])
+                && continuations.is_empty()
+                && program.source.slice(*return_span) == "return"
+                && parameter.name == "text"
+                && parameter.value_type == CompilerType::String
+                && matches!(
+                    body.statements.as_slice(),
+                    [CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::StringEmptyPredicate(value),
+                        ..
+                    })] if matches!(value.kind, CompilerExpressionKind::Local(ref name)
+                        if name == "text")
+                )
+                && exact_string(result).as_deref() == Some("done")
+        ));
+
+        for source in [
+            "use language (version is v0.1)\nfinish is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  _ is yield initial\n  _ is yield \"again\"\n  return \"done\"\ngenerated is finish \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            "use language (version is v0.1)\nfinish is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  _ is yield \"item\"\n  return \"done\"\ngenerated is finish \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            "use language (version is v0.1)\nfinish is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  _ is yield initial\n  return initial\ngenerated is finish \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
+            "use language (version is v0.1)\nfinish is generator (initial : String)\n  yields String\n  resumes Unit\n  -> String\n  _ is yield initial\n  _ is empty? initial\n  return \"done\"\ngenerated is finish \"item\"\ngenerated foreach { text }\n  _ is empty? text\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,

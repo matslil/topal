@@ -10429,6 +10429,56 @@ mod tests {
     }
 
     #[test]
+    fn emits_explicit_string_return_after_yield_action_and_resumption() {
+        // TOPAL-GENERATOR-EXPLICIT-RETURN-001, TOPAL-GENERATOR-RESUMPTION-001,
+        // TOPAL-GENERATOR-FOREACH-001,
+        // TOPAL-COMPILER-GENERATOR-RETURN-AFTER-YIELD-001
+        let source =
+            include_str!("../../../examples/language/custom-generator-return-after-yield.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "custom-generator-return-after-yield.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module contains generated source entry")
+            .1;
+
+        assert_eq!(
+            main.matches("call ptr @topal.runtime.string.make").count(),
+            2
+        );
+        assert_eq!(
+            main.matches("call i1 @topal.runtime.string.is.empty")
+                .count(),
+            1
+        );
+        let input = main
+            .find("call ptr @topal.runtime.string.make")
+            .expect("generator application evaluates its String input");
+        let suspended = main
+            .find("#dbg_value(i32 0")
+            .expect("generator application retains its private suspended token");
+        let action = main
+            .find("call i1 @topal.runtime.string.is.empty")
+            .expect("foreach invokes the String action");
+        let result = main
+            .rfind("call ptr @topal.runtime.string.make")
+            .expect("resumed generator materializes its explicit String return");
+        let output = main
+            .find("call void @topal.runtime.string.print")
+            .expect("the explicit return becomes the program result");
+        assert!(input < suspended && suspended < action && action < result && result < output);
+        assert!(main.contains("#dbg_declare(ptr"));
+        assert!(llvm.contains("DILocalVariable(name: \"initial\""));
+        assert!(llvm.contains("DILocalVariable(name: \"generated\""));
+        assert!(llvm.contains("DILocalVariable(name: \"text\""));
+        assert!(llvm.contains("name: \"Generator String Unit String\""));
+        assert!(llvm.contains("name: \"String\""));
+        assert!(!main.contains("generator.foreach.loop"));
+        assert!(!main.contains("topal.runtime.generator"));
+        assert!(!main.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_multiple_yield_custom_generator_in_source_order() {
         // TOPAL-GENERATOR-DECLARATION-001, TOPAL-GENERATOR-SUSPEND-001,
         // TOPAL-GENERATOR-FOREACH-001,
