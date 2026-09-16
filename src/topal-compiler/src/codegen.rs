@@ -8,9 +8,10 @@ use topal_language::{
     CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerEnumRule, CompilerEnumType,
     CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
     CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
-    CompilerGeneratorType, CompilerGeneratorYield, CompilerModularType, CompilerParameter,
-    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType,
-    CompilerValidation, display_string_literal,
+    CompilerGeneratorType, CompilerGeneratorYield, CompilerListIndexOperation,
+    CompilerListZipOperation, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerType, CompilerValidation,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -135,9 +136,13 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
                     .any(|(_, value)| expression_uses_extended_debug(value))
         }
         CompilerExpressionKind::ListMap { list, body, .. }
-        | CompilerExpressionKind::ListSelect { list, body, .. } => {
-            expression_uses_extended_debug(list) || block_uses_extended_debug(body)
-        }
+        | CompilerExpressionKind::ListSelect { list, body, .. }
+        | CompilerExpressionKind::ListForeach { list, body, .. }
+        | CompilerExpressionKind::ListReject {
+            list,
+            predicate: body,
+            ..
+        } => expression_uses_extended_debug(list) || block_uses_extended_debug(body),
         CompilerExpressionKind::IterateGenerator { initial, next, .. } => {
             expression_uses_extended_debug(initial) || block_uses_extended_debug(next)
         }
@@ -270,6 +275,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ListFirst(value)
         | CompilerExpressionKind::ListRest(value)
         | CompilerExpressionKind::ListUncons(value)
+        | CompilerExpressionKind::ListIndexOperation { list: value, .. }
+        | CompilerExpressionKind::ListRemoveIndexRange { list: value, .. }
+        | CompilerExpressionKind::ListUnzip(value)
+        | CompilerExpressionKind::ListEntries(value)
+        | CompilerExpressionKind::ListCollectString(value)
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
@@ -313,6 +323,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             list: left,
             value: right,
         }
+        | CompilerExpressionKind::ListInsertAt {
+            list: left,
+            inserted: right,
+            ..
+        }
         | CompilerExpressionKind::ListRangeSelect {
             list: left,
             range: right,
@@ -326,6 +341,22 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Fallible { left, right, .. }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             expression_uses_extended_debug(left) || expression_uses_extended_debug(right)
+        }
+        CompilerExpressionKind::ListZip {
+            left,
+            right,
+            left_default,
+            right_default,
+            ..
+        } => {
+            expression_uses_extended_debug(left)
+                || expression_uses_extended_debug(right)
+                || left_default
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
+                || right_default
+                    .as_deref()
+                    .is_some_and(expression_uses_extended_debug)
         }
         CompilerExpressionKind::BooleanDecision {
             subject,
@@ -414,6 +445,7 @@ enum ListIntRuntimeFragment {
     Removal,
     Core,
     RangeSelection,
+    Sequence,
     NestedIntStringCore,
 }
 
@@ -501,6 +533,13 @@ impl<'a> Generator<'a> {
             .contains(&ListIntRuntimeFragment::RangeSelection)
         {
             module.push_str(LIST_INT_RANGE_SELECTION_RUNTIME);
+            module.push('\n');
+        }
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::Sequence)
+        {
+            module.push_str(LIST_INT_SEQUENCE_RUNTIME);
             module.push('\n');
         }
         if self
@@ -1053,6 +1092,26 @@ impl<'a> Generator<'a> {
                         };
                         self.emit_aggregate_debug_shadow(
                             machine_value,
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
+                    } else if matches!(
+                        binding.value.value_type,
+                        CompilerType::List(ref element)
+                            if !matches!(element.as_ref(), CompilerType::Int)
+                    ) {
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        self.emit_aggregate_debug_shadow(
+                            value.list_pointer(),
                             &binding.value.value_type,
                             variable,
                             location,
@@ -1683,7 +1742,7 @@ impl<'a> Generator<'a> {
                     unreachable!("checked Entry tail retains its List classifier")
                 };
                 let (allocation_size, next_offset) = match &element {
-                    CompilerType::Effect | CompilerType::Int => (16, 8),
+                    CompilerType::Effect | CompilerType::Int | CompilerType::String => (16, 8),
                     CompilerType::Tuple(fields)
                         if matches!(
                             fields.as_slice(),
@@ -1706,7 +1765,8 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    (CompilerType::Int, LlValue::Int(value)) => body.effect(
+                    (CompilerType::Int, LlValue::Int(value))
+                    | (CompilerType::String, LlValue::String(value)) => body.effect(
                         &format!("store ptr {value}, ptr {node}, align 8"),
                         expression.span,
                         &mut self.debug,
@@ -2037,6 +2097,8 @@ impl<'a> Generator<'a> {
                 body,
                 environment,
                 expression.span,
+                false,
+                false,
             ),
             CompilerExpressionKind::ListRangeSelect {
                 list,
@@ -2060,6 +2122,298 @@ impl<'a> Generator<'a> {
                     ),
                     element: CompilerType::Int,
                 }
+            }
+            CompilerExpressionKind::ListForeach {
+                list,
+                parameter,
+                body: action,
+            } => {
+                self.emit_list_foreach(list, parameter, action, body, environment, expression.span)
+            }
+            CompilerExpressionKind::ListInsertAt {
+                list,
+                boundary,
+                inserted,
+                inserts_list,
+            } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let list = self.emit_expression(list, body, environment);
+                let inserted = self.emit_expression(inserted, body, environment);
+                let inserted = if *inserts_list {
+                    inserted.list_pointer().to_owned()
+                } else {
+                    let singleton = body.instruction(
+                        "call ptr @topal.platform.allocate(i64 16)",
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    body.effect(
+                        &format!("store ptr {}, ptr {singleton}, align 8", inserted.integer()),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    let next = body.instruction(
+                        &format!("getelementptr i8, ptr {singleton}, i64 8"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    body.effect(
+                        &format!("store ptr null, ptr {next}, align 8"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    singleton
+                };
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.insert.at(ptr {}, i64 {boundary}, ptr {inserted})",
+                            list.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListIndexOperation {
+                list,
+                index,
+                operation,
+            } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let list = self.emit_expression(list, body, environment);
+                let operation_name = match operation {
+                    CompilerListIndexOperation::Split => "split.at",
+                    CompilerListIndexOperation::Take => "take",
+                    CompilerListIndexOperation::Drop => "drop",
+                    CompilerListIndexOperation::Remove => "remove.index",
+                };
+                let value = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.list.int.{operation_name}(ptr {}, i64 {index})",
+                        list.list_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                if *operation == CompilerListIndexOperation::Split {
+                    let suffix_address = body.instruction(
+                        &format!("getelementptr i8, ptr {value}, i64 8"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    LlValue::Tuple(vec![
+                        LlValue::List {
+                            value: body.instruction(
+                                &format!("load ptr, ptr {value}, align 8"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            element: CompilerType::Int,
+                        },
+                        LlValue::List {
+                            value: body.instruction(
+                                &format!("load ptr, ptr {suffix_address}, align 8"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            element: CompilerType::Int,
+                        },
+                    ])
+                } else {
+                    LlValue::List {
+                        value,
+                        element: CompilerType::Int,
+                    }
+                }
+            }
+            CompilerExpressionKind::ListRemoveIndexRange { list, start, end } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let list = self.emit_expression(list, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.remove.index.range(ptr {}, i64 {start}, i64 {end})",
+                            list.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Int,
+                }
+            }
+            CompilerExpressionKind::ListReject {
+                list,
+                parameters,
+                predicate,
+                indexes,
+            } => self.emit_list_select(
+                list,
+                parameters,
+                predicate,
+                body,
+                environment,
+                expression.span,
+                true,
+                *indexes,
+            ),
+            CompilerExpressionKind::ListZip {
+                left,
+                right,
+                operation,
+                left_default,
+                right_default,
+            } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let left = self.emit_expression(left, body, environment);
+                let left_default = left_default
+                    .as_deref()
+                    .map(|value| self.emit_expression(value, body, environment));
+                let right = self.emit_expression(right, body, environment);
+                let right_default = right_default
+                    .as_deref()
+                    .map(|value| self.emit_expression(value, body, environment));
+                let pair = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]);
+                match operation {
+                    CompilerListZipOperation::Exact => {
+                        let domain = self.emit_string_value(
+                            "root.zip-exact(List,List)",
+                            body,
+                            expression.span,
+                        );
+                        let source =
+                            self.emit_string_value(self.source_name, body, expression.span);
+                        let position = self.program.source.position(expression.span.start);
+                        LlValue::Result {
+                            value: body.instruction(
+                                &format!(
+                                    "call ptr @topal.runtime.list.int.zip.exact(ptr {}, ptr {}, ptr {domain}, ptr {source}, i64 {}, i64 {})",
+                                    left.list_pointer(),
+                                    right.list_pointer(),
+                                    position.line,
+                                    position.column
+                                ),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            success: CompilerType::List(Box::new(pair)),
+                        }
+                    }
+                    CompilerListZipOperation::Shortest => LlValue::List {
+                        value: body.instruction(
+                            &format!(
+                                "call ptr @topal.runtime.list.int.zip.shortest(ptr {}, ptr {})",
+                                left.list_pointer(),
+                                right.list_pointer()
+                            ),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: pair,
+                    },
+                    CompilerListZipOperation::Longest => LlValue::List {
+                        value: body.instruction(
+                            &format!(
+                                "call ptr @topal.runtime.list.int.zip.longest(ptr {}, ptr {}, ptr {}, ptr {})",
+                                left.list_pointer(),
+                                left_default
+                                    .as_ref()
+                                    .expect("checked longest zip has left default")
+                                    .integer(),
+                                right.list_pointer(),
+                                right_default
+                                    .as_ref()
+                                    .expect("checked longest zip has right default")
+                                    .integer()
+                            ),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: pair,
+                    },
+                }
+            }
+            CompilerExpressionKind::ListUnzip(pairs) => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let pairs = self.emit_expression(pairs, body, environment);
+                let value = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.list.int.unzip(ptr {})",
+                        pairs.list_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                let right_address = body.instruction(
+                    &format!("getelementptr i8, ptr {value}, i64 8"),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![
+                    LlValue::List {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {value}, align 8"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: CompilerType::Int,
+                    },
+                    LlValue::List {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {right_address}, align 8"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        element: CompilerType::Int,
+                    },
+                ])
+            }
+            CompilerExpressionKind::ListEntries(list) => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let list = self.emit_expression(list, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.int.entries(ptr {})",
+                            list.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Record(vec![
+                        ("index".into(), CompilerType::Int),
+                        ("value".into(), CompilerType::Int),
+                    ]),
+                }
+            }
+            CompilerExpressionKind::ListCollectString(list) => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                let list = self.emit_expression(list, body, environment);
+                let empty = self.emit_string_value("", body, expression.span);
+                LlValue::String(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.list.string.collect(ptr {}, ptr {empty})",
+                        list.list_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
             }
             CompilerExpressionKind::ListFold {
                 list,
@@ -3346,6 +3700,91 @@ impl<'a> Generator<'a> {
         LlValue::Unit
     }
 
+    fn emit_list_foreach(
+        &mut self,
+        list: &CompilerExpression,
+        parameter: &CompilerParameter,
+        action: &CompilerBlock,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let source = self
+            .emit_expression(list, body, environment)
+            .list_pointer()
+            .to_owned();
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("list.foreach.loop");
+        let visit = body.label("list.foreach.visit");
+        let resumed = body.label("list.foreach.resumed");
+        let done = body.label("list.foreach.done");
+        let next_current = body.reserve_value();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let current = body.instruction(
+            &format!("phi ptr [{source}, %{preheader}], [{next_current}, %{resumed}]"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(
+            &format!("icmp eq ptr {current}, null"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{visit}"),
+            location,
+        );
+
+        body.start_block(&visit);
+        let value = body.instruction(
+            &format!("load ptr, ptr {current}, align 8"),
+            parameter.span,
+            &mut self.debug,
+        );
+        let next_address = body.instruction(
+            &format!("getelementptr i8, ptr {current}, i64 8"),
+            span,
+            &mut self.debug,
+        );
+        let next = body.instruction(
+            &format!("load ptr, ptr {next_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut action_environment = environment.clone();
+        if !parameter.discarded {
+            let value = LlValue::Int(value);
+            let variable = self.debug.local(
+                &parameter.name,
+                parameter.span,
+                &CompilerType::Int,
+                body.subprogram,
+            );
+            let binding_location = self.debug.location(parameter.span, body.subprogram);
+            body.debug_value(&value, variable, binding_location);
+            action_environment.insert(parameter.name.clone(), value);
+        }
+        let action_value = self.emit_block(action, body, &mut action_environment);
+        debug_assert!(matches!(action_value, LlValue::Unit));
+        let predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{resumed}"), location);
+
+        body.start_block(&resumed);
+        body.define_reserved(
+            &next_current,
+            &format!("phi ptr [{next}, %{predecessor}]"),
+            span,
+            &mut self.debug,
+        );
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&done);
+        LlValue::Unit
+    }
+
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // The loop keeps node publication explicit.
     fn emit_list_map(
         &mut self,
@@ -3518,6 +3957,8 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         environment: &BTreeMap<String, LlValue>,
         span: Span,
+        reject: bool,
+        indexes: bool,
     ) -> LlValue {
         let source = self
             .emit_expression(list, body, environment)
@@ -3538,6 +3979,7 @@ impl<'a> Generator<'a> {
         let selected_head = body.reserve_value();
         let next_head = body.reserve_value();
         let next_previous = body.reserve_value();
+        let next_index = body.reserve_value();
         let location = self.debug.location(span, body.subprogram);
         body.terminator(&format!("br label %{loop_label}"), location);
 
@@ -3554,6 +3996,11 @@ impl<'a> Generator<'a> {
         );
         let previous = body.instruction(
             &format!("phi ptr [null, %{preheader}], [{next_previous}, %{advance}]"),
+            span,
+            &mut self.debug,
+        );
+        let index = body.instruction(
+            &format!("phi i64 [0, %{preheader}], [{next_index}, %{advance}]"),
             span,
             &mut self.debug,
         );
@@ -3584,18 +4031,29 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let mut predicate_environment = self.emit_collection_environment(
-            parameters,
-            &[LlValue::Int(value.clone())],
-            body,
-            environment,
-        );
+        let predicate_value = if indexes {
+            LlValue::Int(body.instruction(
+                &format!("call ptr @topal.runtime.int.from.u64(i64 {index})"),
+                span,
+                &mut self.debug,
+            ))
+        } else {
+            LlValue::Int(value.clone())
+        };
+        let mut predicate_environment =
+            self.emit_collection_environment(parameters, &[predicate_value], body, environment);
         let keep = self.emit_block(predicate, body, &mut predicate_environment);
+        let keep = if reject {
+            body.instruction(
+                &format!("xor i1 {}, true", keep.boolean()),
+                span,
+                &mut self.debug,
+            )
+        } else {
+            keep.boolean().to_owned()
+        };
         body.terminator(
-            &format!(
-                "br i1 {}, label %{selected}, label %{skipped}",
-                keep.boolean()
-            ),
+            &format!("br i1 {keep}, label %{selected}, label %{skipped}"),
             location,
         );
 
@@ -3666,6 +4124,12 @@ impl<'a> Generator<'a> {
         body.define_reserved(
             &next_previous,
             &format!("phi ptr [{previous}, %{skipped}], [{node}, %{selected_merge}]"),
+            span,
+            &mut self.debug,
+        );
+        body.define_reserved(
+            &next_index,
+            &format!("add i64 {index}, 1"),
             span,
             &mut self.debug,
         );
@@ -4398,6 +4862,10 @@ impl<'a> Generator<'a> {
             CompilerType::Result(nested) => LlValue::Result {
                 value: payload.into(),
                 success: nested.as_ref().clone(),
+            },
+            CompilerType::List(element) => LlValue::List {
+                value: payload.into(),
+                element: element.as_ref().clone(),
             },
             CompilerType::Enum(enumeration) => LlValue::Enum {
                 value: body.instruction(
@@ -6145,6 +6613,14 @@ impl<'a> Generator<'a> {
                 )),
                 8,
             ),
+            CompilerType::String => (
+                LlValue::String(body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
             CompilerType::Tuple(fields)
                 if matches!(
                     fields.as_slice(),
@@ -6189,6 +6665,39 @@ impl<'a> Generator<'a> {
                 },
                 8,
             ),
+            CompilerType::Record(fields)
+                if fields.as_slice()
+                    == [
+                        ("index".into(), CompilerType::Int),
+                        ("value".into(), CompilerType::Int),
+                    ] =>
+            {
+                let index = body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let value_address = body.instruction(
+                    &format!("getelementptr i8, ptr {current}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let value = body.instruction(
+                    &format!("load ptr, ptr {value_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                (
+                    LlValue::Record {
+                        fields: vec![
+                            ("index".into(), LlValue::Int(index)),
+                            ("value".into(), LlValue::Int(value)),
+                        ],
+                        order: vec!["0".into(), "1".into()],
+                    },
+                    24,
+                )
+            }
             _ => unreachable!("checked List element has an admitted printer"),
         };
         self.emit_print(&payload, body, span);
@@ -8907,6 +9416,7 @@ const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_contai
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
 const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
 const LIST_INT_RANGE_SELECTION_RUNTIME: &str = include_str!("runtime/list_int_range_selection.ll");
+const LIST_INT_SEQUENCE_RUNTIME: &str = include_str!("runtime/list_int_sequence.ll");
 const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
     include_str!("runtime/list_nested_int_string_core.ll");
 
@@ -9047,6 +9557,44 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.optional.none"));
         assert!(!llvm.contains("topal.runtime.list.int.contains"));
         assert!(!llvm.contains("topal.runtime.list.int.remove"));
+    }
+
+    #[test]
+    fn emits_complete_list_sequence_operations_as_private_o0_control_flow() {
+        // TOPAL-LIST-BOUNDARY-CHECK-001 through TOPAL-LIST-UNZIP-001,
+        // TOPAL-COLLECTION-FOREACH-001, TOPAL-COLLECTION-ENTRIES-001,
+        // TOPAL-COLLECTION-COLLECT-LIST-001, TOPAL-COLLECTION-COLLECT-STRING-001,
+        // TOPAL-COMPILER-LIST-SEQUENCE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-sequence-operations.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "list-sequence-operations.t").emit();
+
+        assert_eq!(llvm.matches("%topal.ListStorage = type").count(), 1);
+        for helper in [
+            "list.int.insert.at",
+            "list.int.split.at",
+            "list.int.take",
+            "list.int.drop",
+            "list.int.remove.index",
+            "list.int.remove.index.range",
+            "list.int.zip.exact",
+            "list.int.zip.shortest",
+            "list.int.zip.longest",
+            "list.int.unzip",
+            "list.int.entries",
+            "list.string.collect",
+        ] {
+            assert!(llvm.contains(helper), "missing {helper}");
+        }
+        assert!(llvm.contains("list.foreach.loop"));
+        assert!(llvm.contains("list.select.loop"));
+        assert!(llvm.contains("xor i1"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List String\""));
+        assert!(!llvm.contains("declare i8* @malloc"));
+        assert!(!llvm.contains("declare i32 @printf"));
     }
 
     #[test]

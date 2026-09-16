@@ -2016,6 +2016,16 @@
       "cpu_time_ns": 170436,
       "memory_peak_bytes": 18575360,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/list-sequence-operations.t": {
+      "cpu_time_ns": 140927720,
+      "memory_peak_bytes": 42807296,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/list-sequence-operations.t": {
+      "cpu_time_ns": 716852,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 500
     }
   }
 }

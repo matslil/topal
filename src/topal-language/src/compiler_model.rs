@@ -415,6 +415,21 @@ pub enum CompilerValidation {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerListIndexOperation {
+    Split,
+    Take,
+    Drop,
+    Remove,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerListZipOperation {
+    Exact,
+    Shortest,
+    Longest,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompilerErrorField {
     Code,
     Domain,
@@ -644,6 +659,43 @@ pub enum CompilerExpressionKind {
         range: Box<CompilerExpression>,
         indexes: bool,
     },
+    ListForeach {
+        list: Box<CompilerExpression>,
+        parameter: CompilerParameter,
+        body: Box<CompilerBlock>,
+    },
+    ListInsertAt {
+        list: Box<CompilerExpression>,
+        boundary: usize,
+        inserted: Box<CompilerExpression>,
+        inserts_list: bool,
+    },
+    ListIndexOperation {
+        list: Box<CompilerExpression>,
+        index: usize,
+        operation: CompilerListIndexOperation,
+    },
+    ListRemoveIndexRange {
+        list: Box<CompilerExpression>,
+        start: usize,
+        end: usize,
+    },
+    ListReject {
+        list: Box<CompilerExpression>,
+        parameters: Vec<CompilerParameter>,
+        predicate: Box<CompilerBlock>,
+        indexes: bool,
+    },
+    ListZip {
+        left: Box<CompilerExpression>,
+        right: Box<CompilerExpression>,
+        operation: CompilerListZipOperation,
+        left_default: Option<Box<CompilerExpression>>,
+        right_default: Option<Box<CompilerExpression>>,
+    },
+    ListUnzip(Box<CompilerExpression>),
+    ListEntries(Box<CompilerExpression>),
+    ListCollectString(Box<CompilerExpression>),
     TraversalControl {
         finish: bool,
         value: Box<CompilerExpression>,
@@ -938,6 +990,7 @@ struct BindingFacts {
     rational_value: Option<BigRational>,
     string_value: Option<String>,
     closed_int_range: Option<ClosedIntRange>,
+    list_count: Option<usize>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
@@ -7525,6 +7578,7 @@ impl Analyzer {
                 rational_value: None,
                 string_value: None,
                 closed_int_range: None,
+                list_count: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
@@ -7744,6 +7798,7 @@ impl Analyzer {
                     };
                     let string_value = Self::known_string_value(&value, environment);
                     let closed_int_range = Self::known_closed_int_range(&value, environment);
+                    let list_count = Self::known_list_count(&value, environment);
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
@@ -7797,6 +7852,7 @@ impl Analyzer {
                         rational_value: value.rational_value.clone(),
                         string_value,
                         closed_int_range,
+                        list_count,
                         record_fields,
                         namespace,
                         callable,
@@ -7913,6 +7969,7 @@ impl Analyzer {
                             rational_value: value.rational_value.clone(),
                             string_value: None,
                             closed_int_range: None,
+                            list_count: Self::known_list_count(&value, environment),
                             record_fields: BTreeMap::new(),
                             namespace: None,
                             callable: None,
@@ -8109,6 +8166,26 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Expression::Identifier(name) = source
+            && environment
+                .get(self.source.slice(*name))
+                .is_some_and(|facts| facts.value_type == int_list_type())
+        {
+            let list = self.analyze_expression(source, environment)?;
+            let (parameter, body) =
+                self.analyze_unit_foreach_body(binding, statements, CompilerType::Int)?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListForeach {
+                    list: Box::new(list),
+                    parameter,
+                    body: Box::new(body),
+                },
+                value_type: CompilerType::Unit,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if let Expression::Application { items, .. } = source
             && let [Expression::Identifier(operation), text] = items.as_slice()
             && self.source.slice(*operation) == "characters"
@@ -8610,6 +8687,7 @@ impl Analyzer {
                     rational_value: None,
                     string_value: None,
                     closed_int_range: None,
+                    list_count: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -9143,6 +9221,7 @@ impl Analyzer {
                 rational_value: None,
                 string_value: None,
                 closed_int_range: None,
+                list_count: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: None,
@@ -9994,6 +10073,392 @@ impl Analyzer {
                     remaining: Box::new(empty),
                 },
                 value_type: list_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), pairs] = items
+            && self.source.slice(*operation) == "unzip"
+        {
+            let pairs = self.analyze_expression(pairs, environment)?;
+            let pair_type = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]);
+            require_type(
+                &self.source,
+                pairs.span,
+                &CompilerType::List(Box::new(pair_type)),
+                &pairs.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListUnzip(Box::new(pairs)),
+                value_type: CompilerType::Tuple(vec![int_list_type(), int_list_type()]),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), list] = items
+            && self.source.slice(*operation) == "collect"
+            && matches!(list, Expression::Identifier(name)
+                if environment.get(self.source.slice(*name)).is_some_and(|facts|
+                    matches!(facts.value_type, CompilerType::List(_))))
+        {
+            let mut list = self.analyze_expression(list, environment)?;
+            debug_assert!(matches!(list.value_type, CompilerType::List(_)));
+            list.span = span;
+            return Ok(list);
+        }
+        if let [list, Expression::Identifier(operation)] = items
+            && self.source.slice(*operation) == "entries"
+        {
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "entries source")?;
+            let entry = CompilerType::Record(vec![
+                ("index".into(), CompilerType::Int),
+                ("value".into(), CompilerType::Int),
+            ]);
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEntries(Box::new(list)),
+                value_type: CompilerType::List(Box::new(entry)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            list,
+            Expression::Identifier(operation),
+            Expression::Identifier(classifier),
+        ] = items
+            && self.source.slice(*operation) == "collect"
+            && self.source.slice(*classifier) == "String"
+        {
+            let list = self.analyze_expression(list, environment)?;
+            require_type(
+                &self.source,
+                list.span,
+                &CompilerType::List(Box::new(CompilerType::String)),
+                &list.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListCollectString(Box::new(list)),
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [list, Expression::Identifier(operation), boundary, inserted] = items
+            && self.source.slice(*operation) == "insert-at"
+        {
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "insert-at source")?;
+            let count = Self::known_list_count(&list, environment).ok_or_else(|| {
+                unsupported(&self.source, list.span, "dynamic List insert-at boundary")
+            })?;
+            let boundary = self.analyze_expression(boundary, environment)?;
+            require_type(
+                &self.source,
+                boundary.span,
+                &CompilerType::Int,
+                &boundary.value_type,
+            )?;
+            let boundary_value = Self::exact_usize(&boundary).ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    boundary.span,
+                    "dynamic or negative List insert-at boundary",
+                )
+            })?;
+            if boundary_value > count {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                    boundary.span,
+                    "insert-at operand is outside the List's valid bounds",
+                ));
+            }
+            let inserted = self.analyze_expression(inserted, environment)?;
+            let inserts_list = inserted.value_type == int_list_type();
+            if !inserts_list {
+                require_type(
+                    &self.source,
+                    inserted.span,
+                    &CompilerType::Int,
+                    &inserted.value_type,
+                )?;
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListInsertAt {
+                    list: Box::new(list),
+                    boundary: boundary_value,
+                    inserted: Box::new(inserted),
+                    inserts_list,
+                },
+                value_type: int_list_type(),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            list,
+            Expression::Identifier(operation),
+            Expression::AnonymousFunction {
+                parameters,
+                body,
+                span: function_span,
+            },
+        ] = items
+            && matches!(
+                self.source.slice(*operation),
+                "remove-indexes" | "remove-values"
+            )
+        {
+            let indexes = self.source.slice(*operation) == "remove-indexes";
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "predicate removal source")?;
+            let (parameters, predicate) = self.analyze_collection_function(
+                parameters,
+                body,
+                &[CompilerType::Int],
+                environment,
+                self.static_context,
+                *function_span,
+            )?;
+            require_type(
+                &self.source,
+                predicate.result.span,
+                &CompilerType::Boolean,
+                &predicate.result.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListReject {
+                    list: Box::new(list),
+                    parameters,
+                    predicate: Box::new(predicate),
+                    indexes,
+                },
+                value_type: int_list_type(),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [list, Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "split-at" | "take" | "drop" | "remove" | "remove-indexes"
+            )
+        {
+            let operation_name = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "indexed List operation source")?;
+            let count = Self::known_list_count(&list, environment).ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    list.span,
+                    "dynamic checked List index or boundary",
+                )
+            })?;
+            let operand = self.analyze_expression(operand, environment)?;
+            if operation_name == "remove-indexes"
+                && operand.value_type == CompilerType::Range(Box::new(CompilerType::Int))
+            {
+                let range =
+                    Self::known_closed_int_range(&operand, environment).ok_or_else(|| {
+                        unsupported(&self.source, operand.span, "dynamic List index range")
+                    })?;
+                let lower = usize::try_from(&range.lower).map_err(|_| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                        operand.span,
+                        "remove-indexes operand is outside the List's valid bounds",
+                    )
+                })?;
+                let upper = usize::try_from(&range.upper).map_err(|_| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                        operand.span,
+                        "remove-indexes operand is outside the List's valid bounds",
+                    )
+                })?;
+                let start = lower
+                    .checked_add(usize::from(!range.lower_inclusive))
+                    .ok_or_else(|| {
+                        source_diagnostic(
+                            &self.source,
+                            "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                            operand.span,
+                            "remove-indexes operand is outside the List's valid bounds",
+                        )
+                    })?;
+                let end = upper
+                    .checked_add(usize::from(range.upper_inclusive))
+                    .ok_or_else(|| {
+                        source_diagnostic(
+                            &self.source,
+                            "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                            operand.span,
+                            "remove-indexes operand is outside the List's valid bounds",
+                        )
+                    })?;
+                if start > end || end > count {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                        operand.span,
+                        "remove-indexes operand is outside the List's valid bounds",
+                    ));
+                }
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListRemoveIndexRange {
+                        list: Box::new(list),
+                        start,
+                        end,
+                    },
+                    value_type: int_list_type(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
+            require_type(
+                &self.source,
+                operand.span,
+                &CompilerType::Int,
+                &operand.value_type,
+            )?;
+            let index = Self::exact_usize(&operand).ok_or_else(|| {
+                unsupported(
+                    &self.source,
+                    operand.span,
+                    "dynamic or negative List index or boundary",
+                )
+            })?;
+            let operation = match operation_name.as_str() {
+                "split-at" => CompilerListIndexOperation::Split,
+                "take" => CompilerListIndexOperation::Take,
+                "drop" => CompilerListIndexOperation::Drop,
+                "remove" => CompilerListIndexOperation::Remove,
+                _ => unreachable!("remove-indexes Range handled above"),
+            };
+            let valid = if operation == CompilerListIndexOperation::Remove {
+                index < count
+            } else {
+                index <= count
+            };
+            if !valid {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-LIST-BOUNDARY-OUT-OF-RANGE",
+                    operand.span,
+                    format!("{operation_name} operand is outside the List's valid bounds"),
+                ));
+            }
+            let value_type = if operation == CompilerListIndexOperation::Split {
+                CompilerType::Tuple(vec![int_list_type(), int_list_type()])
+            } else {
+                int_list_type()
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListIndexOperation {
+                    list: Box::new(list),
+                    index,
+                    operation,
+                },
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [left, Expression::Identifier(operation), right] = items
+            && matches!(self.source.slice(*operation), "zip-exact" | "zip-shortest")
+        {
+            let exact = self.source.slice(*operation) == "zip-exact";
+            let left = self.analyze_expression(left, environment)?;
+            let right = self.analyze_expression(right, environment)?;
+            require_int_list(&self.source, &left, "zip left source")?;
+            require_int_list(&self.source, &right, "zip right source")?;
+            let pair = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]);
+            let list_type = CompilerType::List(Box::new(pair));
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListZip {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    operation: if exact {
+                        CompilerListZipOperation::Exact
+                    } else {
+                        CompilerListZipOperation::Shortest
+                    },
+                    left_default: None,
+                    right_default: None,
+                },
+                value_type: if exact {
+                    CompilerType::Result(Box::new(list_type))
+                } else {
+                    list_type
+                },
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [left, Expression::Identifier(operation), right] = items
+            && self.source.slice(*operation) == "zip-longest"
+        {
+            let left = self.analyze_expression(left, environment)?;
+            let right = self.analyze_expression(right, environment)?;
+            let CompilerExpressionKind::Tuple(mut left_fields) = left.kind else {
+                return Err(unsupported(
+                    &self.source,
+                    left.span,
+                    "zip-longest left operand",
+                ));
+            };
+            let CompilerExpressionKind::Tuple(mut right_fields) = right.kind else {
+                return Err(unsupported(
+                    &self.source,
+                    right.span,
+                    "zip-longest right operand",
+                ));
+            };
+            if left_fields.len() != 2 || right_fields.len() != 2 {
+                return Err(unsupported(&self.source, span, "zip-longest operands"));
+            }
+            let left_default = left_fields.pop().expect("checked two fields");
+            let left = left_fields.pop().expect("checked two fields");
+            let right_default = right_fields.pop().expect("checked two fields");
+            let right = right_fields.pop().expect("checked two fields");
+            require_int_list(&self.source, &left, "zip-longest left source")?;
+            require_int_list(&self.source, &right, "zip-longest right source")?;
+            require_type(
+                &self.source,
+                left_default.span,
+                &CompilerType::Int,
+                &left_default.value_type,
+            )?;
+            require_type(
+                &self.source,
+                right_default.span,
+                &CompilerType::Int,
+                &right_default.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListZip {
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    operation: CompilerListZipOperation::Longest,
+                    left_default: Some(Box::new(left_default)),
+                    right_default: Some(Box::new(right_default)),
+                },
+                value_type: CompilerType::List(Box::new(CompilerType::Tuple(vec![
+                    CompilerType::Int,
+                    CompilerType::Int,
+                ]))),
                 int_range: None,
                 rational_value: None,
                 span,
@@ -11966,6 +12431,71 @@ impl Analyzer {
         }
     }
 
+    fn known_list_count(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<usize> {
+        match &value.kind {
+            CompilerExpressionKind::ListEmpty => Some(0),
+            CompilerExpressionKind::ListEntry { remaining, .. } => {
+                Self::known_list_count(remaining, environment)?.checked_add(1)
+            }
+            CompilerExpressionKind::Local(name) => {
+                binding_facts_by_storage(environment, name).and_then(|facts| facts.list_count)
+            }
+            CompilerExpressionKind::ListInsertAt {
+                list,
+                inserted,
+                inserts_list,
+                ..
+            } => Self::known_list_count(list, environment)?.checked_add(if *inserts_list {
+                Self::known_list_count(inserted, environment)?
+            } else {
+                1
+            }),
+            CompilerExpressionKind::ListIndexOperation {
+                list,
+                index,
+                operation,
+            } => {
+                let count = Self::known_list_count(list, environment)?;
+                match operation {
+                    CompilerListIndexOperation::Take => Some(*index),
+                    CompilerListIndexOperation::Drop => count.checked_sub(*index),
+                    CompilerListIndexOperation::Remove => count.checked_sub(1),
+                    CompilerListIndexOperation::Split => None,
+                }
+            }
+            CompilerExpressionKind::ListRemoveIndexRange { list, start, end } => {
+                Self::known_list_count(list, environment)?.checked_sub(end.checked_sub(*start)?)
+            }
+            CompilerExpressionKind::ListZip {
+                left,
+                right,
+                operation,
+                ..
+            } => {
+                let left = Self::known_list_count(left, environment)?;
+                let right = Self::known_list_count(right, environment)?;
+                match operation {
+                    CompilerListZipOperation::Exact => (left == right).then_some(left),
+                    CompilerListZipOperation::Shortest => Some(left.min(right)),
+                    CompilerListZipOperation::Longest => Some(left.max(right)),
+                }
+            }
+            CompilerExpressionKind::ListEntries(list) => Self::known_list_count(list, environment),
+            _ => None,
+        }
+    }
+
+    fn exact_usize(value: &CompilerExpression) -> Option<usize> {
+        let range = value
+            .int_range
+            .as_ref()
+            .filter(|range| range.lower == range.upper)?;
+        usize::try_from(&range.lower).ok()
+    }
+
     fn known_string_expression(
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -12729,6 +13259,7 @@ impl Analyzer {
                         rational_value: argument.rational_value.clone(),
                         string_value: exact_string(argument),
                         closed_int_range: None,
+                        list_count: Self::known_list_count(argument, call_environment),
                         record_fields: BTreeMap::new(),
                         namespace: None,
                         callable: self.known_callable(
@@ -14335,6 +14866,9 @@ impl Analyzer {
                             .then(|| exact_string(argument))
                             .flatten(),
                         closed_int_range: None,
+                        list_count: (!generalize_parameters)
+                            .then(|| Self::known_list_count(argument, &BTreeMap::new()))
+                            .flatten(),
                         record_fields: BTreeMap::new(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
@@ -14374,6 +14908,7 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
                     closed_int_range: None,
+                    list_count: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -14408,6 +14943,7 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
                     closed_int_range: None,
+                    list_count: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -14441,6 +14977,7 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     string_value: exact_string(argument),
                     closed_int_range: None,
+                    list_count: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -16291,13 +16828,14 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
 }
 
 fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
-    matches!(value_type, CompilerType::Effect | CompilerType::Int)
-        || matches!(
-            value_type,
-            CompilerType::Tuple(fields)
-                if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
-        )
-        || compiler_int_string_pair(value_type)
+    matches!(
+        value_type,
+        CompilerType::Effect | CompilerType::Int | CompilerType::String
+    ) || matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+    ) || compiler_int_string_pair(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
 
@@ -16755,6 +17293,7 @@ fn decision_binding_environment(
             rational_value: None,
             string_value: None,
             closed_int_range: None,
+            list_count: None,
             record_fields: BTreeMap::new(),
             namespace: None,
             callable: None,
@@ -17230,6 +17769,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListDecision { .. }
         | CompilerExpressionKind::ListMap { .. }
         | CompilerExpressionKind::ListSelect { .. }
+        | CompilerExpressionKind::ListForeach { .. }
+        | CompilerExpressionKind::ListReject { .. }
         | CompilerExpressionKind::ListFold { .. }
         | CompilerExpressionKind::IterateGenerator { .. }
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
@@ -17258,6 +17799,11 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListFirst(value)
         | CompilerExpressionKind::ListRest(value)
         | CompilerExpressionKind::ListUncons(value)
+        | CompilerExpressionKind::ListIndexOperation { list: value, .. }
+        | CompilerExpressionKind::ListRemoveIndexRange { list: value, .. }
+        | CompilerExpressionKind::ListUnzip(value)
+        | CompilerExpressionKind::ListEntries(value)
+        | CompilerExpressionKind::ListCollectString(value)
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
@@ -17319,6 +17865,11 @@ fn compiler_expression_is_closed_with(
             list: left,
             value: right,
         }
+        | CompilerExpressionKind::ListInsertAt {
+            list: left,
+            inserted: right,
+            ..
+        }
         | CompilerExpressionKind::ListRangeSelect {
             list: left,
             range: right,
@@ -17328,6 +17879,22 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
+        }
+        CompilerExpressionKind::ListZip {
+            left,
+            right,
+            left_default,
+            right_default,
+            ..
+        } => {
+            compiler_expression_is_closed_with(left, bound)
+                && compiler_expression_is_closed_with(right, bound)
+                && left_default
+                    .as_deref()
+                    .is_none_or(|value| compiler_expression_is_closed_with(value, bound))
+                && right_default
+                    .as_deref()
+                    .is_none_or(|value| compiler_expression_is_closed_with(value, bound))
         }
         CompilerExpressionKind::BooleanDecision {
             subject,
@@ -23550,6 +24117,100 @@ mod tests {
             analyze_for_compiler(unavailable).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn models_complete_closed_list_sequence_operations() {
+        // TOPAL-LIST-BOUNDARY-CHECK-001 through TOPAL-LIST-UNZIP-001,
+        // TOPAL-COLLECTION-FOREACH-001, TOPAL-COLLECTION-ENTRIES-001,
+        // TOPAL-COLLECTION-COLLECT-LIST-001, TOPAL-COLLECTION-COLLECT-STRING-001,
+        // TOPAL-COMPILER-LIST-SEQUENCE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-sequence-operations.t"
+        ))
+        .unwrap();
+        assert!(program.main.statements.iter().any(|statement| matches!(
+            statement,
+            CompilerStatement::Binding(CompilerBinding {
+                value: CompilerExpression {
+                    kind: CompilerExpressionKind::ListForeach { .. },
+                    ..
+                },
+                ..
+            })
+        )));
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared sequence regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 16);
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::ListInsertAt {
+                inserts_list: false,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[1].kind,
+            CompilerExpressionKind::ListInsertAt {
+                inserts_list: true,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::ListIndexOperation {
+                operation: CompilerListIndexOperation::Split,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListRemoveIndexRange {
+                start: 1,
+                end: 3,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[7].kind,
+            CompilerExpressionKind::ListReject { indexes: true, .. }
+        ));
+        assert!(matches!(
+            results[8].kind,
+            CompilerExpressionKind::ListReject { indexes: false, .. }
+        ));
+        assert!(matches!(
+            results[9].kind,
+            CompilerExpressionKind::ListZip {
+                operation: CompilerListZipOperation::Exact,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[12].kind,
+            CompilerExpressionKind::ListUnzip(_)
+        ));
+        assert!(matches!(
+            results[13].kind,
+            CompilerExpressionKind::ListEntries(_)
+        ));
+        assert!(matches!(
+            results[15].kind,
+            CompilerExpressionKind::ListCollectString(_)
+        ));
+
+        for invalid in [
+            "use language (version is v0.1)\nvalues : List Int is one 1\nvalues insert-at 2 9\n",
+            "use language (version is v0.1)\nvalues : List Int is one 1\nvalues take 2\n",
+            "use language (version is v0.1)\nvalues : List Int is one 1\nvalues remove 1\n",
+            "use language (version is v0.1)\nvalues : List Int is one 1\nvalues remove-indexes (0 ..= 1)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                "E-LIST-BOUNDARY-OUT-OF-RANGE"
+            );
+        }
     }
 
     #[test]

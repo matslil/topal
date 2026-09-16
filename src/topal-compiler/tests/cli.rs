@@ -9814,3 +9814,125 @@ fn list_custom_generator_function_boundaries_are_freestanding_and_debuggable() {
         assert!(text.contains(expected), "missing {expected:?} in:\n{text}");
     }
 }
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One boundary covers every ordered sequence result shape and its debugger view.
+fn complete_list_sequence_operations_are_freestanding_and_debuggable() {
+    // TOPAL-LIST-BOUNDARY-CHECK-001 through TOPAL-LIST-UNZIP-001,
+    // TOPAL-COLLECTION-FOREACH-001, TOPAL-COLLECTION-ENTRIES-001,
+    // TOPAL-COLLECTION-COLLECT-LIST-001, TOPAL-COLLECTION-COLLECT-STRING-001,
+    // TOPAL-COMPILER-LIST-SEQUENCE-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-list-sequence-operations");
+    let executable = directory.join("application");
+    let shared = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/list-sequence-operations.t");
+    let source_text = fs::read_to_string(&shared).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        shared.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let debug_source = directory.join("list-sequence-debug.t");
+    let debug_executable = directory.join("debug-application");
+    fs::write(
+        &debug_source,
+        "use language (version is v0.1)\nvalues : List Int is Entry (1, Entry (2, Entry (3, Empty)))\nother : List Int is Entry (7, Entry (8, Empty))\nfragments : List String is Entry (\"Top\", Entry (\"al\", Empty))\npairs is values zip-shortest other\nindexed is values entries\ncombined is fragments collect String\n(values, pairs, indexed, fragments, combined)\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        debug_executable.to_str().unwrap(),
+        debug_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-sequence-debug.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "whatis fragments",
+            "-ex",
+            "print fragments",
+            "-ex",
+            "whatis pairs",
+            "-ex",
+            "print pairs",
+            "-ex",
+            "whatis indexed",
+            "-ex",
+            "print indexed",
+            "-ex",
+            "whatis combined",
+            "-ex",
+            "print combined",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&debug_executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List String",
+        "$1 = Entry ( \"Top\", Entry ( \"al\", Empty ) )",
+        "type = List(Int, Int)",
+        "$2 = Entry ( (1, 7), Entry ( (2, 8), Empty ) )",
+        "type = List (index : Int, value : Int)",
+        "$3 = Entry ( (index is 0, value is 1), Entry ( (index is 1, value is 2), Entry ( (index is 2, value is 3), Empty ) ) )",
+        "type = String",
+        "$4 = \"Topal\"",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}

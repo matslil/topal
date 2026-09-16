@@ -3579,6 +3579,55 @@ private layout, and make no `topal-native/6` revision. It realizes
 `TOPAL-LIST-FIRST-001`, and `TOPAL-LIST-ENTRY-COUNT-001` for compiler increment
 4b3d-j.
 
+## TOPAL-COMP-LIST-SEQUENCE-001 — Closed ordered List sequence operations
+
+The checked compiler shall admit the unchanged
+`examples/language/list-sequence-operations.t` regression. Over exact finite
+`List Int` values it shall implement single-value and List `insert-at`,
+`split-at`, `take`, `drop`, indexed `remove`, range and anonymous-predicate
+`remove-indexes`, anonymous-predicate `remove-values`, `zip-exact`,
+`zip-shortest`, defaulted `zip-longest`, `unzip`, ordered `foreach`, `entries`,
+and List identity collection. It shall also admit contextual `List String`
+construction and ordered collection to String. Results, source preservation,
+entry order, predicate order, and canonical output shall match the interpreter.
+
+The checked model shall retain element, pair, indexed-entry, Result, and String
+classifiers. A closed boundary, index, or index range shall be proven against
+the retained exact source count before LLVM; an invalid one shall produce
+`E-LIST-BOUNDARY-OUT-OF-RANGE`. Dynamic positions shall remain rejected until
+the general evidence-dependent Result boundary is implemented. `zip-exact`
+shall check counts in generated code and return the formal `out-of-range`
+Result in domain `root.zip-exact(List,List)` when they differ. Predicates and
+foreach actions shall bind each visited value or zero-based index exactly once,
+in source order, at LLVM O0.
+
+The Linux x86-64 backend shall use private immutable nodes selected from the
+complete checked element shape: two pointers for Int and String entries, three
+pointers for Int pairs, and the target-laid-out indexed-entry record plus its
+remaining pointer. It shall use direct LLVM loops and private non-inlined
+helpers for copying prefixes, sharing immutable suffixes, zipping, unzipping,
+entry construction, and String concatenation. All allocation and output shall
+continue through the Topal-owned Linux syscall runtime. LLVM target data layout
+shall determine physical alignment; the backend shall hard-code no public
+System V aggregate or call boundary. Correctness shall not depend on an LLVM
+optimization pass.
+
+DWARF and the bounded GDB renderer shall expose `List Int`, `List String`,
+`List (Int, Int)`, `List (index : Int, value : Int)`, and the collected String.
+The executable shall have no undefined symbol, needed library, dynamic
+relocation, foreign allocator, C/C++ runtime, or other-language standard
+library. This increment shall define no public, foreign, serialized,
+persistent, generic, or compiled-library List ABI, stabilize no private node
+layout, and make no `topal-native/6` revision. Future library metadata shall
+encode the recursive List identity, element and product/record classifiers,
+checked count evidence, operation and predicate identities, ordering,
+fallibility, allocation effects, ownership, native-representation identity,
+and target adapters rather than private node offsets or helper symbols. This
+realizes `TOPAL-COMPILER-LIST-SEQUENCE-001`, `TOPAL-LIST-BOUNDARY-CHECK-001`
+through `TOPAL-LIST-UNZIP-001`, `TOPAL-COLLECTION-FOREACH-001`,
+`TOPAL-COLLECTION-ENTRIES-001`, `TOPAL-COLLECTION-COLLECT-LIST-001`, and
+`TOPAL-COLLECTION-COLLECT-STRING-001` for compiler increment 5ay.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when

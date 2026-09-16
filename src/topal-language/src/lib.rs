@@ -15,10 +15,10 @@ pub use compiler_model::{
     CompilerFallible, CompilerFunction, CompilerFunctionView, CompilerGeneratorCloseHandler,
     CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield, CompilerIdentity,
     CompilerInterface, CompilerInterfaceImplementation, CompilerInterfaceOperation,
-    CompilerInterfaceOperationEvidence, CompilerLanguageContext, CompilerModularType,
-    CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumAlternative, CompilerSumRule,
-    CompilerSumType, CompilerType, CompilerTypeView, CompilerTypeViewForm, CompilerValidation,
-    IntRange, analyze_for_compiler,
+    CompilerInterfaceOperationEvidence, CompilerLanguageContext, CompilerListIndexOperation,
+    CompilerListZipOperation, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType,
+    CompilerTypeView, CompilerTypeViewForm, CompilerValidation, IntRange, analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,
