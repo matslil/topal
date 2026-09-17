@@ -8630,6 +8630,84 @@ fn static_introspection_is_erased_and_version_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn lint_language_variant_is_freestanding_and_debuggable() {
+    // TOPAL-SYN-CONTEXT-001, TOPAL-LINT-VARIANT-001,
+    // TOPAL-COMPILER-LINT-VARIANT-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-lint-language-variant");
+    let source = directory.join("lint-language-variant.t");
+    let executable = directory.join("application");
+    let source_text = include_str!("../../../examples/language/lint-language-variant.t");
+    fs::write(&source, source_text).unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_eq!(executed.stdout, b"<namespace lang lint>\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let debug_source = directory.join("lint-scope-debug.t");
+    let debug_executable = directory.join("debug-application");
+    fs::write(
+        &debug_source,
+        "use language (\n  version is v0.1,\n  features is ( lint )\n)\nlint-scope : Scope is lang lint\nlint-scope\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "-o",
+        debug_executable.to_str().unwrap(),
+        debug_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break lint-scope-debug.t:6",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis 'lint-scope'",
+            "-ex",
+            "print 'lint-scope'",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&debug_executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = enum Scope"), "{text}");
+    assert!(text.contains("$1 = <namespace lang lint>"), "{text}");
+    assert!(text.contains("lint-scope-debug.t:6"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn capability_composition_is_static_freestanding_and_absent_from_dwarf() {
     // TOPAL-CAPABILITY-EVIDENCE-001, TOPAL-CAPABILITY-COHERENCE-001,
     // TOPAL-CAPABILITY-COMPOSE-001, TOPAL-COMPILER-CAPABILITY-COMPOSE-001,

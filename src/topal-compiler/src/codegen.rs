@@ -443,6 +443,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Effect
         | CompilerExpressionKind::TypeValue(_)
         | CompilerExpressionKind::Root
+        | CompilerExpressionKind::LintNamespace
         | CompilerExpressionKind::FunctionValue(_)
         | CompilerExpressionKind::Identity(_)
         | CompilerExpressionKind::TypeView(_)
@@ -1252,7 +1253,11 @@ impl<'a> Generator<'a> {
             },
             CompilerExpressionKind::Root => LlValue::Enum {
                 value: "0".into(),
-                enumeration: root_scope_enumeration(),
+                enumeration: scope_enumeration(),
+            },
+            CompilerExpressionKind::LintNamespace => LlValue::Enum {
+                value: "1".into(),
+                enumeration: scope_enumeration(),
             },
             CompilerExpressionKind::FunctionValue(value) => LlValue::Enum {
                 value: value.to_string(),
@@ -2839,7 +2844,7 @@ impl<'a> Generator<'a> {
                             expression.span,
                             &mut self.debug,
                         ),
-                        enumeration: root_scope_enumeration(),
+                        enumeration: scope_enumeration(),
                     },
                     CompilerType::Function
                     | CompilerType::Identity
@@ -8206,7 +8211,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             enumeration: if value_type == &CompilerType::Type {
                 fundamental_type_enumeration()
             } else {
-                root_scope_enumeration()
+                scope_enumeration()
             },
         },
         CompilerType::Function
@@ -8264,10 +8269,10 @@ fn fundamental_type_enumeration() -> CompilerEnumType {
     }
 }
 
-fn root_scope_enumeration() -> CompilerEnumType {
+fn scope_enumeration() -> CompilerEnumType {
     CompilerEnumType {
         name: "Scope".into(),
-        alternatives: vec!["<namespace root>".into()],
+        alternatives: vec!["<namespace root>".into(), "<namespace lang lint>".into()],
     }
 }
 
@@ -8981,7 +8986,7 @@ impl DebugInfo {
             CompilerType::Completed => self.completed_type,
             CompilerType::Effect => self.effect_type,
             CompilerType::Type => self.enum_type(&fundamental_type_enumeration()),
-            CompilerType::Scope => self.enum_type(&root_scope_enumeration()),
+            CompilerType::Scope => self.enum_type(&scope_enumeration()),
             CompilerType::Function => *self
                 .enum_types
                 .get("Function")
@@ -9943,7 +9948,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         },
         CompilerType::Scope => LlValue::Enum {
             value,
-            enumeration: root_scope_enumeration(),
+            enumeration: scope_enumeration(),
         },
         CompilerType::Function => {
             unreachable!("Function values are not admitted at machine ABI reconstruction points")
@@ -11021,6 +11026,31 @@ mod tests {
         assert!(!llvm.contains("current-context"));
         assert!(!llvm.contains("topal.runtime.introspection"));
         assert!(!llvm.contains("topal.runtime.version"));
+    }
+
+    #[test]
+    fn lowers_the_lint_namespace_as_an_authority_free_scope_value() {
+        // TOPAL-SYN-CONTEXT-001, TOPAL-LINT-VARIANT-001,
+        // TOPAL-COMPILER-LINT-VARIANT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/lint-language-variant.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "lint-language-variant.t").emit();
+
+        assert!(llvm.contains(&llvm_bytes(b"<namespace lang lint>")));
+        assert!(!llvm.contains("topal.runtime.lint"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let debug_program = analyze_for_compiler(
+            "use language (version is v0.1, features is (lint))\nlint-scope : Scope is lang lint\nlint-scope\n",
+        )
+        .unwrap();
+        let debug_llvm = Generator::new(&debug_program, "lint-scope-debug.t").emit();
+        assert!(debug_llvm.contains("!DIEnumerator(name: \"<namespace root>\", value: 0)"));
+        assert!(debug_llvm.contains("!DIEnumerator(name: \"<namespace lang lint>\", value: 1)"));
     }
 
     #[test]

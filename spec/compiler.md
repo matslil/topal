@@ -47,6 +47,28 @@ diagnostic state, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or native ABI revision. LLVM SHALL receive no operation for
 the control itself.
 
+### TOPAL-COMPILER-LINT-VARIANT-001 — Authority-free lint context
+
+For a v0.1 source context whose only canonical optional feature is `lint`, the
+compiler SHALL retain the exact feature set in its checked program and in an
+admitted static `lang context` value. `lang lint` SHALL be admitted exactly when
+that feature is selected and SHALL produce an empty `Scope` named `lang lint`.
+Without the feature, the compiler SHALL diagnose `E-LINT-VARIANT`; it SHALL
+reject every other optional feature until a compiler rule admits that variant.
+
+On Linux x86-64, the backend MAY represent the lint namespace as a
+compiler-private `i32` alternative of the existing `Scope` enumeration.
+Canonical output and DWARF/GDB SHALL expose `<namespace lang lint>`. The tag
+SHALL NOT grant or encode filesystem, network, process, debugger, application,
+or lint-execution authority, and lowering SHALL introduce no namespace table,
+dynamic lookup, allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or native ABI revision.
+
+A future compiled-library interface containing this context SHALL identify its
+language revision, canonical variant feature set, exposed vocabulary, and
+authority profile independently of private tags and symbol spelling. This rule
+does not define that interface or admit dynamic lint APIs.
+
 ### TOPAL-COMPILER-INT-001 — Arbitrary finite Int representation
 
 Every admitted finite `Int` SHALL be represented without a fixed machine-word

@@ -2046,6 +2046,16 @@
       "cpu_time_ns": 140542,
       "memory_peak_bytes": 18501632,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/lint-language-variant.t": {
+      "cpu_time_ns": 120777940,
+      "memory_peak_bytes": 41156608,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/lint-language-variant.t": {
+      "cpu_time_ns": 130307,
+      "memory_peak_bytes": 18513920,
+      "samples_per_test": 500
     }
   }
 }

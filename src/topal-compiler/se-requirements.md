@@ -69,6 +69,33 @@ C/C++ runtime, other-language standard library, public ABI, or
 `TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001` and `TOPAL-SYN-DIAG-001` for compiler
 increment 1a.
 
+## TOPAL-COMP-LINT-VARIANT-001 — Static lint language context
+
+The compiler shall accept a v0.1 source context whose only canonical optional
+feature is `lint`, preserve that feature in the checked program and in any
+admitted static `lang context` value, and expose `lang lint` only in that
+context. The exposed value shall be the empty, authority-free `lang lint`
+namespace with classifier `Scope`; without the feature, the shared
+`E-LINT-VARIANT` diagnostic shall be retained. Every other optional feature
+shall remain rejected with `E-COMPILER-UNSUPPORTED`.
+
+Linux x86-64 lowering may extend the private `Scope` enumeration with a stable
+compiler-selected tag for canonical display and truthful DWARF/GDB inspection.
+It shall add no runtime namespace or lint table, lookup, allocation, filesystem,
+network, process, debugger, or application authority, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision.
+
+A future compiled-library interface shall identify the selected language
+revision, canonical variant feature set, exposed vocabulary, and authority
+profile independently of this private tag and native symbol spelling. Tests
+shall compile the unchanged interpreter regression, compare exact output,
+inspect checked context metadata and O0 LLVM, validate the shared corpus and
+separate resource baselines, and verify freestanding ELF, DWARF, GDB, undefined
+symbols, needed libraries, and relocations. This realizes
+`TOPAL-COMPILER-LINT-VARIANT-001`, `TOPAL-SYN-CONTEXT-001`, and
+`TOPAL-LINT-VARIANT-001` for compiler increment 1b.
+
 ## TOPAL-COMP-INT-001 — Arbitrary finite Int runtime
 
 The compiler shall remove the increment-1 signed-64-bit admission boundary and
