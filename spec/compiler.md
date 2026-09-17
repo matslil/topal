@@ -2931,9 +2931,41 @@ tag SHALL remain observational metadata and SHALL NOT become dispatch.
 This rule SHALL introduce no pattern object, matching table, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
-native-ABI revision. Nested and aggregate repeated-name identity, ordinary
-named-function header repetition, publication, and library metadata/adapters
-remain deferred.
+native-ABI revision. Aggregate repeated-name identity is governed by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. Nested parameter-pattern
+syntax, ordinary named-function header repetition, publication, and library
+metadata/adapters remain deferred.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001 — Exact repeated aggregate values
+
+A repeated anonymous-pattern name MAY match the same exact Tuple, Record,
+Optional, or List classifier when that aggregate has an already-admitted
+private function-boundary representation and complete exact structural
+equality. Tuple fields and canonical Record fields SHALL compare recursively in
+their semantic order. Optional values SHALL compare their tag and, when
+present, their admitted payload. Admitted Lists SHALL compare entries in order
+and require equal length. No aggregate comparison SHALL use conversion,
+evidence forgetting, user-visible Equality selection, canonical equivalence,
+approximation, allocation identity, or inactive representation data.
+
+The initial aggregate set SHALL comprise recursively equality-capable Tuple and
+Record values over admitted non-Function leaves; `Optional Int`, `Optional
+Rational`, `Optional String`, and `Optional (Int, String)`; `List Int`; and
+`List List (Int, String)`. Every later occurrence SHALL retain the exact same
+private aggregate parameter representation as its first occurrence. Its guard
+SHALL reuse the existing direct field comparisons or Topal-owned Optional/List
+comparison primitive before the body. DWARF/GDB SHALL expose only the first
+occurrence through its target-derived aggregate or pointer representation.
+Mismatch reporting and status SHALL remain those of
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`.
+
+This rule SHALL introduce no generic aggregate matcher, pattern table,
+allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate ABI, or native-ABI revision.
+Result, Sum, Range, Generator, refined, authority-bearing, and
+Function-containing aggregate identity; nested parameter-pattern syntax;
+ordinary named-function header repetition; publication; and library
+metadata/adapters remain deferred.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 

@@ -583,7 +583,10 @@ repeated non-discard name across ordinary or product parameters shall bind its
 first value once and require each later value to be exactly identical without
 conversion or user Equality selection under `TOPAL-TYPE-MATCH-001`. A mismatch
 shall report `E-ANONYMOUS-PATTERN-IDENTITY` before the body; successful matches
-shall be traceable and covered by the shared repeated-pattern regression.
+shall be traceable and covered by the shared repeated-pattern regression. The
+same exact identity semantics shall apply recursively to Tuple, Record,
+Optional, and List values and shall be covered in every interpreter mode and
+reversible debugger history by the shared repeated-aggregate regression.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
