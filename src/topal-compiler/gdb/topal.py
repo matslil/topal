@@ -545,7 +545,7 @@ class _TopalListPrinter:
         inferior = gdb.selected_inferior()
         entries = []
         visited = set()
-        pair_types = ("(Int, Int)", "(Int, String)")
+        pair_types = ("(Int, Int)", "(Int, String)", "(String, Int)")
         indexed_entry_type = "(index : Int, value : Int)"
         node_size = (
             32
@@ -606,6 +606,19 @@ class _TopalListPrinter:
                         f"({left}, {right})>"
                     )
                 entries.append(f"({left}, {right})")
+            elif self._element_type == "(String, Int)":
+                left = int.from_bytes(node[0:8], "little")
+                right = int.from_bytes(node[8:16], "little")
+                if not left or not right:
+                    return "<invalid null List (String, Int) field>"
+                left = _TopalStringPrinter(left).to_string()
+                right = _TopalIntPrinter(right).to_string()
+                if left.startswith("<") or right.startswith("<"):
+                    return (
+                        "<invalid List (String, Int) entry: "
+                        f"({left}, {right})>"
+                    )
+                entries.append(f"({left}, {right})")
             elif self._element_type in ("List (Int, String)", "List(Int, String)"):
                 payload = int.from_bytes(node[0:8], "little")
                 rendered = _TopalListPrinter(payload, "(Int, String)").to_string()
@@ -633,6 +646,145 @@ class _TopalListPrinter:
         for entry in reversed(entries):
             rendered = f"Entry ( {entry}, {rendered} )"
         return rendered
+
+
+class _TopalSequenceContainerPrinter:
+    """Render an immutable compiler-private Array or Set of Int."""
+
+    def __init__(self, value, kind):
+        self._value = value
+        self._kind = kind
+
+    def to_string(self):
+        address = int(self._value)
+        if not address:
+            return f"<invalid null {self._kind}>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return f"<unreadable {self._kind}>"
+        count = int.from_bytes(header[0:8], "little")
+        current = int.from_bytes(header[8:16], "little")
+        if count > 100_000:
+            return f"<{self._kind} too large to render safely>"
+        entries = []
+        visited = set()
+        for _ in range(count):
+            if not current:
+                return f"<truncated {self._kind}>"
+            if current in visited:
+                return f"<cyclic {self._kind}>"
+            visited.add(current)
+            try:
+                node = bytes(inferior.read_memory(current, 16))
+            except gdb.MemoryError:
+                return f"<unreadable {self._kind} entry>"
+            payload = int.from_bytes(node[0:8], "little")
+            if not payload:
+                return f"<invalid null {self._kind} Int entry>"
+            rendered = _TopalIntPrinter(payload).to_string()
+            if rendered.startswith("<"):
+                return f"<invalid {self._kind} Int entry: {rendered}>"
+            entries.append(rendered)
+            current = int.from_bytes(node[8:16], "little")
+        if current:
+            return f"<invalid {self._kind} entry count>"
+        return f"{self._kind} (" + ", ".join(entries) + ")"
+
+
+class _TopalBagPrinter:
+    """Render an immutable compiler-private Bag of Int."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        address = int(self._value)
+        if not address:
+            return "<invalid null Bag>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 24))
+        except gdb.MemoryError:
+            return "<unreadable Bag>"
+        total = int.from_bytes(header[0:8], "little")
+        distinct = int.from_bytes(header[8:16], "little")
+        current = int.from_bytes(header[16:24], "little")
+        if distinct > 100_000 or total < distinct:
+            return "<invalid Bag counts>"
+        entries = []
+        visited = set()
+        observed_total = 0
+        for _ in range(distinct):
+            if not current:
+                return "<truncated Bag>"
+            if current in visited:
+                return "<cyclic Bag>"
+            visited.add(current)
+            try:
+                node = bytes(inferior.read_memory(current, 24))
+            except gdb.MemoryError:
+                return "<unreadable Bag entry>"
+            payload = int.from_bytes(node[0:8], "little")
+            multiplicity = int.from_bytes(node[8:16], "little")
+            if not payload or not multiplicity:
+                return "<invalid Bag entry>"
+            rendered = _TopalIntPrinter(payload).to_string()
+            if rendered.startswith("<"):
+                return f"<invalid Bag Int entry: {rendered}>"
+            entries.append(f"({rendered}, {multiplicity})")
+            observed_total += multiplicity
+            current = int.from_bytes(node[16:24], "little")
+        if current or observed_total != total:
+            return "<invalid Bag counts>"
+        return "Bag (" + ", ".join(entries) + ")"
+
+
+class _TopalMapPrinter:
+    """Render an immutable compiler-private Map from String to Int."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        address = int(self._value)
+        if not address:
+            return "<invalid null Map>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable Map>"
+        count = int.from_bytes(header[0:8], "little")
+        current = int.from_bytes(header[8:16], "little")
+        if count > 100_000:
+            return "<Map too large to render safely>"
+        entries = []
+        visited = set()
+        for _ in range(count):
+            if not current:
+                return "<truncated Map>"
+            if current in visited:
+                return "<cyclic Map>"
+            visited.add(current)
+            try:
+                node = bytes(inferior.read_memory(current, 24))
+            except gdb.MemoryError:
+                return "<unreadable Map entry>"
+            key = int.from_bytes(node[0:8], "little")
+            value = int.from_bytes(node[8:16], "little")
+            if not key or not value:
+                return "<invalid null Map entry field>"
+            key = _TopalStringPrinter(key).to_string()
+            value = _TopalIntPrinter(value).to_string()
+            if key.startswith("<") or value.startswith("<"):
+                return f"<invalid Map entry: ({key}, {value})>"
+            entries.append(f"({key}, {value})")
+            current = int.from_bytes(node[16:24], "little")
+        if current:
+            return "<invalid Map entry count>"
+        return "Map (" + ", ".join(entries) + ")"
 
 
 def _render_topal_value(value):
@@ -730,6 +882,15 @@ def _lookup_topal_value(value):
         "struct TopalList."
     ):
         return _TopalListPrinter(value, value_type[len("List") :])
+    if storage_type.startswith("struct TopalContainer."):
+        if value_type.startswith("Array "):
+            return _TopalSequenceContainerPrinter(value, "Array")
+        if value_type.startswith("Set "):
+            return _TopalSequenceContainerPrinter(value, "Set")
+        if value_type.startswith("Bag "):
+            return _TopalBagPrinter(value)
+        if value_type.startswith("Map ") or value_type.startswith("Map("):
+            return _TopalMapPrinter(value)
     prefix = "Result ("
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):

@@ -202,6 +202,10 @@ pub enum CompilerType {
     Result(Box<Self>),
     Optional(Box<Self>),
     List(Box<Self>),
+    Array { count: usize, element: Box<Self> },
+    Set(Box<Self>),
+    Bag(Box<Self>),
+    Map { key: Box<Self>, value: Box<Self> },
     TraversalControl(Box<Self>),
     Generator(CompilerGeneratorType),
     Refined { constraint: String, base: Box<Self> },
@@ -239,6 +243,10 @@ impl CompilerType {
                 | Self::Result(_)
                 | Self::Optional(_)
                 | Self::List(_)
+                | Self::Array { .. }
+                | Self::Set(_)
+                | Self::Bag(_)
+                | Self::Map { .. }
                 | Self::TraversalControl(_)
                 | Self::Generator(_)
                 | Self::Character
@@ -281,6 +289,10 @@ impl CompilerType {
             ),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
             Self::List(element) => format!("List {}", element.name()),
+            Self::Array { count, element } => format!("Array {count} {}", element.name()),
+            Self::Set(element) => format!("Set {}", element.name()),
+            Self::Bag(element) => format!("Bag {}", element.name()),
+            Self::Map { key, value } => format!("Map ({}, {})", key.name(), value.name()),
             Self::TraversalControl(payload) => format!("TraversalControl {}", payload.name()),
             Self::Generator(generator) => format!(
                 "Generator {} {} {}",
@@ -427,6 +439,21 @@ pub enum CompilerListZipOperation {
     Exact,
     Shortest,
     Longest,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerContainerKind {
+    Array,
+    Set,
+    Bag,
+    Map,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerMapCollisionPolicy {
+    Reject,
+    KeepFirst,
+    KeepLast,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -696,6 +723,29 @@ pub enum CompilerExpressionKind {
     ListUnzip(Box<CompilerExpression>),
     ListEntries(Box<CompilerExpression>),
     ListCollectString(Box<CompilerExpression>),
+    ContainerCollect {
+        source: Box<CompilerExpression>,
+        kind: CompilerContainerKind,
+        map_policy: Option<CompilerMapCollisionPolicy>,
+    },
+    ContainerEntryCount(Box<CompilerExpression>),
+    ContainerEmpty(Box<CompilerExpression>),
+    ArrayAt {
+        array: Box<CompilerExpression>,
+        index: usize,
+    },
+    SetContains {
+        set: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    BagMultiplicity {
+        bag: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    MapLookup {
+        mapping: Box<CompilerExpression>,
+        key: Box<CompilerExpression>,
+    },
     TraversalControl {
         finish: bool,
         value: Box<CompilerExpression>,
@@ -991,6 +1041,7 @@ struct BindingFacts {
     string_value: Option<String>,
     closed_int_range: Option<ClosedIntRange>,
     list_count: Option<usize>,
+    list_string_keys: Option<Vec<String>>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
@@ -7579,6 +7630,7 @@ impl Analyzer {
                 string_value: None,
                 closed_int_range: None,
                 list_count: None,
+                list_string_keys: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
@@ -7799,6 +7851,7 @@ impl Analyzer {
                     let string_value = Self::known_string_value(&value, environment);
                     let closed_int_range = Self::known_closed_int_range(&value, environment);
                     let list_count = Self::known_list_count(&value, environment);
+                    let list_string_keys = Self::known_list_string_keys(&value, environment);
                     let record_fields = Self::known_record_fields(&value, environment);
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
@@ -7853,6 +7906,7 @@ impl Analyzer {
                         string_value,
                         closed_int_range,
                         list_count,
+                        list_string_keys,
                         record_fields,
                         namespace,
                         callable,
@@ -7970,6 +8024,7 @@ impl Analyzer {
                             string_value: None,
                             closed_int_range: None,
                             list_count: Self::known_list_count(&value, environment),
+                            list_string_keys: Self::known_list_string_keys(&value, environment),
                             record_fields: BTreeMap::new(),
                             namespace: None,
                             callable: None,
@@ -8688,6 +8743,7 @@ impl Analyzer {
                     string_value: None,
                     closed_int_range: None,
                     list_count: None,
+                    list_string_keys: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -9222,6 +9278,7 @@ impl Analyzer {
                 string_value: None,
                 closed_int_range: None,
                 list_count: None,
+                list_string_keys: None,
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: None,
@@ -10107,6 +10164,122 @@ impl Analyzer {
             debug_assert!(matches!(list.value_type, CompilerType::List(_)));
             list.span = span;
             return Ok(list);
+        }
+        if let [
+            list,
+            Expression::Identifier(operation),
+            Expression::Identifier(classifier),
+        ] = items
+            && self.source.slice(*operation) == "collect"
+            && self.source.slice(*classifier) == "Array"
+        {
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "Array collection source")?;
+            let count = Self::known_list_count(&list, environment).ok_or_else(|| {
+                unsupported(&self.source, list.span, "Array with a dynamic entry count")
+            })?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ContainerCollect {
+                    source: Box::new(list),
+                    kind: CompilerContainerKind::Array,
+                    map_policy: None,
+                },
+                value_type: CompilerType::Array {
+                    count,
+                    element: Box::new(CompilerType::Int),
+                },
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), list] = items
+            && matches!(self.source.slice(*operation), "collect-set" | "collect-bag")
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let list = self.analyze_expression(list, environment)?;
+            require_int_list(&self.source, &list, "unordered collection source")?;
+            let (kind, value_type) = if operation == "collect-set" {
+                (
+                    CompilerContainerKind::Set,
+                    CompilerType::Set(Box::new(CompilerType::Int)),
+                )
+            } else {
+                (
+                    CompilerContainerKind::Bag,
+                    CompilerType::Bag(Box::new(CompilerType::Int)),
+                )
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ContainerCollect {
+                    source: Box::new(list),
+                    kind,
+                    map_policy: None,
+                },
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [
+            Expression::Identifier(operation),
+            pairs,
+            Expression::Identifier(resolving),
+            Expression::Identifier(policy),
+        ] = items
+            && self.source.slice(*operation) == "collect-map"
+            && self.source.slice(*resolving) == "resolving"
+        {
+            let policy = match self.source.slice(*policy) {
+                "reject" => CompilerMapCollisionPolicy::Reject,
+                "keep-first" => CompilerMapCollisionPolicy::KeepFirst,
+                "keep-last" => CompilerMapCollisionPolicy::KeepLast,
+                _ => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-MAP-COLLISION-POLICY",
+                        *policy,
+                        "collect-map policy must be reject, keep-first, or keep-last",
+                    ));
+                }
+            };
+            let pairs = self.analyze_expression(pairs, environment)?;
+            let pair_type = CompilerType::Tuple(vec![CompilerType::String, CompilerType::Int]);
+            require_type(
+                &self.source,
+                pairs.span,
+                &CompilerType::List(Box::new(pair_type)),
+                &pairs.value_type,
+            )?;
+            if policy == CompilerMapCollisionPolicy::Reject {
+                let keys = Self::known_list_string_keys(&pairs, environment).ok_or_else(|| {
+                    unsupported(&self.source, pairs.span, "dynamic reject-policy Map keys")
+                })?;
+                let mut distinct = BTreeSet::new();
+                if keys.iter().any(|key| !distinct.insert(key.clone())) {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-MAP-KEY-COLLISION",
+                        pairs.span,
+                        "collect-map encountered a duplicate key under reject policy",
+                    ));
+                }
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ContainerCollect {
+                    source: Box::new(pairs),
+                    kind: CompilerContainerKind::Map,
+                    map_policy: Some(policy),
+                },
+                value_type: CompilerType::Map {
+                    key: Box::new(CompilerType::String),
+                    value: Box::new(CompilerType::Int),
+                },
+                int_range: None,
+                rational_value: None,
+                span,
+            });
         }
         if let [list, Expression::Identifier(operation)] = items
             && self.source.slice(*operation) == "entries"
@@ -11217,6 +11390,122 @@ impl Analyzer {
                 span,
             });
         }
+        if let [Expression::Identifier(operation), operands] = items
+            && matches!(
+                self.source.slice(*operation),
+                "array-at?" | "map-lookup" | "set-contains?" | "bag-multiplicity"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            let operands = self.analyze_expression(operands, environment)?;
+            let CompilerExpressionKind::Tuple(mut fields) = operands.kind else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-COLLECTION-QUERY-ARGUMENT",
+                    operands.span,
+                    format!("{operation} requires one two-field product"),
+                ));
+            };
+            if fields.len() != 2 {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-COLLECTION-QUERY-ARGUMENT",
+                    operands.span,
+                    format!("{operation} requires one two-field product"),
+                ));
+            }
+            let query = fields.pop().expect("checked two query fields");
+            let collection = fields.pop().expect("checked two query fields");
+            let (kind, value_type) = match operation.as_str() {
+                "array-at?" => {
+                    let CompilerType::Array { element, .. } = &collection.value_type else {
+                        return Err(unsupported(
+                            &self.source,
+                            collection.span,
+                            "array-at? collection kind",
+                        ));
+                    };
+                    let element = element.clone();
+                    require_type(
+                        &self.source,
+                        query.span,
+                        &CompilerType::Int,
+                        &query.value_type,
+                    )?;
+                    let index = Self::exact_usize(&query).ok_or_else(|| {
+                        unsupported(&self.source, query.span, "dynamic or negative Array index")
+                    })?;
+                    (
+                        CompilerExpressionKind::ArrayAt {
+                            array: Box::new(collection),
+                            index,
+                        },
+                        CompilerType::Optional(element),
+                    )
+                }
+                "map-lookup" => {
+                    let CompilerType::Map { key, value } = &collection.value_type else {
+                        return Err(unsupported(
+                            &self.source,
+                            collection.span,
+                            "map-lookup collection kind",
+                        ));
+                    };
+                    let key_type = key.as_ref().clone();
+                    let value = value.clone();
+                    require_same_type(&self.source, query.span, &key_type, &query.value_type)?;
+                    (
+                        CompilerExpressionKind::MapLookup {
+                            mapping: Box::new(collection),
+                            key: Box::new(query),
+                        },
+                        CompilerType::Optional(value),
+                    )
+                }
+                "set-contains?" => {
+                    let CompilerType::Set(element) = &collection.value_type else {
+                        return Err(unsupported(
+                            &self.source,
+                            collection.span,
+                            "set-contains? collection kind",
+                        ));
+                    };
+                    require_same_type(&self.source, query.span, element, &query.value_type)?;
+                    (
+                        CompilerExpressionKind::SetContains {
+                            set: Box::new(collection),
+                            value: Box::new(query),
+                        },
+                        CompilerType::Boolean,
+                    )
+                }
+                "bag-multiplicity" => {
+                    let CompilerType::Bag(element) = &collection.value_type else {
+                        return Err(unsupported(
+                            &self.source,
+                            collection.span,
+                            "bag-multiplicity collection kind",
+                        ));
+                    };
+                    require_same_type(&self.source, query.span, element, &query.value_type)?;
+                    (
+                        CompilerExpressionKind::BagMultiplicity {
+                            bag: Box::new(collection),
+                            value: Box::new(query),
+                        },
+                        CompilerType::Int,
+                    )
+                }
+                _ => unreachable!("collection query spelling selected above"),
+            };
+            return Ok(CompilerExpression {
+                kind,
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if let [Expression::Identifier(constructor), value] = items
             && self.source.slice(*constructor) == "Some"
         {
@@ -11930,6 +12219,27 @@ impl Analyzer {
                 span,
             });
         }
+        if operation == "entry-count"
+            && matches!(
+                operand_value.value_type,
+                CompilerType::Array { .. }
+                    | CompilerType::Set(_)
+                    | CompilerType::Bag(_)
+                    | CompilerType::Map { .. }
+            )
+        {
+            let int_range = match &operand_value.value_type {
+                CompilerType::Array { count, .. } => Some(IntRange::exact(BigInt::from(*count))),
+                _ => None,
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ContainerEntryCount(Box::new(operand_value)),
+                value_type: CompilerType::Int,
+                int_range,
+                rational_value: None,
+                span,
+            });
+        }
         require_type(
             &self.source,
             operand_value.span,
@@ -12488,6 +12798,30 @@ impl Analyzer {
         }
     }
 
+    fn known_list_string_keys(
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<Vec<String>> {
+        match &value.kind {
+            CompilerExpressionKind::ListEmpty => Some(Vec::new()),
+            CompilerExpressionKind::ListEntry { value, remaining } => {
+                let CompilerExpressionKind::Tuple(fields) = &value.kind else {
+                    return None;
+                };
+                let [key, _] = fields.as_slice() else {
+                    return None;
+                };
+                let key = exact_string(key)?;
+                let mut keys = vec![key];
+                keys.extend(Self::known_list_string_keys(remaining, environment)?);
+                Some(keys)
+            }
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
+                .and_then(|facts| facts.list_string_keys.clone()),
+            _ => None,
+        }
+    }
+
     fn exact_usize(value: &CompilerExpression) -> Option<usize> {
         let range = value
             .int_range
@@ -12946,6 +13280,23 @@ impl Analyzer {
                 span,
             });
         }
+        if operation == "empty?"
+            && matches!(
+                operand.value_type,
+                CompilerType::Array { .. }
+                    | CompilerType::Set(_)
+                    | CompilerType::Bag(_)
+                    | CompilerType::Map { .. }
+            )
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ContainerEmpty(Box::new(operand)),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         let CompilerType::Range(endpoint) = &operand.value_type else {
             if operation == "empty?" {
                 return Err(unsupported(
@@ -13260,6 +13611,7 @@ impl Analyzer {
                         string_value: exact_string(argument),
                         closed_int_range: None,
                         list_count: Self::known_list_count(argument, call_environment),
+                        list_string_keys: Self::known_list_string_keys(argument, call_environment),
                         record_fields: BTreeMap::new(),
                         namespace: None,
                         callable: self.known_callable(
@@ -14869,6 +15221,9 @@ impl Analyzer {
                         list_count: (!generalize_parameters)
                             .then(|| Self::known_list_count(argument, &BTreeMap::new()))
                             .flatten(),
+                        list_string_keys: (!generalize_parameters)
+                            .then(|| Self::known_list_string_keys(argument, &BTreeMap::new()))
+                            .flatten(),
                         record_fields: BTreeMap::new(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
@@ -14909,6 +15264,7 @@ impl Analyzer {
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
+                    list_string_keys: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -14944,6 +15300,7 @@ impl Analyzer {
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
+                    list_string_keys: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -14978,6 +15335,7 @@ impl Analyzer {
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
+                    list_string_keys: None,
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -16820,6 +17178,14 @@ fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::Int]
+    )
+}
+
 fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -16836,6 +17202,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         CompilerType::Tuple(fields)
             if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
     ) || compiler_int_string_pair(value_type)
+        || compiler_string_int_pair(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
 
@@ -17294,6 +17661,7 @@ fn decision_binding_environment(
             string_value: None,
             closed_int_range: None,
             list_count: None,
+            list_string_keys: None,
             record_fields: BTreeMap::new(),
             namespace: None,
             callable: None,
@@ -17647,6 +18015,10 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_)
+        | CompilerType::Array { .. }
+        | CompilerType::Set(_)
+        | CompilerType::Bag(_)
+        | CompilerType::Map { .. }
         | CompilerType::TraversalControl(_)
         | CompilerType::Generator(_) => false,
     }
@@ -17804,6 +18176,10 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::ListUnzip(value)
         | CompilerExpressionKind::ListEntries(value)
         | CompilerExpressionKind::ListCollectString(value)
+        | CompilerExpressionKind::ContainerCollect { source: value, .. }
+        | CompilerExpressionKind::ContainerEntryCount(value)
+        | CompilerExpressionKind::ContainerEmpty(value)
+        | CompilerExpressionKind::ArrayAt { array: value, .. }
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
@@ -17876,6 +18252,18 @@ fn compiler_expression_is_closed_with(
             ..
         }
         | CompilerExpressionKind::ListConcat { left, right }
+        | CompilerExpressionKind::SetContains {
+            set: left,
+            value: right,
+        }
+        | CompilerExpressionKind::BagMultiplicity {
+            bag: left,
+            value: right,
+        }
+        | CompilerExpressionKind::MapLookup {
+            mapping: left,
+            key: right,
+        }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
@@ -24211,6 +24599,73 @@ mod tests {
                 "E-LIST-BOUNDARY-OUT-OF-RANGE"
             );
         }
+    }
+
+    #[test]
+    fn models_closed_fundamental_containers_and_queries() {
+        // TOPAL-ARRAY-COLLECT-001, TOPAL-SET-COLLECT-001,
+        // TOPAL-BAG-COLLECT-001, TOPAL-MAP-COLLECT-001,
+        // TOPAL-COLLECTION-ENTRY-COUNT-001, TOPAL-COLLECTION-EMPTY-PREDICATE-001,
+        // TOPAL-ARRAY-GET-CHECKED-001, TOPAL-MAP-LOOKUP-001,
+        // TOPAL-SET-CONTAINS-001, TOPAL-BAG-MULTIPLICITY-001,
+        // TOPAL-COMPILER-FUNDAMENTAL-CONTAINERS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/fundamental-containers.t"
+        ))
+        .unwrap();
+        let collections = program
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Binding(CompilerBinding {
+                    value:
+                        CompilerExpression {
+                            kind: CompilerExpressionKind::ContainerCollect { kind, .. },
+                            ..
+                        },
+                    ..
+                }) => Some(*kind),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            collections,
+            [
+                CompilerContainerKind::Array,
+                CompilerContainerKind::Set,
+                CompilerContainerKind::Bag,
+                CompilerContainerKind::Map,
+            ]
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared fundamental-container regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 16);
+        assert!(matches!(
+            results[9].kind,
+            CompilerExpressionKind::ArrayAt { index: 1, .. }
+        ));
+        assert!(matches!(
+            results[11].kind,
+            CompilerExpressionKind::SetContains { .. }
+        ));
+        assert!(matches!(
+            results[12].kind,
+            CompilerExpressionKind::BagMultiplicity { .. }
+        ));
+        assert!(matches!(
+            results[14].kind,
+            CompilerExpressionKind::MapLookup { .. }
+        ));
+
+        let duplicate_reject = "use language (version is v0.1)\npairs : List (String, Int) is Entry ((\"Ada\", 1), Entry ((\"Ada\", 2), Empty))\ncollect-map pairs resolving reject\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate_reject).unwrap_err().code,
+            "E-MAP-KEY-COLLISION"
+        );
+        let unique_reject = "use language (version is v0.1)\npairs : List (String, Int) is Entry ((\"Ada\", 1), Entry ((\"Lin\", 2), Empty))\ncollect-map pairs resolving reject\n";
+        assert!(analyze_for_compiler(unique_reject).is_ok());
     }
 
     #[test]

@@ -3628,6 +3628,55 @@ through `TOPAL-LIST-UNZIP-001`, `TOPAL-COLLECTION-FOREACH-001`,
 `TOPAL-COLLECTION-ENTRIES-001`, `TOPAL-COLLECTION-COLLECT-LIST-001`, and
 `TOPAL-COLLECTION-COLLECT-STRING-001` for compiler increment 5ay.
 
+## TOPAL-COMP-FUNDAMENTAL-CONTAINERS-001 — Closed fundamental containers
+
+The checked compiler shall admit the unchanged
+`examples/language/fundamental-containers.t` regression. From an exact finite
+`List Int` it shall construct the exact-extent Array, duplicate-eliminating Set,
+and multiplicity-preserving Bag. From an exact finite
+`List (String, Int)` it shall construct a Map under an explicit `reject`,
+`keep-first`, or `keep-last` collision policy. It shall implement generic
+`entry-count` and `empty?`, checked static Array indexing, Set membership, Bag
+multiplicity, and Map lookup. Results and canonical output shall match the
+interpreter without assigning an ordering guarantee to Set, Bag, or Map.
+
+The checked model shall retain the container kind, element/key/value
+classifiers, exact Array extent, and Map collision policy. A closed duplicate
+key under `reject` shall produce `E-MAP-KEY-COLLISION` before LLVM. A closed
+Array index shall be proven nonnegative and exact before lowering; a dynamic
+index, dynamically discovered rejected collision, other classifier shape, or
+general function boundary shall remain rejected until the necessary runtime
+evidence and representation boundary is implemented.
+
+The Linux x86-64 backend shall represent each container by a private immutable
+pointer-backed header. Array may retain the source immutable List. Set, Bag,
+and Map collectors may mutate only unpublished freshly allocated nodes while
+eliminating duplicates, accumulating multiplicities, or resolving collisions;
+they shall publish a completely initialized immutable result. Direct LLVM
+helpers shall use the canonical exact Int and String operations and Topal-owned
+allocation. Correctness at O0 shall not depend on an optimization pass, host
+container, callback, indirect dispatch, foreign allocator, C/C++ runtime, or
+another language's standard library.
+
+Target-layout-derived DWARF and the bounded validating GDB renderer shall
+expose semantic Array, Set, Bag, and Map types and complete values while keeping
+node layout private. The executable shall have no undefined symbol, needed
+library, or dynamic relocation. This increment shall define no public, foreign,
+serialized, persistent, generic, or compiled-library container ABI, stabilize
+no private offsets or helper symbols, and make no `topal-native/6` revision.
+Future compiled-library metadata shall encode container kind, element/key/value
+classifiers, Array extent, equality and collision policy, count/multiplicity/
+lookup/index fallibility, ordering guarantees, allocation effects, ownership,
+native-representation identity, and target adapters rather than private
+layout. This realizes `TOPAL-COMPILER-FUNDAMENTAL-CONTAINERS-001`,
+`TOPAL-ARRAY-COLLECT-001`, `TOPAL-SET-COLLECT-001`,
+`TOPAL-BAG-COLLECT-001`, `TOPAL-MAP-COLLECT-001`,
+`TOPAL-COLLECTION-ENTRY-COUNT-001`,
+`TOPAL-COLLECTION-EMPTY-PREDICATE-001`,
+`TOPAL-ARRAY-GET-CHECKED-001`, `TOPAL-MAP-LOOKUP-001`,
+`TOPAL-SET-CONTAINS-001`, and `TOPAL-BAG-MULTIPLICITY-001` for compiler
+increment 5az.
+
 ## TOPAL-COMP-TUPLE-RESULT-001 — Private positional-product results
 
 The checked compiler model shall admit an ordinary or static Tuple result when
@@ -4431,9 +4480,11 @@ renderers for private arbitrary-precision Int, Rational, `Range Int`,
 `Range Rational`, `Optional Int`, `Optional String`, `Optional List Int`,
 `Optional (Int, List Int)`, `Optional Error`,
 `Optional SourceLocation`, `SourceLocation`, nominal modular-number objects,
-modular-success Result objects, `List Effect`, and `List Int`, describe
-source-declared nominal enums, retained Constraint
-identities, and refined Int bindings with their semantic names, distinguish
+modular-success Result objects, `List Effect`, `List Int`,
+`List (String, Int)`, exact-extent `Array Int`, `Set Int`, `Bag Int`, and
+`Map (String, Int)` container values, describe source-declared nominal enums,
+retained Constraint identities and refined Int bindings with their semantic
+names, distinguish
 selected overload and static-function frames, and pass automated GDB
 breakpoint, value, and backtrace scenarios.
 
