@@ -3484,6 +3484,30 @@ impl Session {
                     let operand_span = operand.span();
                     let value = self.evaluate_expression(source, operand, trace)?;
                     let (value, selection, classifier) = match value {
+                        Value::Infinity { classifier, .. } => {
+                            let selection = if classifier == "Rational" {
+                                "root.absolute(Rational)"
+                            } else {
+                                "root.absolute(Int)"
+                            };
+                            let result_classifier = if classifier == "Nat" {
+                                "Nat".to_owned()
+                            } else {
+                                classifier
+                            };
+                            (
+                                Value::Infinity {
+                                    negative: false,
+                                    classifier: result_classifier.clone(),
+                                },
+                                selection,
+                                if result_classifier == "Rational" {
+                                    "Rational"
+                                } else {
+                                    "Int"
+                                },
+                            )
+                        }
                         Value::Int(value) => (
                             Value::Int(if value < BigInt::from(0) {
                                 -value
@@ -3520,7 +3544,11 @@ impl Session {
                     });
                     trace.record(TraceEvent {
                         event: "evaluation.absolute",
-                        rule: "TOPAL-NUM-ABS-001",
+                        rule: if matches!(&value, Value::Infinity { .. }) {
+                            "TOPAL-NUM-INFINITY-ARITHMETIC-001"
+                        } else {
+                            "TOPAL-NUM-ABS-001"
+                        },
                         detail: classifier,
                     });
                     return Ok(value);
@@ -3601,6 +3629,29 @@ impl Session {
                     let operand_span = operand.span();
                     let value = self.evaluate_expression(source, operand, trace)?;
                     let (value, selection, classifier, rule) = match value {
+                        Value::Infinity {
+                            negative,
+                            classifier,
+                        } => {
+                            let rational = classifier == "Rational";
+                            (
+                                Value::Infinity {
+                                    negative: !negative,
+                                    classifier: if classifier == "Nat" {
+                                        "Int".to_owned()
+                                    } else {
+                                        classifier
+                                    },
+                                },
+                                if rational {
+                                    "root.negate(Rational)"
+                                } else {
+                                    "root.negate(Int)"
+                                },
+                                if rational { "Rational" } else { "Int" },
+                                "TOPAL-NUM-INFINITY-ARITHMETIC-001",
+                            )
+                        }
                         Value::Int(value) => (
                             Value::Int(-value),
                             "root.negate(Int)",
@@ -13307,6 +13358,9 @@ fn apply_binary(
     ) {
         return apply_comparison(source, kind, left, right, span, trace);
     }
+    if let Some(result) = apply_infinity_binary(source, kind, &left, &right, span, trace) {
+        return result;
+    }
     match (left, right) {
         (
             Value::Modular {
@@ -13444,6 +13498,158 @@ fn exact_to_extended_rational(value: &Value) -> Option<ExtendedRational> {
             value.clone(),
         )))
     })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum InfinityArithmeticOperand {
+    NegativeInfinity,
+    Finite(Ordering),
+    PositiveInfinity,
+}
+
+fn extended_int_arithmetic_operand(value: &Value) -> Option<InfinityArithmeticOperand> {
+    match extended_int(value)? {
+        ExtendedInt::NegativeInfinity => Some(InfinityArithmeticOperand::NegativeInfinity),
+        ExtendedInt::Finite(value) => Some(InfinityArithmeticOperand::Finite(
+            value.cmp(&BigInt::from(0)),
+        )),
+        ExtendedInt::PositiveInfinity => Some(InfinityArithmeticOperand::PositiveInfinity),
+    }
+}
+
+fn extended_rational_arithmetic_operand(value: &Value) -> Option<InfinityArithmeticOperand> {
+    match exact_to_extended_rational(value)? {
+        ExtendedRational::NegativeInfinity => Some(InfinityArithmeticOperand::NegativeInfinity),
+        ExtendedRational::Finite(value) => Some(InfinityArithmeticOperand::Finite(
+            value.cmp(&BigRational::from_integer(BigInt::from(0))),
+        )),
+        ExtendedRational::PositiveInfinity => Some(InfinityArithmeticOperand::PositiveInfinity),
+    }
+}
+
+fn infinity_arithmetic_direction(
+    kind: CallableKind,
+    left: InfinityArithmeticOperand,
+    right: InfinityArithmeticOperand,
+) -> Option<bool> {
+    use InfinityArithmeticOperand::{Finite, NegativeInfinity, PositiveInfinity};
+    match kind {
+        CallableKind::Plus => match (left, right) {
+            (NegativeInfinity, PositiveInfinity) | (PositiveInfinity, NegativeInfinity) => None,
+            (NegativeInfinity, _) | (_, NegativeInfinity) => Some(true),
+            (PositiveInfinity, _) | (_, PositiveInfinity) => Some(false),
+            (Finite(_), Finite(_)) => unreachable!("infinity arithmetic has an infinite operand"),
+        },
+        CallableKind::Minus => match (left, right) {
+            (NegativeInfinity, NegativeInfinity) | (PositiveInfinity, PositiveInfinity) => None,
+            (NegativeInfinity, _) | (_, PositiveInfinity) => Some(true),
+            (PositiveInfinity, _) | (_, NegativeInfinity) => Some(false),
+            (Finite(_), Finite(_)) => unreachable!("infinity arithmetic has an infinite operand"),
+        },
+        CallableKind::Multiply => {
+            let negative = |operand| match operand {
+                NegativeInfinity | Finite(Ordering::Less) => Some(true),
+                PositiveInfinity | Finite(Ordering::Greater) => Some(false),
+                Finite(Ordering::Equal) => None,
+            };
+            Some(negative(left)? ^ negative(right)?)
+        }
+        _ => None,
+    }
+}
+
+fn infinity_operator_selection(kind: CallableKind, rational: bool) -> &'static str {
+    match (kind, rational) {
+        (CallableKind::Plus, false) => "root.+(Int,Int)",
+        (CallableKind::Minus, false) => "root.-(Int,Int)",
+        (CallableKind::Multiply, false) => "root.*(Int,Int)",
+        (CallableKind::Plus, true) => "root.+(Rational,Rational)",
+        (CallableKind::Minus, true) => "root.-(Rational,Rational)",
+        (CallableKind::Multiply, true) => "root.*(Rational,Rational)",
+        _ => unreachable!("selection is requested only for admitted infinity arithmetic"),
+    }
+}
+
+fn apply_infinity_binary(
+    source: &SourceText,
+    kind: CallableKind,
+    left: &Value,
+    right: &Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Option<Result<Value, Diagnostic>> {
+    if !matches!(left, Value::Infinity { .. }) && !matches!(right, Value::Infinity { .. }) {
+        return None;
+    }
+    if !matches!(
+        kind,
+        CallableKind::Plus | CallableKind::Minus | CallableKind::Multiply
+    ) {
+        return Some(Err(diagnostic(
+            source,
+            "E-NO-APPLICABLE-OVERLOAD",
+            span,
+            "this exact infinity increment supports only +, -, and * arithmetic",
+        )));
+    }
+    let rational = matches!(left, Value::Rational(_))
+        || matches!(right, Value::Rational(_))
+        || matches!(left, Value::Infinity { classifier, .. } if classifier == "Rational")
+        || matches!(right, Value::Infinity { classifier, .. } if classifier == "Rational");
+    let operands = if rational {
+        let Some(left) = extended_rational_arithmetic_operand(left) else {
+            return Some(Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "an Int infinity is not implicitly converted into Rational infinity",
+            )));
+        };
+        let Some(right) = extended_rational_arithmetic_operand(right) else {
+            return Some(Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "an Int infinity is not implicitly converted into Rational infinity",
+            )));
+        };
+        (left, right)
+    } else {
+        let (Some(left), Some(right)) = (
+            extended_int_arithmetic_operand(left),
+            extended_int_arithmetic_operand(right),
+        ) else {
+            return Some(Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                span,
+                "exact infinity arithmetic requires one shared numeric domain",
+            )));
+        };
+        (left, right)
+    };
+    let Some(negative) = infinity_arithmetic_direction(kind, operands.0, operands.1) else {
+        return Some(Err(diagnostic(
+            source,
+            "E-INDETERMINATE-INFINITY",
+            span,
+            "this infinity arithmetic expression does not determine one exact numeric value",
+        )));
+    };
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: infinity_operator_selection(kind, rational),
+    });
+    trace.record(TraceEvent {
+        event: "numeric.infinity.arithmetic",
+        rule: "TOPAL-NUM-INFINITY-ARITHMETIC-001",
+        detail: callable_name(kind),
+    });
+    Some(Ok(Value::Infinity {
+        negative,
+        classifier: if rational { "Rational" } else { "Int" }.to_owned(),
+    }))
 }
 
 fn extended_int_value(value: ExtendedInt) -> Value {
@@ -16485,6 +16691,34 @@ fn apply_negate(
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
     match operand {
+        Value::Infinity {
+            negative,
+            classifier,
+        } => {
+            let rational = classifier == "Rational";
+            trace.record(TraceEvent {
+                event: "operator.selected",
+                rule: "TOPAL-TYPE-CALL-001",
+                detail: if rational {
+                    "root.-(Rational)"
+                } else {
+                    "root.-(Int)"
+                },
+            });
+            trace.record(TraceEvent {
+                event: "evaluation.negate",
+                rule: "TOPAL-NUM-INFINITY-ARITHMETIC-001",
+                detail: if rational { "Rational" } else { "Int" },
+            });
+            Ok(Value::Infinity {
+                negative: !negative,
+                classifier: if classifier == "Nat" {
+                    "Int".to_owned()
+                } else {
+                    classifier
+                },
+            })
+        }
         Value::Int(operand) => {
             trace.record(TraceEvent {
                 event: "operator.selected",
@@ -16547,7 +16781,6 @@ fn apply_negate(
         | Value::Effects(_)
         | Value::IntRange { .. }
         | Value::InfiniteIntRange { .. }
-        | Value::Infinity { .. }
         | Value::RationalRange { .. }
         | Value::InfiniteRationalRange { .. }
         | Value::Optional { .. }
@@ -20751,6 +20984,7 @@ fn v02_interface_contracts_are_retained_and_required_of_implementations() {
 #[test]
 fn exact_infinities_require_context_and_order_range_endpoints() {
     // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+    // TOPAL-NUM-INFINITY-ARITHMETIC-001,
     // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-BOUNDS-001,
     // TOPAL-RANGE-MEMBERSHIP-001, TOPAL-RANGE-INTERSECTION-001,
     // TOPAL-RANGE-BOUND-001
@@ -20779,9 +21013,11 @@ fn exact_infinities_require_context_and_order_range_endpoints() {
     assert_eq!(
         Session::new()
             .evaluate("upper : Int is +Infinity\nupper + 1", &mut std::io::sink())
-            .unwrap_err()
-            .code,
-        "E-NO-APPLICABLE-OVERLOAD"
+            .unwrap(),
+        Value::Infinity {
+            negative: false,
+            classifier: "Int".into(),
+        }
     );
 }
 
@@ -20821,6 +21057,54 @@ fn rational_infinities_preserve_their_domain_and_exact_range_endpoints() {
                 .unwrap_err()
                 .code,
             "E-NO-APPLICABLE-OVERLOAD",
+            "unexpected diagnostic for {invalid:?}"
+        );
+    }
+}
+
+#[test]
+fn exact_infinity_arithmetic_preserves_direction_and_rejects_indeterminate_forms() {
+    // TOPAL-NUM-INFINITY-ARITHMETIC-001
+    let source = include_str!("../../../examples/language/infinity-arithmetic.t");
+    assert_eq!(
+        Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "(+Infinity, -Infinity, +Infinity, +Infinity, -Infinity, +Infinity, -Infinity, +Infinity, -Infinity, +Infinity, +Infinity, +Infinity, +Infinity, -Infinity, -Infinity, +Infinity, -Infinity, -Infinity, +Infinity)"
+    );
+    for (invalid, expected) in [
+        (
+            "upper : Int is +Infinity\nlower : Int is -Infinity\nupper + lower",
+            "E-INDETERMINATE-INFINITY",
+        ),
+        (
+            "upper : Int is +Infinity\nupper - upper",
+            "E-INDETERMINATE-INFINITY",
+        ),
+        (
+            "upper : Int is +Infinity\n0 * upper",
+            "E-INDETERMINATE-INFINITY",
+        ),
+        (
+            "upper : Rational is +Infinity\nupper * (Rational (0, 1))",
+            "E-INDETERMINATE-INFINITY",
+        ),
+        (
+            "integer : Int is +Infinity\nratio : Rational is +Infinity\ninteger + ratio",
+            "E-NO-APPLICABLE-OVERLOAD",
+        ),
+        (
+            "upper : Int is +Infinity\nupper / 2",
+            "E-NO-APPLICABLE-OVERLOAD",
+        ),
+    ] {
+        assert_eq!(
+            Session::new()
+                .evaluate(invalid, &mut std::io::sink())
+                .unwrap_err()
+                .code,
+            expected,
             "unexpected diagnostic for {invalid:?}"
         );
     }
