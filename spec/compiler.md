@@ -2574,6 +2574,42 @@ revision. Scope results or escape, a live `root` argument formed inside a
 compiled function, nested or non-root namespaces, generator members, `use`,
 packages, and compiled-library Scope environments remain deferred.
 
+### TOPAL-COMPILER-NAMESPACE-GENERATOR-001 — Static qualified generator application
+
+At source root, the live `root` Scope and every retained root alias SHALL carry
+the generator declarations visible in that namespace snapshot, including each
+complete source-ordered overload set and its namespace provenance. A generator
+introduced after an alias binding SHALL NOT enter that alias. It SHALL remain
+available through a later live-root selection. A same-named lexical declaration
+SHALL NOT intercept or join a qualified generator selection.
+
+Applying `root member operands` or `alias member operands` SHALL select only
+from that namespace's retained generator declarations before applying the
+ordinary checked generator rules. Each operand SHALL be evaluated exactly once.
+Every application SHALL produce a fresh affine continuation with the same
+suspension, resumption, result, close, consumption, and abandonment obligations
+as the corresponding unqualified application. Every custom-generator graph
+otherwise admitted by the compiler SHALL reuse its existing checked graph and
+O0 inline traversal; namespace provenance SHALL NOT change source-visible
+Generator behavior.
+
+Namespace and generator selection SHALL complete before LLVM lowering. Scope,
+Generator, yielded values, and source location SHALL remain observable in
+DWARF/GDB, but the implementation SHALL require no runtime namespace lookup or
+table, continuation object, callback, indirect dispatch, foreign dependency,
+C/C++ runtime, other-language standard library, public generator ABI, or native
+ABI revision.
+
+A future separately compiled interface for a published generator member SHALL
+identify the namespace and interface revision, member visibility, overload
+signature, checked directions and body graph, capture and effect facts,
+linearity and ownership rules, suspension and close behavior, semantic native
+representation, and versioned target adapter. Compiler-private tags and symbols
+SHALL NOT serve as portable semantic identity. Non-root or external namespaces,
+generator-bearing Scope parameters/results, dynamic or escaping qualified
+generator values, generator shapes not otherwise admitted by the compiler,
+packages, and source or compiled libraries remain outside this increment.
+
 ### TOPAL-COMPILER-NAMED-FUNCTION-VALUE-001 — Retained named function values
 
 Resolving an already-visible ordinary or static root function in value position

@@ -147,6 +147,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/namespace-alias-chain.t",
     "examples/language/namespace-alias.t",
     "examples/language/namespace-function-parameter.t",
+    "examples/language/namespace-generator.t",
     "examples/language/namespace-overloads.t",
     "examples/language/namespace-snapshot.t",
     "examples/language/nested-functions.t",

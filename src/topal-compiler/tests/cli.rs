@@ -8008,6 +8008,81 @@ fn namespace_function_alias_is_static_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn namespace_generator_is_static_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-NAMESPACE-GENERATOR-001,
+    // TOPAL-NAMESPACE-GENERATOR-001, TOPAL-GENERATOR-FOREACH-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-namespace-generator");
+    let executable = directory.join("application");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/namespace-generator.t");
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"()\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.platform.write_all",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis api",
+            "-ex",
+            "print api",
+            "-ex",
+            "whatis generated",
+            "-ex",
+            "print generated",
+            "-ex",
+            "whatis character",
+            "-ex",
+            "print character",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = enum Scope",
+        "$1 = <namespace root>",
+        "type = enum Generator Character Unit Unit",
+        "$2 = <Generator Character Unit Unit>",
+        "type = Character",
+        "$3 = \"T\"",
+        "namespace-generator.t:14",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn namespace_data_snapshot_is_single_evaluation_freestanding_and_debuggable() {
     // TOPAL-COMPILER-NAMESPACE-DATA-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

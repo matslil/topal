@@ -2036,6 +2036,16 @@
       "cpu_time_ns": 400248,
       "memory_peak_bytes": 18493440,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/namespace-generator.t": {
+      "cpu_time_ns": 123307240,
+      "memory_peak_bytes": 41648128,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/namespace-generator.t": {
+      "cpu_time_ns": 140542,
+      "memory_peak_bytes": 18501632,
+      "samples_per_test": 500
     }
   }
 }
