@@ -10033,6 +10033,130 @@ fn anonymous_captures_and_results_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One GDB session verifies each forwarding and material-capture frame.
+fn captured_function_parameters_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001,
+    // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-NESTED-001,
+    // TOPAL-FUNCTION-VALUE-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-capturing-function-parameters");
+    let source = directory.join("capturing-function-parameters.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/capturing-function-parameters.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42, (7, \"seven\"), 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let escaping_source = directory.join("escaping-capture.t");
+    fs::write(
+        &escaping_source,
+        "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
+    )
+    .unwrap();
+    let escaping = run(topalc().args([
+        "-o",
+        directory.join("escaping").to_str().unwrap(),
+        escaping_source.to_str().unwrap(),
+    ]));
+    assert!(!escaping.status.success());
+    assert!(String::from_utf8_lossy(&escaping.stderr).contains("E-COMPILER-UNSUPPORTED"));
+    assert!(String::from_utf8_lossy(&escaping.stderr).contains("Function result"));
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break capturing-function-parameters.t:11",
+            "-ex",
+            "break capturing-function-parameters.t:17",
+            "-ex",
+            "break capturing-function-parameters.t:21",
+            "-ex",
+            "break capturing-function-parameters.t:26",
+            "-ex",
+            "run",
+            "-ex",
+            "print operation",
+            "-ex",
+            "print value",
+            "-ex",
+            "info args",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "continue",
+            "-ex",
+            "print input",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "nexti",
+            "-ex",
+            "nexti",
+            "-ex",
+            "print pair",
+            "-ex",
+            "continue",
+            "-ex",
+            "print input",
+            "-ex",
+            "print offset",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = <anonymous fn/1>"), "{text}");
+    assert!(text.contains("$2 = 39"), "{text}");
+    assert!(text.contains("operation = <anonymous fn/1>"), "{text}");
+    assert!(text.contains("value = 39"), "{text}");
+    assert!(text.contains("$3 = 39"), "{text}");
+    assert!(text.contains("$4 = 1"), "{text}");
+    assert!(text.contains("$5 = 2"), "{text}");
+    assert!(text.contains("$6 = {_0 = 7, _1 = \"seven\"}"), "{text}");
+    assert!(text.contains("$7 = 40"), "{text}");
+    assert!(text.contains("$8 = 2"), "{text}");
+    assert!(!text.contains("operation capture"), "{text}");
+    assert!(text.contains("topal.fn.apply_2dint"), "{text}");
+    assert!(text.contains("topal.fn.forward_2dint"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
+    assert!(text.contains("topal.fn.add"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn anonymous_product_patterns_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001, TOPAL-FUNCTION-ANONYMOUS-001,
     // TOPAL-TYPE-PRODUCT-001, TOPAL-COMPILER-PLATFORM-001,

@@ -1120,6 +1120,7 @@ pub enum CompilerStatement {
 pub struct CompilerParameter {
     pub name: String,
     pub discarded: bool,
+    pub source_visible: bool,
     pub value_type: CompilerType,
     pub int_range: Option<IntRange>,
     pub span: Span,
@@ -1356,6 +1357,7 @@ struct CompilerContextCapture {
 
 struct CompilerCallMetadata {
     callable_arguments: Vec<Option<CompilerCallableFacts>>,
+    callable_captures: Vec<CompilerContextCapture>,
     scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
     scope_captures: Vec<CompilerContextCapture>,
     lexical_captures: Vec<CompilerContextCapture>,
@@ -1423,6 +1425,7 @@ struct Analyzer {
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     anonymous_callables: BTreeMap<u32, CompilerCallableFacts>,
     anonymous_function_value_names: Vec<String>,
+    nested_function_value_tags: BTreeMap<String, u32>,
     returned_function_values: BTreeMap<String, CompilerCallableFacts>,
     constraints: Vec<CompilerConstraint>,
     constraint_bindings: BTreeMap<String, u32>,
@@ -1469,6 +1472,7 @@ impl Analyzer {
             root_bindings: BTreeMap::new(),
             anonymous_callables: BTreeMap::new(),
             anonymous_function_value_names: Vec::new(),
+            nested_function_value_tags: BTreeMap::new(),
             returned_function_values: BTreeMap::new(),
             constraints: Vec::new(),
             constraint_bindings: BTreeMap::new(),
@@ -3154,6 +3158,7 @@ fn exact_character_generator_local_close_handler(
     let local_parameter = CompilerParameter {
         name: String::from("choice"),
         discarded: false,
+        source_visible: true,
         value_type: CompilerType::Enum(enumeration),
         int_range: None,
         span: function_parameter.name,
@@ -3812,6 +3817,7 @@ fn exact_boolean_local_function_generator_body(
     let local_parameter = CompilerParameter {
         name: String::from("value"),
         discarded: false,
+        source_visible: true,
         value_type: CompilerType::Enum(enumeration.clone()),
         int_range: None,
         span: function_parameter.name,
@@ -6535,6 +6541,7 @@ fn exact_int_string_generator_overload(
     let value = CompilerParameter {
         name: String::from("value"),
         discarded: false,
+        source_visible: true,
         value_type: CompilerType::Int,
         int_range: None,
         span: value_parameter.name,
@@ -6542,6 +6549,7 @@ fn exact_int_string_generator_overload(
     let suffix = CompilerParameter {
         name: String::from("suffix"),
         discarded: false,
+        source_visible: true,
         value_type: CompilerType::String,
         int_range: None,
         span: suffix_parameter.name,
@@ -6660,6 +6668,7 @@ fn exact_unary_int_string_generator_overload(
         initial_parameter: CompilerParameter {
             name: source.slice(parameter.name).to_owned(),
             discarded: false,
+            source_visible: true,
             value_type: CompilerType::Int,
             int_range: None,
             span: parameter.name,
@@ -6779,6 +6788,7 @@ fn collect_character_generators(
         let initial_parameter = CompilerParameter {
             name: source.slice(parameter.name).to_owned(),
             discarded: false,
+            source_visible: true,
             value_type: initial_type.clone(),
             int_range: None,
             span: parameter.name,
@@ -7670,6 +7680,7 @@ fn collect_character_generators(
                     parameter: CompilerParameter {
                         name: source.slice(*local_name).to_owned(),
                         discarded: false,
+                        source_visible: true,
                         value_type: CompilerType::Character,
                         int_range: None,
                         span: *local_name,
@@ -7719,6 +7730,7 @@ fn collect_character_generators(
                     parameter: CompilerParameter {
                         name: source.slice(*local_name).to_owned(),
                         discarded: false,
+                        source_visible: true,
                         value_type: CompilerType::Unit,
                         int_range: None,
                         span: *local_name,
@@ -9640,6 +9652,7 @@ impl Analyzer {
         let parameter = CompilerParameter {
             name: parameter_name.clone(),
             discarded: parameter_name == "_",
+            source_visible: parameter_name != "_",
             value_type: value_type.clone(),
             int_range: None,
             span: binding,
@@ -9736,6 +9749,7 @@ impl Analyzer {
         let parameter = CompilerParameter {
             name: parameter_name.clone(),
             discarded: parameter_name == "_",
+            source_visible: parameter_name != "_",
             value_type: value_type.clone(),
             int_range: None,
             span: binding,
@@ -10206,6 +10220,47 @@ impl Analyzer {
                     )
                 })?;
                 if !facts.runtime_bound {
+                    if facts.value_type == CompilerType::Function
+                        && let Some(callable @ CompilerCallableFacts::Named { .. }) =
+                            facts.callable.clone()
+                    {
+                        self.function_values_used = true;
+                        let tag = if let Some(tag) = self
+                            .nested_function_value_tags
+                            .get(&facts.storage_name)
+                            .copied()
+                        {
+                            self.anonymous_callables.insert(tag, callable);
+                            tag
+                        } else {
+                            let tag_index = self
+                                .functions
+                                .len()
+                                .checked_add(COMPILER_SYMBOLIC_CALLABLES.len())
+                                .and_then(|value| {
+                                    value.checked_add(self.anonymous_function_value_names.len())
+                                })
+                                .ok_or_else(|| {
+                                    unsupported(&self.source, *name, "native Function value tag")
+                                })?;
+                            let tag = u32::try_from(tag_index).map_err(|_| {
+                                unsupported(&self.source, *name, "native Function value tag")
+                            })?;
+                            self.anonymous_function_value_names
+                                .push(format!("<fn {name_text}>"));
+                            self.anonymous_callables.insert(tag, callable);
+                            self.nested_function_value_tags
+                                .insert(facts.storage_name.clone(), tag);
+                            tag
+                        };
+                        return Ok(CompilerExpression {
+                            kind: CompilerExpressionKind::FunctionValue(tag),
+                            value_type: CompilerType::Function,
+                            int_range: None,
+                            rational_value: None,
+                            span: *name,
+                        });
+                    }
                     let feature = if compiler_type_contains_static_only(&facts.value_type) {
                         "runtime use of a static compiler value"
                     } else {
@@ -11127,6 +11182,7 @@ impl Analyzer {
                 let initial_parameter = CompilerParameter {
                     name: owner_name.clone(),
                     discarded: false,
+                    source_visible: true,
                     value_type: owner_type.clone(),
                     int_range: None,
                     span: *instance_name,
@@ -14608,6 +14664,7 @@ impl Analyzer {
             lowered.push(CompilerParameter {
                 name,
                 discarded,
+                source_visible: !discarded,
                 value_type,
                 int_range: None,
                 span: name_span,
@@ -15313,6 +15370,114 @@ impl Analyzer {
             namespaces.push(Some(namespace));
         }
         Ok((namespaces, captures))
+    }
+
+    fn callable_parameter_arguments(
+        &self,
+        declaration: &FunctionSource,
+        mut callables: Vec<Option<CompilerCallableFacts>>,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<
+        (
+            Vec<Option<CompilerCallableFacts>>,
+            Vec<CompilerContextCapture>,
+        ),
+        Diagnostic,
+    > {
+        let mut forwarded = Vec::new();
+        for (parameter, callable) in declaration.parameters.iter().zip(&mut callables) {
+            let parameter_name = self.source.slice(parameter.name);
+            if parameter_name == "_" {
+                continue;
+            }
+            let Some(callable) = callable else {
+                continue;
+            };
+            match callable {
+                CompilerCallableFacts::Anonymous { captures, .. } => {
+                    for (capture_name, capture) in captures {
+                        let current = binding_facts_by_storage(environment, &capture.storage_name)
+                            .filter(|current| {
+                                current.origin == capture.origin
+                                    && current.runtime_bound
+                                    && current.value_type == capture.value_type
+                                    && compiler_function_result_supported(&current.value_type)
+                                    && !compiler_type_contains_generator(&current.value_type)
+                            })
+                            .ok_or_else(|| {
+                                unsupported(
+                                    &self.source,
+                                    parameter.name,
+                                    &format!(
+                                        "capturing Function parameter `{parameter_name}` outside capture `{capture_name}` lifetime"
+                                    ),
+                                )
+                            })?;
+                        let hidden_name = format!("{parameter_name} capture {capture_name}");
+                        forwarded.push(CompilerContextCapture {
+                            parameter_name: hidden_name.clone(),
+                            value_type: current.value_type.clone(),
+                            int_range: current.int_range.clone(),
+                            rational_value: current.rational_value.clone(),
+                            argument: binding_expression(current, parameter.name),
+                            span: parameter.name,
+                        });
+                        capture.storage_name = hidden_name;
+                        capture.origin = parameter.name.start;
+                    }
+                }
+                CompilerCallableFacts::Named { captures, .. } => {
+                    for capture in captures {
+                        let (CompilerExpressionKind::Local(storage_name)
+                        | CompilerExpressionKind::InfinityLocal { storage_name, .. }) =
+                            &capture.argument.kind
+                        else {
+                            return Err(unsupported(
+                                &self.source,
+                                parameter.name,
+                                "capturing named Function parameter without a retained private value",
+                            ));
+                        };
+                        let current = binding_facts_by_storage(environment, storage_name)
+                            .filter(|current| {
+                                current.runtime_bound
+                                    && current.value_type == capture.value_type
+                                    && compiler_function_result_supported(&current.value_type)
+                                    && !compiler_type_contains_generator(&current.value_type)
+                            })
+                            .ok_or_else(|| {
+                                unsupported(
+                                    &self.source,
+                                    parameter.name,
+                                    &format!(
+                                        "capturing Function parameter `{parameter_name}` outside capture `{}` lifetime",
+                                        capture.parameter_name
+                                    ),
+                                )
+                            })?;
+                        let hidden_name =
+                            format!("{parameter_name} capture {}", capture.parameter_name);
+                        forwarded.push(CompilerContextCapture {
+                            parameter_name: hidden_name.clone(),
+                            value_type: current.value_type.clone(),
+                            int_range: current.int_range.clone(),
+                            rational_value: current.rational_value.clone(),
+                            argument: binding_expression(current, parameter.name),
+                            span: parameter.name,
+                        });
+                        capture.argument = CompilerExpression {
+                            kind: CompilerExpressionKind::Local(hidden_name),
+                            value_type: current.value_type.clone(),
+                            int_range: current.int_range.clone(),
+                            rational_value: current.rational_value.clone(),
+                            span: parameter.name,
+                        };
+                    }
+                }
+                CompilerCallableFacts::Symbolic(_) => {}
+            }
+        }
+        Ok((callables, forwarded))
     }
 
     fn known_callable(
@@ -16066,6 +16231,7 @@ impl Analyzer {
             lowered_parameters.push(CompilerParameter {
                 name,
                 discarded: discarded || repeated.is_some(),
+                source_visible: !discarded && repeated.is_none(),
                 value_type: argument.value_type.clone(),
                 int_range: facts.int_range.clone(),
                 span: name_span,
@@ -16120,6 +16286,7 @@ impl Analyzer {
             lowered_parameters.push(CompilerParameter {
                 name: name.clone(),
                 discarded: false,
+                source_visible: true,
                 value_type: capture.value_type.clone(),
                 int_range: capture.int_range.clone(),
                 span: declaration_span,
@@ -17567,6 +17734,8 @@ impl Analyzer {
             .iter()
             .map(|argument| self.known_callable(argument, environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
+        let (callable_arguments, callable_captures) =
+            self.callable_parameter_arguments(&declaration, callable_arguments, environment)?;
         let (scope_arguments, scope_captures) =
             self.scope_parameter_arguments(&declaration, &arguments, environment)?;
         let context_captures = self.defining_context_captures(&declaration)?;
@@ -17579,12 +17748,19 @@ impl Analyzer {
         }
         let metadata = CompilerCallMetadata {
             callable_arguments,
+            callable_captures,
             scope_arguments,
             scope_captures,
             lexical_captures: lexical_captures.to_vec(),
             context_captures,
         };
         let mut arguments = arguments;
+        arguments.extend(
+            metadata
+                .callable_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
         arguments.extend(
             metadata
                 .scope_captures
@@ -17887,6 +18063,7 @@ impl Analyzer {
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
         let CompilerCallMetadata {
             callable_arguments,
+            callable_captures,
             scope_arguments,
             scope_captures,
             lexical_captures,
@@ -17960,6 +18137,7 @@ impl Analyzer {
             parameters.push(CompilerParameter {
                 name,
                 discarded,
+                source_visible: !discarded,
                 value_type: expected,
                 int_range: (!generalize_parameters)
                     .then(|| argument.int_range.clone())
@@ -17967,9 +18145,49 @@ impl Analyzer {
                 span: parameter.name,
             });
         }
-        let scope_arguments_start = declaration.parameters.len();
+        let callable_arguments_start = declaration.parameters.len();
+        let scope_arguments_start = callable_arguments_start + callable_captures.len();
         let lexical_arguments_start = scope_arguments_start + scope_captures.len();
         let context_arguments_start = lexical_arguments_start + lexical_captures.len();
+        let captured_callable_arguments =
+            &arguments[callable_arguments_start..scope_arguments_start];
+        debug_assert_eq!(captured_callable_arguments.len(), callable_captures.len());
+        for (capture, argument) in callable_captures.iter().zip(captured_callable_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    infinity_negative: compiler_infinity_direction(argument),
+                    string_value: exact_string(argument),
+                    closed_int_range: None,
+                    list_count: Self::known_list_count(argument, &BTreeMap::new()),
+                    list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                    static_capability: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                source_visible: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
         let captured_scope_arguments = &arguments[scope_arguments_start..lexical_arguments_start];
         debug_assert_eq!(captured_scope_arguments.len(), scope_captures.len());
         for (capture, argument) in scope_captures.iter().zip(captured_scope_arguments) {
@@ -18002,6 +18220,7 @@ impl Analyzer {
             parameters.push(CompilerParameter {
                 name: capture.parameter_name.clone(),
                 discarded: false,
+                source_visible: true,
                 value_type: capture.value_type.clone(),
                 int_range: capture.int_range.clone(),
                 span: capture.span,
@@ -18040,6 +18259,7 @@ impl Analyzer {
             parameters.push(CompilerParameter {
                 name: capture.parameter_name.clone(),
                 discarded: false,
+                source_visible: true,
                 value_type: capture.value_type.clone(),
                 int_range: capture.int_range.clone(),
                 span: capture.span,
@@ -18077,6 +18297,7 @@ impl Analyzer {
             parameters.push(CompilerParameter {
                 name: capture.parameter_name.clone(),
                 discarded: false,
+                source_visible: true,
                 value_type: capture.value_type.clone(),
                 int_range: capture.int_range.clone(),
                 span: capture.span,
@@ -18101,6 +18322,7 @@ impl Analyzer {
             parameters.as_slice(),
             [CompilerParameter {
                 discarded: false,
+                source_visible: true,
                 value_type: CompilerType::String | CompilerType::Character,
                 ..
             }] if returns_character_generator
@@ -18109,6 +18331,7 @@ impl Analyzer {
             [CompilerParameter {
                 name,
                 discarded: false,
+                source_visible: true,
                 value_type: CompilerType::Int,
                 ..
             }] if returns_value_boundary_generator && name == "initial"
@@ -18117,6 +18340,7 @@ impl Analyzer {
             [CompilerParameter {
                 name,
                 discarded: false,
+                source_visible: true,
                 value_type: CompilerType::Tuple(fields),
                 ..
             }] if returns_value_boundary_generator
@@ -18127,6 +18351,7 @@ impl Analyzer {
             [CompilerParameter {
                 name,
                 discarded: false,
+                source_visible: true,
                 value_type,
                 ..
             }] if returns_value_boundary_generator
@@ -18137,6 +18362,7 @@ impl Analyzer {
             [CompilerParameter {
                 name,
                 discarded: false,
+                source_visible: true,
                 value_type,
                 ..
             }] if returns_value_boundary_generator
@@ -21316,6 +21542,22 @@ fn require_exact_numeric(
 fn exact_int(expression: &CompilerExpression) -> Option<BigInt> {
     let range = expression.int_range.as_ref()?;
     (range.lower == range.upper).then(|| range.lower.clone())
+}
+
+fn binding_expression(facts: &BindingFacts, span: Span) -> CompilerExpression {
+    CompilerExpression {
+        kind: facts.infinity_negative.map_or_else(
+            || CompilerExpressionKind::Local(facts.storage_name.clone()),
+            |negative| CompilerExpressionKind::InfinityLocal {
+                storage_name: facts.storage_name.clone(),
+                negative,
+            },
+        ),
+        value_type: facts.value_type.clone(),
+        int_range: facts.int_range.clone(),
+        rational_value: facts.rational_value.clone(),
+        span,
+    }
 }
 
 fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
@@ -30147,7 +30389,6 @@ mod tests {
 
         for rejected in [
             "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
-            "use language (version is v0.1)\napply is fn (operation : Function, value : Int) -> Int\n  operation value\nwith-offset is fn (offset : Int, value : Int) -> Int\n  operation : Function is { input } input + offset\n  apply (operation, value)\nwith-offset (1, 41)\n",
             "use language (version is v0.1)\nwith-shadow is fn (offset : Int) -> Int\n  operation : Function is { value } value + offset\n  {\n    offset is 100\n    operation 41\n  }\nwith-shadow 1\n",
         ] {
             assert_eq!(
@@ -30155,6 +30396,82 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+    }
+
+    #[test]
+    fn models_captured_function_parameters_as_private_hidden_arguments() {
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-NESTED-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-parameters.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected capturing Function-parameter results")
+        };
+        assert_eq!(results.len(), 4);
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
+        assert_eq!(
+            results[2].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+        assert_eq!(exact_int(&results[3]), Some(BigInt::from(42)));
+
+        let forwarded = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "forward-int")
+            .collect::<Vec<_>>();
+        assert_eq!(forwarded.len(), 3);
+        assert!(forwarded.iter().all(|function| {
+            function.parameters[0].value_type == CompilerType::Function
+                && function.parameters[0].source_visible
+                && function.parameters[1].source_visible
+                && function.parameters[2..]
+                    .iter()
+                    .all(|parameter| !parameter.source_visible)
+        }));
+        assert!(
+            forwarded
+                .iter()
+                .any(|function| function.parameters.len() == 3)
+        );
+        assert_eq!(
+            forwarded
+                .iter()
+                .filter(|function| function.parameters.len() == 4)
+                .count(),
+            2
+        );
+
+        let pair_boundary = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "apply-pair")
+            .unwrap();
+        assert_eq!(pair_boundary.parameters.len(), 3);
+        assert!(!pair_boundary.parameters[2].source_visible);
+        assert_eq!(
+            pair_boundary.parameters[2].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "add"
+                && function.parameters.len() == 3
+                && function
+                    .parameters
+                    .iter()
+                    .all(|parameter| parameter.source_visible)
+        }));
+
+        let escaping = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
+        )
+        .unwrap_err();
+        assert_eq!(escaping.code, "E-COMPILER-UNSUPPORTED");
+        assert!(escaping.message.contains("Function result"));
     }
 
     #[test]
@@ -30617,7 +30934,9 @@ mod tests {
 
     #[test]
     fn models_non_escaping_nested_functions_with_private_captures() {
-        // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001
+        // TOPAL-COMPILER-NESTED-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001,
+        // TOPAL-FUNCTION-NESTED-001
         let program = analyze_for_compiler(include_str!(
             "../../../examples/language/nested-functions.t"
         ))
@@ -30651,11 +30970,11 @@ mod tests {
             CompilerExpressionKind::Local(name) if name == "input"
         ));
 
-        let escaped = analyze_for_compiler(
+        let discarded = analyze_for_compiler(
             "use language (version is v0.1)\nconsume is fn (_ : Function) -> Int\n  1\nouter is fn (input : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value + input\n  consume helper\nouter 1\n",
         )
-        .unwrap_err();
-        assert_eq!(escaped.code, "E-COMPILER-UNSUPPORTED");
+        .unwrap();
+        assert_eq!(exact_int(&discarded.main.result), Some(BigInt::from(1)));
 
         let shadowed = analyze_for_compiler(
             "use language (version is v0.1)\nouter is fn (value : Int) -> Int\n  helper is fn (value : Int) -> Int\n    value\n  helper 42\nouter 1\n",

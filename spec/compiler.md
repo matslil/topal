@@ -2858,13 +2858,54 @@ existing private i32 Function observation tag and debug-only result shadow.
 DWARF/GDB SHALL expose explicit parameters, material captures under their source
 names, the anonymous source frame, and returned Function locals at `-O0`.
 
-A capturing anonymous value SHALL NOT cross a Function parameter or result
-boundary. Captures without an admitted private representation, dynamic escape,
-aggregate containment, publication, and library boundaries SHALL be rejected
-before LLVM lowering. This rule SHALL introduce no environment object,
-function pointer, indirect call, closure or Function runtime, foreign
+A capturing anonymous value crosses a private Function parameter only under
+`TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001`. Capturing Function results,
+captures without an admitted private representation, dynamic escape, aggregate
+containment, publication, and library boundaries SHALL be rejected before LLVM
+lowering. This rule SHALL introduce no environment object, function pointer,
+indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public callable ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001 — Private captured Function parameters
+
+A capturing anonymous Function or non-escaping nested lexical Function MAY be
+passed through an ordinary private `Function` parameter when the complete
+callable identity and every captured immutable value remain known to the
+checked compiler. The capture set SHALL contain only values with already-
+admitted exact private function-boundary representations and SHALL contain no
+Generator or Function. Construction SHALL snapshot each value once. Every
+specialized caller SHALL forward those same values, without re-evaluation, in a
+deterministic retained order after the source parameters. Forwarding MAY cross
+multiple private ordinary-function calls while the values remain within their
+defining lifetime.
+
+The checked callee SHALL retain the Function observation tag separately from
+its callable body and capture metadata. Applying the parameter SHALL specialize
+that retained body and issue one direct private call with its explicit operands
+followed by the forwarded captures. A nested lexical Function MAY acquire its
+module-private observation tag for Function-parameter passage, but that tag
+SHALL identify display/debug state only and SHALL NOT dispatch the call.
+
+Every generated definition and call SHALL use an exact private `fastcc`
+prototype; LLVM SHALL derive physical aggregate and scalar placement from the
+target data layout. DWARF SHALL expose the source Function parameter and the
+material captures under their source names in the invoked anonymous or nested
+frame. Pure forwarding parameters that have no corresponding source binding
+SHALL remain absent from DWARF. Tests SHALL cover multiple scalar captures, an
+aggregate capture, root and function-local construction, transitive forwarding,
+a non-escaping nested Function, exact interpreter parity, and full O0 GDB
+frames.
+
+This rule SHALL introduce no environment object or allocation, function
+pointer, indirect call, callback, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
-ABI, or native-ABI revision.
+ABI, or native-ABI revision. Capturing Function results, aggregate containment,
+dynamic selection or escape, recursive or overloaded nested callable values,
+unsupported captured state, publication, and library metadata/adapters remain
+deferred. Future compiled-library metadata SHALL encode callable identity,
+ordered capture identities and classifiers, construction lifetime, effects,
+native-representation identities, and target adapters rather than expose this
+private hidden-parameter layout.
 
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
