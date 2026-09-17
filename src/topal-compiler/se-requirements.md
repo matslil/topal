@@ -2992,9 +2992,9 @@ unary and product invocation, exact output, contextual Function-parameter use,
 left-associative mixed symbolic application, invalid arity, display, source
 frames, private direct IR, and freestanding artifact properties.
 
-The compiler shall reject lexical data captures and anonymous product parameter
-patterns until an explicit cross-frame capture representation exists. This
-increment shall add no function pointer, indirect call, closure allocation,
+This requirement alone does not admit lexical data captures or anonymous
+product parameter patterns; unsupported forms shall fail before LLVM lowering.
+This increment shall add no function pointer, indirect call, closure allocation,
 closure or Function runtime, foreign dependency, C/C++ runtime, other-language
 standard library, public callable ABI, or `topal-native/6` revision. Escaping
 closures, Function results and aggregate boundaries, and published callable
@@ -3096,11 +3096,49 @@ values/frames, the shared corpus, and separate resource baselines.
 This shall add no environment object, function pointer, indirect call, closure
 or Function runtime, foreign dependency, C/C++ runtime, other-language standard
 library, public callable ABI, or `topal-native/6` revision. Capturing results or
-Function-boundary arguments, aggregate containment, anonymous product patterns,
-dynamic escape, publication, and library metadata/adapters remain deferred.
+Function-boundary arguments, aggregate containment, dynamic escape,
+publication, and library metadata/adapters remain deferred.
 This realizes `TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5r.
+
+## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
+
+The checked compiler model shall admit a flat positional product parameter
+pattern in any position of a directly applied inferred anonymous Function. It
+shall require one exact Tuple operand of matching arity for each product
+pattern, bind fields in lexical source order, preserve the source parameter
+arity, and compose with same-invocation immutable captures and non-capturing
+anonymous Function parameters/results already admitted by the compiler.
+
+The frontend shall evaluate the complete application operand exactly once.
+Opaque Tuple locals and function results and the outer positional product of a
+multi-parameter call shall use a compiler-private lexical value before field
+projection. Direct Tuple constructions may retain sound field facts for body
+checking, but no initializer or field expression may be replayed. A non-Tuple,
+field-count mismatch, duplicate binding, nested pattern, or unsupported field
+representation shall fail before anonymous-body or LLVM lowering.
+
+LLVM definitions and calls shall use matching private `fastcc` signatures with
+ordinary binding parameters and flattened product fields in lexical order,
+followed by exact capture parameters. LLVM shall own physical x86-64 placement.
+Full O0 DWARF/GDB shall expose non-discarded product fields as source-named
+parameters, material captures, the anonymous frame, and callers. Tests shall
+cover direct call-result materialization, bound captures, non-capturing
+Function results, mixed product/scalar patterns, exact output, rejection
+boundaries, once-only IR, artifact independence, DWARF validation, GDB
+values/frames, all interpreter modes, reversible debugging, the shared corpus,
+and separate resource baselines.
+
+This shall add no product-pattern object, environment object, function pointer,
+indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate or callable ABI, or
+`topal-native/6` revision. Nested/repeated-name patterns, escaping/capturing
+Function boundaries, aggregate containment, publication, and library
+metadata/adapters remain deferred. This realizes
+`TOPAL-COMPILER-ANONYMOUS-PRODUCT-001`, `TOPAL-FUNCTION-ANONYMOUS-001`,
+`TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5s.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

@@ -576,7 +576,9 @@ All interpreter modes shall bind a positional product supplied to an inferred
 anonymous-function product pattern according to `TOPAL-FUNCTION-ANONYMOUS-001`.
 The pattern shall preserve the context-selected field classifiers, including
 generic classifier substitutions, and shall reject nonproducts or mismatched
-field counts before evaluating the body.
+field counts before evaluating the body. Interpreter modes and reversible
+debugger history shall cover direct, bound capturing, returned non-capturing,
+and mixed product/scalar anonymous functions through one shared regression.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 

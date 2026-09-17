@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 214);
+    assert_eq!(examples.len(), 215);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4413,6 +4413,24 @@ fn every_mode_preserves_anonymous_captures_and_function_results() {
             String::from_utf8(output.stdout)
                 .unwrap()
                 .contains("(42, 42)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.contains("function.anonymous.captured"));
+    assert!(trace.contains("function.anonymous.called"));
+}
+
+#[test]
+fn every_mode_destructures_bound_and_returned_anonymous_product_functions() {
+    let source = include_str!("../../../examples/language/anonymous-product-functions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, 42, 42, 42)")
         );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();

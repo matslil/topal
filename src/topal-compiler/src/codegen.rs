@@ -142,6 +142,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Call {
             arguments: fields, ..
         } => fields.iter().any(expression_uses_extended_debug),
+        CompilerExpressionKind::TupleField { tuple, .. } => expression_uses_extended_debug(tuple),
         CompilerExpressionKind::Record(fields) => fields
             .iter()
             .any(|(_, value)| expression_uses_extended_debug(value)),
@@ -273,6 +274,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             .as_deref()
             .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
+        CompilerExpressionKind::PrivateBinding { value, body, .. } => {
+            expression_uses_extended_debug(value) || expression_uses_extended_debug(body)
+        }
         CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ExternalLayoutCoerce { value, .. }
         | CompilerExpressionKind::ExternalLocationRead {
@@ -1762,6 +1766,15 @@ impl<'a> Generator<'a> {
                     .map(|value| self.emit_expression(value, body, environment))
                     .collect(),
             ),
+            CompilerExpressionKind::TupleField { tuple, index } => {
+                let LlValue::Tuple(values) = self.emit_expression(tuple, body, environment) else {
+                    unreachable!("checked tuple field has a Tuple receiver")
+                };
+                values
+                    .into_iter()
+                    .nth(*index)
+                    .expect("checked tuple field index remains in bounds")
+            }
             CompilerExpressionKind::Record(fields) => {
                 let mut fields = fields
                     .iter()
@@ -1826,6 +1839,16 @@ impl<'a> Generator<'a> {
                 let value = self.emit_block(block, body, &mut nested);
                 body.subprogram = parent_scope;
                 value
+            }
+            CompilerExpressionKind::PrivateBinding {
+                storage_name,
+                value,
+                body: result,
+            } => {
+                let value = self.emit_expression(value, body, environment);
+                let mut nested = environment.clone();
+                nested.insert(storage_name.clone(), value);
+                self.emit_expression(result, body, &nested)
             }
             CompilerExpressionKind::Local(name)
             | CompilerExpressionKind::InfinityLocal {
@@ -12022,6 +12045,89 @@ mod tests {
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_anonymous_product_patterns_as_flat_once_only_private_calls() {
+        // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-TYPE-PRODUCT-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-product-functions.t"
+        ))
+        .unwrap();
+        let make_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-pair")
+            .unwrap();
+        let captured = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function
+                        .parameters
+                        .iter()
+                        .any(|parameter| parameter.name == "offset")
+            })
+            .unwrap();
+        let mixed = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/2>"
+                    && function
+                        .parameters
+                        .iter()
+                        .any(|parameter| parameter.name == "extra")
+            })
+            .unwrap();
+        let llvm = Generator::new(&program, "anonymous-product-functions.t").emit();
+
+        assert_eq!(
+            llvm.matches(&format!(
+                "call fastcc {{ ptr, ptr }} @{}(",
+                make_pair.symbol
+            ))
+            .count(),
+            1
+        );
+        assert!(llvm.contains("extractvalue { ptr, ptr }"));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1, ptr %arg2)",
+            captured.symbol
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr")
+                && line.contains(&format!("@{}(", captured.symbol))
+                && line.contains("ptr %arg0")
+        }));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1, ptr %arg2)",
+            mixed.symbol
+        )));
+        assert!(llvm.contains("!DILocalVariable(name: \"left\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 2"));
+        assert!(llvm.contains("!DILocalVariable(name: \"offset\", arg: 3"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let heterogeneous = analyze_for_compiler(
+            "use language (version is v0.1)\nchoose : Function is { (condition, text) } text\nchoose (true, \"kept\")\n",
+        )
+        .unwrap();
+        let function = &heterogeneous.functions[0];
+        let heterogeneous_llvm = Generator::new(&heterogeneous, "heterogeneous-product.t").emit();
+        assert!(heterogeneous_llvm.contains(&format!(
+            "define internal fastcc ptr @{}(i1 %arg0, ptr %arg1)",
+            function.symbol
+        )));
+        assert!(heterogeneous_llvm.contains(&format!(
+            "call fastcc ptr @{}(i1 true, ptr ",
+            function.symbol
+        )));
     }
 
     #[test]
