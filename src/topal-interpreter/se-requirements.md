@@ -2101,3 +2101,12 @@ zero shall instead produce the ordinary arithmetic Result failure with code
 infinity success. Division and other dynamic indeterminate Result paths remain
 explicitly unsupported. Formal traces and reversible scripted-debugger history
 shall cover the shared interpreter/compiler examples.
+
+## TOPAL-INTP-SUBSET-254 — Function result values
+
+All source modes shall return retained named and symbolic Function values from
+ordinary functions, including a Function parameter returned unchanged, and
+shall preserve their callable identity through later binding and application
+under `TOPAL-FUNCTION-VALUE-001` and `TOPAL-FUNCTION-CALLABLE-VALUE-001`.
+Formal traces and reversible scripted-debugger history shall cover the shared
+named/symbolic Function-result example.

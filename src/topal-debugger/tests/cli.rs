@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 212);
+    assert_eq!(examples.len(), 213);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3096,6 +3096,25 @@ fn records_named_function_values_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("TOPAL-FUNCTION-VALUE-001"));
     assert!(stdout.contains("<fn increment>"));
+}
+
+#[test]
+fn records_function_results_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-results.debug"),
+            &language_example("function-results.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-FUNCTION-VALUE-001"));
+    assert!(stdout.contains("TOPAL-FUNCTION-CALLABLE-VALUE-001"));
+    assert!(stdout.contains("<fn increment>"));
+    assert!(stdout.contains('+'));
 }
 
 #[test]

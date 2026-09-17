@@ -3036,6 +3036,36 @@ closures, and public/library closure metadata remain rejected. This realizes
 `TOPAL-COMPILER-NESTED-FUNCTION-001` and `TOPAL-FUNCTION-NESTED-001` for compiler
 increment 3b2-b5p.
 
+## TOPAL-COMP-FUNCTION-RESULT-001 — Specialized private Function results
+
+The checked compiler model shall admit an exact `Function` result from an
+ordinary or static root function when the result has retained named-root or
+symbolic callable facts already supported by the compiler. A specialized
+`Function` parameter may pass those same facts through the result. Calls and
+subsequent binding chains shall retain the callable facts independently of the
+machine tag, and later application shall lower from those facts without
+runtime dispatch or renewed name lookup.
+
+Each specialization shall return the existing deterministic i32 Function
+observation tag from its exact private `fastcc` signature. The caller shall use
+a direct i32-returning call, and named or symbolic application shall remain a
+direct private call or direct operation. Full O0 debugging shall expose the
+Function parameter, returned Function locals, and source frames using
+target-aligned debug-only stack shadows where otherwise-dead tags would lose a
+stable GDB location. Native tests shall cover named and symbolic pass-through,
+binding chains, exact output, rejection boundaries, private direct IR,
+freestanding artifacts, DWARF validation, GDB values/frames, the shared corpus,
+and separate resource baselines.
+
+Anonymous, capturing, nested, dynamically computed, aggregate-contained, and
+published Function results remain rejected. This shall add no function pointer,
+indirect call, closure allocation/runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public callable ABI, or `topal-native/6`
+revision. This realizes `TOPAL-COMPILER-FUNCTION-RESULT-001` and the admitted
+result-boundary portions of `TOPAL-FUNCTION-CALLABLE-VALUE-001`,
+`TOPAL-FUNCTION-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5q.
+
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
 The checked compiler model shall admit exactly one packaged function operand
