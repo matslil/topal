@@ -1061,6 +1061,11 @@
       "cpu_time_ns": 3473620,
       "memory_peak_bytes": 18526208,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/rational-infinity-values-and-ranges.t": {
+      "cpu_time_ns": 7544740,
+      "memory_peak_bytes": 18395136,
+      "samples_per_test": 50
     }
   }
 }

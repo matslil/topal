@@ -183,23 +183,26 @@ semantics without enumeration or endpoint adjustment.
 
 The private representation SHALL remain opaque outside its versioned native
 ABI and SHALL contain no load-time pointer relocation in output without an ELF
-interpreter. Unbounded ranges, infinite Rational endpoints, and range-based
-collection selection SHALL remain outside this rule until their prerequisite
-semantics and value representations are implemented. Exact Int infinity
-endpoints are admitted only under `TOPAL-COMPILER-INFINITY-001`.
+interpreter. Unbounded ranges and range-based collection selection SHALL remain
+outside this rule until their prerequisite semantics and value representations
+are implemented. Exact Int and Rational infinity endpoints are admitted only
+under `TOPAL-COMPILER-INFINITY-001`.
 
-### TOPAL-COMPILER-INFINITY-001 — Contextual exact Int infinities
+### TOPAL-COMPILER-INFINITY-001 — Contextual exact infinities
 
 The compiler SHALL admit exact `+Infinity` and `-Infinity` in an immediate
 root-binding `Int` context and `+Infinity` in an immediate root-binding `Nat`
-context. Checked code SHALL retain direction and source classifier, and SHALL
-implement canonical display, equality, ordered predicates, three-way
-comparison, and explicitly bounded `Range Int` construction, membership,
-intersection, emptiness, and bound observation with either infinity as an
-endpoint. The semantics SHALL hold at `-O0` without relying on an optional LLVM
-optimization. A context-free constant, negative Nat infinity, infinity
-arithmetic, Rational infinity, or function, persistent, serialized, public, or
-compiled-library infinity boundary SHALL be rejected explicitly in this
+context. It SHALL also admit either infinity in an immediate root-binding
+`Rational` context. Checked code SHALL retain direction and source classifier,
+and SHALL implement canonical display, equality, ordered predicates, three-way
+comparison, and explicitly bounded `Range Int` and `Range Rational`
+construction, membership, intersection, emptiness, and bound observation with
+either same-domain infinity as an endpoint. A finite Int beside a Rational
+infinity SHALL use the canonical finite embedding. The semantics SHALL hold at
+`-O0` without relying on an optional LLVM optimization. A context-free
+constant, negative Nat infinity, infinity arithmetic, implicit cross-domain
+Int/Rational infinity conversion, or function, persistent, serialized, public,
+or compiled-library infinity boundary SHALL be rejected explicitly in this
 increment.
 
 Linux x86-64 lowering MAY use immutable executable-private sentinel Int
@@ -207,18 +210,24 @@ objects with reserved non-finite tags because the checker prevents those
 objects from crossing a machine signature. Existing finite Int objects and
 their `topal-native/6` function representation SHALL remain unchanged. Exact
 comparison and output SHALL recognize the sentinels before finite limb logic;
-range operations SHALL reuse the existing opaque exact endpoint pointers. The
-runtime SHALL use only Topal-owned storage and direct qualified Linux syscalls,
-with no undefined helper, foreign runtime, C/C++ runtime, other-language
-standard library, dynamic dependency, or public ABI.
+range operations SHALL reuse the existing opaque exact endpoint pointers.
+Rational infinity MAY use a runtime-constructed Rational wrapper whose
+numerator is the matching sentinel and whose denominator is canonical one;
+comparison, display, and debugging SHALL recognize that invariant before
+finite cross-multiplication. No pointer-bearing infinity object may require a
+loader-applied absolute relocation. The runtime SHALL use only Topal-owned
+storage and direct qualified Linux syscalls, with no undefined helper, foreign
+runtime, C/C++ runtime, other-language standard library, dynamic dependency,
+or public ABI.
 
-DWARF SHALL preserve the source `Int`, `Nat`, and `Range Int` identities. The
-bundled GDB renderer SHALL validate the reserved tags and zero-length sentinel
-invariant before rendering either infinity. Future library metadata carrying
-infinity SHALL describe the language revision, semantic numeric domain,
-direction, applicable operations and errors, type constraints, ownership,
-debug contract, and target adapter independently of LLVM types, private tags,
-headers, and symbol names.
+DWARF SHALL preserve the source `Int`, `Nat`, `Rational`, `Range Int`, and
+`Range Rational` identities. The bundled GDB renderer SHALL validate the
+reserved tags, zero-length sentinel invariant, and canonical Rational wrapper
+before rendering either infinity. Future library metadata carrying infinity
+SHALL describe the language revision, semantic numeric domain, direction,
+applicable operations and errors, type constraints, ownership, debug contract,
+and target adapter independently of LLVM types, private tags, headers, and
+symbol names.
 
 ### TOPAL-COMPILER-DECISION-001 — Comparison decision control flow
 

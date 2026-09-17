@@ -351,6 +351,18 @@ representation does not revise that ABI. Future boundary admission requires
 canonical metadata for the numeric domain and infinity semantics rather than
 publishing these tags.
 
+The next infinity increment retains a Rational infinity as a normal private
+Rational header whose numerator is the corresponding executable-private Int
+sentinel and whose denominator is canonical one. The compiler constructs that
+pointer-bearing header at run time, so the static PIE still requires no loader
+relocation. Rational comparison and display recognize the numerator sentinel
+before finite cross-multiplication, while the opaque Range header continues to
+retain endpoint pointers unchanged. The checked model uses an internal
+`InfiniteRational` proof type and rejects arithmetic, cross-domain Int/Rational
+infinity conversion, functions, publication, persistence, serialization, and
+libraries before lowering. Consequently neither the finite Rational layout nor
+the `topal-native/6` machine ABI changes.
+
 Finite `Rational` values are immutable objects containing two private Int
 pointers: a coprime numerator and a positive denominator. The compiler emits
 each literal component as relocation-free Int data, then constructs the

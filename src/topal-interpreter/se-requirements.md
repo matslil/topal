@@ -2071,3 +2071,18 @@ as absent bounds.
 Unsupported infinity arithmetic and unsupported classifier or function
 boundaries shall fail explicitly. LSP validation and reversible scripted-
 debugger history shall cover the shared commented example.
+
+## TOPAL-INTP-SUBSET-252 — Contextual Rational infinities and range endpoints
+
+All source modes shall admit either infinity in an immediate `Rational`
+classification, preserve the Rational domain through canonical display,
+same-domain equality and total order, and compare a finite Int through the
+canonical exact embedding. Explicit `Range Rational` construction, membership,
+intersection, emptiness, and bound observation shall accept either Rational
+infinity as an endpoint while retaining absent bounds as a distinct future
+form. Infinity arithmetic and cross-domain Int/Rational infinity conversion
+shall fail explicitly where no separately applicable rule defines them.
+Ordinary interpreter function passage retains the Rational classifier; this
+does not admit the compiler's still-unsupported machine or library boundary.
+LSP validation and reversible scripted-debugger history shall cover the
+unchanged shared interpreter/compiler example.

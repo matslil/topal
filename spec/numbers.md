@@ -60,10 +60,10 @@ values at the applicable validation boundary.
 
 The exact lexemes `+Infinity` and `-Infinity` construct the corresponding
 distinguished value of an expected numeric classifier that contains it. An
-`Int` context accepts either direction; a `Nat` context accepts only
-`+Infinity`. Source without a sufficient expected numeric classifier SHALL be
-rejected rather than selecting a numeric domain implicitly, and `-Infinity`
-SHALL be rejected by `Nat` and every other nonnegative constraint.
+`Int` or `Rational` context accepts either direction; a `Nat` context accepts
+only `+Infinity`. Source without a sufficient expected numeric classifier
+SHALL be rejected rather than selecting a numeric domain implicitly, and
+`-Infinity` SHALL be rejected by `Nat` and every other nonnegative constraint.
 
 Infinity retains the ordinary numeric classifier rather than introducing an
 `Extended` type. Its canonical display is exactly its source-direction name.
@@ -73,6 +73,11 @@ greater than every finite value. Arithmetic involving infinity remains governed
 by separately applicable overload and indeterminate-result rules; a partial
 tool SHALL reject an unsupported application rather than treat an infinity as
 finite storage.
+
+A finite `Int` may use `TOPAL-NUM-INT-RATIONAL-CONVERT-001` when compared with
+or used as an endpoint beside a Rational infinity. That finite embedding does
+not implicitly convert an Int infinity into a Rational infinity; such a
+cross-domain conversion requires its own applicable boundary rule.
 
 ### TOPAL-NUM-SUB-001 — Finite exact integer subtraction
 
@@ -329,26 +334,26 @@ domain `root.^(Rational,Int)` plus separate source provenance.
 
 ### TOPAL-NUM-COMPARE-001 — Exact total ordering
 
-`Int`, including its two infinities, and finite `Rational` each provide
-`TotalOrder` using their exact mathematical order. A same-domain comparison
-produces exactly `Less`, `Equal`, or `Greater`; the predicates `<`, `>`, `<=`,
-and `>=` select the corresponding result or result set and return `Boolean`.
-For `Int`, `-Infinity` precedes every finite value and `+Infinity` follows every
-finite value. Mixed finite `Int` and `Rational` comparison first applies
-`TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and then uses rational
-order. These predicates use ordinary left-to-right application and have no
-special chaining rule.
+`Int` and `Rational`, including their two infinities, each provide `TotalOrder`
+using their exact mathematical order. A same-domain comparison produces exactly
+`Less`, `Equal`, or `Greater`; the predicates `<`, `>`, `<=`, and `>=` select the
+corresponding result or result set and return `Boolean`. In either domain,
+`-Infinity` precedes every finite value and `+Infinity` follows every finite
+value. Mixed finite `Int` and `Rational` comparison first applies
+`TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and then uses rational order.
+These predicates use ordinary left-to-right application and have no special
+chaining rule.
 This is the numeric realization of `TOPAL-TYPE-ORDERING-001`.
 
 ### TOPAL-NUM-THREE-WAY-COMPARE-001 — Exact three-way comparison
 
-For Int operands, including infinities, and finite Rational operands, `<=>`
-selects their applicable exact `TotalOrder` and returns the nominal
-`Comparison` alternative `Less`, `Equal`, or `Greater`. Same-domain comparison
-uses the order defined by `TOPAL-NUM-COMPARE-001`. Mixed finite Int and Rational
-comparison first applies the canonical lossless Int-to-Rational conversion.
-The operator evaluates each operand once and does not create a Boolean or apply
-chaining semantics.
+For Int and Rational operands, including same-domain infinities, `<=>` selects
+their applicable exact `TotalOrder` and returns the nominal `Comparison`
+alternative `Less`, `Equal`, or `Greater`. Same-domain comparison uses the order
+defined by `TOPAL-NUM-COMPARE-001`. Mixed finite Int and Rational comparison
+first applies the canonical lossless Int-to-Rational conversion. The operator
+evaluates each operand once and does not create a Boolean or apply chaining
+semantics.
 
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable

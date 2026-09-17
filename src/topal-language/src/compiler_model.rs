@@ -337,6 +337,7 @@ pub enum CompilerType {
     Nat,
     InfiniteInt,
     InfiniteNat,
+    InfiniteRational,
     Rational,
     Comparison,
     Error,
@@ -385,6 +386,7 @@ impl CompilerType {
                 | Self::Nat
                 | Self::InfiniteInt
                 | Self::InfiniteNat
+                | Self::InfiniteRational
                 | Self::Rational
                 | Self::Comparison
                 | Self::Error
@@ -433,7 +435,7 @@ impl CompilerType {
             Self::Version => "Version".into(),
             Self::Int | Self::InfiniteInt => "Int".into(),
             Self::Nat | Self::InfiniteNat => "Nat".into(),
-            Self::Rational => "Rational".into(),
+            Self::Rational | Self::InfiniteRational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
             Self::Error => "Error".into(),
             Self::ErrorCode => "lang arithmetic ArithmeticErrorCode".into(),
@@ -8152,12 +8154,13 @@ impl Analyzer {
                         "-Infinity does not satisfy Nat",
                     ));
                 }
+                Some(CompilerType::Rational) => CompilerType::InfiniteRational,
                 _ => {
                     return Err(source_diagnostic(
                         &self.source,
                         "E-INFINITY-CONTEXT",
                         *span,
-                        "this compiler increment requires an explicit Int or Nat infinity classifier",
+                        "this compiler increment requires an explicit Int, Nat, or Rational infinity classifier",
                     ));
                 }
             };
@@ -8610,6 +8613,7 @@ impl Analyzer {
                             (&expected, &value.value_type),
                             (CompilerType::Int, CompilerType::InfiniteInt)
                                 | (CompilerType::Nat, CompilerType::InfiniteNat)
+                                | (CompilerType::Rational, CompilerType::InfiniteRational)
                         ) {
                             require_same_type(
                                 &self.source,
@@ -15584,6 +15588,17 @@ impl Analyzer {
                         CompilerType::Int
                     };
                     CompilerType::Range(Box::new(endpoint))
+                } else if is_rational_range_endpoint(left_endpoint)
+                    && is_rational_range_endpoint(right_endpoint)
+                {
+                    let endpoint = if left_endpoint.as_ref() == &CompilerType::InfiniteRational
+                        || right_endpoint.as_ref() == &CompilerType::InfiniteRational
+                    {
+                        CompilerType::InfiniteRational
+                    } else {
+                        CompilerType::Rational
+                    };
+                    CompilerType::Range(Box::new(endpoint))
                 } else {
                     require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
                     left.value_type.clone()
@@ -15663,11 +15678,27 @@ impl Analyzer {
             )
         {
             *value = forget_nat_evidence(value.clone());
-        } else {
-            if endpoint.as_ref() == &CompilerType::Rational && value.value_type == CompilerType::Int
-            {
+        } else if is_rational_range_endpoint(endpoint) {
+            if matches!(
+                value.value_type,
+                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            ) {
+                return Err(unsupported(
+                    &self.source,
+                    value.span,
+                    "cross-domain Int/Rational infinity membership conversion",
+                ));
+            }
+            if matches!(value.value_type, CompilerType::Int | CompilerType::Nat) {
                 *value = into_rational(value.clone());
             }
+            if !matches!(
+                value.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            ) {
+                require_same_type(&self.source, value.span, endpoint, &value.value_type)?;
+            }
+        } else {
             require_same_type(&self.source, value.span, endpoint, &value.value_type)?;
         }
         Ok(Self::finish_binary(
@@ -15969,27 +16000,45 @@ impl Analyzer {
             require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
             let infinite = matches!(
                 left_value.value_type,
-                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                CompilerType::InfiniteInt
+                    | CompilerType::InfiniteNat
+                    | CompilerType::InfiniteRational
             ) || matches!(
                 right_value.value_type,
-                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                CompilerType::InfiniteInt
+                    | CompilerType::InfiniteNat
+                    | CompilerType::InfiniteRational
             );
-            if infinite
-                && (left_value.value_type == CompilerType::Rational
-                    || right_value.value_type == CompilerType::Rational)
+            let rational = matches!(
+                left_value.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            ) || matches!(
+                right_value.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            );
+            if rational
+                && (matches!(
+                    left_value.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ) || matches!(
+                    right_value.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ))
             {
                 return Err(unsupported(
                     &self.source,
                     span,
-                    "mixed Rational and infinity range endpoints",
+                    "cross-domain Int/Rational infinity range endpoint conversion",
                 ));
             }
-            let endpoint = if left_value.value_type == CompilerType::Rational
-                || right_value.value_type == CompilerType::Rational
-            {
+            let endpoint = if rational {
                 left_value = into_rational(left_value);
                 right_value = into_rational(right_value);
-                CompilerType::Rational
+                if infinite {
+                    CompilerType::InfiniteRational
+                } else {
+                    CompilerType::Rational
+                }
             } else if infinite {
                 left_value = forget_nat_evidence(left_value);
                 right_value = forget_nat_evidence(right_value);
@@ -16008,10 +16057,10 @@ impl Analyzer {
 
         let infinite = matches!(
             left_value.value_type,
-            CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            CompilerType::InfiniteInt | CompilerType::InfiniteNat | CompilerType::InfiniteRational
         ) || matches!(
             right_value.value_type,
-            CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            CompilerType::InfiniteInt | CompilerType::InfiniteNat | CompilerType::InfiniteRational
         );
         let comparison = matches!(
             operation,
@@ -16023,15 +16072,34 @@ impl Analyzer {
                 | CompilerBinary::GreaterEqual
                 | CompilerBinary::Compare
         );
-        if infinite
-            && (!comparison
-                || left_value.value_type == CompilerType::Rational
-                || right_value.value_type == CompilerType::Rational)
+        let rational_domain = matches!(
+            left_value.value_type,
+            CompilerType::Rational | CompilerType::InfiniteRational
+        ) || matches!(
+            right_value.value_type,
+            CompilerType::Rational | CompilerType::InfiniteRational
+        );
+        if comparison
+            && rational_domain
+            && (matches!(
+                left_value.value_type,
+                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            ) || matches!(
+                right_value.value_type,
+                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            ))
         {
             return Err(unsupported(
                 &self.source,
                 span,
-                "infinity arithmetic outside exact Int comparison and ranges",
+                "cross-domain Int/Rational infinity comparison",
+            ));
+        }
+        if infinite && !comparison {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "infinity arithmetic outside exact comparison and ranges",
             ));
         }
 
@@ -16214,8 +16282,14 @@ impl Analyzer {
         let both_int = left_value.value_type == CompilerType::Int
             && right_value.value_type == CompilerType::Int;
         let rational_result = operation == CompilerBinary::Divide
-            || left_value.value_type == CompilerType::Rational
-            || right_value.value_type == CompilerType::Rational;
+            || matches!(
+                left_value.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            )
+            || matches!(
+                right_value.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            );
         if rational_result {
             left_value = into_rational(left_value);
             right_value = into_rational(right_value);
@@ -16294,9 +16368,28 @@ impl Analyzer {
         if is_exact_comparable(&left.value_type) && is_exact_comparable(&right.value_type) {
             left = forget_nat_evidence(left);
             right = forget_nat_evidence(right);
-            let value_type = if left.value_type == CompilerType::Rational
-                || right.value_type == CompilerType::Rational
+            let rational_domain = matches!(
+                left.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            ) || matches!(
+                right.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            );
+            if rational_domain
+                && (matches!(
+                    left.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ) || matches!(
+                    right.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ))
             {
+                return Err(self.no_structural_comparison(
+                    span,
+                    "cross-domain infinity conversion is not defined",
+                ));
+            }
+            let value_type = if rational_domain {
                 left = into_rational(left);
                 right = into_rational(right);
                 CompilerType::Rational
@@ -16427,9 +16520,28 @@ impl Analyzer {
         if is_exact_comparable(&left.value_type) && is_exact_comparable(&right.value_type) {
             left = forget_nat_evidence(left);
             right = forget_nat_evidence(right);
-            let value_type = if left.value_type == CompilerType::Rational
-                || right.value_type == CompilerType::Rational
+            let rational_domain = matches!(
+                left.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            ) || matches!(
+                right.value_type,
+                CompilerType::Rational | CompilerType::InfiniteRational
+            );
+            if rational_domain
+                && (matches!(
+                    left.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ) || matches!(
+                    right.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ))
             {
+                return Err(self.no_structural_comparison(
+                    span,
+                    "cross-domain infinity conversion is not defined",
+                ));
+            }
+            let value_type = if rational_domain {
                 left = into_rational(left);
                 right = into_rational(right);
                 CompilerType::Rational
@@ -19664,6 +19776,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::InfiniteInt
         | CompilerType::InfiniteNat
+        | CompilerType::InfiniteRational
         | CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
         | CompilerType::SerializationStream(_)
@@ -19711,7 +19824,9 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
 
 fn compiler_type_contains_infinity(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::InfiniteInt | CompilerType::InfiniteNat => true,
+        CompilerType::InfiniteInt | CompilerType::InfiniteNat | CompilerType::InfiniteRational => {
+            true
+        }
         CompilerType::SerializationStream(value)
         | CompilerType::Range(value)
         | CompilerType::Result(value)
@@ -20466,12 +20581,20 @@ fn is_exact_numeric(value_type: &CompilerType) -> bool {
         CompilerType::Int
             | CompilerType::InfiniteInt
             | CompilerType::InfiniteNat
+            | CompilerType::InfiniteRational
             | CompilerType::Rational
     )
 }
 
 fn is_int_range_endpoint(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Int | CompilerType::InfiniteInt)
+}
+
+fn is_rational_range_endpoint(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Rational | CompilerType::InfiniteRational
+    )
 }
 
 fn forget_refined_evidence(mut expression: CompilerExpression) -> CompilerExpression {
@@ -20602,6 +20725,7 @@ fn is_exact_comparable(value_type: &CompilerType) -> bool {
             | CompilerType::Nat
             | CompilerType::InfiniteInt
             | CompilerType::InfiniteNat
+            | CompilerType::InfiniteRational
             | CompilerType::Rational
     )
 }
@@ -20626,6 +20750,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Nat
         | CompilerType::InfiniteInt
         | CompilerType::InfiniteNat
+        | CompilerType::InfiniteRational
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::ErrorCode
@@ -21045,6 +21170,15 @@ fn into_rational(expression: CompilerExpression) -> CompilerExpression {
     if expression.value_type == CompilerType::Rational {
         return expression;
     }
+    if expression.value_type == CompilerType::InfiniteRational {
+        let mut expression = expression;
+        expression.value_type = CompilerType::Rational;
+        return expression;
+    }
+    debug_assert!(!matches!(
+        expression.value_type,
+        CompilerType::InfiniteInt | CompilerType::InfiniteNat
+    ));
     let span = expression.span;
     let rational_value = exact_int(&expression).map(BigRational::from_integer);
     CompilerExpression {
@@ -31236,6 +31370,72 @@ mod tests {
             ),
             (
                 "use language (version is v0.1)\nlower : Int is -Infinity\nupper : Int is +Infinity\nwhole is lower ..= upper\ncontains-zero is fn () -> Boolean\n  0 in @ whole\ncontains-zero ()",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                expected,
+                "unexpected diagnostic for {invalid:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn models_contextual_rational_infinities_and_exact_range_endpoints() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+        // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-RATIONAL-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source =
+            include_str!("../../../examples/language/rational-infinity-values-and-ranges.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let bindings = program
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Binding(binding) => Some(binding),
+                CompilerStatement::Discard(_) => None,
+            })
+            .collect::<Vec<_>>();
+        for binding in &bindings[0..3] {
+            assert!(matches!(
+                binding.value,
+                CompilerExpression {
+                    kind: CompilerExpressionKind::Infinity { .. },
+                    value_type: CompilerType::InfiniteRational,
+                    ..
+                }
+            ));
+        }
+        assert_eq!(
+            bindings[5].value.value_type,
+            CompilerType::Range(Box::new(CompilerType::InfiniteRational))
+        );
+        assert_eq!(
+            bindings[6].value.value_type,
+            CompilerType::Range(Box::new(CompilerType::InfiniteRational))
+        );
+        assert!(matches!(
+            program.main.result.value_type,
+            CompilerType::Tuple(_)
+        ));
+
+        for (invalid, expected) in [
+            (
+                "use language (version is v0.1)\nupper : Rational is +Infinity\nupper + Rational (1, 1)",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\ninteger : Int is +Infinity\nratio : Rational is +Infinity\ninteger = ratio",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nidentity is fn (value : Rational) -> Rational\n  return value\nupper : Rational is +Infinity\nidentity upper",
+                "E-NO-APPLICABLE-OVERLOAD",
+            ),
+            (
+                "use language (version is v0.1)\npub exposed : Rational is +Infinity\nexposed",
                 "E-COMPILER-UNSUPPORTED",
             ),
         ] {

@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 209);
+    assert_eq!(examples.len(), 210);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3703,6 +3703,27 @@ fn records_reversible_contextual_infinity_construction() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("numeric.infinity.constructed [TOPAL-NUM-INFINITY-001]"));
     assert!(stdout.contains("-Infinity ..= +Infinity"));
+}
+
+#[test]
+fn records_reversible_contextual_rational_infinity_construction() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}scripts/finish-and-reverse.debug"),
+            &language_example("rational-infinity-values-and-ranges.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("numeric.infinity.constructed [TOPAL-NUM-INFINITY-001]"));
+    assert!(stdout.contains("Rational ( -1, 1 ) ..= +Infinity"));
 }
 
 #[test]

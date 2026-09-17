@@ -3,7 +3,8 @@
 ; Int values are immutable sign-and-magnitude objects with little-endian
 ; base-2^32 limbs. A zero has sign = 0 and length = 0. Root-local exact
 ; infinities use executable-private sign tags 2 (+) and 3 (-) with no limbs;
-; those sentinels are not admitted at a native function or library boundary.
+; Rational infinities wrap one sentinel over denominator one at run time. Those
+; values are not admitted at a native function or library boundary.
 
 %topal.StringStorage = type { ptr, i64, ptr, i64 }
 %topal.IntStorage = type { i64, i64, [0 x i32] }
@@ -1720,6 +1721,22 @@ entry:
   %left.denominator = call ptr @topal.runtime.rational.denominator(ptr %left)
   %right.numerator = call ptr @topal.runtime.rational.numerator(ptr %right)
   %right.denominator = call ptr @topal.runtime.rational.denominator(ptr %right)
+  %left.sign.pointer = getelementptr %topal.IntStorage, ptr %left.numerator, i32 0, i32 0
+  %right.sign.pointer = getelementptr %topal.IntStorage, ptr %right.numerator, i32 0, i32 0
+  %left.sign = load i64, ptr %left.sign.pointer, align 8
+  %right.sign = load i64, ptr %right.sign.pointer, align 8
+  %left.positive.infinity = icmp eq i64 %left.sign, 2
+  %left.negative.infinity = icmp eq i64 %left.sign, 3
+  %left.infinity = or i1 %left.positive.infinity, %left.negative.infinity
+  %right.positive.infinity = icmp eq i64 %right.sign, 2
+  %right.negative.infinity = icmp eq i64 %right.sign, 3
+  %right.infinity = or i1 %right.positive.infinity, %right.negative.infinity
+  %either.infinity = or i1 %left.infinity, %right.infinity
+  br i1 %either.infinity, label %infinite, label %finite
+infinite:
+  %infinite.result = call i32 @topal.runtime.int.compare(ptr %left.numerator, ptr %right.numerator)
+  ret i32 %infinite.result
+finite:
   %left.scaled = call ptr @topal.runtime.int.multiply(ptr %left.numerator, ptr %right.denominator)
   %right.scaled = call ptr @topal.runtime.int.multiply(ptr %right.numerator, ptr %left.denominator)
   %result = call i32 @topal.runtime.int.compare(ptr %left.scaled, ptr %right.scaled)
@@ -1803,6 +1820,16 @@ define internal void @topal.runtime.rational.print(ptr %value) nounwind noinline
 entry:
   %numerator = call ptr @topal.runtime.rational.numerator(ptr %value)
   %denominator = call ptr @topal.runtime.rational.denominator(ptr %value)
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %numerator, i32 0, i32 0
+  %sign = load i64, ptr %sign.pointer, align 8
+  %positive.infinity = icmp eq i64 %sign, 2
+  %negative.infinity = icmp eq i64 %sign, 3
+  %infinity = or i1 %positive.infinity, %negative.infinity
+  br i1 %infinity, label %print.infinity, label %print.finite
+print.infinity:
+  call void @topal.runtime.int.print(ptr %numerator)
+  ret void
+print.finite:
   call void @topal.platform.write_all(ptr @topal.runtime.rational.prefix, i64 11)
   call void @topal.runtime.int.print(ptr %numerator)
   call void @topal.platform.write_all(ptr @topal.runtime.rational.separator, i64 2)

@@ -27,10 +27,12 @@ evaluated once.
 
 ### TOPAL-RANGE-RATIONAL-001 — Rational range construction and membership
 
-Finite Rational endpoints support all four operators with the same endpoint
-and empty-range semantics. Mixed Int and Rational endpoints first use
-the single canonical `Int`-to-`Rational` conversion. Membership accepts Rational
-values and canonically embedded Int values, compares exactly, and never rounds.
+Rational endpoints, including either infinity, support all four operators with
+the same endpoint and empty-range semantics. Mixed finite Int and Rational
+endpoints first use the single canonical `Int`-to-`Rational` conversion.
+Membership accepts Rational values and canonically embedded finite Int values,
+compares exactly, and never rounds. An Int infinity is not converted into a
+Rational infinity without a separately applicable cross-domain boundary rule.
 
 ### TOPAL-RANGE-CLASSIFIER-001 — Range domain classification
 

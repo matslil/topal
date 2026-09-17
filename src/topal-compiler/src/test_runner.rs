@@ -166,6 +166,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/published-root-member.t",
     "examples/language/rational-exact-construction.t",
     "examples/language/rational-exponentiation.t",
+    "examples/language/rational-infinity-values-and-ranges.t",
     "examples/language/rational-negative-exponent.t",
     "examples/language/rational-ranges.t",
     "examples/language/range-selection.t",

@@ -4458,10 +4458,9 @@ observation, source-form output, and GDB inspection.
 
 Range lowering shall not enumerate members, normalize open endpoints by
 arithmetic, expose the private header to a foreign calling convention, require
-a C/C++ runtime, or introduce load-time pointer relocations. Unbounded forms,
-infinite Rational endpoints, and collection selection remain outside this
-increment. Exact Int infinity endpoints are admitted only under
-`TOPAL-COMP-INFINITY-001`.
+a C/C++ runtime, or introduce load-time pointer relocations. Unbounded forms
+and collection selection remain outside this increment. Exact Int and Rational
+infinity endpoints are admitted only under `TOPAL-COMP-INFINITY-001`.
 
 This requirement covers `TOPAL-RANGE-BOUNDS-001`,
 `TOPAL-RANGE-MEMBERSHIP-001`, `TOPAL-RANGE-RATIONAL-001`,
@@ -4469,16 +4468,20 @@ This requirement covers `TOPAL-RANGE-BOUNDS-001`,
 `TOPAL-RANGE-EMPTY-001`, and `TOPAL-RANGE-BOUND-001`. It realizes
 `TOPAL-COMPILER-RANGE-001` for compiler increment 2d-a.
 
-## TOPAL-COMP-INFINITY-001 — Contextual exact Int infinities
+## TOPAL-COMP-INFINITY-001 — Contextual exact infinities
 
 The checked compiler shall admit immediate root bindings classified as `Int`
 with either exact infinity and as `Nat` with positive infinity. It shall retain
 the source classifier and direction and admit canonical output, equality,
 ordered predicates, three-way comparison, and explicitly bounded `Range Int`
-construction, membership, intersection, emptiness, and bound observation. Bare
-constants, negative Nat infinity, Rational infinity, arithmetic with infinity,
-and all function, persistent, serialized, public, and compiled-library
-infinity boundaries shall remain explicitly unsupported.
+construction, membership, intersection, emptiness, and bound observation. The
+same closed root scope shall admit either infinity classified as `Rational`,
+the corresponding comparisons and `Range Rational` operations, plus the
+canonical embedding of a finite Int comparison value or endpoint. Bare
+constants, negative Nat infinity, arithmetic with infinity, implicit
+cross-domain Int/Rational infinity conversion, and all function, persistent,
+serialized, public, and compiled-library infinity boundaries shall remain
+explicitly unsupported.
 
 The Linux x86-64 backend may lower these closed root-local values to immutable
 executable-private Int sentinels carrying reserved positive- and negative-
@@ -4492,8 +4495,16 @@ without a C/C++ runtime, other-language standard library, foreign allocator,
 undefined helper, needed library, dynamic relocation, public ABI, or native ABI
 revision.
 
+A Rational infinity shall use a run-time-constructed private Rational header
+whose numerator is the matching Int sentinel and whose denominator is
+canonical one. Rational comparison, display, and debugging shall validate the
+sentinel/wrapper invariant before finite cross-multiplication. Construction at
+run time shall preserve the no-loader static-PIE relocation invariant; the
+finite Rational representation and machine ABI remain unchanged.
+
 DWARF and the bounded validating GDB renderer shall expose truthful `Int`,
-`Nat`, and `Range Int` source values and reject malformed sentinel state.
+`Nat`, `Rational`, `Range Int`, and `Range Rational` source values and reject
+malformed sentinel or Rational-wrapper state.
 Tests shall use the unchanged shared interpreter regression, compare exact
 output, inspect checked and LLVM lowering, validate the complete corpus,
 freestanding ELF, DWARF and GDB, and record separate interpreter execution plus
@@ -4504,7 +4515,7 @@ provenance, and native adapters independently of LLVM types, tags, headers, and
 symbols. This realizes `TOPAL-COMPILER-INFINITY-001`,
 `TOPAL-NUM-INFINITY-001`, the infinity cases of `TOPAL-NUM-NAT-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-THREE-WAY-COMPARE-001`, and the applicable
-`TOPAL-RANGE-*` rules for compiler increments 2c-c1 and 2d-b1.
+`TOPAL-RANGE-*` rules for compiler increments 2c-c1, 2c-c2, 2d-b1, and 2d-b2.
 
 ## TOPAL-COMP-DECISION-001 — Comparison decisions
 

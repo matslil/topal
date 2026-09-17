@@ -88,6 +88,12 @@ pub enum Value {
         lower_inclusive: bool,
         upper_inclusive: bool,
     },
+    InfiniteRationalRange {
+        lower: ExtendedRational,
+        upper: ExtendedRational,
+        lower_inclusive: bool,
+        upper_inclusive: bool,
+    },
     Optional {
         payload_classifier: String,
         payload: Option<Box<Self>>,
@@ -194,6 +200,28 @@ pub enum ExtendedInt {
     NegativeInfinity,
     Finite(BigInt),
     PositiveInfinity,
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ExtendedRational {
+    NegativeInfinity,
+    Finite(BigRational),
+    PositiveInfinity,
+}
+
+impl fmt::Display for ExtendedRational {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NegativeInfinity => formatter.write_str("-Infinity"),
+            Self::Finite(value) => write!(
+                formatter,
+                "Rational ( {}, {} )",
+                value.numer(),
+                value.denom()
+            ),
+            Self::PositiveInfinity => formatter.write_str("+Infinity"),
+        }
+    }
 }
 
 impl fmt::Display for ExtendedInt {
@@ -471,6 +499,16 @@ impl fmt::Display for Value {
                 range_symbol(*lower_inclusive, *upper_inclusive),
                 upper.numer(),
                 upper.denom()
+            ),
+            Self::InfiniteRationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            } => write!(
+                formatter,
+                "{lower} {} {upper}",
+                range_symbol(*lower_inclusive, *upper_inclusive)
             ),
             Self::Optional {
                 payload: Some(value),
@@ -8847,12 +8885,13 @@ fn evaluate_expression_with_optional_context(
                     "-Infinity does not satisfy Nat",
                 ));
             }
+            Some("Rational") => "Rational",
             _ => {
                 return Err(diagnostic(
                     source,
                     "E-INFINITY-CONTEXT",
                     *span,
-                    "this implemented subset requires an explicit Int or Nat infinity classifier",
+                    "this implemented subset requires an explicit Int, Nat, or Rational infinity classifier",
                 ));
             }
         };
@@ -9920,8 +9959,8 @@ fn declare_variant(
 
 #[allow(clippy::unnested_or_patterns)] // Keep each exact value/classifier association explicit.
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
-    if let Value::Infinity { negative, .. } = value {
-        return classifier == "Int" || (!negative && classifier == "Nat");
+    if let Some(matches) = infinity_has_classifier(value, classifier) {
+        return matches;
     }
     if classifier == "MessageContext"
         && matches!(value, Value::Record(fields)
@@ -10004,7 +10043,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Rational(_), "Rational")
         | (Value::IntRange { .. }, "Range Int")
         | (Value::InfiniteIntRange { .. }, "Range Int")
-        | (Value::RationalRange { .. }, "Range Rational")
+        | (Value::RationalRange { .. } | Value::InfiniteRationalRange { .. }, "Range Rational")
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
         | (Value::String(_), "String")
@@ -10020,6 +10059,21 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
     }
+}
+
+fn infinity_has_classifier(value: &Value, classifier: &str) -> Option<bool> {
+    let Value::Infinity {
+        negative,
+        classifier: infinity_classifier,
+    } = value
+    else {
+        return None;
+    };
+    Some(if infinity_classifier == "Rational" {
+        classifier == "Rational"
+    } else {
+        classifier == "Int" || (!negative && classifier == "Nat")
+    })
 }
 
 fn classifier_object_kind(classifier: &str) -> Option<ObjectKind> {
@@ -10277,7 +10331,7 @@ fn generic_parameter_accepts(
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         let actual = match argument {
             Value::IntRange { .. } => "Int",
-            Value::RationalRange { .. } => "Rational",
+            Value::RationalRange { .. } | Value::InfiniteRationalRange { .. } => "Rational",
             _ => return false,
         };
         return generic_classifier_accepts_name(actual, endpoint, generic_types);
@@ -10592,7 +10646,7 @@ fn value_matches_substituted_classifier(
     if let Some(endpoint) = applied_classifier(classifier, "Range") {
         let actual = match value {
             Value::IntRange { .. } => "Int",
-            Value::RationalRange { .. } => "Rational",
+            Value::RationalRange { .. } | Value::InfiniteRationalRange { .. } => "Rational",
             _ => return false,
         };
         return generic_classifier_accepts_declared_name(
@@ -12349,11 +12403,13 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::LayoutBacked { .. } => "Layout",
         Value::Effects(_) => "Effect",
         Value::Infinity { classifier, .. } if classifier == "Nat" => "Nat",
+        Value::Infinity { classifier, .. } if classifier == "Rational" => "Rational",
         Value::Int(_) | Value::Infinity { .. } => "Int",
         Value::Rational(_) => "Rational",
-        Value::IntRange { .. } | Value::InfiniteIntRange { .. } | Value::RationalRange { .. } => {
-            "Range"
-        }
+        Value::IntRange { .. }
+        | Value::InfiniteIntRange { .. }
+        | Value::RationalRange { .. }
+        | Value::InfiniteRationalRange { .. } => "Range",
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
         Value::Callable(_)
@@ -12426,7 +12482,9 @@ fn structural_value_classifier(value: &Value) -> String {
     match value {
         Value::IntRange { .. } | Value::InfiniteIntRange { .. } => "Range Int".into(),
         Value::Infinity { classifier, .. } => classifier.clone(),
-        Value::RationalRange { .. } => "Range Rational".into(),
+        Value::RationalRange { .. } | Value::InfiniteRationalRange { .. } => {
+            "Range Rational".into()
+        }
         Value::Tuple(values) => format!(
             "({})",
             values
@@ -13350,12 +13408,42 @@ fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static 
 fn extended_int(value: &Value) -> Option<ExtendedInt> {
     match value {
         Value::Int(value) => Some(ExtendedInt::Finite(value.clone())),
-        Value::Infinity { negative: true, .. } => Some(ExtendedInt::NegativeInfinity),
         Value::Infinity {
-            negative: false, ..
-        } => Some(ExtendedInt::PositiveInfinity),
+            negative: true,
+            classifier,
+        } if classifier != "Rational" => Some(ExtendedInt::NegativeInfinity),
+        Value::Infinity {
+            negative: false,
+            classifier,
+        } if classifier != "Rational" => Some(ExtendedInt::PositiveInfinity),
         _ => None,
     }
+}
+
+fn extended_rational(value: &Value) -> Option<ExtendedRational> {
+    match value {
+        Value::Rational(value) => Some(ExtendedRational::Finite(value.clone())),
+        Value::Infinity {
+            negative: true,
+            classifier,
+        } if classifier == "Rational" => Some(ExtendedRational::NegativeInfinity),
+        Value::Infinity {
+            negative: false,
+            classifier,
+        } if classifier == "Rational" => Some(ExtendedRational::PositiveInfinity),
+        _ => None,
+    }
+}
+
+fn exact_to_extended_rational(value: &Value) -> Option<ExtendedRational> {
+    extended_rational(value).or_else(|| {
+        let Value::Int(value) = value else {
+            return None;
+        };
+        Some(ExtendedRational::Finite(BigRational::from_integer(
+            value.clone(),
+        )))
+    })
 }
 
 fn extended_int_value(value: ExtendedInt) -> Value {
@@ -13368,6 +13456,20 @@ fn extended_int_value(value: ExtendedInt) -> Value {
         ExtendedInt::PositiveInfinity => Value::Infinity {
             negative: false,
             classifier: "Int".into(),
+        },
+    }
+}
+
+fn extended_rational_value(value: ExtendedRational) -> Value {
+    match value {
+        ExtendedRational::NegativeInfinity => Value::Infinity {
+            negative: true,
+            classifier: "Rational".into(),
+        },
+        ExtendedRational::Finite(value) => Value::Rational(value),
+        ExtendedRational::PositiveInfinity => Value::Infinity {
+            negative: false,
+            classifier: "Rational".into(),
         },
     }
 }
@@ -13387,6 +13489,38 @@ fn extended_int_range(value: &Value) -> Option<(ExtendedInt, ExtendedInt, bool, 
             false,
         )),
         Value::InfiniteIntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => Some((
+            lower.clone(),
+            upper.clone(),
+            *lower_inclusive,
+            *upper_inclusive,
+            true,
+        )),
+        _ => None,
+    }
+}
+
+fn extended_rational_range(
+    value: &Value,
+) -> Option<(ExtendedRational, ExtendedRational, bool, bool, bool)> {
+    match value {
+        Value::RationalRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => Some((
+            ExtendedRational::Finite(lower.clone()),
+            ExtendedRational::Finite(upper.clone()),
+            *lower_inclusive,
+            *upper_inclusive,
+            false,
+        )),
+        Value::InfiniteRationalRange {
             lower,
             upper,
             lower_inclusive,
@@ -13449,45 +13583,39 @@ fn apply_range(
                 nonempty,
             )
         }
-        (Value::Rational(lower), Value::Rational(upper)) => {
+        (left, right)
+            if (extended_rational(&left).is_some() || extended_rational(&right).is_some())
+                && exact_to_extended_rational(&left).is_some()
+                && exact_to_extended_rational(&right).is_some() =>
+        {
+            if extended_rational(&left).is_none() {
+                trace_conversion(trace, "Int->Rational:left");
+            }
+            if extended_rational(&right).is_none() {
+                trace_conversion(trace, "Int->Rational:right");
+            }
+            let lower = exact_to_extended_rational(&left)
+                .expect("guard retained an exact Rational-convertible lower endpoint");
+            let upper = exact_to_extended_rational(&right)
+                .expect("guard retained an exact Rational-convertible upper endpoint");
             let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
-            (
-                Value::RationalRange {
+            let range = match (lower, upper) {
+                (ExtendedRational::Finite(lower), ExtendedRational::Finite(upper)) => {
+                    Value::RationalRange {
+                        lower,
+                        upper,
+                        lower_inclusive,
+                        upper_inclusive,
+                    }
+                }
+                (lower, upper) => Value::InfiniteRationalRange {
                     lower,
                     upper,
                     lower_inclusive,
                     upper_inclusive,
                 },
-                nonempty,
-            )
-        }
-        (Value::Int(lower), Value::Rational(upper)) => {
-            trace_conversion(trace, "Int->Rational:left");
-            let lower = BigRational::from_integer(lower);
-            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
-            (
-                Value::RationalRange {
-                    lower,
-                    upper,
-                    lower_inclusive,
-                    upper_inclusive,
-                },
-                nonempty,
-            )
-        }
-        (Value::Rational(lower), Value::Int(upper)) => {
-            trace_conversion(trace, "Int->Rational:right");
-            let upper = BigRational::from_integer(upper);
-            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
-            (
-                Value::RationalRange {
-                    lower,
-                    upper,
-                    lower_inclusive,
-                    upper_inclusive,
-                },
-                nonempty,
-            )
+            };
+            (range, nonempty)
         }
         _ => {
             return Err(diagnostic(
@@ -13520,6 +13648,12 @@ fn apply_range_bound(
         ("range-upper", Value::InfiniteIntRange { upper, .. }) => extended_int_value(upper),
         ("range-lower", Value::RationalRange { lower, .. }) => Value::Rational(lower),
         ("range-upper", Value::RationalRange { upper, .. }) => Value::Rational(upper),
+        ("range-lower", Value::InfiniteRationalRange { lower, .. }) => {
+            extended_rational_value(lower)
+        }
+        ("range-upper", Value::InfiniteRationalRange { upper, .. }) => {
+            extended_rational_value(upper)
+        }
         (
             "range-lower-inclusive?",
             Value::IntRange {
@@ -13529,6 +13663,9 @@ fn apply_range_bound(
                 lower_inclusive, ..
             }
             | Value::RationalRange {
+                lower_inclusive, ..
+            }
+            | Value::InfiniteRationalRange {
                 lower_inclusive, ..
             },
         ) => Value::Boolean(lower_inclusive),
@@ -13541,6 +13678,9 @@ fn apply_range_bound(
                 upper_inclusive, ..
             }
             | Value::RationalRange {
+                upper_inclusive, ..
+            }
+            | Value::InfiniteRationalRange {
                 upper_inclusive, ..
             },
         ) => Value::Boolean(upper_inclusive),
@@ -13572,6 +13712,12 @@ fn apply_range_membership(
     let extended_operands = int_range_membership_operands(callable, &left, &right);
     if let Some((value, lower, upper, lower_inclusive, upper_inclusive)) = extended_operands {
         let accepted = bound_contains(&value, &lower, &upper, lower_inclusive, upper_inclusive);
+        return Ok(record_range_membership(accepted, trace));
+    }
+    if let Some((accepted, converted)) = rational_range_membership(callable, &left, &right) {
+        if converted {
+            trace_conversion(trace, "Int->Rational:membership");
+        }
         return Ok(record_range_membership(accepted, trace));
     }
     let operands = match (callable, left, right) {
@@ -13688,6 +13834,21 @@ fn int_range_membership_operands(
     Some((value, lower, upper, lower_inclusive, upper_inclusive))
 }
 
+fn rational_range_membership(callable: &str, left: &Value, right: &Value) -> Option<(bool, bool)> {
+    let (value, range) = match callable {
+        "in" => (left, right),
+        "contains" => (right, left),
+        _ => return None,
+    };
+    let (lower, upper, lower_inclusive, upper_inclusive, _) = extended_rational_range(range)?;
+    let converted = extended_rational(value).is_none();
+    let value = exact_to_extended_rational(value)?;
+    Some((
+        bound_contains(&value, &lower, &upper, lower_inclusive, upper_inclusive),
+        converted,
+    ))
+}
+
 #[allow(clippy::too_many_lines)] // Each supported conjunction kind has an explicit trace path.
 fn apply_and(
     source: &SourceText,
@@ -13763,6 +13924,57 @@ fn apply_and(
                 unreachable!("finite Int ranges retain finite endpoints")
             };
             Value::IntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            }
+        };
+        trace.record(TraceEvent {
+            event: "range.intersection.constructed",
+            rule: "TOPAL-RANGE-INTERSECTION-001",
+            detail: "conjunction",
+        });
+        return Ok(result);
+    }
+    if let (Some(left), Some(right)) = (
+        extended_rational_range(&left),
+        extended_rational_range(&right),
+    ) {
+        let (left_lower, left_upper, left_lower_inclusive, left_upper_inclusive, left_infinite) =
+            left;
+        let (
+            right_lower,
+            right_upper,
+            right_lower_inclusive,
+            right_upper_inclusive,
+            right_infinite,
+        ) = right;
+        let (lower, lower_inclusive) = stricter_lower(
+            left_lower,
+            left_lower_inclusive,
+            right_lower,
+            right_lower_inclusive,
+        );
+        let (upper, upper_inclusive) = stricter_upper(
+            left_upper,
+            left_upper_inclusive,
+            right_upper,
+            right_upper_inclusive,
+        );
+        let result = if left_infinite || right_infinite {
+            Value::InfiniteRationalRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            }
+        } else {
+            let (ExtendedRational::Finite(lower), ExtendedRational::Finite(upper)) = (lower, upper)
+            else {
+                unreachable!("finite Rational ranges retain finite endpoints")
+            };
+            Value::RationalRange {
                 lower,
                 upper,
                 lower_inclusive,
@@ -13881,6 +14093,18 @@ fn apply_comparison(
 }
 
 fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<Ordering> {
+    if (extended_rational(&left).is_some() || extended_rational(&right).is_some())
+        && exact_to_extended_rational(&left).is_some()
+        && exact_to_extended_rational(&right).is_some()
+    {
+        if extended_rational(&left).is_none() {
+            trace_conversion(trace, "Int->Rational:left");
+        }
+        if extended_rational(&right).is_none() {
+            trace_conversion(trace, "Int->Rational:right");
+        }
+        return Some(exact_to_extended_rational(&left)?.cmp(&exact_to_extended_rational(&right)?));
+    }
     if let (Some(left), Some(right)) = (extended_int(&left), extended_int(&right))
         && (matches!(
             left,
@@ -14117,6 +14341,17 @@ fn apply_empty_predicate(
             "TOPAL-RANGE-EMPTY-001",
         ),
         Value::RationalRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => (
+            lower > upper || (lower == upper && !(lower_inclusive && upper_inclusive)),
+            "Range Rational".into(),
+            "range.empty.tested",
+            "TOPAL-RANGE-EMPTY-001",
+        ),
+        Value::InfiniteRationalRange {
             lower,
             upper,
             lower_inclusive,
@@ -15590,6 +15825,18 @@ fn contains_ordered_subsequence(
 
 #[allow(clippy::too_many_lines)] // Every recursively derived equality remains explicit.
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
+    if (extended_rational(&left).is_some() || extended_rational(&right).is_some())
+        && exact_to_extended_rational(&left).is_some()
+        && exact_to_extended_rational(&right).is_some()
+    {
+        if extended_rational(&left).is_none() {
+            trace_conversion(trace, "Int->Rational:left");
+        }
+        if extended_rational(&right).is_none() {
+            trace_conversion(trace, "Int->Rational:right");
+        }
+        return Some(exact_to_extended_rational(&left)? == exact_to_extended_rational(&right)?);
+    }
     if let (Some(left), Some(right)) = (extended_int(&left), extended_int(&right)) {
         return Some(left == right);
     }
@@ -16302,6 +16549,7 @@ fn apply_negate(
         | Value::InfiniteIntRange { .. }
         | Value::Infinity { .. }
         | Value::RationalRange { .. }
+        | Value::InfiniteRationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
         | Value::Callable(_)
@@ -20535,4 +20783,45 @@ fn exact_infinities_require_context_and_order_range_endpoints() {
             .code,
         "E-NO-APPLICABLE-OVERLOAD"
     );
+}
+
+#[test]
+fn rational_infinities_preserve_their_domain_and_exact_range_endpoints() {
+    // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+    // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-RATIONAL-001,
+    // TOPAL-RANGE-MEMBERSHIP-001, TOPAL-RANGE-INTERSECTION-001,
+    // TOPAL-RANGE-BOUND-001
+    let source = include_str!("../../../examples/language/rational-infinity-values-and-ranges.t");
+    assert_eq!(
+        Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "(-Infinity, +Infinity, true, true, Less, true, -Infinity, +Infinity, true, true, true, -Infinity ..= +Infinity, Rational ( 0, 1 ), false, Rational ( 0, 1 ) ..= +Infinity, false, Rational ( -2, 1 ) .. Rational ( 2, 1 ), false, true, Rational ( -1, 1 ) ..= +Infinity)"
+    );
+    assert_eq!(
+        Session::new()
+            .evaluate(
+                "identity is fn (value : Rational) -> Rational\n  return value\nupper-bound : Rational is +Infinity\nidentity upper-bound",
+                &mut std::io::sink(),
+            )
+            .unwrap(),
+        Value::Infinity {
+            negative: false,
+            classifier: "Rational".into(),
+        }
+    );
+    for invalid in [
+        "upper : Rational is +Infinity\nupper + Rational (1, 1)",
+        "integer : Int is +Infinity\nratio : Rational is +Infinity\ninteger = ratio",
+    ] {
+        assert_eq!(
+            Session::new()
+                .evaluate(invalid, &mut std::io::sink())
+                .unwrap_err()
+                .code,
+            "E-NO-APPLICABLE-OVERLOAD",
+            "unexpected diagnostic for {invalid:?}"
+        );
+    }
 }
