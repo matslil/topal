@@ -2226,6 +2226,16 @@
       "cpu_time_ns": 225462,
       "memory_peak_bytes": 18571264,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/nested-anonymous-patterns.t": {
+      "cpu_time_ns": 135466059,
+      "memory_peak_bytes": 43032576,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/nested-anonymous-patterns.t": {
+      "cpu_time_ns": 241362,
+      "memory_peak_bytes": 18382848,
+      "samples_per_test": 500
     }
   }
 }

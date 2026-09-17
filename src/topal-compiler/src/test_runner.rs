@@ -163,6 +163,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/namespace-overloads.t",
     "examples/language/namespace-snapshot.t",
     "examples/language/native-serialization.t",
+    "examples/language/nested-anonymous-patterns.t",
     "examples/language/nested-functions.t",
     "examples/language/nested-lists.t",
     "examples/language/ordinary-functions.t",

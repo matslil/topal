@@ -319,7 +319,7 @@ pub struct AnonymousFunction {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum CapturedPattern {
     Binding(String),
-    Product(Vec<String>),
+    Product(Vec<Self>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -6576,17 +6576,7 @@ impl Session {
     ) -> Value {
         let parameters = parameters
             .iter()
-            .map(|parameter| match parameter {
-                AnonymousPattern::Binding(span) => {
-                    CapturedPattern::Binding(source.slice(*span).to_owned())
-                }
-                AnonymousPattern::Product { bindings, .. } => CapturedPattern::Product(
-                    bindings
-                        .iter()
-                        .map(|binding| source.slice(*binding).to_owned())
-                        .collect(),
-                ),
-            })
+            .map(|parameter| capture_anonymous_pattern(source, parameter))
             .collect::<Vec<_>>();
         let detail = format!("parameters={}", parameters.len());
         trace.record(TraceEvent {
@@ -7226,7 +7216,7 @@ fn bind_anonymous_pattern(
                 trace,
             )?;
         }
-        CapturedPattern::Product(bindings) => {
+        CapturedPattern::Product(fields) => {
             let Value::Tuple(values) = argument else {
                 return Err(diagnostic(
                     source,
@@ -7235,24 +7225,24 @@ fn bind_anonymous_pattern(
                     "anonymous product pattern requires a positional product",
                 ));
             };
-            if values.len() != bindings.len() {
+            if values.len() != fields.len() {
                 return Err(diagnostic(
                     source,
                     "E-ANONYMOUS-PRODUCT-PATTERN",
                     span,
                     format!(
                         "anonymous product pattern expects {} fields, found {}",
-                        bindings.len(),
+                        fields.len(),
                         values.len()
                     ),
                 ));
             }
-            for (name, value) in bindings.iter().zip(values) {
-                bind_anonymous_name(
+            for (field, value) in fields.iter().zip(values) {
+                bind_anonymous_pattern(
                     source,
                     invocation,
                     matched_bindings,
-                    name,
+                    field,
                     value,
                     span,
                     trace,
@@ -7261,6 +7251,18 @@ fn bind_anonymous_pattern(
         }
     }
     Ok(())
+}
+
+fn capture_anonymous_pattern(source: &SourceText, pattern: &AnonymousPattern) -> CapturedPattern {
+    match pattern {
+        AnonymousPattern::Binding(span) => CapturedPattern::Binding(source.slice(*span).to_owned()),
+        AnonymousPattern::Product { fields, .. } => CapturedPattern::Product(
+            fields
+                .iter()
+                .map(|field| capture_anonymous_pattern(source, field))
+                .collect(),
+        ),
+    }
 }
 
 fn bind_anonymous_name(

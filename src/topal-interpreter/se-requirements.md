@@ -611,6 +611,15 @@ applications. Every interpreter mode shall cover the shared Function-result
 chain regression under `TOPAL-TYPE-CALL-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-FUNCTION-CALLABLE-VALUE-001`.
 
+An inferred anonymous Function product pattern shall recursively destructure
+each nested positional product under `TOPAL-FUNCTION-ANONYMOUS-001` and
+`TOPAL-TYPE-PRODUCT-001`. The interpreter shall evaluate the complete argument
+once, visit binding and discard leaves depth-first from left to right, and apply
+existing repeated-name exact identity across recursive leaves. Every mode and
+reversible debugger history shall cover nested opaque Tuple results, captures,
+capturing Function results, mixed parameters, repetition, and discard through
+the shared nested-anonymous-pattern regression.
+
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
 All interpreter modes shall evaluate `Rational ^ Nat` exactly according to

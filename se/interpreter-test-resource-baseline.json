@@ -1121,6 +1121,11 @@
       "cpu_time_ns": 8063520,
       "memory_peak_bytes": 18321408,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/nested-anonymous-patterns.t": {
+      "cpu_time_ns": 9823220,
+      "memory_peak_bytes": 18432000,
+      "samples_per_test": 50
     }
   }
 }

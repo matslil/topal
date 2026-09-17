@@ -12542,6 +12542,57 @@ mod tests {
     }
 
     #[test]
+    fn emits_nested_anonymous_patterns_as_recursive_once_only_projections() {
+        // TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001,
+        // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-anonymous-patterns.t"
+        ))
+        .unwrap();
+        let make_values = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-values")
+            .unwrap();
+        let nested = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function
+                        .parameters
+                        .iter()
+                        .map(|parameter| parameter.name.as_str())
+                        .eq(["left", "middle", "right"])
+            })
+            .unwrap();
+        let llvm = Generator::new(&program, "nested-anonymous-patterns.t").emit();
+
+        assert_eq!(
+            llvm.matches(&format!("@{}(", make_values.symbol)).count(),
+            2,
+            "nested Tuple factory must have one definition and one call"
+        );
+        assert!(llvm.contains("extractvalue { ptr, { ptr, ptr } }"));
+        assert!(llvm.contains("extractvalue { ptr, ptr }"));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1, ptr %arg2)",
+            nested.symbol
+        )));
+        assert_eq!(llvm.matches("\npattern.identity.mismatch.").count(), 1);
+        for (name, argument) in [("left", 1), ("middle", 2), ("right", 3)] {
+            assert!(llvm.contains(&format!(
+                "!DILocalVariable(name: \"{name}\", arg: {argument}"
+            )));
+        }
+        assert!(!llvm.contains("DILocalVariable(name: \"topal.anonymous.argument"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_repeated_anonymous_patterns_as_exact_private_guards() {
         // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
         // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,
