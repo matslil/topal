@@ -4291,6 +4291,28 @@ impl Session {
                 };
                 let mut composing_literals = matches!(items.first(), Some(Expression::String(_)));
                 while index < items.len() {
+                    if matches!(
+                        &result,
+                        Value::NamedFunction(_) | Value::Callable(_) | Value::AnonymousFunction(_)
+                    ) {
+                        let argument_expression = &items[index];
+                        let argument_span = argument_expression.span();
+                        let argument =
+                            self.evaluate_expression(source, argument_expression, trace)?;
+                        let call_span = cover(items[0].span(), argument_span);
+                        result = self.invoke_function_value(
+                            source,
+                            result,
+                            argument,
+                            argument_span,
+                            call_span,
+                            trace,
+                        )?;
+                        self.checkpoint(trace, Some(&result), Some(call_span));
+                        index += 1;
+                        composing_literals = false;
+                        continue;
+                    }
                     if composing_literals
                         && let Expression::String(right_span) = &items[index]
                         && let Value::String(left) = &result
@@ -5328,6 +5350,31 @@ impl Session {
             .get(name)
             .expect("preselected user function")
             .clone();
+        self.invoke_user_function_candidates(
+            source,
+            name,
+            name_span,
+            argument_span,
+            argument,
+            call_span,
+            &candidates,
+            trace,
+        )
+    }
+
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Retained callable identity shares ordinary invocation semantics.
+    fn invoke_user_function_candidates(
+        &self,
+        source: &SourceText,
+        name: &str,
+        name_span: Span,
+        argument_span: Span,
+        argument: Value,
+        call_span: Span,
+        candidates: &[UserFunction],
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
         let function = candidates
             .iter()
             .find(|function| {
@@ -5349,7 +5396,7 @@ impl Session {
                 name,
                 argument_span,
                 &argument,
-                &candidates,
+                candidates,
                 self.static_context,
             ));
         };
@@ -5521,6 +5568,112 @@ impl Session {
         Ok(value)
     }
 
+    fn invoke_function_value(
+        &self,
+        source: &SourceText,
+        function: Value,
+        argument: Value,
+        argument_span: Span,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        match function {
+            Value::NamedFunction(function) => {
+                trace.record(TraceEvent {
+                    event: "function.value.called",
+                    rule: "TOPAL-FUNCTION-VALUE-001",
+                    detail: &function.name,
+                });
+                self.invoke_user_function_candidates(
+                    source,
+                    &function.name,
+                    call_span,
+                    argument_span,
+                    argument,
+                    call_span,
+                    &function.candidates,
+                    trace,
+                )
+            }
+            Value::Callable(kind) => {
+                Self::invoke_callable_value(source, kind, argument, argument_span, call_span, trace)
+            }
+            function @ Value::AnonymousFunction(_) => {
+                let Value::AnonymousFunction(anonymous) = &function else {
+                    unreachable!("matched anonymous function")
+                };
+                let arity = anonymous.parameters.len();
+                let arguments = match (arity, argument) {
+                    (1, value) => vec![value],
+                    (_, Value::Tuple(values)) => values,
+                    (_, value) => {
+                        return Err(diagnostic(
+                            source,
+                            "E-ANONYMOUS-ARGUMENT-PACKAGE",
+                            argument_span,
+                            format!(
+                                "anonymous function expects {arity} arguments packaged as a tuple, found `{}`",
+                                structural_value_classifier(&value)
+                            ),
+                        ));
+                    }
+                };
+                self.invoke_anonymous_function(&function, arguments, call_span, trace)
+            }
+            value => Err(diagnostic(
+                source,
+                "E-NO-APPLICABLE-OVERLOAD",
+                argument_span,
+                format!(
+                    "application chain requires Function before its next operand, found `{}`",
+                    structural_value_classifier(&value)
+                ),
+            )),
+        }
+    }
+
+    fn invoke_callable_value(
+        source: &SourceText,
+        kind: CallableKind,
+        argument: Value,
+        argument_span: Span,
+        call_span: Span,
+        trace: &mut impl TraceSink,
+    ) -> Result<Value, Diagnostic> {
+        trace.record(TraceEvent {
+            event: "function.callable.called",
+            rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
+            detail: callable_name(kind),
+        });
+        match argument {
+            Value::Tuple(mut operands) if operands.len() == 2 => {
+                let right = operands.pop().expect("two operands");
+                let left = operands.pop().expect("two operands");
+                apply_binary(
+                    source,
+                    kind,
+                    left,
+                    right,
+                    (call_span, argument_span, argument_span),
+                    trace,
+                )
+            }
+            operand if kind == CallableKind::Minus => {
+                apply_negate(source, operand, call_span, trace)
+            }
+            value => Err(diagnostic(
+                source,
+                "E-CALLABLE-ARGUMENT-PACKAGE",
+                argument_span,
+                format!(
+                    "callable `{}` requires a two-field positional product, found `{}`",
+                    callable_name(kind),
+                    structural_value_classifier(&value)
+                ),
+            )),
+        }
+    }
+
     fn evaluate_bound_callable_call(
         &self,
         source: &SourceText,
@@ -5536,36 +5689,7 @@ impl Session {
         };
         let argument_span = argument.span();
         let argument = self.evaluate_expression(source, argument, trace)?;
-        trace.record(TraceEvent {
-            event: "function.callable.called",
-            rule: "TOPAL-FUNCTION-CALLABLE-VALUE-001",
-            detail: callable_name(kind),
-        });
-        match argument {
-            Value::Tuple(mut operands) if operands.len() == 2 => {
-                let right = operands.pop().expect("two operands");
-                let left = operands.pop().expect("two operands");
-                apply_binary(
-                    source,
-                    kind,
-                    left,
-                    right,
-                    (span, argument_span, argument_span),
-                    trace,
-                )
-            }
-            operand if kind == CallableKind::Minus => apply_negate(source, operand, span, trace),
-            value => Err(diagnostic(
-                source,
-                "E-CALLABLE-ARGUMENT-PACKAGE",
-                argument_span,
-                format!(
-                    "callable `{}` requires a two-field positional product, found `{}`",
-                    callable_name(kind),
-                    structural_value_classifier(&value)
-                ),
-            )),
-        }
+        Self::invoke_callable_value(source, kind, argument, argument_span, span, trace)
     }
 
     fn is_traversal_control_constructor(source: &SourceText, items: &[Expression]) -> bool {

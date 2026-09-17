@@ -2942,13 +2942,44 @@ Function-result forwarding, exact interpreter parity, and full O0 GDB frames.
 This rule SHALL introduce no heap or environment object, environment pointer,
 allocation, function pointer, indirect call, callback, closure or Function
 runtime, foreign dependency, C/C++ runtime, other-language standard library,
-public callable ABI, or native-ABI revision. Immediate computed-call syntax,
-nested Function escape, Function-valued or otherwise unsupported captures,
+public callable ABI, or native-ABI revision. Immediate exact result application
+is governed by `TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001`. Nested Function
+escape, Function-valued or otherwise unsupported captures,
 dynamic selection, aggregate containment, publication, and library
 metadata/adapters remain deferred. Future compiled-library metadata SHALL
 encode callable identity, ordered capture identities and classifiers,
 construction lifetime, effects, native-representation identities, and target
 adapters rather than expose this private aggregate transport.
+
+### TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001 — Exact Function-result application chains
+
+The compiler SHALL implement the left-associative application semantics of
+`TOPAL-TYPE-CALL-001` when an admitted application produces an exact Function
+value and the next source operand immediately applies that result. Flat prefix
+chains and explicitly parenthesized intermediate applications SHALL behave
+identically. The admitted result MAY retain a named overload set, symbolic
+callable identity, non-capturing anonymous body, or capturing anonymous body
+under `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`.
+
+Every intermediate application SHALL execute exactly once and in source order.
+The checked frontend SHALL retain exact callable facts separately from the
+observation tag and SHALL represent the intermediate Function only in
+compiler-private storage. A captured result's already-extracted capture values
+SHALL remain available to its immediate anonymous specialization. Eventual
+application SHALL use an exact direct `fastcc` call; the tag SHALL NOT dispatch
+the call. A chain whose intermediate result is not Function or whose operand
+does not satisfy the retained callable SHALL be rejected before LLVM lowering.
+
+Tests SHALL cover flat and parenthesized chains, named and symbolic pass-through,
+non-capturing and capturing anonymous results, scalar and product operands,
+once-only LLVM calls, exact interpreter parity, reversible history, and O0 GDB
+source frames. Compiler-only chain storage SHALL NOT appear as a source DWARF
+variable. This rule SHALL introduce no allocation, environment object, function
+pointer, indirect call, callback, closure or Function runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public callable
+ABI, or native-ABI revision. Aggregate-contained or dynamically selected
+Function values, nested escape, publication, and library metadata/adapters
+remain deferred.
 
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 

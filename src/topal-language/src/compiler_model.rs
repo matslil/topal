@@ -12257,40 +12257,7 @@ impl Analyzer {
                 .get(self.source.slice(*alias))
                 .and_then(|facts| facts.callable.as_ref())
         {
-            return match callable {
-                CompilerCallableFacts::Named {
-                    name,
-                    declarations,
-                    captures,
-                } => self.analyze_resolved_call_from(
-                    items,
-                    span,
-                    environment,
-                    0,
-                    name,
-                    declarations,
-                    captures,
-                ),
-                CompilerCallableFacts::Symbolic(kind) => {
-                    self.analyze_bound_symbolic_callable(*kind, items, span, environment)
-                }
-                CompilerCallableFacts::Anonymous {
-                    parameters,
-                    body,
-                    captures,
-                    static_context,
-                    span: declaration_span,
-                } => self.analyze_bound_anonymous_function(
-                    parameters,
-                    body,
-                    captures,
-                    *static_context,
-                    *declaration_span,
-                    items,
-                    span,
-                    environment,
-                ),
-            };
+            return self.analyze_callable_application(callable.clone(), items, span, environment);
         }
         if let [Expression::Identifier(name), operand] = items
             && let Some(tag) = self
@@ -14236,7 +14203,96 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             return self.analyze_identifier_binary(&operation, left, right, span, environment);
         }
+        if let Some(value) = self.analyze_function_value_chain(items, span, environment)? {
+            return Ok(value);
+        }
         self.analyze_call(items, span, environment)
+    }
+
+    fn analyze_function_value_chain(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Some(first) = items.first() else {
+            return Ok(None);
+        };
+        let eligible = match first {
+            Expression::Identifier(name) => {
+                let source_arity = items.len().saturating_sub(1);
+                items.len() > 2
+                    && if let Some(callable) = environment
+                        .get(self.source.slice(*name))
+                        .and_then(|facts| facts.callable.as_ref())
+                    {
+                        match callable {
+                            CompilerCallableFacts::Named { declarations, .. } => !declarations
+                                .iter()
+                                .any(|declaration| declaration.parameters.len() == source_arity),
+                            CompilerCallableFacts::Symbolic(_)
+                            | CompilerCallableFacts::Anonymous { .. } => true,
+                        }
+                    } else {
+                        self.functions
+                            .get(self.source.slice(*name))
+                            .is_some_and(|declarations| {
+                                !declarations
+                                    .iter()
+                                    .any(|declaration| declaration.parameters.len() == source_arity)
+                            })
+                    }
+            }
+            Expression::Application { .. } => items.len() == 2,
+            _ => false,
+        };
+        if !eligible {
+            return Ok(None);
+        }
+
+        let mut value = self.analyze_expression(first, environment)?;
+        if value.value_type != CompilerType::Function {
+            return Ok(None);
+        }
+        for operand in &items[1..] {
+            if value.value_type != CompilerType::Function {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-NO-APPLICABLE-OVERLOAD",
+                    operand.span(),
+                    format!(
+                        "application chain produced `{}` before its next operand",
+                        value.value_type.name()
+                    ),
+                ));
+            }
+            let callable = self
+                .known_callable(&value, environment, value.span.start)?
+                .expect("checked Function chain value retains callable facts");
+            let call_span = Span::new(value.span.start, operand.span().end);
+            let application = [first.clone(), operand.clone()];
+            let applied =
+                self.analyze_callable_application(callable, &application, call_span, environment)?;
+            let result_type = applied.value_type.clone();
+            let int_range = applied.int_range.clone();
+            let rational_value = applied.rational_value.clone();
+            value = CompilerExpression {
+                kind: CompilerExpressionKind::PrivateBinding {
+                    storage_name: format!(
+                        "topal.function.chain.{}.{}",
+                        call_span.start, call_span.end
+                    ),
+                    value: Box::new(value),
+                    body: Box::new(applied),
+                },
+                value_type: result_type,
+                int_range,
+                rational_value,
+                span: call_span,
+            };
+        }
+        value.span = span;
+        Ok(Some(value))
     }
 
     fn record_selection_candidate(
@@ -15584,6 +15640,9 @@ impl Analyzer {
                 }
                 Ok(Some(callable))
             }
+            CompilerExpressionKind::PrivateBinding { body, .. } => {
+                self.known_callable(body, environment, capture_position)
+            }
             _ => Err(unsupported(
                 &self.source,
                 value.span,
@@ -16060,6 +16119,49 @@ impl Analyzer {
         ))
     }
 
+    fn analyze_callable_application(
+        &mut self,
+        callable: CompilerCallableFacts,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        match callable {
+            CompilerCallableFacts::Named {
+                name,
+                declarations,
+                captures,
+            } => self.analyze_resolved_call_from(
+                items,
+                span,
+                environment,
+                0,
+                &name,
+                &declarations,
+                &captures,
+            ),
+            CompilerCallableFacts::Symbolic(kind) => {
+                self.analyze_bound_symbolic_callable(kind, items, span, environment)
+            }
+            CompilerCallableFacts::Anonymous {
+                parameters,
+                body,
+                captures,
+                static_context,
+                span: declaration_span,
+            } => self.analyze_bound_anonymous_function(
+                &parameters,
+                &body,
+                &captures,
+                static_context,
+                declaration_span,
+                items,
+                span,
+                environment,
+            ),
+        }
+    }
+
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Retained source identity and call-site evidence are intentionally explicit.
     fn analyze_bound_anonymous_function(
         &mut self,
@@ -16300,6 +16402,11 @@ impl Analyzer {
                 ));
             }
             let current = binding_facts_by_storage(call_environment, &capture.storage_name)
+                .cloned()
+                .or_else(|| {
+                    is_function_result_capture_storage(&capture.storage_name)
+                        .then(|| capture.clone())
+                })
                 .filter(|current| {
                     current.origin == capture.origin
                         && current.runtime_bound
@@ -30633,6 +30740,68 @@ mod tests {
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
             assert!(diagnostic.message.contains("Function result"));
         }
+    }
+
+    #[test]
+    fn models_left_associative_function_result_chains() {
+        // TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-result-chains.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Function-result chain tuple")
+        };
+        assert_eq!(results.len(), 6);
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
+        assert_eq!(
+            results[2].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+        assert_eq!(exact_int(&results[3]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[4]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[5]), Some(BigInt::from(42)));
+        assert!(results.iter().all(|result| {
+            matches!(result.kind, CompilerExpressionKind::PrivateBinding { .. })
+        }));
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| {
+                matches!(
+                    function.source_name.as_str(),
+                    "make-offset" | "make-pair" | "make-closed" | "return-operation"
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 6);
+        assert!(
+            factories
+                .iter()
+                .all(|function| function.result_type == CompilerType::Function)
+        );
+        assert_eq!(
+            factories
+                .iter()
+                .filter(|function| !function.result_captures.is_empty())
+                .count(),
+            3
+        );
+
+        let diagnostic = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\nmake 1 41 0\n",
+        )
+        .unwrap_err();
+        assert_eq!(diagnostic.code, "E-NO-APPLICABLE-OVERLOAD");
+        assert!(
+            diagnostic
+                .message
+                .contains("application chain produced `Int`")
+        );
     }
 
     #[test]

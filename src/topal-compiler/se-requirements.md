@@ -3209,8 +3209,9 @@ and separate resource baselines.
 This shall add no heap or environment object, environment pointer, allocation,
 function pointer, indirect call, callback, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
-ABI, or `topal-native/6` revision. Immediate computed-call syntax, nested
-Function escape, Function-valued or otherwise unsupported captures, dynamic
+ABI, or `topal-native/6` revision. Immediate exact result application is
+governed by `TOPAL-COMP-FUNCTION-RESULT-CHAIN-001`. Nested Function escape,
+Function-valued or otherwise unsupported captures, dynamic
 selection, aggregate containment, publication, and library metadata/adapters
 remain deferred. Future library metadata shall describe callable identity,
 ordered capture identities/classifiers, lifetime/effects, representation
@@ -3218,6 +3219,39 @@ identities, and target adapters rather than this private aggregate transport.
 This realizes `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5x.
+
+## TOPAL-COMP-FUNCTION-RESULT-CHAIN-001 — Exact Function-result application chains
+
+The checked compiler model shall fold left-associative application when an
+admitted application returns an exact Function and a following operand applies
+that result. It shall support flat prefix and explicitly parenthesized chains
+for retained named, symbolic, non-capturing anonymous, and admitted capturing
+anonymous results. Each intermediate shall be evaluated once in source order,
+with callable facts retained separately from the observation tag in
+compiler-only storage. Captured aggregate fields extracted from a result shall
+remain available to the immediate anonymous specialization.
+
+LLVM shall receive only the existing exact direct `fastcc` definitions and
+calls. The observation tag shall not dispatch application, and neither the
+factory nor capture initializers may be replayed. A non-Function intermediate
+or incompatible retained operand shall be rejected before lowering. Source
+DWARF shall expose the ordinary factory, returned named function, and anonymous
+capture frames but no compiler-only chain binding.
+
+Tests shall cover flat and parenthesized chains, scalar and Tuple captures,
+closed anonymous results, named and symbolic pass-through, scalar and product
+operands, exact output in every interpreter mode, reversible debugging,
+checked-model structure, once-only direct IR, rejection after a non-Function
+intermediate, freestanding artifacts, full O0 GDB values/frames, the shared
+corpus, and separate resource baselines. This shall add no allocation,
+environment object, function pointer, indirect call, callback, closure or
+Function runtime, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or `topal-native/6` revision. Aggregate-contained
+or dynamically selected Function values, nested escape, publication, and
+library metadata/adapters remain deferred. This realizes
+`TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001`,
+`TOPAL-FUNCTION-CALLABLE-VALUE-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5y.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 

@@ -272,6 +272,18 @@ escape, Function-valued or otherwise unsupported captures, dynamic selection,
 aggregate containment, publication, and the canonical library closure ABI
 remain deferred.
 
+Left-associative application may consume any exact admitted private Function
+result without first creating a source binding. The checked frontend folds one
+operand at a time, retaining the named, symbolic, or anonymous callable facts
+separately from the observation tag and placing each intermediate Function in
+compiler-only once-only storage. For a captured result, that storage also owns
+the aggregate fields already extracted by the caller. LLVM therefore sees the
+same sequence of exact direct `fastcc` calls that a source binding would have
+produced; there is no result-tag dispatch, function pointer, closure object, or
+re-evaluation of the factory. The private chain storage has no source DWARF
+variable, while each invoked source function and anonymous capture remains
+visible in its ordinary frame.
+
 A repeated non-discard name across ordinary anonymous parameters or flat
 product fields retains every consumed private machine operand but creates only
 the first source binding. Later same-classifier scalar occurrences become

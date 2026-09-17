@@ -10311,6 +10311,127 @@ fn captured_function_results_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One native session covers chain semantics, rejection, and source frames.
+fn function_result_chains_are_once_only_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001,
+    // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-function-result-chains");
+    let source = directory.join("function-result-chains.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-result-chains.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42, (7, \"seven\"), 42, 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let rejected = directory.join("non-function-intermediate.t");
+    fs::write(
+        &rejected,
+        "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\nmake 1 41 0\n",
+    )
+    .unwrap();
+    let output = run(topalc().args([
+        "-o",
+        directory.join("rejected").to_str().unwrap(),
+        rejected.to_str().unwrap(),
+    ]));
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("E-NO-APPLICABLE-OVERLOAD"), "{stderr}");
+    assert!(
+        stderr.contains("application chain produced `Int`"),
+        "{stderr}"
+    );
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-result-chains.t:14",
+            "-ex",
+            "break function-result-chains.t:11",
+            "-ex",
+            "break function-result-chains.t:8",
+            "-ex",
+            "disable 2 3",
+            "-ex",
+            "run",
+            "-ex",
+            "print offset",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print offset",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "print operation",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "enable 3",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 1"), "{text}");
+    assert!(text.contains("$2 = 41"), "{text}");
+    assert!(text.contains("$3 = 1"), "{text}");
+    assert!(text.contains("$4 = <fn increment>"), "{text}");
+    assert!(text.contains("operation = <fn increment>"), "{text}");
+    assert!(text.contains("$5 = 41"), "{text}");
+    assert!(!text.contains("topal.function.chain"), "{text}");
+    assert!(text.contains("topal.fn.make_2doffset"), "{text}");
+    assert!(text.contains("topal.fn.return_2doperation"), "{text}");
+    assert!(text.contains("topal.fn.increment"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn anonymous_product_patterns_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001, TOPAL-FUNCTION-ANONYMOUS-001,
     // TOPAL-TYPE-PRODUCT-001, TOPAL-COMPILER-PLATFORM-001,
