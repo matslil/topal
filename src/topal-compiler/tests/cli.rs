@@ -8779,6 +8779,100 @@ fn symbolic_callable_values_are_direct_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn expanded_symbolic_callable_values_are_direct_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-SYMBOLIC-CALLABLE-EXPANDED-001,
+    // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-expanded-symbolic-callable-values");
+    let source = directory.join("expanded-callable-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/expanded-callable-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(true, true, true, true, true, true, 42, Rational ( 3, 4 ), (3, 2), 3, 1024, 0 .. 3, 0 <.. 3, 0 ..= 3, 0 <..= 3, 42)\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break expanded-callable-values.t:24",
+            "-ex",
+            "break topal.runtime.int.compare",
+            "-ex",
+            "run",
+            "-ex",
+            "print operation",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "up",
+            "-ex",
+            "print equal",
+            "-ex",
+            "print 'not-equal'",
+            "-ex",
+            "print multiply",
+            "-ex",
+            "print divide",
+            "-ex",
+            "print 'half-open'",
+            "-ex",
+            "print 'lower-open'",
+            "-ex",
+            "print selected",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "$1 = *",
+        "$2 = =",
+        "$3 = /=",
+        "$4 = *",
+        "$5 = /",
+        "$6 = ..",
+        "$7 = <..=",
+        "$8 = *",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+    assert!(text.contains("topal.fn.select"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn empty_function_effect_bound_is_static_freestanding_and_debuggable() {
     // TOPAL-FUNCTION-EFFECT-BOUND-001, TOPAL-EFFECT-CONTAIN-001,
     // TOPAL-INTRO-STATIC-001, TOPAL-INTRO-VIEW-001,

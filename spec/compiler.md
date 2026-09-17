@@ -2733,6 +2733,30 @@ Other symbolic callable values, Function parameters/results, anonymous or
 capturing functions, and published callable interfaces remain outside this
 increment and SHALL be rejected.
 
+### TOPAL-COMPILER-SYMBOLIC-CALLABLE-EXPANDED-001 — Complete symbolic Function values
+
+In addition to `+`, `-`, and `<=>`, the symbolic callables `=`, `!=`, `<`, `>`,
+`<=`, `>=`, `*`, `/`, `/%`, `%`, `^`, `..`, `<..`, `..=`, and `<..=` in value
+position SHALL produce Function values retaining their exact callable identity.
+Each application SHALL require one two-field positional product and SHALL reuse
+the corresponding existing checked operation, including its conversions,
+fallibility, result classifier, endpoint policy, and diagnostic behavior. These
+values MAY cross the private specialized Function parameter and result paths
+admitted by `TOPAL-COMPILER-FUNCTION-PARAMETER-001` and
+`TOPAL-COMPILER-FUNCTION-RESULT-001`.
+
+The deterministic private Function observation table SHALL retain the existing
+`+`, `-`, and `<=>` tag order and append the newly admitted canonical spellings.
+The source inequality spelling `!=` SHALL be observed canonically as `/=` in
+Function display and DWARF/GDB. Checked callable metadata, rather than the tag,
+SHALL select the ordinary direct LLVM operation or Topal-owned runtime primitive.
+
+This rule SHALL introduce no function pointer, indirect call, Function runtime,
+closure allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or native-ABI revision. Dynamically selected,
+aggregate-contained, escaping, and published callable interfaces remain
+deferred.
+
 ### TOPAL-COMPILER-FUNCTION-PARAMETER-001 — Specialized private Function inputs
 
 An ordinary or static function parameter classified as `Function` SHALL accept

@@ -204,13 +204,16 @@ not a code pointer or dispatch-table index. This preserves a future choice of
 public callable/closure representation without burdening current private calls
 with a provisional runtime ABI.
 
-The initial symbolic Function values use the same separation. `+`, `-`, and
-`<=>` receive deterministic observation tags, while checked application rewrites
-the retained identity to the ordinary arithmetic or comparison expression
-before backend lowering. Binary operands remain a source-level positional
-product and are decomposed by the frontend; LLVM sees only the already-selected
-operation and its normal machine values. The tag consequently cannot introduce
-indirect control flow or constrain a later general callable ABI.
+Symbolic Function values use the same separation. The initial `+`, `-`, and
+`<=>` tags remain first for stable private observation, followed by every
+equality, ordering, arithmetic, and range callable in deterministic canonical
+order. Checked application rewrites the retained identity to the ordinary
+operation expression before backend lowering, preserving existing conversion,
+fallibility, result, and endpoint semantics. Binary operands remain a
+source-level positional product and are decomposed by the frontend; LLVM sees
+only the already-selected operation and its normal machine values. The tag
+consequently cannot introduce indirect control flow or constrain a later
+general callable ABI.
 
 Private Function inputs extend the same scheme across one specialization
 boundary. The caller passes the observation tag in the source parameter slot,

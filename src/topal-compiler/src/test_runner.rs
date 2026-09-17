@@ -98,6 +98,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/exact-numeric-zero.t",
     "examples/language/exact-rational-int-narrowing.t",
     "examples/language/exact-three-way-comparison.t",
+    "examples/language/expanded-callable-values.t",
     "examples/language/explicit-multi-parameter-decreases.t",
     "examples/language/exhaustive-boolean-decisions.t",
     "examples/language/exhaustive-error-code-decisions.t",

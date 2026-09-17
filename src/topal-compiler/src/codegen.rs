@@ -11908,6 +11908,59 @@ mod tests {
     }
 
     #[test]
+    fn emits_every_symbolic_callable_value_without_dispatch() {
+        // TOPAL-COMPILER-SYMBOLIC-CALLABLE-EXPANDED-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/expanded-callable-values.t"
+        ))
+        .unwrap();
+        let selector = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "select")
+            .unwrap();
+        let llvm = Generator::new(&program, "expanded-callable-values.t").emit();
+
+        for operation in [
+            "topal.runtime.int.compare",
+            "topal.runtime.int.multiply",
+            "topal.runtime.rational.divide",
+            "topal.runtime.int.quotient.modulo",
+            "topal.runtime.int.modulo",
+            "topal.runtime.int.power",
+            "topal.runtime.range.make",
+        ] {
+            assert!(
+                llvm.contains(&format!("call ptr @{operation}"))
+                    || llvm.contains(&format!("call i32 @{operation}"))
+            );
+        }
+        assert!(llvm.contains(&format!(
+            "define internal fastcc i32 @{}(i32 %arg0)",
+            selector.symbol
+        )));
+        assert!(llvm.contains(&format!("call fastcc i32 @{}(i32", selector.symbol)));
+        for (name, value) in [
+            ("=", 4),
+            ("/=", 5),
+            ("*", 10),
+            ("/", 11),
+            ("/%", 12),
+            ("%", 13),
+            ("^", 14),
+            ("..", 15),
+            ("<..", 16),
+            ("..=", 17),
+            ("<..=", 18),
+        ] {
+            assert!(llvm.contains(&format!("!DIEnumerator(name: \"{name}\", value: {value})")));
+        }
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_function_inputs_as_private_tags_with_direct_specialization() {
         // TOPAL-COMPILER-FUNCTION-PARAMETER-001,
         // TOPAL-FUNCTION-CALLABLE-VALUE-001
@@ -11978,8 +12031,8 @@ mod tests {
                 line.contains("call fastcc ptr") && line.contains(&format!("@{}(", function.symbol))
             }));
         }
-        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/1>\", value: 3)"));
-        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/2>\", value: 4)"));
+        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/1>\", value: 18)"));
+        assert!(llvm.contains("!DIEnumerator(name: \"<anonymous fn/2>\", value: 19)"));
         assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
         assert!(llvm.contains("!DILocalVariable(name: \"left\", arg: 1"));
         assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 2"));

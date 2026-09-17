@@ -29,6 +29,27 @@ use crate::source::{
     prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
+const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
+    (CallableKind::Plus, "+"),
+    (CallableKind::Minus, "-"),
+    (CallableKind::Compare, "<=>"),
+    (CallableKind::Equal, "="),
+    (CallableKind::NotEqual, "/="),
+    (CallableKind::Less, "<"),
+    (CallableKind::Greater, ">"),
+    (CallableKind::LessEqual, "<="),
+    (CallableKind::GreaterEqual, ">="),
+    (CallableKind::Multiply, "*"),
+    (CallableKind::Divide, "/"),
+    (CallableKind::QuotientModulo, "/%"),
+    (CallableKind::Modulo, "%"),
+    (CallableKind::Power, "^"),
+    (CallableKind::Range, ".."),
+    (CallableKind::RangeOpen, "<.."),
+    (CallableKind::RangeInclusive, "..="),
+    (CallableKind::RangeOpenInclusive, "<..="),
+];
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerEnumType {
     pub name: String,
@@ -2145,7 +2166,11 @@ fn compiler_function_value_names(analyzer: &mut Analyzer) -> Vec<String> {
         .functions
         .keys()
         .map(|name| format!("<fn {name}>"))
-        .chain(["+".into(), "-".into(), "<=>".into()])
+        .chain(
+            COMPILER_SYMBOLIC_CALLABLES
+                .iter()
+                .map(|(_, name)| (*name).to_owned()),
+        )
         .chain(std::mem::take(&mut analyzer.anonymous_function_value_names))
         .collect()
 }
@@ -9843,7 +9868,7 @@ impl Analyzer {
                 let tag_index = self
                     .functions
                     .len()
-                    .checked_add(3)
+                    .checked_add(COMPILER_SYMBOLIC_CALLABLES.len())
                     .and_then(|value| value.checked_add(self.anonymous_function_value_names.len()))
                     .ok_or_else(|| unsupported(&self.source, *span, "native Function value tag"))?;
                 let tag = u32::try_from(tag_index)
@@ -9868,21 +9893,18 @@ impl Analyzer {
                     span: *span,
                 })
             }
-            Expression::Callable { kind, span }
-                if matches!(
-                    kind,
-                    CallableKind::Plus | CallableKind::Minus | CallableKind::Compare
-                ) =>
-            {
+            Expression::Callable { kind, span } => {
                 self.function_values_used = true;
-                let offset = match kind {
-                    CallableKind::Plus => 0,
-                    CallableKind::Minus => 1,
-                    CallableKind::Compare => 2,
-                    _ => unreachable!("guard selected the symbolic Function subset"),
-                };
-                let value = u32::try_from(self.functions.len() + offset)
-                    .map_err(|_| unsupported(&self.source, *span, "native Function value tag"))?;
+                let offset = COMPILER_SYMBOLIC_CALLABLES
+                    .iter()
+                    .position(|(candidate, _)| candidate == kind)
+                    .expect("every source symbolic callable has a compiler observation tag");
+                let value = self
+                    .functions
+                    .len()
+                    .checked_add(offset)
+                    .and_then(|value| u32::try_from(value).ok())
+                    .ok_or_else(|| unsupported(&self.source, *span, "native Function value tag"))?;
                 Ok(CompilerExpression {
                     kind: CompilerExpressionKind::FunctionValue(value),
                     value_type: CompilerType::Function,
@@ -15296,19 +15318,18 @@ impl Analyzer {
             CompilerExpressionKind::FunctionValue(tag) => {
                 let index = usize::try_from(*tag).expect("u32 tag fits usize");
                 if index >= self.functions.len() {
-                    return match index - self.functions.len() {
-                        0 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Plus))),
-                        1 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Minus))),
-                        2 => Ok(Some(CompilerCallableFacts::Symbolic(CallableKind::Compare))),
-                        _ => self
-                            .anonymous_callables
-                            .get(tag)
-                            .cloned()
-                            .map(Some)
-                            .ok_or_else(|| {
-                                unsupported(&self.source, value.span, "unknown Function value tag")
-                            }),
-                    };
+                    let offset = index - self.functions.len();
+                    if let Some((kind, _)) = COMPILER_SYMBOLIC_CALLABLES.get(offset) {
+                        return Ok(Some(CompilerCallableFacts::Symbolic(*kind)));
+                    }
+                    return self
+                        .anonymous_callables
+                        .get(tag)
+                        .cloned()
+                        .map(Some)
+                        .ok_or_else(|| {
+                            unsupported(&self.source, value.span, "unknown Function value tag")
+                        });
                 }
                 let name = self
                     .functions
@@ -29644,7 +29665,13 @@ mod tests {
         .unwrap();
         assert_eq!(
             program.function_value_names,
-            ["<fn increment>", "+", "-", "<=>"]
+            std::iter::once("<fn increment>".to_owned())
+                .chain(
+                    COMPILER_SYMBOLIC_CALLABLES
+                        .iter()
+                        .map(|(_, name)| (*name).to_owned()),
+                )
+                .collect::<Vec<_>>()
         );
         assert!(matches!(
             program.main.statements.as_slice(),
@@ -29689,7 +29716,13 @@ mod tests {
         let values =
             analyze_for_compiler(include_str!("../../../examples/language/callable-values.t"))
                 .unwrap();
-        assert_eq!(values.function_value_names, ["+", "-", "<=>"]);
+        assert_eq!(
+            values.function_value_names,
+            COMPILER_SYMBOLIC_CALLABLES
+                .iter()
+                .map(|(_, name)| (*name).to_owned())
+                .collect::<Vec<_>>()
+        );
         let CompilerExpressionKind::Tuple(results) = &values.main.result.kind else {
             panic!("expected callable result product")
         };
@@ -29726,6 +29759,67 @@ mod tests {
         let rejected =
             analyze_for_compiler("use language (version is v0.1)\nadd is +\nadd 1\n").unwrap_err();
         assert_eq!(rejected.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn models_every_symbolic_callable_value_as_a_direct_operation() {
+        // TOPAL-COMPILER-SYMBOLIC-CALLABLE-EXPANDED-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/expanded-callable-values.t"
+        ))
+        .unwrap();
+        assert_eq!(
+            program.function_value_names,
+            std::iter::once("<fn select>".to_owned())
+                .chain(
+                    COMPILER_SYMBOLIC_CALLABLES
+                        .iter()
+                        .map(|(_, name)| (*name).to_owned()),
+                )
+                .collect::<Vec<_>>()
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected complete symbolic result product")
+        };
+        assert_eq!(results.len(), 16);
+        assert!(
+            results[..6]
+                .iter()
+                .all(|result| result.value_type == CompilerType::Boolean)
+        );
+        assert!(
+            results[..6]
+                .iter()
+                .all(|result| matches!(result.kind, CompilerExpressionKind::Binary { .. }))
+        );
+        assert_eq!(exact_int(&results[6]), Some(BigInt::from(42)));
+        assert_eq!(
+            results[7].rational_value,
+            Some(BigRational::new(BigInt::from(3), BigInt::from(4)))
+        );
+        assert!(matches!(
+            results[8].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::QuotientModulo,
+                ..
+            }
+        ));
+        assert_eq!(
+            results[8].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int])
+        );
+        assert_eq!(exact_int(&results[9]), Some(BigInt::from(3)));
+        assert_eq!(exact_int(&results[10]), Some(BigInt::from(1024)));
+        assert!(results[11..15].iter().all(|result| {
+            result.value_type == CompilerType::Range(Box::new(CompilerType::Int))
+        }));
+        assert_eq!(exact_int(&results[15]), Some(BigInt::from(42)));
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "select"
+                && function.result_type == CompilerType::Function
+                && matches!(function.body.result.kind, CompilerExpressionKind::Local(_))
+        }));
     }
 
     #[test]
@@ -29847,7 +29941,11 @@ mod tests {
         .unwrap();
         assert_eq!(
             program.function_value_names,
-            ["+", "-", "<=>", "<anonymous fn/1>", "<anonymous fn/2>"]
+            COMPILER_SYMBOLIC_CALLABLES
+                .iter()
+                .map(|(_, name)| (*name).to_owned())
+                .chain(["<anonymous fn/1>".into(), "<anonymous fn/2>".into()])
+                .collect::<Vec<_>>()
         );
         assert_eq!(program.functions.len(), 2);
         assert_eq!(program.functions[0].source_name, "<anonymous fn/1>");

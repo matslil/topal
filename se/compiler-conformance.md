@@ -64,7 +64,8 @@ evidence.
 | 3b2-b5q | specialized private named/symbolic Function results and pass-through parameters, exact tag returns, direct application, and GDB-visible result bindings | complete |
 | 3b2-b5r | non-escaping inferred anonymous Function captures as exact private parameters plus non-capturing anonymous Function results, direct specialization, and GDB-visible captures/results | complete |
 | 3b2-b5s | flat anonymous product parameter patterns over once-evaluated Tuple operands, exact source-ordered private flattening, composition with captures/results, and GDB-visible fields | complete |
-| 3b2-b5e8 | remaining function forms, aggregate/capturing/dynamic Function results and boundaries, remaining symbolic and escaping anonymous Function values, nested/repeated-name anonymous patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and callable/Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5t | complete equality, ordering, arithmetic, and range symbolic Function values with stable private tags, direct lowering, and private Function parameter/result passage | complete |
+| 3b2-b5e8 | remaining function forms, aggregate/capturing/dynamic Function results and boundaries, escaping anonymous Function values, nested/repeated-name anonymous patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and callable/Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -269,7 +270,9 @@ through exact private Function results; 3b2-b5r passes non-escaping anonymous
 captures as exact private parameters and returns non-capturing anonymous values
 without runtime dispatch; 3b2-b5s evaluates anonymous product operands once and
 flattens their source-ordered fields into the same exact private specialization,
-including captured and returned forms; and 3b2-b5e8 continues with escaping,
+including captured and returned forms; 3b2-b5t retains every remaining symbolic
+callable identity through direct operations and private Function boundaries;
+and 3b2-b5e8 continues with escaping,
 recursive, overloaded, and cross-callable nested functions, remaining recursive
 and nested-block exit control flow, cleanup-bearing scopes, persistent aggregate
 storage, and the remaining user-defined value representations.
