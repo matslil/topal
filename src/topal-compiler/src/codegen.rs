@@ -663,6 +663,9 @@ impl<'a> Generator<'a> {
         let mut body = FunctionBody::new(subprogram);
         let mut environment = BTreeMap::new();
         self.bind_function_parameters(function, &mut body, &mut environment);
+        if !function.pattern_identities.is_empty() {
+            self.emit_pattern_identity_guards(function, &mut body);
+        }
         let result = self.emit_block(&function.body, &mut body, &mut environment);
         let location = self.debug.location(function.body.result.span, subprogram);
         match result {
@@ -843,6 +846,60 @@ impl<'a> Generator<'a> {
                 body.debug_value(&value, variable, location);
             }
             environment.insert(parameter.name.clone(), value);
+        }
+    }
+
+    fn emit_function_parameter_value(
+        &mut self,
+        parameter: &CompilerParameter,
+        index: usize,
+        body: &mut FunctionBody,
+    ) -> LlValue {
+        let argument = format!("%arg{index}");
+        match &parameter.value_type {
+            CompilerType::Tuple(fields) => {
+                self.emit_tuple_extract(&argument, fields, body, parameter.span)
+            }
+            CompilerType::Record(fields) => {
+                self.emit_record_extract(&argument, fields, body, parameter.span)
+            }
+            CompilerType::Sum(sum) => self.emit_sum_extract(&argument, sum, body, parameter.span),
+            CompilerType::Function => LlValue::Enum {
+                value: argument,
+                enumeration: function_value_enumeration(self.program),
+            },
+            _ => function_parameter_value(&parameter.value_type, index),
+        }
+    }
+
+    fn emit_pattern_identity_guards(
+        &mut self,
+        function: &CompilerFunction,
+        body: &mut FunctionBody,
+    ) {
+        for identity in &function.pattern_identities {
+            let first = &function.parameters[identity.first_parameter];
+            let repeated = &function.parameters[identity.repeated_parameter];
+            debug_assert_eq!(first.value_type, repeated.value_type);
+            let first = self.emit_function_parameter_value(first, identity.first_parameter, body);
+            let repeated =
+                self.emit_function_parameter_value(repeated, identity.repeated_parameter, body);
+            let equal = self.emit_equal(&first, &repeated, body, identity.span);
+            let matched = body.label("pattern.identity.matched");
+            let mismatch = body.label("pattern.identity.mismatch");
+            let location = self.debug.location(identity.span, body.subprogram);
+            body.terminator(
+                &format!("br i1 {equal}, label %{matched}, label %{mismatch}"),
+                location,
+            );
+            body.start_block(&mismatch);
+            body.effect(
+                "call void @topal.runtime.pattern.identity.fail()",
+                identity.span,
+                &mut self.debug,
+            );
+            body.terminator("unreachable", location);
+            body.start_block(&matched);
         }
     }
 
@@ -12181,6 +12238,30 @@ mod tests {
             "call fastcc ptr @{}(i1 true, ptr ",
             function.symbol
         )));
+    }
+
+    #[test]
+    fn emits_repeated_anonymous_patterns_as_exact_private_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-anonymous-patterns.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "repeated-anonymous-patterns.t").emit();
+
+        assert!(llvm.contains("call void @topal.runtime.pattern.identity.fail()"));
+        assert_eq!(llvm.matches("\npattern.identity.mismatch.").count(), 5);
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare(ptr %arg0, ptr %arg1)"));
+        assert!(llvm.contains("call i1 @topal.runtime.string.equal(ptr %arg0, ptr %arg1)"));
+        assert!(llvm.contains("icmp eq i32 %arg0, %arg1"));
+        for name in ["value", "text", "operation"] {
+            assert!(llvm.contains(&format!("!DILocalVariable(name: \"{name}\", arg: 1")));
+            assert!(!llvm.contains(&format!("!DILocalVariable(name: \"{name}\", arg: 2")));
+        }
+        assert!(!llvm.contains("topal.runtime.pattern.identity.match"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

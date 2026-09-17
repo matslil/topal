@@ -3142,8 +3142,9 @@ Opaque Tuple locals and function results and the outer positional product of a
 multi-parameter call shall use a compiler-private lexical value before field
 projection. Direct Tuple constructions may retain sound field facts for body
 checking, but no initializer or field expression may be replayed. A non-Tuple,
-field-count mismatch, duplicate binding, nested pattern, or unsupported field
-representation shall fail before anonymous-body or LLVM lowering.
+field-count mismatch, repeated binding outside
+`TOPAL-COMP-ANONYMOUS-REPEATED-PATTERN-001`, nested pattern, or unsupported
+field representation shall fail before anonymous-body or LLVM lowering.
 
 LLVM definitions and calls shall use matching private `fastcc` signatures with
 ordinary binding parameters and flattened product fields in lexical order,
@@ -3159,12 +3160,51 @@ and separate resource baselines.
 This shall add no product-pattern object, environment object, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
-`topal-native/6` revision. Nested/repeated-name patterns, escaping/capturing
-Function boundaries, aggregate containment, publication, and library
-metadata/adapters remain deferred. This realizes
+`topal-native/6` revision. Nested and aggregate repeated-name patterns,
+escaping/capturing Function boundaries, aggregate containment, publication,
+and library metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-PRODUCT-001`, `TOPAL-FUNCTION-ANONYMOUS-001`,
 `TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5s.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-PATTERN-001 — Exact repeated anonymous pattern names
+
+The checked compiler model shall admit a repeated non-discard name across
+ordinary scalar parameters and flat positional-product fields of an inferred
+anonymous Function. The first occurrence shall be the only body binding and
+debug parameter. Every later occurrence shall retain its consumed private ABI
+operand and record a lexical exact-identity guard against that first parameter.
+Repeated `_` occurrences shall remain independent discards.
+
+Both operands shall have one exact admitted scalar classifier: `Unit`,
+`Completed`, `Effect`, `Type`, `Function`, `Boolean`, `Int`, `Nat`, one modular
+type, `Rational`, `Comparison`, `ErrorCode`, one Enum type, `Character`, or
+`String`. Identity shall use the existing same-representation direct comparison
+without evidence forgetting, conversion, user Equality selection, canonical
+equivalence, or approximation. A classifier mismatch shall fail in the checked
+model. An opaque product-producing call and every field expression shall still
+execute exactly once before any guard.
+
+LLVM shall compare the private parameters in lexical guard order before the
+body. Failure shall call a Topal-owned diagnostic helper which writes
+`E-ANONYMOUS-PATTERN-IDENTITY` through the Linux syscall writer and exits 65.
+Success shall continue directly into the anonymous body. Full O0 DWARF/GDB
+shall show one source parameter for the first occurrence and the direct guarded
+frame. Tests shall cover product and cross-parameter repetition, opaque product
+materialization, Int, String, and Function identities, interpreter parity and
+mismatch diagnostics, checked classifier rejection, direct guarded IR,
+freestanding execution, GDB values/frames, the shared corpus, and separate
+resource baselines.
+
+This shall add no pattern object, matching table, function pointer, indirect
+call, closure or Function runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate or callable ABI, or
+`topal-native/6` revision. Nested and aggregate repeated identity, ordinary
+named-function header repetition, publication, and library metadata/adapters
+remain deferred. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5u.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

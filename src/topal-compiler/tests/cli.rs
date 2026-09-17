@@ -10133,6 +10133,109 @@ fn anonymous_product_patterns_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn repeated_anonymous_patterns_are_exact_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+    // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-repeated-anonymous-patterns");
+    let source = directory.join("repeated-anonymous-patterns.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/repeated-anonymous-patterns.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 20, 7, \"same\", 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let mismatch_source = directory.join("repeated-pattern-mismatch.t");
+    let mismatch_executable = directory.join("mismatch");
+    fs::write(
+        &mismatch_source,
+        "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (1, 2)\n",
+    )
+    .unwrap();
+    let mismatch_compiled = run(topalc().args([
+        "-o",
+        mismatch_executable.to_str().unwrap(),
+        mismatch_source.to_str().unwrap(),
+    ]));
+    assert!(
+        mismatch_compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&mismatch_compiled.stderr)
+    );
+    let mismatch = run(&mut Command::new(&mismatch_executable));
+    assert_eq!(mismatch.status.code(), Some(65));
+    assert!(mismatch.stdout.is_empty());
+    assert_eq!(
+        mismatch.stderr,
+        b"error[E-ANONYMOUS-PATTERN-IDENTITY]: repeated pattern values differ\n"
+    );
+
+    let classifier_source = directory.join("repeated-pattern-classifier.t");
+    fs::write(
+        &classifier_source,
+        "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (1, 1.0)\n",
+    )
+    .unwrap();
+    let classifier = run(topalc().args([
+        "-o",
+        directory.join("classifier").to_str().unwrap(),
+        classifier_source.to_str().unwrap(),
+    ]));
+    assert!(!classifier.status.success());
+    assert!(
+        String::from_utf8_lossy(&classifier.stderr)
+            .contains("E-ANONYMOUS-PATTERN-IDENTITY-CLASSIFIER")
+    );
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break repeated-anonymous-patterns.t:10",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 42"), "{text}");
+    assert!(text.contains("value = 42"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn nested_functions_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

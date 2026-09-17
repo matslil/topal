@@ -240,9 +240,21 @@ captures afterward, while source arity and callable identity continue to count
 patterns rather than machine parameters. Flat mixed symbolic applications are
 explicitly regrouped left-to-right before ordinary operation checking. The
 observation tag exists only for `<anonymous fn/N>` display and DWARF. Capturing
-Function parameters/results, nested/repeated-name patterns, unsupported
-captured state, escaping environments, and a public closure representation
-remain one coordinated later design.
+Function parameters/results, nested patterns, unsupported captured state,
+escaping environments, and a public closure representation remain one
+coordinated later design.
+
+A repeated non-discard name across ordinary anonymous parameters or flat
+product fields retains every consumed private machine operand but creates only
+the first source binding. Later same-classifier scalar occurrences become
+lexically ordered function-entry identity guards. They reuse direct exact
+integer, Rational, String/Character, enum-like, or Function-tag comparison;
+they do not invoke user Equality, conversion, canonical equivalence, or tag
+dispatch. A mismatch calls a Topal-owned diagnostic helper which writes through
+the Linux syscall service and exits 65 before the body. Repeated operands are
+omitted from DWARF variable metadata, leaving one unambiguous source parameter.
+Nested and aggregate identity patterns and ordinary named-header repetition
+remain deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general

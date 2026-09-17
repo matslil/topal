@@ -1096,6 +1096,11 @@
       "cpu_time_ns": 8028780,
       "memory_peak_bytes": 18427904,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/repeated-anonymous-patterns.t": {
+      "cpu_time_ns": 7536200,
+      "memory_peak_bytes": 18427904,
+      "samples_per_test": 50
     }
   }
 }

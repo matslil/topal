@@ -6422,8 +6422,17 @@ impl Session {
         }
         let mut invocation = Box::new(self.clone());
         invocation.bindings = bindings.clone();
+        let mut matched_bindings = BTreeMap::new();
         for (parameter, argument) in parameters.iter().zip(arguments) {
-            bind_anonymous_pattern(source, &mut invocation, parameter, argument, call_span)?;
+            bind_anonymous_pattern(
+                source,
+                &mut invocation,
+                &mut matched_bindings,
+                parameter,
+                argument,
+                call_span,
+                trace,
+            )?;
         }
         let detail = format!("arguments={}", parameters.len());
         trace.record(TraceEvent {
@@ -7075,13 +7084,23 @@ fn infer_unfold_yield_classifier(seed: &Value, step: &Value) -> String {
 fn bind_anonymous_pattern(
     source: &SourceText,
     invocation: &mut Session,
+    matched_bindings: &mut BTreeMap<String, Value>,
     pattern: &CapturedPattern,
     argument: Value,
     span: Span,
+    trace: &mut impl TraceSink,
 ) -> Result<(), Diagnostic> {
     match pattern {
         CapturedPattern::Binding(name) => {
-            invocation.bindings.insert(name.clone(), argument);
+            bind_anonymous_name(
+                source,
+                invocation,
+                matched_bindings,
+                name,
+                argument,
+                span,
+                trace,
+            )?;
         }
         CapturedPattern::Product(bindings) => {
             let Value::Tuple(values) = argument else {
@@ -7105,10 +7124,51 @@ fn bind_anonymous_pattern(
                 ));
             }
             for (name, value) in bindings.iter().zip(values) {
-                invocation.bindings.insert(name.clone(), value);
+                bind_anonymous_name(
+                    source,
+                    invocation,
+                    matched_bindings,
+                    name,
+                    value,
+                    span,
+                    trace,
+                )?;
             }
         }
     }
+    Ok(())
+}
+
+fn bind_anonymous_name(
+    source: &SourceText,
+    invocation: &mut Session,
+    matched_bindings: &mut BTreeMap<String, Value>,
+    name: &str,
+    argument: Value,
+    span: Span,
+    trace: &mut impl TraceSink,
+) -> Result<(), Diagnostic> {
+    if name == "_" {
+        return Ok(());
+    }
+    if let Some(first) = matched_bindings.get(name) {
+        if first != &argument {
+            return Err(diagnostic(
+                source,
+                "E-ANONYMOUS-PATTERN-IDENTITY",
+                span,
+                format!("repeated pattern name `{name}` requires the same exact value"),
+            ));
+        }
+        trace.record(TraceEvent {
+            event: "pattern.identity.matched",
+            rule: "TOPAL-TYPE-MATCH-001",
+            detail: name,
+        });
+        return Ok(());
+    }
+    matched_bindings.insert(name.to_owned(), argument.clone());
+    invocation.bindings.insert(name.to_owned(), argument);
     Ok(())
 }
 
@@ -17072,6 +17132,9 @@ fn diagnostic_help(code: &str) -> Option<&'static str> {
         }
         "E-DUPLICATE-ERROR-CODE-PATTERN" => {
             Some("remove the later duplicate pattern or replace it with a missing alternative")
+        }
+        "E-ANONYMOUS-PATTERN-IDENTITY" => {
+            Some("pass the same exact value at every occurrence of the repeated pattern name")
         }
         "E-UNREACHABLE-ERROR-CODE-PATTERN" => {
             Some("move qualified code patterns before the generic `Error problem` fallback")
