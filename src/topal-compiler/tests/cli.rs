@@ -60,6 +60,35 @@ fn assert_freestanding_elf_and_valid_dwarf(executable: &Path) {
     }
 }
 
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+fn assert_serialization_corruption_exits(executable: &Path, mutation: &str) {
+    let corrupted = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            "break topal.runtime.serialization.verify",
+            "-ex",
+            "run",
+            "-ex",
+            mutation,
+            "-ex",
+            "continue",
+        ])
+        .arg(executable));
+    assert!(
+        corrupted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&corrupted.stderr)
+    );
+    let corrupted = String::from_utf8_lossy(&corrupted.stdout);
+    assert!(corrupted.contains("exited with code 0106"), "{corrupted}");
+}
+
 #[test]
 fn compiles_and_executes_shared_regression_with_canonical_metadata() {
     // TOPAL-COMPILER-TEST-001, TOPAL-COMPILER-ARTIFACT-001
@@ -8704,6 +8733,117 @@ fn lint_language_variant_is_freestanding_and_debuggable() {
     assert!(text.contains("$1 = <namespace lang lint>"), "{text}");
     assert!(text.contains("lint-scope-debug.t:6"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn native_serialization_is_canonical_freestanding_and_debuggable() {
+    // TOPAL-SER-HEADER-001 through TOPAL-SER-DESER-001,
+    // TOPAL-COMPILER-NATIVE-SERIALIZATION-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-native-serialization");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/native-serialization.t");
+    let source_text = fs::read_to_string(&source).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_eq!(executed.stdout, b"(answer is 42, accepted is true)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let display_source = directory.join("native-stream-display.t");
+    let display_executable = directory.join("display-application");
+    let display_text =
+        "use language (version is v0.1)\nv0.1 (lang serialize) (answer is 42, accepted is true)\n";
+    fs::write(&display_source, display_text).unwrap();
+    let display_expected = Session::new()
+        .evaluate_source_file(display_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        display_executable.to_str().unwrap(),
+        display_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let displayed = run(&mut Command::new(&display_executable));
+    assert!(displayed.status.success());
+    assert_eq!(displayed.stdout, display_expected.as_bytes());
+    assert_eq!(displayed.stdout, b"SerializationStream ( 76 bytes )\n");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.runtime.serialization.verify",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis stream",
+            "-ex",
+            "print stream",
+            "-ex",
+            "ptype SerializationStream",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = SerializationStream",
+        "$1 = SerializationStream ( 76 bytes )",
+        "struct TopalSerializationStreamHeader",
+        "u8 *data",
+        "u64 byte_count",
+        "native-serialization.t:9",
+        "topal.main",
+        "in _start",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+
+    assert_serialization_corruption_exits(&executable, "set {long}($rdi+8)=75");
+    assert_serialization_corruption_exits(&executable, "set {unsigned char}*(long*)$rdi=0");
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

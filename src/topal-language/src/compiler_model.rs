@@ -9,6 +9,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use topal_semantics::{LanguageVersion, ObjectKind};
+use topal_serialization::{
+    Event as SerializedEvent, Header as SerializationHeader, Limits as SerializationLimits,
+    SerializedValue, Stream as SerializationStream, StreamByteOrder, TypeDefinition,
+    deserialize as deserialize_native, serialize as serialize_native,
+};
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
     characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
@@ -184,6 +189,8 @@ pub enum CompilerType {
     FunctionView,
     LanguageContext,
     Capability,
+    NativeSerializer(LanguageVersion),
+    SerializationStream(Box<Self>),
     Constraint,
     Boolean,
     Version,
@@ -226,6 +233,7 @@ impl CompilerType {
                 | Self::Type
                 | Self::Scope
                 | Self::Function
+                | Self::SerializationStream(_)
                 | Self::Constraint
                 | Self::Boolean
                 | Self::Version
@@ -268,6 +276,8 @@ impl CompilerType {
             Self::FunctionView => "lang FunctionView".into(),
             Self::LanguageContext => "lang LanguageContext".into(),
             Self::Capability => "Capability".into(),
+            Self::NativeSerializer(_) => "lang NativeSerializer".into(),
+            Self::SerializationStream(_) => "SerializationStream".into(),
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
             Self::Version => "Version".into(),
@@ -501,6 +511,12 @@ pub enum CompilerExpressionKind {
     FunctionView(CompilerFunctionView),
     LanguageContext(CompilerLanguageContext),
     Capability(CompilerCapability),
+    NativeSerializer(LanguageVersion),
+    Serialize {
+        bytes: Vec<u8>,
+        value: Box<CompilerExpression>,
+    },
+    Deserialize(Box<CompilerExpression>),
     ConstraintValue(u32),
     Boolean(bool),
     Version(LanguageVersion),
@@ -9823,6 +9839,304 @@ impl Analyzer {
         })
     }
 
+    fn is_lang_operation(&self, expression: &Expression, expected: &str) -> bool {
+        matches!(
+            expression,
+            Expression::Application { items, .. }
+                if matches!(items.as_slice(),
+                    [Expression::Identifier(lang), Expression::Identifier(operation)]
+                        if self.source.slice(*lang) == "lang"
+                            && self.source.slice(*operation) == expected)
+        )
+    }
+
+    fn analyze_native_serialization(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(version),
+            operation,
+        ] = items
+            && self.source.slice(*lang) == "lang"
+            && self.source.slice(*version) == "version"
+            && self.is_lang_operation(operation, "serialize")
+        {
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::NativeSerializer(self.language_version),
+                value_type: CompilerType::NativeSerializer(self.language_version),
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        if let [
+            Expression::Identifier(lang),
+            Expression::Identifier(operation),
+            stream,
+        ] = items
+            && self.source.slice(*lang) == "lang"
+            && self.source.slice(*operation) == "deserialize"
+        {
+            let stream = self.analyze_expression(stream, environment)?;
+            let CompilerType::SerializationStream(payload) = &stream.value_type else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-DESERIALIZE-OPERAND",
+                    stream.span,
+                    "lang deserialize requires a native SerializationStream",
+                ));
+            };
+            let payload = payload.as_ref().clone();
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::Deserialize(Box::new(stream)),
+                value_type: payload,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        let (version, subject) = match items {
+            [version, operation, subject] if self.is_lang_operation(operation, "serialize") => {
+                let parsed_version = match version {
+                    Expression::Identifier(identifier) => self
+                        .source
+                        .slice(*identifier)
+                        .parse::<LanguageVersion>()
+                        .ok(),
+                    _ => None,
+                };
+                let version = if let Some(version) = parsed_version {
+                    version
+                } else {
+                    let version = self.analyze_expression(version, environment)?;
+                    let CompilerExpressionKind::Version(version) = version.kind else {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-SERIALIZATION-VERSION",
+                            version.span,
+                            "the left operand of lang serialize must be a statically known Version",
+                        ));
+                    };
+                    version
+                };
+                (version, subject)
+            }
+            [Expression::Identifier(name), subject] => {
+                let Some(CompilerType::NativeSerializer(version)) = environment
+                    .get(self.source.slice(*name))
+                    .map(|facts| &facts.value_type)
+                else {
+                    return Ok(None);
+                };
+                (*version, subject)
+            }
+            _ => return Ok(None),
+        };
+        let value = self.analyze_expression(subject, environment)?;
+        let bytes = self.native_serialization_bytes(version, &value, environment)?;
+        let value_type = value.value_type.clone();
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::Serialize {
+                bytes,
+                value: Box::new(value),
+            },
+            value_type: CompilerType::SerializationStream(Box::new(value_type)),
+            int_range: None,
+            rational_value: None,
+            span,
+        }))
+    }
+
+    fn native_serialization_bytes(
+        &self,
+        version: LanguageVersion,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Vec<u8>, Diagnostic> {
+        let mut types = Vec::new();
+        let mut identities = BTreeMap::new();
+        let (type_id, serialized) =
+            self.native_serialized_value(value, environment, &mut types, &mut identities, true)?;
+        let stream = SerializationStream {
+            header: SerializationHeader {
+                language_identity: "topal".into(),
+                language_version: version,
+                byte_order: StreamByteOrder::Little,
+                streaming: false,
+            },
+            types,
+            events: vec![SerializedEvent {
+                type_id,
+                value: serialized,
+            }],
+        };
+        let bytes = serialize_native(&stream).map_err(|error| {
+            source_diagnostic(
+                &self.source,
+                "E-SERIALIZATION",
+                value.span,
+                format!("native value cannot be serialized: {}", error.message),
+            )
+        })?;
+        deserialize_native(&bytes, SerializationLimits::default()).map_err(|error| {
+            source_diagnostic(
+                &self.source,
+                "E-SERIALIZATION",
+                value.span,
+                format!(
+                    "compiler-generated native stream failed validation at {} byte {}: {}",
+                    error.stage, error.offset, error.message
+                ),
+            )
+        })?;
+        Ok(bytes)
+    }
+
+    #[allow(clippy::too_many_lines)] // Supported schemas remain explicit beside their canonical values.
+    fn native_serialized_value(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        types: &mut Vec<TypeDefinition>,
+        identities: &mut BTreeMap<String, usize>,
+        aggregate_allowed: bool,
+    ) -> Result<(usize, SerializedValue), Diagnostic> {
+        let (identity, definition, serialized) = match &value.value_type {
+            CompilerType::Unit if matches!(value.kind, CompilerExpressionKind::Unit) => (
+                "Unit".to_owned(),
+                TypeDefinition::Unit {
+                    identity: "Unit".into(),
+                },
+                SerializedValue::Unit,
+            ),
+            CompilerType::Boolean => {
+                let CompilerExpressionKind::Boolean(boolean) = value.kind else {
+                    return Err(unsupported(
+                        &self.source,
+                        value.span,
+                        "native serialization of a dynamic Boolean",
+                    ));
+                };
+                (
+                    "Boolean".to_owned(),
+                    TypeDefinition::Boolean {
+                        identity: "Boolean".into(),
+                    },
+                    SerializedValue::Boolean(boolean),
+                )
+            }
+            CompilerType::Int => {
+                let integer = exact_int(value).ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        value.span,
+                        "native serialization of a dynamic Int",
+                    )
+                })?;
+                (
+                    "Int".to_owned(),
+                    TypeDefinition::Int {
+                        identity: "Int".into(),
+                        signed: true,
+                        width_bits: 0,
+                    },
+                    SerializedValue::ArbitraryInt(integer),
+                )
+            }
+            CompilerType::String => {
+                let text = Self::known_string_value(value, environment).ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        value.span,
+                        "native serialization of a dynamic String",
+                    )
+                })?;
+                (
+                    "String".to_owned(),
+                    TypeDefinition::Text {
+                        identity: "String".into(),
+                    },
+                    SerializedValue::Text(text),
+                )
+            }
+            CompilerType::Tuple(_) if aggregate_allowed => {
+                let CompilerExpressionKind::Tuple(fields) = &value.kind else {
+                    return Err(unsupported(
+                        &self.source,
+                        value.span,
+                        "native serialization of a dynamic Tuple",
+                    ));
+                };
+                let mut components = Vec::with_capacity(fields.len());
+                let mut encoded = Vec::with_capacity(fields.len());
+                for field in fields {
+                    let (id, field) =
+                        self.native_serialized_value(field, environment, types, identities, false)?;
+                    components.push(id);
+                    encoded.push(field);
+                }
+                let identity = value.value_type.name();
+                (
+                    identity.clone(),
+                    TypeDefinition::Tuple {
+                        identity,
+                        components,
+                    },
+                    SerializedValue::Product(encoded),
+                )
+            }
+            CompilerType::Record(_) if aggregate_allowed => {
+                let CompilerExpressionKind::Record(fields) = &value.kind else {
+                    return Err(unsupported(
+                        &self.source,
+                        value.span,
+                        "native serialization of a dynamic Record",
+                    ));
+                };
+                let mut definitions = Vec::with_capacity(fields.len());
+                let mut encoded = Vec::with_capacity(fields.len());
+                for (label, field) in fields {
+                    let (id, field) =
+                        self.native_serialized_value(field, environment, types, identities, false)?;
+                    definitions.push((label.clone(), id));
+                    encoded.push(field);
+                }
+                (
+                    "Record".to_owned(),
+                    TypeDefinition::Record {
+                        identity: "Record".into(),
+                        fields: definitions,
+                    },
+                    SerializedValue::Product(encoded),
+                )
+            }
+            _ => {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-COMPILER-UNSUPPORTED",
+                    value.span,
+                    format!(
+                        "compiler increment does not support native serialization of {}",
+                        value.value_type.name()
+                    ),
+                ));
+            }
+        };
+        if let Some(id) = identities.get(&identity) {
+            return Ok((*id, serialized));
+        }
+        let id = types.len();
+        types.push(definition);
+        identities.insert(identity, id);
+        Ok((id, serialized))
+    }
+
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
@@ -9830,6 +10144,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(value) = self.analyze_native_serialization(items, span, environment)? {
+            return Ok(value);
+        }
         if let Some(value) = self.analyze_static_introspection(items, span)? {
             return Ok(value);
         }
@@ -17482,7 +17799,9 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::TraversalControl(_) | CompilerType::Generator(_) => false,
+        CompilerType::TraversalControl(_)
+        | CompilerType::Generator(_)
+        | CompilerType::SerializationStream(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
                 || compiler_nested_int_string_list_element(element.as_ref())
@@ -17524,6 +17843,7 @@ fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
             | CompilerType::FunctionView
             | CompilerType::LanguageContext
             | CompilerType::Capability
+            | CompilerType::NativeSerializer(_)
     )
 }
 
@@ -17534,6 +17854,7 @@ fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
             | CompilerType::Result(value)
             | CompilerType::Optional(value)
             | CompilerType::List(value)
+            | CompilerType::SerializationStream(value)
             | CompilerType::TraversalControl(value)
             | CompilerType::Refined { base: value, .. } => {
                 compiler_type_contains_static_only(value)
@@ -18129,6 +18450,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
+        | CompilerType::NativeSerializer(_)
+        | CompilerType::SerializationStream(_)
         | CompilerType::Constraint
         | CompilerType::Version
         | CompilerType::Error
@@ -18222,6 +18545,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::FunctionView(_)
         | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::Capability(_)
+        | CompilerExpressionKind::NativeSerializer(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -18233,6 +18557,10 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
         | CompilerExpressionKind::ListEmpty => true,
+        CompilerExpressionKind::Serialize { value, .. }
+        | CompilerExpressionKind::Deserialize(value) => {
+            compiler_expression_is_closed_with(value, bound)
+        }
         CompilerExpressionKind::ListEntry { value, remaining } => {
             compiler_expression_is_closed_with(value, bound)
                 && compiler_expression_is_closed_with(remaining, bound)
@@ -26153,6 +26481,97 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
+
+        for source in [
+            "use language (version is v0.1)\nv0.1 (lang serialize) ()\n",
+            "use language (version is v0.1)\ntext is \"Topal\"\nv0.1 (lang serialize) text\n",
+            "use language (version is v0.1)\nv0.1 (lang serialize) (1, \"two\")\n",
+        ] {
+            let admitted = analyze_for_compiler(source).unwrap();
+            assert!(matches!(
+                admitted.main.result.value_type,
+                CompilerType::SerializationStream(_)
+            ));
+        }
+    }
+
+    #[test]
+    fn models_canonical_native_serialization_and_validated_reconstruction() {
+        // TOPAL-SER-HEADER-001 through TOPAL-SER-DESER-001,
+        // TOPAL-COMPILER-NATIVE-SERIALIZATION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/native-serialization.t"
+        ))
+        .unwrap();
+        let [
+            CompilerStatement::Binding(serializer),
+            CompilerStatement::Binding(stream),
+        ] = program.main.statements.as_slice()
+        else {
+            panic!("native serialization regression retains its two bindings")
+        };
+        assert_eq!(
+            serializer.value.value_type,
+            CompilerType::NativeSerializer(LanguageVersion::DESIGN_0)
+        );
+        let CompilerExpressionKind::Serialize { bytes, value } = &stream.value.kind else {
+            panic!("stream binding retains canonical bytes and its once-evaluated value")
+        };
+        assert_eq!(bytes.len(), 76);
+        assert_eq!(&bytes[..8], b"TOPALSER");
+        assert!(matches!(value.kind, CompilerExpressionKind::Record(_)));
+        let decoded = deserialize_native(bytes, SerializationLimits::default()).unwrap();
+        assert_eq!(decoded.header.language_identity, "topal");
+        assert_eq!(decoded.header.language_version, LanguageVersion::DESIGN_0);
+        assert_eq!(decoded.header.byte_order, StreamByteOrder::Little);
+        assert_eq!(decoded.types.len(), 3);
+        assert!(matches!(
+            decoded.types.as_slice(),
+            [
+                TypeDefinition::Int { identity, signed: true, width_bits: 0 },
+                TypeDefinition::Boolean { identity: boolean },
+                TypeDefinition::Record { identity: record, fields },
+            ] if identity == "Int"
+                && boolean == "Boolean"
+                && record == "Record"
+                && fields == &[("answer".into(), 0), ("accepted".into(), 1)]
+        ));
+        assert!(matches!(
+            &program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Deserialize(stream),
+                value_type: CompilerType::Record(fields),
+                ..
+            } if matches!(stream.kind, CompilerExpressionKind::Local(_))
+                && fields == &vec![
+                    ("accepted".into(), CompilerType::Boolean),
+                    ("answer".into(), CompilerType::Int),
+                ]
+        ));
+
+        let invalid_version =
+            analyze_for_compiler("use language (version is v0.1)\n42 (lang serialize) true\n")
+                .unwrap_err();
+        assert_eq!(invalid_version.code, "E-SERIALIZATION-VERSION");
+        let unknown_version =
+            analyze_for_compiler("use language (version is v0.1)\nunknown (lang serialize) true\n")
+                .unwrap_err();
+        assert_eq!(unknown_version.code, "E-UNBOUND-NAME");
+        let unsupported = analyze_for_compiler(
+            "use language (version is v0.1)\nv0.1 (lang serialize) (lang version)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
+        for source in [
+            "use language (version is v0.1)\nv0.1 (lang serialize) (1, (2, 3))\n",
+            "use language (version is v0.1)\nv0.1 (lang serialize) (outer is (answer is 42), accepted is true)\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(source).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED",
+                "{source}"
+            );
+        }
     }
 
     #[test]

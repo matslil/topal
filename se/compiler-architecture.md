@@ -393,6 +393,19 @@ literal transport and display; subsequent increments reuse it for byte count,
 exact equality, and concatenation, while the remaining Unicode String
 operations stay in roadmap increment 4b3d.
 
+Closed native serialization reuses the canonical `topal-serialization` codec
+only while checking and lowering. The emitted executable contains the resulting
+relocation-free protocol bytes, not the Rust codec or any Rust/C/C++ runtime.
+At source evaluation, the Topal runtime copies those embedded expected bytes
+into private stream storage, and a private 16-byte Topal-owned descriptor records
+the copy's address and count. The published stream copy is thereafter immutable.
+The separately retained source value is still evaluated exactly once; `lang
+deserialize` checks the descriptor count and compares every byte in the copy
+with the compiler-validated expected stream before it may return that retained
+value. This is a fused compiler-created producer/consumer representation, not a
+general runtime protocol parser, and malformed private state takes the
+corruption exit. Arbitrary or external streams remain outside this increment.
+
 The prospective UTF-8 byte-count operation reads the preserved-byte length
 already stored in that descriptor; it does not scan display spelling, attach an
 encoding, normalize text, or consult a locale. A private unsigned-64-to-Int
@@ -1539,6 +1552,9 @@ A native artifact manifest is canonical UTF-8 JSON whose first schema is
 - LLVM major and exact tool version, optimization level, debug format, and
   compiler identity;
 - canonical source/interface and dependency identities and digests;
+- for any serialized interface, protocol and language revisions, canonical
+  type identities and schemas, field order, byte-order contract, and authority
+  profile independently of private descriptors and symbols;
 - exported semantic identities and their private machine symbols;
 - required platform packages and implementation evidence;
 - source/debug remapping, build identity, and license provenance; and
@@ -1560,7 +1576,7 @@ validated semantic interface.
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, and bundled renderers for private Int, Rational, finite exact Range, modular, and active sum values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, and bundled renderers for private Int, Rational, finite exact Range, modular, active sum, and native-stream values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

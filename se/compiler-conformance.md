@@ -145,7 +145,8 @@ evidence.
 | 8a3 | closed fundamental-Type identity/view/relations, exact initial language context, numeric Version value, static erasure, and debugging | complete |
 | 8a4 | closed atomic Capability values, canonical conjunction/alternatives, root static binding chains, literal final observation, and complete runtime/debug erasure | complete |
 | 8a5 | source-root v0.1 function-interface shapes, exact intentional implementation evidence, direct ordinary calls, complete runtime/debug erasure, and truthful implementation debugging | complete |
-| 8b | user-defined Type values, native serialization, general introspection and context changes, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
+| 8b1 | canonical native serialization of literal Unit and Boolean, exact Int, known String, and one direct Tuple or Record of those scalar values; validated compiler-created stream reconstruction; stream debugging | complete |
+| 8b | user-defined Type values, dynamic and open-world native serialization, general introspection and context changes, contracts/evidence, implementation plans, information flow, and remaining `v0.2` assurance behavior | planned |
 | 9 | complete cross-tool rule audit, optimized-level admission, LTO/sanitizer/coverage/PGO dispositions, and whole-core parity qualification | planned |
 
 ## Increment acceptance
@@ -785,7 +786,13 @@ atomic Capability identities and canonical composition only in checked compiler
 metadata, emitting at most a final constant textual observation; and 8a5
 retains one direct source-root function interface and its exact role-to-function
 evidence through checking, then emits only the ordinary direct functions and
-truthful runtime debug information. 8b retains
+truthful runtime debug information. 8b1 derives canonical protocol 1.0 bytes
+for a closed authority-free structural value, embeds those immutable bytes,
+evaluates the source value once, and validates the private stream descriptor
+and every byte before returning the retained reconstructed value. It neither
+links another language runtime nor treats LLVM optimization as serialization.
+8b retains
 open-world type and introspection metadata, parameterized capability claims and
-operation evidence, general constraint evidence/application, later context
-changes, and the remaining assurance work.
+operation evidence, general constraint evidence/application, nested aggregates,
+dynamic or externally supplied streams, later context changes, and the remaining
+assurance work.

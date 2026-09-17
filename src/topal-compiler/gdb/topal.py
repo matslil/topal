@@ -104,6 +104,38 @@ class _TopalVersionPrinter:
         return f"v{major}.{minor}"
 
 
+class _TopalSerializationStreamPrinter:
+    """Render an immutable canonical Topal native serialization stream."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null SerializationStream>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 16))
+        except gdb.MemoryError:
+            return "<unreadable SerializationStream>"
+        data_address = int.from_bytes(header[0:8], "little")
+        length = int.from_bytes(header[8:16], "little")
+        if length > 16 * 1024 * 1024:
+            return "<SerializationStream too large to render safely>"
+        if length and not data_address:
+            return "<invalid SerializationStream storage>"
+        if length < 8:
+            return "<truncated SerializationStream header>"
+        try:
+            magic = bytes(inferior.read_memory(data_address, 8))
+        except gdb.MemoryError:
+            return "<unreadable SerializationStream data>"
+        if magic != b"TOPALSER":
+            return "<invalid SerializationStream magic>"
+        return f"SerializationStream ( {length} bytes )"
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -829,6 +861,11 @@ class _TopalSumPrinter:
 def _lookup_topal_value(value):
     value_type = str(value.type)
     storage_type = str(value.type.strip_typedefs())
+    if (
+        value_type == "SerializationStream"
+        or storage_type == "struct TopalSerializationStreamHeader *"
+    ):
+        return _TopalSerializationStreamPrinter(value)
     if value_type == "Version" or storage_type == "struct TopalVersionHeader *":
         return _TopalVersionPrinter(value)
     if storage_type.startswith("struct TopalModular."):
