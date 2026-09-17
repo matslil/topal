@@ -3083,11 +3083,13 @@ binding chains, exact output, rejection boundaries, private direct IR,
 freestanding artifacts, DWARF validation, GDB values/frames, the shared corpus,
 and separate resource baselines.
 
-Capturing anonymous, nested, dynamically computed, aggregate-contained, and
-published Function results remain rejected. This shall add no function pointer,
-indirect call, closure allocation/runtime, foreign dependency, C/C++ runtime,
-other-language standard library, public callable ABI, or `topal-native/6`
-revision. This realizes `TOPAL-COMPILER-FUNCTION-RESULT-001` and the admitted
+Capturing anonymous results are governed by
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`. Nested, dynamically computed,
+aggregate-contained, and published Function results remain rejected. This shall
+add no function pointer, indirect call, closure allocation/runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public callable
+ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-FUNCTION-RESULT-001` and the admitted
 result-boundary portions of `TOPAL-FUNCTION-CALLABLE-VALUE-001`,
 `TOPAL-FUNCTION-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5q.
@@ -3107,9 +3109,10 @@ An ordinary or static root function may return a non-capturing inferred
 anonymous Function. Result callable facts shall retain its body, source arity,
 construction identity, static context, and empty capture set separately from
 the returned observation tag. A later binding and application shall specialize
-that body and produce one direct private call. Capturing anonymous Functions
-at private Function parameters are governed by
-`TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`; capturing results remain rejected.
+that body and produce one direct private call. Capturing anonymous Functions at
+private Function parameters are governed by
+`TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`; admitted private capturing results
+are governed by `TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`.
 
 LLVM definitions and calls shall use matching private `fastcc` signatures with
 source parameters followed by exact capture parameters, leaving physical
@@ -3124,6 +3127,7 @@ This shall add no environment object, function pointer, indirect call, closure
 or Function runtime, foreign dependency, C/C++ runtime, other-language standard
 library, public callable ABI, or `topal-native/6` revision. Capturing results or
 Function-boundary arguments outside
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001` and
 `TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`, aggregate containment, dynamic
 escape, publication, and library metadata/adapters remain deferred.
 This realizes `TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`,
@@ -3154,15 +3158,16 @@ inspectable.
 Tests shall cover multiple scalar captures, an admitted Tuple capture, a root
 anonymous capture, function-local anonymous and nested construction, transitive
 forwarding, exact output in every interpreter mode, reversible debugging,
-checked capture remapping, direct private IR, escaping-result rejection,
+checked capture remapping, direct private IR, captured-result composition,
 freestanding artifact properties, full O0 GDB values/frames, the shared corpus,
 and separate resource baselines. This shall add no environment object or
 allocation, function pointer, indirect call, callback, closure or Function
 runtime, foreign dependency, C/C++ runtime, other-language standard library,
-public callable ABI, or `topal-native/6` revision. Capturing Function results,
-aggregate containment, dynamic selection or escape, recursive or overloaded
-nested callable values, unsupported captured state, publication, and library
-metadata/adapters remain deferred. Future library metadata shall describe
+public callable ABI, or `topal-native/6` revision. Capturing Function results
+outside `TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`, aggregate containment, dynamic
+selection or escape, recursive or overloaded nested callable values,
+unsupported captured state, publication, and library metadata/adapters remain
+deferred. Future library metadata shall describe
 callable and capture identities, ordered classifiers, lifetime/effects,
 representation identities, and target adapters rather than the private hidden-
 parameter layout. This realizes
@@ -3170,6 +3175,49 @@ parameter layout. This realizes
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-NESTED-001`,
 `TOPAL-FUNCTION-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5w.
+
+## TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001 — Private captured Function results
+
+The checked compiler model shall admit a capturing anonymous Function as the
+exact result of an ordinary or static private specialization when its body,
+construction identity, and all immutable capture facts remain known. Every
+capture shall have an already-admitted complete private function-boundary
+representation and contain neither Generator nor Function. A specialized
+Function parameter carrying those facts may be returned, and an admitted
+captured result may be forwarded through another admitted private Function
+result or parameter.
+
+Each generated factory shall return one exact aggregate containing the i32
+Function observation tag followed by the already-evaluated capture values in
+retained order. Its caller shall issue one direct `fastcc` call, decompose the
+aggregate into deterministic compiler-only SSA storage, and retain the callable
+facts separately. Eventual application shall specialize the anonymous body and
+pass those returned values after its explicit operands. It shall neither replay
+capture initializers nor dispatch on the observation tag. LLVM shall own the
+physical x86-64 aggregate return convention.
+
+Source DWARF shall continue to describe the factory result and binding as
+`Function`; private returned transport fields shall have no source variables.
+The eventual anonymous frame shall expose explicit operands and material
+captures under their source names. Tests shall cover scalar and Tuple captures,
+root and function-local factories, Function-parameter pass-through, transitive
+result forwarding, exact output in every interpreter mode, reversible
+debugging, checked capture remapping, exact direct IR, unsupported-result
+edges, freestanding artifacts, full O0 GDB values/frames, the shared corpus,
+and separate resource baselines.
+
+This shall add no heap or environment object, environment pointer, allocation,
+function pointer, indirect call, callback, closure or Function runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public callable
+ABI, or `topal-native/6` revision. Immediate computed-call syntax, nested
+Function escape, Function-valued or otherwise unsupported captures, dynamic
+selection, aggregate containment, publication, and library metadata/adapters
+remain deferred. Future library metadata shall describe callable identity,
+ordered capture identities/classifiers, lifetime/effects, representation
+identities, and target adapters rather than this private aggregate transport.
+This realizes `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5x.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
@@ -3204,8 +3252,10 @@ This shall add no product-pattern object, environment object, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
 `topal-native/6` revision. Nested and aggregate repeated-name patterns,
-escaping/capturing Function boundaries, aggregate containment, publication,
-and library metadata/adapters remain deferred. This realizes
+capturing Function boundaries outside
+`TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001` and
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`, other escape, aggregate containment,
+publication, and library metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-PRODUCT-001`, `TOPAL-FUNCTION-ANONYMOUS-001`,
 `TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5s.

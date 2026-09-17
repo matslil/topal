@@ -114,10 +114,11 @@ call or operation rather than tag dispatch. A non-capturing inferred anonymous
 result retains its body and arity through the same specialization side table,
 while the machine result remains the private observation tag. Target-aligned
 debug-only shadows keep otherwise-dead Function result bindings observable at
-O0. Aggregate, capturing, dynamic, and published Function results, dynamic
-structural classifier dispatch, escaping or dynamically stored capturing
-closures, and remaining recursive call graphs remain later frontend work and do
-not leak into the private ABI prematurely.
+O0. Aggregate-contained, dynamic, nested, and published Function results,
+dynamic structural classifier dispatch, escaping or dynamically stored
+capturing closures outside the private anonymous-result boundary below, and
+remaining recursive call graphs remain later frontend work and do not leak into
+the private ABI prematurely.
 
 Within a single compiled source application, the executable `root` namespace
 is also a frontend identity rather than a runtime lookup table. The checked
@@ -250,11 +251,26 @@ parameter and the source-named captures in the eventually invoked callable are
 shown. A nested callable receives a module-private observation tag only when it
 enters this path. No tag dispatch, environment object, capture allocation, or
 cross-frame lookup is introduced, and LLVM continues to lower every exact
-private prototype for the target. Capturing Function results, nested patterns,
-unsupported captured state, escaping environments, and a public/library
-closure representation remain one coordinated later design with canonical
-callable, ordered-capture, lifetime/effect, representation, and target-adapter
-metadata.
+private prototype for the target. Capturing Function results outside the
+private anonymous-result boundary below, nested patterns, unsupported captured
+state, other escaping environments, and a public/library closure representation
+remain coordinated later design with canonical callable, ordered-capture,
+lifetime/effect, representation, and target-adapter metadata.
+
+A private capturing anonymous Function result uses the same facts without
+turning them into a public closure representation. The specialized callee
+returns one exact LLVM aggregate containing the observation tag followed by the
+already-evaluated immutable captures in retained order. The caller immediately
+decomposes that aggregate into compiler-only SSA storage, so later bindings,
+private Function parameters, and another admitted private Function result can
+reuse the exact callable and values without a heap object, environment pointer,
+or tag dispatch. LLVM derives the physical x86-64 aggregate-return convention
+from the target data layout. Source DWARF continues to describe a `Function`
+result; the returned transport fields remain hidden, while an eventual direct
+anonymous call exposes the captures under their source names. Nested Function
+escape, Function-valued or otherwise unsupported captures, dynamic selection,
+aggregate containment, publication, and the canonical library closure ABI
+remain deferred.
 
 A repeated non-discard name across ordinary anonymous parameters or flat
 product fields retains every consumed private machine operand but creates only

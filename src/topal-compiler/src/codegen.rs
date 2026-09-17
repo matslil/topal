@@ -12,7 +12,7 @@ use topal_language::{
     CompilerListIndexOperation, CompilerListZipOperation, CompilerLocationType,
     CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerProgram,
     CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType, CompilerType,
-    CompilerValidation, display_string_literal,
+    CompilerValidation, compiler_function_result_capture_storage, display_string_literal,
 };
 use topal_source::Span;
 
@@ -638,7 +638,7 @@ impl<'a> Generator<'a> {
 
     #[allow(clippy::too_many_lines)] // Keep one exhaustive source-result to LLVM return mapping.
     fn emit_function(&mut self, function: &CompilerFunction) {
-        let return_type = llvm_type(&function.result_type);
+        let return_type = function_llvm_return_type(function);
         let parameter_types = function
             .parameters
             .iter()
@@ -668,76 +668,124 @@ impl<'a> Generator<'a> {
         }
         let result = self.emit_block(&function.body, &mut body, &mut environment);
         let location = self.debug.location(function.body.result.span, subprogram);
-        match result {
-            LlValue::Unit => body.terminator("ret void", location),
-            LlValue::StaticDisplay(_) => unreachable!("static Capability function result"),
-            LlValue::Completed(value) | LlValue::Effect(value) => {
-                body.terminator(&format!("ret i8 {value}"), location);
-            }
-            LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
-            LlValue::Version { value, .. }
-            | LlValue::SerializationStream { stream: value, .. }
-            | LlValue::Task { value, .. }
-            | LlValue::ExternalLocation { value, .. }
-            | LlValue::Int(value)
-            | LlValue::Modular { value, .. }
-            | LlValue::Rational(value)
-            | LlValue::Error(value)
-            | LlValue::ErrorDomain(value)
-            | LlValue::SourceLocation(value)
-            | LlValue::String(value)
-            | LlValue::Range { value, .. }
-            | LlValue::Result { value, .. }
-            | LlValue::Optional { value, .. }
-            | LlValue::TraversalControl { value, .. }
-            | LlValue::List { value, .. }
-            | LlValue::Container { value, .. } => {
-                body.terminator(&format!("ret ptr {value}"), location);
-            }
-            LlValue::Comparison(value)
-            | LlValue::ErrorCode(value)
-            | LlValue::Enum { value, .. }
-            | LlValue::Generator { value, .. } => {
-                body.terminator(&format!("ret i32 {value}"), location);
-            }
-            LlValue::Tuple(fields) => {
-                let CompilerType::Tuple(field_types) = &function.result_type else {
-                    unreachable!("checked Tuple result retains its Tuple type")
+        if function.result_type == CompilerType::Function && !function.result_captures.is_empty() {
+            let tag = result.enumeration().to_owned();
+            let returned_captures = match &result {
+                LlValue::Function { captures, .. } => captures.clone(),
+                _ => Vec::new(),
+            };
+            let mut aggregate = body.instruction(
+                &format!("insertvalue {return_type} poison, i32 {tag}, 0"),
+                function.body.result.span,
+                &mut self.debug,
+            );
+            for (index, capture) in function.result_captures.iter().enumerate() {
+                let storage_name = match &capture.value.kind {
+                    CompilerExpressionKind::Local(storage_name)
+                    | CompilerExpressionKind::InfinityLocal { storage_name, .. } => {
+                        Some(storage_name)
+                    }
+                    _ => None,
                 };
-                let aggregate = self.emit_tuple_aggregate(
-                    &fields,
-                    field_types,
+                let value = storage_name
+                    .and_then(|storage_name| {
+                        returned_captures
+                            .iter()
+                            .find(|(name, _)| name == storage_name)
+                            .map(|(_, value)| value.clone())
+                    })
+                    .unwrap_or_else(|| {
+                        self.emit_expression(&capture.value, &mut body, &environment)
+                    });
+                let operand = self.emit_machine_operand(
+                    &value,
+                    &capture.value_type,
                     &mut body,
-                    function.body.result.span,
+                    capture.value.span,
                 );
-                body.terminator(
-                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
-                    location,
+                aggregate = body.instruction(
+                    &format!(
+                        "insertvalue {return_type} {aggregate}, {operand}, {}",
+                        index + 1
+                    ),
+                    capture.value.span,
+                    &mut self.debug,
                 );
             }
-            LlValue::Record { fields, order } => {
-                let CompilerType::Record(field_types) = &function.result_type else {
-                    unreachable!("checked Record result retains its Record type")
-                };
-                let aggregate = self.emit_record_aggregate(
-                    &fields,
-                    &order,
-                    field_types,
-                    &mut body,
-                    function.body.result.span,
-                );
-                body.terminator(
-                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
-                    location,
-                );
-            }
-            LlValue::Sum { .. } => {
-                let aggregate =
-                    self.emit_sum_aggregate(&result, &mut body, function.body.result.span);
-                body.terminator(
-                    &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
-                    location,
-                );
+            body.terminator(&format!("ret {return_type} {aggregate}"), location);
+        } else {
+            match result {
+                LlValue::Unit => body.terminator("ret void", location),
+                LlValue::StaticDisplay(_) => unreachable!("static Capability function result"),
+                LlValue::Completed(value) | LlValue::Effect(value) => {
+                    body.terminator(&format!("ret i8 {value}"), location);
+                }
+                LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
+                LlValue::Version { value, .. }
+                | LlValue::SerializationStream { stream: value, .. }
+                | LlValue::Task { value, .. }
+                | LlValue::ExternalLocation { value, .. }
+                | LlValue::Int(value)
+                | LlValue::Modular { value, .. }
+                | LlValue::Rational(value)
+                | LlValue::Error(value)
+                | LlValue::ErrorDomain(value)
+                | LlValue::SourceLocation(value)
+                | LlValue::String(value)
+                | LlValue::Range { value, .. }
+                | LlValue::Result { value, .. }
+                | LlValue::Optional { value, .. }
+                | LlValue::TraversalControl { value, .. }
+                | LlValue::List { value, .. }
+                | LlValue::Container { value, .. } => {
+                    body.terminator(&format!("ret ptr {value}"), location);
+                }
+                LlValue::Comparison(value)
+                | LlValue::ErrorCode(value)
+                | LlValue::Enum { value, .. }
+                | LlValue::Function { value, .. }
+                | LlValue::Generator { value, .. } => {
+                    body.terminator(&format!("ret i32 {value}"), location);
+                }
+                LlValue::Tuple(fields) => {
+                    let CompilerType::Tuple(field_types) = &function.result_type else {
+                        unreachable!("checked Tuple result retains its Tuple type")
+                    };
+                    let aggregate = self.emit_tuple_aggregate(
+                        &fields,
+                        field_types,
+                        &mut body,
+                        function.body.result.span,
+                    );
+                    body.terminator(
+                        &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                        location,
+                    );
+                }
+                LlValue::Record { fields, order } => {
+                    let CompilerType::Record(field_types) = &function.result_type else {
+                        unreachable!("checked Record result retains its Record type")
+                    };
+                    let aggregate = self.emit_record_aggregate(
+                        &fields,
+                        &order,
+                        field_types,
+                        &mut body,
+                        function.body.result.span,
+                    );
+                    body.terminator(
+                        &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                        location,
+                    );
+                }
+                LlValue::Sum { .. } => {
+                    let aggregate =
+                        self.emit_sum_aggregate(&result, &mut body, function.body.result.span);
+                    body.terminator(
+                        &format!("ret {} {aggregate}", llvm_value_type(&function.result_type)),
+                        location,
+                    );
+                }
             }
         }
         self.functions.push(format!(
@@ -970,19 +1018,25 @@ impl<'a> Generator<'a> {
                         span,
                         &mut self.debug,
                     );
-                    match field_type {
-                        CompilerType::Tuple(nested_types) => {
-                            self.emit_tuple_extract(&field, nested_types, body, span)
-                        }
-                        CompilerType::Record(nested_types) => {
-                            self.emit_record_extract(&field, nested_types, body, span)
-                        }
-                        CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
-                        _ => machine_value(field_type, field),
-                    }
+                    self.emit_extracted_machine_value(&field, field_type, body, span)
                 })
                 .collect(),
         )
+    }
+
+    fn emit_extracted_machine_value(
+        &mut self,
+        value: &str,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        match value_type {
+            CompilerType::Tuple(fields) => self.emit_tuple_extract(value, fields, body, span),
+            CompilerType::Record(fields) => self.emit_record_extract(value, fields, body, span),
+            CompilerType::Sum(sum) => self.emit_sum_extract(value, sum, body, span),
+            _ => machine_value(value_type, value.to_owned()),
+        }
     }
 
     fn emit_record_aggregate(
@@ -1341,6 +1395,9 @@ impl<'a> Generator<'a> {
                             body,
                             binding.span,
                         );
+                    }
+                    if let LlValue::Function { captures, .. } = &value {
+                        environment.extend(captures.iter().cloned());
                     }
                     environment.insert(binding.storage_name.clone(), value);
                 }
@@ -3084,20 +3141,34 @@ impl<'a> Generator<'a> {
                 self.emit_binary(*operation, &left, &right, body, expression.span)
             }
             CompilerExpressionKind::Call { symbol, arguments } => {
+                let mut argument_environment = environment.clone();
                 let values = arguments
                     .iter()
-                    .map(|argument| self.emit_expression(argument, body, environment))
+                    .map(|argument| {
+                        let value = self.emit_expression(argument, body, &argument_environment);
+                        if let LlValue::Function { captures, .. } = &value {
+                            argument_environment.extend(captures.iter().cloned());
+                        }
+                        value
+                    })
                     .collect::<Vec<_>>();
-                let parameter_types = self
+                let target = self
                     .program
                     .functions
                     .iter()
                     .find(|function| function.symbol == *symbol)
-                    .expect("checked call target has a generated function")
+                    .expect("checked call target has a generated function");
+                let parameter_types = target
                     .parameters
                     .iter()
                     .map(|parameter| parameter.value_type.clone())
                     .collect::<Vec<_>>();
+                let result_capture_types = target
+                    .result_captures
+                    .iter()
+                    .map(|capture| capture.value_type.clone())
+                    .collect::<Vec<_>>();
+                let function_return_type = function_llvm_return_type(target);
                 debug_assert_eq!(values.len(), parameter_types.len());
                 let mut machine_arguments = Vec::with_capacity(values.len());
                 for (value, value_type) in values.iter().zip(&parameter_types) {
@@ -3144,6 +3215,48 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: scope_enumeration(),
                     },
+                    CompilerType::Function if !result_capture_types.is_empty() => {
+                        let aggregate = body.instruction(
+                            &format!("call fastcc {function_return_type} @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        let tag = body.instruction(
+                            &format!("extractvalue {function_return_type} {aggregate}, 0"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        let mut captures = Vec::with_capacity(result_capture_types.len());
+                        for (index, value_type) in result_capture_types.iter().enumerate() {
+                            let value = body.instruction(
+                                &format!(
+                                    "extractvalue {function_return_type} {aggregate}, {}",
+                                    index + 1
+                                ),
+                                expression.span,
+                                &mut self.debug,
+                            );
+                            let value = self.emit_extracted_machine_value(
+                                &value,
+                                value_type,
+                                body,
+                                expression.span,
+                            );
+                            captures.push((
+                                compiler_function_result_capture_storage(
+                                    symbol,
+                                    expression.span,
+                                    index,
+                                ),
+                                value,
+                            ));
+                        }
+                        LlValue::Function {
+                            value: tag,
+                            enumeration: function_value_enumeration(self.program),
+                            captures,
+                        }
+                    }
                     CompilerType::Function => LlValue::Enum {
                         value: body.instruction(
                             &format!("call fastcc i32 @{symbol}({arguments})"),
@@ -6440,6 +6553,9 @@ impl<'a> Generator<'a> {
             LlValue::Version { .. } => {
                 unreachable!("Version decision results are not admitted")
             }
+            LlValue::Function { .. } => {
+                unreachable!("captured Function decision results are not admitted")
+            }
             LlValue::SerializationStream { .. } => {
                 let payload_branches = branches
                     .iter()
@@ -6802,7 +6918,10 @@ impl<'a> Generator<'a> {
                 }
                 body.start_block(&done);
             }
-            LlValue::Enum { value, enumeration } => {
+            LlValue::Enum { value, enumeration }
+            | LlValue::Function {
+                value, enumeration, ..
+            } => {
                 self.emit_print_enum(value, enumeration, body, span);
             }
             LlValue::Generator { generator, .. } => {
@@ -8300,6 +8419,11 @@ enum LlValue {
         value: String,
         enumeration: CompilerEnumType,
     },
+    Function {
+        value: String,
+        enumeration: CompilerEnumType,
+        captures: Vec<(String, Self)>,
+    },
     Generator {
         value: String,
         generator: CompilerGeneratorType,
@@ -8415,10 +8539,10 @@ impl LlValue {
     }
 
     fn enumeration(&self) -> &str {
-        let Self::Enum { value, .. } = self else {
-            unreachable!("checked value is a nominal Enum")
-        };
-        value
+        match self {
+            Self::Enum { value, .. } | Self::Function { value, .. } => value,
+            _ => unreachable!("checked value has an enum-like observation tag"),
+        }
     }
 
     fn generator_token(&self) -> &str {
@@ -8579,6 +8703,7 @@ impl LlValue {
             Self::Comparison(value)
             | Self::ErrorCode(value)
             | Self::Enum { value, .. }
+            | Self::Function { value, .. }
             | Self::Generator { value, .. } => {
                 format!("i32 {value}")
             }
@@ -8884,6 +9009,7 @@ impl FunctionBody {
             LlValue::Comparison(value)
             | LlValue::ErrorCode(value)
             | LlValue::Enum { value, .. }
+            | LlValue::Function { value, .. }
             | LlValue::Generator { value, .. } => format!("i32 {value}"),
             LlValue::StaticDisplay(_)
             | LlValue::Tuple(_)
@@ -10346,6 +10472,25 @@ fn llvm_type(value_type: &CompilerType) -> String {
     match value_type {
         CompilerType::Unit => "void".into(),
         _ => llvm_value_type(value_type),
+    }
+}
+
+fn function_llvm_return_type(function: &CompilerFunction) -> String {
+    if function.result_type == CompilerType::Function && !function.result_captures.is_empty() {
+        format!(
+            "{{ {} }}",
+            std::iter::once("i32".to_owned())
+                .chain(
+                    function
+                        .result_captures
+                        .iter()
+                        .map(|capture| llvm_value_type(&capture.value_type))
+                )
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    } else {
+        llvm_type(&function.result_type)
     }
 }
 
@@ -12211,6 +12356,59 @@ mod tests {
         assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 3"));
         assert!(llvm.contains("!DILocalVariable(name: \"pair\", arg: 2"));
         assert!(!llvm.contains("DILocalVariable(name: \"operation capture"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_captured_function_results_as_exact_private_aggregates() {
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-results.t"
+        ))
+        .unwrap();
+        let scalar_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-scalars")
+            .unwrap();
+        let pair_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-pair")
+            .unwrap();
+        let forwarding = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-operation")
+            .unwrap();
+        let llvm = Generator::new(&program, "capturing-function-results.t").emit();
+
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ i32, ptr, ptr }} @{}(ptr %arg0, ptr %arg1)",
+            scalar_factory.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ i32, {{ ptr, ptr }} }} @{}({{ ptr, ptr }} %arg0)",
+            pair_factory.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ i32, ptr, ptr }} @{}(i32 %arg0, ptr %arg1, ptr %arg2)",
+            forwarding.symbol
+        )));
+        assert!(llvm.contains("call fastcc { i32, ptr, ptr }"));
+        assert!(llvm.contains("insertvalue { i32, ptr, ptr } poison, i32"));
+        assert!(llvm.contains("extractvalue { i32, ptr, ptr }"));
+        assert!(llvm.contains("insertvalue { i32, { ptr, ptr } }"));
+        assert!(llvm.contains("extractvalue { i32, { ptr, ptr } }"));
+        assert!(llvm.contains("!DILocalVariable(name: \"scalar-operation\""));
+        assert!(llvm.contains("!DILocalVariable(name: \"left\", arg: 2"));
+        assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 3"));
+        assert!(llvm.contains("!DILocalVariable(name: \"pair\", arg: 2"));
+        assert!(!llvm.contains("DILocalVariable(name: \"topal.function.result"));
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));
