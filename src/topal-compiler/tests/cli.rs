@@ -624,6 +624,89 @@ fn infinity_arithmetic_runtime_matches_interpreter_and_is_debuggable() {
     }
 }
 
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn dynamic_infinity_results_match_the_interpreter_and_are_debuggable() {
+    // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001,
+    // TOPAL-COMPILER-INFINITY-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("dynamic-infinity-results");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/dynamic-infinity-results.t");
+    let source_text = fs::read_to_string(&source).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break dynamic-infinity-results.t:20",
+            "-ex",
+            "run",
+            "-ex",
+            "next",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'int-success'",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'int-failure'",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'rational-success'",
+            "-ex",
+            "next",
+            "-ex",
+            "print 'rational-failure'",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let debugged = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "$1 = -Infinity",
+        "$2 = Error ( domain is root.*(Int,Int), code is indeterminate )",
+        "$3 = +Infinity",
+        "$4 = Error ( domain is root.*(Rational,Rational), code is indeterminate )",
+    ] {
+        assert!(debugged.contains(expected), "{debugged}");
+    }
+}
+
 #[test]
 fn unsupported_source_and_missing_llvm_do_not_publish_outputs() {
     // TOPAL-COMPILER-SUBSET-001, TOPAL-COMPILER-LLVM-001

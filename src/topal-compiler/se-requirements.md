@@ -4484,8 +4484,12 @@ compiled-library infinity boundaries shall remain explicitly unsupported.
 Closed root-scope negation, absolute value, addition, subtraction, and
 multiplication shall admit the statically proved total cases of
 `TOPAL-NUM-INFINITY-ARITHMETIC-001`; statically evident indeterminate cases
-shall be diagnostics. Dynamic indeterminate Results, division, remainder,
-power, and directional-zero arithmetic remain explicitly unsupported.
+shall be diagnostics. When one infinity is multiplied by a finite factor whose
+zero-ness is dynamic, the existing arithmetic Result ABI shall return code
+`indeterminate` with source provenance for zero and the correctly signed
+infinity for nonzero. Other dynamic indeterminate Results, division,
+remainder, power, and directional-zero arithmetic remain explicitly
+unsupported.
 
 The Linux x86-64 backend may lower these closed root-local values to immutable
 executable-private Int sentinels carrying reserved positive- and negative-
@@ -4493,10 +4497,14 @@ infinity tags with zero limbs. The checker shall prevent either sentinel from
 crossing a private machine signature, so the finite Int representation and
 `topal-native/6` function ABI remain unchanged. Runtime unary arithmetic,
 addition, subtraction, multiplication, comparison, zero testing, and output
-shall branch on the sentinel before finite sign, length, or limb handling; a
-violated checked indeterminate invariant shall fail closed. The existing opaque
-Range pointer representation shall retain the endpoints. All behavior shall be
-mandatory at O0 and use only the Topal-owned Linux syscall runtime, without a
+shall branch on the sentinel before finite sign, length, or limb handling.
+Dynamic multiplication helpers shall validate the infinity operand before
+Result construction, and a violated checked invariant shall fail closed. The
+backend shall append those helpers only when the checked program contains this
+fallible operation; unrelated O0 programs shall not compile or carry them. The
+existing opaque Range pointer representation shall retain the endpoints. All
+behavior shall be mandatory at O0 and use only the Topal-owned Linux syscall
+runtime, without a
 C/C++ runtime, other-language standard library, foreign allocator, undefined
 helper, needed library, dynamic relocation, public ABI, or native ABI revision.
 
@@ -4511,8 +4519,8 @@ Rational representation and machine ABI remain unchanged.
 DWARF and the bounded validating GDB renderer shall expose truthful `Int`,
 `Nat`, `Rational`, `Range Int`, and `Range Rational` source values and reject
 malformed sentinel or Rational-wrapper state.
-Tests shall use the unchanged shared interpreter regression, compare exact
-output, inspect checked and LLVM lowering, validate the complete corpus,
+Tests shall use shared interpreter regressions, compare exact output, inspect
+checked and LLVM lowering, validate the complete corpus,
 freestanding ELF, DWARF and GDB, and record separate interpreter execution plus
 compiler build/run resource baselines. Future compiled-library metadata shall
 describe language and numeric-domain revisions, infinity direction,
@@ -4521,7 +4529,7 @@ provenance, and native adapters independently of LLVM types, tags, headers, and
 symbols. This realizes `TOPAL-COMPILER-INFINITY-001`,
 `TOPAL-NUM-INFINITY-001`, `TOPAL-NUM-INFINITY-ARITHMETIC-001`, the infinity cases of `TOPAL-NUM-NAT-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-THREE-WAY-COMPARE-001`, and the applicable
-`TOPAL-RANGE-*` rules for compiler increments 2c-c1 through 2c-c3, 2d-b1, and
+`TOPAL-RANGE-*` rules for compiler increments 2c-c1 through 2c-c4, 2d-b1, and
 2d-b2.
 
 ## TOPAL-COMP-DECISION-001 — Comparison decisions

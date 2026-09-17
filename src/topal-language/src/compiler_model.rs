@@ -583,6 +583,7 @@ pub enum CompilerFallible {
     RationalPower,
     IntModulo,
     IntQuotientModulo,
+    InfinityMultiply,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -16162,10 +16163,27 @@ impl Analyzer {
                     ));
                 }
                 CompilerInfinityArithmeticOutcome::NeedsDynamicResult => {
-                    return Err(unsupported(
-                        &self.source,
+                    let error_span = if compiler_infinity_direction(&left_value).is_none() {
+                        left_value.span
+                    } else {
+                        right_value.span
+                    };
+                    let success_type = if rational_domain {
+                        left_value = into_rational(left_value);
+                        right_value = into_rational(right_value);
+                        CompilerType::Rational
+                    } else {
+                        left_value = forget_nat_evidence(left_value);
+                        right_value = forget_nat_evidence(right_value);
+                        CompilerType::Int
+                    };
+                    return Ok(Self::finish_fallible_binary(
+                        CompilerFallible::InfinityMultiply,
+                        left_value,
+                        right_value,
+                        success_type,
                         span,
-                        "dynamic indeterminate infinity Result",
+                        error_span,
                     ));
                 }
                 CompilerInfinityArithmeticOutcome::Direction(_) => {}
@@ -22140,6 +22158,47 @@ mod tests {
             function.body.result.kind,
             CompilerExpressionKind::ResultSuccess(_)
         )));
+    }
+
+    #[test]
+    fn models_dynamic_infinity_multiplication_as_fallible_results() {
+        // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/dynamic-infinity-results.t"
+        ))
+        .unwrap();
+        let binding = |name: &str| {
+            program
+                .main
+                .statements
+                .iter()
+                .find_map(|statement| match statement {
+                    CompilerStatement::Binding(binding) if binding.name == name => Some(binding),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("the shared regression binds `{name}`"))
+        };
+
+        for (name, success_type) in [
+            ("int-success", CompilerType::Int),
+            ("int-failure", CompilerType::Int),
+            ("rational-success", CompilerType::Rational),
+            ("rational-failure", CompilerType::Rational),
+        ] {
+            let value = &binding(name).value;
+            assert_eq!(
+                value.value_type,
+                CompilerType::Result(Box::new(success_type))
+            );
+            assert!(matches!(
+                value.kind,
+                CompilerExpressionKind::Fallible {
+                    operation: CompilerFallible::InfinityMultiply,
+                    ..
+                }
+            ));
+        }
     }
 
     #[test]

@@ -2095,6 +2095,9 @@ total case in `TOPAL-NUM-INFINITY-ARITHMETIC-001`. A finite Int beside a
 Rational infinity shall use the canonical exact embedding, while an Int
 infinity shall not convert domains implicitly. Statically evident opposite-sum,
 same-direction subtraction, and zero-product forms shall report
-`E-INDETERMINATE-INFINITY`; division and dynamic indeterminate Results remain
+`E-INDETERMINATE-INFINITY`. When multiplication's finite factor is dynamic,
+zero shall instead produce the ordinary arithmetic Result failure with code
+`indeterminate` and source provenance, while nonzero shall produce the signed
+infinity success. Division and other dynamic indeterminate Result paths remain
 explicitly unsupported. Formal traces and reversible scripted-debugger history
-shall cover the unchanged shared interpreter/compiler example.
+shall cover the shared interpreter/compiler examples.

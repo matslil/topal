@@ -13358,7 +13358,15 @@ fn apply_binary(
     ) {
         return apply_comparison(source, kind, left, right, span, trace);
     }
-    if let Some(result) = apply_infinity_binary(source, kind, &left, &right, span, trace) {
+    if let Some(result) = apply_infinity_binary(
+        source,
+        kind,
+        &left,
+        &right,
+        span,
+        (left_span, right_span),
+        trace,
+    ) {
         return result;
     }
     match (left, right) {
@@ -13570,12 +13578,89 @@ fn infinity_operator_selection(kind: CallableKind, rational: bool) -> &'static s
     }
 }
 
+fn closed_numeric_literal(source: &SourceText, span: Span) -> bool {
+    let lexeme = source.slice(span);
+    if parse_integer(lexeme).is_some() || parse_rational(lexeme).is_some() {
+        return true;
+    }
+    let Some(operand) = lexeme.strip_prefix("Rational").map(str::trim) else {
+        return false;
+    };
+    if parse_integer(operand).is_some() {
+        return true;
+    }
+    let Some(components) = operand
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+    else {
+        return false;
+    };
+    let Some((numerator, denominator)) = components.split_once(',') else {
+        return false;
+    };
+    parse_integer(numerator.trim()).is_some()
+        && parse_integer(denominator.trim()).is_some_and(|value| value != BigInt::from(0))
+}
+
+fn dynamic_infinity_zero_span(
+    source: &SourceText,
+    kind: CallableKind,
+    operands: (InfinityArithmeticOperand, InfinityArithmeticOperand),
+    operand_spans: (Span, Span),
+) -> Option<Span> {
+    if kind != CallableKind::Multiply {
+        return None;
+    }
+    match operands {
+        (InfinityArithmeticOperand::Finite(Ordering::Equal), _) => Some(operand_spans.0),
+        (_, InfinityArithmeticOperand::Finite(Ordering::Equal)) => Some(operand_spans.1),
+        _ => None,
+    }
+    .filter(|zero_span| !closed_numeric_literal(source, *zero_span))
+}
+
+fn dynamic_infinity_error(
+    source: &SourceText,
+    rational: bool,
+    selection: &str,
+    zero_span: Span,
+    trace: &mut impl TraceSink,
+) -> Value {
+    trace.record(TraceEvent {
+        event: "operator.selected",
+        rule: "TOPAL-TYPE-CALL-001",
+        detail: selection,
+    });
+    trace.record(TraceEvent {
+        event: "numeric.infinity.arithmetic",
+        rule: "TOPAL-NUM-INFINITY-ARITHMETIC-001",
+        detail: callable_name(CallableKind::Multiply),
+    });
+    trace.record(TraceEvent {
+        event: "result.error.constructed",
+        rule: "TOPAL-TYPE-RESULT-001",
+        detail: if rational {
+            "root.*(Rational,Rational);indeterminate"
+        } else {
+            "root.*(Int,Int);indeterminate"
+        },
+    });
+    let position = source.position(zero_span.start);
+    Value::Error {
+        domain: selection.to_owned(),
+        code: "indeterminate".to_owned(),
+        line: position.line,
+        column: position.column,
+    }
+}
+
 fn apply_infinity_binary(
     source: &SourceText,
     kind: CallableKind,
     left: &Value,
     right: &Value,
     span: Span,
+    operand_spans: (Span, Span),
     trace: &mut impl TraceSink,
 ) -> Option<Result<Value, Diagnostic>> {
     if !matches!(left, Value::Infinity { .. }) && !matches!(right, Value::Infinity { .. }) {
@@ -13628,7 +13713,13 @@ fn apply_infinity_binary(
         };
         (left, right)
     };
+    let selection = infinity_operator_selection(kind, rational);
     let Some(negative) = infinity_arithmetic_direction(kind, operands.0, operands.1) else {
+        if let Some(zero_span) = dynamic_infinity_zero_span(source, kind, operands, operand_spans) {
+            return Some(Ok(dynamic_infinity_error(
+                source, rational, selection, zero_span, trace,
+            )));
+        }
         return Some(Err(diagnostic(
             source,
             "E-INDETERMINATE-INFINITY",
@@ -13639,7 +13730,7 @@ fn apply_infinity_binary(
     trace.record(TraceEvent {
         event: "operator.selected",
         rule: "TOPAL-TYPE-CALL-001",
-        detail: infinity_operator_selection(kind, rational),
+        detail: selection,
     });
     trace.record(TraceEvent {
         event: "numeric.infinity.arithmetic",
@@ -21108,4 +21199,17 @@ fn exact_infinity_arithmetic_preserves_direction_and_rejects_indeterminate_forms
             "unexpected diagnostic for {invalid:?}"
         );
     }
+}
+
+#[test]
+fn dynamic_infinity_multiplication_returns_indeterminate_results() {
+    // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001
+    let source = include_str!("../../../examples/language/dynamic-infinity-results.t");
+    assert_eq!(
+        Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "(-Infinity, Error ( domain is root.*(Int,Int), code is indeterminate ), +Infinity, Error ( domain is root.*(Rational,Rational), code is indeterminate ))"
+    );
 }

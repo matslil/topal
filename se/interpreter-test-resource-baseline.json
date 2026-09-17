@@ -1071,6 +1071,11 @@
       "cpu_time_ns": 7450040,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/dynamic-infinity-results.t": {
+      "cpu_time_ns": 6419500,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
     }
   }
 }
