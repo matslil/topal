@@ -11966,6 +11966,65 @@ mod tests {
     }
 
     #[test]
+    fn emits_anonymous_captures_and_results_as_exact_private_calls() {
+        // TOPAL-COMPILER-ANONYMOUS-CAPTURE-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-function-captures.t"
+        ))
+        .unwrap();
+        let captured = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function
+                        .parameters
+                        .iter()
+                        .any(|parameter| parameter.name == "offset")
+            })
+            .unwrap();
+        let factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-double")
+            .unwrap();
+        let returned = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function.parameters.len() == 1
+                    && function.parameters[0].name == "value"
+            })
+            .unwrap();
+        let llvm = Generator::new(&program, "anonymous-function-captures.t").emit();
+
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1)",
+            captured.symbol
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr")
+                && line.contains(&format!("@{}(ptr %arg1, ptr %arg0)", captured.symbol))
+        }));
+        assert!(llvm.contains(&format!("define internal fastcc i32 @{}()", factory.symbol)));
+        assert!(llvm.contains(&format!("call fastcc i32 @{}()", factory.symbol)));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0)",
+            returned.symbol
+        )));
+        assert!(llvm.lines().any(|line| {
+            line.contains("call fastcc ptr") && line.contains(&format!("@{}(", returned.symbol))
+        }));
+        assert!(llvm.contains("!DILocalVariable(name: \"offset\", arg: 2"));
+        assert!(llvm.contains("!DILocalVariable(name: \"twice\""));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nested_functions_with_exact_private_capture_parameters() {
         // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
         // TOPAL-COMPILER-DEBUG-001

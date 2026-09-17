@@ -2110,3 +2110,13 @@ shall preserve their callable identity through later binding and application
 under `TOPAL-FUNCTION-VALUE-001` and `TOPAL-FUNCTION-CALLABLE-VALUE-001`.
 Formal traces and reversible scripted-debugger history shall cover the shared
 named/symbolic Function-result example.
+
+## TOPAL-INTP-SUBSET-255 — Anonymous capture and result values
+
+All source modes shall retain an inferred anonymous function's immutable
+lexical environment from construction, including when the function is bound
+before direct application. An ordinary function may return a non-capturing
+anonymous Function, and later binding and application shall preserve its body,
+arity, and callable identity under `TOPAL-FUNCTION-ANONYMOUS-001` and
+`TOPAL-FUNCTION-VALUE-001`. Formal traces and reversible scripted-debugger
+history shall cover the shared capture/result example.

@@ -1272,6 +1272,7 @@ struct InterfaceSource {
 #[derive(Clone)]
 struct BindingFacts {
     storage_name: String,
+    origin: usize,
     runtime_bound: bool,
     value_type: CompilerType,
     int_range: Option<IntRange>,
@@ -8437,6 +8438,7 @@ impl Analyzer {
             name_text.clone(),
             BindingFacts {
                 storage_name: format!("topal.nested.function.{}.{}", name.start, name_text),
+                origin: name.start,
                 runtime_bound: false,
                 value_type: CompilerType::Function,
                 int_range: None,
@@ -8784,6 +8786,7 @@ impl Analyzer {
                     let infinity_negative = compiler_infinity_direction(&value);
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
+                        origin: name.start,
                         runtime_bound: !external_static
                             && !compiler_type_contains_static_only(&value.value_type),
                         value_type: value.value_type.clone(),
@@ -8904,6 +8907,7 @@ impl Analyzer {
                         };
                         let facts = BindingFacts {
                             storage_name: storage_name.clone(),
+                            origin: name.start,
                             runtime_bound: true,
                             value_type: value.value_type.clone(),
                             int_range: value.int_range.clone(),
@@ -9645,6 +9649,7 @@ impl Analyzer {
                 parameter_name,
                 BindingFacts {
                     storage_name: parameter.name.clone(),
+                    origin: parameter.span.start,
                     runtime_bound: true,
                     value_type,
                     int_range: None,
@@ -9697,6 +9702,7 @@ impl Analyzer {
                 parameter_name,
                 BindingFacts {
                     storage_name: parameter.name.clone(),
+                    origin: binding.start,
                     runtime_bound: true,
                     value_type,
                     int_range: None,
@@ -10247,6 +10253,7 @@ impl Analyzer {
             parameter_name.clone(),
             BindingFacts {
                 storage_name: storage_name.clone(),
+                origin: span.start,
                 runtime_bound: true,
                 value_type: base_type.clone(),
                 int_range: None,
@@ -14470,6 +14477,7 @@ impl Analyzer {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Pattern binding and capture checks stay beside body analysis.
     fn analyze_collection_function(
         &mut self,
         parameters: &[AnonymousPattern],
@@ -14549,7 +14557,12 @@ impl Analyzer {
                 ));
             }
             if !discarded {
-                environment = decision_binding_environment(&environment, &name, value_type.clone());
+                environment = decision_binding_environment(
+                    &environment,
+                    &name,
+                    value_type.clone(),
+                    name_span.start,
+                );
             }
             lowered.push(CompilerParameter {
                 name,
@@ -15814,13 +15827,6 @@ impl Analyzer {
                 "an anonymous Function value accepts exactly one direct or product operand",
             ));
         };
-        if !captures.is_empty() {
-            return Err(unsupported(
-                &self.source,
-                declaration_span,
-                "lexically capturing anonymous function",
-            ));
-        }
         if let Some(pattern_span) = parameters.iter().find_map(|parameter| match parameter {
             AnonymousPattern::Binding(_) => None,
             AnonymousPattern::Product { span, .. } => Some(*span),
@@ -15833,7 +15839,7 @@ impl Analyzer {
         }
 
         let argument = self.analyze_expression(argument_source, call_environment)?;
-        let arguments = if parameters.len() == 1 {
+        let mut arguments = if parameters.len() == 1 {
             vec![argument]
         } else if let CompilerExpressionKind::Tuple(values) = argument.kind {
             values
@@ -15911,6 +15917,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        origin: name_span.start,
                         runtime_bound: true,
                         value_type: argument.value_type.clone(),
                         int_range: argument.int_range.clone(),
@@ -15937,6 +15944,60 @@ impl Analyzer {
                 value_type: argument.value_type.clone(),
                 int_range: argument.int_range.clone(),
                 span: *name_span,
+            });
+        }
+
+        for (name, capture) in captures {
+            if !capture.runtime_bound
+                || !compiler_function_result_supported(&capture.value_type)
+                || compiler_type_contains_generator(&capture.value_type)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    declaration_span,
+                    &format!(
+                        "anonymous Function capture `{name}` without an admitted private representation"
+                    ),
+                ));
+            }
+            let current = binding_facts_by_storage(call_environment, &capture.storage_name)
+                .filter(|current| {
+                    current.origin == capture.origin
+                        && current.runtime_bound
+                        && current.value_type == capture.value_type
+                })
+                .ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        declaration_span,
+                        &format!(
+                            "anonymous Function capture `{name}` outside its defining invocation"
+                        ),
+                    )
+                })?;
+            arguments.push(CompilerExpression {
+                kind: current.infinity_negative.map_or_else(
+                    || CompilerExpressionKind::Local(current.storage_name.clone()),
+                    |negative| CompilerExpressionKind::InfinityLocal {
+                        storage_name: current.storage_name.clone(),
+                        negative,
+                    },
+                ),
+                value_type: current.value_type.clone(),
+                int_range: current.int_range.clone(),
+                rational_value: current.rational_value.clone(),
+                span: declaration_span,
+            });
+
+            let mut capture_parameter_facts = capture.clone();
+            capture_parameter_facts.storage_name.clone_from(name);
+            environment.insert(name.clone(), capture_parameter_facts);
+            lowered_parameters.push(CompilerParameter {
+                name: name.clone(),
+                discarded: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: declaration_span,
             });
         }
 
@@ -17726,6 +17787,7 @@ impl Analyzer {
                     name.clone(),
                     BindingFacts {
                         storage_name: name.clone(),
+                        origin: parameter.name.start,
                         runtime_bound: true,
                         value_type: expected.clone(),
                         int_range: (!generalize_parameters)
@@ -17780,6 +17842,7 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
                     runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
@@ -17817,6 +17880,7 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
                     runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
@@ -17853,6 +17917,7 @@ impl Analyzer {
                 capture.parameter_name.clone(),
                 BindingFacts {
                     storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
                     runtime_bound: true,
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
@@ -18403,7 +18468,7 @@ impl Analyzer {
                         })
                 }
                 CompilerCallableFacts::Symbolic(_) => true,
-                CompilerCallableFacts::Anonymous { .. } => false,
+                CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
             };
             if !supported {
                 return Err(unsupported(
@@ -18759,8 +18824,12 @@ impl Analyzer {
                     ..
                 } if some.is_none() => {
                     let name = self.source.slice(binding).to_owned();
-                    let branch =
-                        decision_binding_environment(environment, &name, payload_type.clone());
+                    let branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        payload_type.clone(),
+                        binding.start,
+                    );
                     some = Some((
                         name,
                         binding,
@@ -18864,12 +18933,17 @@ impl Analyzer {
                             "the List entry and remaining List bindings must be distinct",
                         ));
                     }
-                    let branch =
-                        decision_binding_environment(environment, &first_name, CompilerType::Int);
+                    let branch = decision_binding_environment(
+                        environment,
+                        &first_name,
+                        CompilerType::Int,
+                        first.start,
+                    );
                     let branch = decision_binding_environment(
                         &branch,
                         &rest_name,
                         CompilerType::List(Box::new(CompilerType::Int)),
+                        rest.start,
                     );
                     entry = Some((
                         ((first_name, first), (rest_name, rest)),
@@ -19143,7 +19217,7 @@ impl Analyzer {
                 continue;
             }
             let binding = binding.map(|binding| (self.source.slice(binding).to_owned(), binding));
-            let branch = if let Some((name, _)) = &binding {
+            let branch = if let Some((name, binding_span)) = &binding {
                 decision_binding_environment(
                     environment,
                     name,
@@ -19151,6 +19225,7 @@ impl Analyzer {
                         .payload
                         .clone()
                         .expect("payload matcher selected a payload alternative"),
+                    binding_span.start,
                 )
             } else {
                 environment.clone()
@@ -19209,8 +19284,12 @@ impl Analyzer {
                     ..
                 } if ok.is_none() => {
                     let name = self.source.slice(binding).to_owned();
-                    let branch =
-                        decision_binding_environment(environment, &name, success_type.clone());
+                    let branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        success_type.clone(),
+                        binding.start,
+                    );
                     ok = Some((
                         name,
                         binding,
@@ -19223,8 +19302,12 @@ impl Analyzer {
                     ..
                 } if error_fallback.is_none() => {
                     let name = self.source.slice(binding).to_owned();
-                    let branch =
-                        decision_binding_environment(environment, &name, CompilerType::Error);
+                    let branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        CompilerType::Error,
+                        binding.start,
+                    );
                     error_fallback = Some((
                         name,
                         binding,
@@ -20553,12 +20636,14 @@ fn decision_binding_environment(
     environment: &BTreeMap<String, BindingFacts>,
     name: &str,
     value_type: CompilerType,
+    origin: usize,
 ) -> BTreeMap<String, BindingFacts> {
     let mut branch = environment.clone();
     branch.insert(
         name.to_owned(),
         BindingFacts {
             storage_name: name.to_owned(),
+            origin,
             runtime_bound: true,
             value_type,
             int_range: None,
@@ -29625,7 +29710,6 @@ mod tests {
         );
 
         for rejected in [
-            "use language (version is v0.1)\nconstruct is fn () -> Function\n  { value } value + 1\nconstruct ()\n",
             "use language (version is v0.1)\nouter is fn () -> Function\n  inner is fn (value : Int) -> Int\n    value + 1\n  inner\nouter ()\n",
             "use language (version is v0.1)\npair is fn (operation : Function) -> (Function, Int)\n  (operation, 1)\npair +\n",
         ] {
@@ -29692,17 +29776,78 @@ mod tests {
                 .any(|function| function.source_name == "<anonymous fn/1>")
         );
 
-        let capture = analyze_for_compiler(
-            "use language (version is v0.1)\noffset is 1\nincrement is { value } value + offset\nincrement 41\n",
-        )
-        .unwrap_err();
-        assert_eq!(capture.code, "E-COMPILER-UNSUPPORTED");
-
         let arity = analyze_for_compiler(
             "use language (version is v0.1)\ncombine is { left, right } left + right\ncombine 42\n",
         )
         .unwrap_err();
         assert_eq!(arity.code, "E-ANONYMOUS-ARGUMENT-PACKAGE");
+    }
+
+    #[test]
+    fn models_private_anonymous_captures_and_noncapturing_results() {
+        // TOPAL-COMPILER-ANONYMOUS-CAPTURE-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-function-captures.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected captured and returned anonymous calls")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
+
+        let captured = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function
+                        .parameters
+                        .iter()
+                        .any(|parameter| parameter.name == "offset")
+            })
+            .unwrap();
+        assert_eq!(captured.parameters.len(), 2);
+        assert_eq!(captured.parameters[0].name, "input");
+        assert_eq!(captured.parameters[1].name, "offset");
+        assert!(
+            captured
+                .parameters
+                .iter()
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        );
+
+        let factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-double")
+            .unwrap();
+        assert_eq!(factory.result_type, CompilerType::Function);
+        assert!(matches!(
+            factory.body.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::FunctionValue(_),
+                value_type: CompilerType::Function,
+                ..
+            }
+        ));
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "<anonymous fn/1>"
+                && function.parameters.len() == 1
+                && function.parameters[0].name == "value"
+        }));
+
+        for rejected in [
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
+            "use language (version is v0.1)\napply is fn (operation : Function, value : Int) -> Int\n  operation value\nwith-offset is fn (offset : Int, value : Int) -> Int\n  operation : Function is { input } input + offset\n  apply (operation, value)\nwith-offset (1, 41)\n",
+            "use language (version is v0.1)\nwith-shadow is fn (offset : Int) -> Int\n  operation : Function is { value } value + offset\n  {\n    offset is 100\n    operation 41\n  }\nwith-shadow 1\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(rejected).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
