@@ -132,6 +132,7 @@ based-integer   ::= ( "0b" bindigits | "0o" octdigits | "0x" hexdigits ) ;
 rational        ::= decimal-integer "." fractional exponent?
                   | decimal-integer exponent ;
 signed-number   ::= "-" ( decimal-integer | based-integer | rational ) ;
+infinity        ::= "+Infinity" | "-Infinity" ;
 fractional      ::= digit+ | digit{3} ( "_" digit{3} )* ( "_" digit{1,2} )? ;
 exponent        ::= ( "e" | "E" ) ( "+" | "-" )? decimal-integer ;
 ```
@@ -141,9 +142,10 @@ groups of four separated at every boundary, with an initial group of one to
 four digits. Unsigned integer literals denote exact nonnegative `Int` values;
 signed integer literals denote their exact additive inverse. Fractional and
 exponent forms denote the exact rational represented by their decimal
-expansion, with an adjacent sign included before reduction. A lexeme matching
-no complete production is rejected rather than split into adjacent numeric
-tokens.
+expansion, with an adjacent sign included before reduction. Infinity lexemes
+denote the contextual exact constants specified by `TOPAL-NUM-INFINITY-001`.
+A lexeme matching no complete production is rejected rather than split into
+adjacent numeric tokens.
 
 ### TOPAL-SYN-STRING-001 — String literals
 

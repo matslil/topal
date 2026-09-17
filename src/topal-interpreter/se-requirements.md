@@ -2058,3 +2058,16 @@ offsets, layout-backed values, and checked locations under `TOPAL-LAYOUT-*`,
 `TOPAL-ADDRESS-RANGE-001`, and `TOPAL-LOCATION-*`. Reads and writes shall retain
 layout evidence and stable ordered trace decisions. LSP validation and
 reversible scripted-debugger history shall cover a commented example.
+
+## TOPAL-INTP-SUBSET-251 — Contextual exact infinities and range endpoints
+
+All source modes shall recognize exact `+Infinity` and `-Infinity` constants,
+require an immediate numeric classification, admit both for `Int` and only the
+positive direction for `Nat`, and preserve their ordinary numeric identity,
+canonical display, equality, and total order under `TOPAL-NUM-INFINITY-001`.
+Explicit `Range Int` construction, membership, intersection, emptiness, and
+bound observation shall accept those values as endpoints without treating them
+as absent bounds.
+Unsupported infinity arithmetic and unsupported classifier or function
+boundaries shall fail explicitly. LSP validation and reversible scripted-
+debugger history shall cover the shared commented example.

@@ -25,6 +25,7 @@ pub enum TokenKind {
     Boolean,
     Integer,
     Rational,
+    Infinity,
     Version,
     String,
     LeftParen,
@@ -178,6 +179,20 @@ fn next_token(rest: &str, left_delimited: bool) -> (TokenKind, usize) {
 
 fn next_nonstructural_token(rest: &str, first: char, left_delimited: bool) -> (TokenKind, usize) {
     match first {
+        '+' | '-'
+            if left_delimited
+                && rest
+                    .strip_prefix(if first == '+' {
+                        "+Infinity"
+                    } else {
+                        "-Infinity"
+                    })
+                    .is_some_and(|remaining| {
+                        remaining.chars().next().is_none_or(is_token_boundary)
+                    }) =>
+        {
+            (TokenKind::Infinity, "+Infinity".len())
+        }
         '-' if rest[1..].starts_with(|c: char| c.is_ascii_digit()) => {
             let (kind, length) = take_number(&rest[1..]);
             (kind, length + 1)
@@ -348,6 +363,30 @@ mod tests {
             .into_iter()
             .map(|token| token.kind)
             .collect()
+    }
+
+    #[test]
+    fn tokenizes_reserved_infinity_constants_without_splitting_their_signs() {
+        assert_eq!(
+            kinds("+Infinity -Infinity"),
+            vec![
+                TokenKind::Infinity,
+                TokenKind::Whitespace,
+                TokenKind::Infinity,
+            ]
+        );
+        assert_eq!(
+            kinds("+ Infinity"),
+            vec![
+                TokenKind::Plus,
+                TokenKind::Whitespace,
+                TokenKind::Identifier,
+            ]
+        );
+        assert_eq!(
+            kinds("1+Infinity"),
+            vec![TokenKind::Integer, TokenKind::Identifier]
+        );
     }
 
     #[test]

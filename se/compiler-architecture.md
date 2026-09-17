@@ -335,6 +335,22 @@ values but is not the final reclamation policy; ownership-aware reclamation is
 admitted with the container and closure representations that make reachability
 nontrivial.
 
+The initial infinity increment keeps that finite representation and every
+private function signature unchanged. A contextual root-local exact infinity
+is retained in the checked model as an internal `InfiniteInt` or `InfiniteNat`
+proof type, then lowered to one immutable executable-private Int-shaped
+sentinel: sign tag 2 denotes positive infinity, sign tag 3 denotes negative
+infinity, and both require zero limbs. No sentinel is admitted at a function,
+library, persistence, or serialization boundary. Runtime comparison and output
+test these tags before entering finite limb logic; the existing opaque Range
+header can therefore retain them as exact endpoints. LLVM still owns pointer
+placement and instruction selection, while the frontend owns the closed
+semantic admission boundary. Because the tags cannot appear in a
+`topal-native/6` signature and change no finite object, this executable-local
+representation does not revise that ABI. Future boundary admission requires
+canonical metadata for the numeric domain and infinity semantics rather than
+publishing these tags.
+
 Finite `Rational` values are immutable objects containing two private Int
 pointers: a coprime numerator and a positive denominator. The compiler emits
 each literal component as relocation-free Int data, then constructs the
@@ -1598,7 +1614,7 @@ validated semantic interface.
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
-| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, checked external Location headers, and bundled renderers for private Int, Rational, finite exact Range, modular, active sum, native-stream, and location values |
+| DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, checked external Location headers, and bundled renderers for private finite/infinite Int, Rational, exact Range, modular, active sum, native-stream, and location values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
 | `llvm.memcpy.inline` | used | target-qualified dynamic String copies while retaining LLVM's guarantee that lowering calls no external function |
 | `llvm-readobj` / `llvm-objdump` | test and qualification use | object, dependency, symbol, and line-table inspection |

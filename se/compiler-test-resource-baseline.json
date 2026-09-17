@@ -2096,6 +2096,16 @@
       "cpu_time_ns": 151442,
       "memory_peak_bytes": 18669568,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/infinity-values-and-ranges.t": {
+      "cpu_time_ns": 129221340,
+      "memory_peak_bytes": 42409984,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/infinity-values-and-ranges.t": {
+      "cpu_time_ns": 160434,
+      "memory_peak_bytes": 18714624,
+      "samples_per_test": 500
     }
   }
 }
