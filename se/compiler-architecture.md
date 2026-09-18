@@ -159,10 +159,9 @@ while its source spelling remains the DWARF variable name. Qualified data
 selection carries that key into the checked expression, so LLVM reuses the
 already-emitted SSA value even through a caller lexical shadow; it neither
 replays the initializer nor consults a namespace object. Entry-frame SSA is not
-valid in an independently callable function, so direct function-body access
-through qualified `root member` remains rejected until root storage receives an
-explicit cross-function representation compatible with compiled-library
-interfaces.
+valid in an independently callable function; direct source-root selection keeps
+using this storage identity, while the first function-body increment below
+provides an explicit private cross-frame representation.
 
 The first general Scope-parameter increment crosses that frame boundary by
 specialization rather than by inventing a public namespace object. At each
@@ -193,8 +192,27 @@ parameters under `fastcc`; its body binds them under distinct `@ member` storage
 keys, so neither caller locals nor ordinary same-named parameters can intercept
 selection. DWARF uses the source spelling `@ member`. This is private closure
 conversion without an environment object: cross-function forwarding,
-aggregate/callable capture, escape, qualified root access, and public/library
-contexts remain deferred to the unified closure and compiled-library ABI.
+aggregate/callable capture, escape, qualified root access outside the exact
+direct-entry data case below, and public/library contexts remain deferred to the
+unified closure and compiled-library ABI.
+
+Direct function-body `root member` data selection uses a related but
+deliberately different private capture. Resolution observes the live
+source-session root at the direct entry-frame call, so a member initialized
+after the function declaration but before invocation is eligible. The frontend
+scans exact root data selections, orders their already-evaluated storage values
+by root declaration position, and appends exact `fastcc` parameters bound under
+distinct `root member` names. A same-named explicit parameter cannot intercept
+the selection, and DWARF exposes both values independently. This is
+call-position root closure conversion, not defining-context capture: it creates
+no global, namespace table, lookup, allocation, or initializer replay, and LLVM
+retains authority over AMD64 physical placement. Cross-function forwarding and
+members without a complete private machine representation remain rejected. A
+future compiled-library boundary must encode source-session namespace identity,
+selection/call positions, stable member identity, visibility/declaration order,
+canonical classifier and representation, capture order/lifetime/effects, and a
+versioned target adapter independently of private parameter names, LLVM types
+or symbols, and physical placement.
 
 Named function values similarly split observable identity from call lowering.
 The checked binding retains the original declaration vector and application

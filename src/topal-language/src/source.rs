@@ -775,6 +775,7 @@ pub struct Session {
     bindings: BTreeMap<String, Value>,
     functions: Box<BTreeMap<String, Vec<UserFunction>>>,
     generators: Box<BTreeMap<String, Vec<UserGenerator>>>,
+    root_namespace: Option<Rc<NamespaceValue>>,
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
     documentation: Box<BTreeMap<String, String>>,
@@ -1069,6 +1070,17 @@ enum BindingOutcome {
 }
 
 impl Session {
+    fn effective_root_namespace(&self) -> Rc<NamespaceValue> {
+        self.root_namespace.clone().unwrap_or_else(|| {
+            Rc::new(NamespaceValue {
+                name: "root".into(),
+                bindings: self.bindings.clone(),
+                functions: (*self.functions).clone(),
+                generators: (*self.generators).clone(),
+            })
+        })
+    }
+
     fn layout_attributes(
         &self,
         source: &SourceText,
@@ -1726,6 +1738,7 @@ impl Session {
             bindings: generator.bindings.clone(),
             functions: Box::new(snapshot.definition.handlers.clone()),
             generators: Box::new(snapshot.definition.streams.clone()),
+            root_namespace: Some(self.effective_root_namespace()),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -1802,6 +1815,7 @@ impl Session {
             bindings: function.bindings.clone(),
             functions: Box::new(definition.handlers.clone()),
             generators: self.generators.clone(),
+            root_namespace: Some(self.effective_root_namespace()),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -2687,6 +2701,7 @@ impl Session {
             bindings: bindings.clone(),
             functions: Box::new(BTreeMap::new()),
             generators: Box::new(BTreeMap::new()),
+            root_namespace: None,
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
             documentation: Box::new(BTreeMap::new()),
@@ -3040,6 +3055,7 @@ impl Session {
                         bindings: self.bindings.clone(),
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
+                        root_namespace: Some(self.effective_root_namespace()),
                         declared_names: self.declared_names.clone(),
                         published_names: self.published_names.clone(),
                         documentation: self.documentation.clone(),
@@ -3880,6 +3896,7 @@ impl Session {
                         bindings: generator.bindings,
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
+                        root_namespace: Some(self.effective_root_namespace()),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
                         documentation: self.documentation.clone(),
@@ -4982,12 +4999,7 @@ impl Session {
                 rule: "TOPAL-NAMESPACE-ROOT-001",
                 detail: "root",
             });
-            return Ok(Value::Namespace(Rc::new(NamespaceValue {
-                name: "root".into(),
-                bindings: self.bindings.clone(),
-                functions: (*self.functions).clone(),
-                generators: (*self.generators).clone(),
-            })));
+            return Ok(Value::Namespace(self.effective_root_namespace()));
         }
         if name == "Completed" {
             trace.record(TraceEvent {
@@ -5339,13 +5351,39 @@ impl Session {
             unreachable!("preselected root-qualified application")
         };
         let member_name = source.slice(*member);
+        let namespace = self.effective_root_namespace();
+        if !namespace.bindings.contains_key(member_name)
+            && !namespace.functions.contains_key(member_name)
+            && !namespace.generators.contains_key(member_name)
+        {
+            let names = namespace
+                .bindings
+                .keys()
+                .chain(namespace.functions.keys())
+                .chain(namespace.generators.keys());
+            let error = diagnostic(
+                source,
+                "E-NAMESPACE-MEMBER-NOT-FOUND",
+                *member,
+                format!("namespace `root` has no member `{member_name}`"),
+            );
+            return Err(
+                closest_name(member_name, names).map_or(error.clone(), |candidate| {
+                    error.with_help(format!("did you mean `{candidate}`?"))
+                }),
+            );
+        }
         trace.record(TraceEvent {
             event: "namespace.member.resolved",
             rule: "TOPAL-NAMESPACE-ROOT-001",
             detail: member_name,
         });
+        let mut qualified = self.clone();
+        qualified.bindings = namespace.bindings.clone();
+        *qualified.functions = namespace.functions.clone();
+        *qualified.generators = namespace.generators.clone();
         if remainder.is_empty() {
-            return self.resolve_identifier(source, *member, trace);
+            return qualified.resolve_identifier(source, *member, trace);
         }
         let expression = Expression::Application {
             items: std::iter::once(Expression::Identifier(*member))
@@ -5353,7 +5391,7 @@ impl Session {
                 .collect(),
             span,
         };
-        self.evaluate_expression(source, &expression, trace)
+        qualified.evaluate_expression(source, &expression, trace)
     }
 
     fn evaluate_bound_named_function_call(
@@ -5371,6 +5409,7 @@ impl Session {
             unreachable!("preselected named function binding")
         };
         let mut invocation = Box::new(self.clone());
+        invocation.root_namespace = Some(self.effective_root_namespace());
         invocation.bindings.remove(alias);
         invocation
             .functions
@@ -5524,6 +5563,7 @@ impl Session {
             bindings: function.bindings.clone(),
             functions: self.functions.clone(),
             generators: self.generators.clone(),
+            root_namespace: Some(self.effective_root_namespace()),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -6611,6 +6651,7 @@ impl Session {
             ));
         }
         let mut invocation = Box::new(self.clone());
+        invocation.root_namespace = Some(self.effective_root_namespace());
         invocation.bindings = bindings.clone();
         let mut matched_bindings = BTreeMap::new();
         for (parameter, argument) in parameters.iter().zip(arguments) {

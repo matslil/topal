@@ -2614,11 +2614,11 @@ storage identities differ. The implementation SHALL require no runtime
 namespace lookup, Scope allocation, foreign dependency, C/C++ runtime,
 other-language standard library, public ABI, or native ABI revision.
 
-Direct `root member` data access from a compiled function body, Scope
-results/escape, nested qualified Scope members, generators, `use`, packages,
-and source or compiled libraries remain outside this increment and SHALL be
-rejected until a storage/interface representation valid beyond the source entry
-frame exists.
+Direct `root member` data access from a compiled function body is governed by
+`TOPAL-COMPILER-FUNCTION-ROOT-DATA-001`. Scope results/escape, nested qualified
+Scope members, generators, `use`, packages, and source or compiled libraries
+remain outside this increment and SHALL be rejected until a storage/interface
+representation valid beyond the source entry frame exists.
 
 ### TOPAL-COMPILER-NAMESPACE-BOUNDARY-001 — Specialized Scope parameters
 
@@ -3929,9 +3929,43 @@ ABI revision is permitted.
 
 Selection outside a function SHALL remain a context-selection error. Aggregate,
 Scope, or Function members, calls requiring capture forwarding between compiled
-functions, anonymous captures, escaping functions, qualified `root member`
-access from functions, and public/library context environments remain outside
-this increment and SHALL be rejected.
+functions, anonymous captures, escaping functions, qualified root access not
+admitted by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-001`, and public/library context
+environments remain outside this increment and SHALL be rejected.
+
+### TOPAL-COMPILER-FUNCTION-ROOT-DATA-001 — Private live-root data capture
+
+For an ordinary root function called directly from the source entry frame, an
+exact `root member` data selection SHALL resolve in the live source-session root
+at the call position. The member MAY be declared after the function provided
+its initializer has completed before the call. A same-named function parameter,
+captured binding, or other lexical binding SHALL NOT intercept the qualified
+selection. The initializer SHALL execute exactly once.
+
+The checked frontend SHALL admit each referenced immutable member whose value
+has an exact supported private machine representation and append those members
+as explicit private capture arguments and parameters in root declaration order.
+The call argument SHALL be the already-evaluated root storage value. The callee
+SHALL bind it under the distinct source/debug name `root member`; definitions
+and calls SHALL use identical exact LLVM types under `fastcc`, while LLVM owns
+physical target placement. Full O0 DWARF/GDB information SHALL expose the
+ordinary parameter and each root capture with its source classifier and value.
+
+The lowering SHALL require no global root storage, namespace or capture table,
+initializer replay, lookup, allocation, function pointer, indirect call,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or native-ABI revision. Calls requiring root-capture forwarding between
+compiled functions; aggregate, callable, Scope, Generator, constraint, or
+evidence members; anonymous or escaping functions; root selection forms beyond
+exact data selection; and public/library root environments remain deferred and
+SHALL be rejected before artifact publication.
+
+Future compiled-library metadata for this boundary SHALL preserve the canonical
+source-session namespace identity, selection and call positions, member stable
+identity, visibility and declaration order, classifier and semantic
+representation, capture order, lifetime and effects, and versioned target
+adapter. Those facts SHALL remain independent of private capture names, LLVM
+types or symbols, and target-specific physical argument placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

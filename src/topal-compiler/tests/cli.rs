@@ -13354,6 +13354,139 @@ fn scope_packaged_fields_retain_exact_private_environments() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers lowering, rejection, artifacts, and GDB.
+fn function_root_data_is_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-001, TOPAL-NAMESPACE-ROOT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-function-root-data");
+    let source = directory.join("function-root-data.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-root-data.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 0, \"ready\")\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(
+        ir.contains(
+            "define internal fastcc { ptr, ptr, ptr } @topal.fn.read.1(ptr %arg0, ptr %arg1, ptr %arg2)"
+        ),
+        "{ir}"
+    );
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let initialized = main
+        .find("call fastcc ptr @topal.fn.make_2danswer.0()")
+        .unwrap();
+    let invoked = main
+        .find("call fastcc { ptr, ptr, ptr } @topal.fn.read.1(ptr @.topal.int.4, ptr %v0, ptr %v1)")
+        .unwrap();
+    assert!(initialized < invoked, "{main}");
+    for forbidden in [
+        "topal.root",
+        "root.runtime",
+        "namespace.runtime",
+        "context.runtime",
+        "lookup.root",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("function-root-data-forwarding.t");
+    let rejected_executable = directory.join("function-root-data-forwarding");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  read ()\nwrapper ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("cross-function root/context capture forwarding"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-root-data.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis answer",
+            "-ex",
+            "print answer",
+            "-ex",
+            "print 'root label'",
+            "-ex",
+            "print 'root answer'",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Int"), "{text}");
+    assert!(text.contains("$1 = 0"), "{text}");
+    assert!(text.contains("$2 = \"ready\""), "{text}");
+    assert!(text.contains("$3 = 42"), "{text}");
+    assert!(
+        text.contains("answer=0, root label=\"ready\", root answer=42"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.read.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

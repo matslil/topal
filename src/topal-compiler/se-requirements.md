@@ -2896,6 +2896,40 @@ source/compiled libraries remain deferred. This realizes
 `TOPAL-COMPILER-NAMESPACE-GENERATOR-001` and
 `TOPAL-NAMESPACE-GENERATOR-001` for increment 6b2b2a.
 
+## TOPAL-COMP-FUNCTION-ROOT-DATA-001 — Private live-root data capture
+
+For an ordinary root function called directly from the source entry frame, the
+checked model shall resolve each exact `root member` data selection against the
+live root bindings whose initializers have completed at the call position. It
+shall admit supported private machine values even when their declarations
+follow the function declaration, isolate the qualified selection from
+same-named parameters or lexical captures, and reuse the original once-evaluated
+root storage value.
+
+The frontend shall append referenced members in root declaration order as exact
+private capture arguments and parameters named `root member`. The Linux x86-64
+backend shall emit matching `fastcc` definitions and calls and leave physical
+register, stack, and aggregate placement to LLVM. Full O0 DWARF/GDB shall expose
+the ordinary function frame, explicit parameters, root capture classifiers, and
+values. Tests shall cover the shared interpreter regression, a function declared
+before its root data, lexical shadow isolation, initializer order, checked-model
+capture order and rejection boundaries, exact IR, freestanding artifacts,
+source debugging, the shared corpus, and separate resource baselines.
+
+This shall add no global root storage, namespace/capture table, initializer
+replay, lookup, allocation, function pointer, indirect call, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Cross-function forwarding; aggregate, callable,
+Scope, Generator, constraint, or evidence members; anonymous/escaping functions;
+other qualified-root forms; and public/library root environments remain
+deferred. Future compiled-library metadata shall preserve canonical
+source-session namespace identity, selection/call positions, member stable
+identity, visibility/declaration order, classifier/semantic representation,
+capture order/lifetime/effects, and a versioned target adapter independently of
+private capture names, LLVM types/symbols, and physical placement. This realizes
+`TOPAL-COMPILER-FUNCTION-ROOT-DATA-001` and `TOPAL-NAMESPACE-ROOT-001` for
+increment 6b2b2b.
+
 ## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
 
 The checked compiler model shall admit an already-visible ordinary or static
@@ -4256,8 +4290,9 @@ This increment shall add no global context storage, lookup table, closure
 allocation/runtime, function pointer, indirect call, foreign dependency, C/C++
 runtime, other-language standard library, public closure ABI, or
 `topal-native/6` revision. Aggregate, Scope, and Function captures,
-cross-function forwarding, anonymous/escaping closures, qualified root data in
-functions, and public/library contexts remain rejected. This realizes
+cross-function forwarding, anonymous/escaping closures, qualified root data not
+admitted by `TOPAL-COMP-FUNCTION-ROOT-DATA-001`, and public/library contexts
+remain rejected. This realizes
 `TOPAL-COMPILER-CONTEXT-CAPTURE-001` and `TOPAL-CONTEXT-SELECT-001` for compiler
 increment 6c1.
 
