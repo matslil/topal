@@ -2,8 +2,8 @@
 
 ### TOPAL-RANGE-BOUNDS-001 — Int range construction
 
-For finite `lower : Int` and `upper : Int`, the four binary range operators
-construct these `Range Int` predicates:
+For `lower : Int` and `upper : Int`, including either infinity, the four binary
+range operators construct these `Range Int` predicates:
 
 | operator | accepted values |
 | --- | --- |
@@ -63,7 +63,8 @@ lower and upper endpoint respectively, preserving the exact endpoint
 classifier. `range-lower-inclusive? interval` and
 `range-upper-inclusive? interval` SHALL report whether the respective endpoint
 is included. These operations apply only where the implemented range form has
-both finite explicit bounds; they SHALL NOT invent sentinels for absent bounds.
+both explicit bounds, which MAY themselves be infinity values; they SHALL NOT
+invent sentinels for absent bounds.
 
 ### TOPAL-RANGE-VALUE-SELECTION-001 — Convex value selection
 

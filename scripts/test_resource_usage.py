@@ -22,6 +22,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = ROOT / "se" / "test-resource-baseline.json"
 DEFAULT_TOPAL_BASELINE = ROOT / "se" / "topal-test-resource-baseline.json"
+DEFAULT_INTERPRETER_BASELINE = ROOT / "se" / "interpreter-test-resource-baseline.json"
 DEFAULT_COMPILER_BASELINE = ROOT / "se" / "compiler-test-resource-baseline.json"
 THRESHOLD_PERCENT = 20
 PRINT_LOCK = threading.Lock()
@@ -153,6 +154,25 @@ def discover_topal_tests(rust_min_stack: int) -> list[TestCase]:
     return sorted(tests, key=lambda test: test.identity)
 
 
+def discover_interpreter_tests(rust_min_stack: int) -> list[TestCase]:
+    """Measure every shared language regression through the interpreter."""
+    metadata = cargo_metadata()
+    target_directory = Path(metadata["target_directory"])
+    command(["cargo", "build", "-p", "topal-interpreter"], cwd=ROOT)
+    executable = target_directory / "debug" / (
+        "topal.exe" if platform.system() == "Windows" else "topal"
+    )
+    return [
+        TestCase(
+            identity=f"topal-interpreter::{source.relative_to(ROOT)}",
+            executable=str(executable),
+            arguments=(str(source.relative_to(ROOT)),),
+            working_directory=str(ROOT),
+        )
+        for source in sorted((ROOT / "examples" / "language").glob("*.t"))
+    ]
+
+
 def discover_compiler_tests(rust_min_stack: int) -> list[TestCase]:
     """Measure compilation and native execution independently for shared cases."""
     metadata = cargo_metadata()
@@ -204,6 +224,8 @@ def discover_domain(domain: str, rust_min_stack: int) -> list[TestCase]:
         return discover_tests(rust_min_stack)
     if domain == "topal":
         return discover_topal_tests(rust_min_stack)
+    if domain == "interpreter":
+        return discover_interpreter_tests(rust_min_stack)
     return discover_compiler_tests(rust_min_stack)
 
 
@@ -511,7 +533,9 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("mode", choices=("baseline", "compare"))
     parser.add_argument("--baseline", type=Path)
     parser.add_argument(
-        "--domain", choices=("rust", "topal", "compiler"), default="rust"
+        "--domain",
+        choices=("rust", "topal", "interpreter", "compiler"),
+        default="rust",
     )
     parser.add_argument("--jobs", type=int)
     parser.add_argument("--memory-limit", default="4G")
@@ -525,6 +549,7 @@ def arguments() -> argparse.Namespace:
         parsed.baseline = {
             "rust": DEFAULT_BASELINE,
             "topal": DEFAULT_TOPAL_BASELINE,
+            "interpreter": DEFAULT_INTERPRETER_BASELINE,
             "compiler": DEFAULT_COMPILER_BASELINE,
         }[parsed.domain]
     if parsed.jobs is not None and parsed.jobs < 1:

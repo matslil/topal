@@ -67,6 +67,14 @@ versioned baselines, `se/test-resource-baseline.json` and
 `se/topal-test-resource-baseline.json`, so removing a Rust wrapper cannot hide
 or merge the resource behavior of the Topal files it formerly aggregated.
 
+`scripts/test_resource_usage.py --domain interpreter` discovers every shared
+`examples/language/*.t` regression and executes each source directly through
+the interpreter. These identities live in
+`se/interpreter-test-resource-baseline.json`. Interpreter execution, compiler
+build, and generated executable execution therefore have three independent
+records for every shared language regression; a change in one phase cannot be
+hidden by another phase's cost.
+
 `scripts/test_resource_usage.py --domain compiler` discovers the shared Topal
 regressions admitted by `topalc test --list`. It records each source identity
 twice: `topalc-build::` measures an unoptimized, debug-enabled native build and
@@ -106,6 +114,7 @@ Create an approved baseline with:
 ```console
 scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update
 scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update
+scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update
 scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update
 ```
 
@@ -114,6 +123,7 @@ Replace existing measurements only after explicit human approval:
 ```console
 scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update --replace-existing-baseline
 scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update --replace-existing-baseline
+scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update --replace-existing-baseline
 scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update --replace-existing-baseline
 ```
 
@@ -122,6 +132,7 @@ Compare the current tests with it using:
 ```console
 scripts/test_resource_usage.py compare --domain rust
 scripts/test_resource_usage.py compare --domain topal
+scripts/test_resource_usage.py compare --domain interpreter
 scripts/test_resource_usage.py compare --domain compiler
 ```
 

@@ -1,7 +1,9 @@
 ; topal.platform.linux-x86_64/1
 ; Freestanding Linux services and the private topal-native/6 value runtime.
 ; Int values are immutable sign-and-magnitude objects with little-endian
-; base-2^32 limbs. A zero has sign = 0 and length = 0.
+; base-2^32 limbs. A zero has sign = 0 and length = 0. Root-local exact
+; infinities use executable-private sign tags 2 (+) and 3 (-) with no limbs;
+; those sentinels are not admitted at a native function or library boundary.
 
 %topal.StringStorage = type { ptr, i64, ptr, i64 }
 %topal.IntStorage = type { i64, i64, [0 x i32] }
@@ -18,8 +20,12 @@
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
+@topal.runtime.int.positive.infinity = private constant { i64, i64, [0 x i32] } { i64 2, i64 0, [0 x i32] zeroinitializer }, align 8
+@topal.runtime.int.negative.infinity = private constant { i64, i64, [0 x i32] } { i64 3, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.byte.zero = private constant [1 x i8] c"0", align 1
 @topal.runtime.byte.minus = private constant [1 x i8] c"-", align 1
+@topal.runtime.int.positive.infinity.text = private constant [9 x i8] c"+Infinity", align 1
+@topal.runtime.int.negative.infinity.text = private constant [9 x i8] c"-Infinity", align 1
 @topal.runtime.byte.quote = private constant [1 x i8] c"\22", align 1
 @topal.runtime.byte.underscore = private constant [1 x i8] c"_", align 1
 @topal.runtime.string.tag.text = private constant [4 x i8] c"text", align 1
@@ -998,19 +1004,43 @@ greater:
 
 define internal i32 @topal.runtime.int.compare(ptr %left, ptr %right) nounwind noinline {
 entry:
-  %left.negative.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
-  %right.negative.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
-  %left.negative = load i64, ptr %left.negative.pointer, align 8
-  %right.negative = load i64, ptr %right.negative.pointer, align 8
-  %different.signs = icmp ne i64 %left.negative, %right.negative
+  %left.sign.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
+  %right.sign.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
+  %left.sign = load i64, ptr %left.sign.pointer, align 8
+  %right.sign = load i64, ptr %right.sign.pointer, align 8
+  %left.positive.infinity = icmp eq i64 %left.sign, 2
+  br i1 %left.positive.infinity, label %left.positive, label %check.left.negative.infinity
+left.positive:
+  %both.positive.infinity = icmp eq i64 %right.sign, 2
+  %left.positive.result = select i1 %both.positive.infinity, i32 0, i32 1
+  ret i32 %left.positive.result
+check.left.negative.infinity:
+  %left.negative.infinity = icmp eq i64 %left.sign, 3
+  br i1 %left.negative.infinity, label %left.negative, label %check.right.positive.infinity
+left.negative:
+  %both.negative.infinity = icmp eq i64 %right.sign, 3
+  %left.negative.result = select i1 %both.negative.infinity, i32 0, i32 -1
+  ret i32 %left.negative.result
+check.right.positive.infinity:
+  %right.positive.infinity = icmp eq i64 %right.sign, 2
+  br i1 %right.positive.infinity, label %less, label %check.right.negative.infinity
+check.right.negative.infinity:
+  %right.negative.infinity = icmp eq i64 %right.sign, 3
+  br i1 %right.negative.infinity, label %greater, label %finite
+less:
+  ret i32 -1
+greater:
+  ret i32 1
+finite:
+  %different.signs = icmp ne i64 %left.sign, %right.sign
   br i1 %different.signs, label %signed.result, label %absolute
 signed.result:
-  %left.is.negative = icmp ne i64 %left.negative, 0
+  %left.is.negative = icmp ne i64 %left.sign, 0
   %result = select i1 %left.is.negative, i32 -1, i32 1
   ret i32 %result
 absolute:
   %magnitude = call i32 @topal.runtime.int.compare.absolute(ptr %left, ptr %right)
-  %both.negative = icmp ne i64 %left.negative, 0
+  %both.negative = icmp ne i64 %left.sign, 0
   %reversed = sub i32 0, %magnitude
   %ordered = select i1 %both.negative, i32 %reversed, i32 %magnitude
   ret i32 %ordered
@@ -1208,6 +1238,16 @@ done:
 
 define internal void @topal.runtime.int.print(ptr %value) nounwind noinline {
 entry:
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
+  %sign = load i64, ptr %sign.pointer, align 8
+  switch i64 %sign, label %finite [ i64 2, label %positive.infinity i64 3, label %negative.infinity ]
+positive.infinity:
+  call void @topal.platform.write_all(ptr @topal.runtime.int.positive.infinity.text, i64 9)
+  ret void
+negative.infinity:
+  call void @topal.platform.write_all(ptr @topal.runtime.int.negative.infinity.text, i64 9)
+  ret void
+finite:
   %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
   %length = load i64, ptr %length.pointer, align 8
   %empty = icmp eq i64 %length, 0
@@ -1216,9 +1256,7 @@ zero:
   call void @topal.platform.write_all(ptr @topal.runtime.byte.zero, i64 1)
   ret void
 check.sign:
-  %negative.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
-  %negative = load i64, ptr %negative.pointer, align 8
-  %is.negative = icmp ne i64 %negative, 0
+  %is.negative = icmp ne i64 %sign, 0
   br i1 %is.negative, label %write.sign, label %prepare
 write.sign:
   call void @topal.platform.write_all(ptr @topal.runtime.byte.minus, i64 1)

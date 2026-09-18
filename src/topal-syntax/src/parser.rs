@@ -20,6 +20,7 @@ pub enum Expression {
         span: Span,
     },
     Integer(Span),
+    Infinity(Span),
     Measured {
         value: Span,
         unit: Span,
@@ -80,6 +81,7 @@ impl Expression {
             Self::Unit(span)
             | Self::Boolean(span)
             | Self::Integer(span)
+            | Self::Infinity(span)
             | Self::Rational(span)
             | Self::String(span)
             | Self::Identifier(span)
@@ -2465,6 +2467,7 @@ impl Parser<'_> {
                 }
             }
             TokenKind::Rational => Some(Expression::Rational(token.span)),
+            TokenKind::Infinity => Some(Expression::Infinity(token.span)),
             TokenKind::String => Some(Expression::String(token.span)),
             TokenKind::Identifier | TokenKind::Version => Some(Expression::Identifier(token.span)),
             TokenKind::At => {

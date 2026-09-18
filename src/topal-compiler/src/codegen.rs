@@ -115,6 +115,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::Enum(_) => false,
@@ -480,6 +482,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
         | CompilerExpressionKind::Int(_)
+        | CompilerExpressionKind::Infinity { .. }
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
@@ -1273,6 +1276,14 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::LanguageContext(_)
             | CompilerExpressionKind::NativeSerializer(_)
             | CompilerExpressionKind::ExternalMetadata(_) => LlValue::Unit,
+            CompilerExpressionKind::Infinity { negative } => LlValue::Int(
+                if *negative {
+                    "@topal.runtime.int.negative.infinity"
+                } else {
+                    "@topal.runtime.int.positive.infinity"
+                }
+                .into(),
+            ),
             CompilerExpressionKind::ExternalLocationConstruct(location) => {
                 let range_start = self.emit_int_literal(&location.offset.offset_type.range.lower);
                 let offset = self.emit_int_literal(&location.offset.offset);
@@ -2894,7 +2905,9 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 match expression.value_type {
-                    CompilerType::Int => LlValue::Int(value),
+                    CompilerType::Int | CompilerType::InfiniteInt | CompilerType::InfiniteNat => {
+                        LlValue::Int(value)
+                    }
                     CompilerType::Rational => LlValue::Rational(value),
                     _ => unreachable!("checked Range bound retains its endpoint type"),
                 }
@@ -3050,6 +3063,9 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat => {
+                        unreachable!("checked functions do not cross infinity values")
+                    }
                     CompilerType::Modular(ref modular) => LlValue::Modular {
                         value: body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
@@ -8431,7 +8447,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Version => {
             unreachable!("Version sum payloads are not admitted")
         }
-        CompilerType::Int | CompilerType::Nat => LlValue::Int("null".into()),
+        CompilerType::Int
+        | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat => LlValue::Int("null".into()),
         CompilerType::Modular(modular) => LlValue::Modular {
             value: "null".into(),
             modular: modular.clone(),
@@ -9355,8 +9374,8 @@ impl DebugInfo {
                 .expect("checked Constraint values install their debug type"),
             CompilerType::Boolean => self.boolean_type,
             CompilerType::Version => self.version_type,
-            CompilerType::Int => self.int_type,
-            CompilerType::Nat => self.nat_type,
+            CompilerType::Int | CompilerType::InfiniteInt => self.int_type,
+            CompilerType::Nat | CompilerType::InfiniteNat => self.nat_type,
             CompilerType::Rational => self.rational_type,
             CompilerType::Comparison => self.comparison_type,
             CompilerType::Error => self.error_type,
@@ -9370,7 +9389,12 @@ impl DebugInfo {
             CompilerType::ExternalLocation(location) => self.location_type(location),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
-            CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
+            CompilerType::Range(endpoint)
+                if matches!(
+                    endpoint.as_ref(),
+                    CompilerType::Int | CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ) =>
+            {
                 self.int_range_type
             }
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Rational => {
@@ -10208,6 +10232,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::SerializationStream(_)
         | CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
         | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Error
@@ -10343,6 +10369,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::SerializationStream(_)
         | CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
         | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Character
@@ -10442,7 +10470,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             unreachable!("Constraint values are not admitted at machine ABI reconstruction points")
         }
         CompilerType::Boolean => LlValue::Boolean(value),
-        CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
+        CompilerType::Int
+        | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat => LlValue::Int(value),
         CompilerType::Modular(modular) => LlValue::Modular {
             value,
             modular: modular.clone(),
@@ -10930,6 +10961,28 @@ mod tests {
         assert!(llvm.contains("define internal fastcc i32 @topal.fn.compare_2dnat.0"));
         assert!(llvm.contains("DILocalVariable(name: \"left\", arg: 1"));
         assert!(llvm.contains("DILocalVariable(name: \"right\", arg: 2"));
+    }
+
+    #[test]
+    fn emits_root_local_infinity_sentinels_and_exact_range_operations() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-RANGE-BOUNDS-001,
+        // TOPAL-RANGE-INTERSECTION-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-values-and-ranges.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/infinity-values-and-ranges.t").emit();
+
+        assert!(llvm.contains("@topal.runtime.int.positive.infinity = private constant"));
+        assert!(llvm.contains("@topal.runtime.int.negative.infinity = private constant"));
+        assert!(llvm.contains("c\"+Infinity\""));
+        assert!(llvm.contains("c\"-Infinity\""));
+        assert!(llvm.matches("call i32 @topal.runtime.int.compare").count() >= 8);
+        assert!(llvm.matches("call ptr @topal.runtime.range.make").count() >= 2);
+        assert!(llvm.contains("call i1 @topal.runtime.range.int.contains"));
+        assert!(llvm.contains("name: \"Int\""));
+        assert!(llvm.contains("name: \"Nat\""));
+        assert!(llvm.contains("name: \"Range Int\""));
+        assert!(!llvm.contains("@topal.runtime.int.add(ptr @topal.runtime.int.positive.infinity"));
     }
 
     #[test]

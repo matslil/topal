@@ -22,7 +22,7 @@ def _decimal_from_limbs(raw, length):
 
 
 class _TopalIntPrinter:
-    """Render an immutable topal-native/6 Int object as a decimal integer."""
+    """Render an immutable finite Int or executable-private infinity sentinel."""
 
     def __init__(self, value):
         self._value = value
@@ -38,6 +38,10 @@ class _TopalIntPrinter:
             return "<unreadable Int>"
         negative = int.from_bytes(header[0:8], "little")
         length = int.from_bytes(header[8:16], "little")
+        if negative in (2, 3):
+            if length:
+                return f"<invalid Infinity length {length}>"
+            return "-Infinity" if negative == 3 else "+Infinity"
         if negative not in (0, 1):
             return f"<invalid Int sign {negative}>"
         if not length and negative:

@@ -335,6 +335,8 @@ pub enum CompilerType {
     Version,
     Int,
     Nat,
+    InfiniteInt,
+    InfiniteNat,
     Rational,
     Comparison,
     Error,
@@ -381,6 +383,8 @@ impl CompilerType {
                 | Self::Version
                 | Self::Int
                 | Self::Nat
+                | Self::InfiniteInt
+                | Self::InfiniteNat
                 | Self::Rational
                 | Self::Comparison
                 | Self::Error
@@ -427,8 +431,8 @@ impl CompilerType {
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
             Self::Version => "Version".into(),
-            Self::Int => "Int".into(),
-            Self::Nat => "Nat".into(),
+            Self::Int | Self::InfiniteInt => "Int".into(),
+            Self::Nat | Self::InfiniteNat => "Nat".into(),
             Self::Rational => "Rational".into(),
             Self::Comparison => "Comparison".into(),
             Self::Error => "Error".into(),
@@ -698,6 +702,9 @@ pub enum CompilerExpressionKind {
     Boolean(bool),
     Version(LanguageVersion),
     Int(BigInt),
+    Infinity {
+        negative: bool,
+    },
     Rational(BigRational),
     String(String),
     StringEmpty,
@@ -8132,6 +8139,36 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
         expected: Option<&CompilerType>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Expression::Infinity(span) = expression {
+            let negative = self.source.slice(*span).starts_with('-');
+            let value_type = match expected {
+                Some(CompilerType::Int) => CompilerType::InfiniteInt,
+                Some(CompilerType::Nat) if !negative => CompilerType::InfiniteNat,
+                Some(CompilerType::Nat) => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-INFINITY-CLASSIFIER",
+                        *span,
+                        "-Infinity does not satisfy Nat",
+                    ));
+                }
+                _ => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-INFINITY-CONTEXT",
+                        *span,
+                        "this compiler increment requires an explicit Int or Nat infinity classifier",
+                    ));
+                }
+            };
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::Infinity { negative },
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span: *span,
+            });
+        }
         if let Expression::Identifier(name) = expression
             && self.source.slice(*name) == "None"
             && let Some(CompilerType::Optional(payload)) = expected
@@ -8464,6 +8501,11 @@ impl Analyzer {
 
         for (index, statement) in executable.iter().enumerate() {
             let last = index + 1 == executable.len();
+            let published_binding = matches!(
+                *statement,
+                Statement::Published { declaration, .. }
+                    if matches!(declaration.as_ref(), Statement::Binding { .. })
+            );
             let statement = match *statement {
                 Statement::Published { declaration, .. }
                     if matches!(declaration.as_ref(), Statement::Binding { .. }) =>
@@ -8564,9 +8606,27 @@ impl Analyzer {
                                 span,
                             };
                         }
-                        require_same_type(&self.source, *classifier, &expected, &value.value_type)?;
+                        if !matches!(
+                            (&expected, &value.value_type),
+                            (CompilerType::Int, CompilerType::InfiniteInt)
+                                | (CompilerType::Nat, CompilerType::InfiniteNat)
+                        ) {
+                            require_same_type(
+                                &self.source,
+                                *classifier,
+                                &expected,
+                                &value.value_type,
+                            )?;
+                        }
                     }
                     reject_static_value_containment(&self.source, &value)?;
+                    if published_binding && compiler_type_contains_infinity(&value.value_type) {
+                        return Err(unsupported(
+                            &self.source,
+                            value.span,
+                            "public infinity boundary",
+                        ));
+                    }
                     let constraint_tag = if value.value_type == CompilerType::Constraint {
                         if kind != BlockKind::TopLevel {
                             return Err(unsupported(
@@ -9910,6 +9970,12 @@ impl Analyzer {
                     span,
                 })
             }
+            Expression::Infinity(span) => Err(source_diagnostic(
+                &self.source,
+                "E-INFINITY-CONTEXT",
+                *span,
+                "an infinity constant requires an explicit supported numeric classifier",
+            )),
             Expression::Rational(value) => {
                 let rational = parse_rational(self.source.slice(*value)).ok_or_else(|| {
                     source_diagnostic(
@@ -15436,7 +15502,7 @@ impl Analyzer {
                 &self.source,
                 "E-TYPE-MISMATCH",
                 operand.span,
-                format!("{operation} requires a finite exact Range operand"),
+                format!("{operation} requires an exact Range operand"),
             ));
         };
         let endpoint = endpoint.as_ref().clone();
@@ -15480,8 +15546,8 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
-        let mut left = self.analyze_expression(left, environment)?;
-        let mut right = self.analyze_expression(right, environment)?;
+        let left = self.analyze_expression(left, environment)?;
+        let right = self.analyze_expression(right, environment)?;
         let binary = match operation {
             "and" => CompilerBinary::And,
             "or" => CompilerBinary::Or,
@@ -15491,36 +15557,37 @@ impl Analyzer {
             _ => unreachable!("identifier binary spelling selected above"),
         };
         if matches!(binary, CompilerBinary::In | CompilerBinary::Contains) {
-            let (range, value) = if binary == CompilerBinary::In {
-                (&right.value_type, &mut left)
-            } else {
-                (&left.value_type, &mut right)
-            };
-            let CompilerType::Range(endpoint) = range else {
+            return self.analyze_range_membership_binary(binary, left, right, span);
+        }
+        if binary == CompilerBinary::And
+            && let CompilerType::Range(left_endpoint) = &left.value_type
+        {
+            let CompilerType::Range(right_endpoint) = &right.value_type else {
                 return Err(source_diagnostic(
                     &self.source,
-                    "E-RANGE-MEMBERSHIP-OPERANDS",
+                    "E-TYPE-MISMATCH",
                     span,
-                    "range membership requires a finite exact Range operand",
+                    format!(
+                        "expected {}, found {}",
+                        left.value_type.name(),
+                        right.value_type.name()
+                    ),
                 ));
             };
-            require_exact_numeric(&self.source, value.span, &value.value_type)?;
-            if endpoint.as_ref() == &CompilerType::Rational && value.value_type == CompilerType::Int
-            {
-                *value = into_rational(value.clone());
-            }
-            require_same_type(&self.source, value.span, endpoint, &value.value_type)?;
-            return Ok(Self::finish_binary(
-                binary,
-                left,
-                right,
-                CompilerType::Boolean,
-                span,
-            ));
-        }
-        if binary == CompilerBinary::And && matches!(&left.value_type, CompilerType::Range(_)) {
-            require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
-            let value_type = left.value_type.clone();
+            let value_type =
+                if is_int_range_endpoint(left_endpoint) && is_int_range_endpoint(right_endpoint) {
+                    let endpoint = if left_endpoint.as_ref() == &CompilerType::InfiniteInt
+                        || right_endpoint.as_ref() == &CompilerType::InfiniteInt
+                    {
+                        CompilerType::InfiniteInt
+                    } else {
+                        CompilerType::Int
+                    };
+                    CompilerType::Range(Box::new(endpoint))
+                } else {
+                    require_same_type(&self.source, span, &left.value_type, &right.value_type)?;
+                    left.value_type.clone()
+                };
             return Ok(Self::finish_binary(binary, left, right, value_type, span));
         }
         if let (
@@ -15559,6 +15626,50 @@ impl Analyzer {
             &CompilerType::Boolean,
             &right.value_type,
         )?;
+        Ok(Self::finish_binary(
+            binary,
+            left,
+            right,
+            CompilerType::Boolean,
+            span,
+        ))
+    }
+
+    fn analyze_range_membership_binary(
+        &self,
+        binary: CompilerBinary,
+        mut left: CompilerExpression,
+        mut right: CompilerExpression,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        let (range, value) = if binary == CompilerBinary::In {
+            (&right.value_type, &mut left)
+        } else {
+            (&left.value_type, &mut right)
+        };
+        let CompilerType::Range(endpoint) = range else {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-RANGE-MEMBERSHIP-OPERANDS",
+                span,
+                "range membership requires an exact Range operand",
+            ));
+        };
+        require_exact_numeric(&self.source, value.span, &value.value_type)?;
+        if is_int_range_endpoint(endpoint)
+            && matches!(
+                value.value_type,
+                CompilerType::Int | CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            )
+        {
+            *value = forget_nat_evidence(value.clone());
+        } else {
+            if endpoint.as_ref() == &CompilerType::Rational && value.value_type == CompilerType::Int
+            {
+                *value = into_rational(value.clone());
+            }
+            require_same_type(&self.source, value.span, endpoint, &value.value_type)?;
+        }
         Ok(Self::finish_binary(
             binary,
             left,
@@ -15856,12 +15967,33 @@ impl Analyzer {
         if is_range_construction(operation) {
             require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
             require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
+            let infinite = matches!(
+                left_value.value_type,
+                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            ) || matches!(
+                right_value.value_type,
+                CompilerType::InfiniteInt | CompilerType::InfiniteNat
+            );
+            if infinite
+                && (left_value.value_type == CompilerType::Rational
+                    || right_value.value_type == CompilerType::Rational)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "mixed Rational and infinity range endpoints",
+                ));
+            }
             let endpoint = if left_value.value_type == CompilerType::Rational
                 || right_value.value_type == CompilerType::Rational
             {
                 left_value = into_rational(left_value);
                 right_value = into_rational(right_value);
                 CompilerType::Rational
+            } else if infinite {
+                left_value = forget_nat_evidence(left_value);
+                right_value = forget_nat_evidence(right_value);
+                CompilerType::InfiniteInt
             } else {
                 CompilerType::Int
             };
@@ -15871,6 +16003,35 @@ impl Analyzer {
                 right_value,
                 CompilerType::Range(Box::new(endpoint)),
                 span,
+            ));
+        }
+
+        let infinite = matches!(
+            left_value.value_type,
+            CompilerType::InfiniteInt | CompilerType::InfiniteNat
+        ) || matches!(
+            right_value.value_type,
+            CompilerType::InfiniteInt | CompilerType::InfiniteNat
+        );
+        let comparison = matches!(
+            operation,
+            CompilerBinary::Equal
+                | CompilerBinary::NotEqual
+                | CompilerBinary::Less
+                | CompilerBinary::Greater
+                | CompilerBinary::LessEqual
+                | CompilerBinary::GreaterEqual
+                | CompilerBinary::Compare
+        );
+        if infinite
+            && (!comparison
+                || left_value.value_type == CompilerType::Rational
+                || right_value.value_type == CompilerType::Rational)
+        {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "infinity arithmetic outside exact Int comparison and ranges",
             ));
         }
 
@@ -15999,16 +16160,6 @@ impl Analyzer {
             ));
         }
 
-        let comparison = matches!(
-            operation,
-            CompilerBinary::Equal
-                | CompilerBinary::NotEqual
-                | CompilerBinary::Less
-                | CompilerBinary::Greater
-                | CompilerBinary::LessEqual
-                | CompilerBinary::GreaterEqual
-                | CompilerBinary::Compare
-        );
         if comparison
             && is_exact_comparable(&left_value.value_type)
             && is_exact_comparable(&right_value.value_type)
@@ -19232,6 +19383,7 @@ fn expression_context_member_span(
         | Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
+        | Expression::Infinity(_)
         | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
@@ -19510,7 +19662,9 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::TraversalControl(_)
+        CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
+        | CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
         | CompilerType::SerializationStream(_)
         | CompilerType::TaskResponse(_)
@@ -19545,7 +19699,61 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int | CompilerType::String])
             )
         }
+        CompilerType::Range(endpoint) => {
+            matches!(
+                endpoint.as_ref(),
+                CompilerType::Int | CompilerType::Rational
+            )
+        }
         _ => true,
+    }
+}
+
+fn compiler_type_contains_infinity(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::InfiniteInt | CompilerType::InfiniteNat => true,
+        CompilerType::SerializationStream(value)
+        | CompilerType::Range(value)
+        | CompilerType::Result(value)
+        | CompilerType::TaskResponse(value)
+        | CompilerType::Optional(value)
+        | CompilerType::List(value)
+        | CompilerType::Set(value)
+        | CompilerType::Bag(value)
+        | CompilerType::TraversalControl(value)
+        | CompilerType::Refined { base: value, .. } => compiler_type_contains_infinity(value),
+        CompilerType::Array { element, .. } => compiler_type_contains_infinity(element),
+        CompilerType::Map { key, value } => {
+            compiler_type_contains_infinity(key) || compiler_type_contains_infinity(value)
+        }
+        CompilerType::Generator(generator) => {
+            compiler_type_contains_infinity(&generator.yield_type)
+                || compiler_type_contains_infinity(&generator.resume_type)
+                || compiler_type_contains_infinity(&generator.result_type)
+        }
+        CompilerType::Task(task) => {
+            compiler_type_contains_infinity(&task.state_type)
+                || task.handlers.iter().any(|handler| {
+                    compiler_type_contains_infinity(&handler.payload_type)
+                        || compiler_type_contains_infinity(&handler.response_type)
+                        || handler.stream_type.as_ref().is_some_and(|stream| {
+                            compiler_type_contains_infinity(&stream.yield_type)
+                                || compiler_type_contains_infinity(&stream.resume_type)
+                                || compiler_type_contains_infinity(&stream.result_type)
+                        })
+                })
+        }
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_contains_infinity)
+        }),
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_infinity),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, value)| compiler_type_contains_infinity(value)),
+        _ => false,
     }
 }
 
@@ -20253,7 +20461,17 @@ fn comparison_binary(kind: CallableKind) -> Option<CompilerBinary> {
 }
 
 fn is_exact_numeric(value_type: &CompilerType) -> bool {
-    matches!(value_type, CompilerType::Int | CompilerType::Rational)
+    matches!(
+        value_type,
+        CompilerType::Int
+            | CompilerType::InfiniteInt
+            | CompilerType::InfiniteNat
+            | CompilerType::Rational
+    )
+}
+
+fn is_int_range_endpoint(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::Int | CompilerType::InfiniteInt)
 }
 
 fn forget_refined_evidence(mut expression: CompilerExpression) -> CompilerExpression {
@@ -20380,13 +20598,19 @@ fn known_constraint_numeric(
 fn is_exact_comparable(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
-        CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+        CompilerType::Int
+            | CompilerType::Nat
+            | CompilerType::InfiniteInt
+            | CompilerType::InfiniteNat
+            | CompilerType::Rational
     )
 }
 
 fn forget_nat_evidence(mut expression: CompilerExpression) -> CompilerExpression {
     if expression.value_type == CompilerType::Nat {
         expression.value_type = CompilerType::Int;
+    } else if expression.value_type == CompilerType::InfiniteNat {
+        expression.value_type = CompilerType::InfiniteInt;
     }
     expression
 }
@@ -20400,6 +20624,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Boolean
         | CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::ErrorCode
@@ -20457,6 +20683,8 @@ fn compiler_ordering_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::Int
         | CompilerType::Nat
+        | CompilerType::InfiniteInt
+        | CompilerType::InfiniteNat
         | CompilerType::Rational
         | CompilerType::Modular(_) => true,
         CompilerType::Tuple(fields) => fields.iter().all(compiler_ordering_supported),
@@ -20536,6 +20764,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
         | CompilerExpressionKind::Int(_)
+        | CompilerExpressionKind::Infinity { .. }
         | CompilerExpressionKind::Rational(_)
         | CompilerExpressionKind::String(_)
         | CompilerExpressionKind::StringEmpty
@@ -30928,6 +31157,93 @@ mod tests {
             ),
         ] {
             assert_eq!(analyze_for_compiler(&invalid).unwrap_err().code, expected);
+        }
+    }
+
+    #[test]
+    fn models_contextual_exact_infinities_and_explicit_int_range_endpoints() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+        // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-BOUNDS-001,
+        // TOPAL-RANGE-INTERSECTION-001, TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-values-and-ranges.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let bindings = program
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Binding(binding) => Some(binding),
+                CompilerStatement::Discard(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            bindings[0].value,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Infinity { negative: true },
+                value_type: CompilerType::InfiniteInt,
+                ..
+            }
+        ));
+        assert!(matches!(
+            bindings[1].value,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Infinity { negative: false },
+                value_type: CompilerType::InfiniteInt,
+                ..
+            }
+        ));
+        assert!(matches!(
+            bindings[2].value,
+            CompilerExpression {
+                kind: CompilerExpressionKind::Infinity { negative: false },
+                value_type: CompilerType::InfiniteNat,
+                ..
+            }
+        ));
+        assert_eq!(
+            bindings[3].value.value_type,
+            CompilerType::Range(Box::new(CompilerType::InfiniteInt))
+        );
+        assert!(matches!(
+            program.main.result.value_type,
+            CompilerType::Tuple(_)
+        ));
+
+        for (invalid, expected) in [
+            (
+                "use language (version is v0.1)\n+Infinity",
+                "E-INFINITY-CONTEXT",
+            ),
+            (
+                "use language (version is v0.1)\ninvalid : Nat is -Infinity\ninvalid",
+                "E-INFINITY-CLASSIFIER",
+            ),
+            (
+                "use language (version is v0.1)\nupper : Int is +Infinity\nupper + 1",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nvalue is fn () -> Int\n  +Infinity\nvalue ()",
+                "E-TYPE-MISMATCH",
+            ),
+            (
+                "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nupper : Int is +Infinity\nidentity upper",
+                "E-NO-APPLICABLE-OVERLOAD",
+            ),
+            (
+                "use language (version is v0.1)\npub exposed : Int is +Infinity\nexposed",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nlower : Int is -Infinity\nupper : Int is +Infinity\nwhole is lower ..= upper\ncontains-zero is fn () -> Boolean\n  0 in @ whole\ncontains-zero ()",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                expected,
+                "unexpected diagnostic for {invalid:?}"
+            );
         }
     }
 }

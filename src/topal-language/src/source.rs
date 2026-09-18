@@ -65,10 +65,20 @@ pub enum Value {
         storage: Box<RefCell<Option<Value>>>,
     },
     Int(BigInt),
+    Infinity {
+        negative: bool,
+        classifier: String,
+    },
     Rational(BigRational),
     IntRange {
         lower: BigInt,
         upper: BigInt,
+        lower_inclusive: bool,
+        upper_inclusive: bool,
+    },
+    InfiniteIntRange {
+        lower: ExtendedInt,
+        upper: ExtendedInt,
         lower_inclusive: bool,
         upper_inclusive: bool,
     },
@@ -177,6 +187,23 @@ pub enum Value {
     Finish(Box<Self>),
     Completed,
     Unit,
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum ExtendedInt {
+    NegativeInfinity,
+    Finite(BigInt),
+    PositiveInfinity,
+}
+
+impl fmt::Display for ExtendedInt {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NegativeInfinity => formatter.write_str("-Infinity"),
+            Self::Finite(value) => value.fmt(formatter),
+            Self::PositiveInfinity => formatter.write_str("+Infinity"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -379,6 +406,16 @@ impl fmt::Display for Value {
                     range_symbol(*lower_inclusive, *upper_inclusive)
                 )
             }
+            Self::InfiniteIntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            } => write!(
+                formatter,
+                "{lower} {} {upper}",
+                range_symbol(*lower_inclusive, *upper_inclusive)
+            ),
             Self::AddressOffsetType(_) => formatter.write_str("AddressOffset <subtype>"),
             Self::AddressOffset { offset, .. } => offset.fmt(formatter),
             Self::LayoutType(layout) => write!(formatter, "Layout {}", layout.semantic),
@@ -410,6 +447,9 @@ impl fmt::Display for Value {
                 )
             }
             Self::Int(value) => value.fmt(formatter),
+            Self::Infinity { negative, .. } => {
+                formatter.write_str(if *negative { "-Infinity" } else { "+Infinity" })
+            }
             Self::Rational(value) => {
                 write!(
                     formatter,
@@ -852,6 +892,7 @@ pub(crate) fn expression_mentions_name(
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
+        | Expression::Infinity(_)
         | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
@@ -3054,6 +3095,12 @@ impl Session {
                 }
             }
             Expression::Integer(span) => evaluate_integer_literal(source, *span, trace),
+            Expression::Infinity(span) => Err(diagnostic(
+                source,
+                "E-INFINITY-CONTEXT",
+                *span,
+                "an infinity constant requires an explicit supported numeric classifier",
+            )),
             Expression::Rational(span) => evaluate_rational_literal(source, *span, trace),
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
@@ -8787,6 +8834,38 @@ fn evaluate_expression_with_optional_context(
     expected_classifier: Option<&str>,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    if let Expression::Infinity(span) = expression {
+        let negative = source.slice(*span).starts_with('-');
+        let classifier = match expected_classifier {
+            Some("Int") => "Int",
+            Some("Nat") if !negative => "Nat",
+            Some("Nat") => {
+                return Err(diagnostic(
+                    source,
+                    "E-INFINITY-CLASSIFIER",
+                    *span,
+                    "-Infinity does not satisfy Nat",
+                ));
+            }
+            _ => {
+                return Err(diagnostic(
+                    source,
+                    "E-INFINITY-CONTEXT",
+                    *span,
+                    "this implemented subset requires an explicit Int or Nat infinity classifier",
+                ));
+            }
+        };
+        trace.record(TraceEvent {
+            event: "numeric.infinity.constructed",
+            rule: "TOPAL-NUM-INFINITY-001",
+            detail: source.slice(*span),
+        });
+        return Ok(Value::Infinity {
+            negative,
+            classifier: classifier.into(),
+        });
+    }
     if let Some(element_classifier) = expected_classifier.and_then(list_element_classifier)
         && let Some(list) =
             evaluate_list_expression(source, session, expression, element_classifier, trace)?
@@ -8933,6 +9012,7 @@ fn expression_is_closed(expression: &Expression) -> bool {
         Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
+        | Expression::Infinity(_)
         | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
@@ -9838,7 +9918,11 @@ fn declare_variant(
     Some((Value::Unit, expression.span()))
 }
 
+#[allow(clippy::unnested_or_patterns)] // Keep each exact value/classifier association explicit.
 fn value_has_classifier(value: &Value, classifier: &str) -> bool {
+    if let Value::Infinity { negative, .. } = value {
+        return classifier == "Int" || (!negative && classifier == "Nat");
+    }
     if classifier == "MessageContext"
         && matches!(value, Value::Record(fields)
             if fields.iter().any(|(name, _)| name == "session-id")
@@ -9919,6 +10003,7 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Int(_), "Int")
         | (Value::Rational(_), "Rational")
         | (Value::IntRange { .. }, "Range Int")
+        | (Value::InfiniteIntRange { .. }, "Range Int")
         | (Value::RationalRange { .. }, "Range Rational")
         | (Value::CharacterGenerator { .. }, "Generator Character Unit Unit")
         | (Value::CharacterReturningGenerator { .. }, "Generator Character Unit Character")
@@ -12263,9 +12348,12 @@ fn value_classifier(value: &Value) -> &'static str {
         Value::Location { .. } => "Location",
         Value::LayoutBacked { .. } => "Layout",
         Value::Effects(_) => "Effect",
-        Value::Int(_) => "Int",
+        Value::Infinity { classifier, .. } if classifier == "Nat" => "Nat",
+        Value::Int(_) | Value::Infinity { .. } => "Int",
         Value::Rational(_) => "Rational",
-        Value::IntRange { .. } | Value::RationalRange { .. } => "Range",
+        Value::IntRange { .. } | Value::InfiniteIntRange { .. } | Value::RationalRange { .. } => {
+            "Range"
+        }
         Value::Optional { .. } => "Optional",
         Value::List { .. } => "List",
         Value::Callable(_)
@@ -12336,7 +12424,8 @@ fn value_classifier(value: &Value) -> &'static str {
 
 fn structural_value_classifier(value: &Value) -> String {
     match value {
-        Value::IntRange { .. } => "Range Int".into(),
+        Value::IntRange { .. } | Value::InfiniteIntRange { .. } => "Range Int".into(),
+        Value::Infinity { classifier, .. } => classifier.clone(),
         Value::RationalRange { .. } => "Range Rational".into(),
         Value::Tuple(values) => format!(
             "({})",
@@ -13258,6 +13347,61 @@ fn forget_refinement(value: Value, trace: &mut impl TraceSink, detail: &'static 
     }
 }
 
+fn extended_int(value: &Value) -> Option<ExtendedInt> {
+    match value {
+        Value::Int(value) => Some(ExtendedInt::Finite(value.clone())),
+        Value::Infinity { negative: true, .. } => Some(ExtendedInt::NegativeInfinity),
+        Value::Infinity {
+            negative: false, ..
+        } => Some(ExtendedInt::PositiveInfinity),
+        _ => None,
+    }
+}
+
+fn extended_int_value(value: ExtendedInt) -> Value {
+    match value {
+        ExtendedInt::NegativeInfinity => Value::Infinity {
+            negative: true,
+            classifier: "Int".into(),
+        },
+        ExtendedInt::Finite(value) => Value::Int(value),
+        ExtendedInt::PositiveInfinity => Value::Infinity {
+            negative: false,
+            classifier: "Int".into(),
+        },
+    }
+}
+
+fn extended_int_range(value: &Value) -> Option<(ExtendedInt, ExtendedInt, bool, bool, bool)> {
+    match value {
+        Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => Some((
+            ExtendedInt::Finite(lower.clone()),
+            ExtendedInt::Finite(upper.clone()),
+            *lower_inclusive,
+            *upper_inclusive,
+            false,
+        )),
+        Value::InfiniteIntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => Some((
+            lower.clone(),
+            upper.clone(),
+            *lower_inclusive,
+            *upper_inclusive,
+            true,
+        )),
+        _ => None,
+    }
+}
+
 fn apply_range(
     source: &SourceText,
     kind: CallableKind,
@@ -13278,6 +13422,25 @@ fn apply_range(
             let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
             (
                 Value::IntRange {
+                    lower,
+                    upper,
+                    lower_inclusive,
+                    upper_inclusive,
+                },
+                nonempty,
+            )
+        }
+        (left, right)
+            if extended_int(&left).is_some()
+                && extended_int(&right).is_some()
+                && (matches!(left, Value::Infinity { .. })
+                    || matches!(right, Value::Infinity { .. })) =>
+        {
+            let lower = extended_int(&left).expect("guard retained an extended Int");
+            let upper = extended_int(&right).expect("guard retained an extended Int");
+            let nonempty = lower < upper || (lower == upper && lower_inclusive && upper_inclusive);
+            (
+                Value::InfiniteIntRange {
                     lower,
                     upper,
                     lower_inclusive,
@@ -13331,7 +13494,7 @@ fn apply_range(
                 source,
                 "E-RANGE-ENDPOINTS",
                 span,
-                "range endpoints require finite Int or Rational values",
+                "range endpoints require compatible Int or Rational values",
             ));
         }
     };
@@ -13353,11 +13516,16 @@ fn apply_range_bound(
     let value = match (operation, range) {
         ("range-lower", Value::IntRange { lower, .. }) => Value::Int(lower),
         ("range-upper", Value::IntRange { upper, .. }) => Value::Int(upper),
+        ("range-lower", Value::InfiniteIntRange { lower, .. }) => extended_int_value(lower),
+        ("range-upper", Value::InfiniteIntRange { upper, .. }) => extended_int_value(upper),
         ("range-lower", Value::RationalRange { lower, .. }) => Value::Rational(lower),
         ("range-upper", Value::RationalRange { upper, .. }) => Value::Rational(upper),
         (
             "range-lower-inclusive?",
             Value::IntRange {
+                lower_inclusive, ..
+            }
+            | Value::InfiniteIntRange {
                 lower_inclusive, ..
             }
             | Value::RationalRange {
@@ -13367,6 +13535,9 @@ fn apply_range_bound(
         (
             "range-upper-inclusive?",
             Value::IntRange {
+                upper_inclusive, ..
+            }
+            | Value::InfiniteIntRange {
                 upper_inclusive, ..
             }
             | Value::RationalRange {
@@ -13398,6 +13569,11 @@ fn apply_range_membership(
     span: Span,
     trace: &mut impl TraceSink,
 ) -> Result<Value, Diagnostic> {
+    let extended_operands = int_range_membership_operands(callable, &left, &right);
+    if let Some((value, lower, upper, lower_inclusive, upper_inclusive)) = extended_operands {
+        let accepted = bound_contains(&value, &lower, &upper, lower_inclusive, upper_inclusive);
+        return Ok(record_range_membership(accepted, trace));
+    }
     let operands = match (callable, left, right) {
         (
             "in",
@@ -13485,12 +13661,31 @@ fn apply_range_membership(
         ));
     };
     let accepted = bound_contains(&value, &lower, &upper, lower_inclusive, upper_inclusive);
+    Ok(record_range_membership(accepted, trace))
+}
+
+fn record_range_membership(accepted: bool, trace: &mut impl TraceSink) -> Value {
     trace.record(TraceEvent {
         event: "range.membership.tested",
         rule: "TOPAL-RANGE-MEMBERSHIP-001",
         detail: if accepted { "accepted" } else { "rejected" },
     });
-    Ok(Value::Boolean(accepted))
+    Value::Boolean(accepted)
+}
+
+fn int_range_membership_operands(
+    callable: &str,
+    left: &Value,
+    right: &Value,
+) -> Option<(ExtendedInt, ExtendedInt, ExtendedInt, bool, bool)> {
+    let (value, range) = match callable {
+        "in" => (left, right),
+        "contains" => (right, left),
+        _ => return None,
+    };
+    let value = extended_int(value)?;
+    let (lower, upper, lower_inclusive, upper_inclusive, _) = extended_int_range(range)?;
+    Some((value, lower, upper, lower_inclusive, upper_inclusive))
 }
 
 #[allow(clippy::too_many_lines)] // Each supported conjunction kind has an explicit trace path.
@@ -13534,40 +13729,54 @@ fn apply_and(
         });
         return Ok(Value::Capability(alternatives));
     }
-    let result = match (left, right) {
-        (
-            Value::IntRange {
-                lower: left_lower,
-                upper: left_upper,
-                lower_inclusive: left_lower_inclusive,
-                upper_inclusive: left_upper_inclusive,
-            },
-            Value::IntRange {
-                lower: right_lower,
-                upper: right_upper,
-                lower_inclusive: right_lower_inclusive,
-                upper_inclusive: right_upper_inclusive,
-            },
-        ) => {
-            let (lower, lower_inclusive) = stricter_lower(
-                left_lower,
-                left_lower_inclusive,
-                right_lower,
-                right_lower_inclusive,
-            );
-            let (upper, upper_inclusive) = stricter_upper(
-                left_upper,
-                left_upper_inclusive,
-                right_upper,
-                right_upper_inclusive,
-            );
+    if let (Some(left), Some(right)) = (extended_int_range(&left), extended_int_range(&right)) {
+        let (left_lower, left_upper, left_lower_inclusive, left_upper_inclusive, left_infinite) =
+            left;
+        let (
+            right_lower,
+            right_upper,
+            right_lower_inclusive,
+            right_upper_inclusive,
+            right_infinite,
+        ) = right;
+        let (lower, lower_inclusive) = stricter_lower(
+            left_lower,
+            left_lower_inclusive,
+            right_lower,
+            right_lower_inclusive,
+        );
+        let (upper, upper_inclusive) = stricter_upper(
+            left_upper,
+            left_upper_inclusive,
+            right_upper,
+            right_upper_inclusive,
+        );
+        let result = if left_infinite || right_infinite {
+            Value::InfiniteIntRange {
+                lower,
+                upper,
+                lower_inclusive,
+                upper_inclusive,
+            }
+        } else {
+            let (ExtendedInt::Finite(lower), ExtendedInt::Finite(upper)) = (lower, upper) else {
+                unreachable!("finite Int ranges retain finite endpoints")
+            };
             Value::IntRange {
                 lower,
                 upper,
                 lower_inclusive,
                 upper_inclusive,
             }
-        }
+        };
+        trace.record(TraceEvent {
+            event: "range.intersection.constructed",
+            rule: "TOPAL-RANGE-INTERSECTION-001",
+            detail: "conjunction",
+        });
+        return Ok(result);
+    }
+    let result = match (left, right) {
         (
             Value::RationalRange {
                 lower: left_lower,
@@ -13672,6 +13881,17 @@ fn apply_comparison(
 }
 
 fn values_compare(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<Ordering> {
+    if let (Some(left), Some(right)) = (extended_int(&left), extended_int(&right))
+        && (matches!(
+            left,
+            ExtendedInt::NegativeInfinity | ExtendedInt::PositiveInfinity
+        ) || matches!(
+            right,
+            ExtendedInt::NegativeInfinity | ExtendedInt::PositiveInfinity
+        ))
+    {
+        return Some(left.cmp(&right));
+    }
     match (left, right) {
         (Value::Refined { value, .. }, right) => values_compare(*value, right, trace),
         (left, Value::Refined { value, .. }) => values_compare(left, *value, trace),
@@ -13875,6 +14095,17 @@ fn apply_empty_predicate(
             "TOPAL-COLLECTION-EMPTY-PREDICATE-001",
         ),
         Value::IntRange {
+            lower,
+            upper,
+            lower_inclusive,
+            upper_inclusive,
+        } => (
+            lower > upper || (lower == upper && !(lower_inclusive && upper_inclusive)),
+            "Range Int".into(),
+            "range.empty.tested",
+            "TOPAL-RANGE-EMPTY-001",
+        ),
+        Value::InfiniteIntRange {
             lower,
             upper,
             lower_inclusive,
@@ -15359,6 +15590,9 @@ fn contains_ordered_subsequence(
 
 #[allow(clippy::too_many_lines)] // Every recursively derived equality remains explicit.
 fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option<bool> {
+    if let (Some(left), Some(right)) = (extended_int(&left), extended_int(&right)) {
+        return Some(left == right);
+    }
     match (left, right) {
         (
             Value::Refined {
@@ -15379,7 +15613,6 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
         }
         (Value::Effects(left), Value::Effects(right)) => Some(left == right),
         (Value::Boolean(left), Value::Boolean(right)) => Some(left == right),
-        (Value::Int(left), Value::Int(right)) => Some(left == right),
         (Value::Rational(left), Value::Rational(right)) => Some(left == right),
         (Value::Int(left), Value::Rational(right)) => {
             trace_conversion(trace, "Int->Rational:left");
@@ -16066,6 +16299,8 @@ fn apply_negate(
         | Value::Type(_)
         | Value::Effects(_)
         | Value::IntRange { .. }
+        | Value::InfiniteIntRange { .. }
+        | Value::Infinity { .. }
         | Value::RationalRange { .. }
         | Value::Optional { .. }
         | Value::List { .. }
@@ -20263,4 +20498,41 @@ fn v02_interface_contracts_are_retained_and_required_of_implementations() {
         .evaluate_source_file(mismatch, &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-INTERFACE-IMPLEMENTATION");
+}
+
+#[test]
+fn exact_infinities_require_context_and_order_range_endpoints() {
+    // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+    // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-BOUNDS-001,
+    // TOPAL-RANGE-MEMBERSHIP-001, TOPAL-RANGE-INTERSECTION-001,
+    // TOPAL-RANGE-BOUND-001
+    let source = include_str!("../../../examples/language/infinity-values-and-ranges.t");
+    assert_eq!(
+        Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "(-Infinity, +Infinity, +Infinity, true, true, Less, true, -Infinity, +Infinity, true, true, true, -Infinity ..= +Infinity, 0, false, 0 ..= +Infinity, false, 0 ..= 10, false, true)"
+    );
+    assert_eq!(
+        Session::new()
+            .evaluate("+Infinity", &mut std::io::sink())
+            .unwrap_err()
+            .code,
+        "E-INFINITY-CONTEXT"
+    );
+    assert_eq!(
+        Session::new()
+            .evaluate("invalid : Nat is -Infinity\ninvalid", &mut std::io::sink(),)
+            .unwrap_err()
+            .code,
+        "E-INFINITY-CLASSIFIER"
+    );
+    assert_eq!(
+        Session::new()
+            .evaluate("upper : Int is +Infinity\nupper + 1", &mut std::io::sink())
+            .unwrap_err()
+            .code,
+        "E-NO-APPLICABLE-OVERLOAD"
+    );
 }

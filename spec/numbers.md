@@ -49,12 +49,30 @@ returns the same additive inverse while remaining separately traceable.
 
 ### TOPAL-NUM-NAT-001 — Nonnegative integer refinement
 
-`Nat` classifies exactly the finite `Int` values greater than or equal to zero
-in the currently implemented finite numeric subset. It preserves the underlying
+`Nat` classifies exactly the `Int` values greater than or equal to zero,
+including `+Infinity` and excluding `-Infinity`. It preserves the underlying
 exact integer value and introduces no unsigned representation, truncation, or
-wrapping. A function parameter or result classified as `Nat` accepts zero and
-positive `Int` values and rejects negative values at the applicable validation
-boundary.
+wrapping. A function parameter or result classified as `Nat` accepts zero,
+positive finite `Int` values, and positive infinity, and rejects negative
+values at the applicable validation boundary.
+
+### TOPAL-NUM-INFINITY-001 — Contextual exact infinity construction
+
+The exact lexemes `+Infinity` and `-Infinity` construct the corresponding
+distinguished value of an expected numeric classifier that contains it. An
+`Int` context accepts either direction; a `Nat` context accepts only
+`+Infinity`. Source without a sufficient expected numeric classifier SHALL be
+rejected rather than selecting a numeric domain implicitly, and `-Infinity`
+SHALL be rejected by `Nat` and every other nonnegative constraint.
+
+Infinity retains the ordinary numeric classifier rather than introducing an
+`Extended` type. Its canonical display is exactly its source-direction name.
+For equality and ordering, equal directions in the same exact domain are
+identical, `-Infinity` is less than every finite value, and `+Infinity` is
+greater than every finite value. Arithmetic involving infinity remains governed
+by separately applicable overload and indeterminate-result rules; a partial
+tool SHALL reject an unsupported application rather than treat an infinity as
+finite storage.
 
 ### TOPAL-NUM-SUB-001 — Finite exact integer subtraction
 
@@ -309,25 +327,28 @@ base is rejected as division by zero; a dynamic zero base requires the
 arithmetic Result failure path and constructs `division-by-zero` with reporting
 domain `root.^(Rational,Int)` plus separate source provenance.
 
-### TOPAL-NUM-COMPARE-001 — Finite exact total ordering
+### TOPAL-NUM-COMPARE-001 — Exact total ordering
 
-Finite `Int` and finite `Rational` each provide `TotalOrder` using their exact
-mathematical order. A same-domain comparison produces exactly `Less`, `Equal`,
-or `Greater`; the predicates `<`, `>`, `<=`, and `>=` select the corresponding
-result or result set and return `Boolean`. Mixed finite `Int` and `Rational`
-comparison first applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and
-then uses rational order. These predicates use ordinary left-to-right
-application and have no special chaining rule.
+`Int`, including its two infinities, and finite `Rational` each provide
+`TotalOrder` using their exact mathematical order. A same-domain comparison
+produces exactly `Less`, `Equal`, or `Greater`; the predicates `<`, `>`, `<=`,
+and `>=` select the corresponding result or result set and return `Boolean`.
+For `Int`, `-Infinity` precedes every finite value and `+Infinity` follows every
+finite value. Mixed finite `Int` and `Rational` comparison first applies
+`TOPAL-NUM-INT-RATIONAL-CONVERT-001` to the integer and then uses rational
+order. These predicates use ordinary left-to-right application and have no
+special chaining rule.
 This is the numeric realization of `TOPAL-TYPE-ORDERING-001`.
 
 ### TOPAL-NUM-THREE-WAY-COMPARE-001 — Exact three-way comparison
 
-For finite Int and Rational operands, `<=>` selects their applicable exact
-`TotalOrder` and returns the nominal `Comparison` alternative `Less`, `Equal`,
-or `Greater`. Same-domain comparison uses mathematical order. Mixed Int and
-Rational comparison first applies the canonical lossless Int-to-Rational
-conversion. The operator evaluates each operand once and does not create a
-Boolean or apply chaining semantics.
+For Int operands, including infinities, and finite Rational operands, `<=>`
+selects their applicable exact `TotalOrder` and returns the nominal
+`Comparison` alternative `Less`, `Equal`, or `Greater`. Same-domain comparison
+uses the order defined by `TOPAL-NUM-COMPARE-001`. Mixed finite Int and Rational
+comparison first applies the canonical lossless Int-to-Rational conversion.
+The operator evaluates each operand once and does not create a Boolean or apply
+chaining semantics.
 
 Other numeric domains and the remaining fixed callable names are outside this
 initial formal numeric subset until later rules define their applicable

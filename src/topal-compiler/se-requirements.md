@@ -4459,13 +4459,52 @@ observation, source-form output, and GDB inspection.
 Range lowering shall not enumerate members, normalize open endpoints by
 arithmetic, expose the private header to a foreign calling convention, require
 a C/C++ runtime, or introduce load-time pointer relocations. Unbounded forms,
-infinite endpoints, and collection selection remain outside this increment.
+infinite Rational endpoints, and collection selection remain outside this
+increment. Exact Int infinity endpoints are admitted only under
+`TOPAL-COMP-INFINITY-001`.
 
 This requirement covers `TOPAL-RANGE-BOUNDS-001`,
 `TOPAL-RANGE-MEMBERSHIP-001`, `TOPAL-RANGE-RATIONAL-001`,
 `TOPAL-RANGE-CLASSIFIER-001`, `TOPAL-RANGE-INTERSECTION-001`,
 `TOPAL-RANGE-EMPTY-001`, and `TOPAL-RANGE-BOUND-001`. It realizes
 `TOPAL-COMPILER-RANGE-001` for compiler increment 2d-a.
+
+## TOPAL-COMP-INFINITY-001 — Contextual exact Int infinities
+
+The checked compiler shall admit immediate root bindings classified as `Int`
+with either exact infinity and as `Nat` with positive infinity. It shall retain
+the source classifier and direction and admit canonical output, equality,
+ordered predicates, three-way comparison, and explicitly bounded `Range Int`
+construction, membership, intersection, emptiness, and bound observation. Bare
+constants, negative Nat infinity, Rational infinity, arithmetic with infinity,
+and all function, persistent, serialized, public, and compiled-library
+infinity boundaries shall remain explicitly unsupported.
+
+The Linux x86-64 backend may lower these closed root-local values to immutable
+executable-private Int sentinels carrying reserved positive- and negative-
+infinity tags with zero limbs. The checker shall prevent either sentinel from
+crossing a private machine signature, so the finite Int representation and
+`topal-native/6` function ABI remain unchanged. Runtime comparison and output
+shall branch on the sentinel before finite limb handling, and the existing
+opaque Range pointer representation shall retain the endpoints. All behavior
+shall be mandatory at O0 and use only the Topal-owned Linux syscall runtime,
+without a C/C++ runtime, other-language standard library, foreign allocator,
+undefined helper, needed library, dynamic relocation, public ABI, or native ABI
+revision.
+
+DWARF and the bounded validating GDB renderer shall expose truthful `Int`,
+`Nat`, and `Range Int` source values and reject malformed sentinel state.
+Tests shall use the unchanged shared interpreter regression, compare exact
+output, inspect checked and LLVM lowering, validate the complete corpus,
+freestanding ELF, DWARF and GDB, and record separate interpreter execution plus
+compiler build/run resource baselines. Future compiled-library metadata shall
+describe language and numeric-domain revisions, infinity direction,
+constraints, operations and indeterminate failures, ownership, debug
+provenance, and native adapters independently of LLVM types, tags, headers, and
+symbols. This realizes `TOPAL-COMPILER-INFINITY-001`,
+`TOPAL-NUM-INFINITY-001`, the infinity cases of `TOPAL-NUM-NAT-001`,
+`TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-THREE-WAY-COMPARE-001`, and the applicable
+`TOPAL-RANGE-*` rules for compiler increments 2c-c1 and 2d-b1.
 
 ## TOPAL-COMP-DECISION-001 — Comparison decisions
 

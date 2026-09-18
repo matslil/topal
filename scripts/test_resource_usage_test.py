@@ -21,6 +21,7 @@ SPEC.loader.exec_module(RESOURCE_USAGE)
 class CompareTests(unittest.TestCase):
     def baseline(self) -> dict[str, object]:
         return {
+            "samples_per_test": 50,
             "tests": {
                 "case": {
                     "cpu_time_ns": 100,
@@ -37,6 +38,7 @@ class CompareTests(unittest.TestCase):
                 cpu_time_ns=cpu_time_ns,
                 memory_peak_bytes=memory_peak_bytes,
                 status="passed",
+                samples_per_test=50,
             )
         }
 
@@ -61,7 +63,7 @@ class CompareTests(unittest.TestCase):
 
     def test_failed_test_is_rejected(self) -> None:
         measured = {
-            "case": RESOURCE_USAGE.Measurement(100, 1_000, "timeout")
+            "case": RESOURCE_USAGE.Measurement(100, 1_000, "timeout", 50)
         }
         self.assertEqual(
             RESOURCE_USAGE.compare(self.baseline(), measured),
@@ -99,11 +101,11 @@ class BaselineExtensionTests(unittest.TestCase):
             },
         }
         measured = {
-            "existing": RESOURCE_USAGE.Measurement(999, 9_999, "passed"),
-            "new": RESOURCE_USAGE.Measurement(300, 3_000, "passed"),
+            "existing": RESOURCE_USAGE.Measurement(999, 9_999, "passed", 3),
+            "new": RESOURCE_USAGE.Measurement(300, 3_000, "passed", 3),
         }
 
-        extended, additions = RESOURCE_USAGE.extend_baseline(baseline, measured, 3)
+        extended, additions = RESOURCE_USAGE.extend_baseline(baseline, measured)
 
         self.assertEqual(additions, 1)
         self.assertEqual(extended["environment"], {"host": "original"})

@@ -568,7 +568,9 @@ fn semantic_token_type(kind: TokenKind, lexeme: &str) -> Option<usize> {
             Some(4)
         }
         TokenKind::Identifier => Some(0),
-        TokenKind::Integer | TokenKind::Rational | TokenKind::Version => Some(1),
+        TokenKind::Integer | TokenKind::Infinity | TokenKind::Rational | TokenKind::Version => {
+            Some(1)
+        }
         TokenKind::String => Some(2),
         TokenKind::Comment | TokenKind::Documentation | TokenKind::Hashbang => Some(3),
         TokenKind::Boolean | TokenKind::Discard => Some(4),
