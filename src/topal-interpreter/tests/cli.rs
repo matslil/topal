@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 217);
+    assert_eq!(examples.len(), 218);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4476,6 +4476,30 @@ fn every_mode_requires_exact_repeated_anonymous_pattern_identity() {
     assert!(diagnostic.contains("error[E-ANONYMOUS-PATTERN-IDENTITY]"));
     assert!(diagnostic.contains("same exact value"));
     assert!(diagnostic.contains("pass the same exact value"));
+}
+
+#[test]
+fn every_mode_requires_exact_repeated_anonymous_aggregate_identity() {
+    let source = include_str!("../../../examples/language/repeated-anonymous-aggregate-patterns.t");
+    let expected = "((7, \"seven\"), (active is true, name is \"Ada\"), Some 9, Entry ( 1, Entry ( 2, Empty ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains(expected), "{arguments:?}: {stdout}");
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("pattern.identity.matched").count(), 4);
+    assert!(trace.contains("TOPAL-TYPE-MATCH-001"));
+
+    let mismatch = run(
+        &[],
+        "use language (version is v0.1)\noperation : Function is { value, value } value\noperation ((1, \"same\"), (2, \"same\"))\n",
+    );
+    assert!(!mismatch.status.success());
+    let diagnostic = String::from_utf8(mismatch.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-ANONYMOUS-PATTERN-IDENTITY]"));
+    assert!(diagnostic.contains("same exact value"));
 }
 
 #[test]

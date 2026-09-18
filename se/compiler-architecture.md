@@ -253,8 +253,16 @@ they do not invoke user Equality, conversion, canonical equivalence, or tag
 dispatch. A mismatch calls a Topal-owned diagnostic helper which writes through
 the Linux syscall service and exits 65 before the body. Repeated operands are
 omitted from DWARF variable metadata, leaving one unambiguous source parameter.
-Nested and aggregate identity patterns and ordinary named-header repetition
-remain deferred with their broader representation and overload consequences.
+The same metadata and control-flow shape extends to repeated aggregate values
+only when the private boundary and exact comparison already exist: recursive
+Tuple/Record fields are decomposed in semantic order, while admitted Optional
+and List pointers reuse their Topal-owned tag/payload or ordered-entry
+comparisons. LLVM still owns aggregate register/stack coercion, and the first
+occurrence alone receives the existing target-derived debug shadow. No generic
+aggregate matcher or allocation identity is introduced. Result, Sum, Range,
+Generator, refined, authority-bearing, and Function-containing aggregates,
+nested parameter-pattern syntax, and ordinary named-header repetition remain
+deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general

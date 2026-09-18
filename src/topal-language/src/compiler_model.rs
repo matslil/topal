@@ -20767,7 +20767,13 @@ fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bo
             | CompilerType::Enum(_)
             | CompilerType::Character
             | CompilerType::String
-    )
+    ) || (matches!(
+        value_type,
+        CompilerType::Tuple(_)
+            | CompilerType::Record(_)
+            | CompilerType::Optional(_)
+            | CompilerType::List(_)
+    ) && compiler_equality_supported(value_type))
 }
 
 fn validate_repeated_anonymous_pattern_parameter(
@@ -30310,6 +30316,54 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(unsupported_identity.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_repeated_anonymous_aggregate_values_as_exact_identity_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-anonymous-aggregate-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated aggregate-pattern results")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(matches!(results[0].value_type, CompilerType::Tuple(_)));
+        assert!(matches!(results[1].value_type, CompilerType::Record(_)));
+        assert!(matches!(results[2].value_type, CompilerType::Optional(_)));
+        assert!(matches!(results[3].value_type, CompilerType::List(_)));
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| !function.pattern_identities.is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 4);
+        assert!(guarded.iter().all(|function| {
+            function.pattern_identities.as_slice()
+                == [CompilerPatternIdentity {
+                    first_parameter: 0,
+                    repeated_parameter: 1,
+                    span: function.parameters[1].span,
+                }]
+                && !function.parameters[0].discarded
+                && function.parameters[1].discarded
+                && function.parameters[0].value_type == function.parameters[1].value_type
+        }));
+
+        let unsupported_result = analyze_for_compiler(
+            "use language (version is v0.1)\ndivide is fn (value : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  1.0 / value\noperation : Function is { value, value } value\noperation (divide 2.0, divide 2.0)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_result.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unsupported_result
+                .message
+                .contains("repeated anonymous pattern identity for `Result")
+        );
     }
 
     #[test]

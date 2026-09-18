@@ -3199,12 +3199,50 @@ resource baselines.
 This shall add no pattern object, matching table, function pointer, indirect
 call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
-`topal-native/6` revision. Nested and aggregate repeated identity, ordinary
-named-function header repetition, publication, and library metadata/adapters
-remain deferred. This realizes
+`topal-native/6` revision. Aggregate repeated identity is governed by
+`TOPAL-COMP-ANONYMOUS-REPEATED-AGGREGATE-001`. Nested parameter-pattern syntax,
+ordinary named-function header repetition, publication, and library
+metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5u.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-AGGREGATE-001 — Exact repeated aggregate values
+
+The checked compiler model shall admit a repeated anonymous-pattern name with
+the same exact Tuple, Record, Optional, or List classifier when that classifier
+already has both an admitted private function-boundary representation and
+complete exact compiler equality. The initial boundary shall include recursive
+equality-capable Tuple and Record values over admitted non-Function leaves;
+`Optional Int`, `Optional Rational`, `Optional String`, and `Optional (Int,
+String)`; `List Int`; and `List List (Int, String)`.
+
+The first occurrence shall remain the sole source binding and DWARF parameter.
+Every later occurrence shall retain its complete exact private parameter and a
+lexically ordered pre-body guard. Tuple fields and canonical Record fields shall
+compare recursively; Optional tags and present payloads shall compare exactly;
+and Lists shall compare entries in order and require equal length. Lowering
+shall reuse existing direct field comparisons and Topal-owned Optional/List
+primitives without conversion, evidence forgetting, user Equality selection,
+canonical equivalence, approximation, allocation identity, or inactive
+representation data. A failed guard shall use the existing Topal-owned syscall
+diagnostic and exit 65.
+
+Tests shall cover opaque Tuple construction, canonical Records, Optional and
+List values, exact interpreter modes and mismatch diagnostics, checked-model
+metadata, structural guarded IR, native success and failure, freestanding
+artifact properties, full O0 aggregate GDB observation, reversible debugging,
+the shared corpus, and separate resource baselines. This shall add no generic
+aggregate matcher, pattern table, allocation, callback, indirect dispatch,
+foreign dependency, C/C++ runtime, other-language standard library, public
+aggregate ABI, or `topal-native/6` revision. Result, Sum, Range, Generator,
+refined, authority-bearing, and Function-containing aggregate identity; nested
+parameter-pattern syntax; ordinary named-function header repetition;
+publication; and library metadata/adapters remain deferred. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5v.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
