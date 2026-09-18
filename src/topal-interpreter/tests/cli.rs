@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 242);
+    assert_eq!(examples.len(), 243);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5218,6 +5218,26 @@ fn every_mode_forwards_defining_context_members() {
         );
         assert!(
             String::from_utf8_lossy(&output.stdout).contains("(40, 2, \"ready\")"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_forwards_recursive_scalar_environments() {
+    // TOPAL-INTP-SUBSET-269,
+    // TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001
+    let source = include_str!("../../../examples/language/recursive-scalar-environments.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("((false, 0, 2), (true, 40, 0))"),
             "{arguments:?}: {}",
             String::from_utf8_lossy(&output.stdout)
         );

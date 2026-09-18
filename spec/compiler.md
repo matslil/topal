@@ -3959,10 +3959,12 @@ The lowering SHALL use no global context storage, namespace, capture, or
 environment table, initializer replay, lookup, allocation, function pointer,
 indirect call, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or native-ABI revision. Overload-dependent selection,
-recursive forwarding, named-function aliases, anonymous or nested functions,
-aggregate or otherwise unsupported context members, escape, and public/library
-context environments remain deferred and SHALL be rejected before artifact
-publication rather than assigned a provisional environment ABI.
+recursive forwarding beyond
+`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
+anonymous or nested functions, aggregate or otherwise unsupported context
+members, escape, and public/library context environments remain deferred and
+SHALL be rejected before artifact publication rather than assigned a
+provisional environment ABI.
 
 Future compiled-library metadata for a forwarding chain SHALL preserve the
 canonical defining-context instance and source session, every selection and
@@ -4032,9 +4034,10 @@ NOT add source-visible state or change execution semantics.
 The lowering SHALL use no global root storage, namespace or environment table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or native-ABI revision. Overload-dependent selection, recursive forwarding,
-named-function aliases, anonymous or nested functions, aggregate or otherwise
-unsupported root members, context (`@ member`) forwarding beyond
+or native-ABI revision. Overload-dependent selection, recursive forwarding
+beyond `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
+aliases, anonymous or nested functions, aggregate or otherwise unsupported root
+members, context (`@ member`) forwarding beyond
 `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`, escape, and public/library root
 environments remain deferred and SHALL be rejected before artifact publication
 rather than assigned a provisional environment ABI.
@@ -4046,6 +4049,52 @@ declaration order, classifier and semantic representation, capture order,
 lifetime and effects, and versioned target adapter. Those facts SHALL remain
 independent of private capture names, LLVM types or symbols, debug shadows, and
 target-specific physical argument placement.
+
+### TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001 — Proof-backed recursive scalar environments
+
+When a recursive edge is independently admitted by
+`TOPAL-COMPILER-FUNCTION-DECREASES-001`,
+`TOPAL-COMPILER-RECURSION-INT-001`,
+`TOPAL-COMPILER-RECURSION-INT-INCREASING-001`,
+`TOPAL-COMPILER-RECURSION-NAT-001`,
+`TOPAL-COMPILER-RECURSION-INT-MUTUAL-001`, or
+`TOPAL-COMPILER-RECURSION-NAT-MUTUAL-001`, the checked frontend SHALL permit
+that direct or mutual graph to carry the exact scalar hidden parameters already
+governed by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001` and
+`TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`. Capture discovery SHALL NOT make
+an otherwise unproven recursive edge admissible. Every graph member needed to
+close a cycle SHALL receive the transitive union of represented captures, even
+when a member does not select a value directly.
+
+The source entry edge SHALL pass each defining-context value from the selecting
+function's immutable declaration snapshot and each live-root value from the
+outer call-position snapshot. Every recursive edge SHALL then forward its
+current hidden parameters unchanged and in the established declaration order;
+it SHALL NOT reload, re-evaluate, or look up a source value. A closing edge
+SHALL target the already-reserved private symbol with the same exact LLVM
+prototype and `fastcc` convention. LLVM SHALL own AMD64 physical placement, no
+cycle member SHALL claim `norecurse`, and correctness SHALL hold at O0 without
+inlining or tail-call conversion.
+
+Full DWARF/GDB information SHALL expose each explicit parameter, `@ member`, and
+`root member` accurately in the active recursive frame and every suspended
+cycle frame. Target-aligned debug-only stack shadows MAY preserve call-clobbered
+values without adding semantic state. The lowering SHALL add no global root or
+context storage, environment/cycle table, lookup, initializer replay,
+allocation, dispatcher, function pointer, indirect call, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or native-ABI
+revision.
+
+An unproven, incomplete, or mixed-proof cycle; overload-dependent capture
+selection; unsupported captured representation; named-function alias;
+anonymous, nested, or escaping recursion; and public/library recursive
+environments remain deferred and SHALL fail before artifact publication.
+Future compiled-library metadata SHALL preserve the recursion graph and member
+identities, proof rule and evidence, every ordered call and capture edge,
+canonical context/root instance, member identity and declaration position,
+classifier and semantic representation, capture order/lifetime/effects, and a
+versioned target adapter independently of private symbols, LLVM types, debug
+shadows, and physical placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

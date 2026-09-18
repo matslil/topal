@@ -12206,6 +12206,58 @@ mod tests {
     }
 
     #[test]
+    fn forwards_exact_scalar_environments_across_proven_recursion() {
+        // TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001,
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let source = include_str!("../../../examples/language/recursive-scalar-environments.t")
+            .replace("(cycle-even 3, cycle-odd 3)", "cycle-even 3");
+        let program = analyze_for_compiler(&source).unwrap();
+        let llvm = Generator::new(&program, "recursive-scalar-environments.t").emit();
+        assert_eq!(program.functions.len(), 2);
+        let even = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cycle-even")
+            .unwrap();
+        let odd = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cycle-odd")
+            .unwrap();
+        for function in [even, odd] {
+            assert!(llvm.contains(&format!(
+                "define internal fastcc {{ i1, ptr, ptr }} @{}(ptr %arg0, ptr %arg1, ptr %arg2) nounwind noinline",
+                function.symbol
+            )));
+        }
+        for (caller, callee) in [(even, odd), (odd, even)] {
+            let definition = llvm
+                .split_once(&format!("@{}(", caller.symbol))
+                .expect("caller definition is emitted")
+                .1;
+            assert!(definition.contains(&format!(
+                "call fastcc {{ i1, ptr, ptr }} @{}(ptr %v4, ptr %arg1, ptr %arg2)",
+                callee.symbol
+            )));
+        }
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"@ captured\", arg: 2")
+                .count(),
+            2
+        );
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"root live\", arg: 3")
+                .count(),
+            2
+        );
+        assert!(!llvm.contains("topal.runtime.context"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn erases_static_empty_effect_view_before_llvm_lowering() {
         // TOPAL-FUNCTION-EFFECT-BOUND-001, TOPAL-EFFECT-CONTAIN-001,
         // TOPAL-INTRO-STATIC-001, TOPAL-INTRO-VIEW-001,

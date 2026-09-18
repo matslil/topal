@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 242);
+    assert_eq!(examples.len(), 243);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4169,6 +4169,39 @@ fn records_defining_context_forwarding_reversibly() {
         .unwrap();
     assert!(forward < relay && relay < read && read < offset && offset < label);
     assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001] (Int, Int, String)"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_recursive_scalar_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-269,
+    // TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}recursive-scalar-environments.debug"),
+            &language_example("recursive-scalar-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let even = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] cycle-even")
+        .unwrap();
+    let odd = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] cycle-odd")
+        .unwrap();
+    let context = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] captured")
+        .unwrap();
+    let root_member = stdout
+        .find("namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live")
+        .unwrap();
+    assert!(even < odd);
+    assert!(root_member < context);
+    assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001]"));
     assert!(stdout.contains("function.exit"));
 }
 
