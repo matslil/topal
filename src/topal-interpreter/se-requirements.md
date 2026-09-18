@@ -602,6 +602,15 @@ history shall cover scalar and aggregate captures, root and function-local
 factories, and transitive result forwarding through the shared
 captured-Function-result regression.
 
+Left-associative application shall immediately consume exact Function results
+without requiring a source binding. Named, symbolic, non-capturing anonymous,
+and capturing anonymous results shall preserve their existing callable identity
+and lexical environment, evaluate each intermediate once in source order, and
+produce the same trace and reversible-history events as the equivalent bound
+applications. Every interpreter mode shall cover the shared Function-result
+chain regression under `TOPAL-TYPE-CALL-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-FUNCTION-CALLABLE-VALUE-001`.
+
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
 All interpreter modes shall evaluate `Rational ^ Nat` exactly according to

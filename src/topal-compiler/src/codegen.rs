@@ -1965,6 +1965,9 @@ impl<'a> Generator<'a> {
             } => {
                 let value = self.emit_expression(value, body, environment);
                 let mut nested = environment.clone();
+                if let LlValue::Function { captures, .. } = &value {
+                    nested.extend(captures.iter().cloned());
+                }
                 nested.insert(storage_name.clone(), value);
                 self.emit_expression(result, body, &nested)
             }
@@ -12409,6 +12412,47 @@ mod tests {
         assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 3"));
         assert!(llvm.contains("!DILocalVariable(name: \"pair\", arg: 2"));
         assert!(!llvm.contains("DILocalVariable(name: \"topal.function.result"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_result_chains_as_once_only_direct_calls() {
+        // TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-result-chains.t"
+        ))
+        .unwrap();
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| {
+                matches!(
+                    function.source_name.as_str(),
+                    "make-offset" | "make-pair" | "make-closed" | "return-operation"
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 6);
+        let llvm = Generator::new(&program, "function-result-chains.t").emit();
+
+        for factory in factories {
+            assert_eq!(
+                llvm.matches(&format!("@{}(", factory.symbol)).count(),
+                2,
+                "factory {} must have one definition and one direct call",
+                factory.symbol
+            );
+        }
+        assert!(llvm.contains("call fastcc { i32, ptr }"));
+        assert!(llvm.contains("call fastcc { i32, { ptr, ptr } }"));
+        assert!(llvm.contains("extractvalue { i32, ptr }"));
+        assert!(llvm.contains("!DILocalVariable(name: \"offset\", arg: 2"));
+        assert!(llvm.contains("!DILocalVariable(name: \"pair\", arg: 2"));
+        assert!(!llvm.contains("DILocalVariable(name: \"topal.function.chain"));
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));

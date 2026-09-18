@@ -115,6 +115,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-interface.t",
     "examples/language/function-local-shadowing.t",
     "examples/language/function-overloads.t",
+    "examples/language/function-result-chains.t",
     "examples/language/function-results.t",
     "examples/language/function-return.t",
     "examples/language/function-value-boundary.t",
