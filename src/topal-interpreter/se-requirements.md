@@ -620,6 +620,14 @@ reversible debugger history shall cover nested opaque Tuple results, captures,
 capturing Function results, mixed parameters, repetition, and discard through
 the shared nested-anonymous-pattern regression.
 
+Tuple and Record values shall retain Function entries as ordinary values under
+`TOPAL-ABSTRACTION-FUNCTION-CLASSIFIER-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-TYPE-PRODUCT-001`. Construction, binding, function parameter/result
+passage, field selection or product destructuring, and eventual application
+shall preserve the exact callable identity and captured lexical environment.
+Every interpreter mode and reversible debugger history shall cover the shared
+Function-aggregate-boundary regression.
+
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
 All interpreter modes shall evaluate `Rational ^ Nat` exactly according to
