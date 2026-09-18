@@ -12330,6 +12330,152 @@ fn compound_packaged_operands_are_flat_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact aggregate fields, rejection, artifacts, and GDB.
+fn structured_packaged_fields_are_exact_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-structured-packaged-function-fields");
+    let source = directory.join("structured-packaged-function-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/structured-packaged-function-fields.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(((20, 22), \"Ada\"), ((20, 22), \"Ada\", true), ((21, 21), \"default\", false), ((20, 22), \"Grace\", true))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(
+        ir.contains(
+            "define internal fastcc { { ptr, ptr }, ptr } @topal.fn.retain_2done.2({ ptr, ptr } %arg0, { i1, ptr, i32, i32 } %arg1)"
+        ),
+        "{ir}"
+    );
+    assert!(
+        ir.contains(
+            "define internal fastcc { { ptr, ptr }, ptr, i1 } @topal.fn.retain_2dmixed.5({ ptr, ptr } %arg0, { i1, ptr, i32, i32 } %arg1, i1 %arg2)"
+        ),
+        "{ir}"
+    );
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let person = main
+        .find("call fastcc { i1, ptr, i32, i32 } @topal.fn.make_2dperson.0")
+        .unwrap();
+    let pair = main
+        .find("call fastcc { ptr, ptr } @topal.fn.make_2dpair.1")
+        .unwrap();
+    let retained = main
+        .find("call fastcc { { ptr, ptr }, ptr } @topal.fn.retain_2done.2")
+        .unwrap();
+    assert!(person < pair && pair < retained, "{main}");
+    assert!(
+        main.contains("@topal.fn.retain_2done.2({ ptr, ptr } %v9, { i1, ptr, i32, i32 } %v13)"),
+        "{main}"
+    );
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+        "topal.package.argument",
+        "topal.package.operand",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, text) in [
+        (
+            "opaque-package",
+            "use language (version is v0.1)\nretain is fn ((pair : (Int, Int), person : Record (name : String, active : Boolean))) -> Int\n  0\nbundle is (pair is (20, 22), person is (name is \"Ada\", active is true))\nretain bundle\n",
+        ),
+        (
+            "function-aggregate-field",
+            "use language (version is v0.1)\nadd is +\napply is fn ((package : (Function, Int))) -> Int\n  0\napply (package is (add, 1))\n",
+        ),
+    ] {
+        let rejected_source = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_source, text).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break structured-packaged-function-fields.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "print pair",
+            "-ex",
+            "print person",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = {_0 = 20, _1 = 22}"), "{text}");
+    assert!(
+        text.contains("$2 = {active = true, name = \"Ada\"}"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.retain_2done.2"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

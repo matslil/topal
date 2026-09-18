@@ -222,6 +222,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/string-uppercase.t",
     "examples/language/string-utf8-byte-count.t",
     "examples/language/strings-and-products.t",
+    "examples/language/structured-packaged-function-fields.t",
     "examples/language/sum-equality.t",
     "examples/language/task-declaration-order.t",
     "examples/language/task-message-transactions.t",

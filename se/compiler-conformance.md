@@ -81,7 +81,8 @@ evidence.
 | 3b2-b5ah | canonical equality and inequality for exact nominal Union/Variant values with all-payload evidence and tag-first active-payload lowering | complete |
 | 3b2-b5ai | arbitrary label-order association for one closed scalar package, source-order once-only bindings, non-trailing closed defaults, declaration-order flat calls, and field debugging | complete |
 | 3b2-b5aj | closed scalar packages in either or both syntactic operand positions, global source-order retention, operand/field declaration-order flattening, exact private calls, and field debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, non-scalar/nested/opaque package values and dependent default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5ak | exact capture-free Tuple and Record package fields, source-order retention, structured closed defaults, exact aggregate private parameters, and structured field debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, Function-containing/Sum/other unsupported package fields and dependent default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -321,7 +322,8 @@ private bindings, declaration-order permutation, and non-trailing closed
 defaults while keeping the existing flat private call boundary; 3b2-b5aj
 extends that boundary to package/package and mixed package/scalar calls with
 global explicit-value ordering and operand/field declaration-order flattening;
-and
+3b2-b5ak admits exact capture-free Tuple and Record fields without decomposing
+their private aggregate parameters into additional package fields; and
 3b2-b5e8 continues with other escaping, recursive, overloaded, and
 dynamically contained callables, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the
