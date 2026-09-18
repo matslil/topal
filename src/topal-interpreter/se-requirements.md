@@ -2219,3 +2219,15 @@ afterward in operand/field declaration order, and function entry shall expose
 each complete field under its one source name. The shared regression and
 reversible debugger history shall cover reordered Tuple/Record function calls,
 a closed Record default, positional parity, and exact results.
+
+## TOPAL-INTP-SUBSET-260 — Nominal Sum packaged fields
+
+All source modes shall preserve an exact nominal Sum value supplied as a field
+of a one- or two-operand package under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit Sum expressions shall execute
+once in source order, closed Sum defaults shall bind afterward in operand/field
+declaration order, and function entry shall expose the field's nominal identity,
+active alternative, and payload under its one source name. The shared regression
+and reversible debugger history shall cover reordered Sum/scalar fields, a
+closed payload-free Sum default, positional parity, mixed operands, and exact
+results.

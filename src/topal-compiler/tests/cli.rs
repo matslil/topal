@@ -12476,6 +12476,144 @@ fn structured_packaged_fields_are_exact_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers nominal Sum fields, rejection, artifacts, and GDB.
+fn sum_packaged_fields_are_exact_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-SUM-PACKAGED-FIELD-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-sum-packaged-function-fields");
+    let source = directory.join("sum-packaged-function-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/sum-packaged-function-fields.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42, 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(
+        ir.contains("define internal fastcc ptr @topal.fn.score.1({ i32, ptr } %arg0, ptr %arg1)"),
+        "{ir}"
+    );
+    assert!(
+        ir.contains(
+            "define internal fastcc ptr @topal.fn.shift_2dscore.7({ i32, ptr } %arg0, ptr %arg1)"
+        ),
+        "{ir}"
+    );
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let message = main
+        .find("call fastcc { i32, ptr } @topal.fn.make_2dmessage.5")
+        .unwrap();
+    let offset = main
+        .find("call fastcc ptr @topal.fn.offset_2dvalue.6")
+        .unwrap();
+    let shifted = main
+        .find("call fastcc ptr @topal.fn.shift_2dscore.7")
+        .unwrap();
+    assert!(message < offset && offset < shifted, "{main}");
+    assert!(
+        main.contains("@topal.fn.score.1({ i32, ptr } %v4, ptr @.topal.int.4)"),
+        "{main}"
+    );
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+        "topal.package.argument",
+        "topal.package.operand",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, text) in [
+        (
+            "opaque-package",
+            "use language (version is v0.1)\nMessage is Union\n  Stop\n  Move : Int\nscore is fn ((message : Message, fallback : Int)) -> Int\n  fallback\nbundle is (message is Move 42, fallback is 0)\nscore bundle\n",
+        ),
+        (
+            "function-sum-field",
+            "use language (version is v0.1)\nCarrier is Union\n  Carry : Function\nadd is +\napply is fn ((value : Carrier)) -> Int\n  0\napply (value is Carry add)\n",
+        ),
+    ] {
+        let rejected_source = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_source, text).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break sum-packaged-function-fields.t:20",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis message",
+            "-ex",
+            "print message",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Message"), "{text}");
+    assert!(text.contains("$1 = Move 42"), "{text}");
+    assert!(text.contains("topal.fn.score.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
