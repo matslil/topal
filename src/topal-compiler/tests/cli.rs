@@ -11101,6 +11101,173 @@ fn repeated_anonymous_aggregate_values_are_exact_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers both mismatch paths, rejection, IR, artifacts, and GDB.
+fn repeated_sum_values_compare_only_the_active_payload_and_remain_debuggable() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001,
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+    // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-repeated-sum-patterns");
+    let source = directory.join("repeated-sum-patterns.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/repeated-sum-patterns.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(Stop, Number 7, Label \"seven\", Pair (7, \"seven\"), Wrapped Code 9)\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let variant_source = directory.join("repeated-variant-pattern.t");
+    let variant_executable = directory.join("variant");
+    fs::write(
+        &variant_source,
+        "use language (version is v0.1)\nChoice is Variant (Int, String)\nrepeat : Function is { value, value } value\nleft : Choice is Choice at 1 \"same\"\nright : Choice is Choice at 1 \"same\"\nrepeat (left, right)\n",
+    )
+    .unwrap();
+    let variant_compiled = run(topalc().args([
+        "-o",
+        variant_executable.to_str().unwrap(),
+        variant_source.to_str().unwrap(),
+    ]));
+    assert!(
+        variant_compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&variant_compiled.stderr)
+    );
+    let variant = run(&mut Command::new(&variant_executable));
+    assert!(variant.status.success());
+    assert_eq!(variant.stdout, b"at 1 \"same\"\n");
+
+    let ir = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir).unwrap();
+    assert!(ir.contains("sum.equal.tag"), "{ir}");
+    assert!(ir.contains("sum.equal.alternative"), "{ir}");
+    assert!(ir.contains("sum.equal.unequal"), "{ir}");
+    assert!(ir.contains("sum.equal.merge"), "{ir}");
+    assert!(ir.contains("switch i32"), "{ir}");
+    assert!(ir.contains("phi i1"), "{ir}");
+    assert!(!ir.contains("topal.runtime.sum.equal"), "{ir}");
+
+    for (name, right) in [("payload", "Number 8"), ("tag", "Label \"seven\"")] {
+        let mismatch_source = directory.join(format!("{name}-mismatch.t"));
+        let mismatch_executable = directory.join(format!("{name}-mismatch"));
+        fs::write(
+            &mismatch_source,
+            format!(
+                "use language (version is v0.1)\nToken is Union\n  Number : Int\n  Label : String\n\nrepeat : Function is {{ value, value }} value\nleft : Token is Number 7\nright : Token is {right}\nrepeat (left, right)\n"
+            ),
+        )
+        .unwrap();
+        let mismatch_compiled = run(topalc().args([
+            "-o",
+            mismatch_executable.to_str().unwrap(),
+            mismatch_source.to_str().unwrap(),
+        ]));
+        assert!(
+            mismatch_compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&mismatch_compiled.stderr)
+        );
+        let mismatch = run(&mut Command::new(&mismatch_executable));
+        assert_eq!(mismatch.status.code(), Some(65));
+        assert!(mismatch.stdout.is_empty());
+        assert_eq!(
+            mismatch.stderr,
+            b"error[E-ANONYMOUS-PATTERN-IDENTITY]: repeated pattern values differ\n"
+        );
+    }
+
+    let unsupported_source = directory.join("unsupported-sum-payload.t");
+    let unsupported_executable = directory.join("unsupported");
+    fs::write(
+        &unsupported_source,
+        "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nrepeat : Function is { value, value } value\nwindow : Window is Bounded (0 ..= 1)\nrepeat (window, window)\n",
+    )
+    .unwrap();
+    let unsupported = run(topalc().args([
+        "-o",
+        unsupported_executable.to_str().unwrap(),
+        unsupported_source.to_str().unwrap(),
+    ]));
+    assert!(!unsupported.status.success());
+    assert!(!unsupported_executable.exists());
+    assert!(!metadata_path(&unsupported_executable).exists());
+    let diagnostic = String::from_utf8_lossy(&unsupported.stderr);
+    assert!(
+        diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains("repeated anonymous pattern identity for `Window`"),
+        "{diagnostic}"
+    );
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break repeated-sum-patterns.t:18",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Token"), "{text}");
+    assert!(text.contains("$1 = Stop"), "{text}");
+    assert!(text.contains("value = Stop"), "{text}");
+    assert!(!text.contains("value repeated"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 #[allow(clippy::too_many_lines)] // One session covers success, mismatch, artifacts, and GDB.
 fn repeated_function_aggregate_values_are_exact_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,

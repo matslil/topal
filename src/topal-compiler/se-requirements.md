@@ -3517,8 +3517,9 @@ artifact properties, full O0 aggregate GDB observation, reversible debugging,
 the shared corpus, and separate resource baselines. This shall add no generic
 aggregate matcher, pattern table, allocation, callback, indirect dispatch,
 foreign dependency, C/C++ runtime, other-language standard library, public
-aggregate ABI, or `topal-native/6` revision. Result, Sum, Range, Generator,
-refined, authority-bearing, and Function-containing aggregate identity outside
+aggregate ABI, or `topal-native/6` revision. Sum identity is governed by
+`TOPAL-COMP-ANONYMOUS-REPEATED-SUM-001`. Result, Range, Generator, refined,
+authority-bearing, and Function-containing aggregate identity outside
 `TOPAL-COMP-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`; ordinary named-function
 header repetition;
 publication; and library metadata/adapters remain deferred. This realizes
@@ -3701,6 +3702,51 @@ LLVM types, or target-specific placement. This realizes
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5ae.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-SUM-001 — Exact nominal Sum repeated identity
+
+The checked compiler model shall admit a repeated anonymous-pattern name with
+one exact nominal Union or positional Variant classifier when every possible
+payload has existing exact compiler identity or recursively satisfies this
+requirement. Tuple and Record fields may contain such a Sum recursively. The
+model shall retain nominal identity and ordered alternative/payload schemas;
+distinct declarations with structurally equal alternatives shall not match.
+Function, Range, Result, refined, authority-bearing, and other payloads without
+admitted exact identity shall fail before LLVM or artifact publication.
+
+Lowering shall compare tags first. Unequal tags shall reach the existing Topal-
+owned mismatch diagnostic and exit 65 without payload comparison. Equal tags
+shall use LLVM `switch` to compare only the active alternative payload through
+existing direct recursive comparisons and merge the result through an `i1`
+`phi`. Inactive private fields shall neither be observed nor influence source
+identity. This compiler-only guard shall not claim the general source Equality
+capability for Sums.
+
+Each operand shall retain the existing exact private aggregate in matching
+`fastcc` caller and callee prototypes while LLVM owns physical AMD64 aggregate
+and control-flow lowering. The first occurrence shall be the sole source
+binding and DWARF parameter with its nominal Sum classifier and active value.
+Tests shall cover labeled Union and positional Variant values; payload-free,
+Int, String, Tuple, and nested Sum alternatives; same-value success; same-tag
+payload mismatch; distinct-tag short-circuit;
+unsupported payload rejection; checked-model facts; direct `switch`/`phi` IR;
+interpreter modes and reversible history; the shared corpus; separate resource
+baselines; freestanding ELF/DWARF properties; and full O0 GDB values/frames.
+
+This shall add no generic matcher, Sum-equality runtime, pattern table,
+allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate ABI, or `topal-native/6`
+revision. General derived Sum Equality, recursive Sum declarations,
+Function-containing Sums, persistent storage, publication, and library adapters
+remain deferred. Future compiled-library metadata shall encode stable nominal
+identity, positional/labeled form, ordered alternatives, payload schemas,
+semantic identity/equality requirements, representation identity, and target
+adapters; it shall not serialize private tags, inactive storage, LLVM types, or
+target-specific placement. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5ag.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

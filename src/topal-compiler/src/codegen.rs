@@ -5892,8 +5892,112 @@ impl<'a> Generator<'a> {
             (LlValue::Record { fields: left, .. }, LlValue::Record { fields: right, .. }) => {
                 self.emit_record_equal(left, right, body, span)
             }
+            (
+                LlValue::Sum {
+                    tag: left_tag,
+                    payloads: left_payloads,
+                    sum,
+                },
+                LlValue::Sum {
+                    tag: right_tag,
+                    payloads: right_payloads,
+                    sum: right_sum,
+                },
+            ) => {
+                debug_assert_eq!(sum, right_sum);
+                self.emit_sum_equal(
+                    left_tag,
+                    left_payloads,
+                    right_tag,
+                    right_payloads,
+                    sum,
+                    body,
+                    span,
+                )
+            }
             _ => unreachable!("checked equality values agree"),
         }
+    }
+
+    #[allow(clippy::too_many_arguments)] // Both structural operands remain explicit at the lowering boundary.
+    fn emit_sum_equal(
+        &mut self,
+        left_tag: &str,
+        left_payloads: &[Option<Box<LlValue>>],
+        right_tag: &str,
+        right_payloads: &[Option<Box<LlValue>>],
+        sum: &CompilerSumType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> String {
+        debug_assert_eq!(left_payloads.len(), sum.alternatives.len());
+        debug_assert_eq!(right_payloads.len(), sum.alternatives.len());
+        let tags_equal = body.instruction(
+            &format!("icmp eq i32 {left_tag}, {right_tag}"),
+            span,
+            &mut self.debug,
+        );
+        let compare_tag = body.label("sum.equal.tag");
+        let unequal = body.label("sum.equal.unequal");
+        let merge = body.label("sum.equal.merge");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {tags_equal}, label %{compare_tag}, label %{unequal}"),
+            location,
+        );
+        body.start_block(&compare_tag);
+        let alternatives = sum
+            .alternatives
+            .iter()
+            .map(|_| body.label("sum.equal.alternative"))
+            .collect::<Vec<_>>();
+        let cases = alternatives
+            .iter()
+            .enumerate()
+            .map(|(tag, label)| format!("i32 {tag}, label %{label}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        body.terminator(
+            &format!("switch i32 {left_tag}, label %{unequal} [ {cases} ]"),
+            location,
+        );
+
+        let mut branches = Vec::with_capacity(sum.alternatives.len() + 1);
+        for (index, ((alternative, left), right)) in sum
+            .alternatives
+            .iter()
+            .zip(left_payloads)
+            .zip(right_payloads)
+            .enumerate()
+        {
+            body.start_block(&alternatives[index]);
+            let equal = match (&alternative.payload, left, right) {
+                (None, None, None) => "true".to_owned(),
+                (Some(_), Some(left), Some(right)) => self.emit_equal(left, right, body, span),
+                _ => unreachable!("checked sum equality retains every declared payload"),
+            };
+            let predecessor = body.current_block.clone();
+            body.terminator(&format!("br label %{merge}"), location);
+            branches.push((equal, predecessor));
+        }
+        body.start_block(&unequal);
+        let unequal_predecessor = body.current_block.clone();
+        body.terminator(&format!("br label %{merge}"), location);
+        branches.push(("false".to_owned(), unequal_predecessor));
+
+        body.start_block(&merge);
+        body.instruction(
+            &format!(
+                "phi i1 {}",
+                branches
+                    .iter()
+                    .map(|(equal, predecessor)| format!("[ {equal}, %{predecessor} ]"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            span,
+            &mut self.debug,
+        )
     }
 
     fn emit_list_equal(
