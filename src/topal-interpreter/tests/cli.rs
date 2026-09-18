@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 229);
+    assert_eq!(examples.len(), 230);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -629,6 +629,41 @@ fn every_mode_derives_record_equality() {
             .unwrap()
             .contains("E-NO-APPLICABLE-OVERLOAD")
     );
+}
+
+#[test]
+fn every_mode_derives_nominal_sum_equality() {
+    // TOPAL-INTP-SUBSET-256, TOPAL-TYPE-SUM-EQUALITY-001,
+    // TOPAL-TYPE-EQUALITY-001
+    let source = include_str!("../../../examples/language/sum-equality.t");
+    let expected = "(true, false, true, false, true, true, true, false, true, false, true)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    let traced = run(&["--test"], source);
+    let trace = String::from_utf8(traced.stderr).unwrap();
+    assert_eq!(trace.matches("\"event\":\"equality.sum\"").count(), 12);
+    assert!(trace.contains("\"rule\":\"TOPAL-TYPE-SUM-EQUALITY-001\""));
+
+    for unsupported in [
+        "use language (version is v0.1)\nHolder is Union\n  Blank\n  Window : Range Int\n\nleft : Holder is Blank\nright : Holder is Blank\nleft = right\n",
+        "use language (version is v0.1)\nLeft is Union\n  LeftEmpty\n\nRight is Union\n  RightEmpty\n\nleft : Left is LeftEmpty\nright : Right is RightEmpty\nleft = right\n",
+    ] {
+        let output = run(&[], unsupported);
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("E-NO-APPLICABLE-OVERLOAD"));
+    }
 }
 
 #[test]

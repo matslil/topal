@@ -22720,6 +22720,12 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, value_type)| compiler_equality_supported(value_type)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().all(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_none_or(compiler_equality_supported)
+        }),
         CompilerType::Refined { base, .. } => compiler_equality_supported(base),
         CompilerType::Scope
         | CompilerType::Function
@@ -22736,7 +22742,6 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Error
         | CompilerType::ErrorDomain
         | CompilerType::SourceLocation
-        | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_)
         | CompilerType::TaskResponse(_)
@@ -32335,7 +32340,7 @@ mod tests {
                 }]
                 && matches!(function.parameters[0].value_type, CompilerType::Sum(_))
                 && function.parameters[0].value_type == function.parameters[1].value_type
-                && !compiler_equality_supported(&function.parameters[0].value_type)
+                && compiler_equality_supported(&function.parameters[0].value_type)
         }));
 
         let unsupported = analyze_for_compiler(
@@ -32469,7 +32474,7 @@ mod tests {
         );
 
         let unsupported_capture = analyze_for_compiler(
-            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Function\n  operation : Function is { value } token\n  operation\n\nrepeat : Function is { operation, operation } 42\nrepeat (make (Value 1), make (Value 1))\n",
+            "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nmake is fn (window : Window) -> Function\n  operation : Function is { value } window\n  operation\n\nrepeat : Function is { operation, operation } 42\nrepeat (make (Bounded (0 ..= 1)), make (Bounded (0 ..= 1)))\n",
         )
         .unwrap_err();
         assert_eq!(
@@ -32533,7 +32538,7 @@ mod tests {
         );
 
         let unsupported = analyze_for_compiler(
-            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  operation is fn (value : Int) -> Token\n    token\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Value 1)\n",
+            "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\ncompare is fn (window : Window) -> Int\n  operation is fn (value : Int) -> Window\n    window\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Bounded (0 ..= 1))\n",
         )
         .unwrap_err();
         assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
@@ -32618,7 +32623,7 @@ mod tests {
         );
 
         let unsupported_capture = analyze_for_compiler(
-            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Record (operation : Function)\n  operation : Function is { value } token\n  (operation is operation)\n\nrepeat : Function is { package, package } 42\nrepeat (make (Value 1), make (Value 1))\n",
+            "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nmake is fn (window : Window) -> Record (operation : Function)\n  operation : Function is { value } window\n  (operation is operation)\n\nrepeat : Function is { package, package } 42\nrepeat (make (Bounded (0 ..= 1)), make (Bounded (0 ..= 1)))\n",
         )
         .unwrap_err();
         assert_eq!(unsupported_capture.code, "E-COMPILER-UNSUPPORTED");
@@ -33364,6 +33369,60 @@ mod tests {
                 .iter()
                 .all(|alternative| alternative.payload.is_some())
         );
+    }
+
+    #[test]
+    fn models_derived_nominal_sum_equality() {
+        // TOPAL-COMPILER-SUM-EQUALITY-001, TOPAL-TYPE-SUM-EQUALITY-001,
+        // TOPAL-TYPE-EQUALITY-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/sum-equality.t"))
+                .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Sum equality results")
+        };
+        assert_eq!(results.len(), 11);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Boolean)
+        );
+
+        for name in ["same-token", "same-choice"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap_or_else(|| panic!("shared regression instantiates {name}"));
+            assert_eq!(function.parameters.len(), 2);
+            assert_eq!(
+                function.parameters[0].value_type,
+                function.parameters[1].value_type
+            );
+            assert!(compiler_equality_supported(
+                &function.parameters[0].value_type
+            ));
+            assert!(matches!(
+                function.body.result.kind,
+                CompilerExpressionKind::Binary {
+                    operation: CompilerBinary::Equal,
+                    ..
+                }
+            ));
+        }
+
+        let unsupported = analyze_for_compiler(
+            "use language (version is v0.1)\nHolder is Union\n  Blank\n  Window : Range Int\n\nleft : Holder is Blank\nright : Holder is Blank\nleft = right\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
+        assert!(unsupported.message.contains("equality for this value type"));
+
+        let nominal = analyze_for_compiler(
+            "use language (version is v0.1)\nLeft is Union\n  LeftEmpty\n\nRight is Union\n  RightEmpty\n\nleft : Left is LeftEmpty\nright : Right is RightEmpty\nleft = right\n",
+        )
+        .unwrap_err();
+        assert_eq!(nominal.code, "E-TYPE-MISMATCH");
     }
 
     #[test]

@@ -1161,6 +1161,11 @@
       "cpu_time_ns": 8579580,
       "memory_peak_bytes": 18419712,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/sum-equality.t": {
+      "cpu_time_ns": 12332320,
+      "memory_peak_bytes": 18702336,
+      "samples_per_test": 50
     }
   }
 }

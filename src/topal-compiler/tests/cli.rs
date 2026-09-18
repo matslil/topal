@@ -11268,6 +11268,131 @@ fn repeated_sum_values_compare_only_the_active_payload_and_remain_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers evidence rejection, IR, artifacts, and GDB.
+fn nominal_sum_equality_is_tag_first_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-SUM-EQUALITY-001, TOPAL-TYPE-SUM-EQUALITY-001,
+    // TOPAL-TYPE-EQUALITY-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-sum-equality");
+    let source = directory.join("sum-equality.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/sum-equality.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(true, false, true, false, true, true, true, false, true, false, true)\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(ir.matches("sum.equal.tag").count() >= 3, "{ir}");
+    assert!(ir.contains("sum.equal.alternative"), "{ir}");
+    assert!(ir.contains("sum.equal.unequal"), "{ir}");
+    assert!(ir.contains("sum.equal.merge"), "{ir}");
+    assert!(ir.contains("switch i32"), "{ir}");
+    assert!(ir.contains("phi i1"), "{ir}");
+    assert!(!ir.contains("topal.runtime.sum.equal"), "{ir}");
+    assert!(!ir.contains("llvm.memcmp"), "{ir}");
+
+    for (name, source_text, code) in [
+        (
+            "unsupported",
+            "use language (version is v0.1)\nHolder is Union\n  Blank\n  Window : Range Int\n\nleft : Holder is Blank\nright : Holder is Blank\nleft = right\n",
+            "E-COMPILER-UNSUPPORTED",
+        ),
+        (
+            "nominal",
+            "use language (version is v0.1)\nLeft is Union\n  LeftEmpty\n\nRight is Union\n  RightEmpty\n\nleft : Left is LeftEmpty\nright : Right is RightEmpty\nleft = right\n",
+            "E-TYPE-MISMATCH",
+        ),
+    ] {
+        let rejected_source = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_source, source_text).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+        assert!(
+            String::from_utf8_lossy(&rejected.stderr).contains(code),
+            "{}",
+            String::from_utf8_lossy(&rejected.stderr)
+        );
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break sum-equality.t:22",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis left",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Token"), "{text}");
+    assert!(text.contains("$1 = Stop"), "{text}");
+    assert!(text.contains("$2 = Stop"), "{text}");
+    assert!(text.contains("left = Stop"), "{text}");
+    assert!(text.contains("right = Stop"), "{text}");
+    assert!(text.contains("topal.fn.same_2dtoken"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 #[allow(clippy::too_many_lines)] // One session covers success, mismatch, artifacts, and GDB.
 fn repeated_function_aggregate_values_are_exact_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,
@@ -11423,7 +11548,7 @@ fn repeated_captured_function_values_are_exact_freestanding_and_debuggable() {
     let unsupported_executable = directory.join("unsupported");
     fs::write(
         &unsupported_source,
-        "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Function\n  operation : Function is { value } token\n  operation\n\nrepeat : Function is { operation, operation } 42\nrepeat (make (Value 1), make (Value 1))\n",
+        "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nmake is fn (window : Window) -> Function\n  operation : Function is { value } window\n  operation\n\nrepeat : Function is { operation, operation } 42\nrepeat (make (Bounded (0 ..= 1)), make (Bounded (0 ..= 1)))\n",
     )
     .unwrap();
     let unsupported = run(topalc().args([
@@ -11544,7 +11669,7 @@ fn repeated_captured_named_function_values_are_exact_freestanding_and_debuggable
     let unsupported_executable = directory.join("unsupported");
     fs::write(
         &unsupported_source,
-        "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  operation is fn (value : Int) -> Token\n    token\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Value 1)\n",
+        "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\ncompare is fn (window : Window) -> Int\n  operation is fn (value : Int) -> Window\n    window\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Bounded (0 ..= 1))\n",
     )
     .unwrap();
     let unsupported = run(topalc().args([
@@ -11693,7 +11818,7 @@ fn repeated_captured_function_aggregate_values_are_exact_freestanding_and_debugg
     let unsupported_executable = directory.join("unsupported");
     fs::write(
         &unsupported_source,
-        "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Record (operation : Function)\n  operation : Function is { value } token\n  (operation is operation)\n\nrepeat : Function is { package, package } 42\nrepeat (make (Value 1), make (Value 1))\n",
+        "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nmake is fn (window : Window) -> Record (operation : Function)\n  operation : Function is { value } window\n  (operation is operation)\n\nrepeat : Function is { package, package } 42\nrepeat (make (Bounded (0 ..= 1)), make (Bounded (0 ..= 1)))\n",
     )
     .unwrap();
     let unsupported = run(topalc().args([

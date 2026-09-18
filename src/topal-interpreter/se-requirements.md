@@ -2173,3 +2173,16 @@ anonymous Function, and later binding and application shall preserve its body,
 arity, and callable identity under `TOPAL-FUNCTION-ANONYMOUS-001` and
 `TOPAL-FUNCTION-VALUE-001`. Formal traces and reversible scripted-debugger
 history shall cover the shared capture/result example.
+
+## TOPAL-INTP-SUBSET-256 — Derived nominal Sum equality
+
+All source modes shall derive `=` and `!=` for one admitted root-scope,
+non-recursive nominal Union or positional Variant type exactly when every
+declared payload provides canonical Equality under
+`TOPAL-TYPE-SUM-EQUALITY-001`. Distinct tags shall compare
+unequal without observing payloads; equal tags shall compare only the active
+payload. Structurally equal distinct declarations and declarations containing
+any unsupported payload shall report no applicable Equality operation. Formal
+traces, LSP validation, reversible debugger history, and the shared regression
+shall cover payload-free, scalar, Tuple, Record, nested Sum, and positional
+alternatives.

@@ -123,6 +123,23 @@ shall select only the active alternative and bind its complete payload once.
 classified by `Tᵢ`. The same `Name at i binding` shape shall match and bind that
 payload. Repeated classifiers remain distinct alternatives.
 
+### TOPAL-TYPE-SUM-EQUALITY-001 — Derived nominal Sum equality
+
+A labeled Union or positional Variant provides canonical Equality exactly when
+every declared payload classifier provides canonical Equality; a payload-free
+alternative contributes Unit. Two values shall share this operation only when
+they have the same nominal sum identity. Values with different active
+alternatives compare unequal without observing either payload. Values with the
+same active alternative compare equal exactly when that alternative is
+payload-free or its two payloads compare equal under the payload classifier's
+canonical Equality. Distinct nominal declarations shall have no shared equality
+operation even when their ordered alternatives are structurally identical.
+
+Finite recursive values derive Equality when this condition holds for every
+observed component. Derivation shall not expose representation tags, inactive
+payload storage, allocation identity, or a second user-selectable interpretation
+of Equality.
+
 ### TOPAL-DECISION-UNION-001 — Sum decision selection
 
 A complete sum decision shall select exactly the active labeled or positional
@@ -239,7 +256,8 @@ A record provides equality exactly when both operands have the same set of
 labeled fields and values at corresponding labels provide equality; it compares
 equal exactly when every corresponding field compares equal. Construction order
 does not affect record type identity or equality. Records with different labeled
-shapes have no shared equality overload.
+shapes have no shared equality overload. Nominal Union and Variant equality is
+derived according to `TOPAL-TYPE-SUM-EQUALITY-001`.
 
 Canonical conversion may make one equality overload applicable. In particular,
 mixed `Int` and `Rational` equality applies `TOPAL-NUM-INT-RATIONAL-CONVERT-001`
