@@ -774,6 +774,10 @@ impl<'a> Generator<'a> {
                 },
                 _ => function_parameter_value(&parameter.value_type, index),
             };
+            if !parameter.source_visible {
+                environment.insert(parameter.name.clone(), value);
+                continue;
+            }
             let variable = self.debug.parameter(
                 &parameter.name,
                 index + 1,
@@ -794,9 +798,9 @@ impl<'a> Generator<'a> {
                 ));
             let retained_value_generator_source = parameter.value_type == CompilerType::Int
                 && matches!(&function.result_type, CompilerType::Generator(generator)
-                    if generator.yield_type.as_ref() == &CompilerType::Int
-                        && generator.resume_type.as_ref() == &CompilerType::Unit
-                        && generator.result_type.as_ref() == &CompilerType::String)
+                        if generator.yield_type.as_ref() == &CompilerType::Int
+                            && generator.resume_type.as_ref() == &CompilerType::Unit
+                            && generator.result_type.as_ref() == &CompilerType::String)
                 || matches!(
                     (&parameter.value_type, &function.result_type),
                     (
@@ -12152,6 +12156,61 @@ mod tests {
         }));
         assert!(llvm.contains("!DILocalVariable(name: \"offset\", arg: 2"));
         assert!(llvm.contains("!DILocalVariable(name: \"twice\""));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_captured_function_parameters_as_hidden_direct_arguments() {
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-NESTED-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-parameters.t"
+        ))
+        .unwrap();
+        let scalar_anonymous = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/1>"
+                    && function
+                        .parameters
+                        .iter()
+                        .map(|parameter| parameter.name.as_str())
+                        .eq(["input", "left", "right"])
+            })
+            .unwrap();
+        let pair_boundary = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "apply-pair")
+            .unwrap();
+        let nested = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "add")
+            .unwrap();
+        let llvm = Generator::new(&program, "capturing-function-parameters.t").emit();
+
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1, ptr %arg2)",
+            scalar_anonymous.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc {{ ptr, ptr }} @{}(i32 %arg0, ptr %arg1, {{ ptr, ptr }} %arg2)",
+            pair_boundary.symbol
+        )));
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1, ptr %arg2)",
+            nested.symbol
+        )));
+        assert!(llvm.contains("!DIEnumerator(name: \"<fn add>\""));
+        assert!(llvm.contains("!DILocalVariable(name: \"left\", arg: 2"));
+        assert!(llvm.contains("!DILocalVariable(name: \"right\", arg: 3"));
+        assert!(llvm.contains("!DILocalVariable(name: \"pair\", arg: 2"));
+        assert!(!llvm.contains("DILocalVariable(name: \"operation capture"));
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));

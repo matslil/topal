@@ -587,6 +587,13 @@ shall be traceable and covered by the shared repeated-pattern regression. The
 same exact identity semantics shall apply recursively to Tuple, Record,
 Optional, and List values and shall be covered in every interpreter mode and
 reversible debugger history by the shared repeated-aggregate regression.
+Passing a capturing anonymous or nested Function through one or more ordinary
+Function parameters shall preserve its construction-time lexical environment
+and eventual direct invocation semantics under `TOPAL-FUNCTION-ANONYMOUS-001`,
+`TOPAL-FUNCTION-NESTED-001`, and `TOPAL-FUNCTION-VALUE-001`. Every interpreter
+mode and reversible debugger history shall cover scalar and aggregate captures,
+root and function-local construction, and transitive forwarding through the
+shared captured-Function-parameter regression.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 

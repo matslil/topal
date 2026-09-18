@@ -115,9 +115,9 @@ result retains its body and arity through the same specialization side table,
 while the machine result remains the private observation tag. Target-aligned
 debug-only shadows keep otherwise-dead Function result bindings observable at
 O0. Aggregate, capturing, dynamic, and published Function results, dynamic
-structural classifier dispatch, escaping/capturing closures, and remaining
-recursive call graphs remain later frontend work and do not leak into the
-private ABI prematurely.
+structural classifier dispatch, escaping or dynamically stored capturing
+closures, and remaining recursive call graphs remain later frontend work and do
+not leak into the private ABI prematurely.
 
 Within a single compiled source application, the executable `root` namespace
 is also a frontend identity rather than a runtime lookup table. The checked
@@ -240,9 +240,21 @@ captures afterward, while source arity and callable identity continue to count
 patterns rather than machine parameters. Flat mixed symbolic applications are
 explicitly regrouped left-to-right before ordinary operation checking. The
 observation tag exists only for `<anonymous fn/N>` display and DWARF. Capturing
-Function parameters/results, nested patterns, unsupported captured state,
-escaping environments, and a public closure representation remain one
-coordinated later design.
+Function parameters extend this private specialization when the caller retains
+the exact anonymous or nested callable facts: its already-evaluated immutable
+captures are appended as deterministic hidden arguments at every ordinary
+Function boundary and remapped to that callee's storage identities. The same
+facts and values may be forwarded through another specialized call. Hidden
+forwarding arguments are excluded from source DWARF; only the source Function
+parameter and the source-named captures in the eventually invoked callable are
+shown. A nested callable receives a module-private observation tag only when it
+enters this path. No tag dispatch, environment object, capture allocation, or
+cross-frame lookup is introduced, and LLVM continues to lower every exact
+private prototype for the target. Capturing Function results, nested patterns,
+unsupported captured state, escaping environments, and a public/library
+closure representation remain one coordinated later design with canonical
+callable, ordered-capture, lifetime/effect, representation, and target-adapter
+metadata.
 
 A repeated non-discard name across ordinary anonymous parameters or flat
 product fields retains every consumed private machine operand but creates only

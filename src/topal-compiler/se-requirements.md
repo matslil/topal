@@ -3108,7 +3108,8 @@ anonymous Function. Result callable facts shall retain its body, source arity,
 construction identity, static context, and empty capture set separately from
 the returned observation tag. A later binding and application shall specialize
 that body and produce one direct private call. Capturing anonymous Functions
-shall remain rejected at Function parameter and result boundaries.
+at private Function parameters are governed by
+`TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`; capturing results remain rejected.
 
 LLVM definitions and calls shall use matching private `fastcc` signatures with
 source parameters followed by exact capture parameters, leaving physical
@@ -3122,11 +3123,53 @@ values/frames, the shared corpus, and separate resource baselines.
 This shall add no environment object, function pointer, indirect call, closure
 or Function runtime, foreign dependency, C/C++ runtime, other-language standard
 library, public callable ABI, or `topal-native/6` revision. Capturing results or
-Function-boundary arguments, aggregate containment, dynamic escape,
-publication, and library metadata/adapters remain deferred.
+Function-boundary arguments outside
+`TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`, aggregate containment, dynamic
+escape, publication, and library metadata/adapters remain deferred.
 This realizes `TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5r.
+
+## TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001 — Private captured Function parameters
+
+The checked compiler model shall admit a capturing anonymous Function or a
+non-escaping nested lexical Function at an ordinary private `Function`
+parameter. The exact callable facts shall remain separate from the i32
+observation tag. Every immutable capture shall already have an admitted private
+function-boundary representation and shall contain neither Generator nor
+Function. The caller shall forward the already-evaluated capture values after
+the source parameters in deterministic retained order. A specialized callee
+may forward the same facts and values through another ordinary Function
+parameter without re-evaluation while the defining lifetime remains active.
+
+The frontend shall remap each capture storage identity to an exact hidden
+parameter at every boundary, reject missing or shadowed storage, and specialize
+the retained anonymous or nested body at its eventual application. A nested
+Function value may receive one deterministic module-private observation tag,
+but lowering shall emit only direct calls. Hidden forwarding parameters shall
+remain absent from source DWARF, while the Function parameter, actual anonymous
+or nested frame, explicit operands, and material source-named captures remain
+inspectable.
+
+Tests shall cover multiple scalar captures, an admitted Tuple capture, a root
+anonymous capture, function-local anonymous and nested construction, transitive
+forwarding, exact output in every interpreter mode, reversible debugging,
+checked capture remapping, direct private IR, escaping-result rejection,
+freestanding artifact properties, full O0 GDB values/frames, the shared corpus,
+and separate resource baselines. This shall add no environment object or
+allocation, function pointer, indirect call, callback, closure or Function
+runtime, foreign dependency, C/C++ runtime, other-language standard library,
+public callable ABI, or `topal-native/6` revision. Capturing Function results,
+aggregate containment, dynamic selection or escape, recursive or overloaded
+nested callable values, unsupported captured state, publication, and library
+metadata/adapters remain deferred. Future library metadata shall describe
+callable and capture identities, ordered classifiers, lifetime/effects,
+representation identities, and target adapters rather than the private hidden-
+parameter layout. This realizes
+`TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-NESTED-001`,
+`TOPAL-FUNCTION-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5w.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
