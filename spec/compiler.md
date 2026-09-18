@@ -3488,9 +3488,10 @@ Label association beyond a declaration-order prefix is governed by
 packages mixed with an unpackaged operand are governed by
 `TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free Tuple and
 Record fields are governed by
-`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
-package declarations, opaque package values, and defaults that depend on
-invocation or captured bindings remain outside this increment and SHALL be
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
+governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`. Other non-scalar fields,
+nested package declarations, opaque package values, and defaults that depend
+on invocation or captured bindings remain outside this increment and SHALL be
 rejected rather than changing evaluation order or choosing a public memory ABI.
 
 ### TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
@@ -3523,9 +3524,10 @@ identity, and target adapters independently of compiler-private binding names,
 LLVM types, and physical placement. Compound packages are governed by
 `TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free Tuple and
 Record fields are governed by
-`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
-package declarations, opaque package values, invocation- or capture-dependent
-defaults, and public package adapters remain deferred.
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
+governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`. Other non-scalar fields,
+nested package declarations, opaque package values, invocation- or
+capture-dependent defaults, and public package adapters remain deferred.
 
 ### TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001 — Two and mixed scalar packages
 
@@ -3560,7 +3562,8 @@ default semantics and dependencies, evaluation effects, representation
 identity, and target adapters. It SHALL remain independent of compiler-private
 binding names, LLVM types, and physical placement. Exact capture-free Tuple and
 Record fields are governed by
-`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Callable, Scope, other
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
+governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`. Callable, Scope, other
 non-scalar fields, nested package declarations, opaque compound package values,
 invocation- or capture-dependent defaults, recursion through compound package
 signatures, and public package adapters remain deferred.
@@ -3597,9 +3600,44 @@ Future compiled-library metadata SHALL preserve each field's complete canonical
 structural classifier and representation identity beside operand partition,
 field identity/order, default semantics/dependencies, evaluation effects, and
 target adapters. Nested package declarations, opaque whole-package values,
-Function-containing aggregates, nominal Sum fields, invocation- or
-capture-dependent defaults, recursive structured package signatures, public
-adapters, and other unsupported non-scalar fields remain deferred.
+Function-containing aggregates, invocation- or capture-dependent defaults,
+recursive structured package signatures, public adapters, and other unsupported
+non-scalar fields remain deferred. Exact nominal Sum fields are governed by
+`TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`.
+
+### TOPAL-COMPILER-SUM-PACKAGED-FIELD-001 — Exact nominal Sum package fields
+
+The compiler SHALL admit an exact nominal Sum classifier as a field of the one-
+or two-operand packages governed by the package rules when every declared
+alternative payload is already admitted by the private Sum function ABI and
+contains no Function value or capture environment. Supplied Sum values and
+closed Sum defaults SHALL retain their exact nominal identity, tag, and active
+payload through ordinary classifier adaptation. Unsupported payloads, nominal
+mismatches, and non-closed defaults SHALL reject before LLVM lowering or
+artifact publication.
+
+Each Sum field SHALL remain one source field and one exact private `fastcc`
+parameter using its existing tag-plus-payload representation; alternatives and
+payload components SHALL NOT become package fields. Explicit Sum expressions
+SHALL execute once in package source order, closed defaults SHALL execute
+afterward in operand/field declaration order, and callee arguments SHALL remain
+in operand/field declaration order. LLVM SHALL own AMD64 physical placement of
+the exact Sum parameter.
+
+DWARF/GDB SHALL expose the source field name, nominal Sum classifier, active
+alternative/payload value, and ordinary function frame. Compiler-private
+ordering bindings SHALL remain absent from source debugging. The lowering SHALL
+add no `byval`, `sret`, `inalloca`, `preallocated`, package runtime, allocation
+beyond the Sum value's existing private representation, foreign dependency,
+C/C++ runtime, other-language standard library, public aggregate ABI, or
+native-ABI revision.
+
+Future compiled-library metadata SHALL preserve the Sum's canonical nominal
+identity, complete alternatives/payload classifiers, and representation identity
+beside operand/field/default/effect semantics and target adapters. Nested
+package declarations, opaque whole-package values, Function-containing Sum
+payloads, dependent defaults, recursive Sum package signatures, public adapters,
+and other unsupported non-scalar fields remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 

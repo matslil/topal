@@ -22442,9 +22442,14 @@ fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
 fn compiler_packaged_field_supported(value_type: &CompilerType) -> bool {
     compiler_function_parameter_supported(value_type)
         && (value_type.machine_scalar()
-            || matches!(value_type, CompilerType::Tuple(_) | CompilerType::Record(_)))
-        && (!matches!(value_type, CompilerType::Tuple(_) | CompilerType::Record(_))
-            || !compiler_type_is_function_aggregate(value_type))
+            || matches!(
+                value_type,
+                CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_)
+            ))
+        && (!matches!(
+            value_type,
+            CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_)
+        ) || !compiler_type_is_function_aggregate(value_type))
 }
 
 fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bool {
@@ -33230,6 +33235,68 @@ mod tests {
         assert!(matches!(
             &arguments[2].kind,
             CompilerExpressionKind::Local(storage) if storage == enabled_storage
+        ));
+    }
+
+    #[test]
+    fn models_sum_packaged_fields_in_source_and_declaration_order() {
+        // TOPAL-COMPILER-SUM-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/sum-packaged-function-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Sum packaged results")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: fallback_storage,
+            value: fallback,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first scalar field is retained first")
+        };
+        assert_eq!(exact_int(fallback), Some(BigInt::from(0)));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: message_storage,
+            value: message,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Sum field is retained second")
+        };
+        assert!(matches!(message.value_type, CompilerType::Sum(_)));
+        assert!(matches!(message.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order Sum package call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == message_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == fallback_storage
+        ));
+
+        let CompilerExpressionKind::PrivateBinding { body, .. } = &results[1].kind else {
+            panic!("the explicit fallback is retained before the Sum default")
+        };
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one Sum package call with a closed default")
+        };
+        assert!(matches!(
+            arguments[0].kind,
+            CompilerExpressionKind::Sum { .. }
         ));
     }
 
