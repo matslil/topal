@@ -1191,6 +1191,11 @@
       "cpu_time_ns": 7993500,
       "memory_peak_bytes": 18305024,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-aggregate-packaged-fields.t": {
+      "cpu_time_ns": 9924780,
+      "memory_peak_bytes": 18456576,
+      "samples_per_test": 50
     }
   }
 }

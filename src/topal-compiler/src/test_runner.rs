@@ -112,6 +112,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/forward-function-declarations.t",
     "examples/language/fundamental-containers.t",
     "examples/language/function-aggregate-boundaries.t",
+    "examples/language/function-aggregate-packaged-fields.t",
     "examples/language/function-classifier.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-effect-bound.t",
