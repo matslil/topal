@@ -24,6 +24,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/capturing-function-parameters.t",
     "examples/language/capturing-function-results.t",
     "examples/language/character-classification.t",
+    "examples/language/collection-packaged-fields.t",
     "examples/language/comparison-decision-forms.t",
     "examples/language/comparison-decisions.t",
     "examples/language/completed-evidence.t",

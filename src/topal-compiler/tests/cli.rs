@@ -13071,6 +13071,169 @@ fn container_packaged_fields_retain_exact_private_representations() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact collections, rejection, artifacts, and GDB.
+fn collection_packaged_fields_retain_exact_private_representations() {
+    // TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-collection-packaged-fields");
+    let source = directory.join("collection-packaged-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/collection-packaged-fields.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"((Array (2, 1, 2), Set (2, 1), Bag ((2, 2), (1, 1)), Map ((\"Ada\", 11), (\"Lin\", 8))), (Array (2, 1, 2), Set (2, 1), Bag ((2, 2), (1, 1)), Map ((\"Ada\", 11), (\"Lin\", 8))))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(
+        ir.contains(
+            "define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.4(ptr %arg0, ptr %arg1, ptr %arg2, ptr %arg3)"
+        ),
+        "{ir}"
+    );
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let scores = main.find("call fastcc ptr @topal.fn.make_2dmap.0").unwrap();
+    let occurrences = main.find("call fastcc ptr @topal.fn.make_2dbag.1").unwrap();
+    let members = main.find("call fastcc ptr @topal.fn.make_2dset.2").unwrap();
+    let array = main
+        .find("call fastcc ptr @topal.fn.make_2darray.3")
+        .unwrap();
+    let retained = main
+        .find("call fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.4")
+        .unwrap();
+    assert!(
+        scores < occurrences && occurrences < members && members < array && array < retained,
+        "{main}"
+    );
+    assert!(
+        main.contains("@topal.fn.retain.4(ptr %v3, ptr %v2, ptr %v1, ptr %v0)"),
+        "{main}"
+    );
+    for call in [
+        "call fastcc ptr @topal.fn.make_2darray.5",
+        "call fastcc ptr @topal.fn.make_2dset.6",
+        "call fastcc ptr @topal.fn.make_2dbag.7",
+        "call fastcc ptr @topal.fn.make_2dmap.8",
+        "call fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.9(ptr %v9, ptr %v10, ptr %v11, ptr %v12)",
+    ] {
+        assert!(main.contains(call), "{call}: {main}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+        "topal.package.argument",
+        "topal.package.operand",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("mismatched-array-field.t");
+    let rejected_executable = directory.join("mismatched-array-field");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nmake is fn () -> Array (2, Int)\n  values : List Int is Entry (1, Entry (2, Entry (3, Empty)))\n  values collect Array\nmake ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break collection-packaged-fields.t:24",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis array",
+            "-ex",
+            "print array",
+            "-ex",
+            "whatis members",
+            "-ex",
+            "print members",
+            "-ex",
+            "whatis occurrences",
+            "-ex",
+            "print occurrences",
+            "-ex",
+            "whatis scores",
+            "-ex",
+            "print scores",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Array 3 Int"), "{text}");
+    assert!(text.contains("$1 = Array (2, 1, 2)"), "{text}");
+    assert!(text.contains("type = Set Int"), "{text}");
+    assert!(text.contains("$2 = Set (2, 1)"), "{text}");
+    assert!(text.contains("type = Bag Int"), "{text}");
+    assert!(text.contains("$3 = Bag ((2, 2), (1, 1))"), "{text}");
+    assert!(text.contains("type = Map(String, Int)"), "{text}");
+    assert!(
+        text.contains("$4 = Map ((\"Ada\", 11), (\"Lin\", 8))"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.retain.4"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

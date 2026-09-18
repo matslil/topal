@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 237);
+    assert_eq!(examples.len(), 238);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3469,6 +3469,42 @@ fn records_container_packaged_fields_reversibly() {
     );
     assert!(stdout.contains("function.argument.defaulted"));
     assert!(stdout.contains("TOPAL-FUNCTION-PACKAGED-OPERAND-001"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_collection_packaged_fields_reversibly() {
+    // TOPAL-INTP-SUBSET-264, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}collection-packaged-fields.debug"),
+            &language_example("collection-packaged-fields.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let scores = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-map")
+        .unwrap();
+    let occurrences = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-bag")
+        .unwrap();
+    let members = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-set")
+        .unwrap();
+    let array = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-array")
+        .unwrap();
+    assert!(
+        scores < occurrences && occurrences < members && members < array,
+        "{stdout}"
+    );
+    assert!(stdout.contains("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] array"));
+    assert!(stdout.contains("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] scores"));
     assert!(stdout.contains("function.exit"));
 }
 

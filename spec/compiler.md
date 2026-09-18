@@ -3494,7 +3494,9 @@ fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
-`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Other non-scalar fields,
+`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Other
+non-scalar fields,
 nested package declarations, opaque package values, and defaults that depend on
 invocation or captured bindings remain outside this increment and SHALL be
 rejected rather than changing evaluation order or choosing a public memory ABI.
@@ -3535,7 +3537,9 @@ fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
-`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Other non-scalar fields,
+`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Other
+non-scalar fields,
 nested package declarations, opaque package values, invocation- or
 capture-dependent defaults, and public package adapters remain deferred.
 
@@ -3578,8 +3582,9 @@ fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
-`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Scope, other
-Function-containing aggregates, other non-scalar fields, nested package
+`TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Scope,
+other Function-containing aggregates, other non-scalar fields, nested package
 declarations, opaque compound package values, invocation- or capture-dependent
 defaults, recursion through compound package signatures, and public package
 adapters remain deferred.
@@ -3797,6 +3802,56 @@ Function-containing containers, unsupported List elements and container
 payloads, context-dependent defaults, nested package declarations, opaque
 whole-package values, recursive package signatures, persistent container
 storage, publication, and public adapters remain deferred.
+
+### TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001 — Exact represented collection package fields
+
+The compiler SHALL recognize exact `Array (N, Int)`, `Set Int`, `Bag Int`, and
+`Map (String, Int)` classifiers in private function parameter and result
+headers, and SHALL admit values with those classifiers as complete fields of a
+one- or two-operand package. `N` SHALL be a statically parsed nonnegative
+extent. Other element, key, or value classifiers and mismatched collection
+classifiers SHALL reject before LLVM lowering or artifact publication rather
+than being accepted because they share a pointer carrier.
+
+Each explicit collection-producing expression SHALL execute once in package
+source order and retain its exact constructor, extent where applicable, and
+element/key/value classifiers in the checked model. The direct call SHALL pass
+the complete values in operand/field declaration order. Closed defaults remain
+subject to the existing exact checked-default rule; a collection construction
+that the frontend cannot already analyze as the declared classifier SHALL
+reject rather than receive a compiler-only default meaning.
+
+Each source field SHALL remain one exact private pointer-carrier `fastcc`
+parameter using the collection's existing representation. Entries, keys,
+values, multiplicities, and collision-resolution state SHALL NOT become
+package fields. LLVM SHALL own AMD64 register and stack placement. Existing
+process-lifetime allocations MAY occur while Array, Set, Bag, or Map values are
+constructed, but package normalization SHALL add no allocation or change their
+lifetime. DWARF/GDB SHALL expose the source field name, complete classifier and
+value, and ordinary function frame. Compiler-private ordering bindings SHALL
+remain absent from source debugging.
+
+Tests SHALL cover all four exact collection families; reordered once-only
+collection-producing calls; positional parity; exact results; unsupported or
+mismatched classifier rejection before artifact publication; checked
+classifier retention; matching direct pointer-carrier IR; all interpreter
+modes; reversible history; the shared corpus and separate resource baselines;
+freestanding ELF/DWARF validation; and O0 GDB collection values and frames.
+
+The lowering SHALL add no package aggregate, entry decomposition, `byval`,
+`sret`, `inalloca`, `preallocated`, package runtime, allocation beyond existing
+collection construction, foreign dependency, C/C++ runtime, other-language
+standard library, public collection ABI, or native-ABI revision. Future
+compiled-library metadata SHALL preserve the canonical constructor; Array
+extent; element or key/value classifiers; ordering, uniqueness, multiplicity,
+and collision semantics; representation/lifetime/default/effect semantics;
+stable operand/field identities and order; and target adapters independently
+of compiler-private binding names, LLVM pointer types, and physical placement.
+Function-containing collections, other generic specializations,
+context-dependent or otherwise unanalyzable defaults, nested package
+declarations, opaque whole-package values, recursive package signatures,
+persistent collection storage, publication, and public adapters remain
+deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 

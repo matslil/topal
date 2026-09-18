@@ -1670,7 +1670,10 @@ impl Parser<'_> {
                 result.end.max(closing.span.end),
             ));
         }
-        if matches!(self.source.slice(first.span), "Result" | "Record") {
+        if matches!(
+            self.source.slice(first.span),
+            "Array" | "Map" | "Result" | "Record"
+        ) {
             if !self
                 .peek_nontrivia()
                 .is_some_and(|token| token.kind == TokenKind::LeftParen)
@@ -1694,7 +1697,10 @@ impl Parser<'_> {
             }
             return Some(Span::new(first.span.start, end));
         }
-        if matches!(self.source.slice(first.span), "Optional" | "Range" | "List") {
+        if matches!(
+            self.source.slice(first.span),
+            "Bag" | "List" | "Optional" | "Range" | "Set"
+        ) {
             let payload = self.generator_classifier()?;
             return Some(Span::new(first.span.start, payload.end));
         }
@@ -4020,6 +4026,20 @@ mod tests {
             SourceText::new(include_str!("../../../examples/language/nested-lists.t")).unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_collection_function_classifiers() {
+        let source = SourceText::new(include_str!(
+            "../../../examples/language/collection-packaged-fields.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Function { result, .. } = &parsed.statements[1] else {
+            panic!("expected the Array-producing function")
+        };
+        assert_eq!(source.slice(*result), "Array (3, Int)");
     }
 
     #[test]
