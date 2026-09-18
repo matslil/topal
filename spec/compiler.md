@@ -4034,9 +4034,10 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or native-ABI revision. Overload-dependent selection, recursive forwarding,
 named-function aliases, anonymous or nested functions, aggregate or otherwise
-unsupported root members, context (`@ member`) forwarding, escape, and
-public/library root environments remain deferred and SHALL be rejected before
-artifact publication rather than assigned a provisional environment ABI.
+unsupported root members, context (`@ member`) forwarding beyond
+`TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`, escape, and public/library root
+environments remain deferred and SHALL be rejected before artifact publication
+rather than assigned a provisional environment ABI.
 
 Future compiled-library metadata for a forwarding chain SHALL preserve the
 canonical source-session namespace identity, every selection and call edge,
