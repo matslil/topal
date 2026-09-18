@@ -18618,12 +18618,29 @@ impl Analyzer {
         )?;
         let (scope_arguments, scope_captures) =
             self.scope_parameter_arguments(&declaration, &arguments, &call_environment)?;
-        let context_captures = self.defining_context_captures(&declaration)?;
-        if self.in_function && !context_captures.is_empty() {
+        let context_captures = self.defining_context_captures(&declaration, &call_environment)?;
+        if self.in_function
+            && context_captures
+                .iter()
+                .any(|capture| capture.parameter_name.starts_with("@ "))
+        {
             return Err(unsupported(
                 &self.source,
                 span,
                 "cross-function root/context capture forwarding",
+            ));
+        }
+        let identity = function_overload_identity(&self.source, function_name, &declaration);
+        if self.in_function
+            && self.active_calls.contains(&identity)
+            && context_captures
+                .iter()
+                .any(|capture| capture.parameter_name.starts_with("root "))
+        {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "recursive root-data capture forwarding",
             ));
         }
         let metadata = CompilerCallMetadata {
@@ -19088,6 +19105,7 @@ impl Analyzer {
     fn defining_context_captures(
         &self,
         declaration: &FunctionSource,
+        environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<Vec<CompilerContextCapture>, Diagnostic> {
         let mut captures = self
             .root_bindings
@@ -19128,14 +19146,15 @@ impl Analyzer {
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let mut root_captures = self
-            .root_bindings
-            .iter()
-            .filter_map(|(member_name, facts)| {
-                function_body_root_member_span(&self.source, &declaration.body, member_name)
-                    .map(|span| (member_name, facts, span))
-            })
-            .collect::<Vec<_>>();
+        let mut root_captures = Vec::new();
+        for (member_name, facts) in &self.root_bindings {
+            let mut visiting = BTreeSet::new();
+            if let Some(span) =
+                self.transitive_root_member_span(declaration, member_name, &mut visiting)?
+            {
+                root_captures.push((member_name, facts, span));
+            }
+        }
         root_captures.sort_by_key(|(_, facts, _)| facts.declaration_end);
         captures.extend(
             root_captures
@@ -19150,18 +19169,82 @@ impl Analyzer {
                             "non-scalar function-body root data capture",
                         ));
                     }
+                    let parameter_name = format!("root {member_name}");
+                    let argument = if self.in_function {
+                        let current = environment.get(&parameter_name).ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                span,
+                                "root-data forwarding without an exact caller capture",
+                            )
+                        })?;
+                        binding_expression(current, span)
+                    } else {
+                        data_member_expression(facts, span)
+                    };
                     Ok(CompilerContextCapture {
-                        parameter_name: format!("root {member_name}"),
+                        parameter_name,
                         value_type: facts.value_type.clone(),
                         int_range: facts.int_range.clone(),
                         rational_value: facts.rational_value.clone(),
-                        argument: data_member_expression(facts, span),
+                        argument,
                         span,
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         );
         Ok(captures)
+    }
+
+    fn transitive_root_member_span(
+        &self,
+        declaration: &FunctionSource,
+        member_name: &str,
+        visiting: &mut BTreeSet<String>,
+    ) -> Result<Option<Span>, Diagnostic> {
+        if let Some(span) =
+            function_body_root_member_span(&self.source, &declaration.body, member_name)
+        {
+            return Ok(Some(span));
+        }
+        let identity = function_overload_identity(
+            &self.source,
+            self.source.slice(declaration.name),
+            declaration,
+        );
+        if !visiting.insert(identity.clone()) {
+            return Ok(None);
+        }
+        let references =
+            function_body_called_function_spans(&self.source, &self.functions, declaration);
+        for (called_name, call_span) in references {
+            let declarations = self
+                .functions
+                .get(&called_name)
+                .expect("collected call reference has declarations");
+            let mut carries_member = false;
+            for called in declarations {
+                if self
+                    .transitive_root_member_span(called, member_name, visiting)?
+                    .is_some()
+                {
+                    carries_member = true;
+                }
+            }
+            if carries_member {
+                visiting.remove(&identity);
+                if declarations.len() != 1 {
+                    return Err(unsupported(
+                        &self.source,
+                        call_span,
+                        "overload-dependent root-data capture forwarding",
+                    ));
+                }
+                return Ok(Some(call_span));
+            }
+        }
+        visiting.remove(&identity);
+        Ok(None)
     }
 
     fn finish_selected_call(
@@ -21479,6 +21562,218 @@ fn expression_root_member_span(
         | Expression::ContextIdentifier(_)
         | Expression::Discard(_)
         | Expression::Callable { .. } => None,
+    }
+}
+
+fn function_body_called_function_spans(
+    source: &SourceText,
+    functions: &BTreeMap<String, Vec<FunctionSource>>,
+    declaration: &FunctionSource,
+) -> Vec<(String, Span)> {
+    let mut locals = BTreeSet::new();
+    for parameter in &declaration.parameters {
+        collect_parameter_binding_names(source, parameter, &mut locals);
+    }
+    let mut references = Vec::new();
+    collect_statement_function_calls(
+        source,
+        functions,
+        &declaration.body,
+        &mut locals,
+        &mut references,
+    );
+    references
+}
+
+fn collect_parameter_binding_names(
+    source: &SourceText,
+    parameter: &FunctionParameter,
+    names: &mut BTreeSet<String>,
+) {
+    names.insert(source.slice(parameter.name).to_owned());
+    for field in &parameter.fields {
+        collect_parameter_binding_names(source, field, names);
+    }
+}
+
+fn collect_statement_function_calls(
+    source: &SourceText,
+    functions: &BTreeMap<String, Vec<FunctionSource>>,
+    statements: &[Statement],
+    locals: &mut BTreeSet<String>,
+    references: &mut Vec<(String, Span)>,
+) {
+    for statement in statements {
+        match statement {
+            Statement::Function { name, .. } => {
+                locals.insert(source.slice(*name).to_owned());
+            }
+            Statement::Published { declaration, .. } => {
+                if let Statement::Function { name, .. } = declaration.as_ref() {
+                    locals.insert(source.slice(*name).to_owned());
+                }
+            }
+            _ => {}
+        }
+    }
+    for statement in statements {
+        match statement {
+            Statement::Published { declaration, .. } => collect_statement_function_calls(
+                source,
+                functions,
+                std::slice::from_ref(declaration.as_ref()),
+                locals,
+                references,
+            ),
+            Statement::Binding { name, value, .. } => {
+                collect_expression_function_calls(source, functions, value, locals, references);
+                locals.insert(source.slice(*name).to_owned());
+            }
+            Statement::ContextAssignment { value, .. }
+            | Statement::Discard { value, .. }
+            | Statement::Return { value, .. }
+            | Statement::Expression(value) => {
+                collect_expression_function_calls(source, functions, value, locals, references);
+            }
+            Statement::Foreach {
+                result,
+                source: iterated,
+                binding,
+                body,
+                ..
+            } => {
+                collect_expression_function_calls(source, functions, iterated, locals, references);
+                let mut body_locals = locals.clone();
+                body_locals.insert(source.slice(*binding).to_owned());
+                if let Some((name, _)) = result {
+                    body_locals.insert(source.slice(*name).to_owned());
+                }
+                collect_statement_function_calls(
+                    source,
+                    functions,
+                    body,
+                    &mut body_locals,
+                    references,
+                );
+            }
+            Statement::Function { .. }
+            | Statement::LanguageSelection { .. }
+            | Statement::LibrarySelection { .. }
+            | Statement::DiagnosticControl { .. }
+            | Statement::Implementation { .. }
+            | Statement::StateField { .. }
+            | Statement::Generator { .. }
+            | Statement::Union { .. }
+            | Statement::Interface { .. }
+            | Statement::InterfaceImplementation { .. } => {}
+        }
+    }
+}
+
+fn collect_expression_function_calls(
+    source: &SourceText,
+    functions: &BTreeMap<String, Vec<FunctionSource>>,
+    expression: &Expression,
+    locals: &BTreeSet<String>,
+    references: &mut Vec<(String, Span)>,
+) {
+    match expression {
+        Expression::Block { statements, .. } => {
+            let mut block_locals = locals.clone();
+            collect_statement_function_calls(
+                source,
+                functions,
+                statements,
+                &mut block_locals,
+                references,
+            );
+        }
+        Expression::Product { fields, .. } => {
+            for field in fields {
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    &field.value,
+                    locals,
+                    references,
+                );
+            }
+        }
+        Expression::DecisionTable { subject, rules, .. } => {
+            collect_expression_function_calls(source, functions, subject, locals, references);
+            for rule in rules {
+                let mut action_locals = locals.clone();
+                match &rule.matcher {
+                    DecisionMatcher::Union { binding, .. }
+                    | DecisionMatcher::Variant { binding, .. }
+                    | DecisionMatcher::Result { binding, .. }
+                    | DecisionMatcher::Optional {
+                        binding: Some(binding),
+                        ..
+                    } => {
+                        action_locals.insert(source.slice(*binding).to_owned());
+                    }
+                    DecisionMatcher::ListEntry { first, rest, .. } => {
+                        action_locals.insert(source.slice(*first).to_owned());
+                        action_locals.insert(source.slice(*rest).to_owned());
+                    }
+                    DecisionMatcher::Comparison { operand, .. } => {
+                        collect_expression_function_calls(
+                            source, functions, operand, locals, references,
+                        );
+                    }
+                    DecisionMatcher::Boolean { .. }
+                    | DecisionMatcher::Identifier(_)
+                    | DecisionMatcher::Optional { binding: None, .. }
+                    | DecisionMatcher::ListEmpty(_)
+                    | DecisionMatcher::ErrorCode { .. }
+                    | DecisionMatcher::Otherwise(_) => {}
+                }
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    &rule.action,
+                    &action_locals,
+                    references,
+                );
+            }
+        }
+        Expression::Application { items, .. } => {
+            if let [
+                Expression::Identifier(root),
+                Expression::Identifier(member),
+                ..,
+            ] = items.as_slice()
+                && source.slice(*root) == "root"
+                && functions.contains_key(source.slice(*member))
+            {
+                references.push((source.slice(*member).to_owned(), *member));
+            } else if let Some((name, span)) = items.iter().find_map(|item| {
+                let Expression::Identifier(name) = item else {
+                    return None;
+                };
+                let name_text = source.slice(*name);
+                (!locals.contains(name_text) && functions.contains_key(name_text))
+                    .then(|| (name_text.to_owned(), *name))
+            }) {
+                references.push((name, span));
+            }
+            for item in items {
+                collect_expression_function_calls(source, functions, item, locals, references);
+            }
+        }
+        Expression::AnonymousFunction { .. }
+        | Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Infinity(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Identifier(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => {}
     }
 }
 
@@ -31438,17 +31733,73 @@ mod tests {
             CompilerExpressionKind::Local(storage) if storage == root_bindings["answer"]
         ));
 
-        let forwarded = analyze_for_compiler(
-            "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  read ()\nwrapper ()\n",
-        )
-        .unwrap_err();
-        assert_eq!(forwarded.code, "E-COMPILER-UNSUPPORTED");
-
         let aggregate = analyze_for_compiler(
             "use language (version is v0.1)\nanswer is (40, 2)\nread is fn () -> (Int, Int)\n  root answer\nread ()\n",
         )
         .unwrap_err();
         assert_eq!(aggregate.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_private_live_root_data_forwarding() {
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-001, TOPAL-NAMESPACE-ROOT-001
+        let forwarded = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-root-data-forwarding.t"
+        ))
+        .unwrap();
+        for name in ["read", "relay", "forward"] {
+            let function = forwarded
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.parameters.len(), 3);
+            assert_eq!(function.parameters[0].name, "answer");
+            assert_eq!(function.parameters[1].name, "root label");
+            assert_eq!(function.parameters[2].name, "root answer");
+        }
+        let relay = forwarded
+            .functions
+            .iter()
+            .find(|function| function.source_name == "relay")
+            .unwrap();
+        let CompilerExpressionKind::Call { arguments, .. } = &relay.body.result.kind else {
+            panic!("relay retains its direct forwarded call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "root label"
+        ));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(name) if name == "root answer"
+        ));
+
+        let overloaded = analyze_for_compiler(
+            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(overloaded.code, "E-COMPILER-UNSUPPORTED");
+
+        let aliased = analyze_for_compiler(
+            "use language (version is v0.1)\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nanswer is 42\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(aliased.code, "E-COMPILER-UNSUPPORTED");
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nwrapper is fn () -> Int\n  read is +\n  read (20, 22)\nanswer is 1\nwrapper ()\n",
+        )
+        .unwrap();
+        let wrapper = shadowed
+            .functions
+            .iter()
+            .find(|function| function.source_name == "wrapper")
+            .unwrap();
+        assert!(wrapper.parameters.is_empty());
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
     }
 
     #[test]

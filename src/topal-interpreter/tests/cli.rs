@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 240);
+    assert_eq!(examples.len(), 241);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -855,6 +855,26 @@ fn every_mode_resolves_live_root_data_inside_functions() {
     // TOPAL-INTP-SUBSET-266, TOPAL-NAMESPACE-ROOT-001,
     // TOPAL-COMPILER-FUNCTION-ROOT-DATA-001
     let source = include_str!("../../../examples/language/function-root-data.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("(42, 0, \"ready\")"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_forwards_live_root_data_between_functions() {
+    // TOPAL-INTP-SUBSET-267, TOPAL-NAMESPACE-ROOT-001,
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001
+    let source = include_str!("../../../examples/language/function-root-data-forwarding.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

@@ -2919,16 +2919,53 @@ source debugging, the shared corpus, and separate resource baselines.
 This shall add no global root storage, namespace/capture table, initializer
 replay, lookup, allocation, function pointer, indirect call, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or
-`topal-native/6` revision. Cross-function forwarding; aggregate, callable,
-Scope, Generator, constraint, or evidence members; anonymous/escaping functions;
-other qualified-root forms; and public/library root environments remain
-deferred. Future compiled-library metadata shall preserve canonical
+`topal-native/6` revision. Exact scalar forwarding is governed by
+`TOPAL-COMP-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate, callable, Scope,
+Generator, constraint, or evidence members; anonymous/escaping functions; other
+qualified-root forms; and public/library root environments remain deferred.
+Future compiled-library metadata shall preserve canonical
 source-session namespace identity, selection/call positions, member stable
 identity, visibility/declaration order, classifier/semantic representation,
 capture order/lifetime/effects, and a versioned target adapter independently of
 private capture names, LLVM types/symbols, and physical placement. This realizes
 `TOPAL-COMPILER-FUNCTION-ROOT-DATA-001` and `TOPAL-NAMESPACE-ROOT-001` for
 increment 6b2b2b.
+
+## TOPAL-COMP-FUNCTION-ROOT-DATA-FORWARD-001 — Private live-root data forwarding
+
+For a finite acyclic chain of statically named ordinary root functions reached
+from the source entry frame, the checked model shall compute transitive exact
+`root member` selections before instantiating the outer function. It shall
+append every required supported private machine value to each intermediate
+function's hidden capture group in root declaration order and forward the same
+already-evaluated value at every direct call edge. The live root snapshot shall
+be the one visible at the outer entry-frame call position, and same-named
+ordinary parameters or locals shall remain isolated in every frame.
+
+The Linux x86-64 backend shall emit matching exact `fastcc` definitions and
+calls and leave physical placement to LLVM. Full O0 DWARF/GDB shall expose all
+explicit and forwarded parameters accurately in the active function and every
+suspended caller frame. Target-aligned debug-only stack shadows may preserve
+call-clobbered values without adding semantic storage. Tests shall cover a
+three-frame shared regression, interpreter modes, reversible history, checked
+capture order and call arguments, overload-dependent and recursive rejection,
+exact direct IR, artifact-free failure, freestanding ELF/DWARF, every GDB frame,
+the shared corpus, and separate resource baselines.
+
+This shall add no global root storage, namespace/capture/environment table,
+initializer replay, lookup, allocation, function pointer, indirect call,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Overload-dependent or recursive forwarding,
+named-function aliases, anonymous/nested functions, aggregate or otherwise
+unsupported root members, defining-context forwarding, escape, and
+public/library environments remain deferred. Future compiled-library metadata
+shall preserve canonical source-session namespace identity, every selection and
+call edge, callee identity/overload, member stable identity,
+visibility/declaration order, classifier/semantic representation, capture
+order/lifetime/effects, and a versioned target adapter independently of private
+names, LLVM types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001` and
+`TOPAL-NAMESPACE-ROOT-001` for increment 6b2b2c.
 
 ## TOPAL-COMP-NAMED-FUNCTION-VALUE-001 — Retained named function values
 

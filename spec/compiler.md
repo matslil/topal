@@ -3954,11 +3954,12 @@ ordinary parameter and each root capture with its source classifier and value.
 The lowering SHALL require no global root storage, namespace or capture table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or native-ABI revision. Calls requiring root-capture forwarding between
-compiled functions; aggregate, callable, Scope, Generator, constraint, or
-evidence members; anonymous or escaping functions; root selection forms beyond
-exact data selection; and public/library root environments remain deferred and
-SHALL be rejected before artifact publication.
+or native-ABI revision. Exact scalar forwarding between compiled functions is
+governed by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate,
+callable, Scope, Generator, constraint, or evidence members; anonymous or
+escaping functions; root selection forms beyond exact data selection; and
+public/library root environments remain deferred and SHALL be rejected before
+artifact publication.
 
 Future compiled-library metadata for this boundary SHALL preserve the canonical
 source-session namespace identity, selection and call positions, member stable
@@ -3966,6 +3967,44 @@ identity, visibility and declaration order, classifier and semantic
 representation, capture order, lifetime and effects, and versioned target
 adapter. Those facts SHALL remain independent of private capture names, LLVM
 types or symbols, and target-specific physical argument placement.
+
+### TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001 — Private live-root data forwarding
+
+For a call from the source entry frame through a finite acyclic chain of
+statically named ordinary root functions, the checked frontend SHALL compute
+the transitive exact `root member` data selections before instantiating the
+outer function. Each intermediate function SHALL receive every required
+supported private machine value and SHALL forward that same already-evaluated
+value at each direct call edge. An intermediate function need not select the
+member itself. Resolution SHALL continue to use the live root snapshot at the
+outer entry-frame call position, and a same-named explicit parameter or local
+binding in any frame SHALL remain isolated from root qualification.
+
+Within the existing hidden-capture group, forwarded root values SHALL retain
+root declaration order. Every definition and call SHALL use matching exact LLVM
+types under private `fastcc`, and LLVM SHALL own AMD64 physical placement.
+Full O0 DWARF/GDB information SHALL expose every explicit parameter and
+forwarded `root member` value correctly in the active frame and in each
+suspended caller frame. The backend MAY use target-aligned debug-only stack
+shadows to preserve values across call-clobbered registers; those shadows SHALL
+NOT add source-visible state or change execution semantics.
+
+The lowering SHALL use no global root storage, namespace or environment table,
+initializer replay, lookup, allocation, function pointer, indirect call,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or native-ABI revision. Overload-dependent selection, recursive forwarding,
+named-function aliases, anonymous or nested functions, aggregate or otherwise
+unsupported root members, context (`@ member`) forwarding, escape, and
+public/library root environments remain deferred and SHALL be rejected before
+artifact publication rather than assigned a provisional environment ABI.
+
+Future compiled-library metadata for a forwarding chain SHALL preserve the
+canonical source-session namespace identity, every selection and call edge,
+callee identity and overload, member stable identity, visibility and
+declaration order, classifier and semantic representation, capture order,
+lifetime and effects, and versioned target adapter. Those facts SHALL remain
+independent of private capture names, LLVM types or symbols, debug shadows, and
+target-specific physical argument placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

@@ -206,13 +206,28 @@ distinct `root member` names. A same-named explicit parameter cannot intercept
 the selection, and DWARF exposes both values independently. This is
 call-position root closure conversion, not defining-context capture: it creates
 no global, namespace table, lookup, allocation, or initializer replay, and LLVM
-retains authority over AMD64 physical placement. Cross-function forwarding and
-members without a complete private machine representation remain rejected. A
-future compiled-library boundary must encode source-session namespace identity,
-selection/call positions, stable member identity, visibility/declaration order,
-canonical classifier and representation, capture order/lifetime/effects, and a
-versioned target adapter independently of private parameter names, LLVM types
-or symbols, and physical placement.
+retains authority over AMD64 physical placement. Members without a complete
+private machine representation remain rejected.
+
+The first cross-function extension computes transitive root-data requirements
+for a finite acyclic chain of statically named functions before instantiating
+its outer frame. Each intermediate signature receives the same represented
+root values, ordered by root declaration position within the existing hidden
+capture group, and each direct call forwards its caller parameters. The live
+root snapshot is still chosen once at the entry-frame call position; no callee
+reaches into an ancestor frame or process-global object. Debug-only aligned
+stack shadows preserve the forwarded parameters when LLVM assigns their
+machine values to call-clobbered locations, so GDB can recover both the active
+and suspended frames at O0 without making those shadows semantic storage.
+Overload-dependent or recursive chains and function-value/nested/anonymous
+edges remain rejected until their environment identity and cycle rules are
+modeled explicitly.
+
+A future compiled-library boundary must encode source-session namespace
+identity, every selection and call edge, stable callee/member identity,
+visibility/declaration order, canonical classifier and representation, capture
+order/lifetime/effects, and a versioned target adapter independently of private
+parameter names, LLVM types or symbols, debug shadows, and physical placement.
 
 Named function values similarly split observable identity from call lowering.
 The checked binding retains the original declaration vector and application

@@ -13416,11 +13416,11 @@ fn function_root_data_is_private_freestanding_and_debuggable() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    let rejected_source = directory.join("function-root-data-forwarding.t");
-    let rejected_executable = directory.join("function-root-data-forwarding");
+    let rejected_source = directory.join("function-root-data-aggregate.t");
+    let rejected_executable = directory.join("function-root-data-aggregate");
     fs::write(
         &rejected_source,
-        "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  read ()\nwrapper ()\n",
+        "use language (version is v0.1)\nanswer is (40, 2)\nread is fn () -> (Int, Int)\n  root answer\nread ()\n",
     )
     .unwrap();
     let rejected = run(topalc().args([
@@ -13431,7 +13431,7 @@ fn function_root_data_is_private_freestanding_and_debuggable() {
     assert!(!rejected.status.success());
     assert!(
         String::from_utf8_lossy(&rejected.stderr)
-            .contains("cross-function root/context capture forwarding"),
+            .contains("non-scalar function-body root data capture"),
         "{}",
         String::from_utf8_lossy(&rejected.stderr)
     );
@@ -13482,6 +13482,147 @@ fn function_root_data_is_private_freestanding_and_debuggable() {
         "{text}"
     );
     assert!(text.contains("topal.fn.read.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers forwarding, rejection, artifacts, and every GDB frame.
+fn function_root_data_forwarding_is_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001, TOPAL-NAMESPACE-ROOT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-function-root-data-forwarding");
+    let source = directory.join("function-root-data-forwarding.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-root-data-forwarding.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 0, \"ready\")\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for name in ["read", "relay", "forward"] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!("@topal.fn.{name}."))
+                    && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    assert!(ir.lines().any(|line| {
+        line.contains("call fastcc { ptr, ptr, ptr } @topal.fn.read.")
+            && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+    }));
+    assert!(ir.lines().any(|line| {
+        line.contains("call fastcc { ptr, ptr, ptr } @topal.fn.relay.")
+            && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+    }));
+    for forbidden in [
+        "topal.root",
+        "root.runtime",
+        "namespace.runtime",
+        "context.runtime",
+        "lookup.root",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, rejected_source, diagnostic) in [
+        (
+            "overloaded",
+            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
+            "overload-dependent root-data capture forwarding",
+        ),
+        (
+            "recursive",
+            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  value\n    <= 0 then root answer\n    otherwise read (value - 1)\nanswer is 42\nread 1\n",
+            "recursive root-data capture forwarding",
+        ),
+    ] {
+        let rejected_path = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_path, rejected_source).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_path.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(
+            String::from_utf8_lossy(&rejected.stderr).contains(diagnostic),
+            "{}",
+            String::from_utf8_lossy(&rejected.stderr)
+        );
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-root-data-forwarding.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert_eq!(text.matches("root label = \"ready\"").count(), 3, "{text}");
+    assert_eq!(text.matches("root answer = 42").count(), 3, "{text}");
+    assert_eq!(text.matches("answer = 0").count(), 3, "{text}");
+    assert!(text.contains("topal.fn.read.0"), "{text}");
+    assert!(text.contains("topal.fn.relay.1"), "{text}");
+    assert!(text.contains("topal.fn.forward.2"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
 
