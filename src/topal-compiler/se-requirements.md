@@ -3595,8 +3595,9 @@ freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
 no closure or environment object, allocation, pattern table, function pointer,
 indirect call, dispatch table, foreign dependency, C/C++ runtime,
 other-language standard library, public callable ABI, or `topal-native/6`
-revision. Scalar identity for captured named or nested callables, unsupported
-capture classifiers, publication, and library adapters remain deferred. Future
+revision. Captured named identity is governed by
+`TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001`. Unsupported capture
+classifiers, publication, and library adapters remain deferred. Future
 compiled-library metadata shall encode stable callable
 source identity plus the ordered capture schema/classifiers, equality
 requirements, representation identity, lifetime/effects, and target adapter;
@@ -3606,6 +3607,51 @@ types, or target-specific placement. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5ad.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001 — Exact captured named Function values
+
+The checked compiler model shall admit a repeated scalar Function pattern when
+both operands retain the same stable captured named declaration identity, the
+same ordered represented capture schema, and exact compiler equality for every
+required capture. The initial boundary shall be a non-escaping nested lexical
+Function used within its defining invocation. It shall identify that callable
+by source name and declaration identity across private specializations. When
+declaration identities differ, the observation-field guard shall make the
+values unequal without requiring capture transport. Missing declaration facts,
+inconsistent required schemas, and required non-equality capture state shall
+fail before LLVM or artifact publication.
+
+The first Function occurrence shall remain the sole source binding and DWARF
+parameter. When identities match, both capture snapshots shall follow source
+parameters as deterministic hidden operands. Lowering shall compare the source
+identity first and captures in retained order, then reuse the Topal-owned
+mismatch diagnostic and exit 65. Matching private definitions and calls shall
+use exact `fastcc` prototypes while LLVM owns physical AMD64 placement.
+Observation fields shall remain non-dispatching and source offsets shall not
+become semantic library identities.
+
+Tests shall cover a captured nested Function repeated and directly invoked,
+different captured nested declaration identities without unnecessary capture
+equality, same-declaration non-equality capture rejection before artifact
+publication, checked-model guards, direct ordered IR, interpreter modes and
+reversible history, the shared corpus, separate resource baselines,
+freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
+no closure or environment object, allocation, pattern table, function pointer,
+indirect call, dispatch table, foreign dependency, C/C++ runtime,
+other-language standard library, public callable ABI, or `topal-native/6`
+revision. Escaping nested Functions, unsupported capture classifiers, ordinary
+named-function header repetition, publication, and library adapters remain
+deferred. Future compiled-library metadata shall encode stable
+declaration/source identity, ordered capture schemas and classifiers, semantic
+equality requirements, representation identity, lifetime/effects, and target
+adapters; it shall not serialize source offsets, private observation tags,
+hidden operand names or layout, LLVM types, or target-specific placement. This
+realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-FUNCTION-NESTED-001`,
+`TOPAL-TYPE-MATCH-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5af.
 
 ## TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001 — Exact captured Function aggregate values
 

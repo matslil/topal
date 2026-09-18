@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 227);
+    assert_eq!(examples.len(), 228);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3271,6 +3271,26 @@ fn records_repeated_captured_function_identity_reversibly() {
     assert!(stdout.contains("TOPAL-TYPE-MATCH-001"));
     assert!(stdout.contains("pattern.identity.matched"));
     assert!(stdout.contains("function.anonymous.captured"));
+}
+
+#[test]
+fn records_repeated_captured_named_function_identity_reversibly() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001,
+    // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-NESTED-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}repeated-captured-named-function-patterns.debug"),
+            &language_example("repeated-captured-named-function-patterns.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-MATCH-001"));
+    assert!(stdout.contains("pattern.identity.matched"));
+    assert!(stdout.contains("function.value.called"));
 }
 
 #[test]
