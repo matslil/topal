@@ -5,14 +5,15 @@ use std::path::Path;
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::{
-    CompilerBinary, CompilerBlock, CompilerComparisonRule, CompilerContainerKind, CompilerEnumRule,
-    CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField, CompilerExpression,
-    CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler,
-    CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
-    CompilerListIndexOperation, CompilerListZipOperation, CompilerLocationType,
-    CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType, CompilerType,
-    CompilerValidation, compiler_function_result_capture_storage, display_string_literal,
+    CompilerAggregatePathElement, CompilerBinary, CompilerBlock, CompilerComparisonRule,
+    CompilerContainerKind, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
+    CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
+    CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal, CompilerGeneratorType,
+    CompilerGeneratorYield, CompilerListIndexOperation, CompilerListZipOperation,
+    CompilerLocationType, CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter,
+    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType,
+    CompilerType, CompilerValidation, compiler_function_result_capture_storage,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -636,7 +637,7 @@ impl<'a> Generator<'a> {
         module
     }
 
-    #[allow(clippy::too_many_lines)] // Keep one exhaustive source-result to LLVM return mapping.
+    #[allow(clippy::if_not_else, clippy::too_many_lines)] // Capture returns precede exhaustive ordinary returns.
     fn emit_function(&mut self, function: &CompilerFunction) {
         let return_type = function_llvm_return_type(function);
         let parameter_types = function
@@ -668,14 +669,15 @@ impl<'a> Generator<'a> {
         }
         let result = self.emit_block(&function.body, &mut body, &mut environment);
         let location = self.debug.location(function.body.result.span, subprogram);
-        if function.result_type == CompilerType::Function && !function.result_captures.is_empty() {
-            let tag = result.enumeration().to_owned();
-            let returned_captures = match &result {
-                LlValue::Function { captures, .. } => captures.clone(),
-                _ => Vec::new(),
-            };
+        if !function.result_captures.is_empty() {
+            let source_result = self.emit_machine_operand(
+                &result,
+                &function.result_type,
+                &mut body,
+                function.body.result.span,
+            );
             let mut aggregate = body.instruction(
-                &format!("insertvalue {return_type} poison, i32 {tag}, 0"),
+                &format!("insertvalue {return_type} poison, {source_result}, 0"),
                 function.body.result.span,
                 &mut self.debug,
             );
@@ -688,12 +690,7 @@ impl<'a> Generator<'a> {
                     _ => None,
                 };
                 let value = storage_name
-                    .and_then(|storage_name| {
-                        returned_captures
-                            .iter()
-                            .find(|(name, _)| name == storage_name)
-                            .map(|(_, value)| value.clone())
-                    })
+                    .and_then(|storage_name| function_capture_value(&result, storage_name))
                     .unwrap_or_else(|| {
                         self.emit_expression(&capture.value, &mut body, &environment)
                     });
@@ -1386,9 +1383,7 @@ impl<'a> Generator<'a> {
                             binding.span,
                         );
                     }
-                    if let LlValue::Function { captures, .. } = &value {
-                        environment.extend(captures.iter().cloned());
-                    }
+                    extend_function_capture_environment(environment, &value);
                     environment.insert(binding.storage_name.clone(), value);
                 }
                 CompilerStatement::Discard(expression) => {
@@ -1399,7 +1394,7 @@ impl<'a> Generator<'a> {
         self.emit_expression(&block.result, body, environment)
     }
 
-    #[allow(clippy::too_many_lines)] // Exhaustive checked-model lowering keeps every admitted form explicit.
+    #[allow(clippy::if_not_else, clippy::too_many_lines)] // Captured calls precede exhaustive ordinary calls.
     fn emit_expression(
         &mut self,
         expression: &CompilerExpression,
@@ -1955,9 +1950,7 @@ impl<'a> Generator<'a> {
             } => {
                 let value = self.emit_expression(value, body, environment);
                 let mut nested = environment.clone();
-                if let LlValue::Function { captures, .. } = &value {
-                    nested.extend(captures.iter().cloned());
-                }
+                extend_function_capture_environment(&mut nested, &value);
                 nested.insert(storage_name.clone(), value);
                 self.emit_expression(result, body, &nested)
             }
@@ -3139,9 +3132,7 @@ impl<'a> Generator<'a> {
                     .iter()
                     .map(|argument| {
                         let value = self.emit_expression(argument, body, &argument_environment);
-                        if let LlValue::Function { captures, .. } = &value {
-                            argument_environment.extend(captures.iter().cloned());
-                        }
+                        extend_function_capture_environment(&mut argument_environment, &value);
                         value
                     })
                     .collect::<Vec<_>>();
@@ -3156,11 +3147,7 @@ impl<'a> Generator<'a> {
                     .iter()
                     .map(|parameter| parameter.value_type.clone())
                     .collect::<Vec<_>>();
-                let result_capture_types = target
-                    .result_captures
-                    .iter()
-                    .map(|capture| capture.value_type.clone())
-                    .collect::<Vec<_>>();
+                let result_captures = target.result_captures.clone();
                 let function_return_type = function_llvm_return_type(target);
                 debug_assert_eq!(values.len(), parameter_types.len());
                 let mut machine_arguments = Vec::with_capacity(values.len());
@@ -3173,257 +3160,261 @@ impl<'a> Generator<'a> {
                     ));
                 }
                 let arguments = machine_arguments.join(", ");
-                match expression.value_type {
-                    CompilerType::Unit => {
-                        body.effect(
-                            &format!("call fastcc void @{symbol}({arguments})"),
+                if !result_captures.is_empty() {
+                    let aggregate = body.instruction(
+                        &format!("call fastcc {function_return_type} @{symbol}({arguments})"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    let source_value = body.instruction(
+                        &format!("extractvalue {function_return_type} {aggregate}, 0"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    let mut result = self.emit_extracted_machine_value(
+                        &source_value,
+                        &expression.value_type,
+                        body,
+                        expression.span,
+                    );
+                    for (index, capture) in result_captures.iter().enumerate() {
+                        let value = body.instruction(
+                            &format!(
+                                "extractvalue {function_return_type} {aggregate}, {}",
+                                index + 1
+                            ),
                             expression.span,
                             &mut self.debug,
                         );
-                        LlValue::Unit
+                        let value = self.emit_extracted_machine_value(
+                            &value,
+                            &capture.value_type,
+                            body,
+                            expression.span,
+                        );
+                        attach_function_capture(
+                            &mut result,
+                            &capture.path,
+                            compiler_function_result_capture_storage(
+                                symbol,
+                                expression.span,
+                                index,
+                            ),
+                            value,
+                        );
                     }
-                    CompilerType::Completed => LlValue::Completed(body.instruction(
-                        &format!("call fastcc i8 @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Effect => LlValue::Effect(body.instruction(
-                        &format!("call fastcc i8 @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Type => LlValue::Enum {
-                        value: body.instruction(
-                            &format!("call fastcc i32 @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        enumeration: fundamental_type_enumeration(),
-                    },
-                    CompilerType::Scope => LlValue::Enum {
-                        value: body.instruction(
-                            &format!("call fastcc i32 @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        enumeration: scope_enumeration(),
-                    },
-                    CompilerType::Function if !result_capture_types.is_empty() => {
-                        let aggregate = body.instruction(
-                            &format!("call fastcc {function_return_type} @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        let tag = body.instruction(
-                            &format!("extractvalue {function_return_type} {aggregate}, 0"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        let mut captures = Vec::with_capacity(result_capture_types.len());
-                        for (index, value_type) in result_capture_types.iter().enumerate() {
-                            let value = body.instruction(
-                                &format!(
-                                    "extractvalue {function_return_type} {aggregate}, {}",
-                                    index + 1
-                                ),
+                    result
+                } else {
+                    match expression.value_type {
+                        CompilerType::Unit => {
+                            body.effect(
+                                &format!("call fastcc void @{symbol}({arguments})"),
                                 expression.span,
                                 &mut self.debug,
                             );
-                            let value = self.emit_extracted_machine_value(
-                                &value,
-                                value_type,
-                                body,
+                            LlValue::Unit
+                        }
+                        CompilerType::Completed => LlValue::Completed(body.instruction(
+                            &format!("call fastcc i8 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        )),
+                        CompilerType::Effect => LlValue::Effect(body.instruction(
+                            &format!("call fastcc i8 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        )),
+                        CompilerType::Type => LlValue::Enum {
+                            value: body.instruction(
+                                &format!("call fastcc i32 @{symbol}({arguments})"),
                                 expression.span,
-                            );
-                            captures.push((
-                                compiler_function_result_capture_storage(
-                                    symbol,
-                                    expression.span,
-                                    index,
-                                ),
-                                value,
-                            ));
-                        }
-                        LlValue::Function {
-                            value: tag,
+                                &mut self.debug,
+                            ),
+                            enumeration: fundamental_type_enumeration(),
+                        },
+                        CompilerType::Scope => LlValue::Enum {
+                            value: body.instruction(
+                                &format!("call fastcc i32 @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            enumeration: scope_enumeration(),
+                        },
+                        CompilerType::Function => LlValue::Enum {
+                            value: body.instruction(
+                                &format!("call fastcc i32 @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
                             enumeration: function_value_enumeration(self.program),
-                            captures,
+                        },
+                        CompilerType::Identity
+                        | CompilerType::TypeView
+                        | CompilerType::FunctionView
+                        | CompilerType::LanguageContext
+                        | CompilerType::Capability
+                        | CompilerType::NativeSerializer(_)
+                        | CompilerType::ExternalMetadata
+                        | CompilerType::SerializationStream(_)
+                        | CompilerType::Constraint
+                        | CompilerType::Refined { .. }
+                        | CompilerType::TraversalControl(_)
+                        | CompilerType::TaskResponse(_)
+                        | CompilerType::Task(_)
+                        | CompilerType::ExternalLocation(_) => {
+                            unreachable!("checked functions do not return this static object kind")
                         }
-                    }
-                    CompilerType::Function => LlValue::Enum {
-                        value: body.instruction(
+                        CompilerType::Generator(ref generator) => LlValue::Generator {
+                            value: body.instruction(
+                                &format!("call fastcc i32 @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            generator: generator.clone(),
+                            captured_initial: None,
+                            captured_additional_initials: Vec::new(),
+                        },
+                        CompilerType::Version => {
+                            unreachable!("Version function results are not admitted")
+                        }
+                        CompilerType::Boolean => LlValue::Boolean(body.instruction(
+                            &format!("call fastcc i1 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        )),
+                        CompilerType::Int | CompilerType::Nat => LlValue::Int(body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        )),
+                        CompilerType::InfiniteInt
+                        | CompilerType::InfiniteNat
+                        | CompilerType::InfiniteRational => {
+                            unreachable!("checked functions do not cross infinity values")
+                        }
+                        CompilerType::Modular(ref modular) => LlValue::Modular {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            modular: modular.clone(),
+                        },
+                        CompilerType::Rational => LlValue::Rational(body.instruction(
+                            &format!("call fastcc ptr @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        )),
+                        CompilerType::Comparison => LlValue::Comparison(body.instruction(
                             &format!("call fastcc i32 @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
-                        ),
-                        enumeration: function_value_enumeration(self.program),
-                    },
-                    CompilerType::Identity
-                    | CompilerType::TypeView
-                    | CompilerType::FunctionView
-                    | CompilerType::LanguageContext
-                    | CompilerType::Capability
-                    | CompilerType::NativeSerializer(_)
-                    | CompilerType::ExternalMetadata
-                    | CompilerType::SerializationStream(_)
-                    | CompilerType::Constraint
-                    | CompilerType::Refined { .. }
-                    | CompilerType::TraversalControl(_)
-                    | CompilerType::TaskResponse(_)
-                    | CompilerType::Task(_)
-                    | CompilerType::ExternalLocation(_) => {
-                        unreachable!("checked functions do not return this static object kind")
-                    }
-                    CompilerType::Generator(ref generator) => LlValue::Generator {
-                        value: body.instruction(
+                        )),
+                        CompilerType::ErrorCode => LlValue::ErrorCode(body.instruction(
                             &format!("call fastcc i32 @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
-                        ),
-                        generator: generator.clone(),
-                        captured_initial: None,
-                        captured_additional_initials: Vec::new(),
-                    },
-                    CompilerType::Version => {
-                        unreachable!("Version function results are not admitted")
-                    }
-                    CompilerType::Boolean => LlValue::Boolean(body.instruction(
-                        &format!("call fastcc i1 @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Int | CompilerType::Nat => LlValue::Int(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::InfiniteInt
-                    | CompilerType::InfiniteNat
-                    | CompilerType::InfiniteRational => {
-                        unreachable!("checked functions do not cross infinity values")
-                    }
-                    CompilerType::Modular(ref modular) => LlValue::Modular {
-                        value: body.instruction(
+                        )),
+                        CompilerType::Enum(ref enumeration) => LlValue::Enum {
+                            value: body.instruction(
+                                &format!("call fastcc i32 @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            enumeration: enumeration.clone(),
+                        },
+                        CompilerType::Error => LlValue::Error(body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
-                        ),
-                        modular: modular.clone(),
-                    },
-                    CompilerType::Rational => LlValue::Rational(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Comparison => LlValue::Comparison(body.instruction(
-                        &format!("call fastcc i32 @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::ErrorCode => LlValue::ErrorCode(body.instruction(
-                        &format!("call fastcc i32 @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Enum(ref enumeration) => LlValue::Enum {
-                        value: body.instruction(
-                            &format!("call fastcc i32 @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        enumeration: enumeration.clone(),
-                    },
-                    CompilerType::Error => LlValue::Error(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::ErrorDomain => LlValue::ErrorDomain(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::SourceLocation => LlValue::SourceLocation(body.instruction(
-                        &format!("call fastcc ptr @{symbol}({arguments})"),
-                        expression.span,
-                        &mut self.debug,
-                    )),
-                    CompilerType::Character | CompilerType::String => {
-                        LlValue::String(body.instruction(
+                        )),
+                        CompilerType::ErrorDomain => LlValue::ErrorDomain(body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
-                        ))
-                    }
-                    CompilerType::Range(ref endpoint) => LlValue::Range {
-                        value: body.instruction(
+                        )),
+                        CompilerType::SourceLocation => LlValue::SourceLocation(body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
-                        ),
-                        endpoint: endpoint.as_ref().clone(),
-                    },
-                    CompilerType::Result(ref success) => LlValue::Result {
-                        value: body.instruction(
-                            &format!("call fastcc ptr @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        success: success.as_ref().clone(),
-                    },
-                    CompilerType::Optional(ref payload) => LlValue::Optional {
-                        value: body.instruction(
-                            &format!("call fastcc ptr @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        payload: payload.as_ref().clone(),
-                    },
-                    CompilerType::List(ref element) => LlValue::List {
-                        value: body.instruction(
-                            &format!("call fastcc ptr @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        element: element.as_ref().clone(),
-                    },
-                    CompilerType::Array { .. }
-                    | CompilerType::Set(_)
-                    | CompilerType::Bag(_)
-                    | CompilerType::Map { .. } => LlValue::Container {
-                        value: body.instruction(
-                            &format!("call fastcc ptr @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        ),
-                        value_type: expression.value_type.clone(),
-                    },
-                    CompilerType::Tuple(ref field_types) => {
-                        let aggregate_type = llvm_value_type(&expression.value_type);
-                        let aggregate = body.instruction(
-                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        self.emit_tuple_extract(&aggregate, field_types, body, expression.span)
-                    }
-                    CompilerType::Record(ref field_types) => {
-                        let aggregate_type = llvm_value_type(&expression.value_type);
-                        let aggregate = body.instruction(
-                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        self.emit_record_extract(&aggregate, field_types, body, expression.span)
-                    }
-                    CompilerType::Sum(ref sum) => {
-                        let aggregate_type = llvm_value_type(&expression.value_type);
-                        let aggregate = body.instruction(
-                            &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        self.emit_sum_extract(&aggregate, sum, body, expression.span)
+                        )),
+                        CompilerType::Character | CompilerType::String => {
+                            LlValue::String(body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ))
+                        }
+                        CompilerType::Range(ref endpoint) => LlValue::Range {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            endpoint: endpoint.as_ref().clone(),
+                        },
+                        CompilerType::Result(ref success) => LlValue::Result {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            success: success.as_ref().clone(),
+                        },
+                        CompilerType::Optional(ref payload) => LlValue::Optional {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            payload: payload.as_ref().clone(),
+                        },
+                        CompilerType::List(ref element) => LlValue::List {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            element: element.as_ref().clone(),
+                        },
+                        CompilerType::Array { .. }
+                        | CompilerType::Set(_)
+                        | CompilerType::Bag(_)
+                        | CompilerType::Map { .. } => LlValue::Container {
+                            value: body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ),
+                            value_type: expression.value_type.clone(),
+                        },
+                        CompilerType::Tuple(ref field_types) => {
+                            let aggregate_type = llvm_value_type(&expression.value_type);
+                            let aggregate = body.instruction(
+                                &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            );
+                            self.emit_tuple_extract(&aggregate, field_types, body, expression.span)
+                        }
+                        CompilerType::Record(ref field_types) => {
+                            let aggregate_type = llvm_value_type(&expression.value_type);
+                            let aggregate = body.instruction(
+                                &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            );
+                            self.emit_record_extract(&aggregate, field_types, body, expression.span)
+                        }
+                        CompilerType::Sum(ref sum) => {
+                            let aggregate_type = llvm_value_type(&expression.value_type);
+                            let aggregate = body.instruction(
+                                &format!("call fastcc {aggregate_type} @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            );
+                            self.emit_sum_extract(&aggregate, sum, body, expression.span)
+                        }
                     }
                 }
             }
@@ -8460,6 +8451,93 @@ enum LlValue {
     },
 }
 
+fn attach_function_capture(
+    value: &mut LlValue,
+    path: &[CompilerAggregatePathElement],
+    storage_name: String,
+    capture_value: LlValue,
+) {
+    let Some((first, rest)) = path.split_first() else {
+        match value {
+            LlValue::Function { captures, .. } => {
+                captures.push((storage_name, capture_value));
+            }
+            LlValue::Enum {
+                value: tag,
+                enumeration,
+            } => {
+                *value = LlValue::Function {
+                    value: tag.clone(),
+                    enumeration: enumeration.clone(),
+                    captures: vec![(storage_name, capture_value)],
+                };
+            }
+            _ => unreachable!("checked capture path ends at a Function value"),
+        }
+        return;
+    };
+    match (first, value) {
+        (CompilerAggregatePathElement::Tuple(index), LlValue::Tuple(fields)) => {
+            attach_function_capture(&mut fields[*index], rest, storage_name, capture_value);
+        }
+        (CompilerAggregatePathElement::Record(name), LlValue::Record { fields, .. }) => {
+            let field = fields
+                .iter_mut()
+                .find_map(|(label, field)| (label == name).then_some(field))
+                .expect("checked capture path names a Record field");
+            attach_function_capture(field, rest, storage_name, capture_value);
+        }
+        _ => unreachable!("checked capture path follows its aggregate representation"),
+    }
+}
+
+fn function_capture_value(value: &LlValue, storage_name: &str) -> Option<LlValue> {
+    match value {
+        LlValue::Function { captures, .. } => captures
+            .iter()
+            .find_map(|(name, value)| (name == storage_name).then(|| value.clone())),
+        LlValue::Tuple(fields) => fields
+            .iter()
+            .find_map(|field| function_capture_value(field, storage_name)),
+        LlValue::Record { fields, .. } => fields
+            .iter()
+            .find_map(|(_, field)| function_capture_value(field, storage_name)),
+        LlValue::Sum { payloads, .. } => payloads.iter().find_map(|payload| {
+            payload
+                .as_deref()
+                .and_then(|payload| function_capture_value(payload, storage_name))
+        }),
+        _ => None,
+    }
+}
+
+fn extend_function_capture_environment(
+    environment: &mut BTreeMap<String, LlValue>,
+    value: &LlValue,
+) {
+    match value {
+        LlValue::Function { captures, .. } => {
+            environment.extend(captures.iter().cloned());
+        }
+        LlValue::Tuple(fields) => {
+            for field in fields {
+                extend_function_capture_environment(environment, field);
+            }
+        }
+        LlValue::Record { fields, .. } => {
+            for (_, field) in fields {
+                extend_function_capture_environment(environment, field);
+            }
+        }
+        LlValue::Sum { payloads, .. } => {
+            for payload in payloads.iter().flatten() {
+                extend_function_capture_environment(environment, payload);
+            }
+        }
+        _ => {}
+    }
+}
+
 impl LlValue {
     fn singleton(&self) -> &str {
         match self {
@@ -10469,10 +10547,12 @@ fn llvm_type(value_type: &CompilerType) -> String {
 }
 
 fn function_llvm_return_type(function: &CompilerFunction) -> String {
-    if function.result_type == CompilerType::Function && !function.result_captures.is_empty() {
+    if function.result_captures.is_empty() {
+        llvm_type(&function.result_type)
+    } else {
         format!(
             "{{ {} }}",
-            std::iter::once("i32".to_owned())
+            std::iter::once(llvm_type(&function.result_type))
                 .chain(
                     function
                         .result_captures
@@ -10482,8 +10562,6 @@ fn function_llvm_return_type(function: &CompilerFunction) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         )
-    } else {
-        llvm_type(&function.result_type)
     }
 }
 
@@ -12626,6 +12704,68 @@ mod tests {
         assert!(llvm.contains("extractvalue { i32, ptr, i32, i32 }"));
         assert!(llvm.contains("extractvalue { { i32, ptr }, i32 }"));
         assert!(llvm.contains("DW_TAG_member, name: \"operation\""));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+    }
+
+    #[test]
+    fn emits_capture_bearing_function_aggregates_with_path_ordered_private_transport() {
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001,
+        // TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-aggregate-boundaries.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .clone()
+        };
+        let make_record = symbol("make-record");
+        let apply_record = symbol("apply-record");
+        let forward_record = symbol("forward-record");
+        let make_tuple = symbol("make-tuple");
+        let apply_tuple = symbol("apply-tuple");
+        let apply_one = symbol("apply-one");
+        let llvm = Generator::new(&program, "capturing-function-aggregate-boundaries.t").emit();
+
+        let record = "{ i32, i32, ptr, i32, i32, i32 }";
+        let extended_record = "{ { i32, i32, ptr, i32, i32, i32 }, ptr, ptr }";
+        for expected in [
+            format!(
+                "define internal fastcc {extended_record} @{make_record}(ptr %arg0, ptr %arg1)"
+            ),
+            format!(
+                "define internal fastcc {{ ptr, ptr }} @{apply_record}({record} %arg0, ptr %arg1, ptr %arg2)"
+            ),
+            format!(
+                "define internal fastcc {extended_record} @{forward_record}({record} %arg0, ptr %arg1, ptr %arg2)"
+            ),
+            format!("define internal fastcc {{ {{ i32, ptr }}, ptr }} @{make_tuple}(ptr %arg0)"),
+            format!("define internal fastcc ptr @{apply_tuple}({{ i32, ptr }} %arg0, ptr %arg1)"),
+            format!(
+                "define internal fastcc ptr @{apply_one}({{ i32, ptr, i32, i32 }} %arg0, ptr %arg1)"
+            ),
+        ] {
+            assert!(llvm.contains(&expected), "missing {expected:?}");
+        }
+        assert!(llvm.contains(&format!("call fastcc {extended_record} @{make_record}(")));
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr }} @{apply_record}({record}"
+        )));
+        assert!(llvm.contains("insertvalue { { i32, i32, ptr, i32, i32, i32 }, ptr, ptr }"));
+        assert!(llvm.contains("extractvalue { { i32, i32, ptr, i32, i32, i32 }, ptr, ptr }"));
+        assert!(llvm.contains("insertvalue { { i32, ptr }, ptr }"));
+        assert!(llvm.contains("extractvalue { { i32, ptr }, ptr }"));
+        assert!(llvm.contains("DW_TAG_member, name: \"operation\""));
+        assert!(!llvm.contains("DILocalVariable(name: \"operation capture"));
         assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));

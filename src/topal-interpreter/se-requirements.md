@@ -626,7 +626,9 @@ Tuple and Record values shall retain Function entries as ordinary values under
 passage, field selection or product destructuring, and eventual application
 shall preserve the exact callable identity and captured lexical environment.
 Every interpreter mode and reversible debugger history shall cover the shared
-Function-aggregate-boundary regression.
+capture-free Function-aggregate-boundary regression and the shared
+capture-bearing Function-aggregate-boundary regression with multiple Record
+leaves, Tuple destructuring, forwarding, and a non-escaping nested Function.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 

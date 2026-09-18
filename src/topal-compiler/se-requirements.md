@@ -3084,10 +3084,11 @@ freestanding artifacts, DWARF validation, GDB values/frames, the shared corpus,
 and separate resource baselines.
 
 Capturing anonymous results are governed by
-`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`; exact capture-free aggregate
-containment is governed by `TOPAL-COMP-FUNCTION-AGGREGATE-001`. Nested,
-dynamically computed, capture-bearing aggregate, and published Function results
-remain rejected. This shall add no function pointer, indirect call, closure
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`; exact aggregate containment is
+governed by `TOPAL-COMP-FUNCTION-AGGREGATE-001` and
+`TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. Nested, dynamically computed, and
+published Function results outside those rules remain rejected. This shall add
+no function pointer, indirect call, closure
 allocation/runtime, foreign dependency, C/C++ runtime, other-language standard
 library, public callable ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-FUNCTION-RESULT-001` and the admitted
@@ -3130,8 +3131,8 @@ library, public callable ABI, or `topal-native/6` revision. Capturing results or
 Function-boundary arguments outside
 `TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001` and
 `TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001`, capture-bearing aggregate
-containment, dynamic escape, publication, and library metadata/adapters remain
-deferred.
+containment outside `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`, dynamic escape,
+publication, and library metadata/adapters remain deferred.
 This realizes `TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
 `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5r.
@@ -3167,9 +3168,10 @@ allocation, function pointer, indirect call, callback, closure or Function
 runtime, foreign dependency, C/C++ runtime, other-language standard library,
 public callable ABI, or `topal-native/6` revision. Capturing Function results
 outside `TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`, capture-bearing aggregate
-containment, dynamic selection or escape, recursive or overloaded nested
-callable values, unsupported captured state, publication, and library
-metadata/adapters remain deferred. Future library metadata shall describe
+containment outside `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`, dynamic
+selection or escape, recursive or overloaded nested callable values,
+unsupported captured state, publication, and library metadata/adapters remain
+deferred. Future library metadata shall describe
 callable and capture identities, ordered classifiers, lifetime/effects,
 representation identities, and target adapters rather than the private hidden-
 parameter layout. This realizes
@@ -3214,7 +3216,8 @@ dependency, C/C++ runtime, other-language standard library, public callable
 ABI, or `topal-native/6` revision. Immediate exact result application is
 governed by `TOPAL-COMP-FUNCTION-RESULT-CHAIN-001`. Nested Function escape,
 Function-valued or otherwise unsupported captures, dynamic selection,
-capture-bearing aggregate containment, publication, and library
+capture-bearing aggregate containment outside
+`TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`, publication, and library
 metadata/adapters remain deferred. Future library metadata shall describe
 callable identity, ordered capture identities/classifiers, lifetime/effects,
 representation identities, and target adapters rather than this private
@@ -3267,12 +3270,13 @@ product destructuring shall recover those facts without replaying aggregate or
 field construction. Local selection may apply a capturing anonymous Function
 while all captures remain in their defining lifetime.
 
-An ordinary private function parameter or result may carry a recursively nested
-Tuple or Record with Function leaves only when every callable is capture-free
-and exact at the call site. Specialization shall propagate those recursive
-facts into the callee or back to the caller. Missing, opaque, branch-selected,
-or capture-bearing boundary facts and Function containment in Optional, List,
-Sum, or another unadmitted aggregate shall fail before LLVM lowering.
+The capture-free base case permits an ordinary private function parameter or
+result to carry a recursively nested Tuple or Record when every Function leaf
+is exact at the call site. Specialization shall propagate those recursive facts
+into the callee or back to the caller. Capture-bearing aggregate boundaries are
+governed by `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. Missing, opaque, or
+branch-selected facts and Function containment in Optional, List, Sum, or
+another unadmitted aggregate shall fail before LLVM lowering.
 
 The backend shall represent each Function leaf with its existing private i32
 observation tag inside the recursively exact aggregate. Definitions and calls
@@ -3284,18 +3288,19 @@ values and their Function identities.
 
 Tests shall cover local captured containment; named, symbolic, and
 non-capturing anonymous values; recursive Tuple/Record bindings, parameters,
-results, selections, and destructuring; rejected capture-bearing boundaries;
-checked structure; exact direct IR; every interpreter mode and reversible
-history; the shared corpus and separate resource baselines; freestanding ELF
-and DWARF validation; and full O0 GDB values/frames.
+results, selections, and destructuring; checked structure; exact direct IR;
+every interpreter mode and reversible history; the shared corpus and separate
+resource baselines; freestanding ELF and DWARF validation; and full O0 GDB
+values/frames.
 
 This shall add no closure object, environment pointer, allocation, function
 pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
 runtime, other-language standard library, public aggregate/callable ABI, or
-`topal-native/6` revision. Dynamic and capture-bearing aggregate boundaries,
-other aggregate constructors, escape, publication, and library adapters remain
-deferred. Future compiled-library metadata shall encode every Function field's
-canonical aggregate path, callable identity, ordered captures and classifiers,
+`topal-native/6` revision. Dynamic aggregate boundaries, capture-bearing
+boundaries outside `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`, other aggregate
+constructors, escape, publication, and library adapters remain deferred. Future
+compiled-library metadata shall encode every Function field's canonical
+aggregate path, callable identity, ordered captures and classifiers,
 construction lifetime, effects, representation identity, and target adapter
 independently of private LLVM types and observation tags. This realizes
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-001`,
@@ -3303,6 +3308,59 @@ independently of private LLVM types and observation tags. This realizes
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-CALLABLE-VALUE-001`,
 `TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5aa.
+
+## TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001 — Captured private Function aggregates
+
+The checked compiler model shall admit exact recursively nested Tuple and
+Record parameters whose Function leaves are capturing anonymous Functions or
+non-escaping nested Functions, and results whose Function leaves are capturing
+anonymous Functions. Every leaf shall retain its exact callable identity,
+ordered capture facts, and canonical zero-based-Tuple-index/Record-label path.
+Paths and their captures shall be traversed depth-first from left to right.
+Nested named Functions shall not escape through aggregate results.
+
+For each specialized parameter, the frontend shall append every path-ordered
+capture after the source-visible aggregate argument and bind those operands to
+the selected callable's capture storage. For each result, it shall retain the
+source aggregate and append the same path-ordered capture values to one
+compiler-private result aggregate. Calls, bindings, transitive forwarding,
+Record selection, and recursive anonymous product destructuring shall recover
+the captures without replaying the aggregate, fields, or capture initializers.
+Function-containing capture state, Generator state, opaque or dynamically
+selected callable facts, and values outside the represented private lifetime
+shall fail before LLVM lowering.
+
+The backend shall emit matching direct private `fastcc` definitions and calls,
+leaving x86-64 physical argument/result placement to LLVM and the qualified
+target data layout. Source aggregates shall retain recursively accurate DWARF
+types and Function members. Hidden transport shall not appear as source
+aggregate fields or compiler-named variables; invoked anonymous and nested
+frames shall expose captures under source names.
+
+Tests shall cover multiple captured Record leaves, a captured Tuple leaf,
+parameter-to-result forwarding, recursive destructuring, a non-escaping nested
+Function parameter, rejected nested escape and Function-containing capture
+state, checked path ordering, exact direct IR, all interpreter modes and
+reversible history, the shared corpus and separate resource baselines,
+freestanding ELF/DWARF validation, and full O0 GDB aggregate values and capture
+frames.
+
+This shall add no closure object, environment pointer, allocation, function
+pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
+runtime, other-language standard library, public aggregate/callable ABI, or
+`topal-native/6` revision. Dynamic Function selection, other aggregate
+constructors, escaping nested Functions, persistent storage, publication, and
+public library adapters remain deferred. Future compiled-library metadata shall
+encode the canonical aggregate path; callable and capture identities; capture
+classifiers and order; construction lifetime; effects; representation identity;
+and target adapter independently of private LLVM aggregates, observation tags,
+and the current hidden-operand layout. This realizes
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`,
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-001`,
+`TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001`, `TOPAL-FUNCTION-VALUE-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-NESTED-001`,
+`TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5ab.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
