@@ -87,7 +87,8 @@ evidence.
 | 3b2-b5an | exact Function-containing Tuple/Record package fields, recursive callable-fact retention, closed symbolic aggregate defaults, path-ordered hidden captures, and aggregate field debugging | complete |
 | 3b2-b5ao | exact represented List/Optional/Result/Range package fields, source-order classifier retention, exact closed container defaults, pointer-carrier private calls, and container field debugging | complete |
 | 3b2-b5ap | exact Array/Set/Bag/Map package fields, exact function-header classifiers, source-order fact retention, pointer-carrier private calls, and collection field debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5aq | exact root/root-alias Scope package fields, source-order namespace-fact retention, closed root defaults, existing specialized hidden-data transport, and Scope/data debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -338,7 +339,9 @@ the aggregate; 3b2-b5ao retains exact List/Optional/Result/Range classifiers
 through package ordering while reusing their private pointer carriers; 3b2-b5ap
 recognizes exact Array/Set/Bag/Map function headers and retains their complete
 collection classifiers through the same package ordering and pointer-carrier
-boundary; and
+boundary; 3b2-b5aq retains exact root/root-alias namespace snapshots through
+package ordering while reusing the specialized Scope tag and hidden represented
+data boundary; and
 3b2-b5e8 continues with other escaping, recursive,
 overloaded, and dynamically contained callables, remaining recursive and
 nested-block exit control flow, cleanup-bearing scopes, persistent aggregate

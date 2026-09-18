@@ -15448,6 +15448,13 @@ impl Analyzer {
             let mut namespace = self
                 .resolve_namespace(argument, environment, argument.span.start)?
                 .ok_or_else(|| unsupported(&self.source, argument.span, "opaque Scope argument"))?;
+            if namespace.name != "root" {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "non-root Scope argument",
+                ));
+            }
             let parameter_name = self.source.slice(parameter.name);
             if parameter_name == "_" {
                 namespaces.push(Some(namespace));
@@ -18489,6 +18496,46 @@ impl Analyzer {
         };
         let mut call_environment = environment.clone();
         for binding in &argument_bindings {
+            if binding.value.value_type == CompilerType::Scope {
+                if self.in_function && matches!(binding.value.kind, CompilerExpressionKind::Root) {
+                    return Err(unsupported(
+                        &self.source,
+                        binding.value.span,
+                        "function-body live root Scope argument",
+                    ));
+                }
+                let namespace = self
+                    .resolve_namespace(&binding.value, environment, binding.value.span.start)?
+                    .ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            binding.value.span,
+                            "opaque Scope packaged field",
+                        )
+                    })?;
+                call_environment.insert(
+                    binding.storage_name.clone(),
+                    BindingFacts {
+                        storage_name: binding.storage_name.clone(),
+                        origin: binding.value.span.start,
+                        runtime_bound: true,
+                        value_type: CompilerType::Scope,
+                        int_range: None,
+                        rational_value: None,
+                        infinity_negative: None,
+                        string_value: None,
+                        closed_int_range: None,
+                        list_count: None,
+                        list_string_keys: None,
+                        tuple_fields: Vec::new(),
+                        record_fields: BTreeMap::new(),
+                        namespace: Some(namespace),
+                        callable: None,
+                        static_capability: None,
+                    },
+                );
+                continue;
+            }
             if binding.value.value_type != CompilerType::Function
                 && !compiler_type_is_function_aggregate(&binding.value.value_type)
             {
@@ -18768,7 +18815,7 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(field.classifier)?;
-            if expected == CompilerType::Scope || !compiler_packaged_field_supported(&expected) {
+            if !compiler_packaged_field_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     field.classifier,
@@ -18976,7 +19023,7 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(parameter.classifier)?;
-            if expected == CompilerType::Scope || !compiler_packaged_field_supported(&expected) {
+            if !compiler_packaged_field_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
@@ -33741,6 +33788,118 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_scope_packaged_fields_as_exact_private_environments() {
+        // TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001,
+        // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/scope-packaged-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Scope-packaged results")
+        };
+        assert_eq!(results.len(), 3);
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: value_storage,
+            value,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first value field is retained first")
+        };
+        assert_eq!(value.value_type, CompilerType::Int);
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: scope_storage,
+            value: scope,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Scope field is retained second")
+        };
+        assert_eq!(scope.value_type, CompilerType::Scope);
+        assert!(matches!(scope.kind, CompilerExpressionKind::Local(_)));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected a declaration-order Scope package call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == scope_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == value_storage
+        ));
+        assert_eq!(arguments[2].value_type, CompilerType::Int);
+
+        let CompilerExpressionKind::Call { arguments, .. } = &results[1].kind else {
+            panic!("expected the positional Scope package call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert_eq!(arguments[0].value_type, CompilerType::Scope);
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(41)));
+        assert_eq!(arguments[2].value_type, CompilerType::Int);
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: default_value_storage,
+            body,
+            ..
+        } = &results[2].kind
+        else {
+            panic!("the explicit field precedes the closed Scope default")
+        };
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected the defaulted Scope package call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(arguments[0].kind, CompilerExpressionKind::Root));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == default_value_storage
+        ));
+        assert_eq!(arguments[2].value_type, CompilerType::Int);
+
+        let specialized = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "observe")
+            .expect("Scope package call is specialized");
+        assert_eq!(specialized.parameters.len(), 3);
+        assert_eq!(specialized.parameters[0].name, "scope");
+        assert_eq!(specialized.parameters[0].value_type, CompilerType::Scope);
+        assert!(specialized.parameters[0].source_visible);
+        assert_eq!(specialized.parameters[1].name, "value");
+        assert!(specialized.parameters[1].source_visible);
+        assert_eq!(specialized.parameters[2].name, "scope answer");
+        assert_eq!(specialized.parameters[2].value_type, CompilerType::Int);
+        assert!(specialized.parameters[2].source_visible);
+
+        let live_root = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\naccept is fn ((api : Scope, value : Int)) -> Int\n  api answer + value\nwrapper is fn () -> Int\n  accept (api is root, value is 0)\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(live_root.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            live_root
+                .message
+                .contains("function-body live root Scope argument"),
+            "{live_root:?}"
+        );
+
+        let non_root = analyze_for_compiler(
+            "use language (version is v0.1, features is (lint))\nlint-scope : Scope is lang lint\naccept is fn ((api : Scope)) -> Int\n  0\naccept (api is lint-scope)\n",
+        )
+        .unwrap_err();
+        assert_eq!(non_root.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            non_root.message.contains("non-root Scope argument"),
+            "{non_root:?}"
         );
     }
 

@@ -205,6 +205,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/result-success-projection.t",
     "examples/language/root-namespace.t",
     "examples/language/scope-classifier.t",
+    "examples/language/scope-packaged-fields.t",
     "examples/language/static-introspection.t",
     "examples/language/static-nullary-functions.t",
     "examples/language/static-product-functions.t",

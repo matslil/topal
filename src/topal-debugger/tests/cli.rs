@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 238);
+    assert_eq!(examples.len(), 239);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3505,6 +3505,38 @@ fn records_collection_packaged_fields_reversibly() {
     );
     assert!(stdout.contains("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] array"));
     assert!(stdout.contains("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] scores"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_scope_packaged_fields_reversibly() {
+    // TOPAL-INTP-SUBSET-265, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-NAMESPACE-FUNCTION-BOUNDARY-001, TOPAL-TYPE-CALL-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}scope-packaged-fields.debug"),
+            &language_example("scope-packaged-fields.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let make_value = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-value")
+        .unwrap();
+    let scope = stdout
+        .find("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] scope")
+        .unwrap();
+    let value = stdout
+        .find("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] value")
+        .unwrap();
+    assert!(make_value < scope && scope < value, "{stdout}");
+    assert!(
+        stdout.contains("function.argument.defaulted [TOPAL-FUNCTION-PACKAGED-OPERAND-001] scope")
+    );
+    assert!(stdout.contains("namespace.alias.member.resolved [TOPAL-NAMESPACE-ALIAS-001] answer"));
     assert!(stdout.contains("function.exit"));
 }
 

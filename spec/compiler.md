@@ -2650,7 +2650,10 @@ SHALL require no namespace table, indirect dispatch, allocation, foreign
 dependency, C/C++ runtime, other-language standard library, or native ABI
 revision. Scope results or escape, a live `root` argument formed inside a
 compiled function, nested or non-root namespaces, generator members, `use`,
-packages, and compiled-library Scope environments remain deferred.
+and compiled-library Scope environments remain deferred. Exact root and
+root-alias package fields are governed by
+`TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001`; all other Scope package forms remain
+deferred.
 
 ### TOPAL-COMPILER-NAMESPACE-GENERATOR-001 — Static qualified generator application
 
@@ -3495,7 +3498,9 @@ Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
 `TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
-fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Other
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Exact
+root and root-alias Scope fields are governed by
+`TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001`. Other
 non-scalar fields,
 nested package declarations, opaque package values, and defaults that depend on
 invocation or captured bindings remain outside this increment and SHALL be
@@ -3538,7 +3543,9 @@ Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
 `TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
-fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Other
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Exact
+root and root-alias Scope fields are governed by
+`TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001`. Other
 non-scalar fields,
 nested package declarations, opaque package values, invocation- or
 capture-dependent defaults, and public package adapters remain deferred.
@@ -3583,8 +3590,10 @@ Function-containing Tuple and Record fields are governed by
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented
 List, Optional, Result, and Range fields are governed by
 `TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map
-fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Scope,
-other Function-containing aggregates, other non-scalar fields, nested package
+fields are governed by `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`. Exact
+root and root-alias Scope fields are governed by
+`TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001`. Other Function-containing
+aggregates, other non-scalar fields, nested package
 declarations, opaque compound package values, invocation- or capture-dependent
 defaults, recursion through compound package signatures, and public package
 adapters remain deferred.
@@ -3852,6 +3861,51 @@ context-dependent or otherwise unanalyzable defaults, nested package
 declarations, opaque whole-package values, recursive package signatures,
 persistent collection storage, publication, and public adapters remain
 deferred.
+
+### TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001 — Exact root Scope package fields
+
+The compiler SHALL admit the live source-root namespace and an exact retained
+root alias as a complete `Scope` field of a one- or two-operand package governed
+by the preceding package rules. A supplied alias SHALL retain the namespace
+identity, declarations visible at its binding, function overload order, and
+represented data facts required by
+`TOPAL-COMPILER-NAMESPACE-BOUNDARY-001`. A closed default of `root` SHALL be
+admitted. An opaque or computed Scope, a nested or non-root namespace, and a
+live `root` argument formed inside a compiled function SHALL reject before LLVM
+lowering or artifact publication.
+
+Each explicit field initializer SHALL execute once in package source order. A
+compiler-private ordering binding for a Scope field SHALL retain the complete
+namespace facts beside the sealed observation value, and the direct call SHALL
+receive source fields in operand/field declaration order. The callee SHALL use
+the existing specialized Scope boundary: one explicit compiler-private `i32`
+Scope value followed by each represented immutable namespace data value in its
+deterministic existing order. Qualified function selection SHALL remain static
+and direct. LLVM SHALL own AMD64 register and stack placement, and package
+normalization SHALL add no allocation or change namespace lifetime or identity.
+
+DWARF/GDB SHALL expose the source Scope field, its `Scope` classifier and
+namespace observation, each material represented data argument, and the
+ordinary function frame. Compiler-private source-order bindings SHALL remain
+absent from source debugging. Tests SHALL cover reordered once-only
+Scope/scalar fields, positional parity, a closed `root` default, exact result,
+function-body live-root artifact rejection, checked namespace-fact retention,
+matching direct IR, all interpreter modes, reversible history, the shared
+corpus and separate resource baselines, freestanding ELF/DWARF validation, and
+O0 GDB Scope/data values and frames.
+
+The lowering SHALL add no package aggregate, namespace table, dynamic lookup,
+function pointer, indirect call, environment or package allocation, `byval`,
+`sret`, `inalloca`, `preallocated`, foreign dependency, C/C++ runtime,
+other-language standard library, public Scope ABI, or native-ABI revision.
+Future compiled-library metadata SHALL preserve namespace identity and snapshot
+position; member visibility and declaration order; complete function overload,
+generator, and represented-data member schemas; hidden data classifier/order,
+lifetime, and effect facts; package operand/field identity and order; default
+semantics and dependencies; and versioned target adapters independently of the
+private `i32` tag, hidden parameter names, LLVM types, symbols, and physical
+placement. Opaque, computed, nested, non-root, external, escaping, result, and
+public/library Scope environments remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 

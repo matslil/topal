@@ -12411,28 +12411,21 @@ fn structured_packaged_fields_are_exact_private_freestanding_and_debuggable() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    for (name, text) in [
-        (
-            "opaque-package",
-            "use language (version is v0.1)\nretain is fn ((pair : (Int, Int), person : Record (name : String, active : Boolean))) -> Int\n  0\nbundle is (pair is (20, 22), person is (name is \"Ada\", active is true))\nretain bundle\n",
-        ),
-        (
-            "unsupported-scope-field",
-            "use language (version is v0.1)\napply is fn ((scope : Scope)) -> Int\n  0\napply (scope is root)\n",
-        ),
-    ] {
-        let rejected_source = directory.join(format!("{name}.t"));
-        let rejected_executable = directory.join(name);
-        fs::write(&rejected_source, text).unwrap();
-        let rejected = run(topalc().args([
-            "-o",
-            rejected_executable.to_str().unwrap(),
-            rejected_source.to_str().unwrap(),
-        ]));
-        assert!(!rejected.status.success());
-        assert!(!rejected_executable.exists());
-        assert!(!metadata_path(&rejected_executable).exists());
-    }
+    let rejected_source = directory.join("opaque-package.t");
+    let rejected_executable = directory.join("opaque-package");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nretain is fn ((pair : (Int, Int), person : Record (name : String, active : Boolean))) -> Int\n  0\nbundle is (pair is (20, 22), person is (name is \"Ada\", active is true))\nretain bundle\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -12992,22 +12985,6 @@ fn container_packaged_fields_retain_exact_private_representations() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    let rejected_source = directory.join("unsupported-scope-field.t");
-    let rejected_executable = directory.join("unsupported-scope-field");
-    fs::write(
-        &rejected_source,
-        "use language (version is v0.1)\napply is fn ((scope : Scope)) -> Int\n  0\napply (scope is root)\n",
-    )
-    .unwrap();
-    let rejected = run(topalc().args([
-        "-o",
-        rejected_executable.to_str().unwrap(),
-        rejected_source.to_str().unwrap(),
-    ]));
-    assert!(!rejected.status.success());
-    assert!(!rejected_executable.exists());
-    assert!(!metadata_path(&rejected_executable).exists());
-
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([
@@ -13229,6 +13206,149 @@ fn collection_packaged_fields_retain_exact_private_representations() {
         "{text}"
     );
     assert!(text.contains("topal.fn.retain.4"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers Scope packages, rejection, artifacts, and GDB.
+fn scope_packaged_fields_retain_exact_private_environments() {
+    // TOPAL-COMPILER-SCOPE-PACKAGED-FIELD-001,
+    // TOPAL-COMPILER-NAMESPACE-BOUNDARY-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-scope-packaged-fields");
+    let source = directory.join("scope-packaged-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/scope-packaged-fields.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"((42, 42), (42, 42), (42, 42))\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for definition in [
+        "define internal fastcc { ptr, ptr } @topal.fn.observe.1(i32 %arg0, ptr %arg1, ptr %arg2)",
+        "define internal fastcc { ptr, ptr } @topal.fn.observe.2(i32 %arg0, ptr %arg1, ptr %arg2)",
+        "define internal fastcc { ptr, ptr } @topal.fn.observe_2ddefault.4(i32 %arg0, ptr %arg1, ptr %arg2)",
+    ] {
+        assert!(ir.contains(definition), "{definition}: {ir}");
+    }
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let value = main
+        .find("call fastcc ptr @topal.fn.make_2dvalue.0")
+        .unwrap();
+    let observed = main
+        .find("call fastcc { ptr, ptr } @topal.fn.observe.1")
+        .unwrap();
+    assert!(value < observed, "{main}");
+    for call in [
+        "@topal.fn.observe.1(i32 0, ptr %v1, ptr %v0)",
+        "@topal.fn.observe.2(i32 0, ptr @.topal.int.7, ptr %v0)",
+        "@topal.fn.observe_2ddefault.4(i32 0, ptr %v8, ptr %v0)",
+    ] {
+        assert!(main.contains(call), "{call}: {main}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+        "scope.runtime",
+        "topal.package.argument",
+        "topal.package.operand",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("function-live-root-package.t");
+    let rejected_executable = directory.join("function-live-root-package");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nanswer is 42\naccept is fn ((api : Scope, value : Int)) -> Int\n  api answer + value\nwrapper is fn () -> Int\n  accept (api is root, value is 0)\nwrapper ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("function-body live root Scope argument"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break scope-packaged-fields.t:18",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis scope",
+            "-ex",
+            "print scope",
+            "-ex",
+            "whatis value",
+            "-ex",
+            "print value",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = enum Scope"), "{text}");
+    assert!(text.contains("$1 = <namespace root>"), "{text}");
+    assert!(text.contains("type = Int"), "{text}");
+    assert!(text.contains("$2 = 41"), "{text}");
+    assert!(text.contains("scope answer = 42"), "{text}");
+    assert!(text.contains("topal.fn.observe.1"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
 
