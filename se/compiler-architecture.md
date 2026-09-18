@@ -408,13 +408,16 @@ closure and library-interface design.
 One or both syntactic operands may contain a closed package at the same checked
 boundary, and either package may be mixed with an admitted ordinary scalar
 operand. Package fields may use admitted machine scalars, exact capture-free
-Tuple/Record classifiers, or exact nominal Sum classifiers already supported by
-the private function ABI. A full positional product already has declaration
-order. A labeled product is instead associated by stable field identity. For a
-compound call, the frontend retains every explicit operand and field once in
-global source order through compiler-private SSA bindings, then evaluates
-omitted defaults in operand/field declaration order and permutes retained values
-into that same declaration order.
+Tuple/Record classifiers, exact nominal Sum classifiers, or exact direct
+Function values already supported by the private function ABI. A full
+positional product already has declaration order. A labeled product is instead
+associated by stable field identity. For a compound call, the frontend retains
+every explicit operand and field once in global source order through
+compiler-private SSA bindings, then evaluates omitted defaults in operand/field
+declaration order and permutes retained values into that same declaration
+order. A Function binding also retains its exact callable identity and capture
+facts beside the observation tag so reordering cannot make it opaque or replay
+its initializer.
 The private callee receives one ordinary LLVM parameter per unpackaged operand
 or source field; a structured field remains one exact aggregate parameter
 rather than being decomposed into more package fields. This makes every
@@ -423,16 +426,17 @@ responsibility for target register/stack placement. It also avoids `byval`,
 `sret`, `inalloca`, and `preallocated`: those attributes encode specific
 memory/ABI obligations and are reserved for a deliberate public aggregate
 interface rather than being inferred from source packaging syntax. The private
-bindings are deliberately absent from source-level debugging. Callable, Scope,
-other non-scalar fields, nested package declarations, opaque whole-package
-values, invocation- or capture-dependent defaults, recursive compound
-signatures, and public package adapters remain checked-frontend and
-library-interface work. Published metadata will need syntactic-operand
-partition/order, stable field identities and declaration order, complete
-canonical structural or nominal classifiers, Sum alternatives/payloads, default
-semantics and dependencies, evaluation effects, representation identity, and
-target adapters without exposing compiler-private binding names, LLVM types, or
-physical placement.
+bindings and hidden callable-capture transport are deliberately absent from
+source-level debugging. Function-containing aggregates, Scope, other non-scalar
+fields, nested package declarations, opaque whole-package values, invocation-
+or capture-dependent defaults, recursive compound signatures, and public
+package adapters remain checked-frontend and library-interface work. Published
+metadata will need syntactic-operand partition/order, stable field identities
+and declaration order, complete canonical structural or nominal classifiers,
+Sum alternatives/payloads, callable source/declaration identity and overload
+sets, capture schemas, default semantics and dependencies, evaluation effects,
+representation/lifetime identity, and target adapters without exposing
+compiler-private binding names, LLVM types, or physical placement.
 
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`

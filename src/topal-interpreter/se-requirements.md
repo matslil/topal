@@ -2231,3 +2231,15 @@ active alternative, and payload under its one source name. The shared regression
 and reversible debugger history shall cover reordered Sum/scalar fields, a
 closed payload-free Sum default, positional parity, mixed operands, and exact
 results.
+
+## TOPAL-INTP-SUBSET-261 — Direct Function packaged fields
+
+All source modes shall preserve an exact Function value supplied as a direct
+field of a one- or two-operand package under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit callable expressions shall
+execute once in source order, closed callable defaults shall bind afterward in
+operand/field declaration order, and function entry shall expose the field's
+callable identity and represented immutable capture snapshot under its one
+source name. The shared regression and reversible debugger history shall cover
+reordered Function/scalar calls, a closed symbolic default, positional parity,
+mixed operands, captured anonymous callable forwarding, and exact results.
