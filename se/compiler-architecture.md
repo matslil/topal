@@ -270,8 +270,8 @@ from the target data layout. Source DWARF continues to describe a `Function`
 result; the returned transport fields remain hidden, while an eventual direct
 anonymous call exposes the captures under their source names. Nested Function
 escape, Function-valued or otherwise unsupported captures, dynamic selection,
-aggregate containment, publication, and the canonical library closure ABI
-remain deferred.
+capture-bearing aggregate containment, publication, and the canonical library
+closure ABI remain deferred.
 
 Left-associative application may consume any exact admitted private Function
 result without first creating a source binding. The checked frontend folds one
@@ -284,6 +284,29 @@ produced; there is no result-tag dispatch, function pointer, closure object, or
 re-evaluation of the factory. The private chain storage has no source DWARF
 variable, while each invoked source function and anonymous capture remains
 visible in its ordinary frame.
+
+Exact Function values may also inhabit recursively nested private Tuple and
+Record values. The checked frontend retains a structural fact tree beside the
+ordinary aggregate expression; each Function leaf records its named, symbolic,
+or anonymous callable identity independently of the i32 observation field that
+LLVM transports. Bindings, Record selection, and anonymous product projection
+recover the appropriate subtree, so eventual application remains a direct
+specialization. A local aggregate may retain a capturing callable while its
+lexical values remain alive. An ordinary function parameter or result admits
+only capture-free exact leaves in this increment, allowing the same structural
+facts to cross specialization without an environment transport. Opaque,
+branch-selected, capture-bearing boundary, and non-Tuple/Record containers fail
+before LLVM.
+
+Private definitions and calls use recursively exact LLVM aggregates under
+`fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
+describes the source aggregate recursively and renders Function members through
+the existing private enumeration. The tags never dispatch, and no closure
+object, environment pointer, allocation, or public ABI results. Canonical
+compiled-library metadata must eventually record each Function field's
+structural path, callable and capture identities/classifiers, lifetime, effects,
+representation identity, and target adapter rather than publish this LLVM
+aggregate or its observation tags.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks

@@ -1329,6 +1329,7 @@ struct BindingFacts {
     closed_int_range: Option<ClosedIntRange>,
     list_count: Option<usize>,
     list_string_keys: Option<Vec<String>>,
+    tuple_fields: Vec<StaticValueFacts>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
@@ -1365,6 +1366,7 @@ struct CompilerContextCapture {
 
 struct CompilerCallMetadata {
     callable_arguments: Vec<Option<CompilerCallableFacts>>,
+    aggregate_arguments: Vec<StaticValueFacts>,
     callable_captures: Vec<CompilerContextCapture>,
     scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
     scope_captures: Vec<CompilerContextCapture>,
@@ -1407,6 +1409,8 @@ struct StaticValueFacts {
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
     string_value: Option<String>,
+    callable: Option<CompilerCallableFacts>,
+    tuple_fields: Vec<Self>,
     record_fields: BTreeMap<String, Self>,
 }
 
@@ -1435,6 +1439,7 @@ struct Analyzer {
     anonymous_function_value_names: Vec<String>,
     nested_function_value_tags: BTreeMap<String, u32>,
     returned_function_values: BTreeMap<String, CompilerCallableFacts>,
+    returned_aggregate_value_facts: BTreeMap<String, StaticValueFacts>,
     constraints: Vec<CompilerConstraint>,
     constraint_bindings: BTreeMap<String, u32>,
     in_function: bool,
@@ -1482,6 +1487,7 @@ impl Analyzer {
             anonymous_function_value_names: Vec::new(),
             nested_function_value_tags: BTreeMap::new(),
             returned_function_values: BTreeMap::new(),
+            returned_aggregate_value_facts: BTreeMap::new(),
             constraints: Vec::new(),
             constraint_bindings: BTreeMap::new(),
             in_function: false,
@@ -8514,6 +8520,7 @@ impl Analyzer {
                 closed_int_range: None,
                 list_count: None,
                 list_string_keys: None,
+                tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
@@ -8804,11 +8811,12 @@ impl Analyzer {
                     let closed_int_range = Self::known_closed_int_range(&value, environment);
                     let list_count = Self::known_list_count(&value, environment);
                     let list_string_keys = Self::known_list_string_keys(&value, environment);
-                    let record_fields = Self::known_record_fields(&value, environment);
+                    let aggregate_facts = self.known_structural_value_facts(&value, environment)?;
+                    let tuple_fields = aggregate_facts.tuple_fields;
+                    let record_fields = aggregate_facts.record_fields;
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
-                    let callable =
-                        self.known_callable(&value, environment, initializer.span().start)?;
+                    let callable = aggregate_facts.callable;
                     let returned_callable_captures = match &callable {
                         Some(CompilerCallableFacts::Anonymous { captures, .. }) => captures
                             .values()
@@ -8873,6 +8881,7 @@ impl Analyzer {
                         closed_int_range,
                         list_count,
                         list_string_keys,
+                        tuple_fields,
                         record_fields,
                         namespace,
                         callable,
@@ -8996,6 +9005,7 @@ impl Analyzer {
                             closed_int_range: None,
                             list_count: Self::known_list_count(&value, environment),
                             list_string_keys: Self::known_list_string_keys(&value, environment),
+                            tuple_fields: Vec::new(),
                             record_fields: BTreeMap::new(),
                             namespace: None,
                             callable: None,
@@ -9739,6 +9749,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -9793,6 +9804,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -10376,6 +10388,7 @@ impl Analyzer {
                 closed_int_range: None,
                 list_count: None,
                 list_string_keys: None,
+                tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 namespace: None,
                 callable: None,
@@ -15267,7 +15280,7 @@ impl Analyzer {
             CompilerExpressionKind::Record(fields) => fields
                 .iter()
                 .find_map(|(name, value)| (name == label).then_some(value))
-                .map(|value| Self::known_value_facts(value, environment)),
+                .map(|value| Self::known_scalar_facts(value, environment)),
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
                 .and_then(|facts| facts.record_fields.get(label).cloned()),
             CompilerExpressionKind::RecordField {
@@ -15288,12 +15301,12 @@ impl Analyzer {
         match &value.kind {
             CompilerExpressionKind::Record(fields) => fields
                 .iter()
-                .map(|(name, value)| (name.clone(), Self::known_value_facts(value, environment)))
+                .map(|(name, value)| (name.clone(), Self::known_scalar_facts(value, environment)))
                 .collect(),
             CompilerExpressionKind::RecordReconstruct { base, replacements } => {
                 let mut fields = Self::known_record_fields(base, environment);
                 for (name, value) in replacements {
-                    fields.insert(name.clone(), Self::known_value_facts(value, environment));
+                    fields.insert(name.clone(), Self::known_scalar_facts(value, environment));
                 }
                 fields
             }
@@ -15635,6 +15648,18 @@ impl Analyzer {
                 }
                 Ok(Some(callable))
             }
+            CompilerExpressionKind::TupleField { .. }
+            | CompilerExpressionKind::RecordField { .. } => self
+                .known_structural_value_facts(value, environment)?
+                .callable
+                .map(Some)
+                .ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        value.span,
+                        "Function aggregate field without retained callable identity",
+                    )
+                }),
             CompilerExpressionKind::PrivateBinding { body, .. } => {
                 self.known_callable(body, environment, capture_position)
             }
@@ -15646,7 +15671,7 @@ impl Analyzer {
         }
     }
 
-    fn known_value_facts(
+    fn known_scalar_facts(
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> StaticValueFacts {
@@ -15654,8 +15679,90 @@ impl Analyzer {
             int_range: value.int_range.clone(),
             rational_value: value.rational_value.clone(),
             string_value: Self::known_string_expression(value, environment),
+            callable: None,
+            tuple_fields: Vec::new(),
             record_fields: Self::known_record_fields(value, environment),
         }
+    }
+
+    fn known_structural_value_facts(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<StaticValueFacts, Diagnostic> {
+        let mut facts = Self::known_scalar_facts(value, environment);
+        match &value.kind {
+            CompilerExpressionKind::Tuple(fields) => {
+                facts.tuple_fields = fields
+                    .iter()
+                    .map(|field| self.known_structural_value_facts(field, environment))
+                    .collect::<Result<Vec<_>, _>>()?;
+            }
+            CompilerExpressionKind::Record(fields) => {
+                facts.record_fields = fields
+                    .iter()
+                    .map(|(name, field)| {
+                        self.known_structural_value_facts(field, environment)
+                            .map(|facts| (name.clone(), facts))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, _>>()?;
+            }
+            CompilerExpressionKind::RecordReconstruct { base, replacements } => {
+                facts = self.known_structural_value_facts(base, environment)?;
+                for (name, replacement) in replacements {
+                    facts.record_fields.insert(
+                        name.clone(),
+                        self.known_structural_value_facts(replacement, environment)?,
+                    );
+                }
+            }
+            CompilerExpressionKind::Local(name) => {
+                if let Some(binding) = binding_facts_by_storage(environment, name) {
+                    facts.callable.clone_from(&binding.callable);
+                    facts.tuple_fields.clone_from(&binding.tuple_fields);
+                    facts.record_fields.clone_from(&binding.record_fields);
+                }
+            }
+            CompilerExpressionKind::TupleField { tuple, index } => {
+                facts = self
+                    .known_structural_value_facts(tuple, environment)?
+                    .tuple_fields
+                    .get(*index)
+                    .cloned()
+                    .unwrap_or_default();
+            }
+            CompilerExpressionKind::RecordField { record, label } => {
+                facts = self
+                    .known_structural_value_facts(record, environment)?
+                    .record_fields
+                    .get(label)
+                    .cloned()
+                    .unwrap_or_default();
+            }
+            CompilerExpressionKind::Call { symbol, .. } => {
+                if let Some(returned) = self.returned_aggregate_value_facts.get(symbol) {
+                    facts = returned.clone();
+                }
+            }
+            CompilerExpressionKind::Block(block) => {
+                facts = self.known_structural_value_facts(&block.result, environment)?;
+            }
+            CompilerExpressionKind::PrivateBinding { body, .. } => {
+                facts = self.known_structural_value_facts(body, environment)?;
+            }
+            _ => {}
+        }
+        if value.value_type == CompilerType::Function
+            && facts.callable.is_none()
+            && !matches!(
+                value.kind,
+                CompilerExpressionKind::TupleField { .. }
+                    | CompilerExpressionKind::RecordField { .. }
+            )
+        {
+            facts.callable = self.known_callable(value, environment, value.span.start)?;
+        }
+        Ok(facts)
     }
 
     fn finish_nat_conversion(
@@ -16200,18 +16307,40 @@ impl Analyzer {
                     }
                 });
                 for (index, (field, value_type)) in fields.iter().zip(field_types).enumerate() {
-                    let facts = literal_fields.and_then(|values| values.get(index));
+                    let projected_facts = literal_fields
+                        .and_then(|values| values.get(index).cloned())
+                        .or_else(|| {
+                            argument_facts.map(|facts| CompilerExpression {
+                                kind: CompilerExpressionKind::TupleField {
+                                    tuple: Box::new(facts.clone()),
+                                    index,
+                                },
+                                value_type: value_type.clone(),
+                                int_range: None,
+                                rational_value: None,
+                                span: facts.span,
+                            })
+                        });
                     let projected = CompilerExpression {
                         kind: CompilerExpressionKind::TupleField {
                             tuple: Box::new(argument.clone()),
                             index,
                         },
                         value_type: value_type.clone(),
-                        int_range: facts.and_then(|value| value.int_range.clone()),
-                        rational_value: facts.and_then(|value| value.rational_value.clone()),
+                        int_range: projected_facts
+                            .as_ref()
+                            .and_then(|value| value.int_range.clone()),
+                        rational_value: projected_facts
+                            .as_ref()
+                            .and_then(|value| value.rational_value.clone()),
                         span: argument.span,
                     };
-                    self.flatten_anonymous_argument(field, &projected, facts, flattened)?;
+                    self.flatten_anonymous_argument(
+                        field,
+                        &projected,
+                        projected_facts.as_ref(),
+                        flattened,
+                    )?;
                 }
             }
         }
@@ -16369,6 +16498,7 @@ impl Analyzer {
                         closed_int_range: None,
                         list_count: Self::known_list_count(facts, call_environment),
                         list_string_keys: Self::known_list_string_keys(facts, call_environment),
+                        tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
                         namespace: None,
                         callable: self.known_callable(facts, call_environment, facts.span.start)?,
@@ -17889,6 +18019,21 @@ impl Analyzer {
             .iter()
             .map(|argument| self.known_callable(argument, environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
+        let aggregate_arguments = arguments
+            .iter()
+            .map(|argument| self.known_structural_value_facts(argument, environment))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (argument, facts) in arguments.iter().zip(&aggregate_arguments) {
+            if compiler_type_is_function_aggregate(&argument.value_type)
+                && !function_aggregate_facts_supported(&argument.value_type, facts)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "Function aggregate boundary without one exact capture-free callable identity per Function field",
+                ));
+            }
+        }
         let (callable_arguments, callable_captures) =
             self.callable_parameter_arguments(&declaration, callable_arguments, environment)?;
         let (scope_arguments, scope_captures) =
@@ -17903,6 +18048,7 @@ impl Analyzer {
         }
         let metadata = CompilerCallMetadata {
             callable_arguments,
+            aggregate_arguments,
             callable_captures,
             scope_arguments,
             scope_captures,
@@ -18218,6 +18364,7 @@ impl Analyzer {
     ) -> Result<(String, CompilerType, Option<IntRange>, Option<BigRational>), Diagnostic> {
         let CompilerCallMetadata {
             callable_arguments,
+            aggregate_arguments,
             callable_captures,
             scope_arguments,
             scope_captures,
@@ -18282,7 +18429,8 @@ impl Analyzer {
                         list_string_keys: (!generalize_parameters)
                             .then(|| Self::known_list_string_keys(argument, &BTreeMap::new()))
                             .flatten(),
-                        record_fields: BTreeMap::new(),
+                        tuple_fields: aggregate_arguments[parameter_index].tuple_fields.clone(),
+                        record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                         static_capability: None,
@@ -18328,6 +18476,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: Self::known_list_count(argument, &BTreeMap::new()),
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -18366,6 +18515,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -18405,6 +18555,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -18443,6 +18594,7 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     namespace: None,
                     callable: None,
@@ -19038,6 +19190,19 @@ impl Analyzer {
         } else {
             (None, Vec::new())
         };
+        let returned_aggregate_value_facts = if compiler_type_is_function_aggregate(&result_type) {
+            let facts = self.known_structural_value_facts(&body.result, &environment)?;
+            if !function_aggregate_facts_supported(&result_type, &facts) {
+                return Err(unsupported(
+                    &self.source,
+                    body.result.span,
+                    "Function aggregate result without one exact capture-free callable identity per Function field",
+                ));
+            }
+            Some(facts)
+        } else {
+            None
+        };
         let symbol = reserved_symbol.map_or_else(
             || self.reserve_function_symbol(function_name),
             str::to_owned,
@@ -19051,6 +19216,10 @@ impl Analyzer {
         if let Some(callable) = returned_function_value {
             self.returned_function_values
                 .insert(symbol.clone(), callable);
+        }
+        if let Some(facts) = returned_aggregate_value_facts {
+            self.returned_aggregate_value_facts
+                .insert(symbol.clone(), facts);
         }
         self.instances.push(CompilerFunction {
             source_name: function_name.to_owned(),
@@ -21161,13 +21330,17 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
         CompilerType::Tuple(fields)
-            if fields.iter().all(compiler_function_result_supported)
+            if fields.iter().all(|field| {
+                field == &CompilerType::Function || compiler_function_result_supported(field)
+            })
     ) || matches!(
         value_type,
         CompilerType::Record(fields)
             if fields
                 .iter()
-                .all(|(_, field)| compiler_function_result_supported(field))
+                .all(|(_, field)| {
+                    field == &CompilerType::Function || compiler_function_result_supported(field)
+                })
     ) || matches!(
         value_type,
         CompilerType::Sum(sum)
@@ -21176,6 +21349,52 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
                 .as_ref()
                 .is_none_or(compiler_function_result_supported))
     )
+}
+
+fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Tuple(fields) => fields.iter().any(|field| {
+            field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
+        }),
+        CompilerType::Record(fields) => fields.iter().any(|(_, field)| {
+            field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
+        }),
+        _ => false,
+    }
+}
+
+fn callable_is_capture_free(callable: &CompilerCallableFacts) -> bool {
+    match callable {
+        CompilerCallableFacts::Named { captures, .. } => captures.is_empty(),
+        CompilerCallableFacts::Symbolic(_) => true,
+        CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
+    }
+}
+
+fn function_aggregate_facts_supported(value_type: &CompilerType, facts: &StaticValueFacts) -> bool {
+    match value_type {
+        CompilerType::Function => facts
+            .callable
+            .as_ref()
+            .is_some_and(callable_is_capture_free),
+        CompilerType::Tuple(fields) => {
+            fields.len() == facts.tuple_fields.len()
+                && fields
+                    .iter()
+                    .zip(&facts.tuple_fields)
+                    .all(|(field, facts)| function_aggregate_facts_supported(field, facts))
+        }
+        CompilerType::Record(fields) => {
+            fields.len() == facts.record_fields.len()
+                && fields.iter().all(|(name, field)| {
+                    facts
+                        .record_fields
+                        .get(name)
+                        .is_some_and(|facts| function_aggregate_facts_supported(field, facts))
+                })
+        }
+        _ => true,
+    }
 }
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
@@ -21301,6 +21520,7 @@ fn decision_binding_environment(
             closed_int_range: None,
             list_count: None,
             list_string_keys: None,
+            tuple_fields: Vec::new(),
             record_fields: BTreeMap::new(),
             namespace: None,
             callable: None,
@@ -30473,15 +30693,11 @@ mod tests {
             Some(BigInt::from(42))
         );
 
-        for rejected in [
+        let escaping_nested = analyze_for_compiler(
             "use language (version is v0.1)\nouter is fn () -> Function\n  inner is fn (value : Int) -> Int\n    value + 1\n  inner\nouter ()\n",
-            "use language (version is v0.1)\npair is fn (operation : Function) -> (Function, Int)\n  (operation, 1)\npair +\n",
-        ] {
-            assert_eq!(
-                analyze_for_compiler(rejected).unwrap_err().code,
-                "E-COMPILER-UNSUPPORTED"
-            );
-        }
+        )
+        .unwrap_err();
+        assert_eq!(escaping_nested.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]
@@ -31001,6 +31217,61 @@ mod tests {
             let diagnostic = analyze_for_compiler(source).unwrap_err();
             assert_eq!(diagnostic.code, "E-ANONYMOUS-PRODUCT-PATTERN");
             assert!(diagnostic.message.contains(detail), "{diagnostic:?}");
+        }
+    }
+
+    #[test]
+    fn models_exact_function_values_inside_private_aggregates() {
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001,
+        // TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-TYPE-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-aggregate-boundaries.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected four Function-aggregate applications")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+        let function_aggregate_results = program
+            .functions
+            .iter()
+            .filter(|function| {
+                matches!(
+                    function.source_name.as_str(),
+                    "make-tuple" | "make-record" | "make-nested"
+                )
+            })
+            .map(|function| &function.result_type)
+            .collect::<Vec<_>>();
+        assert_eq!(function_aggregate_results.len(), 3);
+        assert!(
+            function_aggregate_results
+                .iter()
+                .all(|result| compiler_type_is_function_aggregate(result))
+        );
+        assert!(program.functions.iter().any(|function| {
+            function.source_name == "apply-nested"
+                && matches!(function.parameters.as_slice(), [parameter]
+                    if compiler_type_is_function_aggregate(&parameter.value_type))
+        }));
+
+        for source in [
+            "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (operation : Function)\n  (operation is operation)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
+            "use language (version is v0.1)\napply is fn (package : Record (operation : Function, value : Int)) -> Int\n  (package operation) (package value)\noffset is 1\ncaptured : Function is { value } value + offset\npackage is (operation is captured, value is 41)\napply package\n",
+        ] {
+            let diagnostic = analyze_for_compiler(source).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+            assert!(
+                diagnostic
+                    .message
+                    .contains("capture-free callable identity")
+            );
         }
     }
 

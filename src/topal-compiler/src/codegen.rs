@@ -1035,6 +1035,10 @@ impl<'a> Generator<'a> {
             CompilerType::Tuple(fields) => self.emit_tuple_extract(value, fields, body, span),
             CompilerType::Record(fields) => self.emit_record_extract(value, fields, body, span),
             CompilerType::Sum(sum) => self.emit_sum_extract(value, sum, body, span),
+            CompilerType::Function => LlValue::Enum {
+                value: value.to_owned(),
+                enumeration: function_value_enumeration(self.program),
+            },
             _ => machine_value(value_type, value.to_owned()),
         }
     }
@@ -1094,16 +1098,7 @@ impl<'a> Generator<'a> {
                     span,
                     &mut self.debug,
                 );
-                let field = match field_type {
-                    CompilerType::Tuple(nested_types) => {
-                        self.emit_tuple_extract(&field, nested_types, body, span)
-                    }
-                    CompilerType::Record(nested_types) => {
-                        self.emit_record_extract(&field, nested_types, body, span)
-                    }
-                    CompilerType::Sum(sum) => self.emit_sum_extract(&field, sum, body, span),
-                    _ => machine_value(field_type, field),
-                };
+                let field = self.emit_extracted_machine_value(&field, field_type, body, span);
                 (label.clone(), field)
             })
             .collect();
@@ -1181,7 +1176,7 @@ impl<'a> Generator<'a> {
                 field_index += 1;
                 Some(Box::new(self.machine_or_aggregate_value(
                     payload_type,
-                    field,
+                    &field,
                     body,
                     span,
                 )))
@@ -1200,16 +1195,11 @@ impl<'a> Generator<'a> {
     fn machine_or_aggregate_value(
         &mut self,
         value_type: &CompilerType,
-        value: String,
+        value: &str,
         body: &mut FunctionBody,
         span: Span,
     ) -> LlValue {
-        match value_type {
-            CompilerType::Tuple(fields) => self.emit_tuple_extract(&value, fields, body, span),
-            CompilerType::Record(fields) => self.emit_record_extract(&value, fields, body, span),
-            CompilerType::Sum(sum) => self.emit_sum_extract(&value, sum, body, span),
-            _ => machine_value(value_type, value),
-        }
+        self.emit_extracted_machine_value(value, value_type, body, span)
     }
 
     fn emit_aggregate_debug_shadow(
@@ -12590,6 +12580,55 @@ mod tests {
         assert!(!llvm.contains("topal.runtime.function"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_function_aggregates_with_exact_private_direct_boundaries() {
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001,
+        // TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-aggregate-boundaries.t"
+        ))
+        .unwrap();
+        let symbol = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol
+                .clone()
+        };
+        let make_tuple = symbol("make-tuple");
+        let apply_tuple = symbol("apply-tuple");
+        let make_record = symbol("make-record");
+        let apply_record = symbol("apply-record");
+        let make_nested = symbol("make-nested");
+        let apply_nested = symbol("apply-nested");
+        let llvm = Generator::new(&program, "function-aggregate-boundaries.t").emit();
+
+        for expected in [
+            format!("define internal fastcc {{ i32, ptr }} @{make_tuple}(i32 %arg0, ptr %arg1)"),
+            format!("define internal fastcc ptr @{apply_tuple}({{ i32, ptr }} %arg0)"),
+            format!(
+                "define internal fastcc {{ i32, ptr, i32, i32 }} @{make_record}(i32 %arg0, ptr %arg1)"
+            ),
+            format!("define internal fastcc ptr @{apply_record}({{ i32, ptr, i32, i32 }} %arg0)"),
+            format!(
+                "define internal fastcc {{ {{ i32, ptr }}, i32 }} @{make_nested}(i32 %arg0, ptr %arg1)"
+            ),
+            format!("define internal fastcc ptr @{apply_nested}({{ {{ i32, ptr }}, i32 }} %arg0)"),
+        ] {
+            assert!(llvm.contains(&expected), "missing {expected:?}");
+        }
+        assert!(llvm.contains("extractvalue { i32, ptr }"));
+        assert!(llvm.contains("extractvalue { i32, ptr, i32, i32 }"));
+        assert!(llvm.contains("extractvalue { { i32, ptr }, i32 }"));
+        assert!(llvm.contains("DW_TAG_member, name: \"operation\""));
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
     }
 
     #[test]
