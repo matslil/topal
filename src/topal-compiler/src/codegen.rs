@@ -117,6 +117,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Nat
         | CompilerType::InfiniteInt
         | CompilerType::InfiniteNat
+        | CompilerType::InfiniteRational
         | CompilerType::Rational
         | CompilerType::Comparison
         | CompilerType::Enum(_) => false,
@@ -1276,14 +1277,20 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::LanguageContext(_)
             | CompilerExpressionKind::NativeSerializer(_)
             | CompilerExpressionKind::ExternalMetadata(_) => LlValue::Unit,
-            CompilerExpressionKind::Infinity { negative } => LlValue::Int(
-                if *negative {
-                    "@topal.runtime.int.negative.infinity"
+            CompilerExpressionKind::Infinity { negative } => {
+                let direction = if *negative { "negative" } else { "positive" };
+                if expression.value_type == CompilerType::InfiniteRational {
+                    LlValue::Rational(body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.rational.from.int(ptr @topal.runtime.int.{direction}.infinity)"
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ))
                 } else {
-                    "@topal.runtime.int.positive.infinity"
+                    LlValue::Int(format!("@topal.runtime.int.{direction}.infinity"))
                 }
-                .into(),
-            ),
+            }
             CompilerExpressionKind::ExternalLocationConstruct(location) => {
                 let range_start = self.emit_int_literal(&location.offset.offset_type.range.lower);
                 let offset = self.emit_int_literal(&location.offset.offset);
@@ -2908,7 +2915,9 @@ impl<'a> Generator<'a> {
                     CompilerType::Int | CompilerType::InfiniteInt | CompilerType::InfiniteNat => {
                         LlValue::Int(value)
                     }
-                    CompilerType::Rational => LlValue::Rational(value),
+                    CompilerType::Rational | CompilerType::InfiniteRational => {
+                        LlValue::Rational(value)
+                    }
                     _ => unreachable!("checked Range bound retains its endpoint type"),
                 }
             }
@@ -3063,7 +3072,9 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     )),
-                    CompilerType::InfiniteInt | CompilerType::InfiniteNat => {
+                    CompilerType::InfiniteInt
+                    | CompilerType::InfiniteNat
+                    | CompilerType::InfiniteRational => {
                         unreachable!("checked functions do not cross infinity values")
                     }
                     CompilerType::Modular(ref modular) => LlValue::Modular {
@@ -8455,7 +8466,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             value: "null".into(),
             modular: modular.clone(),
         },
-        CompilerType::Rational => LlValue::Rational("null".into()),
+        CompilerType::Rational | CompilerType::InfiniteRational => LlValue::Rational("null".into()),
         CompilerType::Comparison => LlValue::Comparison("0".into()),
         CompilerType::Error => LlValue::Error("null".into()),
         CompilerType::ErrorCode => LlValue::ErrorCode("0".into()),
@@ -9376,7 +9387,7 @@ impl DebugInfo {
             CompilerType::Version => self.version_type,
             CompilerType::Int | CompilerType::InfiniteInt => self.int_type,
             CompilerType::Nat | CompilerType::InfiniteNat => self.nat_type,
-            CompilerType::Rational => self.rational_type,
+            CompilerType::Rational | CompilerType::InfiniteRational => self.rational_type,
             CompilerType::Comparison => self.comparison_type,
             CompilerType::Error => self.error_type,
             CompilerType::ErrorCode => self.error_code_type,
@@ -9397,7 +9408,12 @@ impl DebugInfo {
             {
                 self.int_range_type
             }
-            CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Rational => {
+            CompilerType::Range(endpoint)
+                if matches!(
+                    endpoint.as_ref(),
+                    CompilerType::Rational | CompilerType::InfiniteRational
+                ) =>
+            {
                 self.rational_range_type
             }
             CompilerType::Range(_) => unreachable!("unsupported Range endpoint reached codegen"),
@@ -10234,6 +10250,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Nat
         | CompilerType::InfiniteInt
         | CompilerType::InfiniteNat
+        | CompilerType::InfiniteRational
         | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Error
@@ -10371,6 +10388,7 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Nat
         | CompilerType::InfiniteInt
         | CompilerType::InfiniteNat
+        | CompilerType::InfiniteRational
         | CompilerType::Modular(_)
         | CompilerType::Rational
         | CompilerType::Character
@@ -10478,7 +10496,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             modular: modular.clone(),
         },
-        CompilerType::Rational => LlValue::Rational(value),
+        CompilerType::Rational | CompilerType::InfiniteRational => LlValue::Rational(value),
         CompilerType::Comparison => LlValue::Comparison(value),
         CompilerType::Error => LlValue::Error(value),
         CompilerType::ErrorCode => LlValue::ErrorCode(value),
@@ -10983,6 +11001,34 @@ mod tests {
         assert!(llvm.contains("name: \"Nat\""));
         assert!(llvm.contains("name: \"Range Int\""));
         assert!(!llvm.contains("@topal.runtime.int.add(ptr @topal.runtime.int.positive.infinity"));
+    }
+
+    #[test]
+    fn emits_runtime_constructed_rational_infinities_and_exact_ranges() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-RANGE-RATIONAL-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source =
+            include_str!("../../../examples/language/rational-infinity-values-and-ranges.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/rational-infinity-values-and-ranges.t").emit();
+
+        assert!(
+            llvm.matches("call ptr @topal.runtime.rational.from.int(ptr @topal.runtime.int.")
+                .count()
+                >= 3
+        );
+        assert!(llvm.contains("%either.infinity = or i1"));
+        assert!(
+            llvm.matches("call i32 @topal.runtime.rational.compare")
+                .count()
+                >= 8
+        );
+        assert!(llvm.contains("call i1 @topal.runtime.range.rational.contains"));
+        assert!(llvm.contains("call ptr @topal.runtime.range.rational.intersection"));
+        assert!(llvm.contains("name: \"Rational\""));
+        assert!(llvm.contains("name: \"Range Rational\""));
+        assert!(!llvm.contains("@topal.runtime.rational.positive.infinity ="));
+        assert!(!llvm.contains("@topal.runtime.rational.negative.infinity ="));
     }
 
     #[test]

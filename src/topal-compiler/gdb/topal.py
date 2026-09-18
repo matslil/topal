@@ -296,7 +296,7 @@ class _TopalGeneratorErrorCodePrinter:
 
 
 class _TopalRationalPrinter:
-    """Render a canonical topal-native Rational object."""
+    """Render a canonical finite Rational or validated infinity wrapper."""
 
     def __init__(self, value):
         self._value = value
@@ -330,11 +330,15 @@ class _TopalRationalPrinter:
         denominator_length = int.from_bytes(denominator_header[8:16], "little")
         if denominator_negative or not denominator_length:
             return "<noncanonical Rational denominator>"
+        if numerator in ("-Infinity", "+Infinity"):
+            if denominator != "1":
+                return f"<invalid Rational Infinity denominator {denominator}>"
+            return numerator
         return f"Rational ( {numerator}, {denominator} )"
 
 
 class _TopalRangePrinter:
-    """Render a bounded finite exact topal-native Range object."""
+    """Render a bounded exact topal-native Range object."""
 
     def __init__(self, value, endpoint):
         self._value = value

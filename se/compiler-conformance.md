@@ -20,9 +20,11 @@ evidence.
 | 2c-b4 | qualified arithmetic ErrorCode values, equality, function passage, display, and debugging | complete |
 | 2c-b5 | `detail`, `cause`, and `source` Error observations with precise Optional payloads, canonical SourceLocation values, private passage, display, and debugging | complete |
 | 2c-c1 | contextual exact Int/Nat infinity construction, identity, equality, total ordering, three-way comparison, canonical display, and debugging at closed root scope | complete |
+| 2c-c2 | contextual exact Rational infinity construction, same-domain and finite-Int mixed comparison, canonical display, debugging, and closed root-scope retention | complete |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b1 | explicit Int infinity endpoints with construction, membership, emptiness, bound observation, display, and debugging | complete |
+| 2d-b2 | explicit Rational infinity endpoints with finite-Int endpoint conversion, construction, membership, intersection, emptiness, bound observation, display, and debugging | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 2e | Nat constraint-evidence forgetting for exact equality, ordering, three-way comparison, mixed Nat/Int/Rational comparison, and derived product equality | complete |
 | 2f | root-scope nominal `ModNat`/`ModInt` declarations with direct finite ranges, proven checked construction, explicit reduction, wrapping arithmetic/negation, equality, ordering, comparison, private function passage, canonical display, and debugging | complete |
@@ -191,11 +193,13 @@ closed nominal arithmetic-code vocabulary as direct qualified values.
 Increment 2c-b5 completes the five structured Error observations by wrapping
 nullable detail/cause fields and materializing present one-based source
 locations through the existing private Optional ABI. Increment 2c-c1 adds the
-closed contextual Int/Nat infinity identity and ordering subset; 2c-c retains
-Rational infinity, general boundaries, arithmetic, and indeterminate-result
-closure. Increment 2d-a adds the fully normative explicitly bounded finite
-range subset; 2d-b1 adds explicit Int infinity endpoints, while 2d-b retains
-unbounded ranges, infinite Rational endpoints, and general boundary closure.
+closed contextual Int/Nat infinity identity and ordering subset; 2c-c2 adds
+the same closed Rational identity plus exact same-domain and finite-Int mixed
+comparison. Increment 2c-c retains general boundaries, arithmetic,
+cross-domain infinity conversion, and indeterminate-result closure. Increment
+2d-a adds the fully normative explicitly bounded finite range subset; 2d-b1
+adds explicit Int infinity endpoints and 2d-b2 adds explicit Rational infinity
+endpoints, while 2d-b retains unbounded ranges and general boundary closure.
 Range-based collection selection remains grouped with containers. Increment 2e
 reuses the validated Nat value as its exact Int representation for comparison,
 without an unsigned conversion or a second numeric runtime. Increment 2f
