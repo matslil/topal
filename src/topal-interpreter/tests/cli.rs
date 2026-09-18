@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 226);
+    assert_eq!(examples.len(), 227);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4641,6 +4641,32 @@ fn every_mode_requires_exact_repeated_captured_function_identity() {
     let mismatch = run(
         &[],
         "use language (version is v0.1)\nmake-operation is fn (offset : Int) -> Function\n  operation : Function is { value } value + offset\n  operation\ncompare-captures is fn (left : Int, right : Int) -> Int\n  repeat : Function is { operation, operation } 42\n  repeat (make-operation left, make-operation right)\ncompare-captures (1, 2)\n",
+    );
+    assert!(!mismatch.status.success());
+    let diagnostic = String::from_utf8(mismatch.stderr).unwrap();
+    assert!(diagnostic.contains("error[E-ANONYMOUS-PATTERN-IDENTITY]"));
+    assert!(diagnostic.contains("same exact value"));
+}
+
+#[test]
+fn every_mode_requires_exact_repeated_captured_function_aggregate_identity() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001,
+    // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+    let source =
+        include_str!("../../../examples/language/repeated-captured-function-aggregate-patterns.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(42, 42, 42)"), "{arguments:?}: {stdout}");
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("pattern.identity.matched").count(), 3);
+    assert!(trace.contains("TOPAL-TYPE-MATCH-001"));
+
+    let mismatch = run(
+        &[],
+        "use language (version is v0.1)\nmake is fn (offset : Int) -> Record (operation : Function, value : Int)\n  operation : Function is { value } value + offset\n  (operation is operation, value is 41)\ncompare is fn (left : Int, right : Int) -> Int\n  repeat : Function is { package, package } 42\n  repeat (make left, make right)\ncompare (1, 2)\n",
     );
     assert!(!mismatch.status.success());
     let diagnostic = String::from_utf8(mismatch.stderr).unwrap();

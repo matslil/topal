@@ -12915,6 +12915,51 @@ mod tests {
     }
 
     #[test]
+    fn emits_captured_function_aggregate_pattern_identity_as_direct_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-function-aggregate-patterns.t"
+        ))
+        .unwrap();
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| function.pattern_identities.len() == 2)
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 3);
+        let llvm =
+            Generator::new(&program, "repeated-captured-function-aggregate-patterns.t").emit();
+
+        assert_eq!(llvm.matches("\npattern.identity.mismatch.").count(), 6);
+        for function in guarded {
+            let start = llvm
+                .find(&format!("define internal fastcc ptr @{}(", function.symbol))
+                .unwrap();
+            let remaining = &llvm[start..];
+            let end = remaining[1..]
+                .find("\ndefine ")
+                .map_or(remaining.len(), |offset| offset + 1);
+            let body = &remaining[..end];
+            let source_identity = body.find("icmp eq i32").unwrap();
+            let capture_identity = body
+                .find("call i32 @topal.runtime.int.compare(ptr %arg2, ptr %arg3)")
+                .unwrap();
+            assert!(source_identity < capture_identity);
+        }
+        assert!(llvm.contains("call void @topal.runtime.pattern.identity.fail()"));
+        assert!(llvm.contains("!DILocalVariable(name: \"package\", arg: 1"));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(!llvm.contains("!DILocalVariable(name: \"package\", arg: 2"));
+        assert!(!llvm.contains("!DILocalVariable(name: \"value\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nested_functions_with_exact_private_capture_parameters() {
         // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
         // TOPAL-COMPILER-DEBUG-001

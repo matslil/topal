@@ -16771,7 +16771,7 @@ impl Analyzer {
                     "unsupported inferred anonymous-function parameter",
                 ));
             }
-            let structural_facts = compiler_type_is_function_aggregate(&argument.value_type)
+            let mut structural_facts = compiler_type_is_function_aggregate(&argument.value_type)
                 .then(|| self.known_structural_value_facts(facts, call_environment))
                 .transpose()?;
             let repeated = validate_repeated_anonymous_pattern_parameter(
@@ -16810,50 +16810,61 @@ impl Analyzer {
                             .get(&first_parameter)
                             .copied()
                             .expect("first captured Function occurrence retains capture range");
-                        if first_end - first_start != capture_end - capture_start {
-                            return Err(unsupported(
-                                &self.source,
-                                name_span,
-                                "repeated captured Function identity with inconsistent capture schema",
-                            ));
-                        }
-                        for (first_capture, repeated_capture) in
-                            (first_start..first_end).zip(capture_start..capture_end)
-                        {
-                            let first = &parameter_callable_captures[first_capture];
-                            let repeated = &parameter_callable_captures[repeated_capture];
-                            if first.value_type != repeated.value_type
-                                || !compiler_equality_supported(&first.value_type)
-                            {
-                                return Err(unsupported(
-                                    &self.source,
-                                    name_span,
-                                    "repeated captured Function identity without exact capture equality",
-                                ));
-                            }
-                            pattern_identities.push(CompilerPatternIdentity {
-                                first_parameter: source_parameter_count + first_capture,
-                                repeated_parameter: source_parameter_count + repeated_capture,
-                                span: name_span,
-                            });
-                        }
+                        append_repeated_capture_identities(
+                            &self.source,
+                            name_span,
+                            source_parameter_count,
+                            (first_start, first_end),
+                            (capture_start, capture_end),
+                            &parameter_callable_captures,
+                            &mut pattern_identities,
+                        )?;
                     }
                 }
                 if compiler_type_is_function_aggregate(&argument.value_type) {
                     let current = structural_facts
-                        .as_ref()
+                        .as_mut()
                         .expect("Function aggregate argument retains structural facts");
                     let first = environment
                         .get(&name)
                         .expect("first repeated pattern occurrence retains binding facts");
-                    if !function_aggregate_binding_facts_capture_free(&argument.value_type, first)
-                        || !function_aggregate_facts_capture_free(&argument.value_type, current)
+                    if !function_aggregate_binding_facts_exact(&argument.value_type, first)
+                        || !function_aggregate_facts_exact(&argument.value_type, current)
                     {
                         return Err(unsupported(
                             &self.source,
                             name_span,
-                            "repeated anonymous Function aggregate identity requires exact capture-free callable facts",
+                            "repeated anonymous Function aggregate identity requires exact callable facts",
                         ));
+                    }
+                    if function_aggregate_binding_facts_same_callable_identity(
+                        &argument.value_type,
+                        first,
+                        current,
+                    ) {
+                        let capture_start = parameter_callable_captures.len();
+                        self.forward_function_aggregate_captures(
+                            &argument.value_type,
+                            current,
+                            &format!("{name} repeated {}", lowered_parameters.len()),
+                            name_span,
+                            call_environment,
+                            &mut parameter_callable_captures,
+                        )?;
+                        let capture_end = parameter_callable_captures.len();
+                        let (first_start, first_end) = parameter_callable_capture_ranges
+                            .get(&first_parameter)
+                            .copied()
+                            .expect("first Function aggregate occurrence retains capture range");
+                        append_repeated_capture_identities(
+                            &self.source,
+                            name_span,
+                            source_parameter_count,
+                            (first_start, first_end),
+                            (capture_start, capture_end),
+                            &parameter_callable_captures,
+                            &mut pattern_identities,
+                        )?;
                     }
                 }
             } else if !discarded {
@@ -16869,8 +16880,22 @@ impl Analyzer {
                         &mut parameter_callable_captures,
                     )?;
                 }
+                if compiler_type_is_function_aggregate(&argument.value_type) {
+                    self.forward_function_aggregate_captures(
+                        &argument.value_type,
+                        structural_facts
+                            .as_mut()
+                            .expect("Function aggregate argument retains structural facts"),
+                        &name,
+                        name_span,
+                        call_environment,
+                        &mut parameter_callable_captures,
+                    )?;
+                }
                 let capture_end = parameter_callable_captures.len();
-                if argument.value_type == CompilerType::Function {
+                if argument.value_type == CompilerType::Function
+                    || compiler_type_is_function_aggregate(&argument.value_type)
+                {
                     parameter_callable_capture_ranges
                         .insert(lowered_parameters.len(), (capture_start, capture_end));
                 }
@@ -21885,14 +21910,6 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
     }
 }
 
-fn callable_facts_capture_free(callable: &CompilerCallableFacts) -> bool {
-    match callable {
-        CompilerCallableFacts::Named { captures, .. } => captures.is_empty(),
-        CompilerCallableFacts::Symbolic(_) => true,
-        CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
-    }
-}
-
 fn same_anonymous_callable_identity(
     left: &CompilerCallableFacts,
     right: &CompilerCallableFacts,
@@ -21910,46 +21927,89 @@ fn same_anonymous_callable_identity(
     )
 }
 
-fn function_aggregate_facts_capture_free(
+fn same_callable_identity(left: &CompilerCallableFacts, right: &CompilerCallableFacts) -> bool {
+    match (left, right) {
+        (
+            CompilerCallableFacts::Named {
+                name: left_name,
+                declarations: left_declarations,
+                ..
+            },
+            CompilerCallableFacts::Named {
+                name: right_name,
+                declarations: right_declarations,
+                ..
+            },
+        ) => {
+            left_name == right_name
+                && left_declarations
+                    .iter()
+                    .map(|declaration| declaration.span)
+                    .eq(right_declarations
+                        .iter()
+                        .map(|declaration| declaration.span))
+        }
+        (CompilerCallableFacts::Symbolic(left), CompilerCallableFacts::Symbolic(right)) => {
+            left == right
+        }
+        (
+            CompilerCallableFacts::Anonymous {
+                span: left_span, ..
+            },
+            CompilerCallableFacts::Anonymous {
+                span: right_span, ..
+            },
+        ) => left_span == right_span,
+        _ => false,
+    }
+}
+
+fn function_aggregate_facts_same_callable_identity(
     value_type: &CompilerType,
-    facts: &StaticValueFacts,
+    left: &StaticValueFacts,
+    right: &StaticValueFacts,
 ) -> bool {
     match value_type {
-        CompilerType::Function => facts
+        CompilerType::Function => left
             .callable
             .as_ref()
-            .is_some_and(callable_facts_capture_free),
+            .zip(right.callable.as_ref())
+            .is_some_and(|(left, right)| same_callable_identity(left, right)),
         CompilerType::Tuple(fields) => {
-            fields.len() == facts.tuple_fields.len()
+            fields.len() == left.tuple_fields.len()
+                && fields.len() == right.tuple_fields.len()
                 && fields
                     .iter()
-                    .zip(&facts.tuple_fields)
-                    .all(|(field, facts)| function_aggregate_facts_capture_free(field, facts))
+                    .zip(&left.tuple_fields)
+                    .zip(&right.tuple_fields)
+                    .all(|((field, left), right)| {
+                        function_aggregate_facts_same_callable_identity(field, left, right)
+                    })
         }
         CompilerType::Record(fields) => {
-            fields.len() == facts.record_fields.len()
+            fields.len() == left.record_fields.len()
+                && fields.len() == right.record_fields.len()
                 && fields.iter().all(|(name, field)| {
-                    facts
-                        .record_fields
+                    left.record_fields
                         .get(name)
-                        .is_some_and(|facts| function_aggregate_facts_capture_free(field, facts))
+                        .zip(right.record_fields.get(name))
+                        .is_some_and(|(left, right)| {
+                            function_aggregate_facts_same_callable_identity(field, left, right)
+                        })
                 })
         }
         _ => true,
     }
 }
 
-fn function_aggregate_binding_facts_capture_free(
-    value_type: &CompilerType,
-    facts: &BindingFacts,
-) -> bool {
+fn function_aggregate_binding_facts_exact(value_type: &CompilerType, facts: &BindingFacts) -> bool {
     match value_type {
         CompilerType::Tuple(fields) => {
             fields.len() == facts.tuple_fields.len()
                 && fields
                     .iter()
                     .zip(&facts.tuple_fields)
-                    .all(|(field, facts)| function_aggregate_facts_capture_free(field, facts))
+                    .all(|(field, facts)| function_aggregate_facts_exact(field, facts))
         }
         CompilerType::Record(fields) => {
             fields.len() == facts.record_fields.len()
@@ -21957,7 +22017,40 @@ fn function_aggregate_binding_facts_capture_free(
                     facts
                         .record_fields
                         .get(name)
-                        .is_some_and(|facts| function_aggregate_facts_capture_free(field, facts))
+                        .is_some_and(|facts| function_aggregate_facts_exact(field, facts))
+                })
+        }
+        _ => false,
+    }
+}
+
+fn function_aggregate_binding_facts_same_callable_identity(
+    value_type: &CompilerType,
+    left: &BindingFacts,
+    right: &StaticValueFacts,
+) -> bool {
+    match value_type {
+        CompilerType::Tuple(fields) => {
+            fields.len() == left.tuple_fields.len()
+                && fields.len() == right.tuple_fields.len()
+                && fields
+                    .iter()
+                    .zip(&left.tuple_fields)
+                    .zip(&right.tuple_fields)
+                    .all(|((field, left), right)| {
+                        function_aggregate_facts_same_callable_identity(field, left, right)
+                    })
+        }
+        CompilerType::Record(fields) => {
+            fields.len() == left.record_fields.len()
+                && fields.len() == right.record_fields.len()
+                && fields.iter().all(|(name, field)| {
+                    left.record_fields
+                        .get(name)
+                        .zip(right.record_fields.get(name))
+                        .is_some_and(|(left, right)| {
+                            function_aggregate_facts_same_callable_identity(field, left, right)
+                        })
                 })
         }
         _ => false,
@@ -22172,6 +22265,45 @@ fn validate_repeated_anonymous_pattern_parameter(
         ));
     }
     Ok(Some(first_parameter))
+}
+
+fn append_repeated_capture_identities(
+    source: &SourceText,
+    span: Span,
+    source_parameter_count: usize,
+    (first_start, first_end): (usize, usize),
+    (repeated_start, repeated_end): (usize, usize),
+    captures: &[CompilerContextCapture],
+    identities: &mut Vec<CompilerPatternIdentity>,
+) -> Result<(), Diagnostic> {
+    if first_end - first_start != repeated_end - repeated_start {
+        return Err(unsupported(
+            source,
+            span,
+            "repeated captured Function identity with inconsistent capture schema",
+        ));
+    }
+    for (first_capture, repeated_capture) in
+        (first_start..first_end).zip(repeated_start..repeated_end)
+    {
+        let first = &captures[first_capture];
+        let repeated = &captures[repeated_capture];
+        if first.value_type != repeated.value_type
+            || !compiler_equality_supported(&first.value_type)
+        {
+            return Err(unsupported(
+                source,
+                span,
+                "repeated captured Function identity without exact capture equality",
+            ));
+        }
+        identities.push(CompilerPatternIdentity {
+            first_parameter: source_parameter_count + first_capture,
+            repeated_parameter: source_parameter_count + repeated_capture,
+            span,
+        });
+    }
+    Ok(())
 }
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
@@ -32202,13 +32334,6 @@ mod tests {
                 && compiler_type_is_function_aggregate(&function.parameters[0].value_type)
                 && function.parameters[0].value_type == function.parameters[1].value_type
         }));
-
-        let capturing = analyze_for_compiler(
-            "use language (version is v0.1)\noffset is 1\ncaptured : Function is { value } value + offset\npackage is (operation is captured, value is 41)\nrepeat : Function is { value, value } 42\nrepeat (package, package)\n",
-        )
-        .unwrap_err();
-        assert_eq!(capturing.code, "E-COMPILER-UNSUPPORTED");
-        assert!(capturing.message.contains("capture-free callable facts"));
     }
 
     #[test]
@@ -32299,6 +32424,91 @@ mod tests {
             unsupported_capture.code, "E-COMPILER-UNSUPPORTED",
             "{unsupported_capture:?}"
         );
+        assert!(
+            unsupported_capture
+                .message
+                .contains("without exact capture equality"),
+            "{unsupported_capture:?}"
+        );
+    }
+
+    #[test]
+    fn models_captured_function_aggregate_pattern_identity() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-function-aggregate-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated captured Function-aggregate pattern results")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(
+            results
+                .iter()
+                .all(|result| exact_int(result) == Some(BigInt::from(42)))
+        );
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| function.pattern_identities.len() == 2)
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 3);
+        for function in guarded {
+            assert_eq!(function.parameters.len(), 4);
+            assert!(compiler_type_is_function_aggregate(
+                &function.parameters[0].value_type
+            ));
+            assert_eq!(
+                function.parameters[0].value_type,
+                function.parameters[1].value_type
+            );
+            assert_eq!(function.parameters[2].value_type, CompilerType::Int);
+            assert_eq!(function.parameters[3].value_type, CompilerType::Int);
+            assert!(function.parameters[0].source_visible);
+            assert!(
+                function.parameters[1..]
+                    .iter()
+                    .all(|parameter| !parameter.source_visible)
+            );
+            assert_eq!(
+                function
+                    .pattern_identities
+                    .iter()
+                    .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                    .collect::<Vec<_>>(),
+                [(0, 1), (2, 3)]
+            );
+        }
+
+        let differing_callables = analyze_for_compiler(
+            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake-left is fn (token : Token) -> Record (operation : Function)\n  operation : Function is { value } token\n  (operation is operation)\nmake-right is fn (token : Token) -> Record (operation : Function)\n  operation : Function is { value } token\n  (operation is operation)\nrepeat : Function is { package, package } 42\nrepeat (make-left (Value 1), make-right (Value 1))\n",
+        )
+        .unwrap();
+        let differing_guard = differing_callables
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 1)
+            .expect("differing callable identities retain the aggregate guard");
+        assert_eq!(differing_guard.parameters.len(), 3);
+        assert_eq!(
+            differing_guard
+                .pattern_identities
+                .iter()
+                .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                .collect::<Vec<_>>(),
+            [(0, 1)]
+        );
+
+        let unsupported_capture = analyze_for_compiler(
+            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Record (operation : Function)\n  operation : Function is { value } token\n  (operation is operation)\n\nrepeat : Function is { package, package } 42\nrepeat (make (Value 1), make (Value 1))\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_capture.code, "E-COMPILER-UNSUPPORTED");
         assert!(
             unsupported_capture
                 .message

@@ -360,21 +360,29 @@ The same metadata and control-flow shape extends to repeated aggregate values
 only when the private boundary and exact comparison already exist: recursive
 Tuple/Record fields are decomposed in semantic order, while admitted Optional
 and List pointers reuse their Topal-owned tag/payload or ordered-entry
-comparisons. A recursive Tuple/Record may also contain capture-free Function
-leaves when the frontend retains one exact callable fact at every path. Those
-leaves compare only their deterministic private i32 observation fields; the
-facts continue to select direct specializations, and the fields never dispatch
-control flow. Missing, opaque, or capture-bearing aggregate callable facts fail
-before LLVM. LLVM still owns scalar/aggregate register and stack coercion, and
-the first occurrence alone receives the existing target-derived debug shadow.
-No generic aggregate matcher, closure/environment object, or allocation
-identity is introduced. Canonical library metadata must record the callable
-source identity and ordered capture schema/classifiers independently of the
-module-private tag and hidden-parameter layout. Result, Sum, Range, Generator,
-refined, authority-bearing, capture-bearing Function aggregates, named or nested
-capture-bearing scalar identity, Function containment outside Tuple/Record, and
-ordinary named-header repetition remain deferred with their broader
-representation and overload consequences.
+comparisons. A recursive Tuple/Record may also contain Function leaves when the
+frontend retains one exact callable fact at every path. Those leaves compare
+their deterministic private i32 observation fields; the facts continue to
+select direct specializations, and the fields never dispatch control flow. A
+captured Function leaf uses the same canonical aggregate path and ordered
+capture transport as other private Function aggregate boundaries. When every
+corresponding leaf has the same stable callable identity, both capture
+snapshots follow the source operands and guards compare them after all ordinary
+aggregate fields. If any callable identity differs, its observation field
+makes the aggregate unequal and those captures need not cross the boundary.
+Missing or opaque callable facts, inconsistent required capture schemas, and
+captures without admitted exact equality fail before LLVM. LLVM still owns
+scalar/aggregate register and stack coercion, and the first occurrence alone
+receives the existing target-derived debug shadow. No generic aggregate
+matcher, closure/environment object, or allocation identity is introduced.
+Canonical library metadata must record canonical aggregate paths, stable
+callable identities, ordered capture schemas/classifiers, semantic equality
+requirements, representation identity, lifetime/effects, and target adapters
+independently of the module-private tag, hidden-parameter layout, and LLVM
+types. Result, Sum, Range, Generator, refined, authority-bearing, unsupported
+capture classifiers, scalar identity for captured named or nested callables,
+Function containment outside Tuple/Record, and ordinary named-header repetition
+remain deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general
