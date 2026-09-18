@@ -12846,6 +12846,75 @@ mod tests {
     }
 
     #[test]
+    fn emits_captured_anonymous_function_pattern_identity_as_direct_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-function-patterns.t"
+        ))
+        .unwrap();
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| function.pattern_identities.len() == 2)
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 2);
+        let llvm = Generator::new(&program, "repeated-captured-function-patterns.t").emit();
+
+        assert_eq!(llvm.matches("\npattern.identity.mismatch.").count(), 4);
+        for function in guarded {
+            let signature = format!(
+                "define internal fastcc ptr @{}(i32 %arg0, i32 %arg1, ptr %arg2, ptr %arg3)",
+                function.symbol
+            );
+            let start = llvm.find(&signature).unwrap();
+            let remaining = &llvm[start..];
+            let end = remaining[1..]
+                .find("\ndefine ")
+                .map_or(remaining.len(), |offset| offset + 1);
+            let body = &remaining[..end];
+            let identity = body.find("icmp eq i32 %arg0, %arg1").unwrap();
+            let capture = body
+                .find("call i32 @topal.runtime.int.compare(ptr %arg2, ptr %arg3)")
+                .unwrap();
+            assert!(identity < capture);
+        }
+
+        let ordered_program = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn (offset : Int, marker : String) -> Function\n  operation : Function is { value } (value + offset, marker)\n  operation\nrepeat : Function is { operation, operation } 42\nrepeat (make (1, \"same\"), make (1, \"same\"))\n",
+        )
+        .unwrap();
+        let ordered = ordered_program
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 3)
+            .unwrap();
+        let ordered_llvm = Generator::new(&ordered_program, "ordered-captures.t").emit();
+        let signature = format!(
+            "define internal fastcc ptr @{}(i32 %arg0, i32 %arg1, ptr %arg2, ptr %arg3, ptr %arg4, ptr %arg5)",
+            ordered.symbol
+        );
+        let start = ordered_llvm.find(&signature).unwrap();
+        let body = &ordered_llvm[start..];
+        let source_identity = body.find("icmp eq i32 %arg0, %arg1").unwrap();
+        let first_capture = body
+            .find("call i1 @topal.runtime.string.equal(ptr %arg2, ptr %arg4)")
+            .unwrap();
+        let second_capture = body
+            .find("call i32 @topal.runtime.int.compare(ptr %arg3, ptr %arg5)")
+            .unwrap();
+        assert!(source_identity < first_capture && first_capture < second_capture);
+
+        assert!(llvm.contains("call void @topal.runtime.pattern.identity.fail()"));
+        assert!(llvm.contains("!DILocalVariable(name: \"operation\", arg: 1"));
+        assert!(!llvm.contains("!DILocalVariable(name: \"operation\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nested_functions_with_exact_private_capture_parameters() {
         // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
         // TOPAL-COMPILER-DEBUG-001

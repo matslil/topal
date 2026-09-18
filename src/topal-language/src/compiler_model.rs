@@ -1445,6 +1445,7 @@ struct Analyzer {
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     anonymous_callables: BTreeMap<u32, CompilerCallableFacts>,
     anonymous_function_value_names: Vec<String>,
+    anonymous_function_value_tags: BTreeMap<usize, u32>,
     nested_function_value_tags: BTreeMap<String, u32>,
     returned_function_values: BTreeMap<String, CompilerCallableFacts>,
     returned_aggregate_value_facts: BTreeMap<String, StaticValueFacts>,
@@ -1493,6 +1494,7 @@ impl Analyzer {
             root_bindings: BTreeMap::new(),
             anonymous_callables: BTreeMap::new(),
             anonymous_function_value_names: Vec::new(),
+            anonymous_function_value_tags: BTreeMap::new(),
             nested_function_value_tags: BTreeMap::new(),
             returned_function_values: BTreeMap::new(),
             returned_aggregate_value_facts: BTreeMap::new(),
@@ -9918,16 +9920,29 @@ impl Analyzer {
                     })
                     .map(|(name, facts)| (name.clone(), facts.clone()))
                     .collect();
-                let tag_index = self
-                    .functions
-                    .len()
-                    .checked_add(COMPILER_SYMBOLIC_CALLABLES.len())
-                    .and_then(|value| value.checked_add(self.anonymous_function_value_names.len()))
-                    .ok_or_else(|| unsupported(&self.source, *span, "native Function value tag"))?;
-                let tag = u32::try_from(tag_index)
-                    .map_err(|_| unsupported(&self.source, *span, "native Function value tag"))?;
-                let display = format!("<anonymous fn/{}>", parameters.len());
-                self.anonymous_function_value_names.push(display);
+                let tag = if let Some(tag) =
+                    self.anonymous_function_value_tags.get(&span.start).copied()
+                {
+                    tag
+                } else {
+                    let tag_index = self
+                        .functions
+                        .len()
+                        .checked_add(COMPILER_SYMBOLIC_CALLABLES.len())
+                        .and_then(|value| {
+                            value.checked_add(self.anonymous_function_value_names.len())
+                        })
+                        .ok_or_else(|| {
+                            unsupported(&self.source, *span, "native Function value tag")
+                        })?;
+                    let tag = u32::try_from(tag_index).map_err(|_| {
+                        unsupported(&self.source, *span, "native Function value tag")
+                    })?;
+                    let display = format!("<anonymous fn/{}>", parameters.len());
+                    self.anonymous_function_value_names.push(display);
+                    self.anonymous_function_value_tags.insert(span.start, tag);
+                    tag
+                };
                 self.anonymous_callables.insert(
                     tag,
                     CompilerCallableFacts::Anonymous {
@@ -16734,12 +16749,15 @@ impl Analyzer {
             )?;
         }
 
-        let mut environment = BTreeMap::new();
+        let source_parameter_count = flattened_arguments.len();
+        let mut environment: BTreeMap<String, BindingFacts> = BTreeMap::new();
         let mut lowered_parameters: Vec<CompilerParameter> =
             Vec::with_capacity(flattened_arguments.len());
         let mut arguments = Vec::with_capacity(flattened_arguments.len() + captures.len());
         let mut pattern_identities = Vec::new();
-        let mut parameter_callable_captures = Vec::new();
+        let mut parameter_callable_captures: Vec<CompilerContextCapture> = Vec::new();
+        let mut parameter_callable_capture_ranges: BTreeMap<usize, (usize, usize)> =
+            BTreeMap::new();
         for (name_span, argument, argument_facts) in flattened_arguments {
             let facts = argument_facts.as_ref().unwrap_or(&argument);
             let name = self.source.slice(name_span).to_owned();
@@ -16765,6 +16783,62 @@ impl Analyzer {
                 name_span,
             )?;
             if let Some(first_parameter) = repeated {
+                pattern_identities.push(CompilerPatternIdentity {
+                    first_parameter,
+                    repeated_parameter: lowered_parameters.len(),
+                    span: name_span,
+                });
+                if argument.value_type == CompilerType::Function {
+                    let first_callable = environment
+                        .get(&name)
+                        .and_then(|facts| facts.callable.as_ref())
+                        .expect("first Function pattern occurrence retains callable facts");
+                    let mut current_callable = self
+                        .known_callable(facts, call_environment, facts.span.start)?
+                        .expect("repeated Function pattern occurrence retains callable facts");
+                    if same_anonymous_callable_identity(first_callable, &current_callable) {
+                        let capture_start = parameter_callable_captures.len();
+                        self.forward_callable_captures(
+                            &format!("{name} repeated {}", lowered_parameters.len()),
+                            name_span,
+                            &mut current_callable,
+                            call_environment,
+                            &mut parameter_callable_captures,
+                        )?;
+                        let capture_end = parameter_callable_captures.len();
+                        let (first_start, first_end) = parameter_callable_capture_ranges
+                            .get(&first_parameter)
+                            .copied()
+                            .expect("first captured Function occurrence retains capture range");
+                        if first_end - first_start != capture_end - capture_start {
+                            return Err(unsupported(
+                                &self.source,
+                                name_span,
+                                "repeated captured Function identity with inconsistent capture schema",
+                            ));
+                        }
+                        for (first_capture, repeated_capture) in
+                            (first_start..first_end).zip(capture_start..capture_end)
+                        {
+                            let first = &parameter_callable_captures[first_capture];
+                            let repeated = &parameter_callable_captures[repeated_capture];
+                            if first.value_type != repeated.value_type
+                                || !compiler_equality_supported(&first.value_type)
+                            {
+                                return Err(unsupported(
+                                    &self.source,
+                                    name_span,
+                                    "repeated captured Function identity without exact capture equality",
+                                ));
+                            }
+                            pattern_identities.push(CompilerPatternIdentity {
+                                first_parameter: source_parameter_count + first_capture,
+                                repeated_parameter: source_parameter_count + repeated_capture,
+                                span: name_span,
+                            });
+                        }
+                    }
+                }
                 if compiler_type_is_function_aggregate(&argument.value_type) {
                     let current = structural_facts
                         .as_ref()
@@ -16782,14 +16856,10 @@ impl Analyzer {
                         ));
                     }
                 }
-                pattern_identities.push(CompilerPatternIdentity {
-                    first_parameter,
-                    repeated_parameter: lowered_parameters.len(),
-                    span: name_span,
-                });
             } else if !discarded {
                 let mut callable =
                     self.known_callable(facts, call_environment, facts.span.start)?;
+                let capture_start = parameter_callable_captures.len();
                 if let Some(callable) = &mut callable {
                     self.forward_callable_captures(
                         &name,
@@ -16798,6 +16868,11 @@ impl Analyzer {
                         call_environment,
                         &mut parameter_callable_captures,
                     )?;
+                }
+                let capture_end = parameter_callable_captures.len();
+                if argument.value_type == CompilerType::Function {
+                    parameter_callable_capture_ranges
+                        .insert(lowered_parameters.len(), (capture_start, capture_end));
                 }
                 environment.insert(
                     name.clone(),
@@ -21816,6 +21891,23 @@ fn callable_facts_capture_free(callable: &CompilerCallableFacts) -> bool {
         CompilerCallableFacts::Symbolic(_) => true,
         CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
     }
+}
+
+fn same_anonymous_callable_identity(
+    left: &CompilerCallableFacts,
+    right: &CompilerCallableFacts,
+) -> bool {
+    matches!(
+        (left, right),
+        (
+            CompilerCallableFacts::Anonymous {
+                span: left_span, ..
+            },
+            CompilerCallableFacts::Anonymous {
+                span: right_span, ..
+            }
+        ) if left_span == right_span
+    )
 }
 
 fn function_aggregate_facts_capture_free(
@@ -32117,6 +32209,102 @@ mod tests {
         .unwrap_err();
         assert_eq!(capturing.code, "E-COMPILER-UNSUPPORTED");
         assert!(capturing.message.contains("capture-free callable facts"));
+    }
+
+    #[test]
+    fn models_captured_anonymous_function_pattern_identity() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-TYPE-MATCH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-function-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated captured-Function pattern results")
+        };
+        assert_eq!(results.len(), 2);
+        assert!(
+            results
+                .iter()
+                .all(|result| exact_int(result) == Some(BigInt::from(42)))
+        );
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| function.pattern_identities.len() == 2)
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 2);
+        for function in guarded {
+            assert_eq!(function.parameters.len(), 4);
+            assert_eq!(function.parameters[0].value_type, CompilerType::Function);
+            assert_eq!(function.parameters[1].value_type, CompilerType::Function);
+            assert_eq!(function.parameters[2].value_type, CompilerType::Int);
+            assert_eq!(function.parameters[3].value_type, CompilerType::Int);
+            assert!(function.parameters[0].source_visible);
+            assert!(
+                function.parameters[1..]
+                    .iter()
+                    .all(|parameter| !parameter.source_visible)
+            );
+            assert_eq!(
+                function
+                    .pattern_identities
+                    .iter()
+                    .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                    .collect::<Vec<_>>(),
+                [(0, 1), (2, 3)]
+            );
+        }
+
+        let ordered = analyze_for_compiler(
+            "use language (version is v0.1)\nmake is fn (offset : Int, marker : String) -> Function\n  operation : Function is { value } (value + offset, marker)\n  operation\nrepeat : Function is { operation, operation } 42\nrepeat (make (1, \"same\"), make (1, \"same\"))\n",
+        )
+        .unwrap();
+        let ordered = ordered
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 3)
+            .unwrap();
+        assert_eq!(
+            ordered
+                .parameters
+                .iter()
+                .map(|parameter| parameter.value_type.clone())
+                .collect::<Vec<_>>(),
+            [
+                CompilerType::Function,
+                CompilerType::Function,
+                CompilerType::String,
+                CompilerType::Int,
+                CompilerType::String,
+                CompilerType::Int,
+            ]
+        );
+        assert_eq!(
+            ordered
+                .pattern_identities
+                .iter()
+                .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                .collect::<Vec<_>>(),
+            [(0, 1), (2, 4), (3, 5)]
+        );
+
+        let unsupported_capture = analyze_for_compiler(
+            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\nmake is fn (token : Token) -> Function\n  operation : Function is { value } token\n  operation\n\nrepeat : Function is { operation, operation } 42\nrepeat (make (Value 1), make (Value 1))\n",
+        )
+        .unwrap_err();
+        assert_eq!(
+            unsupported_capture.code, "E-COMPILER-UNSUPPORTED",
+            "{unsupported_capture:?}"
+        );
+        assert!(
+            unsupported_capture
+                .message
+                .contains("without exact capture equality"),
+            "{unsupported_capture:?}"
+        );
     }
 
     #[test]

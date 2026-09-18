@@ -3554,19 +3554,57 @@ reversible debugging, the shared corpus, and separate resource baselines. This
 shall add no closure or environment object, allocation, generic matcher,
 pattern table, function pointer, indirect call, callback, dispatch table,
 foreign dependency, C/C++ runtime, other-language standard library, public
-aggregate/callable ABI, or `topal-native/6` revision. Capture-bearing repeated
-identity, dynamic aggregate selection, Function containment in other
-aggregates, ordinary named-function header repetition, publication, and
-library adapters remain deferred. Compiled-library metadata shall eventually
-encode canonical aggregate paths and stable callable/representation identities
-without serializing private LLVM types, observation tags, or target-specific
-argument placement. This realizes
+aggregate/callable ABI, or `topal-native/6` revision. Capture-bearing
+Function-aggregate repeated identity, dynamic aggregate selection, Function
+containment in other aggregates, ordinary named-function header repetition,
+publication, and library adapters remain deferred. Compiled-library metadata
+shall eventually encode canonical aggregate paths and stable
+callable/representation identities without serializing private LLVM types,
+observation tags, or target-specific argument placement. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`,
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`,
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-001`,
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5ac.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001 — Exact captured anonymous Function values
+
+The checked compiler model shall admit a repeated scalar Function pattern when
+both operands retain the same anonymous source identity, the same ordered
+represented capture schema, and exact compiler equality for every capture. It
+shall canonicalize the anonymous source identity across private
+specializations, retain both capture snapshots without re-evaluation, and
+reject missing, inconsistent, or non-equality capture facts before LLVM.
+
+The first Function occurrence shall remain the sole body binding and DWARF
+parameter. The later occurrence shall retain its source observation field and
+ordered captures as hidden parameters. Lowering shall compare the source field
+first and the captures in order with existing exact direct comparisons, then
+reuse the Topal-owned mismatch diagnostic and exit 65. The private definition
+and call shall use matching exact `fastcc` prototypes, with physical AMD64
+placement left to LLVM's qualified target data layout. Observation tags shall
+remain non-dispatching and shall not become semantic library identities.
+
+Tests shall cover same-source equal and unequal captures, canonical source
+identity across specializations, non-equality capture rejection before artifact
+publication, checked-model guard metadata, direct ordered IR, interpreter modes
+and reversible history, the shared corpus, separate resource baselines,
+freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
+no closure or environment object, allocation, pattern table, function pointer,
+indirect call, dispatch table, foreign dependency, C/C++ runtime,
+other-language standard library, public callable ABI, or `topal-native/6`
+revision. Named or nested captured callable identity, captured Function
+aggregates, unsupported capture classifiers, publication, and library adapters
+remain deferred. Future compiled-library metadata shall encode stable callable
+source identity plus the ordered capture schema/classifiers, equality
+requirements, representation identity, lifetime/effects, and target adapter;
+it shall not serialize private observation tags, hidden parameter names, LLVM
+types, or target-specific placement. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5ad.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

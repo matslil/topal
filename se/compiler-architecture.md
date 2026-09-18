@@ -343,12 +343,18 @@ allocation, runtime descriptor, or public ABI is introduced.
 
 A repeated non-discard name across ordinary anonymous parameters or recursively
 destructured product leaves retains every consumed private machine operand but
-creates only the first source binding. Later same-classifier scalar occurrences become
-lexically ordered function-entry identity guards. They reuse direct exact
-integer, Rational, String/Character, enum-like, or Function-tag comparison;
-they do not invoke user Equality, conversion, canonical equivalence, or tag
-dispatch. A mismatch calls a Topal-owned diagnostic helper which writes through
-the Linux syscall service and exits 65 before the body. Repeated operands are
+creates only the first source binding. Later same-classifier scalar occurrences
+become lexically ordered function-entry identity guards. They reuse direct
+exact integer, Rational, String/Character, or enum-like comparison. A
+capture-free Function compares its observation tag. When both operands retain
+the same captured anonymous source, that source receives one canonical tag
+across its private specializations and the boundary additionally forwards both
+already-evaluated ordered capture snapshots. The guard compares the source tag
+first and then every capture having admitted exact compiler equality. Missing,
+inconsistent, or non-equality capture facts fail before LLVM. Neither case
+invokes user Equality, conversion, canonical equivalence, or tag dispatch. A
+mismatch calls a Topal-owned diagnostic helper which writes through the Linux
+syscall service and exits 65 before the body. Repeated operands are
 omitted from DWARF variable metadata, leaving one unambiguous source parameter.
 The same metadata and control-flow shape extends to repeated aggregate values
 only when the private boundary and exact comparison already exist: recursive
@@ -358,13 +364,17 @@ comparisons. A recursive Tuple/Record may also contain capture-free Function
 leaves when the frontend retains one exact callable fact at every path. Those
 leaves compare only their deterministic private i32 observation fields; the
 facts continue to select direct specializations, and the fields never dispatch
-control flow. Missing, opaque, or capture-bearing callable facts fail before
-LLVM. LLVM still owns aggregate register/stack coercion, and the first
-occurrence alone receives the existing target-derived debug shadow. No generic
-aggregate matcher or allocation identity is introduced. Result, Sum, Range,
-Generator, refined, authority-bearing, capture-bearing Function aggregates,
-Function containment outside Tuple/Record, and ordinary named-header repetition
-remain deferred with their broader representation and overload consequences.
+control flow. Missing, opaque, or capture-bearing aggregate callable facts fail
+before LLVM. LLVM still owns scalar/aggregate register and stack coercion, and
+the first occurrence alone receives the existing target-derived debug shadow.
+No generic aggregate matcher, closure/environment object, or allocation
+identity is introduced. Canonical library metadata must record the callable
+source identity and ordered capture schema/classifiers independently of the
+module-private tag and hidden-parameter layout. Result, Sum, Range, Generator,
+refined, authority-bearing, capture-bearing Function aggregates, named or nested
+capture-bearing scalar identity, Function containment outside Tuple/Record, and
+ordinary named-header repetition remain deferred with their broader
+representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general
