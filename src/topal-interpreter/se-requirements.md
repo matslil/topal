@@ -2243,3 +2243,16 @@ callable identity and represented immutable capture snapshot under its one
 source name. The shared regression and reversible debugger history shall cover
 reordered Function/scalar calls, a closed symbolic default, positional parity,
 mixed operands, captured anonymous callable forwarding, and exact results.
+
+## TOPAL-INTP-SUBSET-262 — Function aggregate packaged fields
+
+All source modes shall preserve an exact Tuple or Record containing Function
+leaves when supplied as a complete field of a one- or two-operand package under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit aggregate expressions shall
+execute once in source order, closed Function-aggregate defaults shall bind
+afterward in operand/field declaration order, and function entry shall expose
+the field's complete structure, callable identities, and represented immutable
+capture snapshots under its one source name. The shared regression and
+reversible debugger history shall cover reordered aggregate/scalar calls,
+capture-free Record and capture-bearing Tuple fields, a closed symbolic Record
+default, and exact results.

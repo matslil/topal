@@ -18489,11 +18489,21 @@ impl Analyzer {
         };
         let mut call_environment = environment.clone();
         for binding in &argument_bindings {
-            if binding.value.value_type != CompilerType::Function {
+            if binding.value.value_type != CompilerType::Function
+                && !compiler_type_is_function_aggregate(&binding.value.value_type)
+            {
                 continue;
             }
-            let callable =
-                self.known_callable(&binding.value, environment, binding.value.span.start)?;
+            let facts = self.known_structural_value_facts(&binding.value, environment)?;
+            if compiler_type_is_function_aggregate(&binding.value.value_type)
+                && !function_aggregate_facts_exact(&binding.value.value_type, &facts)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    binding.value.span,
+                    "Function aggregate packaged field without one exact callable identity per Function field",
+                ));
+            }
             call_environment.insert(
                 binding.storage_name.clone(),
                 BindingFacts {
@@ -18508,10 +18518,10 @@ impl Analyzer {
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
-                    tuple_fields: Vec::new(),
-                    record_fields: BTreeMap::new(),
+                    tuple_fields: facts.tuple_fields,
+                    record_fields: facts.record_fields,
                     namespace: None,
-                    callable,
+                    callable: facts.callable,
                     static_capability: None,
                 },
             );
@@ -22473,10 +22483,6 @@ fn compiler_packaged_field_supported(value_type: &CompilerType) -> bool {
                 value_type,
                 CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_)
             ))
-        && (!matches!(
-            value_type,
-            CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_)
-        ) || !compiler_type_is_function_aggregate(value_type))
 }
 
 fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bool {
@@ -33387,6 +33393,70 @@ mod tests {
             .expect("capturing Function package call is specialized");
         assert_eq!(captured.parameters.len(), 3);
         assert_eq!(captured.parameters[0].value_type, CompilerType::Function);
+        assert!(captured.parameters[0].source_visible);
+        assert_eq!(captured.parameters[2].value_type, CompilerType::Int);
+        assert!(!captured.parameters[2].source_visible);
+    }
+
+    #[test]
+    fn models_function_aggregate_packaged_fields_with_exact_callable_facts() {
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-aggregate-packaged-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Function-aggregate packaged results")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: addend_storage,
+            value: addend,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first scalar field is retained first")
+        };
+        assert!(matches!(addend.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: bundle_storage,
+            value: bundle,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Function aggregate field is retained second")
+        };
+        assert!(compiler_type_is_function_aggregate(&bundle.value_type));
+        assert!(matches!(bundle.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order Function aggregate package call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == bundle_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == addend_storage
+        ));
+
+        let captured = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "apply-tuple")
+            .expect("capturing Function aggregate package call is specialized");
+        assert_eq!(captured.parameters.len(), 3);
+        assert!(compiler_type_is_function_aggregate(
+            &captured.parameters[0].value_type
+        ));
         assert!(captured.parameters[0].source_visible);
         assert_eq!(captured.parameters[2].value_type, CompilerType::Int);
         assert!(!captured.parameters[2].source_visible);

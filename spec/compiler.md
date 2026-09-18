@@ -3490,11 +3490,12 @@ packages mixed with an unpackaged operand are governed by
 Record fields are governed by
 `TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
 governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`; exact direct Function
-fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`. Other
-non-scalar fields, nested package declarations, opaque package values, and
-defaults that depend on invocation or captured bindings remain outside this
-increment and SHALL be rejected rather than changing evaluation order or
-choosing a public memory ABI.
+fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
+Function-containing Tuple and Record fields are governed by
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Other non-scalar fields,
+nested package declarations, opaque package values, and defaults that depend on
+invocation or captured bindings remain outside this increment and SHALL be
+rejected rather than changing evaluation order or choosing a public memory ABI.
 
 ### TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
 
@@ -3528,10 +3529,11 @@ LLVM types, and physical placement. Compound packages are governed by
 Record fields are governed by
 `TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
 governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`; exact direct Function
-fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`. Other
-non-scalar fields, nested package declarations, opaque package values,
-invocation- or capture-dependent defaults, and public package adapters remain
-deferred.
+fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
+Function-containing Tuple and Record fields are governed by
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Other non-scalar fields,
+nested package declarations, opaque package values, invocation- or
+capture-dependent defaults, and public package adapters remain deferred.
 
 ### TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001 — Two and mixed scalar packages
 
@@ -3568,7 +3570,9 @@ binding names, LLVM types, and physical placement. Exact capture-free Tuple and
 Record fields are governed by
 `TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
 governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`; exact direct Function
-fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`. Scope,
+fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`; exact
+Function-containing Tuple and Record fields are governed by
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Scope, other
 Function-containing aggregates, other non-scalar fields, nested package
 declarations, opaque compound package values, invocation- or capture-dependent
 defaults, recursion through compound package signatures, and public package
@@ -3582,9 +3586,11 @@ complete structural classifier is already admitted by the private function ABI
 and contains no Function value or capture environment. Structured supplied
 values and closed structured defaults SHALL undergo the same exact classifier
 adaptation as ordinary private function parameters. Nested Tuple and Record
-classifiers MAY compose recursively. A Function-containing structure,
-unsupported leaf classifier, mismatched shape, or non-closed default SHALL
-reject before LLVM lowering or artifact publication.
+classifiers MAY compose recursively. Function-containing Tuple and Record
+fields are governed by
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. An unsupported leaf
+classifier, mismatched shape, or non-closed default SHALL reject before LLVM
+lowering or artifact publication.
 
 Each structured field SHALL remain one source field and one exact private
 `fastcc` parameter; its internal components SHALL NOT become additional package
@@ -3605,12 +3611,13 @@ ABI, or native-ABI revision.
 Future compiled-library metadata SHALL preserve each field's complete canonical
 structural classifier and representation identity beside operand partition,
 field identity/order, default semantics/dependencies, evaluation effects, and
-target adapters. Nested package declarations, opaque whole-package values,
-Function-containing aggregates, invocation- or capture-dependent defaults,
-recursive structured package signatures, public adapters, and other unsupported
-non-scalar fields remain deferred. Exact nominal Sum fields are governed by
-`TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`; exact direct Function fields are
-governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`.
+target adapters. Exact Function-containing Tuple and Record fields are governed
+by `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Nested package
+declarations, opaque whole-package values, invocation- or capture-dependent
+defaults, recursive structured package signatures, public adapters, and other
+unsupported non-scalar fields remain deferred. Exact nominal Sum fields are
+governed by `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`; exact direct Function
+fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`.
 
 ### TOPAL-COMPILER-SUM-PACKAGED-FIELD-001 — Exact nominal Sum package fields
 
@@ -3678,10 +3685,62 @@ dependency, C/C++ runtime, other-language standard library, public callable ABI,
 or native-ABI revision. Future compiled-library metadata SHALL preserve callable
 source/declaration identity, overload set, capture schema and equality,
 representation/lifetime/effect semantics, operand/field/default semantics, and
-target adapters. Function-containing aggregates, dynamic escape/selection,
-nested package declarations, opaque whole-package values, dependent defaults,
-recursive callable package signatures, public adapters, and other unsupported
-fields remain deferred.
+target adapters. Exact Function-containing Tuple and Record fields are governed
+by `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Function containment
+in other aggregates, dynamic escape/selection, nested package declarations,
+opaque whole-package values, dependent defaults, recursive callable package
+signatures, public adapters, and other unsupported fields remain deferred.
+
+### TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001 — Exact Function aggregate package fields
+
+The compiler SHALL admit an exact Tuple or Record containing one or more
+Function leaves as a complete field of a one- or two-operand package when the
+same complete value is already admitted by the private Function aggregate
+parameter ABI of `TOPAL-COMPILER-FUNCTION-AGGREGATE-001` and
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`. Every Function leaf SHALL have
+one exact named, symbolic, anonymous, or non-escaping nested callable identity
+and a fully represented immutable capture snapshot. Missing, opaque,
+dynamically selected, escaping, or otherwise unrepresentable callable facts
+SHALL reject before LLVM lowering or artifact publication.
+
+When package source-order normalization introduces a compiler-private binding,
+the binding SHALL retain the aggregate's complete recursive structural fact
+tree, canonical Function-leaf paths, callable identities, and capture facts
+beside its runtime aggregate value. The initializer SHALL execute once in
+package source order. Closed aggregate defaults SHALL execute afterward in
+operand/field declaration order, and the direct call SHALL pass the complete
+aggregate in operand/field declaration order without decomposing its members
+into package fields.
+
+The source aggregate parameter SHALL retain its existing exact target-derived
+LLVM aggregate type. Any captures required by its Function leaves SHALL follow
+as deterministic canonical-path-ordered hidden parameters under the existing
+private `fastcc` specialization, and application in the callee SHALL remain a
+direct call. LLVM SHALL own AMD64 aggregate classification and physical
+placement. DWARF/GDB SHALL expose the one source Tuple or Record field with its
+complete value and ordinary frame; compiler-private ordering bindings and
+hidden capture transport SHALL remain absent from source debugging.
+
+Tests SHALL cover reordered once-only scalar and Function-aggregate-producing
+calls, capture-free Record and capture-bearing Tuple fields, a closed symbolic
+Function-aggregate default, exact results, opaque whole-package rejection,
+recursive checked facts, exact direct IR, interpreter modes, reversible
+history, the shared corpus and separate resource baselines, freestanding
+ELF/DWARF validation, and O0 GDB aggregate fields/frames.
+
+The lowering SHALL add no package-level aggregate, member decomposition,
+function pointer, indirect call, closure allocation/runtime, `byval`, `sret`,
+`inalloca`, `preallocated`, foreign dependency, C/C++ runtime, other-language
+standard library, public callable/aggregate ABI, or native-ABI revision. Future
+compiled-library metadata SHALL preserve each aggregate field's complete
+canonical classifier and representation identity, every Function leaf's
+canonical path, callable source/declaration identity and overload set, capture
+schema/equality/lifetime/effect semantics, operand/field/default semantics, and
+target adapters independently of private binding names, LLVM types, tags, and
+physical placement. Function containment in Optional, List, Sum, and other
+aggregates; dynamic escape/selection; dependent defaults; nested package
+declarations; recursive callable package signatures; persistent storage;
+publication; and public adapters remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 
