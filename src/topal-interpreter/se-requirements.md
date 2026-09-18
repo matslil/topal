@@ -1721,11 +1721,12 @@ examples.
 
 ## TOPAL-INTP-SUBSET-200 — Symbolic callable values
 
-All interpreter modes shall retain symbolic callables as immutable function
-values and apply their unary or positional-product operands under
-`TOPAL-FUNCTION-CALLABLE-VALUE-001`. Formal traces, packaging diagnostics, LSP
-validation, and reversible scripted-debugger history shall cover commented
-examples.
+All interpreter modes shall retain the complete symbolic callable vocabulary as
+immutable function values and apply their unary or positional-product operands
+under `TOPAL-FUNCTION-CALLABLE-VALUE-001`. Formal traces, packaging diagnostics,
+LSP validation, reversible scripted-debugger history, and the shared
+`expanded-callable-values.t` regression shall cover every identity and private
+Function result passage.
 
 ## TOPAL-INTP-SUBSET-201 — Named function values
 

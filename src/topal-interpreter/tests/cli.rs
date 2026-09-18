@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 215);
+    assert_eq!(examples.len(), 216);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4058,6 +4058,21 @@ fn every_mode_applies_bound_symbolic_callable_values() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert_eq!(trace.matches("function.callable.captured").count(), 3);
     assert_eq!(trace.matches("function.callable.called").count(), 3);
+}
+
+#[test]
+fn every_mode_applies_the_complete_symbolic_callable_vocabulary() {
+    let source = include_str!("../../../examples/language/expanded-callable-values.t");
+    let expected = "(true, true, true, true, true, true, 42, Rational ( 3, 4 ), (3, 2), 3, 1024, 0 .. 3, 0 <.. 3, 0 ..= 3, 0 <..= 3, 42)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("function.callable.called").count(), 16);
+    assert!(trace.contains("TOPAL-FUNCTION-CALLABLE-VALUE-001"));
+    assert!(trace.contains("TOPAL-TYPE-CALL-001"));
 }
 
 #[test]

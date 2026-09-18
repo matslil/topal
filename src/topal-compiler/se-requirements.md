@@ -2944,6 +2944,32 @@ callable interfaces remain rejected. This realizes
 `TOPAL-COMPILER-SYMBOLIC-CALLABLE-VALUE-001` and the admitted portion of
 `TOPAL-FUNCTION-CALLABLE-VALUE-001` for compiler increment 3b2-b5k.
 
+## TOPAL-COMP-SYMBOLIC-CALLABLE-EXPANDED-001 — Complete symbolic Function values
+
+The checked compiler model shall admit `=`, `!=`, `<`, `>`, `<=`, `>=`, `*`,
+`/`, `/%`, `%`, `^`, `..`, `<..`, `..=`, and `<..=` in value position in
+addition to the existing `+`, `-`, and `<=>` values. Bindings and private
+Function parameter/result specializations shall retain each exact callable.
+Binary application shall unpack one two-field positional product and reuse the
+existing checked operation so conversions, fallibility, result classifiers,
+range endpoint policy, and diagnostics remain identical to direct syntax.
+
+The module-local observation table shall retain the existing first three tags,
+append every newly admitted canonical spelling deterministically, and observe
+source `!=` as canonical `/=`. LLVM lowering shall emit the already-selected
+direct operation or Topal-owned runtime primitive. Native tests shall cover all
+new identities, exact interpreter parity, private Function result passage,
+stable tags, direct IR, freestanding artifacts, full O0 DWARF/GDB values and
+frames, the shared corpus, and separate resource baselines.
+
+This shall add no function pointer, indirect call, Function runtime, closure
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public callable ABI, or `topal-native/6` revision. Dynamic selection, aggregate
+containment, escape, publication, and library metadata/adapters remain deferred.
+This realizes `TOPAL-COMPILER-SYMBOLIC-CALLABLE-EXPANDED-001`,
+`TOPAL-FUNCTION-CALLABLE-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5t.
+
 ## TOPAL-COMP-FUNCTION-PARAMETER-001 — Specialized private Function inputs
 
 The checked compiler model shall admit a scalar `Function` parameter for an
