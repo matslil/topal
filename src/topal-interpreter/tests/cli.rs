@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 228);
+    assert_eq!(examples.len(), 229);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4596,6 +4596,36 @@ fn every_mode_requires_exact_repeated_anonymous_aggregate_identity() {
     let diagnostic = String::from_utf8(mismatch.stderr).unwrap();
     assert!(diagnostic.contains("error[E-ANONYMOUS-PATTERN-IDENTITY]"));
     assert!(diagnostic.contains("same exact value"));
+}
+
+#[test]
+fn every_mode_requires_exact_repeated_sum_identity() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001,
+    // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+    let source = include_str!("../../../examples/language/repeated-sum-patterns.t");
+    let expected = "(Stop, Number 7, Label \"seven\", Pair (7, \"seven\"), Wrapped Code 9)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains(expected), "{arguments:?}: {stdout}");
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert_eq!(trace.matches("pattern.identity.matched").count(), 5);
+    assert!(trace.contains("TOPAL-TYPE-MATCH-001"));
+
+    for right in ["Number 8", "Label \"seven\""] {
+        let mismatch = run(
+            &[],
+            &format!(
+                "use language (version is v0.1)\nToken is Union\n  Number : Int\n  Label : String\n\nrepeat : Function is {{ value, value }} value\nleft : Token is Number 7\nright : Token is {right}\nrepeat (left, right)\n"
+            ),
+        );
+        assert!(!mismatch.status.success());
+        let diagnostic = String::from_utf8(mismatch.stderr).unwrap();
+        assert!(diagnostic.contains("error[E-ANONYMOUS-PATTERN-IDENTITY]"));
+        assert!(diagnostic.contains("same exact value"));
+    }
 }
 
 #[test]

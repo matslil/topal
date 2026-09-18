@@ -190,6 +190,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/repeated-captured-function-patterns.t",
     "examples/language/repeated-captured-named-function-patterns.t",
     "examples/language/repeated-function-aggregate-patterns.t",
+    "examples/language/repeated-sum-patterns.t",
     "examples/language/result-division-error.t",
     "examples/language/result-error-propagation.t",
     "examples/language/result-negative-power-error.t",

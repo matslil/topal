@@ -77,6 +77,7 @@ evidence.
 | 3b2-b5ad | exact repeated scalar identity for same-source captured anonymous Functions, source-first ordered capture guards, canonical specialization-independent identity, and single-binding debugging | complete |
 | 3b2-b5ae | exact repeated anonymous-pattern identity for captured Function-containing Tuple/Record values, canonical path-ordered capture guards, and single aggregate debugging | complete |
 | 3b2-b5af | exact repeated scalar identity for captured non-escaping nested Functions, declaration-first ordered capture guards, distinct-declaration short-circuit, and single-binding debugging | complete |
+| 3b2-b5ag | exact repeated nominal Union/Variant identity with tag-first active-payload guards, nested structural payloads, and single Sum debugging | complete |
 | 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
@@ -307,7 +308,10 @@ identity; 3b2-b5ae composes both mechanisms for captured Function leaves in
 repeated Tuple/Record values by retaining canonical paths and comparing required
 capture snapshots after ordinary aggregate fields; 3b2-b5af extends scalar
 repeated identity to captured non-escaping nested declarations while preserving
-the same identity-first short-circuit and ordered capture guards; and
+the same identity-first short-circuit and ordered capture guards; 3b2-b5ag
+extends repeated identity through exact nominal Sum values by comparing tags
+before selecting only the active payload through explicit LLVM control flow;
+and
 3b2-b5e8 continues with other escaping, recursive, overloaded, and
 dynamically contained callables, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the

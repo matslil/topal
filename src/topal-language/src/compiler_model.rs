@@ -22189,8 +22189,27 @@ fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bo
             | CompilerType::Record(_)
             | CompilerType::Optional(_)
             | CompilerType::List(_)
-    ) && (compiler_equality_supported(value_type)
+            | CompilerType::Sum(_)
+    ) && (compiler_repeated_structural_identity_supported(value_type)
         || compiler_repeated_function_aggregate_identity_supported(value_type)))
+}
+
+fn compiler_repeated_structural_identity_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Tuple(fields) => fields
+            .iter()
+            .all(compiler_repeated_structural_identity_supported),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .all(|(_, field)| compiler_repeated_structural_identity_supported(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().all(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_none_or(compiler_repeated_structural_identity_supported)
+        }),
+        _ => compiler_equality_supported(value_type),
+    }
 }
 
 fn compiler_repeated_function_aggregate_identity_supported(value_type: &CompilerType) -> bool {
@@ -32279,6 +32298,56 @@ mod tests {
             unsupported_result
                 .message
                 .contains("repeated anonymous pattern identity for `Result")
+        );
+    }
+
+    #[test]
+    fn models_repeated_sum_values_as_active_payload_identity_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-sum-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated Sum-pattern results")
+        };
+        assert_eq!(results.len(), 5);
+        assert!(
+            results
+                .iter()
+                .all(|result| matches!(result.value_type, CompilerType::Sum(_)))
+        );
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| !function.pattern_identities.is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 5);
+        assert!(guarded.iter().all(|function| {
+            function.pattern_identities.as_slice()
+                == [CompilerPatternIdentity {
+                    first_parameter: 0,
+                    repeated_parameter: 1,
+                    span: function.parameters[1].span,
+                }]
+                && matches!(function.parameters[0].value_type, CompilerType::Sum(_))
+                && function.parameters[0].value_type == function.parameters[1].value_type
+                && !compiler_equality_supported(&function.parameters[0].value_type)
+        }));
+
+        let unsupported = analyze_for_compiler(
+            "use language (version is v0.1)\nWindow is Union\n  Bounded : Range Int\n\nrepeat : Function is { value, value } value\nwindow : Window is Bounded (0 ..= 1)\nrepeat (window, window)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unsupported
+                .message
+                .contains("repeated anonymous pattern identity for `Window`"),
+            "{unsupported:?}"
         );
     }
 

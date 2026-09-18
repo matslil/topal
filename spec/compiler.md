@@ -3217,8 +3217,9 @@ Mismatch reporting and status SHALL remain those of
 This rule SHALL introduce no generic aggregate matcher, pattern table,
 allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate ABI, or native-ABI revision.
-Result, Sum, Range, Generator, refined, authority-bearing, and Function-containing
-aggregate identity outside
+Sum identity is governed by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001`. Result, Range, Generator, refined,
+authority-bearing, and Function-containing aggregate identity outside
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`; ordinary
 named-function header repetition; publication; and library
 metadata/adapters remain deferred.
@@ -3376,6 +3377,51 @@ and classifiers, semantic equality requirements, representation identity,
 lifetime/effects, and target adapters without serializing private observation
 tags, hidden operand names or layout, LLVM types, or physical argument
 placement.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-SUM-001 — Exact nominal Sum repeated identity
+
+A repeated anonymous-pattern name MAY match the same exact nominal `Union` or
+positional `Variant` classifier when every possible payload has exact compiler
+identity already admitted by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001` or recursively by this rule.
+Tuple and Record fields MAY recursively contain such a Sum. The two operands
+SHALL have the same nominal classifier; structural similarity between distinct
+Sum declarations SHALL NOT suffice. Function, Range, Result, refined,
+authority-bearing, or any other payload without admitted exact identity SHALL
+be rejected before LLVM lowering or artifact publication.
+
+The guard SHALL first compare the represented alternative tags. Different tags
+SHALL mismatch without observing either payload. Equal tags SHALL select that
+one active alternative and compare only its payload recursively; inactive
+private representation fields SHALL NOT affect source identity or be observed.
+Payload-free alternatives SHALL match from the equal tag alone. This path SHALL
+run before the anonymous body and SHALL reuse the diagnostic and status of
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`. It SHALL NOT by itself publish
+the general source `Equality` capability for Sum values.
+
+On Linux x86-64 the source operands SHALL retain the existing exact private
+tag-plus-payload LLVM aggregate and matching `fastcc` prototypes. LLVM
+`switch`, direct recursive comparisons, and an `i1` `phi` MAY lower the
+active-payload selection, while LLVM owns physical register, stack, branch, and
+aggregate coercion for the qualified target. The first occurrence SHALL remain
+the sole source binding and DWARF/GDB parameter; its semantic nominal Sum type
+and active value SHALL remain inspectable.
+
+Tests SHALL cover labeled Union and positional Variant values; payload-free,
+Int, String, Tuple, and recursively nested Sum payloads; equal values; same-tag
+payload mismatch; distinct-tag short-circuit; unsupported payload rejection
+before publication; direct guarded IR;
+interpreter parity and reversible history; freestanding execution; and full O0
+GDB values/frames. This rule SHALL introduce no generic matcher, Sum-equality
+runtime, pattern table, allocation, callback, indirect dispatch, foreign
+dependency, C/C++ runtime, other-language standard library, public aggregate
+ABI, or native-ABI revision. General derived Sum Equality, recursive Sum
+declarations, Function-containing Sums, persistent storage, publication, and
+library adapters remain deferred. Future compiled-library metadata SHALL
+encode the stable nominal identity, positional/labeled form, ordered
+alternative identities, payload schemas, semantic identity/equality
+requirements, representation identity, and target adapters independently of
+private numeric tags, inactive storage, LLVM types, and physical placement.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 

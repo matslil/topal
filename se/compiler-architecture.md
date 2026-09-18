@@ -383,7 +383,7 @@ Canonical library metadata must record canonical aggregate paths, stable
 callable identities, ordered capture schemas/classifiers, semantic equality
 requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
-types. Result, Sum, Range, Generator, refined, authority-bearing, unsupported
+types. Result, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, escaping nested callable identity, Function containment
 outside Tuple/Record, and ordinary named-header repetition remain deferred with
 their broader representation and overload consequences.
@@ -1411,6 +1411,23 @@ sum ABI nor a serialization or library-metadata identity. Recursive nominal
 sums, persistent/public storage, and foreign adapters remain separate
 representation increments.
 
+Repeated-pattern identity reuses this carrier without comparing it as raw
+storage. The frontend first emits an exact tag comparison. Equal tags enter an
+LLVM `switch` whose one selected branch recursively compares only that
+alternative's active payload; unequal or invalid tags contribute `false`, and
+an `i1` `phi` joins the predecessors. The [LLVM language
+reference](https://llvm.org/docs/LangRef.html#switch-instruction) permits the
+backend to lower `switch` according to the target, while
+[`phi`](https://llvm.org/docs/LangRef.html#phi-instruction) retains the explicit
+source-semantic predecessor result. This control flow is mandatory at O0 and
+does not rely on LLVM discovering or optimizing a whole-aggregate comparison.
+Although construction fully initializes every private payload slot through
+[`insertvalue`](https://llvm.org/docs/LangRef.html#insertvalue-instruction),
+inactive slots are representation details and never enter the comparison.
+Consequently no `memcmp`, Sum-equality runtime, or target ABI algorithm is
+needed. The source Equality capability for general Sum values remains a
+separate frontend-evidence increment.
+
 A direct explicit `return` in an admitted linear function body is resolved by
 the checked frontend as a control-flow boundary, not an optional optimization.
 The return expression is checked once against the declared output, preceding
@@ -1805,7 +1822,7 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum, modular bound validation, and fallible arithmetic control flow with typed result joins |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum decisions and active-payload repeated identity, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
 | DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, checked external Location headers, and bundled renderers for private finite/infinite Int, Rational, exact Range, modular, active sum, native-stream, and location values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |
