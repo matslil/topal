@@ -2396,6 +2396,16 @@
       "cpu_time_ns": 541164,
       "memory_peak_bytes": 18591744,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/scope-packaged-fields.t": {
+      "cpu_time_ns": 132330860,
+      "memory_peak_bytes": 42622976,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/scope-packaged-fields.t": {
+      "cpu_time_ns": 206104,
+      "memory_peak_bytes": 18444288,
+      "samples_per_test": 500
     }
   }
 }

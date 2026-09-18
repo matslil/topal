@@ -2279,3 +2279,16 @@ each complete classifier and value under its one source name, and labeled and
 positional calls shall agree after declaration-order association. The shared
 regression and reversible debugger history shall cover `Array (3, Int)`,
 `Set Int`, `Bag Int`, and `Map (String, Int)` fields and exact results.
+
+## TOPAL-INTP-SUBSET-265 — Scope packaged fields
+
+All source modes shall preserve an exact root namespace or retained root-alias
+snapshot when supplied as a complete `Scope` field of a one- or two-operand
+package under `TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit expressions shall
+execute once in source order, labeled association and positional supply shall
+agree after declaration-order binding, and a closed `root` default shall
+produce the same namespace behavior. Function entry and reversible history
+shall retain the source Scope field, its concrete namespace identity and
+snapshot members, and every ordinary sibling field. The shared regression
+shall cover labeled reordering, positional parity, a closed Scope default,
+qualified data observation, and exact results.
