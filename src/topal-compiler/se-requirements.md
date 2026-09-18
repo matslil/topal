@@ -2920,9 +2920,10 @@ This shall add no global root storage, namespace/capture table, initializer
 replay, lookup, allocation, function pointer, indirect call, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or
 `topal-native/6` revision. Exact scalar forwarding is governed by
-`TOPAL-COMP-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate, callable, Scope,
-Generator, constraint, or evidence members; anonymous/escaping functions; other
-qualified-root forms; and public/library root environments remain deferred.
+`TOPAL-COMP-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate values beyond
+`TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, callable, Scope, Generator, constraint,
+or evidence members; anonymous/escaping functions; other qualified-root forms;
+and public/library root environments remain deferred.
 Future compiled-library metadata shall preserve canonical
 source-session namespace identity, selection/call positions, member stable
 identity, visibility/declaration order, classifier/semantic representation,
@@ -2957,8 +2958,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Overload-dependent forwarding, recursive
 forwarding beyond `TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
-aliases, anonymous/nested functions, aggregate or otherwise unsupported root
-members, defining-context forwarding beyond
+aliases, anonymous/nested functions, aggregate environments beyond
+`TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported root members,
+defining-context forwarding beyond
 `TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001`, escape, and
 public/library environments remain deferred. Future compiled-library metadata
 shall preserve canonical source-session namespace identity, every selection and
@@ -4327,7 +4329,8 @@ order, invalid context use, IR, artifact independence, and debugger observation.
 This increment shall add no global context storage, lookup table, closure
 allocation/runtime, function pointer, indirect call, foreign dependency, C/C++
 runtime, other-language standard library, public closure ABI, or
-`topal-native/6` revision. Aggregate, Scope, and Function captures,
+`topal-native/6` revision. Aggregate captures beyond
+`TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, Scope and Function captures,
 anonymous/escaping closures, qualified root data not admitted by
 `TOPAL-COMP-FUNCTION-ROOT-DATA-001`, and public/library contexts remain rejected.
 Exact scalar forwarding is governed by
@@ -4362,8 +4365,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Overload-dependent forwarding, recursive
 forwarding beyond `TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
-aliases, anonymous/nested functions, aggregate or otherwise unsupported context
-members, escape, and public/library environments remain deferred. Future
+aliases, anonymous/nested functions, aggregate environments beyond
+`TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported context members,
+escape, and public/library environments remain deferred. Future
 compiled-library metadata shall preserve canonical
 defining-context instance and source-session identity, every selection and call
 edge, callee identity/overload, member stable identity, captured declaration
@@ -4410,6 +4414,50 @@ and a versioned target adapter independently of private symbols, LLVM types,
 debug shadows, and physical placement. This realizes
 `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001` for increments 6b2b2d and
 6c2b.
+
+## TOPAL-COMP-AGGREGATE-ENVIRONMENT-001 — Private represented aggregate environments
+
+The checked compiler model shall admit exact Tuple, labeled Record, and nominal
+Sum values as hidden defining-context and live-root captures when every
+component has an already-admitted private representation and the complete
+aggregate contains no Function value. The same admission shall apply at direct
+entry calls, through finite acyclic statically named forwarding chains, and on
+every direct or mutual recursive edge independently admitted by the existing
+termination proofs. Capture discovery shall not establish termination.
+
+The entry edge shall pass each already-evaluated immutable aggregate, and every
+forwarding or recursive edge shall rebuild and pass that complete semantic
+value unchanged. Tuple positions, Record source field order and labels, and Sum
+nominal identity, active alternative, and payload shall remain exact. The Linux
+x86-64 backend shall emit matching compiler-private by-value LLVM aggregate
+types under `fastcc` without `byval`, `sret`, `inalloca`, or `preallocated`
+directives. LLVM shall own physical AMD64 placement and future target adapters.
+
+Full O0 DWARF/GDB shall expose each aggregate by its source capture name and
+classifier in active and suspended forwarding or recursive frames. Aligned
+debug-only shadows may retain call-clobbered aggregates without semantic
+storage. Tests shall cover Tuple, Record, and Sum context/root values; direct,
+acyclic, and proven recursive edges; checked-model capture types and cycle
+union; exact output and private IR; Function-aggregate artifact-free rejection;
+interpreter modes; reversible history; freestanding ELF/DWARF; GDB values in
+active and suspended frames; the shared corpus; and separate resource
+baselines.
+
+This shall add no global root/context storage, aggregate environment object,
+environment/namespace table, lookup, replay, allocation, dispatcher, function
+pointer, indirect call, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. Function-bearing
+aggregates; Scope, Generator, constraint, evidence, static-only, opaque, or
+otherwise unsupported representations; overload-dependent selection;
+named-function aliases; anonymous/nested/escaping functions; and public/library
+aggregate environments remain deferred. Future library metadata shall retain
+canonical context/root instance and source session, every selection/call edge,
+callee identity/overload, member identity/declaration position, complete
+semantic classifier and recursive component structure, Tuple/Record ordering
+and labels, Sum identity/alternative/payload, capture order/lifetime/effects,
+and a versioned target adapter independently of private capture names, LLVM
+aggregate types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001` for increments 6b2b2e and 6c2c.
 
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 

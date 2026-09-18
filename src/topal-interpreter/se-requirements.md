@@ -2338,3 +2338,15 @@ not intercept either qualification. The shared regression and reversible
 debugger history shall cover transitive capture requirements in both directions
 of a mutual cycle, ordered recursion events, exact results, and unchanged
 once-only source values.
+
+## TOPAL-INTP-SUBSET-270 — Represented aggregate environments
+
+All source modes shall preserve exact Tuple, labeled Record, and nominal Sum
+values selected from an ordinary function's immutable defining context or from
+the live source-session root. Those values shall remain unchanged through
+ordinary function call chains and independently proven recursion, with Tuple
+position, Record source labels and order, and Sum identity, alternative, and
+payload intact. The shared regression and reversible debugger history shall
+cover defining-context and live-root selections for all three aggregate
+classes, acyclic forwarding, proven recursion, source-ordered selection events,
+exact results, and unchanged once-only source values.

@@ -3961,7 +3961,8 @@ indirect call, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or native-ABI revision. Overload-dependent selection,
 recursive forwarding beyond
 `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
-anonymous or nested functions, aggregate or otherwise unsupported context
+anonymous or nested functions, aggregate environments beyond
+`TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported context
 members, escape, and public/library context environments remain deferred and
 SHALL be rejected before artifact publication rather than assigned a
 provisional environment ABI.
@@ -3997,11 +3998,12 @@ The lowering SHALL require no global root storage, namespace or capture table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or native-ABI revision. Exact scalar forwarding between compiled functions is
-governed by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate,
-callable, Scope, Generator, constraint, or evidence members; anonymous or
-escaping functions; root selection forms beyond exact data selection; and
-public/library root environments remain deferred and SHALL be rejected before
-artifact publication.
+governed by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001`. Aggregate values
+beyond `TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, callable, Scope, Generator,
+constraint, or evidence members; anonymous or escaping functions; root
+selection forms beyond exact data selection; and public/library root
+environments remain deferred and SHALL be rejected before artifact
+publication.
 
 Future compiled-library metadata for this boundary SHALL preserve the canonical
 source-session namespace identity, selection and call positions, member stable
@@ -4036,8 +4038,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or native-ABI revision. Overload-dependent selection, recursive forwarding
 beyond `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
-aliases, anonymous or nested functions, aggregate or otherwise unsupported root
-members, context (`@ member`) forwarding beyond
+aliases, anonymous or nested functions, aggregate environments beyond
+`TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported root members,
+context (`@ member`) forwarding beyond
 `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`, escape, and public/library root
 environments remain deferred and SHALL be rejected before artifact publication
 rather than assigned a provisional environment ABI.
@@ -4095,6 +4098,55 @@ canonical context/root instance, member identity and declaration position,
 classifier and semantic representation, capture order/lifetime/effects, and a
 versioned target adapter independently of private symbols, LLVM types, debug
 shadows, and physical placement.
+
+### TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001 — Private represented aggregate environments
+
+The exact private environment mechanisms of
+`TOPAL-COMPILER-FUNCTION-ROOT-DATA-001`,
+`TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001`,
+`TOPAL-COMPILER-CONTEXT-CAPTURE-001`, and
+`TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001` SHALL admit a captured Tuple,
+labeled Record, or nominal Sum when every component has an already-supported
+exact private value representation and the complete aggregate contains no
+Function value. This admission SHALL apply to direct entry calls, finite
+acyclic statically named forwarding chains, and every direct or mutual
+recursive edge independently admitted by the existing termination proofs. It
+SHALL NOT make an otherwise unproven recursive graph admissible.
+
+The source entry edge SHALL supply the already-evaluated immutable defining-
+context or live-root aggregate. Each intermediate and recursive edge SHALL
+forward the complete value unchanged, preserving Tuple position, Record source
+field order and labels, and Sum nominal identity, active alternative, and
+payload. Definition and call sites SHALL use the same exact compiler-private
+LLVM aggregate type under `fastcc`. The compiler SHALL express the semantic
+aggregate by value without `byval`, `sret`, `inalloca`, or `preallocated`
+placement directives and SHALL leave AMD64 register/stack classification and
+future target-specific physical placement to LLVM.
+
+Full O0 DWARF/GDB information SHALL expose each aggregate under its source
+capture name and classifier in active and suspended forwarding or recursive
+frames. Target-aligned debug-only stack shadows MAY preserve call-clobbered
+aggregate values without adding source-visible state. Correct execution and
+debugging SHALL require no LLVM optimization.
+
+The lowering SHALL add no global root/context storage, aggregate environment
+object, environment or namespace table, lookup, initializer replay,
+allocation, dispatcher, function pointer, indirect call, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or native-ABI
+revision. Function-bearing aggregates; Scope, Generator, constraint, evidence,
+static-only, opaque, or otherwise unsupported representations; overload-
+dependent selection; named-function aliases; anonymous, nested, or escaping
+functions; and public/library aggregate environments remain deferred and SHALL
+fail before artifact publication.
+
+Future compiled-library metadata for such an environment SHALL preserve its
+canonical context/root instance, source session, selection and call edges,
+callee identity and overload, member stable identity and declaration position,
+complete semantic classifier and recursive component structure, Tuple/Record
+ordering and labels, Sum identity/alternative/payload, capture order, lifetime
+and effects, and versioned target adapter. Those facts SHALL remain independent
+of compiler-private capture names, LLVM aggregate types or symbols, debug
+shadows, and physical argument placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

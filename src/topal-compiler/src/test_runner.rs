@@ -7,6 +7,7 @@ use topal_compiler::{CompileError, CompileOptions, Emit, compile_source};
 use topal_language::Session;
 
 const SHARED_REGRESSIONS: &[&str] = &[
+    "examples/language/aggregate-environments.t",
     "examples/language/anonymous-function-application.t",
     "examples/language/anonymous-function-captures.t",
     "examples/language/anonymous-list-functions.t",
