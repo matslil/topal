@@ -18412,9 +18412,12 @@ impl Analyzer {
                 .iter()
                 .any(|parameter| !parameter.fields.is_empty())
             {
-                if let Some((normalized, adapted, bindings)) =
+                let normalized = if declaration.parameters.len() == 1 {
                     self.normalize_packaged_call(declaration, &arguments)?
-                {
+                } else {
+                    self.normalize_compound_packaged_call(declaration, &arguments)?
+                };
+                if let Some((normalized, adapted, bindings)) = normalized {
                     selected = Some((normalized, adapted, bindings));
                     break;
                 }
@@ -18779,6 +18782,210 @@ impl Analyzer {
                 field
             })
             .collect();
+        Ok(Some((normalized, adapted, argument_bindings)))
+    }
+
+    #[allow(clippy::too_many_lines)] // Two source operands are validated and flattened in explicit semantic order.
+    fn normalize_compound_packaged_call(
+        &mut self,
+        declaration: &FunctionSource,
+        arguments: &[CompilerExpression],
+    ) -> Result<Option<NormalizedPackagedCall>, Diagnostic> {
+        if declaration.parameters.len() != 2 {
+            return Err(unsupported(
+                &self.source,
+                declaration.span,
+                "packaged function operand count outside one or two",
+            ));
+        }
+        if arguments.len() != declaration.parameters.len() {
+            return Ok(None);
+        }
+
+        let mut declared_names = BTreeSet::new();
+        for parameter in &declaration.parameters {
+            let names = if parameter.fields.is_empty() {
+                std::slice::from_ref(parameter)
+            } else {
+                parameter.fields.as_slice()
+            };
+            for named in names {
+                let name = self.source.slice(named.name);
+                if name != "_" && !declared_names.insert(name) {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-FUNCTION-PARAMETER",
+                        named.name,
+                        format!("parameter `{name}` is already declared in this function"),
+                    ));
+                }
+            }
+        }
+
+        let mut flattened = Vec::new();
+        let mut argument_bindings = Vec::new();
+        for (operand_index, (parameter, argument)) in
+            declaration.parameters.iter().zip(arguments).enumerate()
+        {
+            let retain = |value: &CompilerExpression,
+                          value_index: usize,
+                          bindings: &mut Vec<CompilerArgumentBinding>| {
+                let storage_name = format!(
+                    "topal.package.operand.{}.{}.{}.{}",
+                    argument.span.start, argument.span.end, operand_index, value_index
+                );
+                let local = CompilerExpression {
+                    kind: CompilerExpressionKind::Local(storage_name.clone()),
+                    value_type: value.value_type.clone(),
+                    int_range: value.int_range.clone(),
+                    rational_value: value.rational_value.clone(),
+                    span: value.span,
+                };
+                bindings.push(CompilerArgumentBinding {
+                    storage_name,
+                    value: value.clone(),
+                });
+                local
+            };
+
+            if parameter.fields.is_empty() {
+                if parameter.qualifier.is_some() || parameter.default.is_some() {
+                    return Err(unsupported(
+                        &self.source,
+                        parameter.name,
+                        "qualified or defaulted unpackaged operand beside a package",
+                    ));
+                }
+                flattened.push((
+                    parameter.clone(),
+                    Some(retain(argument, 0, &mut argument_bindings)),
+                ));
+                continue;
+            }
+            if parameter.qualifier.is_some() || parameter.default.is_some() {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.name,
+                    "qualified or defaulted outer package",
+                ));
+            }
+
+            match &argument.kind {
+                CompilerExpressionKind::Record(values) => {
+                    let declared = parameter
+                        .fields
+                        .iter()
+                        .map(|field| self.source.slice(field.name))
+                        .collect::<BTreeSet<_>>();
+                    let supplied = values
+                        .iter()
+                        .map(|(label, _)| label.as_str())
+                        .collect::<BTreeSet<_>>();
+                    if supplied.len() != values.len()
+                        || values
+                            .iter()
+                            .any(|(label, _)| !declared.contains(label.as_str()))
+                        || parameter.fields.iter().any(|field| {
+                            field.default.is_none()
+                                && !supplied.contains(self.source.slice(field.name))
+                        })
+                    {
+                        return Ok(None);
+                    }
+                    let supplied = values
+                        .iter()
+                        .enumerate()
+                        .map(|(value_index, (label, value))| {
+                            (
+                                label.clone(),
+                                retain(value, value_index, &mut argument_bindings),
+                            )
+                        })
+                        .collect::<BTreeMap<_, _>>();
+                    flattened.extend(parameter.fields.iter().cloned().map(|field| {
+                        let supplied = supplied.get(self.source.slice(field.name)).cloned();
+                        (field, supplied)
+                    }));
+                }
+                CompilerExpressionKind::Tuple(values) if values.len() == parameter.fields.len() => {
+                    flattened.extend(parameter.fields.iter().cloned().zip(
+                        values.iter().enumerate().map(|(value_index, value)| {
+                            Some(retain(value, value_index, &mut argument_bindings))
+                        }),
+                    ));
+                }
+                _ if matches!(
+                    argument.value_type,
+                    CompilerType::Tuple(_) | CompilerType::Record(_)
+                ) =>
+                {
+                    return Err(unsupported(
+                        &self.source,
+                        argument.span,
+                        "opaque or mismatched compound packaged function operand",
+                    ));
+                }
+                _ => return Ok(None),
+            }
+        }
+
+        let mut normalized_parameters = Vec::with_capacity(flattened.len());
+        let mut adapted = Vec::with_capacity(flattened.len());
+        for (mut parameter, supplied) in flattened {
+            if parameter.qualifier.is_some() || !parameter.fields.is_empty() {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.name,
+                    "nested or qualified compound packaged field",
+                ));
+            }
+            let expected = self.parse_classifier(parameter.classifier)?;
+            if matches!(expected, CompilerType::Scope | CompilerType::Function)
+                || !expected.machine_scalar()
+                || !compiler_function_parameter_supported(&expected)
+            {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.classifier,
+                    "non-scalar compound packaged operand field",
+                ));
+            }
+            let value = if let Some(value) = supplied {
+                value
+            } else {
+                let Some(default) = &parameter.default else {
+                    return Ok(None);
+                };
+                let value = match self.analyze_expression(default, &BTreeMap::new()) {
+                    Ok(value) => value,
+                    Err(error) if error.code == "E-UNBOUND-NAME" => {
+                        return Err(unsupported(
+                            &self.source,
+                            default.span(),
+                            "non-closed compound packaged field default",
+                        ));
+                    }
+                    Err(error) => return Err(error),
+                };
+                if !compiler_expression_is_closed(&value) {
+                    return Err(unsupported(
+                        &self.source,
+                        default.span(),
+                        "non-closed compound packaged field default",
+                    ));
+                }
+                value
+            };
+            let Some(value) = adapt_call_argument(&expected, &value) else {
+                return Ok(None);
+            };
+            parameter.default = None;
+            normalized_parameters.push(parameter);
+            adapted.push(value);
+        }
+
+        let mut normalized = declaration.clone();
+        normalized.parameters = normalized_parameters;
         Ok(Some((normalized, adapted, argument_bindings)))
     }
 
@@ -32842,6 +33049,108 @@ mod tests {
         assert!(matches!(
             &arguments[2].kind,
             CompilerExpressionKind::Local(storage) if storage == right_storage
+        ));
+    }
+
+    #[test]
+    fn models_compound_packaged_operands_in_source_and_declaration_order() {
+        // TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/compound-packaged-function-operands.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected compound packaged results")
+        };
+        assert_eq!(results.len(), 5);
+        assert!(
+            results
+                .iter()
+                .all(|result| exact_int(result) == Some(BigInt::from(42)))
+        );
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: left_offset_storage,
+            value: left_offset,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the first left-package field is retained first")
+        };
+        assert_eq!(exact_int(left_offset), Some(BigInt::from(1)));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: left_storage,
+            value: left_value,
+            body,
+        } = &body.kind
+        else {
+            panic!("the second left-package field is retained second")
+        };
+        assert!(matches!(
+            left_value.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: right_storage,
+            value: right_value,
+            body,
+        } = &body.kind
+        else {
+            panic!("the right-package field is retained after the left package")
+        };
+        assert!(matches!(
+            right_value.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one flattened direct compound-package call")
+        };
+        assert_eq!(arguments.len(), 4);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == left_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == left_offset_storage
+        ));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == right_storage
+        ));
+        assert_eq!(exact_int(&arguments[3]), Some(BigInt::from(0)));
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: value_storage,
+            value,
+            body,
+        } = &results[3].kind
+        else {
+            panic!("the packaged mixed operand is retained first")
+        };
+        assert!(matches!(value.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: factor_storage,
+            value: factor,
+            body,
+        } = &body.kind
+        else {
+            panic!("the ordinary mixed operand is retained second")
+        };
+        assert!(matches!(factor.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one flattened direct mixed-package call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == value_storage
+        ));
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(2)));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == factor_storage
         ));
     }
 

@@ -2197,3 +2197,14 @@ defaulted field may occur at any declaration position. Function binding and
 entry shall expose fields in declaration order. The shared regression and
 reversible debugger history shall cover reordered supplied function calls,
 non-trailing default omission, explicit labeled supply, and positional parity.
+
+## TOPAL-INTP-SUBSET-258 — Compound packaged operands
+
+All source modes shall admit a field package in either or both syntactic
+operand positions under `TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit
+ordinary operands and package fields shall execute once in global source order.
+Omitted defaults shall then execute in operand and field declaration order, and
+function entry shall bind ordinary operands and flattened fields in that same
+declaration order. The shared regression and reversible debugger history shall
+cover package/package, package/scalar, scalar/package, labeled/defaulted and
+positional forms, and source-ordered function calls.

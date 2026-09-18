@@ -3771,10 +3771,11 @@ exact IR, execution, artifact independence, and debugger observation.
 
 The emitted IR shall use no `byval`, `sret`, `inalloca`, or `preallocated`
 attribute and no package runtime or allocation. General label association is
-governed by `TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001`. Multiple or mixed
-packages, non-scalar/nested fields, opaque package values, and
-invocation-dependent defaults remain rejected until their complete evaluation,
-storage, and public ABI rules are implemented. This shall add no foreign
+governed by `TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001`. Two or mixed packages
+are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar/nested
+fields, opaque package values, and invocation-dependent defaults remain rejected
+until their complete evaluation, storage, and public ABI rules are implemented.
+This shall add no foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
 ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
@@ -3810,12 +3811,55 @@ C/C++ runtime, other-language standard library, public aggregate ABI, or
 `topal-native/6` revision. Future compiled-library metadata shall encode stable
 field identities, declaration order, default semantics and dependencies,
 evaluation effects, representation identity, and target adapters independently
-of compiler-private binding names, LLVM types, and physical placement. Multiple
-or mixed packages, non-scalar/nested fields, opaque package values,
-invocation- or capture-dependent defaults, and public package adapters remain
-deferred. This realizes `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
+of compiler-private binding names, LLVM types, and physical placement. Two
+or mixed packages are governed by
+`TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar/nested fields, opaque
+package values, invocation- or capture-dependent defaults, and public package
+adapters remain deferred. This realizes `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5ai.
+
+## TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001 — Two and mixed scalar packages
+
+The checked compiler model shall admit a closed scalar package in either or
+both of a function's two syntactic operand positions. An unpackaged operand
+mixed with a package shall have an admitted non-callable scalar classifier.
+Both source operands remain mandatory. Names shall be unique across all fields
+and unpackaged operands. Unknown or duplicate labels, missing required fields,
+classifier mismatches, and duplicate parameter names shall reject before LLVM
+lowering or artifact publication.
+
+The frontend shall retain every explicit ordinary operand and package field
+exactly once in global source order: left operand before right operand and each
+product's fields in source order. Omitted closed defaults shall execute after
+all explicit values, in operand and field declaration order. The normalized
+direct call shall receive ordinary operands and package fields in operand order,
+with fields in declaration order. Compiler-private ordering bindings shall have
+no source-level or DWARF identity.
+
+LLVM definitions and calls shall use one matching flattened private `fastcc`
+parameter per ordinary operand or package field, leaving physical AMD64
+register and stack placement to LLVM. GDB shall expose only the source
+parameters/fields, classifiers, values, and ordinary function frame. Tests
+shall cover package/package, package/scalar, scalar/package, arbitrary label
+order, closed defaults, positional parity, global source-order calls, invalid
+labels and duplicate names, exact IR, all interpreter modes, reversible
+debugging, the shared corpus and separate resource baselines, freestanding
+ELF/DWARF properties, and O0 GDB values/frames.
+
+This shall add no package aggregate at the call boundary, `byval`, `sret`,
+`inalloca`, `preallocated`, package runtime, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public aggregate ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall preserve
+syntactic-operand partition/order beside stable field identities and order,
+default semantics/dependencies, evaluation effects, representation identity,
+and target adapters, independently of compiler-private names, LLVM types, and
+physical placement. Callable, Scope, non-scalar, nested, or opaque compound
+package values, invocation- or capture-dependent defaults, recursive compound
+signatures, and public package adapters remain deferred. This realizes
+`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`,
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5aj.
 
 ## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
 

@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 231);
+    assert_eq!(examples.len(), 232);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3296,6 +3296,39 @@ fn records_packaged_field_association_reversibly() {
         .unwrap();
     assert!(right < left, "{stdout}");
     assert!(stdout.contains("function.argument.bound"));
+    assert!(stdout.contains("TOPAL-FUNCTION-PACKAGED-OPERAND-001"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_compound_packaged_operands_reversibly() {
+    // TOPAL-INTP-SUBSET-258, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}compound-packaged-function-operands.debug"),
+            &language_example("compound-packaged-function-operands.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let left = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] left-value")
+        .unwrap();
+    let right = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] right-value")
+        .unwrap();
+    let scale_value = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] scale-value")
+        .unwrap();
+    let scale_factor = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] scale-factor")
+        .unwrap();
+    assert!(left < right && scale_value < scale_factor, "{stdout}");
+    assert!(stdout.contains("function.argument.defaulted"));
     assert!(stdout.contains("TOPAL-FUNCTION-PACKAGED-OPERAND-001"));
     assert!(stdout.contains("function.exit"));
 }

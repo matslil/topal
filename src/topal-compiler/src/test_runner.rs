@@ -28,6 +28,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/comparison-decisions.t",
     "examples/language/completed-evidence.t",
     "examples/language/completion-effect-value.t",
+    "examples/language/compound-packaged-function-operands.t",
     "examples/language/constraint-classifier.t",
     "examples/language/constraints-and-derived-capabilities.t",
     "examples/language/constructed-context.t",
