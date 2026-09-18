@@ -139,7 +139,8 @@ evidence.
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
 | 7b2 | closed direct root tasks with one private Nat state, distinct identity, immediate FIFO event/request transactions, and debugging | complete |
-| 7b | nonempty effects and inference, resources, layout construction and encoding, locations, general tasks, observable contexts, streams, overlapping scheduling, termination, time, static flow, and platform packages | planned |
+| 7b3 | closed one-yield task stream with affine ownership, immediate FIFO transaction ordering, erased inert resumption, and debugging | complete |
+| 7b | nonempty effects and inference, resources, layout construction and encoding, locations, general tasks, observable contexts, general streams, overlapping scheduling, termination, time, static flow, and platform packages | planned |
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
 | 8a2 | closed Int-constraint proof/rejection, dynamic predicate evaluation, refined base operations, existing Result/Error integration, and debugging | complete |
@@ -780,9 +781,16 @@ transaction metadata; allocates distinct Topal-owned instances; and commits
 immediate FIFO Nat state transactions at O0. Because context is proven
 unobservable and sends cannot overlap in this subset, it erases context and
 queue carriers before LLVM while keeping semantic identities in the checked
-model. 7b retains nonempty effect execution/inference, layout construction and
-encoding, observable/general tasks, streams, termination, overlapping
-scheduling, and the remaining platform-semantic work. Increment 8a
+model. 7b3 extends the same closed task with one affine stream transaction: the
+checked model retains its Nat-yield, Unit-resume, Unit-success Result, owning
+task, and stable transaction identity; traversal loads committed state at the
+source yield and completes before a later request. Its inert resumption and
+absence of post-resume state access prove that a continuation carrier is
+unobservable, so O0 lowering inlines the suspension without relying on LLVM
+optimization. 7b retains nonempty effect execution/inference, layout
+construction and encoding, observable/general tasks, general streams,
+termination, overlapping scheduling, and the remaining platform-semantic work.
+Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;
 8a1 adds closed named Constraint-object metadata and private observation tags;
 8a2 applies closed Int constraints, retains static evidence over unchanged base

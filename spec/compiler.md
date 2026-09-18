@@ -3581,8 +3581,9 @@ and stable transaction identity while generated O0 code MAY erase the
 unobservable context value and queue storage. Such erasure is a checked
 language lowering, not an optional LLVM optimization. The declared queue bound
 and scheduling policy SHALL remain in target-independent task metadata. Task
-streams, overlapping delivery, observable context, queue overflow, and
-termination delivery SHALL remain rejected.
+streams beyond `TOPAL-COMPILER-TASK-STREAM-001`, overlapping delivery,
+observable context, queue overflow, and termination delivery SHALL remain
+rejected.
 
 Linux x86-64 lowering SHALL allocate a private Topal-owned instance containing
 identity, lifecycle state, and the current arbitrary-precision Nat pointer.
@@ -3600,6 +3601,41 @@ revision, nominal task and definition identities, queue and scheduler policy,
 state schema, handler kind and complete signature, context/transaction model,
 effects and authorities, ownership and termination contract, debug provenance,
 and native-representation adapter independently of LLVM types and symbols.
+
+### TOPAL-COMPILER-TASK-STREAM-001 — Closed one-yield task stream transaction
+
+The compiler SHALL extend `TOPAL-COMPILER-TASK-DIRECT-001` with an ordinary
+stream handler whose `MessageContext` and Unit payload are explicitly
+discarded, whose yield classifier is `Nat`, whose resumption classifier is
+Unit, whose final result is `Result (Unit, ())`, and whose body yields the
+current private Nat state exactly once before returning Unit. Applying that
+handler SHALL establish one affine stream transaction with a stable identity.
+Its yield SHALL observe state committed by every preceding event, and the
+stream's successful final result SHALL commit before a following request is
+delivered.
+
+The checked model SHALL retain the stream's complete yield, resume, and final
+result directions; owning task instance; handler identity; and transaction
+identity. Traversal SHALL consume the stream exactly once. For this closed
+immediate-FIFO case, the traversal action SHALL be an inert Unit resumption and
+the handler performs no post-resumption state access. Generated O0 code MAY
+therefore inline the single suspension, erase the unobservable resumption and
+continuation carriers, and load private state directly at the source yield.
+This is a checked language lowering and SHALL NOT rely on an LLVM optimization.
+General stream bodies, observable context or resumption, multiple yields,
+post-resumption state access, abandonment, close delivery, overlapping
+delivery, and termination interaction SHALL remain rejected.
+
+Linux x86-64 lowering SHALL reuse the private Topal-owned task instance, state
+load, and Result-success representation without adding a foreign runtime,
+C/C++ standard library, other-language standard library, or public ABI. LLVM
+SHALL continue to select physical layout and calling-convention details. DWARF
+SHALL expose the nominal owning task, affine Generator directions, stream
+binding, source yield, and private state. Future compiled-library metadata
+SHALL describe stream handler directions, transaction and suspension identity,
+state-authority release/reacquisition, ownership and consumption, close and
+termination behavior, effects and authorities, debug provenance, and native
+adapter requirements independently of LLVM types, layouts, and symbols.
 
 ### TOPAL-COMPILER-STATIC-INTROSPECTION-001 — Closed static introspection foundation
 
