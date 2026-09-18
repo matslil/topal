@@ -9685,6 +9685,79 @@ fn function_input_boundary_is_private_direct_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn function_result_boundary_is_private_direct_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-RESULT-001, TOPAL-FUNCTION-VALUE-001,
+    // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-function-result-boundary");
+    let source = directory.join("function-results.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-results.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-results.t:11",
+            "-ex",
+            "break function-results.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "print operation",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis selected",
+            "-ex",
+            "print selected",
+            "-ex",
+            "continue",
+            "-ex",
+            "print operation",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = <fn increment>"), "{text}");
+    assert!(text.contains("type = enum Function"), "{text}");
+    assert!(text.contains("$2 = <fn increment>"), "{text}");
+    assert!(text.contains("$3 = +"), "{text}");
+    assert!(text.contains("topal.fn.select.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn direct_anonymous_functions_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-DIRECT-001, TOPAL-FUNCTION-ANONYMOUS-001,
     // TOPAL-SYN-GRAMMAR-001, TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

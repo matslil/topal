@@ -2758,6 +2758,30 @@ Function results, Function values embedded in aggregate boundaries, anonymous
 functions/captures, remaining symbolic callables, and published callable
 interfaces remain outside this increment and SHALL be rejected.
 
+### TOPAL-COMPILER-FUNCTION-RESULT-001 — Specialized private Function results
+
+An ordinary or static root function whose declared result classifier is
+`Function` SHALL admit an already-supported named root or symbolic Function
+value as its result. A specialized `Function` parameter MAY be returned when
+its call-site identity is one of those admitted values. The checked compiler
+SHALL retain the result's callable identity through the direct call and any
+subsequent binding chain; applying the result SHALL use that retained identity
+and SHALL NOT dispatch on its machine value or restart name lookup.
+
+The exact private LLVM signature SHALL return the existing i32 Function
+observation tag. The caller SHALL issue a direct `fastcc` call to obtain that
+tag, while later application SHALL lower directly to the selected private
+function or operation. At O0, Function-result locals SHALL use target-aligned
+debug-only stack shadows so DWARF/GDB can observe the returned value even when
+specialization makes the tag computationally dead. LLVM SHALL own the physical
+AMD64 register and stack placement.
+
+Anonymous, capturing, nested, dynamically computed, aggregate-contained, and
+published Function results remain outside this increment and SHALL be rejected.
+No function pointer, indirect call, closure allocation/runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public callable
+ABI, or native ABI revision is permitted.
+
 ### TOPAL-COMPILER-ANONYMOUS-DIRECT-001 — Private direct anonymous functions
 
 An inferred anonymous function containing only binding parameter patterns and

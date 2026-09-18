@@ -1214,6 +1214,24 @@ impl<'a> Generator<'a> {
                             body,
                             binding.span,
                         );
+                    } else if binding.value.value_type == CompilerType::Function
+                        && matches!(&binding.value.kind, CompilerExpressionKind::Call { .. })
+                    {
+                        let variable = self.debug.local(
+                            &binding.name,
+                            binding.span,
+                            &binding.value.value_type,
+                            body.subprogram,
+                        );
+                        let location = self.debug.location(binding.span, body.subprogram);
+                        self.emit_aggregate_debug_shadow(
+                            value.enumeration(),
+                            &binding.value.value_type,
+                            variable,
+                            location,
+                            body,
+                            binding.span,
+                        );
                     } else if binding.value.value_type.machine_scalar() {
                         let variable = self.debug.local(
                             &binding.name,
@@ -3042,8 +3060,15 @@ impl<'a> Generator<'a> {
                         ),
                         enumeration: scope_enumeration(),
                     },
-                    CompilerType::Function
-                    | CompilerType::Identity
+                    CompilerType::Function => LlValue::Enum {
+                        value: body.instruction(
+                            &format!("call fastcc i32 @{symbol}({arguments})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        enumeration: function_value_enumeration(self.program),
+                    },
+                    CompilerType::Identity
                     | CompilerType::TypeView
                     | CompilerType::FunctionView
                     | CompilerType::LanguageContext
@@ -11876,6 +11901,42 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.int.add("));
         assert!(llvm.contains("!DILocalVariable(name: \"operation\""));
         assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn emits_closed_function_results_as_private_tags_with_direct_application() {
+        // TOPAL-COMPILER-FUNCTION-RESULT-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-results.t"
+        ))
+        .unwrap();
+        let selectors = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "select")
+            .collect::<Vec<_>>();
+        assert_eq!(selectors.len(), 2);
+        let llvm = Generator::new(&program, "function-results.t").emit();
+        for selector in selectors {
+            assert!(llvm.contains(&format!(
+                "define internal fastcc i32 @{}(i32 %arg0)",
+                selector.symbol
+            )));
+            assert!(llvm.contains(&format!("call fastcc i32 @{}(i32", selector.symbol)));
+        }
+        let increment = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "increment")
+            .unwrap();
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(", increment.symbol)));
+        assert!(llvm.contains("call ptr @topal.runtime.int.add("));
+        assert!(llvm.contains("!DILocalVariable(name: \"selected\""));
+        assert!(llvm.contains("!DILocalVariable(name: \"addition\""));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("call ptr %"));
     }
 

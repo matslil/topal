@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 212);
+    assert_eq!(examples.len(), 213);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4384,6 +4384,23 @@ fn every_mode_passes_callable_values_through_functions() {
                 .contains("42")
         );
     }
+}
+
+#[test]
+fn every_mode_returns_callable_values_from_functions() {
+    let source = include_str!("../../../examples/language/function-results.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(
+            String::from_utf8(output.stdout)
+                .unwrap()
+                .contains("(42, 42)")
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-VALUE-001"));
+    assert!(trace.contains("TOPAL-FUNCTION-CALLABLE-VALUE-001"));
 }
 
 #[test]

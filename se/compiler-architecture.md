@@ -107,10 +107,15 @@ before selected bodies are checked, so an acyclic scalar call may target a
 later source declaration. Depth-first instantiation emits the selected callee
 before its caller while retaining source locations for both DWARF frames;
 ordinary initializer bindings remain source-ordered. This increment covers
-statically decidable scalar headers. Dynamic structural classifier dispatch,
-Function results, escaping/capturing closures, and remaining recursive call
-graphs remain later frontend work and do not leak into the private ABI
-prematurely.
+statically decidable scalar headers. A closed named-root or symbolic `Function`
+result reuses the private i32 observation tag while its specialization retains
+the callable identity separately, so a later application is still a direct
+call or operation rather than tag dispatch. Target-aligned debug-only shadows
+keep otherwise-dead Function result bindings observable at O0. Aggregate,
+capturing, anonymous, dynamic, and published Function results, dynamic
+structural classifier dispatch, escaping/capturing closures, and remaining
+recursive call graphs remain later frontend work and do not leak into the
+private ABI prematurely.
 
 Within a single compiled source application, the executable `root` namespace
 is also a frontend identity rather than a runtime lookup table. The checked

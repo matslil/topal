@@ -1384,6 +1384,7 @@ struct Analyzer {
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     anonymous_callables: BTreeMap<u32, CompilerCallableFacts>,
     anonymous_function_value_names: Vec<String>,
+    returned_function_values: BTreeMap<String, CompilerCallableFacts>,
     constraints: Vec<CompilerConstraint>,
     constraint_bindings: BTreeMap<String, u32>,
     in_function: bool,
@@ -1429,6 +1430,7 @@ impl Analyzer {
             root_bindings: BTreeMap::new(),
             anonymous_callables: BTreeMap::new(),
             anonymous_function_value_names: Vec::new(),
+            returned_function_values: BTreeMap::new(),
             constraints: Vec::new(),
             constraint_bindings: BTreeMap::new(),
             in_function: false,
@@ -15310,6 +15312,12 @@ impl Analyzer {
                 .and_then(|facts| facts.callable.clone())
                 .map(Some)
                 .ok_or_else(|| unsupported(&self.source, value.span, "opaque Function value")),
+            CompilerExpressionKind::Call { symbol, .. } => self
+                .returned_function_values
+                .get(symbol)
+                .cloned()
+                .map(Some)
+                .ok_or_else(|| unsupported(&self.source, value.span, "opaque Function result")),
             _ => Err(unsupported(
                 &self.source,
                 value.span,
@@ -17873,7 +17881,10 @@ impl Analyzer {
         let returns_value_boundary_generator =
             is_admitted_value_boundary_generator_type(&result_type);
         let returns_generator = returns_character_generator || returns_value_boundary_generator;
-        if !compiler_function_result_supported(&result_type) && !returns_generator {
+        if result_type != CompilerType::Function
+            && !compiler_function_result_supported(&result_type)
+            && !returns_generator
+        {
             return Err(unsupported(
                 &self.source,
                 declaration.result,
@@ -18372,6 +18383,39 @@ impl Analyzer {
         } else {
             None
         };
+        let returned_function_value = if result_type == CompilerType::Function {
+            let callable = self
+                .known_callable(&body.result, &environment, body.result.span.start)?
+                .expect("checked Function expression retains callable facts");
+            let supported = match &callable {
+                CompilerCallableFacts::Named {
+                    name,
+                    declarations,
+                    captures,
+                } => {
+                    captures.is_empty()
+                        && self.functions.get(name).is_some_and(|root_declarations| {
+                            declarations.iter().all(|declaration| {
+                                root_declarations
+                                    .iter()
+                                    .any(|root| root.span == declaration.span)
+                            })
+                        })
+                }
+                CompilerCallableFacts::Symbolic(_) => true,
+                CompilerCallableFacts::Anonymous { .. } => false,
+            };
+            if !supported {
+                return Err(unsupported(
+                    &self.source,
+                    body.result.span,
+                    "capturing, anonymous, or nested Function result",
+                ));
+            }
+            Some(callable)
+        } else {
+            None
+        };
         let symbol = reserved_symbol.map_or_else(
             || self.reserve_function_symbol(function_name),
             str::to_owned,
@@ -18381,6 +18425,10 @@ impl Analyzer {
         if let Some(generator) = returned_generator_value {
             self.returned_generator_values
                 .insert(symbol.clone(), generator);
+        }
+        if let Some(callable) = returned_function_value {
+            self.returned_function_values
+                .insert(symbol.clone(), callable);
         }
         self.instances.push(CompilerFunction {
             source_name: function_name.to_owned(),
@@ -29534,6 +29582,58 @@ mod tests {
                 .count(),
             2
         );
+    }
+
+    #[test]
+    fn models_closed_specialized_function_results() {
+        // TOPAL-COMPILER-FUNCTION-RESULT-001,
+        // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-results.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected named and symbolic Function-result applications")
+        };
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
+        let selectors = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "select")
+            .collect::<Vec<_>>();
+        assert_eq!(selectors.len(), 2);
+        assert!(selectors.iter().all(|function| {
+            function.result_type == CompilerType::Function
+                && matches!(
+                    function.body.result,
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Local(_),
+                        value_type: CompilerType::Function,
+                        ..
+                    }
+                )
+        }));
+
+        let static_symbolic = analyze_for_compiler(
+            "use language (version is v0.1)\nselect is fn static (operation : Function) -> Function\n  operation\naddition is select +\naddition (20, 22)\n",
+        )
+        .unwrap();
+        assert_eq!(
+            exact_int(&static_symbolic.main.result),
+            Some(BigInt::from(42))
+        );
+
+        for rejected in [
+            "use language (version is v0.1)\nconstruct is fn () -> Function\n  { value } value + 1\nconstruct ()\n",
+            "use language (version is v0.1)\nouter is fn () -> Function\n  inner is fn (value : Int) -> Int\n    value + 1\n  inner\nouter ()\n",
+            "use language (version is v0.1)\npair is fn (operation : Function) -> (Function, Int)\n  (operation, 1)\npair +\n",
+        ] {
+            assert_eq!(
+                analyze_for_compiler(rejected).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
     }
 
     #[test]
