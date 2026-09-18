@@ -870,11 +870,11 @@ impl<'a> Generator<'a> {
             let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
-            let retained_root_capture = parameter.name.starts_with("root ");
+            let retained_context_capture = function_parameter_is_context_capture(parameter);
             if retained_character_generator_source
                 || retained_value_generator_source
                 || retained_unused_enum
-                || retained_root_capture
+                || retained_context_capture
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -10656,11 +10656,15 @@ fn function_parameter_debug_shadow_span(
     function: &CompilerFunction,
     parameter: &CompilerParameter,
 ) -> Span {
-    if parameter.name.starts_with("root ") {
+    if function_parameter_is_context_capture(parameter) {
         function.span
     } else {
         parameter.span
     }
+}
+
+fn function_parameter_is_context_capture(parameter: &CompilerParameter) -> bool {
+    parameter.name.starts_with("root ") || parameter.name.starts_with("@ ")
 }
 
 fn function_llvm_return_type(function: &CompilerFunction) -> String {
@@ -12145,6 +12149,60 @@ mod tests {
             1,
             "the defining-context initializer must execute exactly once"
         );
+    }
+
+    #[test]
+    fn forwards_defining_context_as_exact_private_arguments() {
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+        // TOPAL-CONTEXT-SELECT-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/defining-context-forwarding.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "defining-context-forwarding.t").emit();
+        for name in ["read", "relay", "forward"] {
+            let symbol = &program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol;
+            assert!(llvm.contains(&format!(
+                "define internal fastcc {{ ptr, ptr, ptr }} @{symbol}(ptr %arg0, ptr %arg1, ptr %arg2)"
+            )));
+        }
+        let read = &program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "read")
+            .unwrap()
+            .symbol;
+        let relay = &program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "relay")
+            .unwrap()
+            .symbol;
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr, ptr }} @{read}(ptr %arg0, ptr %arg1, ptr %arg2)"
+        )));
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr, ptr }} @{relay}(ptr %arg0, ptr %arg1, ptr %arg2)"
+        )));
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"@ offset\", arg: 2")
+                .count(),
+            3
+        );
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"@ label\", arg: 3")
+                .count(),
+            3
+        );
+        assert!(llvm.matches("alloca ptr, align 8").count() >= 6);
+        assert!(!llvm.contains("topal.runtime.context"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

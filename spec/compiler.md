@@ -3928,10 +3928,50 @@ C/C++ runtime, other-language standard library, public closure ABI, or native
 ABI revision is permitted.
 
 Selection outside a function SHALL remain a context-selection error. Aggregate,
-Scope, or Function members, calls requiring capture forwarding between compiled
-functions, anonymous captures, escaping functions, qualified root access not
-admitted by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-001`, and public/library context
-environments remain outside this increment and SHALL be rejected.
+Scope, or Function members, anonymous captures, escaping functions, qualified
+root access not admitted by `TOPAL-COMPILER-FUNCTION-ROOT-DATA-001`, and
+public/library context environments remain outside this increment and SHALL be
+rejected. Exact scalar forwarding between compiled functions is governed by
+`TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`.
+
+### TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001 — Private defining-context forwarding
+
+For a call from the source entry frame through a finite acyclic chain of
+statically named ordinary root functions, the checked frontend SHALL compute
+the transitive exact `@ member` selections before instantiating the outer
+function. Each selected member SHALL come from the immutable context snapshot
+of the function containing that direct selection, so a member declared after
+that selecting function SHALL remain unavailable. Each intermediate function
+SHALL receive every required supported private machine value and SHALL forward
+the same already-evaluated value at each direct call edge. A same-named caller,
+parameter, or local binding in any frame SHALL remain isolated from `@`.
+
+Within the existing hidden-capture group, forwarded context values SHALL retain
+root declaration order. Every definition and call SHALL use matching exact LLVM
+types under private `fastcc`, and LLVM SHALL own AMD64 physical placement. Full
+O0 DWARF/GDB information SHALL expose every explicit parameter and forwarded
+`@ member` value correctly in the active frame and in each suspended caller
+frame. The backend MAY use target-aligned debug-only stack shadows to preserve
+values across call-clobbered registers; those shadows SHALL NOT add
+source-visible state or change execution semantics.
+
+The lowering SHALL use no global context storage, namespace, capture, or
+environment table, initializer replay, lookup, allocation, function pointer,
+indirect call, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or native-ABI revision. Overload-dependent selection,
+recursive forwarding, named-function aliases, anonymous or nested functions,
+aggregate or otherwise unsupported context members, escape, and public/library
+context environments remain deferred and SHALL be rejected before artifact
+publication rather than assigned a provisional environment ABI.
+
+Future compiled-library metadata for a forwarding chain SHALL preserve the
+canonical defining-context instance and source session, every selection and
+call edge, callee identity and overload, member stable identity, captured
+declaration position, visibility and declaration order, classifier and semantic
+representation, capture order, lifetime and effects, and versioned target
+adapter. Those facts SHALL remain independent of private capture names, LLVM
+types or symbols, debug shadows, and target-specific physical argument
+placement.
 
 ### TOPAL-COMPILER-FUNCTION-ROOT-DATA-001 — Private live-root data capture
 

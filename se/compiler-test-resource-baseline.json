@@ -2426,6 +2426,16 @@
       "cpu_time_ns": 163872,
       "memory_peak_bytes": 18526208,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/defining-context-forwarding.t": {
+      "cpu_time_ns": 131965620,
+      "memory_peak_bytes": 42643456,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/defining-context-forwarding.t": {
+      "cpu_time_ns": 161694,
+      "memory_peak_bytes": 18411520,
+      "samples_per_test": 500
     }
   }
 }

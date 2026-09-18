@@ -191,10 +191,31 @@ arguments in root declaration order. The callee receives ordinary exact LLVM
 parameters under `fastcc`; its body binds them under distinct `@ member` storage
 keys, so neither caller locals nor ordinary same-named parameters can intercept
 selection. DWARF uses the source spelling `@ member`. This is private closure
-conversion without an environment object: cross-function forwarding,
-aggregate/callable capture, escape, qualified root access outside the exact
-direct-entry data case below, and public/library contexts remain deferred to the
-unified closure and compiled-library ABI.
+conversion without an environment object. Aggregate/callable capture, escape,
+qualified root access outside the exact direct-entry data case below, and
+public/library contexts remain deferred to the unified closure and
+compiled-library ABI.
+
+The first defining-context forwarding extension computes transitive scalar
+requirements for a finite acyclic chain of statically named functions before
+instantiating its outer frame. The value remains the immutable snapshot captured
+by the function containing the direct `@ member` selection; declaration
+filtering is therefore applied at that selecting function, never at the caller.
+Each intermediate private signature receives the exact value in root
+declaration order and forwards its caller parameter at the direct `fastcc` edge.
+No callee reaches into an ancestor frame or global context object. Target-aligned
+debug-only stack shadows keep both active and suspended-frame values observable
+when LLVM uses call-clobbered locations at O0. Overload-dependent, recursive,
+function-value, nested, and anonymous chains remain fail-closed until their
+environment identities and cycle rules are modeled explicitly.
+
+A future compiled-library context boundary must encode canonical context
+instance and source-session identity, every selection and call edge, stable
+callee/member identity and overload, captured declaration position,
+visibility/order, canonical classifier and representation,
+capture order/lifetime/effects, and a versioned target adapter independently of
+private parameter names, LLVM types or symbols, debug shadows, and physical
+placement.
 
 Direct function-body `root member` data selection uses a related but
 deliberately different private capture. Resolution observes the live

@@ -2957,7 +2957,8 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Overload-dependent or recursive forwarding,
 named-function aliases, anonymous/nested functions, aggregate or otherwise
-unsupported root members, defining-context forwarding, escape, and
+unsupported root members, defining-context forwarding beyond
+`TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001`, escape, and
 public/library environments remain deferred. Future compiled-library metadata
 shall preserve canonical source-session namespace identity, every selection and
 call edge, callee identity/overload, member stable identity,
@@ -4320,18 +4321,55 @@ receive the same exact private `fastcc` prototype at definition and call sites
 and own physical x86-64 placement. Full O0 DWARF/GDB shall expose `@ member`, its
 source type and value, and the surrounding ordinary source function frame.
 Native tests shall cover exact output, lexical shadow isolation, declaration
-order, invalid context use, forwarding rejection, IR, artifact independence,
-and debugger observation.
+order, invalid context use, IR, artifact independence, and debugger observation.
 
 This increment shall add no global context storage, lookup table, closure
 allocation/runtime, function pointer, indirect call, foreign dependency, C/C++
 runtime, other-language standard library, public closure ABI, or
 `topal-native/6` revision. Aggregate, Scope, and Function captures,
-cross-function forwarding, anonymous/escaping closures, qualified root data not
-admitted by `TOPAL-COMP-FUNCTION-ROOT-DATA-001`, and public/library contexts
-remain rejected. This realizes
+anonymous/escaping closures, qualified root data not admitted by
+`TOPAL-COMP-FUNCTION-ROOT-DATA-001`, and public/library contexts remain rejected.
+Exact scalar forwarding is governed by
+`TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001`. This realizes
 `TOPAL-COMPILER-CONTEXT-CAPTURE-001` and `TOPAL-CONTEXT-SELECT-001` for compiler
 increment 6c1.
+
+## TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001 — Private defining-context forwarding
+
+For a finite acyclic chain of statically named ordinary root functions reached
+from the source entry frame, the checked model shall compute transitive exact
+`@ member` selections before instantiating the outer function. Each selected
+value shall come from the immutable context snapshot of the function containing
+that direct selection, with declaration-position filtering applied there. The
+frontend shall append every required supported private machine value to each
+intermediate function's hidden capture group in root declaration order and
+forward the same already-evaluated value at every direct call edge. Same-named
+caller bindings, parameters, and locals shall remain isolated in every frame.
+
+The Linux x86-64 backend shall emit matching exact `fastcc` definitions and
+calls and leave physical placement to LLVM. Full O0 DWARF/GDB shall expose all
+explicit and forwarded parameters accurately in the active function and every
+suspended caller frame. Target-aligned debug-only stack shadows may preserve
+call-clobbered values without adding semantic storage. Tests shall cover a
+three-frame shared regression, interpreter modes, reversible history, checked
+capture order and call arguments, overload-dependent and recursive rejection,
+exact direct IR, artifact-free failure, freestanding ELF/DWARF, every GDB frame,
+the shared corpus, and separate resource baselines.
+
+This shall add no global context storage, namespace/capture/environment table,
+initializer replay, lookup, allocation, function pointer, indirect call,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Overload-dependent or recursive forwarding,
+named-function aliases, anonymous/nested functions, aggregate or otherwise
+unsupported context members, escape, and public/library environments remain
+deferred. Future compiled-library metadata shall preserve canonical
+defining-context instance and source-session identity, every selection and call
+edge, callee identity/overload, member stable identity, captured declaration
+position, visibility/declaration order, classifier/semantic representation,
+capture order/lifetime/effects, and a versioned target adapter independently of
+private names, LLVM types/symbols, debug shadows, and physical placement. This
+realizes `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001` and
+`TOPAL-CONTEXT-SELECT-001` for increment 6c2a.
 
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 

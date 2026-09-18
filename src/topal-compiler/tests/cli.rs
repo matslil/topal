@@ -13706,6 +13706,146 @@ fn defining_context_capture_is_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers forwarding, rejection, artifacts, and every GDB frame.
+fn defining_context_forwarding_is_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001, TOPAL-CONTEXT-SELECT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-defining-context-forwarding");
+    let source = directory.join("defining-context-forwarding.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/defining-context-forwarding.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(40, 2, \"ready\")\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for name in ["read", "relay", "forward"] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!("@topal.fn.{name}."))
+                    && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    assert!(ir.lines().any(|line| {
+        line.contains("call fastcc { ptr, ptr, ptr } @topal.fn.read.")
+            && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+    }));
+    assert!(ir.lines().any(|line| {
+        line.contains("call fastcc { ptr, ptr, ptr } @topal.fn.relay.")
+            && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+    }));
+    for forbidden in [
+        "topal.context",
+        "context.runtime",
+        "context.environment",
+        "lookup.context",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, rejected_source, diagnostic) in [
+        (
+            "overloaded",
+            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
+            "overload-dependent defining-context capture forwarding",
+        ),
+        (
+            "recursive",
+            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value\n    <= 0 then @ offset\n    otherwise read (value - 1)\nread 1\n",
+            "recursive defining-context capture forwarding",
+        ),
+    ] {
+        let rejected_path = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_path, rejected_source).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_path.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(
+            String::from_utf8_lossy(&rejected.stderr).contains(diagnostic),
+            "{}",
+            String::from_utf8_lossy(&rejected.stderr)
+        );
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break defining-context-forwarding.t:11",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert_eq!(text.matches("@ offset = 40").count(), 3, "{text}");
+    assert_eq!(text.matches("@ label = \"ready\"").count(), 3, "{text}");
+    assert_eq!(text.matches("offset = 2").count(), 3, "{text}");
+    assert!(text.contains("topal.fn.read.0"), "{text}");
+    assert!(text.contains("topal.fn.relay.1"), "{text}");
+    assert!(text.contains("topal.fn.forward.2"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn modular_values_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-TYPE-001,
     // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001,

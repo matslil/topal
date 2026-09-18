@@ -18619,17 +18619,6 @@ impl Analyzer {
         let (scope_arguments, scope_captures) =
             self.scope_parameter_arguments(&declaration, &arguments, &call_environment)?;
         let context_captures = self.defining_context_captures(&declaration, &call_environment)?;
-        if self.in_function
-            && context_captures
-                .iter()
-                .any(|capture| capture.parameter_name.starts_with("@ "))
-        {
-            return Err(unsupported(
-                &self.source,
-                span,
-                "cross-function root/context capture forwarding",
-            ));
-        }
         let identity = function_overload_identity(&self.source, function_name, &declaration);
         if self.in_function
             && self.active_calls.contains(&identity)
@@ -18641,6 +18630,18 @@ impl Analyzer {
                 &self.source,
                 span,
                 "recursive root-data capture forwarding",
+            ));
+        }
+        if self.in_function
+            && self.active_calls.contains(&identity)
+            && context_captures
+                .iter()
+                .any(|capture| capture.parameter_name.starts_with("@ "))
+        {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "recursive defining-context capture forwarding",
             ));
         }
         let metadata = CompilerCallMetadata {
@@ -19107,22 +19108,19 @@ impl Analyzer {
         declaration: &FunctionSource,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<Vec<CompilerContextCapture>, Diagnostic> {
-        let mut captures = self
-            .root_bindings
-            .iter()
-            .filter_map(|(member_name, facts)| {
-                (facts.declaration_end <= declaration.span.start)
-                    .then(|| {
-                        function_body_context_member_span(
-                            &self.source,
-                            &declaration.body,
-                            member_name,
-                        )
-                    })
-                    .flatten()
-                    .map(|span| (member_name, facts, span))
-            })
-            .collect::<Vec<_>>();
+        let mut context_captures = Vec::new();
+        for (member_name, facts) in &self.root_bindings {
+            let mut visiting = BTreeSet::new();
+            if let Some(span) = self.transitive_context_member_span(
+                declaration,
+                member_name,
+                facts.declaration_end,
+                &mut visiting,
+            )? {
+                context_captures.push((member_name, facts, span));
+            }
+        }
+        let mut captures = context_captures;
         captures.sort_by_key(|(_, facts, _)| facts.declaration_end);
         let mut captures = captures
             .into_iter()
@@ -19136,12 +19134,25 @@ impl Analyzer {
                         "non-scalar defining-context capture",
                     ));
                 }
+                let parameter_name = format!("@ {member_name}");
+                let argument = if self.in_function {
+                    let current = environment.get(&parameter_name).ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            span,
+                            "defining-context forwarding without an exact caller capture",
+                        )
+                    })?;
+                    binding_expression(current, span)
+                } else {
+                    data_member_expression(facts, span)
+                };
                 Ok(CompilerContextCapture {
-                    parameter_name: format!("@ {member_name}"),
+                    parameter_name,
                     value_type: facts.value_type.clone(),
                     int_range: facts.int_range.clone(),
                     rational_value: facts.rational_value.clone(),
-                    argument: data_member_expression(facts, span),
+                    argument,
                     span,
                 })
             })
@@ -19194,6 +19205,64 @@ impl Analyzer {
                 .collect::<Result<Vec<_>, _>>()?,
         );
         Ok(captures)
+    }
+
+    fn transitive_context_member_span(
+        &self,
+        declaration: &FunctionSource,
+        member_name: &str,
+        member_declaration_end: usize,
+        visiting: &mut BTreeSet<String>,
+    ) -> Result<Option<Span>, Diagnostic> {
+        if member_declaration_end <= declaration.span.start
+            && let Some(span) =
+                function_body_context_member_span(&self.source, &declaration.body, member_name)
+        {
+            return Ok(Some(span));
+        }
+        let identity = function_overload_identity(
+            &self.source,
+            self.source.slice(declaration.name),
+            declaration,
+        );
+        if !visiting.insert(identity.clone()) {
+            return Ok(None);
+        }
+        let references =
+            function_body_called_function_spans(&self.source, &self.functions, declaration);
+        for (called_name, call_span) in references {
+            let declarations = self
+                .functions
+                .get(&called_name)
+                .expect("collected call reference has declarations");
+            let mut carries_member = false;
+            for called in declarations {
+                if self
+                    .transitive_context_member_span(
+                        called,
+                        member_name,
+                        member_declaration_end,
+                        visiting,
+                    )?
+                    .is_some()
+                {
+                    carries_member = true;
+                }
+            }
+            if carries_member {
+                visiting.remove(&identity);
+                if declarations.len() != 1 {
+                    return Err(unsupported(
+                        &self.source,
+                        call_span,
+                        "overload-dependent defining-context capture forwarding",
+                    ));
+                }
+                return Ok(Some(call_span));
+            }
+        }
+        visiting.remove(&identity);
+        Ok(None)
     }
 
     fn transitive_root_member_span(
@@ -31660,16 +31729,72 @@ mod tests {
         .unwrap_err();
         assert_eq!(later.code, "E-COMPILER-UNSUPPORTED");
 
-        let forwarded = analyze_for_compiler(
-            "use language (version is v0.1)\noffset is 40\nadd-offset is fn (value : Int) -> Int\n  value + @ offset\nwrapper is fn (value : Int) -> Int\n  add-offset value\nwrapper 2\n",
-        )
-        .unwrap_err();
-        assert_eq!(forwarded.code, "E-COMPILER-UNSUPPORTED");
-
         let outside =
             analyze_for_compiler("use language (version is v0.1)\noffset is 40\n@ offset\n")
                 .unwrap_err();
         assert_eq!(outside.code, "E-CONTEXT-SELECTION");
+    }
+
+    #[test]
+    fn models_private_scalar_defining_context_forwarding() {
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001
+        let forwarded = analyze_for_compiler(include_str!(
+            "../../../examples/language/defining-context-forwarding.t"
+        ))
+        .unwrap();
+        for name in ["read", "relay", "forward"] {
+            let function = forwarded
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.parameters.len(), 3);
+            assert_eq!(function.parameters[0].name, "offset");
+            assert_eq!(function.parameters[1].name, "@ offset");
+            assert_eq!(function.parameters[2].name, "@ label");
+        }
+        let relay = forwarded
+            .functions
+            .iter()
+            .find(|function| function.source_name == "relay")
+            .unwrap();
+        let CompilerExpressionKind::Call { arguments, .. } = &relay.body.result.kind else {
+            panic!("relay retains its direct forwarded call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(name) if name == "@ offset"
+        ));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(name) if name == "@ label"
+        ));
+
+        let overloaded = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(overloaded.code, "E-COMPILER-UNSUPPORTED");
+
+        let aliased = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nread is fn () -> Int\n  @ offset\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(aliased.code, "E-COMPILER-UNSUPPORTED");
+
+        let shadowed = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 1\nread is fn (value : Int) -> Int\n  value + @ offset\nwrapper is fn () -> Int\n  read is +\n  read (20, 22)\nwrapper ()\n",
+        )
+        .unwrap();
+        let wrapper = shadowed
+            .functions
+            .iter()
+            .find(|function| function.source_name == "wrapper")
+            .unwrap();
+        assert!(wrapper.parameters.is_empty());
+        assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
     }
 
     #[test]

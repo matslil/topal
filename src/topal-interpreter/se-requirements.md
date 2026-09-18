@@ -2314,3 +2314,15 @@ Same-named parameters in every frame shall remain isolated from root
 qualification. The shared regression and reversible debugger history shall
 cover a three-function call chain, multiple root classifiers, parameter shadow
 isolation, source-ordered selection events, and the exact result.
+
+## TOPAL-INTP-SUBSET-268 — Defining-context data through function call chains
+
+All source modes shall retain each ordinary function's immutable defining
+context independently of caller bindings and function parameters. A leaf
+function's exact `@ member` selections shall therefore observe the same
+once-captured values when one or more intermediate functions forward only
+ordinary explicit parameters. Same-named parameters in every frame shall remain
+isolated from context qualification. The shared regression and reversible
+debugger history shall cover a three-function call chain, multiple context
+classifiers, parameter-shadow isolation, source-ordered selection events, and
+the exact result.

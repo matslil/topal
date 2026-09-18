@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 241);
+    assert_eq!(examples.len(), 242);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5201,6 +5201,26 @@ fn every_mode_selects_defining_context_members() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8(output.stdout).unwrap().contains("42"));
+    }
+}
+
+#[test]
+fn every_mode_forwards_defining_context_members() {
+    // TOPAL-INTP-SUBSET-268, TOPAL-CONTEXT-SELECT-001,
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001
+    let source = include_str!("../../../examples/language/defining-context-forwarding.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("(40, 2, \"ready\")"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
     }
 }
 

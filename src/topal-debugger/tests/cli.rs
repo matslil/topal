@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 241);
+    assert_eq!(examples.len(), 242);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4135,6 +4135,41 @@ fn records_defining_context_selection() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("context.member.selected [TOPAL-CONTEXT-SELECT-001] offset"));
     assert!(stdout.contains("evaluation.add [TOPAL-NUM-ADD-001] Int"));
+}
+
+#[test]
+fn records_defining_context_forwarding_reversibly() {
+    // TOPAL-INTP-SUBSET-268, TOPAL-CONTEXT-SELECT-001,
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}defining-context-forwarding.debug"),
+            &language_example("defining-context-forwarding.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let forward = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] forward")
+        .unwrap();
+    let relay = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] relay")
+        .unwrap();
+    let read = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] read")
+        .unwrap();
+    let offset = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] offset")
+        .unwrap();
+    let label = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] label")
+        .unwrap();
+    assert!(forward < relay && relay < read && read < offset && offset < label);
+    assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001] (Int, Int, String)"));
+    assert!(stdout.contains("function.exit"));
 }
 
 #[test]
