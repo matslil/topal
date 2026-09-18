@@ -939,6 +939,14 @@ done:
 
 define internal ptr @topal.runtime.int.negate(ptr %value) nounwind noinline {
 entry:
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
+  %sign = load i64, ptr %sign.pointer, align 8
+  switch i64 %sign, label %finite [ i64 2, label %positive.infinity i64 3, label %negative.infinity ]
+positive.infinity:
+  ret ptr @topal.runtime.int.negative.infinity
+negative.infinity:
+  ret ptr @topal.runtime.int.positive.infinity
+finite:
   %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
   %length = load i64, ptr %length.pointer, align 8
   %empty = icmp eq i64 %length, 0
@@ -957,6 +965,13 @@ define internal ptr @topal.runtime.int.absolute(ptr %value) nounwind noinline {
 entry:
   %negative.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
   %negative = load i64, ptr %negative.pointer, align 8
+  %positive.infinity = icmp eq i64 %negative, 2
+  %negative.infinity = icmp eq i64 %negative, 3
+  %infinity = or i1 %positive.infinity, %negative.infinity
+  br i1 %infinity, label %infinite, label %finite
+infinite:
+  ret ptr @topal.runtime.int.positive.infinity
+finite:
   %already.absolute = icmp eq i64 %negative, 0
   br i1 %already.absolute, label %same, label %copy
 same:
@@ -1119,6 +1134,34 @@ done:
 
 define internal ptr @topal.runtime.int.add(ptr %left, ptr %right) nounwind noinline {
 entry:
+  %left.sign.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
+  %right.sign.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
+  %left.sign = load i64, ptr %left.sign.pointer, align 8
+  %right.sign = load i64, ptr %right.sign.pointer, align 8
+  %left.positive.infinity = icmp eq i64 %left.sign, 2
+  %left.negative.infinity = icmp eq i64 %left.sign, 3
+  %left.infinity = or i1 %left.positive.infinity, %left.negative.infinity
+  br i1 %left.infinity, label %validate.left.infinity, label %check.right.infinity
+validate.left.infinity:
+  %right.positive.infinity = icmp eq i64 %right.sign, 2
+  %right.negative.infinity = icmp eq i64 %right.sign, 3
+  %right.infinity = or i1 %right.positive.infinity, %right.negative.infinity
+  %different.infinity = icmp ne i64 %left.sign, %right.sign
+  %indeterminate = and i1 %right.infinity, %different.infinity
+  br i1 %indeterminate, label %indeterminate.infinity, label %return.left.infinity
+indeterminate.infinity:
+  call void @topal.platform.exit(i64 70)
+  unreachable
+return.left.infinity:
+  ret ptr %left
+check.right.infinity:
+  %right.is.positive.infinity = icmp eq i64 %right.sign, 2
+  %right.is.negative.infinity = icmp eq i64 %right.sign, 3
+  %right.is.infinity = or i1 %right.is.positive.infinity, %right.is.negative.infinity
+  br i1 %right.is.infinity, label %return.right.infinity, label %finite
+return.right.infinity:
+  ret ptr %right
+finite:
   %left.zero = call i1 @topal.runtime.int.is.zero(ptr %left)
   br i1 %left.zero, label %return.right, label %check.right
 return.right:
@@ -1164,6 +1207,34 @@ entry:
 
 define internal ptr @topal.runtime.int.multiply(ptr %left, ptr %right) nounwind noinline {
 entry:
+  %left.sign.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
+  %right.sign.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
+  %left.sign = load i64, ptr %left.sign.pointer, align 8
+  %right.sign = load i64, ptr %right.sign.pointer, align 8
+  %left.positive.infinity = icmp eq i64 %left.sign, 2
+  %left.negative.infinity = icmp eq i64 %left.sign, 3
+  %left.infinity = or i1 %left.positive.infinity, %left.negative.infinity
+  %right.positive.infinity = icmp eq i64 %right.sign, 2
+  %right.negative.infinity = icmp eq i64 %right.sign, 3
+  %right.infinity = or i1 %right.positive.infinity, %right.negative.infinity
+  %either.infinity = or i1 %left.infinity, %right.infinity
+  br i1 %either.infinity, label %infinite, label %finite
+infinite:
+  %left.zero = call i1 @topal.runtime.int.is.zero(ptr %left)
+  %right.zero = call i1 @topal.runtime.int.is.zero(ptr %right)
+  %either.zero = or i1 %left.zero, %right.zero
+  br i1 %either.zero, label %indeterminate.infinity, label %select.infinity
+indeterminate.infinity:
+  call void @topal.platform.exit(i64 70)
+  unreachable
+select.infinity:
+  %left.negative = and i64 %left.sign, 1
+  %right.negative = and i64 %right.sign, 1
+  %negative = xor i64 %left.negative, %right.negative
+  %result.negative = icmp ne i64 %negative, 0
+  %infinity = select i1 %result.negative, ptr @topal.runtime.int.negative.infinity, ptr @topal.runtime.int.positive.infinity
+  ret ptr %infinity
+finite:
   %left.length.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 1
   %right.length.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 1
   %left.length = load i64, ptr %left.length.pointer, align 8
@@ -1183,12 +1254,8 @@ failure:
   unreachable
 allocate:
   %result.length = add i64 %left.length, %right.length
-  %left.negative.pointer = getelementptr %topal.IntStorage, ptr %left, i32 0, i32 0
-  %right.negative.pointer = getelementptr %topal.IntStorage, ptr %right, i32 0, i32 0
-  %left.negative = load i64, ptr %left.negative.pointer, align 8
-  %right.negative = load i64, ptr %right.negative.pointer, align 8
-  %negative = xor i64 %left.negative, %right.negative
-  %result = call ptr @topal.runtime.int.allocate(i64 %result.length, i64 %negative)
+  %finite.negative = xor i64 %left.sign, %right.sign
+  %result = call ptr @topal.runtime.int.allocate(i64 %result.length, i64 %finite.negative)
   br label %clear
 clear:
   %clear.index = phi i64 [0, %allocate], [%clear.next, %clear]
@@ -1339,9 +1406,13 @@ emit:
 
 define internal i1 @topal.runtime.int.is.zero(ptr %value) nounwind noinline {
 entry:
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
+  %sign = load i64, ptr %sign.pointer, align 8
+  %finite = icmp ult i64 %sign, 2
   %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
   %length = load i64, ptr %length.pointer, align 8
-  %zero = icmp eq i64 %length, 0
+  %empty = icmp eq i64 %length, 0
+  %zero = and i1 %finite, %empty
   ret i1 %zero
 }
 
@@ -1611,6 +1682,16 @@ entry:
 
 define internal ptr @topal.runtime.rational.make(ptr %numerator, ptr %denominator) nounwind noinline {
 entry:
+  %numerator.sign.pointer = getelementptr %topal.IntStorage, ptr %numerator, i32 0, i32 0
+  %numerator.sign = load i64, ptr %numerator.sign.pointer, align 8
+  %positive.infinity = icmp eq i64 %numerator.sign, 2
+  %negative.infinity = icmp eq i64 %numerator.sign, 3
+  %infinity = or i1 %positive.infinity, %negative.infinity
+  br i1 %infinity, label %make.infinity, label %finite
+make.infinity:
+  %infinite.value = call ptr @topal.runtime.rational.raw(ptr %numerator, ptr @topal.runtime.int.one)
+  ret ptr %infinite.value
+finite:
   %denominator.zero = call i1 @topal.runtime.int.is.zero(ptr %denominator)
   br i1 %denominator.zero, label %failure, label %check.numerator
 failure:
@@ -1630,11 +1711,11 @@ normalize:
   %denominator.division = call ptr @topal.runtime.int.divmod.absolute(ptr %denominator.absolute, ptr %divisor)
   %reduced.numerator.absolute = call ptr @topal.runtime.int.divmod.quotient(ptr %numerator.division)
   %reduced.denominator = call ptr @topal.runtime.int.divmod.quotient(ptr %denominator.division)
-  %numerator.sign.pointer = getelementptr %topal.IntStorage, ptr %numerator, i32 0, i32 0
-  %denominator.sign.pointer = getelementptr %topal.IntStorage, ptr %denominator, i32 0, i32 0
-  %numerator.sign = load i64, ptr %numerator.sign.pointer, align 8
-  %denominator.sign = load i64, ptr %denominator.sign.pointer, align 8
-  %sign = xor i64 %numerator.sign, %denominator.sign
+  %finite.numerator.sign.pointer = getelementptr %topal.IntStorage, ptr %numerator, i32 0, i32 0
+  %finite.denominator.sign.pointer = getelementptr %topal.IntStorage, ptr %denominator, i32 0, i32 0
+  %finite.numerator.sign = load i64, ptr %finite.numerator.sign.pointer, align 8
+  %finite.denominator.sign = load i64, ptr %finite.denominator.sign.pointer, align 8
+  %sign = xor i64 %finite.numerator.sign, %finite.denominator.sign
   %reduced.numerator = call ptr @topal.runtime.int.copy.with.sign(ptr %reduced.numerator.absolute, i64 %sign)
   %result = call ptr @topal.runtime.rational.raw(ptr %reduced.numerator, ptr %reduced.denominator)
   ret ptr %result

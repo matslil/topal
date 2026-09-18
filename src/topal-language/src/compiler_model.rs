@@ -4,6 +4,7 @@
 //! Extending it is how later compiler increments acquire semantics; the LLVM
 //! backend never reinterprets the source syntax itself.
 
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use num_bigint::BigInt;
@@ -820,6 +821,10 @@ pub enum CompilerExpressionKind {
     },
     Block(Box<CompilerBlock>),
     Local(String),
+    InfinityLocal {
+        storage_name: String,
+        negative: bool,
+    },
     Negate(Box<CompilerExpression>),
     Absolute(Box<CompilerExpression>),
     IntToRational(Box<CompilerExpression>),
@@ -1270,6 +1275,7 @@ struct BindingFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
+    infinity_negative: Option<bool>,
     string_value: Option<String>,
     closed_int_range: Option<ClosedIntRange>,
     list_count: Option<usize>,
@@ -1294,6 +1300,7 @@ struct CompilerDataMemberFacts {
     value_type: CompilerType,
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
+    infinity_negative: Option<bool>,
     declaration_end: usize,
 }
 
@@ -1339,6 +1346,7 @@ impl CompilerDataMemberFacts {
             value_type: facts.value_type.clone(),
             int_range: facts.int_range.clone(),
             rational_value: facts.rational_value.clone(),
+            infinity_negative: facts.infinity_negative,
             declaration_end,
         }
     }
@@ -8430,6 +8438,7 @@ impl Analyzer {
                 value_type: CompilerType::Function,
                 int_range: None,
                 rational_value: None,
+                infinity_negative: None,
                 string_value: None,
                 closed_int_range: None,
                 list_count: None,
@@ -8769,6 +8778,7 @@ impl Analyzer {
                     } else {
                         None
                     };
+                    let infinity_negative = compiler_infinity_direction(&value);
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
                         runtime_bound: !external_static
@@ -8776,6 +8786,7 @@ impl Analyzer {
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
+                        infinity_negative,
                         string_value,
                         closed_int_range,
                         list_count,
@@ -8894,6 +8905,7 @@ impl Analyzer {
                             value_type: value.value_type.clone(),
                             int_range: value.int_range.clone(),
                             rational_value: value.rational_value.clone(),
+                            infinity_negative: compiler_infinity_direction(&value),
                             string_value: None,
                             closed_int_range: None,
                             list_count: Self::known_list_count(&value, environment),
@@ -9634,6 +9646,7 @@ impl Analyzer {
                     value_type,
                     int_range: None,
                     rational_value: None,
+                    infinity_negative: None,
                     string_value: None,
                     closed_int_range: None,
                     list_count: None,
@@ -9685,6 +9698,7 @@ impl Analyzer {
                     value_type,
                     int_range: None,
                     rational_value: None,
+                    infinity_negative: None,
                     string_value: None,
                     closed_int_range: None,
                     list_count: None,
@@ -10160,7 +10174,13 @@ impl Analyzer {
                     ));
                 }
                 Ok(CompilerExpression {
-                    kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+                    kind: facts.infinity_negative.map_or_else(
+                        || CompilerExpressionKind::Local(facts.storage_name.clone()),
+                        |negative| CompilerExpressionKind::InfinityLocal {
+                            storage_name: facts.storage_name.clone(),
+                            negative,
+                        },
+                    ),
                     value_type: facts.value_type.clone(),
                     int_range: facts.int_range.clone(),
                     rational_value: facts.rational_value.clone(),
@@ -10228,6 +10248,7 @@ impl Analyzer {
                 value_type: base_type.clone(),
                 int_range: None,
                 rational_value: None,
+                infinity_negative: None,
                 string_value: None,
                 closed_int_range: None,
                 list_count: None,
@@ -13941,7 +13962,11 @@ impl Analyzer {
                     upper: -range.lower.clone(),
                 });
             let rational_value = operand.rational_value.as_ref().map(|value| -value.clone());
-            let value_type = operand.value_type.clone();
+            let value_type = if operand.value_type == CompilerType::InfiniteNat {
+                CompilerType::InfiniteInt
+            } else {
+                operand.value_type.clone()
+            };
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Negate(Box::new(operand)),
                 value_type,
@@ -13995,7 +14020,11 @@ impl Analyzer {
                     rational_absolute(value)
                 }
             });
-            let value_type = operand.value_type.clone();
+            let value_type = if negate && operand.value_type == CompilerType::InfiniteNat {
+                CompilerType::InfiniteInt
+            } else {
+                operand.value_type.clone()
+            };
             return Ok(CompilerExpression {
                 kind: if negate {
                     CompilerExpressionKind::Negate(Box::new(operand))
@@ -15877,6 +15906,7 @@ impl Analyzer {
                         value_type: argument.value_type.clone(),
                         int_range: argument.int_range.clone(),
                         rational_value: argument.rational_value.clone(),
+                        infinity_negative: compiler_infinity_direction(argument),
                         string_value: exact_string(argument),
                         closed_int_range: None,
                         list_count: Self::known_list_count(argument, call_environment),
@@ -16096,11 +16126,62 @@ impl Analyzer {
             ));
         }
         if infinite && !comparison {
-            return Err(unsupported(
-                &self.source,
-                span,
-                "infinity arithmetic outside exact comparison and ranges",
-            ));
+            if !matches!(
+                operation,
+                CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
+            ) {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "infinity arithmetic outside exact +, -, and *",
+                ));
+            }
+            if rational_domain
+                && (matches!(
+                    left_value.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ) || matches!(
+                    right_value.value_type,
+                    CompilerType::InfiniteInt | CompilerType::InfiniteNat
+                ))
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "cross-domain Int/Rational infinity arithmetic",
+                ));
+            }
+            let outcome = compiler_infinity_binary_outcome(operation, &left_value, &right_value);
+            match outcome {
+                CompilerInfinityArithmeticOutcome::Indeterminate => {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-INDETERMINATE-INFINITY",
+                        span,
+                        "this infinity arithmetic expression does not determine one exact numeric value",
+                    ));
+                }
+                CompilerInfinityArithmeticOutcome::NeedsDynamicResult => {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "dynamic indeterminate infinity Result",
+                    ));
+                }
+                CompilerInfinityArithmeticOutcome::Direction(_) => {}
+            }
+            let result_type = if rational_domain {
+                left_value = into_rational(left_value);
+                right_value = into_rational(right_value);
+                CompilerType::InfiniteRational
+            } else {
+                left_value = forget_nat_evidence(left_value);
+                right_value = forget_nat_evidence(right_value);
+                CompilerType::InfiniteInt
+            };
+            let result = Self::finish_binary(operation, left_value, right_value, result_type, span);
+            debug_assert!(compiler_infinity_direction(&result).is_some());
+            return Ok(result);
         }
 
         if matches!(
@@ -17627,6 +17708,9 @@ impl Analyzer {
                         rational_value: (!generalize_parameters)
                             .then(|| argument.rational_value.clone())
                             .flatten(),
+                        infinity_negative: (!generalize_parameters)
+                            .then(|| compiler_infinity_direction(argument))
+                            .flatten(),
                         string_value: (!generalize_parameters)
                             .then(|| exact_string(argument))
                             .flatten(),
@@ -17674,6 +17758,7 @@ impl Analyzer {
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
+                    infinity_negative: None,
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
@@ -17710,6 +17795,7 @@ impl Analyzer {
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
+                    infinity_negative: None,
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
@@ -17745,6 +17831,7 @@ impl Analyzer {
                     value_type: capture.value_type.clone(),
                     int_range: capture.int_range.clone(),
                     rational_value: capture.rational_value.clone(),
+                    infinity_negative: None,
                     string_value: exact_string(argument),
                     closed_int_range: None,
                     list_count: None,
@@ -20373,7 +20460,13 @@ fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
     CompilerExpression {
-        kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+        kind: facts.infinity_negative.map_or_else(
+            || CompilerExpressionKind::Local(facts.storage_name.clone()),
+            |negative| CompilerExpressionKind::InfinityLocal {
+                storage_name: facts.storage_name.clone(),
+                negative,
+            },
+        ),
         value_type: facts.value_type.clone(),
         int_range: facts.int_range.clone(),
         rational_value: facts.rational_value.clone(),
@@ -20404,6 +20497,7 @@ fn decision_binding_environment(
             value_type,
             int_range: None,
             rational_value: None,
+            infinity_negative: None,
             string_value: None,
             closed_int_range: None,
             list_count: None,
@@ -20923,7 +21017,10 @@ fn compiler_expression_is_closed_with(
                     .all(|(_, value)| compiler_expression_is_closed_with(value, bound))
         }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
-        CompilerExpressionKind::Local(name) => bound.contains(name),
+        CompilerExpressionKind::Local(name)
+        | CompilerExpressionKind::InfinityLocal {
+            storage_name: name, ..
+        } => bound.contains(name),
         CompilerExpressionKind::TaskConstruct { .. }
         | CompilerExpressionKind::TaskStateLoad { .. }
         | CompilerExpressionKind::TaskStateReplace { .. }
@@ -21441,6 +21538,129 @@ fn rational_absolute(value: &BigRational) -> BigRational {
         -value.clone()
     } else {
         value.clone()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CompilerInfinityOperand {
+    NegativeInfinity,
+    Finite(Option<Ordering>),
+    PositiveInfinity,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CompilerInfinityArithmeticOutcome {
+    Direction(bool),
+    Indeterminate,
+    NeedsDynamicResult,
+}
+
+fn compiler_finite_numeric_sign(expression: &CompilerExpression) -> Option<Ordering> {
+    if let Some(value) = expression.rational_value.as_ref() {
+        return Some(value.cmp(&BigRational::from_integer(BigInt::from(0))));
+    }
+    if let Some(value) = exact_int(expression) {
+        return Some(value.cmp(&BigInt::from(0)));
+    }
+    expression.int_range.as_ref().and_then(|range| {
+        if range.lower > BigInt::from(0) {
+            Some(Ordering::Greater)
+        } else if range.upper < BigInt::from(0) {
+            Some(Ordering::Less)
+        } else if range.lower == BigInt::from(0) && range.upper == BigInt::from(0) {
+            Some(Ordering::Equal)
+        } else {
+            None
+        }
+    })
+}
+
+fn compiler_infinity_operand(expression: &CompilerExpression) -> CompilerInfinityOperand {
+    match compiler_infinity_direction(expression) {
+        Some(true) => CompilerInfinityOperand::NegativeInfinity,
+        Some(false) => CompilerInfinityOperand::PositiveInfinity,
+        None => CompilerInfinityOperand::Finite(compiler_finite_numeric_sign(expression)),
+    }
+}
+
+fn compiler_infinity_binary_outcome(
+    operation: CompilerBinary,
+    left: &CompilerExpression,
+    right: &CompilerExpression,
+) -> CompilerInfinityArithmeticOutcome {
+    use CompilerInfinityArithmeticOutcome::{Direction, Indeterminate, NeedsDynamicResult};
+    use CompilerInfinityOperand::{Finite, NegativeInfinity, PositiveInfinity};
+    let left = compiler_infinity_operand(left);
+    let right = compiler_infinity_operand(right);
+    match operation {
+        CompilerBinary::Add => match (left, right) {
+            (NegativeInfinity, PositiveInfinity) | (PositiveInfinity, NegativeInfinity) => {
+                Indeterminate
+            }
+            (NegativeInfinity, _) | (_, NegativeInfinity) => Direction(true),
+            (PositiveInfinity, _) | (_, PositiveInfinity) => Direction(false),
+            (Finite(_), Finite(_)) => unreachable!("infinity arithmetic has an infinite operand"),
+        },
+        CompilerBinary::Subtract => match (left, right) {
+            (NegativeInfinity, NegativeInfinity) | (PositiveInfinity, PositiveInfinity) => {
+                Indeterminate
+            }
+            (NegativeInfinity, _) | (_, PositiveInfinity) => Direction(true),
+            (PositiveInfinity, _) | (_, NegativeInfinity) => Direction(false),
+            (Finite(_), Finite(_)) => unreachable!("infinity arithmetic has an infinite operand"),
+        },
+        CompilerBinary::Multiply => {
+            let negative = |operand| match operand {
+                NegativeInfinity | Finite(Some(Ordering::Less)) => Ok(true),
+                PositiveInfinity | Finite(Some(Ordering::Greater)) => Ok(false),
+                Finite(Some(Ordering::Equal)) => Err(Indeterminate),
+                Finite(None) => Err(NeedsDynamicResult),
+            };
+            match (negative(left), negative(right)) {
+                (Ok(left), Ok(right)) => Direction(left ^ right),
+                (Err(Indeterminate), _) | (_, Err(Indeterminate)) => Indeterminate,
+                (Err(NeedsDynamicResult), _) | (_, Err(NeedsDynamicResult)) => NeedsDynamicResult,
+                (Err(Direction(_)), _) | (_, Err(Direction(_))) => {
+                    unreachable!("direction is never an operand-sign error")
+                }
+            }
+        }
+        _ => NeedsDynamicResult,
+    }
+}
+
+fn compiler_infinity_direction(expression: &CompilerExpression) -> Option<bool> {
+    match &expression.kind {
+        CompilerExpressionKind::Infinity { negative }
+        | CompilerExpressionKind::InfinityLocal { negative, .. } => Some(*negative),
+        CompilerExpressionKind::Negate(value) => Some(!compiler_infinity_direction(value)?),
+        CompilerExpressionKind::Absolute(value) => {
+            compiler_infinity_direction(value).map(|_| false)
+        }
+        CompilerExpressionKind::IntToRational(value)
+        | CompilerExpressionKind::IntToNat(value)
+        | CompilerExpressionKind::RationalToInt(value) => compiler_infinity_direction(value),
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(
+            operation,
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
+        ) =>
+        {
+            if compiler_infinity_direction(left).is_none()
+                && compiler_infinity_direction(right).is_none()
+            {
+                return None;
+            }
+            match compiler_infinity_binary_outcome(*operation, left, right) {
+                CompilerInfinityArithmeticOutcome::Direction(negative) => Some(negative),
+                CompilerInfinityArithmeticOutcome::Indeterminate
+                | CompilerInfinityArithmeticOutcome::NeedsDynamicResult => None,
+            }
+        }
+        _ => None,
     }
 }
 
@@ -31297,6 +31517,7 @@ mod tests {
     #[test]
     fn models_contextual_exact_infinities_and_explicit_int_range_endpoints() {
         // TOPAL-NUM-INFINITY-001, TOPAL-NUM-COMPARE-001,
+        // TOPAL-NUM-INFINITY-ARITHMETIC-001,
         // TOPAL-NUM-THREE-WAY-COMPARE-001, TOPAL-RANGE-BOUNDS-001,
         // TOPAL-RANGE-INTERSECTION-001, TOPAL-COMPILER-INFINITY-001
         let source = include_str!("../../../examples/language/infinity-values-and-ranges.t");
@@ -31342,6 +31563,15 @@ mod tests {
             program.main.result.value_type,
             CompilerType::Tuple(_)
         ));
+        let arithmetic = analyze_for_compiler(
+            "use language (version is v0.1)\nupper : Int is +Infinity\nupper + 1",
+        )
+        .unwrap();
+        assert_eq!(arithmetic.main.result.value_type, CompilerType::InfiniteInt);
+        assert_eq!(
+            compiler_infinity_direction(&arithmetic.main.result),
+            Some(false)
+        );
 
         for (invalid, expected) in [
             (
@@ -31351,10 +31581,6 @@ mod tests {
             (
                 "use language (version is v0.1)\ninvalid : Nat is -Infinity\ninvalid",
                 "E-INFINITY-CLASSIFIER",
-            ),
-            (
-                "use language (version is v0.1)\nupper : Int is +Infinity\nupper + 1",
-                "E-COMPILER-UNSUPPORTED",
             ),
             (
                 "use language (version is v0.1)\nvalue is fn () -> Int\n  +Infinity\nvalue ()",
@@ -31436,6 +31662,60 @@ mod tests {
             ),
             (
                 "use language (version is v0.1)\npub exposed : Rational is +Infinity\nexposed",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(invalid).unwrap_err().code,
+                expected,
+                "unexpected diagnostic for {invalid:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn models_total_exact_infinity_arithmetic_and_static_indeterminate_rejection() {
+        // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-arithmetic.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let bindings = program
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Binding(binding) => Some(binding),
+                CompilerStatement::Discard(_) => None,
+            })
+            .collect::<Vec<_>>();
+        for (binding, value_type, negative) in [
+            (&bindings[5], CompilerType::InfiniteInt, true),
+            (&bindings[6], CompilerType::InfiniteInt, false),
+            (&bindings[7], CompilerType::InfiniteRational, false),
+            (&bindings[8], CompilerType::InfiniteRational, true),
+        ] {
+            assert_eq!(binding.value.value_type, value_type);
+            assert_eq!(compiler_infinity_direction(&binding.value), Some(negative));
+        }
+
+        for (invalid, expected) in [
+            (
+                "use language (version is v0.1)\nupper : Int is +Infinity\nlower : Int is -Infinity\nupper + lower",
+                "E-INDETERMINATE-INFINITY",
+            ),
+            (
+                "use language (version is v0.1)\nupper : Int is +Infinity\nupper - upper",
+                "E-INDETERMINATE-INFINITY",
+            ),
+            (
+                "use language (version is v0.1)\nupper : Int is +Infinity\n0 * upper",
+                "E-INDETERMINATE-INFINITY",
+            ),
+            (
+                "use language (version is v0.1)\ninteger : Int is +Infinity\nratio : Rational is +Infinity\ninteger + ratio",
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                "use language (version is v0.1)\nupper : Int is +Infinity\nupper / 2",
                 "E-COMPILER-UNSUPPORTED",
             ),
         ] {

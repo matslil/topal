@@ -488,7 +488,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
         | CompilerExpressionKind::ListEmpty
-        | CompilerExpressionKind::Local(_) => false,
+        | CompilerExpressionKind::Local(_)
+        | CompilerExpressionKind::InfinityLocal { .. } => false,
     }
 }
 
@@ -1802,7 +1803,10 @@ impl<'a> Generator<'a> {
                 body.subprogram = parent_scope;
                 value
             }
-            CompilerExpressionKind::Local(name) => environment
+            CompilerExpressionKind::Local(name)
+            | CompilerExpressionKind::InfinityLocal {
+                storage_name: name, ..
+            } => environment
                 .get(name)
                 .unwrap_or_else(|| panic!("checked local `{name}` remains available"))
                 .clone(),
@@ -11029,6 +11033,32 @@ mod tests {
         assert!(llvm.contains("name: \"Range Rational\""));
         assert!(!llvm.contains("@topal.runtime.rational.positive.infinity ="));
         assert!(!llvm.contains("@topal.runtime.rational.negative.infinity ="));
+    }
+
+    #[test]
+    fn emits_o0_infinity_arithmetic_through_validating_runtime_paths() {
+        // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-arithmetic.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/infinity-arithmetic.t").emit();
+
+        for operation in ["add", "subtract", "multiply", "negate", "absolute"] {
+            assert!(
+                llvm.contains(&format!("call ptr @topal.runtime.int.{operation}")),
+                "missing Int infinity operation {operation}"
+            );
+        }
+        for operation in ["add", "subtract", "multiply", "negate", "absolute"] {
+            assert!(
+                llvm.contains(&format!("call ptr @topal.runtime.rational.{operation}")),
+                "missing Rational infinity operation {operation}"
+            );
+        }
+        assert!(llvm.contains("%either.infinity = or i1"));
+        assert!(llvm.contains("label %indeterminate.infinity"));
+        assert!(llvm.contains("label %make.infinity"));
+        assert!(llvm.contains("name: \"Int\""));
+        assert!(llvm.contains("name: \"Rational\""));
     }
 
     #[test]

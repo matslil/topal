@@ -2086,3 +2086,15 @@ Ordinary interpreter function passage retains the Rational classifier; this
 does not admit the compiler's still-unsupported machine or library boundary.
 LSP validation and reversible scripted-debugger history shall cover the
 unchanged shared interpreter/compiler example.
+
+## TOPAL-INTP-SUBSET-253 — Total exact infinity arithmetic
+
+All source modes shall implement same-domain Int/Nat and Rational infinity
+negation, absolute value, addition, subtraction, and multiplication for every
+total case in `TOPAL-NUM-INFINITY-ARITHMETIC-001`. A finite Int beside a
+Rational infinity shall use the canonical exact embedding, while an Int
+infinity shall not convert domains implicitly. Statically evident opposite-sum,
+same-direction subtraction, and zero-product forms shall report
+`E-INDETERMINATE-INFINITY`; division and dynamic indeterminate Results remain
+explicitly unsupported. Formal traces and reversible scripted-debugger history
+shall cover the unchanged shared interpreter/compiler example.

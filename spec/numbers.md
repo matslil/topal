@@ -79,6 +79,37 @@ or used as an endpoint beside a Rational infinity. That finite embedding does
 not implicitly convert an Int infinity into a Rational infinity; such a
 cross-domain conversion requires its own applicable boundary rule.
 
+### TOPAL-NUM-INFINITY-ARITHMETIC-001 — Exact infinity arithmetic
+
+For either exact `Int` or `Rational` domain, unary negation exchanges
+`+Infinity` and `-Infinity`, while `absolute` maps either direction to
+`+Infinity`. A finite `Int` operand beside a Rational infinity first uses the
+canonical exact embedding; an Int infinity is not implicitly converted into a
+Rational infinity.
+
+For a finite value `f`, infinity direction `s`, and opposite direction `-s`,
+the total binary cases are:
+
+| operation | result |
+| --- | --- |
+| `s Infinity + f`, `f + s Infinity`, `s Infinity + s Infinity` | `s Infinity` |
+| `s Infinity - f` | `s Infinity` |
+| `f - s Infinity` | `-s Infinity` |
+| `s Infinity - (-s Infinity)` | `s Infinity` |
+| `s Infinity * f`, `f * s Infinity`, where `f` is nonzero | the infinity whose sign is the product of signs |
+| `s Infinity * t Infinity` | the infinity whose sign is the product of directions |
+
+`+Infinity + -Infinity`, `-Infinity + +Infinity`, subtraction of two
+infinities with the same direction, and multiplication of zero by either
+infinity are indeterminate. When the operands make an indeterminate case
+statically evident, compilation SHALL reject it as an arithmetic diagnostic.
+When runtime information is required to distinguish a total case from an
+indeterminate case, the applicable overload SHALL use the ordinary arithmetic
+`Result` and the `indeterminate` code; a partial tool that has not implemented
+that dynamic Result path SHALL reject it explicitly. Division, remainder,
+power, and directional-zero infinity arithmetic require separately applicable
+rules.
+
 ### TOPAL-NUM-SUB-001 — Finite exact integer subtraction
 
 For finite `a : Int` and `b : Int`, binary `-` selects a total, pure root

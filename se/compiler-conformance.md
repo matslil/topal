@@ -21,6 +21,7 @@ evidence.
 | 2c-b5 | `detail`, `cause`, and `source` Error observations with precise Optional payloads, canonical SourceLocation values, private passage, display, and debugging | complete |
 | 2c-c1 | contextual exact Int/Nat infinity construction, identity, equality, total ordering, three-way comparison, canonical display, and debugging at closed root scope | complete |
 | 2c-c2 | contextual exact Rational infinity construction, same-domain and finite-Int mixed comparison, canonical display, debugging, and closed root-scope retention | complete |
+| 2c-c3 | closed exact Int/Nat/Rational infinity negation, absolute value, addition, subtraction, and multiplication with static indeterminate rejection | complete |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b1 | explicit Int infinity endpoints with construction, membership, emptiness, bound observation, display, and debugging | complete |
@@ -195,8 +196,11 @@ nullable detail/cause fields and materializing present one-based source
 locations through the existing private Optional ABI. Increment 2c-c1 adds the
 closed contextual Int/Nat infinity identity and ordering subset; 2c-c2 adds
 the same closed Rational identity plus exact same-domain and finite-Int mixed
-comparison. Increment 2c-c retains general boundaries, arithmetic,
-cross-domain infinity conversion, and indeterminate-result closure. Increment
+comparison; 2c-c3 adds statically total unary, addition, subtraction, and
+multiplication paths plus source rejection of proven indeterminate forms.
+Increment 2c-c retains general boundaries, division and directional-zero
+arithmetic, cross-domain infinity conversion, and dynamic indeterminate-result
+closure. Increment
 2d-a adds the fully normative explicitly bounded finite range subset; 2d-b1
 adds explicit Int infinity endpoints and 2d-b2 adds explicit Rational infinity
 endpoints, while 2d-b retains unbounded ranges and general boundary closure.

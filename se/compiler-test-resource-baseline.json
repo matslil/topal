@@ -2116,6 +2116,16 @@
       "cpu_time_ns": 456967,
       "memory_peak_bytes": 18493440,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/infinity-arithmetic.t": {
+      "cpu_time_ns": 130587059,
+      "memory_peak_bytes": 41680896,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/infinity-arithmetic.t": {
+      "cpu_time_ns": 405425,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 500
     }
   }
 }

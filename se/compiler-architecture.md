@@ -358,10 +358,23 @@ pointer-bearing header at run time, so the static PIE still requires no loader
 relocation. Rational comparison and display recognize the numerator sentinel
 before finite cross-multiplication, while the opaque Range header continues to
 retain endpoint pointers unchanged. The checked model uses an internal
-`InfiniteRational` proof type and rejects arithmetic, cross-domain Int/Rational
-infinity conversion, functions, publication, persistence, serialization, and
-libraries before lowering. Consequently neither the finite Rational layout nor
-the `topal-native/6` machine ABI changes.
+`InfiniteRational` proof type and rejects cross-domain Int/Rational infinity
+conversion, functions, publication, persistence, serialization, and libraries
+before lowering. Consequently neither the finite Rational layout nor the
+`topal-native/6` machine ABI changes.
+
+The arithmetic increment carries a direction fact beside each closed checked
+infinity binding. It admits unary operations and `+`, `-`, or `*` only when the
+result direction or a statically indeterminate form is provable. LLVM O0 still
+calls the runtime operation: Int negation, absolute value, addition,
+subtraction, multiplication, and zero testing recognize the sentinel before
+finite storage logic. Rational arithmetic composes those operations and its
+canonical constructor returns a sentinel numerator over denominator one before
+finite greatest-common-divisor reduction. Thus correctness does not depend on
+constant folding. Opposite sums, equal-direction infinity subtraction, and
+zero products are source diagnostics; a runtime-dependent zero product remains
+closed until the ordinary indeterminate Result path is implemented. The
+runtime also fails closed if checked code violates that invariant.
 
 Finite `Rational` values are immutable objects containing two private Int
 pointers: a coprime numerator and a positive denominator. The compiler emits
