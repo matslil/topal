@@ -270,8 +270,9 @@ from the target data layout. Source DWARF continues to describe a `Function`
 result; the returned transport fields remain hidden, while an eventual direct
 anonymous call exposes the captures under their source names. Nested Function
 escape, Function-valued or otherwise unsupported captures, dynamic selection,
-capture-bearing aggregate containment, publication, and the canonical library
-closure ABI remain deferred.
+capture-bearing aggregate containment outside
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, publication, and the canonical
+library closure ABI remain deferred.
 
 Left-associative application may consume any exact admitted private Function
 result without first creating a source binding. The checked frontend folds one
@@ -292,11 +293,9 @@ or anonymous callable identity independently of the i32 observation field that
 LLVM transports. Bindings, Record selection, and anonymous product projection
 recover the appropriate subtree, so eventual application remains a direct
 specialization. A local aggregate may retain a capturing callable while its
-lexical values remain alive. An ordinary function parameter or result admits
-only capture-free exact leaves in this increment, allowing the same structural
-facts to cross specialization without an environment transport. Opaque,
-branch-selected, capture-bearing boundary, and non-Tuple/Record containers fail
-before LLVM.
+lexical values remain alive. The capture-free base boundary carries the same
+structural facts without an environment transport. Opaque, branch-selected,
+and non-Tuple/Record containers fail before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -307,6 +306,29 @@ compiled-library metadata must eventually record each Function field's
 structural path, callable and capture identities/classifiers, lifetime, effects,
 representation identity, and target adapter rather than publish this LLVM
 aggregate or its observation tags.
+
+The capture-bearing extension assigns every Function leaf a canonical path of
+zero-based Tuple indexes and Record labels, visited depth-first from left to
+right. Parameter specialization carries the ordinary source aggregate followed
+by each leaf's ordered capture operands. Result lowering returns a private
+aggregate whose first field is the unchanged source aggregate and whose
+remaining fields are the captures in that same path order. The caller extracts
+the source value once, attaches each capture to its checked callable facts, and
+can forward or recursively destructure it without replaying construction.
+Capturing anonymous results and non-escaping nested Function parameters are
+therefore direct specializations; nested result escape and Function-containing
+capture state remain rejected.
+
+LLVM still owns AMD64 register, stack, and aggregate-return placement for every
+matching `fastcc` prototype. DWARF exposes only the source Tuple/Record and the
+eventual callable's source-named captures, never the extended result fields or
+hidden parameter names. This transport remains module-private and creates no
+closure object, environment pointer, allocation, callback, function pointer,
+indirect dispatch, foreign dependency, or native ABI change. A future compiled
+library must serialize the canonical aggregate path, callable/capture
+identities, capture classifiers and order, lifetime, effects, representation
+identity, and target adapter; it must not serialize the current private LLVM
+aggregate, observation tags, or hidden-operand layout.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks

@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 223);
+    assert_eq!(examples.len(), 224);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4465,6 +4465,23 @@ fn every_mode_returns_captured_functions() {
     assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
     assert!(trace.matches("function.anonymous.captured").count() >= 4);
     assert!(trace.matches("function.anonymous.called").count() >= 4);
+    assert!(trace.matches("function.value.called").count() >= 1);
+}
+
+#[test]
+fn every_mode_transports_captures_through_function_aggregates() {
+    let source =
+        include_str!("../../../examples/language/capturing-function-aggregate-boundaries.t");
+    let expected = "((42, 40), (42, 40), 42, 42)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        assert!(String::from_utf8(output.stdout).unwrap().contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(trace.contains("function.anonymous.captured"));
+    assert!(trace.matches("function.anonymous.called").count() >= 5);
     assert!(trace.matches("function.value.called").count() >= 1);
 }
 

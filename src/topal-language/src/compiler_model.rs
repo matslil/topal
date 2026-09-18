@@ -1183,8 +1183,15 @@ pub struct CompilerFunction {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerFunctionResultCapture {
     pub name: String,
+    pub path: Vec<CompilerAggregatePathElement>,
     pub value_type: CompilerType,
     pub value: CompilerExpression,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompilerAggregatePathElement {
+    Tuple(usize),
+    Record(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1368,6 +1375,7 @@ struct CompilerCallMetadata {
     callable_arguments: Vec<Option<CompilerCallableFacts>>,
     aggregate_arguments: Vec<StaticValueFacts>,
     callable_captures: Vec<CompilerContextCapture>,
+    aggregate_captures: Vec<CompilerContextCapture>,
     scope_arguments: Vec<Option<CompilerNamespaceFacts>>,
     scope_captures: Vec<CompilerContextCapture>,
     lexical_captures: Vec<CompilerContextCapture>,
@@ -8812,21 +8820,13 @@ impl Analyzer {
                     let list_count = Self::known_list_count(&value, environment);
                     let list_string_keys = Self::known_list_string_keys(&value, environment);
                     let aggregate_facts = self.known_structural_value_facts(&value, environment)?;
+                    let returned_callable_captures =
+                        returned_function_capture_bindings(&aggregate_facts);
                     let tuple_fields = aggregate_facts.tuple_fields;
                     let record_fields = aggregate_facts.record_fields;
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable = aggregate_facts.callable;
-                    let returned_callable_captures = match &callable {
-                        Some(CompilerCallableFacts::Anonymous { captures, .. }) => captures
-                            .values()
-                            .filter(|capture| {
-                                is_function_result_capture_storage(&capture.storage_name)
-                            })
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                        _ => Vec::new(),
-                    };
                     let static_capability = match &value.kind {
                         CompilerExpressionKind::Capability(capability) => Some(capability.clone()),
                         _ => None,
@@ -15480,96 +15480,223 @@ impl Analyzer {
             let Some(callable) = callable else {
                 continue;
             };
-            match callable {
-                CompilerCallableFacts::Anonymous { captures, .. } => {
-                    for (capture_name, capture) in captures {
-                        let current = binding_facts_by_storage(environment, &capture.storage_name)
-                            .cloned()
-                            .or_else(|| {
-                                is_function_result_capture_storage(&capture.storage_name)
-                                    .then(|| capture.clone())
-                            })
-                            .filter(|current| {
-                                current.origin == capture.origin
-                                    && current.runtime_bound
-                                    && current.value_type == capture.value_type
-                                    && compiler_function_result_supported(&current.value_type)
-                                    && !compiler_type_contains_generator(&current.value_type)
-                            })
-                            .ok_or_else(|| {
-                                unsupported(
-                                    &self.source,
-                                    parameter.name,
-                                    &format!(
-                                        "capturing Function parameter `{parameter_name}` outside capture `{capture_name}` lifetime"
-                                    ),
-                                )
-                            })?;
-                        let hidden_name = format!("{parameter_name} capture {capture_name}");
-                        forwarded.push(CompilerContextCapture {
-                            parameter_name: hidden_name.clone(),
-                            value_type: current.value_type.clone(),
-                            int_range: current.int_range.clone(),
-                            rational_value: current.rational_value.clone(),
-                            argument: binding_expression(&current, parameter.name),
-                            span: parameter.name,
-                        });
-                        capture.storage_name = hidden_name;
-                        capture.origin = parameter.name.start;
-                    }
-                }
-                CompilerCallableFacts::Named { captures, .. } => {
-                    for capture in captures {
-                        let (CompilerExpressionKind::Local(storage_name)
-                        | CompilerExpressionKind::InfinityLocal { storage_name, .. }) =
-                            &capture.argument.kind
-                        else {
-                            return Err(unsupported(
-                                &self.source,
-                                parameter.name,
-                                "capturing named Function parameter without a retained private value",
-                            ));
-                        };
-                        let current = binding_facts_by_storage(environment, storage_name)
-                            .filter(|current| {
-                                current.runtime_bound
-                                    && current.value_type == capture.value_type
-                                    && compiler_function_result_supported(&current.value_type)
-                                    && !compiler_type_contains_generator(&current.value_type)
-                            })
-                            .ok_or_else(|| {
-                                unsupported(
-                                    &self.source,
-                                    parameter.name,
-                                    &format!(
-                                        "capturing Function parameter `{parameter_name}` outside capture `{}` lifetime",
-                                        capture.parameter_name
-                                    ),
-                                )
-                            })?;
-                        let hidden_name =
-                            format!("{parameter_name} capture {}", capture.parameter_name);
-                        forwarded.push(CompilerContextCapture {
-                            parameter_name: hidden_name.clone(),
-                            value_type: current.value_type.clone(),
-                            int_range: current.int_range.clone(),
-                            rational_value: current.rational_value.clone(),
-                            argument: binding_expression(current, parameter.name),
-                            span: parameter.name,
-                        });
-                        capture.argument = CompilerExpression {
-                            kind: CompilerExpressionKind::Local(hidden_name),
-                            value_type: current.value_type.clone(),
-                            int_range: current.int_range.clone(),
-                            rational_value: current.rational_value.clone(),
-                            span: parameter.name,
-                        };
-                    }
-                }
-                CompilerCallableFacts::Symbolic(_) => {}
-            }
+            self.forward_callable_captures(
+                parameter_name,
+                parameter.name,
+                callable,
+                environment,
+                &mut forwarded,
+            )?;
         }
         Ok((callables, forwarded))
+    }
+
+    fn aggregate_parameter_arguments(
+        &self,
+        declaration: &FunctionSource,
+        arguments: &[CompilerExpression],
+        mut facts: Vec<StaticValueFacts>,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<(Vec<StaticValueFacts>, Vec<CompilerContextCapture>), Diagnostic> {
+        let mut forwarded = Vec::new();
+        for ((parameter, argument), facts) in
+            declaration.parameters.iter().zip(arguments).zip(&mut facts)
+        {
+            let parameter_name = self.source.slice(parameter.name);
+            if parameter_name == "_" || !compiler_type_is_function_aggregate(&argument.value_type) {
+                continue;
+            }
+            self.forward_function_aggregate_captures(
+                &argument.value_type,
+                facts,
+                parameter_name,
+                parameter.name,
+                environment,
+                &mut forwarded,
+            )?;
+        }
+        Ok((facts, forwarded))
+    }
+
+    fn forward_function_aggregate_captures(
+        &self,
+        value_type: &CompilerType,
+        facts: &mut StaticValueFacts,
+        boundary_name: &str,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        forwarded: &mut Vec<CompilerContextCapture>,
+    ) -> Result<(), Diagnostic> {
+        match value_type {
+            CompilerType::Function => {
+                let callable = facts.callable.as_mut().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Function aggregate boundary without one exact callable identity per Function field",
+                    )
+                })?;
+                self.forward_callable_captures(
+                    boundary_name,
+                    span,
+                    callable,
+                    environment,
+                    forwarded,
+                )
+            }
+            CompilerType::Tuple(fields) => {
+                if fields.len() != facts.tuple_fields.len() {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Function aggregate boundary without exact Tuple field facts",
+                    ));
+                }
+                for (index, (field, facts)) in
+                    fields.iter().zip(&mut facts.tuple_fields).enumerate()
+                {
+                    self.forward_function_aggregate_captures(
+                        field,
+                        facts,
+                        &format!("{boundary_name} tuple {index}"),
+                        span,
+                        environment,
+                        forwarded,
+                    )?;
+                }
+                Ok(())
+            }
+            CompilerType::Record(fields) => {
+                if fields.len() != facts.record_fields.len() {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Function aggregate boundary without exact Record field facts",
+                    ));
+                }
+                for (name, field) in fields {
+                    let field_facts = facts.record_fields.get_mut(name).ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            span,
+                            "Function aggregate boundary without exact Record field facts",
+                        )
+                    })?;
+                    self.forward_function_aggregate_captures(
+                        field,
+                        field_facts,
+                        &format!("{boundary_name} field {name}"),
+                        span,
+                        environment,
+                        forwarded,
+                    )?;
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn forward_callable_captures(
+        &self,
+        boundary_name: &str,
+        span: Span,
+        callable: &mut CompilerCallableFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+        forwarded: &mut Vec<CompilerContextCapture>,
+    ) -> Result<(), Diagnostic> {
+        match callable {
+            CompilerCallableFacts::Anonymous { captures, .. } => {
+                for (capture_name, capture) in captures {
+                    let current = binding_facts_by_storage(environment, &capture.storage_name)
+                        .cloned()
+                        .or_else(|| {
+                            is_function_result_capture_storage(&capture.storage_name)
+                                .then(|| capture.clone())
+                        })
+                        .filter(|current| {
+                            current.origin == capture.origin
+                                && current.runtime_bound
+                                && current.value_type == capture.value_type
+                                && compiler_function_result_supported(&current.value_type)
+                                && !compiler_type_contains_generator(&current.value_type)
+                                && !compiler_type_is_function_aggregate(&current.value_type)
+                        })
+                        .ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                span,
+                                &format!(
+                                    "capturing Function boundary `{boundary_name}` outside capture `{capture_name}` lifetime or private representation"
+                                ),
+                            )
+                        })?;
+                    let hidden_name = format!("{boundary_name} capture {capture_name}");
+                    forwarded.push(CompilerContextCapture {
+                        parameter_name: hidden_name.clone(),
+                        value_type: current.value_type.clone(),
+                        int_range: current.int_range.clone(),
+                        rational_value: current.rational_value.clone(),
+                        argument: binding_expression(&current, span),
+                        span,
+                    });
+                    capture.storage_name = hidden_name;
+                    capture.origin = span.start;
+                }
+            }
+            CompilerCallableFacts::Named { captures, .. } => {
+                for capture in captures {
+                    let (CompilerExpressionKind::Local(storage_name)
+                    | CompilerExpressionKind::InfinityLocal { storage_name, .. }) =
+                        &capture.argument.kind
+                    else {
+                        return Err(unsupported(
+                            &self.source,
+                            span,
+                            &format!(
+                                "capturing named Function boundary `{boundary_name}` without a retained private value"
+                            ),
+                        ));
+                    };
+                    let current = binding_facts_by_storage(environment, storage_name)
+                        .filter(|current| {
+                            current.runtime_bound
+                                && current.value_type == capture.value_type
+                                && compiler_function_result_supported(&current.value_type)
+                                && !compiler_type_contains_generator(&current.value_type)
+                                && !compiler_type_is_function_aggregate(&current.value_type)
+                        })
+                        .ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                span,
+                                &format!(
+                                    "capturing Function boundary `{boundary_name}` outside capture `{}` lifetime or private representation",
+                                    capture.parameter_name
+                                ),
+                            )
+                        })?;
+                    let hidden_name = format!("{boundary_name} capture {}", capture.parameter_name);
+                    forwarded.push(CompilerContextCapture {
+                        parameter_name: hidden_name.clone(),
+                        value_type: current.value_type.clone(),
+                        int_range: current.int_range.clone(),
+                        rational_value: current.rational_value.clone(),
+                        argument: binding_expression(current, span),
+                        span,
+                    });
+                    capture.argument = CompilerExpression {
+                        kind: CompilerExpressionKind::Local(hidden_name),
+                        value_type: current.value_type.clone(),
+                        int_range: current.int_range.clone(),
+                        rational_value: current.rational_value.clone(),
+                        span,
+                    };
+                }
+            }
+            CompilerCallableFacts::Symbolic(_) => {}
+        }
+        Ok(())
     }
 
     fn known_callable(
@@ -15630,22 +15757,18 @@ impl Analyzer {
                     .ok_or_else(|| {
                         unsupported(&self.source, value.span, "opaque Function result")
                     })?;
-                if let CompilerCallableFacts::Anonymous { captures, .. } = &mut callable
-                    && !captures.is_empty()
-                {
-                    let result_captures = &self
-                        .instances
-                        .iter()
-                        .find(|function| function.symbol == *symbol)
-                        .expect("checked Function result has a generated specialization")
-                        .result_captures;
-                    debug_assert_eq!(captures.len(), result_captures.len());
-                    for (index, capture) in captures.values_mut().enumerate() {
-                        capture.storage_name =
-                            compiler_function_result_capture_storage(symbol, value.span, index);
-                        capture.origin = value.span.start;
-                    }
-                }
+                let result_captures = &self
+                    .instances
+                    .iter()
+                    .find(|function| function.symbol == *symbol)
+                    .expect("checked Function result has a generated specialization")
+                    .result_captures;
+                remap_returned_root_callable_captures(
+                    &mut callable,
+                    result_captures,
+                    symbol,
+                    value.span,
+                );
                 Ok(Some(callable))
             }
             CompilerExpressionKind::TupleField { .. }
@@ -15742,6 +15865,18 @@ impl Analyzer {
             CompilerExpressionKind::Call { symbol, .. } => {
                 if let Some(returned) = self.returned_aggregate_value_facts.get(symbol) {
                     facts = returned.clone();
+                    let result_captures = &self
+                        .instances
+                        .iter()
+                        .find(|function| function.symbol == *symbol)
+                        .expect("checked Function aggregate result has a generated specialization")
+                        .result_captures;
+                    remap_returned_aggregate_captures(
+                        &mut facts,
+                        result_captures,
+                        symbol,
+                        value.span,
+                    );
                 }
             }
             CompilerExpressionKind::Block(block) => {
@@ -15763,6 +15898,154 @@ impl Analyzer {
             facts.callable = self.known_callable(value, environment, value.span.start)?;
         }
         Ok(facts)
+    }
+
+    fn function_aggregate_result_captures(
+        &self,
+        value_type: &CompilerType,
+        facts: &StaticValueFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+    ) -> Result<Vec<CompilerFunctionResultCapture>, Diagnostic> {
+        let mut captures = Vec::new();
+        self.collect_function_aggregate_result_captures(
+            value_type,
+            facts,
+            environment,
+            span,
+            &mut Vec::new(),
+            &mut captures,
+        )?;
+        Ok(captures)
+    }
+
+    fn collect_function_aggregate_result_captures(
+        &self,
+        value_type: &CompilerType,
+        facts: &StaticValueFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+        path: &mut Vec<CompilerAggregatePathElement>,
+        result: &mut Vec<CompilerFunctionResultCapture>,
+    ) -> Result<(), Diagnostic> {
+        match value_type {
+            CompilerType::Function => {
+                self.collect_function_leaf_result_captures(facts, environment, span, path, result)
+            }
+            CompilerType::Tuple(fields) => {
+                if fields.len() != facts.tuple_fields.len() {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Function aggregate result without exact Tuple field facts",
+                    ));
+                }
+                for (index, (field, facts)) in fields.iter().zip(&facts.tuple_fields).enumerate() {
+                    path.push(CompilerAggregatePathElement::Tuple(index));
+                    self.collect_function_aggregate_result_captures(
+                        field,
+                        facts,
+                        environment,
+                        span,
+                        path,
+                        result,
+                    )?;
+                    path.pop();
+                }
+                Ok(())
+            }
+            CompilerType::Record(fields) => {
+                if fields.len() != facts.record_fields.len() {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Function aggregate result without exact Record field facts",
+                    ));
+                }
+                for (name, field) in fields {
+                    let field_facts = facts.record_fields.get(name).ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            span,
+                            "Function aggregate result without exact Record field facts",
+                        )
+                    })?;
+                    path.push(CompilerAggregatePathElement::Record(name.clone()));
+                    self.collect_function_aggregate_result_captures(
+                        field,
+                        field_facts,
+                        environment,
+                        span,
+                        path,
+                        result,
+                    )?;
+                    path.pop();
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn collect_function_leaf_result_captures(
+        &self,
+        facts: &StaticValueFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+        path: &[CompilerAggregatePathElement],
+        result: &mut Vec<CompilerFunctionResultCapture>,
+    ) -> Result<(), Diagnostic> {
+        let callable = facts.callable.as_ref().ok_or_else(|| {
+            unsupported(
+                &self.source,
+                span,
+                "Function aggregate result without one exact callable identity per Function field",
+            )
+        })?;
+        match callable {
+            CompilerCallableFacts::Anonymous { captures, .. } => {
+                for (name, capture) in captures {
+                    let current = binding_facts_by_storage(environment, &capture.storage_name)
+                        .cloned()
+                        .or_else(|| {
+                            is_function_result_capture_storage(&capture.storage_name)
+                                .then(|| capture.clone())
+                        })
+                        .filter(|current| {
+                            current.origin == capture.origin
+                                && current.runtime_bound
+                                && current.value_type == capture.value_type
+                                && compiler_function_result_supported(&current.value_type)
+                                && !compiler_type_contains_generator(&current.value_type)
+                                && !compiler_type_is_function_aggregate(&current.value_type)
+                        })
+                        .ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                span,
+                                &format!(
+                                    "capturing Function aggregate result outside capture `{name}` lifetime or private representation"
+                                ),
+                            )
+                        })?;
+                    result.push(CompilerFunctionResultCapture {
+                        name: name.clone(),
+                        path: path.to_vec(),
+                        value_type: current.value_type.clone(),
+                        value: binding_expression(&current, span),
+                    });
+                }
+            }
+            CompilerCallableFacts::Named { captures, .. } if !captures.is_empty() => {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "escaping nested Function aggregate result",
+                ));
+            }
+            CompilerCallableFacts::Named { .. } | CompilerCallableFacts::Symbolic(_) => {}
+        }
+        Ok(())
     }
 
     fn finish_nat_conversion(
@@ -16456,6 +16739,7 @@ impl Analyzer {
             Vec::with_capacity(flattened_arguments.len());
         let mut arguments = Vec::with_capacity(flattened_arguments.len() + captures.len());
         let mut pattern_identities = Vec::new();
+        let mut parameter_callable_captures = Vec::new();
         for (name_span, argument, argument_facts) in flattened_arguments {
             let facts = argument_facts.as_ref().unwrap_or(&argument);
             let name = self.source.slice(name_span).to_owned();
@@ -16484,6 +16768,17 @@ impl Analyzer {
                     span: name_span,
                 });
             } else if !discarded {
+                let mut callable =
+                    self.known_callable(facts, call_environment, facts.span.start)?;
+                if let Some(callable) = &mut callable {
+                    self.forward_callable_captures(
+                        &name,
+                        name_span,
+                        callable,
+                        call_environment,
+                        &mut parameter_callable_captures,
+                    )?;
+                }
                 environment.insert(
                     name.clone(),
                     BindingFacts {
@@ -16501,7 +16796,7 @@ impl Analyzer {
                         tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
                         namespace: None,
-                        callable: self.known_callable(facts, call_environment, facts.span.start)?,
+                        callable,
                         static_capability: None,
                     },
                 );
@@ -16517,10 +16812,47 @@ impl Analyzer {
             });
         }
 
+        for capture in parameter_callable_captures {
+            arguments.push(capture.argument.clone());
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    infinity_negative: compiler_infinity_direction(&capture.argument),
+                    string_value: exact_string(&capture.argument),
+                    closed_int_range: None,
+                    list_count: Self::known_list_count(&capture.argument, call_environment),
+                    list_string_keys: Self::known_list_string_keys(
+                        &capture.argument,
+                        call_environment,
+                    ),
+                    tuple_fields: Vec::new(),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                    static_capability: None,
+                },
+            );
+            lowered_parameters.push(CompilerParameter {
+                name: capture.parameter_name,
+                discarded: false,
+                source_visible: false,
+                value_type: capture.value_type,
+                int_range: capture.int_range,
+                span: capture.span,
+            });
+        }
+
         for (name, capture) in captures {
             if !capture.runtime_bound
                 || !compiler_function_result_supported(&capture.value_type)
                 || compiler_type_contains_generator(&capture.value_type)
+                || compiler_type_is_function_aggregate(&capture.value_type)
             {
                 return Err(unsupported(
                     &self.source,
@@ -18025,17 +18357,23 @@ impl Analyzer {
             .collect::<Result<Vec<_>, _>>()?;
         for (argument, facts) in arguments.iter().zip(&aggregate_arguments) {
             if compiler_type_is_function_aggregate(&argument.value_type)
-                && !function_aggregate_facts_supported(&argument.value_type, facts)
+                && !function_aggregate_facts_exact(&argument.value_type, facts)
             {
                 return Err(unsupported(
                     &self.source,
                     argument.span,
-                    "Function aggregate boundary without one exact capture-free callable identity per Function field",
+                    "Function aggregate boundary without one exact callable identity per Function field",
                 ));
             }
         }
         let (callable_arguments, callable_captures) =
             self.callable_parameter_arguments(&declaration, callable_arguments, environment)?;
+        let (aggregate_arguments, aggregate_captures) = self.aggregate_parameter_arguments(
+            &declaration,
+            &arguments,
+            aggregate_arguments,
+            environment,
+        )?;
         let (scope_arguments, scope_captures) =
             self.scope_parameter_arguments(&declaration, &arguments, environment)?;
         let context_captures = self.defining_context_captures(&declaration)?;
@@ -18050,6 +18388,7 @@ impl Analyzer {
             callable_arguments,
             aggregate_arguments,
             callable_captures,
+            aggregate_captures,
             scope_arguments,
             scope_captures,
             lexical_captures: lexical_captures.to_vec(),
@@ -18059,6 +18398,12 @@ impl Analyzer {
         arguments.extend(
             metadata
                 .callable_captures
+                .iter()
+                .map(|capture| capture.argument.clone()),
+        );
+        arguments.extend(
+            metadata
+                .aggregate_captures
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
@@ -18366,6 +18711,7 @@ impl Analyzer {
             callable_arguments,
             aggregate_arguments,
             callable_captures,
+            aggregate_captures,
             scope_arguments,
             scope_captures,
             lexical_captures,
@@ -18449,13 +18795,54 @@ impl Analyzer {
             });
         }
         let callable_arguments_start = declaration.parameters.len();
-        let scope_arguments_start = callable_arguments_start + callable_captures.len();
+        let aggregate_captures_start = callable_arguments_start + callable_captures.len();
+        let scope_arguments_start = aggregate_captures_start + aggregate_captures.len();
         let lexical_arguments_start = scope_arguments_start + scope_captures.len();
         let context_arguments_start = lexical_arguments_start + lexical_captures.len();
         let captured_callable_arguments =
-            &arguments[callable_arguments_start..scope_arguments_start];
+            &arguments[callable_arguments_start..aggregate_captures_start];
         debug_assert_eq!(captured_callable_arguments.len(), callable_captures.len());
         for (capture, argument) in callable_captures.iter().zip(captured_callable_arguments) {
+            require_same_type(
+                &self.source,
+                capture.span,
+                &capture.value_type,
+                &argument.value_type,
+            )?;
+            environment.insert(
+                capture.parameter_name.clone(),
+                BindingFacts {
+                    storage_name: capture.parameter_name.clone(),
+                    origin: capture.span.start,
+                    runtime_bound: true,
+                    value_type: capture.value_type.clone(),
+                    int_range: capture.int_range.clone(),
+                    rational_value: capture.rational_value.clone(),
+                    infinity_negative: compiler_infinity_direction(argument),
+                    string_value: exact_string(argument),
+                    closed_int_range: None,
+                    list_count: Self::known_list_count(argument, &BTreeMap::new()),
+                    list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
+                    tuple_fields: Vec::new(),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable: None,
+                    static_capability: None,
+                },
+            );
+            parameters.push(CompilerParameter {
+                name: capture.parameter_name.clone(),
+                discarded: false,
+                source_visible: false,
+                value_type: capture.value_type.clone(),
+                int_range: capture.int_range.clone(),
+                span: capture.span,
+            });
+        }
+        let captured_aggregate_arguments =
+            &arguments[aggregate_captures_start..scope_arguments_start];
+        debug_assert_eq!(captured_aggregate_arguments.len(), aggregate_captures.len());
+        for (capture, argument) in aggregate_captures.iter().zip(captured_aggregate_arguments) {
             require_same_type(
                 &self.source,
                 capture.span,
@@ -19168,6 +19555,7 @@ impl Analyzer {
                                 && current.value_type == capture.value_type
                                 && compiler_function_result_supported(&current.value_type)
                                 && !compiler_type_contains_generator(&current.value_type)
+                                && !compiler_type_is_function_aggregate(&current.value_type)
                         })
                         .ok_or_else(|| {
                             unsupported(
@@ -19180,6 +19568,7 @@ impl Analyzer {
                         })?;
                         Ok(CompilerFunctionResultCapture {
                             name: name.clone(),
+                            path: Vec::new(),
                             value_type: current.value_type.clone(),
                             value: binding_expression(&current, body.result.span),
                         })
@@ -19190,19 +19579,28 @@ impl Analyzer {
         } else {
             (None, Vec::new())
         };
-        let returned_aggregate_value_facts = if compiler_type_is_function_aggregate(&result_type) {
-            let facts = self.known_structural_value_facts(&body.result, &environment)?;
-            if !function_aggregate_facts_supported(&result_type, &facts) {
-                return Err(unsupported(
-                    &self.source,
+        let (returned_aggregate_value_facts, aggregate_result_captures) =
+            if compiler_type_is_function_aggregate(&result_type) {
+                let facts = self.known_structural_value_facts(&body.result, &environment)?;
+                if !function_aggregate_facts_exact(&result_type, &facts) {
+                    return Err(unsupported(
+                        &self.source,
+                        body.result.span,
+                        "Function aggregate result without one exact callable identity per Function field",
+                    ));
+                }
+                let captures = self.function_aggregate_result_captures(
+                    &result_type,
+                    &facts,
+                    &environment,
                     body.result.span,
-                    "Function aggregate result without one exact capture-free callable identity per Function field",
-                ));
-            }
-            Some(facts)
-        } else {
-            None
-        };
+                )?;
+                (Some(facts), captures)
+            } else {
+                (None, Vec::new())
+            };
+        let mut result_captures = result_captures;
+        result_captures.extend(aggregate_result_captures);
         let symbol = reserved_symbol.map_or_else(
             || self.reserve_function_symbol(function_name),
             str::to_owned,
@@ -21363,26 +21761,15 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
     }
 }
 
-fn callable_is_capture_free(callable: &CompilerCallableFacts) -> bool {
-    match callable {
-        CompilerCallableFacts::Named { captures, .. } => captures.is_empty(),
-        CompilerCallableFacts::Symbolic(_) => true,
-        CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
-    }
-}
-
-fn function_aggregate_facts_supported(value_type: &CompilerType, facts: &StaticValueFacts) -> bool {
+fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValueFacts) -> bool {
     match value_type {
-        CompilerType::Function => facts
-            .callable
-            .as_ref()
-            .is_some_and(callable_is_capture_free),
+        CompilerType::Function => facts.callable.is_some(),
         CompilerType::Tuple(fields) => {
             fields.len() == facts.tuple_fields.len()
                 && fields
                     .iter()
                     .zip(&facts.tuple_fields)
-                    .all(|(field, facts)| function_aggregate_facts_supported(field, facts))
+                    .all(|(field, facts)| function_aggregate_facts_exact(field, facts))
         }
         CompilerType::Record(fields) => {
             fields.len() == facts.record_fields.len()
@@ -21390,10 +21777,129 @@ fn function_aggregate_facts_supported(value_type: &CompilerType, facts: &StaticV
                     facts
                         .record_fields
                         .get(name)
-                        .is_some_and(|facts| function_aggregate_facts_supported(field, facts))
+                        .is_some_and(|facts| function_aggregate_facts_exact(field, facts))
                 })
         }
         _ => true,
+    }
+}
+
+fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFacts> {
+    let mut returned = Vec::new();
+    if let Some(CompilerCallableFacts::Anonymous { captures, .. }) = &facts.callable {
+        returned.extend(
+            captures
+                .values()
+                .filter(|capture| is_function_result_capture_storage(&capture.storage_name))
+                .cloned(),
+        );
+    }
+    for field in &facts.tuple_fields {
+        returned.extend(returned_function_capture_bindings(field));
+    }
+    for field in facts.record_fields.values() {
+        returned.extend(returned_function_capture_bindings(field));
+    }
+    returned
+}
+
+fn aggregate_callable_at_path_mut<'a>(
+    facts: &'a mut StaticValueFacts,
+    path: &[CompilerAggregatePathElement],
+) -> Option<&'a mut CompilerCallableFacts> {
+    let Some((first, rest)) = path.split_first() else {
+        return facts.callable.as_mut();
+    };
+    match first {
+        CompilerAggregatePathElement::Tuple(index) => {
+            aggregate_callable_at_path_mut(facts.tuple_fields.get_mut(*index)?, rest)
+        }
+        CompilerAggregatePathElement::Record(name) => {
+            aggregate_callable_at_path_mut(facts.record_fields.get_mut(name)?, rest)
+        }
+    }
+}
+
+fn remap_returned_callable_capture(
+    callable: &mut CompilerCallableFacts,
+    result_capture: &CompilerFunctionResultCapture,
+    storage_name: String,
+    span: Span,
+) {
+    let remapped = match callable {
+        CompilerCallableFacts::Anonymous { captures, .. } => captures
+            .get_mut(&result_capture.name)
+            .is_some_and(|capture| {
+                capture.storage_name.clone_from(&storage_name);
+                capture.origin = span.start;
+                true
+            }),
+        CompilerCallableFacts::Named { captures, .. } => captures
+            .iter_mut()
+            .find(|capture| capture.parameter_name == result_capture.name)
+            .is_some_and(|capture| {
+                capture.argument = CompilerExpression {
+                    kind: CompilerExpressionKind::Local(storage_name),
+                    value_type: result_capture.value_type.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+                true
+            }),
+        CompilerCallableFacts::Symbolic(_) => false,
+    };
+    debug_assert!(remapped, "checked result capture retains its callable path");
+}
+
+fn remap_returned_root_callable_captures(
+    callable: &mut CompilerCallableFacts,
+    result_captures: &[CompilerFunctionResultCapture],
+    symbol: &str,
+    span: Span,
+) {
+    let callable_capture_count = match callable {
+        CompilerCallableFacts::Anonymous { captures, .. } => captures.len(),
+        CompilerCallableFacts::Named { captures, .. } => captures.len(),
+        CompilerCallableFacts::Symbolic(_) => 0,
+    };
+    if callable_capture_count == 0 {
+        return;
+    }
+    debug_assert_eq!(
+        callable_capture_count,
+        result_captures
+            .iter()
+            .filter(|capture| capture.path.is_empty())
+            .count()
+    );
+    for (index, result_capture) in result_captures.iter().enumerate() {
+        if result_capture.path.is_empty() {
+            remap_returned_callable_capture(
+                callable,
+                result_capture,
+                compiler_function_result_capture_storage(symbol, span, index),
+                span,
+            );
+        }
+    }
+}
+
+fn remap_returned_aggregate_captures(
+    facts: &mut StaticValueFacts,
+    result_captures: &[CompilerFunctionResultCapture],
+    symbol: &str,
+    span: Span,
+) {
+    for (index, result_capture) in result_captures.iter().enumerate() {
+        let callable = aggregate_callable_at_path_mut(facts, &result_capture.path)
+            .expect("checked Function aggregate result retains its callable path");
+        remap_returned_callable_capture(
+            callable,
+            result_capture,
+            compiler_function_result_capture_storage(symbol, span, index),
+            span,
+        );
     }
 }
 
@@ -31260,18 +31766,106 @@ mod tests {
                 && matches!(function.parameters.as_slice(), [parameter]
                     if compiler_type_is_function_aggregate(&parameter.value_type))
         }));
+    }
 
-        for source in [
-            "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (operation : Function)\n  (operation is operation)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
-            "use language (version is v0.1)\napply is fn (package : Record (operation : Function, value : Int)) -> Int\n  (package operation) (package value)\noffset is 1\ncaptured : Function is { value } value + offset\npackage is (operation is captured, value is 41)\napply package\n",
+    #[test]
+    fn models_capture_bearing_function_aggregate_boundaries() {
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001,
+        // TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-TYPE-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-aggregate-boundaries.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected four capture-bearing Function-aggregate applications")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(results.iter().all(|result| match &result.value_type {
+            CompilerType::Int => true,
+            CompilerType::Tuple(fields) => {
+                fields == &[CompilerType::Int, CompilerType::Int]
+            }
+            _ => false,
+        }));
+
+        let function = |name: &str| {
+            program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap_or_else(|| panic!("missing generated `{name}` function"))
+        };
+        let capture_paths = |name: &str| {
+            function(name)
+                .result_captures
+                .iter()
+                .map(|capture| capture.path.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            capture_paths("make-record"),
+            [
+                vec![CompilerAggregatePathElement::Record("operation".into())],
+                vec![CompilerAggregatePathElement::Record("scale".into())],
+            ]
+        );
+        assert_eq!(
+            capture_paths("forward-record"),
+            [
+                vec![CompilerAggregatePathElement::Record("operation".into())],
+                vec![CompilerAggregatePathElement::Record("scale".into())],
+            ]
+        );
+        assert_eq!(
+            capture_paths("make-tuple"),
+            [vec![CompilerAggregatePathElement::Tuple(0)]]
+        );
+
+        for (name, hidden_capture_count) in [
+            ("apply-record", 2),
+            ("forward-record", 2),
+            ("apply-tuple", 1),
+        ] {
+            let generated = function(name);
+            assert!(compiler_type_is_function_aggregate(
+                &generated.parameters[0].value_type
+            ));
+            assert_eq!(
+                generated
+                    .parameters
+                    .iter()
+                    .filter(|parameter| !parameter.source_visible)
+                    .count(),
+                hidden_capture_count
+            );
+        }
+        assert!(program.functions.iter().any(|generated| {
+            generated.source_name == "apply-one"
+                && compiler_type_is_function_aggregate(&generated.parameters[0].value_type)
+                && generated
+                    .parameters
+                    .iter()
+                    .filter(|parameter| !parameter.source_visible)
+                    .count()
+                    == 1
+        }));
+
+        for (source, detail) in [
+            (
+                "use language (version is v0.1)\nmake is fn (offset : Int) -> Record (operation : Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  (operation is increase)\nmake 1\n",
+                "escaping nested Function aggregate result",
+            ),
+            (
+                "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
+                "private representation",
+            ),
         ] {
             let diagnostic = analyze_for_compiler(source).unwrap_err();
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
-            assert!(
-                diagnostic
-                    .message
-                    .contains("capture-free callable identity")
-            );
+            assert!(diagnostic.message.contains(detail), "{diagnostic:?}");
         }
     }
 

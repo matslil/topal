@@ -2803,10 +2803,10 @@ specialization makes the tag computationally dead. LLVM SHALL own the physical
 AMD64 register and stack placement.
 
 Capturing anonymous results are governed by
-`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`, and exact capture-free aggregate
-containment is governed by `TOPAL-COMPILER-FUNCTION-AGGREGATE-001`. Nested,
-dynamically computed, capture-bearing aggregate, and published Function results
-remain outside this increment and SHALL be rejected.
+`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`; exact aggregate containment is
+governed by `TOPAL-COMPILER-FUNCTION-AGGREGATE-001` and
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`. Nested, dynamically computed,
+and published Function results outside those rules remain rejected.
 No function pointer, indirect call, closure allocation/runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
 ABI, or native ABI revision is permitted.
@@ -2908,9 +2908,10 @@ pointer, indirect call, callback, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
 ABI, or native-ABI revision. Capturing Function results outside
 `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`, capture-bearing aggregate
-containment, dynamic selection or escape, recursive or overloaded nested
-callable values, unsupported captured state, publication, and library
-metadata/adapters remain deferred. Future compiled-library metadata SHALL
+containment outside `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, dynamic
+selection or escape, recursive or overloaded nested callable values,
+unsupported captured state, publication, and library metadata/adapters remain
+deferred. Future compiled-library metadata SHALL
 encode callable identity, ordered capture identities and classifiers,
 construction lifetime, effects, native-representation identities, and target
 adapters rather than expose this private hidden-parameter layout.
@@ -2949,7 +2950,8 @@ runtime, foreign dependency, C/C++ runtime, other-language standard library,
 public callable ABI, or native-ABI revision. Immediate exact result application
 is governed by `TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001`. Nested Function
 escape, Function-valued or otherwise unsupported captures, dynamic selection,
-capture-bearing aggregate containment, publication, and library
+capture-bearing aggregate containment outside
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, publication, and library
 metadata/adapters remain deferred. Future compiled-library metadata SHALL
 encode callable identity, ordered capture identities and classifiers,
 construction lifetime, effects, native-representation identities, and target
@@ -2995,17 +2997,17 @@ from its deterministic observation tag. Direct Record field selection and
 anonymous positional-product destructuring SHALL recover those facts and apply
 the selected callable through its ordinary checked semantics.
 
-An ordinary private function parameter or result MAY carry such a Tuple or
-Record only when every Function leaf is capture-free and its exact callable
-identity remains known at the call site. The checked frontend SHALL propagate
-the complete recursive structural facts across that specialization boundary.
+The capture-free base case permits an ordinary private function parameter or
+result to carry such a Tuple or Record when every Function leaf's exact
+callable identity remains known at the call site. The checked frontend SHALL
+propagate the complete recursive structural facts across that specialization
+boundary. Capture-bearing aggregate boundaries are governed by
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`.
 A local aggregate MAY contain a capturing anonymous Function while selection
-and application remain within the captured values' defining lifetime, but that
-capture-bearing aggregate SHALL NOT cross this private aggregate boundary.
+and application remain within the captured values' defining lifetime.
 Opaque, branch-selected, or otherwise dynamically computed Function leaves;
-Function containment in Optional, List, Sum, or another unadmitted aggregate;
-and capture-bearing aggregate parameters/results SHALL be rejected before LLVM
-lowering.
+and Function containment in Optional, List, Sum, or another unadmitted
+aggregate SHALL be rejected before LLVM lowering.
 
 Each represented Function leaf SHALL occupy its existing private i32
 observation field. Exact private `fastcc` prototypes SHALL use the corresponding
@@ -3018,18 +3020,66 @@ Function identities and recursively accurate field types.
 
 Tests SHALL cover local captured containment; named, symbolic, and non-capturing
 anonymous values; recursive Tuple/Record construction; parameter and result
-passage; field selection and destructuring; capture-bearing boundary rejection;
-exact direct IR; interpreter parity and reversible history; freestanding
-execution; and full O0 GDB values/frames. This rule SHALL add no closure object,
-environment pointer, allocation, function pointer, indirect call, callback,
-dispatch table, foreign dependency, C/C++ runtime, other-language standard
-library, public aggregate/callable ABI, or native-ABI revision. Dynamic and
-capture-bearing aggregate boundaries, other aggregate constructors, escape,
-publication, and library adapters remain deferred. Future compiled-library
-metadata SHALL encode every Function field's canonical aggregate path, callable
-identity, ordered captures and classifiers, construction lifetime, effects,
-representation identity, and target adapter independently of private LLVM
-types and observation tags.
+passage; field selection and destructuring; exact direct IR; interpreter parity
+and reversible history; freestanding execution; and full O0 GDB values/frames.
+This rule SHALL add no closure object, environment pointer, allocation,
+function pointer, indirect call, callback, dispatch table, foreign dependency,
+C/C++ runtime, other-language standard library, public aggregate/callable ABI,
+or native-ABI revision. Dynamic aggregate boundaries, capture-bearing
+boundaries outside `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, other
+aggregate constructors, escape, publication, and library adapters remain
+deferred. Future compiled-library metadata SHALL encode every Function field's
+canonical aggregate path, callable identity, ordered captures and classifiers,
+construction lifetime, effects, representation identity, and target adapter
+independently of private LLVM types and observation tags.
+
+### TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001 — Captured private Function aggregates
+
+An ordinary private function parameter MAY carry an exact recursively nested
+Tuple or Record whose Function leaves are capturing anonymous Functions or
+non-escaping nested Functions. An ordinary private function result MAY carry
+capturing anonymous Function leaves. Every leaf SHALL retain one exact callable
+identity, its complete ordered capture facts, and its canonical aggregate path.
+Canonical paths SHALL consist of zero-based Tuple indexes and Record labels and
+SHALL be ordered by a depth-first, left-to-right traversal of the source
+aggregate. A nested named Function SHALL NOT escape through an aggregate
+result.
+
+The checked frontend SHALL append one hidden capture operand for every capture
+at every Function path after the source-visible aggregate operand. A result
+SHALL return the source aggregate followed by the same path-ordered capture
+values in a compiler-private aggregate. Calls, bindings, forwarding results,
+Record selection, and recursive positional-product destructuring SHALL remap
+those hidden values to the selected callable's capture storage without replaying
+the aggregate, a field initializer, or a capture initializer. A Function leaf
+SHALL be applied only through its retained direct specialization. Capture state
+that itself contains Function values, Generator state, an opaque callable, a
+dynamically selected leaf, or a value outside the represented private lifetime
+SHALL be rejected before LLVM lowering.
+
+Private definitions and calls SHALL use matching direct `fastcc` prototypes.
+LLVM SHALL own physical x86-64 register, stack, and aggregate-result placement
+from the qualified target data layout. Each source aggregate SHALL retain its
+ordinary recursive DWARF type and Function observation fields; hidden capture
+transport SHALL NOT appear as an aggregate member or compiler-named source
+variable. An eventual anonymous or nested call SHALL expose material captures
+under their source names in that callable's frame.
+
+Tests SHALL cover multiple captured Record leaves, a captured Tuple leaf,
+parameter-to-result forwarding, recursive destructuring, a non-escaping nested
+Function parameter, rejected nested escape and Function-containing capture
+state, exact path-ordered direct IR, interpreter parity and reversible history,
+freestanding execution, and full O0 GDB aggregate values/capture frames. This
+rule SHALL add no closure object, environment pointer, allocation, function
+pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
+runtime, other-language standard library, public aggregate/callable ABI, or
+native-ABI revision. Dynamic Function selection, other aggregate constructors,
+escaping nested Functions, persistent storage, publication, and public library
+adapters remain deferred. Future compiled-library metadata SHALL encode the
+canonical aggregate path; callable and capture identities; capture classifiers
+and order; construction lifetime; effects; representation identity; and target
+adapter independently of private LLVM aggregate types, observation tags, and
+the current hidden-operand layout.
 
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 

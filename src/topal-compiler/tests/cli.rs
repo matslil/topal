@@ -10686,31 +10686,6 @@ fn function_aggregates_are_private_direct_freestanding_and_debuggable() {
     assert_eq!(executed.stdout, b"(42, 42, 42, 42)\n");
     assert_freestanding_elf_and_valid_dwarf(&executable);
 
-    let capturing_source = directory.join("capturing-function-aggregate.t");
-    let capturing_executable = directory.join("capturing-function-aggregate");
-    fs::write(
-        &capturing_source,
-        "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (operation : Function)\n  (operation is operation)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
-    )
-    .unwrap();
-    let rejected = run(topalc().args([
-        "-o",
-        capturing_executable.to_str().unwrap(),
-        capturing_source.to_str().unwrap(),
-    ]));
-    assert!(!rejected.status.success());
-    let diagnostic = String::from_utf8_lossy(&rejected.stderr);
-    assert!(
-        diagnostic.contains("E-COMPILER-UNSUPPORTED"),
-        "{diagnostic}"
-    );
-    assert!(
-        diagnostic.contains("capture-free callable identity"),
-        "{diagnostic}"
-    );
-    assert!(!capturing_executable.exists());
-    assert!(!metadata_path(&capturing_executable).exists());
-
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([
@@ -10767,6 +10742,160 @@ fn function_aggregates_are_private_direct_freestanding_and_debuggable() {
     ] {
         assert!(text.contains(expected), "missing {expected:?}: {text}");
     }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers aggregate results, parameters, nesting, rejection, and frames.
+fn captured_function_aggregates_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+    // TOPAL-COMPILER-FUNCTION-AGGREGATE-001,
+    // TOPAL-ABSTRACTION-FUNCTION-BOUNDARY-001,
+    // TOPAL-FUNCTION-VALUE-001, TOPAL-TYPE-PRODUCT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-capturing-function-aggregate-boundaries");
+    let source = directory.join("capturing-function-aggregate-boundaries.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/capturing-function-aggregate-boundaries.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"((42, 40), (42, 40), 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    for (name, rejected_source, detail) in [
+        (
+            "nested-result",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Record (operation : Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  (operation is increase)\nmake 1\n",
+            "escaping nested Function aggregate result",
+        ),
+        (
+            "function-capture",
+            "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
+            "private representation",
+        ),
+    ] {
+        let rejected_source_path = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_source_path, rejected_source).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source_path.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+        assert!(
+            diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+            "{diagnostic}"
+        );
+        assert!(diagnostic.contains(detail), "{diagnostic}");
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break capturing-function-aggregate-boundaries.t:13",
+            "-ex",
+            "break capturing-function-aggregate-boundaries.t:24",
+            "-ex",
+            "break capturing-function-aggregate-boundaries.t:27",
+            "-ex",
+            "break capturing-function-aggregate-boundaries.t:31",
+            "-ex",
+            "disable 2 3 4",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis package",
+            "-ex",
+            "print package",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis package",
+            "-ex",
+            "print package",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "enable 3",
+            "-ex",
+            "continue",
+            "-ex",
+            "whatis package",
+            "-ex",
+            "print package",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 3",
+            "-ex",
+            "enable 4",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print offset",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = struct (operation : Function, scale : Function, value : Int)",
+        "$1 = {operation = <anonymous fn/1>, scale = <anonymous fn/1>, value = 20}",
+        "type = struct (Function, Int)",
+        "$2 = {_0 = <anonymous fn/1>, _1 = 40}",
+        "type = struct (operation : Function, value : Int)",
+        "$3 = {operation = <fn increase>, value = 40}",
+        "$4 = 40",
+        "$5 = 2",
+        "topal.fn.apply_2drecord",
+        "topal.fn.apply_2dtuple",
+        "topal.fn.apply_2done",
+        "topal.fn.increase",
+        "topal.fn.use_2dnested",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+    assert!(!text.contains("operation capture"), "{text}");
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

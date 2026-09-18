@@ -20,6 +20,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/bound-anonymous-functions.t",
     "examples/language/callable-values.t",
     "examples/language/capability-composition.t",
+    "examples/language/capturing-function-aggregate-boundaries.t",
     "examples/language/capturing-function-parameters.t",
     "examples/language/capturing-function-results.t",
     "examples/language/character-classification.t",
