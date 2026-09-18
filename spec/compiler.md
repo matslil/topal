@@ -3484,11 +3484,12 @@ package runtime, allocation, foreign dependency, C/C++ runtime, other-language
 standard library, public aggregate ABI, or native ABI revision.
 
 Label association beyond a declaration-order prefix is governed by
-`TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`. Multiple packaged operands,
-packages mixed with unpackaged operands, non-scalar or nested package fields,
-opaque package values, and defaults that depend on invocation or captured
-bindings remain outside this increment and SHALL be rejected rather than
-changing evaluation order or choosing a public memory ABI.
+`TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`. Two packaged operands and
+packages mixed with an unpackaged operand are governed by
+`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar or nested package
+fields, opaque package values, and defaults that depend on invocation or
+captured bindings remain outside this increment and SHALL be rejected rather
+than changing evaluation order or choosing a public memory ABI.
 
 ### TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
 
@@ -3517,9 +3518,46 @@ standard library, public aggregate ABI, or native-ABI revision. Future
 compiled-library metadata SHALL encode stable field identities, declaration
 order, default semantics and dependencies, evaluation effects, representation
 identity, and target adapters independently of compiler-private binding names,
-LLVM types, and physical placement. Multiple or mixed packages, non-scalar or
-nested fields, opaque package values, invocation- or capture-dependent defaults,
-and public package adapters remain deferred.
+LLVM types, and physical placement. Compound packages are governed by
+`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar or nested fields,
+opaque package values, invocation- or capture-dependent defaults, and public
+package adapters remain deferred.
+
+### TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001 — Two and mixed scalar packages
+
+The compiler SHALL extend the admitted closed scalar package to either or both
+of a function's two syntactic operands. An unpackaged operand mixed with a
+package SHALL use an admitted non-callable scalar classifier. Both syntactic
+operands remain mandatory. Parameter names SHALL be unique across both packages
+and any unpackaged operand; unknown or duplicate labels, missing required
+fields, classifier mismatches, and duplicate parameter names SHALL reject the
+call before LLVM lowering or artifact publication.
+
+Every explicit operand expression and package-field expression SHALL execute
+exactly once in global source order: the left operand before the right operand,
+and fields within each product in their source order. The checked model SHALL
+retain those values through compiler-private immutable bindings. Omitted closed
+defaults SHALL then execute once in syntactic-operand order and field declaration
+order. The direct call SHALL receive unpackaged operands and package fields in
+syntactic-operand order, with fields in declaration order. The private bindings
+SHALL NOT become source variables or DWARF locals.
+
+The callee SHALL use one exact flattened private `fastcc` parameter per
+unpackaged operand or package field. LLVM SHALL own AMD64 register and stack
+placement. DWARF/GDB SHALL expose only the source parameter and field names,
+classifiers, values, and ordinary function frame. The lowering SHALL introduce
+no package aggregate at the call boundary, `byval`, `sret`, `inalloca`,
+`preallocated`, package runtime, allocation, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate ABI, or native-ABI revision.
+
+Future compiled-library metadata SHALL additionally preserve syntactic-operand
+partition and order beside stable field identities, field declaration order,
+default semantics and dependencies, evaluation effects, representation
+identity, and target adapters. It SHALL remain independent of compiler-private
+binding names, LLVM types, and physical placement. Callable, Scope, non-scalar,
+nested, or opaque compound package values, invocation- or capture-dependent
+defaults, recursion through compound package signatures, and public package
+adapters remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 
