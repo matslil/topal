@@ -3245,16 +3245,54 @@ aggregate argument placement from the qualified target data layout.
 Tests SHALL cover named, symbolic, and non-capturing anonymous Function leaves,
 nested Tuple/Record values, exact success and mismatch behavior,
 capture-bearing rejection, structural guarded IR, interpreter parity and
-reversible history, freestanding execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
-or environment object, allocation, generic matcher, pattern table, function
-pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
-runtime, other-language standard library, public aggregate/callable ABI, or
-native-ABI revision. Capture-bearing repeated identity, dynamic aggregate
-selection, Function containment in other aggregates, ordinary named-function
-header repetition, publication, and library adapters remain deferred. Future
-compiled-library metadata SHALL encode canonical aggregate paths and stable
+reversible history, freestanding execution, and full O0 GDB values/frames. This
+rule SHALL introduce no closure or environment object, allocation, generic
+matcher, pattern table, function pointer, indirect call, callback, dispatch
+table, foreign dependency, C/C++ runtime, other-language standard library,
+public aggregate/callable ABI, or native-ABI revision. Capture-bearing
+Function-aggregate repeated identity, dynamic aggregate selection, Function
+containment in other aggregates, ordinary named-function header repetition,
+publication, and library adapters remain deferred. Future compiled-library
+metadata SHALL encode canonical aggregate paths and stable
 callable/representation identities independently of private LLVM types,
 observation tags, and target-specific argument placement.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001 — Exact captured anonymous Function values
+
+A repeated anonymous-pattern name MAY match two values produced by the same
+anonymous Function source when both values retain the same ordered capture
+schema and every represented capture classifier has exact compiler equality.
+Exact Function identity SHALL comprise the anonymous source identity followed
+by the already-evaluated captured values in their retained order. The source
+identity SHALL be canonical across private specializations of the same
+anonymous expression; a compiler-private observation tag MAY represent it but
+the numeric tag SHALL NOT define a public or serialized identity. A capture
+with missing facts, a different schema, or no admitted exact equality SHALL be
+rejected before LLVM lowering.
+
+The first Function occurrence SHALL remain the sole source binding and DWARF
+parameter. Every later occurrence SHALL retain its ordinary observation field
+and its captures as deterministic hidden private operands. Guards SHALL compare
+the source identity first and then each capture in order before body entry,
+using existing exact direct comparisons. A mismatch SHALL use
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`; no observation tag SHALL
+dispatch executable code. LLVM SHALL own physical AMD64 placement for the exact
+private prototype.
+
+Tests SHALL cover equal and unequal captures from one factory source,
+canonical source identity across specializations, rejected non-equality capture
+state, guard order, interpreter parity and reversible history, freestanding
+execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
+or environment object, allocation, pattern table, function pointer, indirect
+call, dispatch table, foreign dependency, C/C++ runtime, other-language
+standard library, public callable ABI, or native-ABI revision. Named or nested
+captured callable identity, captured Function aggregates, unsupported capture
+classifiers, publication, and library adapters remain deferred. Future
+compiled-library metadata SHALL encode the stable callable source identity and
+ordered capture schema, classifiers, semantic equality requirements,
+representation identity, lifetime/effects, and target adapter without
+serializing private observation tags, parameter names, LLVM types, or physical
+argument placement.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 
