@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 230);
+    assert_eq!(examples.len(), 231);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -663,6 +663,26 @@ fn every_mode_derives_nominal_sum_equality() {
         let output = run(&[], unsupported);
         assert!(!output.status.success());
         assert!(String::from_utf8_lossy(&output.stderr).contains("E-NO-APPLICABLE-OVERLOAD"));
+    }
+}
+
+#[test]
+fn every_mode_associates_packaged_fields_by_label() {
+    // TOPAL-INTP-SUBSET-257, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let source = include_str!("../../../examples/language/packaged-function-association-order.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("(42, 42, 42)"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
     }
 }
 
