@@ -62,7 +62,8 @@ evidence.
 | 3b2-b5o | root-scope nominal labeled Union and positional Variant construction, private aggregate function passage, exhaustive payload decisions, canonical display, and active-payload debugging | complete |
 | 3b2-b5p | unpublished non-escaping nested lexical functions, represented immutable capture snapshots, exact private capture parameters, direct calls, and GDB-visible nested frames/captures | complete |
 | 3b2-b5q | specialized private named/symbolic Function results and pass-through parameters, exact tag returns, direct application, and GDB-visible result bindings | complete |
-| 3b2-b5e8 | remaining function forms, aggregate/capturing/anonymous/dynamic Function results and boundaries, remaining symbolic and capturing/escaping anonymous Function values, anonymous product patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and callable/Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5r | non-escaping inferred anonymous Function captures as exact private parameters plus non-capturing anonymous Function results, direct specialization, and GDB-visible captures/results | complete |
+| 3b2-b5e8 | remaining function forms, aggregate/capturing/dynamic Function results and boundaries, remaining symbolic and escaping anonymous Function values, anonymous product patterns, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and callable/Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -262,7 +263,10 @@ labeled and positional sums with statically typed private aggregate payload
 slots, LLVM-owned physical call lowering, exact active-alternative decisions,
 and active-only debugging; 3b2-b5p closure-converts directly applied nested
 lexical declarations into exact private capture parameters without materializing
-a closure value; and 3b2-b5e8 continues with escaping, recursive, overloaded,
+a closure value; 3b2-b5q retains closed named and symbolic callable identity
+through exact private Function results; 3b2-b5r passes non-escaping anonymous
+captures as exact private parameters and returns non-capturing anonymous values
+without runtime dispatch; and 3b2-b5e8 continues with escaping, recursive, overloaded,
 and cross-callable nested functions, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the
 remaining user-defined value representations.

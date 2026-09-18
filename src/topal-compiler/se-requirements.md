@@ -3057,7 +3057,7 @@ binding chains, exact output, rejection boundaries, private direct IR,
 freestanding artifacts, DWARF validation, GDB values/frames, the shared corpus,
 and separate resource baselines.
 
-Anonymous, capturing, nested, dynamically computed, aggregate-contained, and
+Capturing anonymous, nested, dynamically computed, aggregate-contained, and
 published Function results remain rejected. This shall add no function pointer,
 indirect call, closure allocation/runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public callable ABI, or `topal-native/6`
@@ -3065,6 +3065,42 @@ revision. This realizes `TOPAL-COMPILER-FUNCTION-RESULT-001` and the admitted
 result-boundary portions of `TOPAL-FUNCTION-CALLABLE-VALUE-001`,
 `TOPAL-FUNCTION-VALUE-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5q.
+
+## TOPAL-COMP-ANONYMOUS-CAPTURE-001 — Private anonymous captures and results
+
+The checked compiler model shall admit a bound inferred anonymous function that
+captures immutable lexical data with complete admitted private representations
+when it is applied directly in the same defining invocation. It shall retain
+the construction-time storage identities, append their already-evaluated values
+in deterministic lexical-name order after the explicit operands, and bind the
+anonymous body only to exact hidden capture parameters. A missing defining
+storage identity, caller shadow, callable or namespace capture, or unsupported
+representation shall fail before LLVM lowering.
+
+An ordinary or static root function may return a non-capturing inferred
+anonymous Function. Result callable facts shall retain its body, source arity,
+construction identity, static context, and empty capture set separately from
+the returned observation tag. A later binding and application shall specialize
+that body and produce one direct private call. Capturing anonymous Functions
+shall remain rejected at Function parameter and result boundaries.
+
+LLVM definitions and calls shall use matching private `fastcc` signatures with
+source parameters followed by exact capture parameters, leaving physical
+x86-64 placement to LLVM. A non-capturing result shall retain the existing i32
+Function return. Full O0 DWARF/GDB shall expose the anonymous frame, explicit
+parameters, source-named captures, and returned Function local. Native tests
+shall cover exact output, checked capture/result models, unsupported escapes,
+exact IR, direct calls, artifact independence, DWARF validation, debugger
+values/frames, the shared corpus, and separate resource baselines.
+
+This shall add no environment object, function pointer, indirect call, closure
+or Function runtime, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or `topal-native/6` revision. Capturing results or
+Function-boundary arguments, aggregate containment, anonymous product patterns,
+dynamic escape, publication, and library metadata/adapters remain deferred.
+This realizes `TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-VALUE-001`, and
+`TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5r.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

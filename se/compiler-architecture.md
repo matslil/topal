@@ -110,9 +110,11 @@ ordinary initializer bindings remain source-ordered. This increment covers
 statically decidable scalar headers. A closed named-root or symbolic `Function`
 result reuses the private i32 observation tag while its specialization retains
 the callable identity separately, so a later application is still a direct
-call or operation rather than tag dispatch. Target-aligned debug-only shadows
-keep otherwise-dead Function result bindings observable at O0. Aggregate,
-capturing, anonymous, dynamic, and published Function results, dynamic
+call or operation rather than tag dispatch. A non-capturing inferred anonymous
+result retains its body and arity through the same specialization side table,
+while the machine result remains the private observation tag. Target-aligned
+debug-only shadows keep otherwise-dead Function result bindings observable at
+O0. Aggregate, capturing, dynamic, and published Function results, dynamic
 structural classifier dispatch, escaping/capturing closures, and remaining
 recursive call graphs remain later frontend work and do not leak into the
 private ABI prematurely.
@@ -220,18 +222,19 @@ specialization erases every computational use of the tag, a debug-only aligned
 stack shadow preserves the source parameter for DWARF/GDB without turning it
 into runtime dispatch or a public callable representation.
 
-Non-capturing inferred anonymous functions extend specialization without
-choosing a closure ABI. The checked binding retains the parameter patterns,
-body, construction identity, and detected lexical captures. A direct call, or
-use through a specialized private Function parameter, supplies the parameter
-classifiers; the frontend then checks the body and emits one exact private
-`fastcc` function. Multi-parameter calls decompose their positional product in
-source order, and flat mixed symbolic applications are explicitly regrouped
-left-to-right before ordinary operation checking. The observation tag exists
-only for `<anonymous fn/N>` display and DWARF. A detected data capture is
-rejected rather than allowing entry-frame SSA to leak across function frames;
-anonymous capture parameters, environments, escape analysis, and a public
-closure representation remain one coordinated later design.
+Inferred anonymous functions extend specialization without choosing a closure
+ABI. The checked binding retains the parameter patterns, body, construction
+identity, and lexical capture snapshot. A direct application in the defining
+invocation passes represented immutable captures after the explicit operands
+as deterministic exact private parameters, so the anonymous frame never reads
+another native frame. A non-capturing value may additionally pass through a
+specialized private Function parameter or result. Multi-parameter calls
+decompose their positional product in source order, and flat mixed symbolic
+applications are explicitly regrouped left-to-right before ordinary operation
+checking. The observation tag exists only for `<anonymous fn/N>` display and
+DWARF. Capturing Function parameters/results, unsupported captured state,
+escaping environments, and a public closure representation remain one
+coordinated later design.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general

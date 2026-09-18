@@ -2776,7 +2776,7 @@ debug-only stack shadows so DWARF/GDB can observe the returned value even when
 specialization makes the tag computationally dead. LLVM SHALL own the physical
 AMD64 register and stack placement.
 
-Anonymous, capturing, nested, dynamically computed, aggregate-contained, and
+Capturing anonymous, nested, dynamically computed, aggregate-contained, and
 published Function results remain outside this increment and SHALL be rejected.
 No function pointer, indirect call, closure allocation/runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
@@ -2809,6 +2809,38 @@ Lexical data captures, anonymous product parameter patterns, escaping closure
 storage, Function results or aggregate Function boundaries, and published
 callable interfaces remain outside this increment and SHALL be rejected rather
 than referencing storage from another call frame.
+
+### TOPAL-COMPILER-ANONYMOUS-CAPTURE-001 — Private anonymous captures and results
+
+A bound inferred anonymous function MAY capture immutable lexical data with an
+admitted complete private representation when every application remains in the
+same defining invocation. The checked compiler SHALL retain the construction-
+time storage identities and SHALL pass their already-evaluated values after the
+explicit source operands in deterministic lexical-name order. The specialized
+anonymous body SHALL resolve each captured name only to its corresponding
+hidden parameter; caller shadowing and later bindings SHALL NOT participate.
+
+A non-capturing inferred anonymous function MAY be the exact `Function` result
+of an ordinary or static root function. The caller SHALL retain that anonymous
+body, arity, construction identity, and empty capture set through the direct
+result call and later bindings. Application SHALL specialize the anonymous body
+and issue a direct private call; it SHALL NOT dispatch through the returned
+machine tag or repeat callable lookup.
+
+The capture-specialized LLVM signature SHALL list exact source parameters
+followed by exact capture parameters and SHALL use private `fastcc`, leaving
+physical AMD64 placement to LLVM. A non-capturing anonymous result SHALL use the
+existing private i32 Function observation tag and debug-only result shadow.
+DWARF/GDB SHALL expose explicit parameters, material captures under their source
+names, the anonymous source frame, and returned Function locals at `-O0`.
+
+A capturing anonymous value SHALL NOT cross a Function parameter or result
+boundary. Captures without an admitted private representation, product
+parameter patterns, dynamic escape, aggregate containment, publication, and
+library boundaries SHALL be rejected before LLVM lowering. This rule SHALL
+introduce no environment object, function pointer, indirect call, closure or
+Function runtime, foreign dependency, C/C++ runtime, other-language standard
+library, public callable ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 
