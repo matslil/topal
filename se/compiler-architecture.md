@@ -251,11 +251,12 @@ parameter and the source-named captures in the eventually invoked callable are
 shown. A nested callable receives a module-private observation tag only when it
 enters this path. No tag dispatch, environment object, capture allocation, or
 cross-frame lookup is introduced, and LLVM continues to lower every exact
-private prototype for the target. Capturing Function results outside the
-private anonymous-result boundary below, nested patterns, unsupported captured
-state, other escaping environments, and a public/library closure representation
-remain coordinated later design with canonical callable, ordered-capture,
-lifetime/effect, representation, and target-adapter metadata.
+private prototype for the target. Recursive patterns compose with this path as
+described below. Capturing Function results outside the private
+anonymous-result boundary below, unsupported captured state, other escaping
+environments, and a public/library closure representation remain coordinated
+later design with canonical callable, ordered-capture, lifetime/effect,
+representation, and target-adapter metadata.
 
 A private capturing anonymous Function result uses the same facts without
 turning them into a public closure representation. The specialized callee
@@ -284,9 +285,20 @@ re-evaluation of the factory. The private chain storage has no source DWARF
 variable, while each invoked source function and anonymous capture remains
 visible in its ordinary frame.
 
-A repeated non-discard name across ordinary anonymous parameters or flat
-product fields retains every consumed private machine operand but creates only
-the first source binding. Later same-classifier scalar occurrences become
+An inferred anonymous Function may recursively destructure positional products.
+The checked frontend materializes the complete call operand once, then walks
+the pattern and exact Tuple types depth-first from left to right, representing
+each nested field as a projection from that private value. The source arity and
+anonymous Function identity count top-level patterns; the private LLVM
+prototype instead lists every admitted leaf in lexical order, followed by
+captures. This composes with direct, bound, capturing, and returned anonymous
+Functions while keeping all calls exact and direct. DWARF exposes the source
+leaf names and values but not the projection carrier, and no pattern object,
+allocation, runtime descriptor, or public ABI is introduced.
+
+A repeated non-discard name across ordinary anonymous parameters or recursively
+destructured product leaves retains every consumed private machine operand but
+creates only the first source binding. Later same-classifier scalar occurrences become
 lexically ordered function-entry identity guards. They reuse direct exact
 integer, Rational, String/Character, enum-like, or Function-tag comparison;
 they do not invoke user Equality, conversion, canonical equivalence, or tag
@@ -300,8 +312,8 @@ and List pointers reuse their Topal-owned tag/payload or ordered-entry
 comparisons. LLVM still owns aggregate register/stack coercion, and the first
 occurrence alone receives the existing target-derived debug shadow. No generic
 aggregate matcher or allocation identity is introduced. Result, Sum, Range,
-Generator, refined, authority-bearing, and Function-containing aggregates,
-nested parameter-pattern syntax, and ordinary named-header repetition remain
+Generator, refined, authority-bearing, and Function-containing aggregates and
+ordinary named-header repetition remain
 deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body

@@ -9894,16 +9894,10 @@ impl Analyzer {
                 span,
             } => {
                 self.function_values_used = true;
-                let parameter_names = parameters
-                    .iter()
-                    .flat_map(|parameter| match parameter {
-                        AnonymousPattern::Binding(binding) => vec![self.source.slice(*binding)],
-                        AnonymousPattern::Product { bindings, .. } => bindings
-                            .iter()
-                            .map(|binding| self.source.slice(*binding))
-                            .collect(),
-                    })
-                    .collect::<BTreeSet<_>>();
+                let mut parameter_names = BTreeSet::new();
+                for parameter in parameters {
+                    collect_anonymous_pattern_names(&self.source, parameter, &mut parameter_names);
+                }
                 let captures = environment
                     .iter()
                     .filter(|(name, _)| {
@@ -14653,6 +14647,46 @@ impl Analyzer {
         })
     }
 
+    fn flatten_collection_pattern(
+        &self,
+        pattern: &AnonymousPattern,
+        value_type: &CompilerType,
+        flattened: &mut Vec<(Span, CompilerType)>,
+    ) -> Result<(), Diagnostic> {
+        match pattern {
+            AnonymousPattern::Binding(name) => flattened.push((*name, value_type.clone())),
+            AnonymousPattern::Product {
+                fields,
+                span: pattern_span,
+            } => {
+                let CompilerType::Tuple(field_types) = value_type else {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ANONYMOUS-PRODUCT-PATTERN",
+                        *pattern_span,
+                        "anonymous product pattern requires a positional product",
+                    ));
+                };
+                if fields.len() != field_types.len() {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ANONYMOUS-FUNCTION-ARITY",
+                        *pattern_span,
+                        format!(
+                            "collection product pattern expects {} fields, found {}",
+                            fields.len(),
+                            field_types.len()
+                        ),
+                    ));
+                }
+                for (field, field_type) in fields.iter().zip(field_types) {
+                    self.flatten_collection_pattern(field, field_type, flattened)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     #[allow(clippy::too_many_lines)] // Pattern binding and capture checks stay beside body analysis.
     fn analyze_collection_function(
         &mut self,
@@ -14663,61 +14697,22 @@ impl Analyzer {
         static_context: bool,
         span: Span,
     ) -> Result<(Vec<CompilerParameter>, CompilerBlock), Diagnostic> {
-        let flattened = if let (
-            [
-                AnonymousPattern::Product {
-                    bindings,
-                    span: pattern_span,
-                },
-            ],
-            [CompilerType::Tuple(fields)],
-        ) = (parameters, parameter_types)
-        {
-            if bindings.len() != fields.len() {
-                return Err(source_diagnostic(
-                    &self.source,
-                    "E-ANONYMOUS-FUNCTION-ARITY",
-                    *pattern_span,
-                    format!(
-                        "collection product pattern expects {} fields, found {}",
-                        fields.len(),
-                        bindings.len()
-                    ),
-                ));
-            }
-            bindings
-                .iter()
-                .copied()
-                .zip(fields.iter().cloned())
-                .collect::<Vec<_>>()
-        } else {
-            if parameters.len() != parameter_types.len() {
-                return Err(source_diagnostic(
-                    &self.source,
-                    "E-ANONYMOUS-FUNCTION-ARITY",
-                    span,
-                    format!(
-                        "collection function expects {} parameters, found {}",
-                        parameter_types.len(),
-                        parameters.len()
-                    ),
-                ));
-            }
-            parameters
-                .iter()
-                .zip(parameter_types)
-                .map(|(parameter, value_type)| {
-                    let AnonymousPattern::Binding(name_span) = parameter else {
-                        return Err(unsupported(
-                            &self.source,
-                            span,
-                            "collection anonymous product parameter pattern",
-                        ));
-                    };
-                    Ok((*name_span, value_type.clone()))
-                })
-                .collect::<Result<Vec<_>, Diagnostic>>()?
-        };
+        if parameters.len() != parameter_types.len() {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-ANONYMOUS-FUNCTION-ARITY",
+                span,
+                format!(
+                    "collection function expects {} parameters, found {}",
+                    parameter_types.len(),
+                    parameters.len()
+                ),
+            ));
+        }
+        let mut flattened = Vec::new();
+        for (parameter, value_type) in parameters.iter().zip(parameter_types) {
+            self.flatten_collection_pattern(parameter, value_type, &mut flattened)?;
+        }
         let mut environment = outer_environment.clone();
         let mut lowered = Vec::with_capacity(flattened.len());
         let mut declared = BTreeSet::new();
@@ -16162,6 +16157,67 @@ impl Analyzer {
         }
     }
 
+    fn flatten_anonymous_argument(
+        &self,
+        pattern: &AnonymousPattern,
+        argument: &CompilerExpression,
+        argument_facts: Option<&CompilerExpression>,
+        flattened: &mut Vec<(Span, CompilerExpression, Option<CompilerExpression>)>,
+    ) -> Result<(), Diagnostic> {
+        match pattern {
+            AnonymousPattern::Binding(name) => {
+                flattened.push((*name, argument.clone(), argument_facts.cloned()));
+            }
+            AnonymousPattern::Product {
+                fields,
+                span: pattern_span,
+            } => {
+                let CompilerType::Tuple(field_types) = &argument.value_type else {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ANONYMOUS-PRODUCT-PATTERN",
+                        argument.span,
+                        "anonymous product pattern requires a positional product",
+                    ));
+                };
+                if fields.len() != field_types.len() {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ANONYMOUS-PRODUCT-PATTERN",
+                        *pattern_span,
+                        format!(
+                            "anonymous product pattern expects {} fields, found {}",
+                            fields.len(),
+                            field_types.len()
+                        ),
+                    ));
+                }
+                let literal_fields = argument_facts.and_then(|facts| {
+                    if let CompilerExpressionKind::Tuple(fields) = &facts.kind {
+                        Some(fields)
+                    } else {
+                        None
+                    }
+                });
+                for (index, (field, value_type)) in fields.iter().zip(field_types).enumerate() {
+                    let facts = literal_fields.and_then(|values| values.get(index));
+                    let projected = CompilerExpression {
+                        kind: CompilerExpressionKind::TupleField {
+                            tuple: Box::new(argument.clone()),
+                            index,
+                        },
+                        value_type: value_type.clone(),
+                        int_range: facts.and_then(|value| value.int_range.clone()),
+                        rational_value: facts.and_then(|value| value.rational_value.clone()),
+                        span: argument.span,
+                    };
+                    self.flatten_anonymous_argument(field, &projected, facts, flattened)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Retained source identity and call-site evidence are intentionally explicit.
     fn analyze_bound_anonymous_function(
         &mut self,
@@ -16183,9 +16239,7 @@ impl Analyzer {
             ));
         };
         let argument = self.analyze_expression(argument_source, call_environment)?;
-        let destructures_product = parameters
-            .iter()
-            .any(|parameter| matches!(parameter, AnonymousPattern::Product { .. }));
+        let destructures_product = parameters.iter().any(anonymous_pattern_contains_product);
         let materialize_argument = parameters.len() != 1 || destructures_product;
         let literal_fields = match &argument.kind {
             CompilerExpressionKind::Tuple(fields) => Some(fields.clone()),
@@ -16260,67 +16314,12 @@ impl Analyzer {
             .zip(parameter_arguments)
             .zip(parameter_facts)
         {
-            match parameter {
-                AnonymousPattern::Binding(name_span) => {
-                    flattened_arguments.push((*name_span, argument, argument_facts));
-                }
-                AnonymousPattern::Product {
-                    bindings,
-                    span: pattern_span,
-                } => {
-                    let CompilerType::Tuple(field_types) = &argument.value_type else {
-                        return Err(source_diagnostic(
-                            &self.source,
-                            "E-ANONYMOUS-PRODUCT-PATTERN",
-                            argument.span,
-                            "anonymous product pattern requires a positional product",
-                        ));
-                    };
-                    if bindings.len() != field_types.len() {
-                        return Err(source_diagnostic(
-                            &self.source,
-                            "E-ANONYMOUS-PRODUCT-PATTERN",
-                            *pattern_span,
-                            format!(
-                                "anonymous product pattern expects {} fields, found {}",
-                                bindings.len(),
-                                field_types.len()
-                            ),
-                        ));
-                    }
-                    let literal_product_fields = argument_facts.and_then(|facts| {
-                        if let CompilerExpressionKind::Tuple(fields) = facts.kind {
-                            Some(fields)
-                        } else {
-                            None
-                        }
-                    });
-                    flattened_arguments.extend(bindings.iter().zip(field_types).enumerate().map(
-                        |(index, (binding, value_type))| {
-                            (
-                                *binding,
-                                CompilerExpression {
-                                    kind: CompilerExpressionKind::TupleField {
-                                        tuple: Box::new(argument.clone()),
-                                        index,
-                                    },
-                                    value_type: value_type.clone(),
-                                    int_range: literal_product_fields
-                                        .as_ref()
-                                        .and_then(|values| values[index].int_range.clone()),
-                                    rational_value: literal_product_fields
-                                        .as_ref()
-                                        .and_then(|values| values[index].rational_value.clone()),
-                                    span: argument.span,
-                                },
-                                literal_product_fields
-                                    .as_ref()
-                                    .map(|values| values[index].clone()),
-                            )
-                        },
-                    ));
-                }
-            }
+            self.flatten_anonymous_argument(
+                parameter,
+                &argument,
+                argument_facts.as_ref(),
+                &mut flattened_arguments,
+            )?;
         }
 
         let mut environment = BTreeMap::new();
@@ -21001,22 +21000,40 @@ fn anonymous_body_capture(
     body: &Expression,
     environment: &BTreeMap<String, BindingFacts>,
 ) -> Option<String> {
-    let parameter_names = parameters
-        .iter()
-        .flat_map(|parameter| match parameter {
-            AnonymousPattern::Binding(binding) => vec![source.slice(*binding)],
-            AnonymousPattern::Product { bindings, .. } => bindings
-                .iter()
-                .map(|binding| source.slice(*binding))
-                .collect(),
-        })
-        .collect::<BTreeSet<_>>();
+    let mut parameter_names = BTreeSet::new();
+    for parameter in parameters {
+        collect_anonymous_pattern_names(source, parameter, &mut parameter_names);
+    }
     environment
         .keys()
         .find(|name| {
             !parameter_names.contains(name.as_str()) && expression_mentions_name(source, body, name)
         })
         .cloned()
+}
+
+fn collect_anonymous_pattern_names<'a>(
+    source: &'a SourceText,
+    pattern: &AnonymousPattern,
+    names: &mut BTreeSet<&'a str>,
+) {
+    match pattern {
+        AnonymousPattern::Binding(binding) => {
+            names.insert(source.slice(*binding));
+        }
+        AnonymousPattern::Product { fields, .. } => {
+            for field in fields {
+                collect_anonymous_pattern_names(source, field, names);
+            }
+        }
+    }
+}
+
+fn anonymous_pattern_contains_product(pattern: &AnonymousPattern) -> bool {
+    match pattern {
+        AnonymousPattern::Binding(_) => false,
+        AnonymousPattern::Product { .. } => true,
+    }
 }
 
 fn directly_collectable_list_uncons_unfold(
@@ -30906,6 +30923,84 @@ mod tests {
             ),
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
+        }
+    }
+
+    #[test]
+    fn models_recursive_anonymous_product_patterns() {
+        // TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001,
+        // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-TYPE-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/nested-anonymous-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected five nested-pattern calls")
+        };
+        assert_eq!(results.len(), 5);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+        assert_eq!(exact_int(&results[3]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[4]), Some(BigInt::from(42)));
+        assert!(matches!(
+            results[0].kind,
+            CompilerExpressionKind::PrivateBinding { .. }
+        ));
+
+        let anonymous = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name.starts_with("<anonymous fn/"))
+            .collect::<Vec<_>>();
+        assert_eq!(anonymous.len(), 5);
+        assert!(anonymous.iter().any(|function| {
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .eq(["left", "middle", "right"])
+        }));
+        assert!(anonymous.iter().any(|function| {
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .eq(["left", "right", "tail", "offset"])
+        }));
+        assert!(anonymous.iter().any(|function| {
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .eq(["left", "middle", "right", "extra"])
+        }));
+        assert!(anonymous.iter().any(|function| {
+            function.pattern_identities.as_slice()
+                == [CompilerPatternIdentity {
+                    first_parameter: 0,
+                    repeated_parameter: 1,
+                    span: function.parameters[1].span,
+                }]
+                && function.parameters[2].discarded
+        }));
+
+        for (source, detail) in [
+            (
+                "use language (version is v0.1)\noperation : Function is { (left, (middle, right)) } left + middle + right\noperation (1, 2)\n",
+                "requires a positional product",
+            ),
+            (
+                "use language (version is v0.1)\noperation : Function is { (left, (middle, right)) } left + middle + right\noperation (1, (2, 3, 4))\n",
+                "expects 2 fields, found 3",
+            ),
+        ] {
+            let diagnostic = analyze_for_compiler(source).unwrap_err();
+            assert_eq!(diagnostic.code, "E-ANONYMOUS-PRODUCT-PATTERN");
+            assert!(diagnostic.message.contains(detail), "{diagnostic:?}");
         }
     }
 

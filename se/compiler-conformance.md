@@ -70,7 +70,8 @@ evidence.
 | 3b2-b5w | private capturing anonymous and nested Function parameters, deterministic hidden scalar/aggregate environments, transitive direct forwarding, and source-only capture debugging | complete |
 | 3b2-b5x | private capturing anonymous Function results, exact tag-plus-capture aggregate returns, transitive result/parameter forwarding, and source-only result debugging | complete |
 | 3b2-b5y | left-associative exact Function-result chains, once-only intermediate evaluation, direct named/symbolic/anonymous application, and chain-frame debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, aggregate-contained/dynamic/nested Function results and boundaries, other escaping anonymous Function values, nested parameter patterns and unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5z | recursive anonymous positional-product patterns, once-only nested Tuple projection, flattened private calls, recursive repeated names/discards, and leaf debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, aggregate-contained/dynamic/nested Function results and boundaries, other escaping anonymous Function values, unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -286,6 +287,8 @@ anonymous or nested calls; 3b2-b5x returns the same immutable capture facts and
 values from specialized private anonymous factories in exact LLVM aggregates;
 3b2-b5y consumes exact Function results immediately through the language's
 left-associative application chain while retaining once-only direct calls; and
+3b2-b5z recursively flattens nested anonymous Tuple patterns into exact private
+leaf parameters without replaying their outer operand; and
 3b2-b5e8 continues with other escaping, recursive, overloaded, and
 dynamically contained callables, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the

@@ -3268,8 +3268,8 @@ multi-parameter call shall use a compiler-private lexical value before field
 projection. Direct Tuple constructions may retain sound field facts for body
 checking, but no initializer or field expression may be replayed. A non-Tuple,
 field-count mismatch, repeated binding outside
-`TOPAL-COMP-ANONYMOUS-REPEATED-PATTERN-001`, nested pattern, or unsupported
-field representation shall fail before anonymous-body or LLVM lowering.
+`TOPAL-COMP-ANONYMOUS-REPEATED-PATTERN-001`, or unsupported field representation
+shall fail before anonymous-body or LLVM lowering.
 
 LLVM definitions and calls shall use matching private `fastcc` signatures with
 ordinary binding parameters and flattened product fields in lexical order,
@@ -3282,10 +3282,12 @@ boundaries, once-only IR, artifact independence, DWARF validation, GDB
 values/frames, all interpreter modes, reversible debugging, the shared corpus,
 and separate resource baselines.
 
-This shall add no product-pattern object, environment object, function pointer,
+Recursive product patterns are governed by
+`TOPAL-COMP-ANONYMOUS-NESTED-PATTERN-001`. This shall add no product-pattern
+object, environment object, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
-`topal-native/6` revision. Nested and aggregate repeated-name patterns,
+`topal-native/6` revision. Aggregate repeated-name patterns,
 capturing Function boundaries outside
 `TOPAL-COMP-FUNCTION-CAPTURE-PARAMETER-001` and
 `TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`, other escape, aggregate containment,
@@ -3294,12 +3296,54 @@ publication, and library metadata/adapters remain deferred. This realizes
 `TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5s.
 
+## TOPAL-COMP-ANONYMOUS-NESTED-PATTERN-001 — Recursive anonymous product patterns
+
+The syntax, interpreter, and checked compiler model shall admit a finite
+positional product pattern recursively in any field of an inferred anonymous
+Function parameter. Every product node shall require one exact Tuple with the
+same arity and recursively visit binding/discard leaves depth-first from left
+to right. A non-Tuple or mismatched field count at any depth shall fail before
+body entry and before LLVM lowering.
+
+The frontend shall evaluate the complete application operand once, retain one
+compiler-private outer value when projection is required, and derive nested
+fields only through recursive Tuple projections. It shall preserve top-level
+source Function arity separately from the flattened leaf parameter list.
+Existing repeated-name exact-identity guards and discard semantics shall apply
+across all leaves. The pattern shall compose with immutable captures, mixed
+top-level parameters, and capturing anonymous Function results already admitted
+by their exact private boundaries.
+
+LLVM definitions and calls shall use matching direct private `fastcc`
+signatures containing admitted leaves in lexical order followed by captures,
+with all physical x86-64 placement owned by LLVM. DWARF/GDB shall expose each
+non-discarded leaf under its source name and omit compiler-only projection
+storage. Tests shall cover opaque nested Tuple results, both nesting directions,
+mixed parameters, captures, a capturing Function result, repeated names and
+discard, non-Tuple and nested-arity rejection, checked structure, once-only
+direct IR, exact interpreter modes and reversible history, freestanding
+artifacts, full O0 GDB values/frames, the shared corpus, and separate resource
+baselines.
+
+This shall add no pattern object, allocation, environment object, function
+pointer, indirect call, callback, closure or Function runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public aggregate
+or callable ABI, or `topal-native/6` revision. Named-function header patterns,
+aggregate containment, dynamic escape/selection, publication, and library
+metadata/adapters remain deferred. This realizes
+`TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001`,
+`TOPAL-COMPILER-ANONYMOUS-PRODUCT-001`, `TOPAL-FUNCTION-ANONYMOUS-001`,
+`TOPAL-TYPE-PRODUCT-001`, `TOPAL-TYPE-MATCH-001`, and `TOPAL-TYPE-CALL-001` for
+compiler increment 3b2-b5z.
+
 ## TOPAL-COMP-ANONYMOUS-REPEATED-PATTERN-001 — Exact repeated anonymous pattern names
 
 The checked compiler model shall admit a repeated non-discard name across
-ordinary scalar parameters and flat positional-product fields of an inferred
-anonymous Function. The first occurrence shall be the only body binding and
-debug parameter. Every later occurrence shall retain its consumed private ABI
+ordinary scalar parameters and positional-product leaves of an inferred
+anonymous Function, including recursive leaves under
+`TOPAL-COMP-ANONYMOUS-NESTED-PATTERN-001`. The first occurrence shall be the
+only body binding and debug parameter. Every later occurrence shall retain its
+consumed private ABI
 operand and record a lexical exact-identity guard against that first parameter.
 Repeated `_` occurrences shall remain independent discards.
 
@@ -3327,8 +3371,8 @@ This shall add no pattern object, matching table, function pointer, indirect
 call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
 `topal-native/6` revision. Aggregate repeated identity is governed by
-`TOPAL-COMP-ANONYMOUS-REPEATED-AGGREGATE-001`. Nested parameter-pattern syntax,
-ordinary named-function header repetition, publication, and library
+`TOPAL-COMP-ANONYMOUS-REPEATED-AGGREGATE-001`. Ordinary named-function header
+repetition, publication, and library
 metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
@@ -3363,8 +3407,8 @@ the shared corpus, and separate resource baselines. This shall add no generic
 aggregate matcher, pattern table, allocation, callback, indirect dispatch,
 foreign dependency, C/C++ runtime, other-language standard library, public
 aggregate ABI, or `topal-native/6` revision. Result, Sum, Range, Generator,
-refined, authority-bearing, and Function-containing aggregate identity; nested
-parameter-pattern syntax; ordinary named-function header repetition;
+refined, authority-bearing, and Function-containing aggregate identity;
+ordinary named-function header repetition;
 publication; and library metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`,
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,

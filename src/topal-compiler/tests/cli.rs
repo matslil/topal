@@ -10532,6 +10532,135 @@ fn anonymous_product_patterns_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One native session covers recursive projection, identity failure, and source frames.
+fn nested_anonymous_patterns_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001,
+    // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001,
+    // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-TYPE-PRODUCT-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-nested-anonymous-patterns");
+    let source = directory.join("nested-anonymous-patterns.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/nested-anonymous-patterns.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42, 42, 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let mismatch_source = directory.join("nested-pattern-mismatch.t");
+    let mismatch_executable = directory.join("mismatch");
+    fs::write(
+        &mismatch_source,
+        "use language (version is v0.1)\noperation : Function is { (value, (value, _)) } value\noperation (1, (2, 0))\n",
+    )
+    .unwrap();
+    let mismatch_compiled = run(topalc().args([
+        "-o",
+        mismatch_executable.to_str().unwrap(),
+        mismatch_source.to_str().unwrap(),
+    ]));
+    assert!(
+        mismatch_compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&mismatch_compiled.stderr)
+    );
+    let mismatch = run(&mut Command::new(&mismatch_executable));
+    assert_eq!(mismatch.status.code(), Some(65));
+    assert!(String::from_utf8_lossy(&mismatch.stderr).contains("E-ANONYMOUS-PATTERN-IDENTITY"));
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break nested-anonymous-patterns.t:9",
+            "-ex",
+            "break nested-anonymous-patterns.t:12",
+            "-ex",
+            "break nested-anonymous-patterns.t:18",
+            "-ex",
+            "disable 2 3",
+            "-ex",
+            "run",
+            "-ex",
+            "print left",
+            "-ex",
+            "print middle",
+            "-ex",
+            "print right",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "print tail",
+            "-ex",
+            "print offset",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "enable 3",
+            "-ex",
+            "continue",
+            "-ex",
+            "print left",
+            "-ex",
+            "print middle",
+            "-ex",
+            "print right",
+            "-ex",
+            "print extra",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "$1 = 13", "$2 = 14", "$3 = 15", "$4 = 10", "$5 = 11", "$6 = 20", "$7 = 1", "$8 = 10",
+        "$9 = 11", "$10 = 20", "$11 = 1",
+    ] {
+        assert!(text.contains(expected), "{text}");
+    }
+    assert!(text.contains("topal.fn.captured"), "{text}");
+    assert!(text.matches("topal.fn.anonymous").count() >= 3, "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn repeated_anonymous_patterns_are_exact_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
     // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,

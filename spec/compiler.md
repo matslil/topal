@@ -3010,19 +3010,56 @@ DWARF/GDB SHALL expose every non-discarded destructured field as a source-named
 parameter with its exact classifier and value, plus any material capture.
 
 The once-only operand binding is compiler-private SSA state, not source-visible
-storage. This rule SHALL introduce no product-pattern object, environment
-object, function pointer, indirect call, closure or Function runtime, foreign
-dependency, C/C++ runtime, other-language standard library, public aggregate or
-callable ABI, or native-ABI revision. Nested product patterns, repeated-name
-aggregate identity patterns, capturing Function boundaries outside
+storage. Recursive product patterns are governed by
+`TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001`. This rule SHALL introduce no
+product-pattern object, environment object, function pointer, indirect call,
+closure or Function runtime, foreign dependency, C/C++ runtime, other-language
+standard library, public aggregate or callable ABI, or native-ABI revision.
+Repeated-name aggregate identity patterns and capturing Function boundaries
+outside
 `TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001` and
 `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`, other escape, aggregate
 containment, publication, and library metadata/adapters remain deferred.
 
+### TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001 — Recursive anonymous product patterns
+
+Each field of an inferred anonymous Function's positional product pattern MAY
+recursively be another positional product pattern. Every product node SHALL
+consume one exact Tuple with the same field count, and every leaf binding or
+discard SHALL be visited in lexical depth-first, left-to-right order. A
+non-Tuple at any product node or a field-count mismatch at any depth SHALL be
+rejected before entering the body or lowering LLVM.
+
+The complete application operand SHALL execute exactly once. The checked
+frontend SHALL retain it in compiler-private storage when projection is needed
+and SHALL derive every nested field only through recursive Tuple projection;
+neither an outer field nor a nested initializer may be replayed. The source
+Function arity and anonymous display identity SHALL count only top-level
+parameter patterns, while the exact private `fastcc` signature SHALL contain
+the flattened admitted leaves in lexical order followed by captures. Existing
+repeated-name identity and discard semantics SHALL apply across all recursive
+leaves. Capturing and returned anonymous Functions MAY use this pattern when
+their existing exact private boundary remains admitted.
+
+DWARF/GDB SHALL expose each non-discarded leaf as one source-named parameter
+with its exact classifier and value, but SHALL NOT expose compiler-private
+outer or nested projection storage. Tests SHALL cover an opaque nested Tuple
+result, both nesting directions, mixed top-level parameters, an immutable
+capture, a capturing Function result, repeated names and discard, non-Tuple and
+nested-arity rejection, exactly-once IR, interpreter parity and reversible
+history, freestanding execution, and full O0 GDB frames. This rule SHALL add no
+pattern object, allocation, environment object, function pointer, indirect
+call, closure or Function runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate or callable ABI, or
+native-ABI revision. Named-function header patterns, aggregate containment,
+dynamic escape/selection, publication, and library metadata/adapters remain
+deferred.
+
 ### TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001 — Exact repeated anonymous pattern names
 
-A non-discard name MAY recur across the scalar parameters and flat positional
-product fields of an inferred anonymous function. The first occurrence SHALL
+A non-discard name MAY recur across the scalar parameters and positional
+product leaves of an inferred anonymous function, including recursive leaves
+under `TOPAL-COMPILER-ANONYMOUS-NESTED-PATTERN-001`. The first occurrence SHALL
 create the sole source binding. Each later occurrence SHALL consume its normal
 source field and private machine operand but SHALL require the same exact
 classifier and value under `TOPAL-TYPE-MATCH-001`; it SHALL NOT create or
@@ -3049,8 +3086,8 @@ This rule SHALL introduce no pattern object, matching table, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate or callable ABI, or
 native-ABI revision. Aggregate repeated-name identity is governed by
-`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. Nested parameter-pattern
-syntax, ordinary named-function header repetition, publication, and library
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. Ordinary named-function
+header repetition, publication, and library
 metadata/adapters remain deferred.
 
 ### TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001 — Exact repeated aggregate values
@@ -3080,8 +3117,8 @@ This rule SHALL introduce no generic aggregate matcher, pattern table,
 allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate ABI, or native-ABI revision.
 Result, Sum, Range, Generator, refined, authority-bearing, and
-Function-containing aggregate identity; nested parameter-pattern syntax;
-ordinary named-function header repetition; publication; and library
+Function-containing aggregate identity; ordinary named-function header
+repetition; publication; and library
 metadata/adapters remain deferred.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions

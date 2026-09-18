@@ -49,7 +49,51 @@ pub enum Expression {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AnonymousPattern {
     Binding(Span),
-    Product { bindings: Vec<Span>, span: Span },
+    Product {
+        fields: Vec<AnonymousPattern>,
+        span: Span,
+    },
+}
+
+impl AnonymousPattern {
+    #[must_use]
+    pub const fn span(&self) -> Span {
+        match self {
+            Self::Binding(span) | Self::Product { span, .. } => *span,
+        }
+    }
+}
+
+fn anonymous_pattern_tokens(tokens: &[&Token], index: &mut usize) -> bool {
+    let Some(token) = tokens.get(*index) else {
+        return false;
+    };
+    if matches!(token.kind, TokenKind::Identifier | TokenKind::Discard) {
+        *index += 1;
+        return true;
+    }
+    if token.kind != TokenKind::LeftParen {
+        return false;
+    }
+    *index += 1;
+    let mut fields = 0_usize;
+    loop {
+        if !anonymous_pattern_tokens(tokens, index) {
+            return false;
+        }
+        fields += 1;
+        let Some(separator) = tokens.get(*index) else {
+            return false;
+        };
+        match separator.kind {
+            TokenKind::Comma => *index += 1,
+            TokenKind::RightParen => {
+                *index += 1;
+                return fields > 0;
+            }
+            _ => return false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -2653,33 +2697,7 @@ impl Parser<'_> {
         let mut index = 0;
         let mut parameters = !content.is_empty();
         while parameters && index < content.len() {
-            if content[index].kind == TokenKind::Identifier {
-                index += 1;
-            } else if content[index].kind == TokenKind::LeftParen {
-                index += 1;
-                let mut expect_binding = true;
-                while index < content.len() && content[index].kind != TokenKind::RightParen {
-                    let expected = if expect_binding {
-                        TokenKind::Identifier
-                    } else {
-                        TokenKind::Comma
-                    };
-                    if content[index].kind != expected {
-                        parameters = false;
-                        break;
-                    }
-                    expect_binding = !expect_binding;
-                    index += 1;
-                }
-                if expect_binding
-                    || index == content.len()
-                    || content[index].kind != TokenKind::RightParen
-                {
-                    parameters = false;
-                    break;
-                }
-                index += 1;
-            } else {
+            if !anonymous_pattern_tokens(&content, &mut index) {
                 parameters = false;
                 break;
             }
@@ -2703,8 +2721,9 @@ impl Parser<'_> {
     fn anonymous_function(&mut self, opening: Token) -> Option<Expression> {
         let mut parameters = Vec::new();
         loop {
-            let token = self.take_nontrivia()?;
+            let token = self.peek_nontrivia()?;
             if token.kind == TokenKind::RightBrace {
+                self.take_nontrivia();
                 if parameters.is_empty() {
                     self.diagnostics.push(SyntaxDiagnostic {
                         code: "E-EMPTY-ANONYMOUS-FUNCTION-PATTERN",
@@ -2731,49 +2750,8 @@ impl Parser<'_> {
                     span,
                 });
             }
-            let parameter = if token.kind == TokenKind::Identifier {
-                AnonymousPattern::Binding(token.span)
-            } else if token.kind == TokenKind::LeftParen {
-                let mut bindings = Vec::new();
-                let closing = loop {
-                    let binding = self.take_nontrivia()?;
-                    if binding.kind != TokenKind::Identifier {
-                        self.diagnostics.push(SyntaxDiagnostic {
-                            code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
-                            span: binding.span,
-                            message: "expected a binding in the product pattern".into(),
-                        });
-                        return None;
-                    }
-                    bindings.push(binding.span);
-                    let separator = self.take_nontrivia()?;
-                    if separator.kind == TokenKind::RightParen {
-                        break separator;
-                    }
-                    if separator.kind != TokenKind::Comma {
-                        self.diagnostics.push(SyntaxDiagnostic {
-                            code: "E-EXPECTED-ANONYMOUS-FUNCTION-SEPARATOR",
-                            span: separator.span,
-                            message: "expected `,` or `)` in the product pattern".into(),
-                        });
-                        return None;
-                    }
-                };
-                AnonymousPattern::Product {
-                    bindings,
-                    span: Span::new(token.span.start, closing.span.end),
-                }
-            } else {
-                self.diagnostics.push(SyntaxDiagnostic {
-                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
-                    span: token.span,
-                    message: "expected a parameter pattern or closing brace".into(),
-                });
-                return None;
-            };
-            let parameter_span = match &parameter {
-                AnonymousPattern::Binding(span) | AnonymousPattern::Product { span, .. } => *span,
-            };
+            let parameter = self.anonymous_pattern()?;
+            let parameter_span = parameter.span();
             parameters.push(parameter);
             let Some(separator) = self.peek_nontrivia() else {
                 self.diagnostics.push(SyntaxDiagnostic {
@@ -2794,6 +2772,61 @@ impl Parser<'_> {
                 return None;
             }
         }
+    }
+
+    fn anonymous_pattern(&mut self) -> Option<AnonymousPattern> {
+        let token = self.take_nontrivia()?;
+        if matches!(token.kind, TokenKind::Identifier | TokenKind::Discard) {
+            return Some(AnonymousPattern::Binding(token.span));
+        }
+        if token.kind != TokenKind::LeftParen {
+            self.diagnostics.push(SyntaxDiagnostic {
+                code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
+                span: token.span,
+                message: "expected a parameter pattern or closing brace".into(),
+            });
+            return None;
+        }
+
+        let mut fields = Vec::new();
+        let closing = loop {
+            let Some(next) = self.peek_nontrivia() else {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
+                    span: token.span,
+                    message: "expected a binding or product in the product pattern".into(),
+                });
+                return None;
+            };
+            if !matches!(
+                next.kind,
+                TokenKind::Identifier | TokenKind::Discard | TokenKind::LeftParen
+            ) {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-PARAMETER",
+                    span: next.span,
+                    message: "expected a binding or product in the product pattern".into(),
+                });
+                return None;
+            }
+            fields.push(self.anonymous_pattern()?);
+            let separator = self.take_nontrivia()?;
+            if separator.kind == TokenKind::RightParen {
+                break separator;
+            }
+            if separator.kind != TokenKind::Comma {
+                self.diagnostics.push(SyntaxDiagnostic {
+                    code: "E-EXPECTED-ANONYMOUS-FUNCTION-SEPARATOR",
+                    span: separator.span,
+                    message: "expected `,` or `)` in the product pattern".into(),
+                });
+                return None;
+            }
+        };
+        Some(AnonymousPattern::Product {
+            fields,
+            span: Span::new(token.span.start, closing.span.end),
+        })
     }
 
     fn parenthesized(&mut self, opening: Token) -> Option<Expression> {
@@ -3997,6 +4030,37 @@ mod tests {
         .unwrap();
         let parsed = parse(&source, &lex(&source));
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parses_recursive_anonymous_product_patterns() {
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-SYN-GRAMMAR-001
+        let source = SourceText::new(include_str!(
+            "../../../examples/language/nested-anonymous-patterns.t"
+        ))
+        .unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let Statement::Binding {
+            value:
+                Expression::AnonymousFunction {
+                    parameters,
+                    body: _,
+                    span: _,
+                },
+            ..
+        } = &parsed.statements[2]
+        else {
+            panic!("expected the nested anonymous Function binding")
+        };
+        let [AnonymousPattern::Product { fields, .. }] = parameters.as_slice() else {
+            panic!("expected one outer product pattern")
+        };
+        assert!(matches!(
+            fields.as_slice(),
+            [AnonymousPattern::Binding(_), AnonymousPattern::Product { fields: nested, .. }]
+                if nested.len() == 2
+        ));
     }
 
     #[test]
