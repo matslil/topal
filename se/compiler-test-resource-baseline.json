@@ -2306,6 +2306,16 @@
       "cpu_time_ns": 175552,
       "memory_peak_bytes": 18550784,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/sum-equality.t": {
+      "cpu_time_ns": 158128260,
+      "memory_peak_bytes": 42967040,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/sum-equality.t": {
+      "cpu_time_ns": 183128,
+      "memory_peak_bytes": 18579456,
+      "samples_per_test": 500
     }
   }
 }

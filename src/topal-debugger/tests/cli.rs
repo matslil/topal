@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 229);
+    assert_eq!(examples.len(), 230);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3251,6 +3251,26 @@ fn records_repeated_sum_identity_reversibly() {
     assert!(stdout.contains("TOPAL-TYPE-MATCH-001"));
     assert!(stdout.contains("pattern.identity.matched"));
     assert!(stdout.contains("function.anonymous.called"));
+}
+
+#[test]
+fn records_nominal_sum_equality_reversibly() {
+    // TOPAL-INTP-SUBSET-256, TOPAL-TYPE-SUM-EQUALITY-001,
+    // TOPAL-TYPE-EQUALITY-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}sum-equality.debug"),
+            &language_example("sum-equality.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-TYPE-SUM-EQUALITY-001"));
+    assert!(stdout.contains("equality.sum"));
+    assert!(stdout.contains("evaluation.equal"));
 }
 
 #[test]

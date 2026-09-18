@@ -1425,8 +1425,13 @@ Although construction fully initializes every private payload slot through
 [`insertvalue`](https://llvm.org/docs/LangRef.html#insertvalue-instruction),
 inactive slots are representation details and never enter the comparison.
 Consequently no `memcmp`, Sum-equality runtime, or target ABI algorithm is
-needed. The source Equality capability for general Sum values remains a
-separate frontend-evidence increment.
+needed. General source Equality now reuses this exact lowering only after the
+checked model proves that every declared payload has canonical Equality;
+structurally identical distinct declarations and a declaration with any
+unsupported payload are rejected before IR. `!=` negates the joined `i1`
+without adding observations. Repeated-pattern identity remains independently
+specified because it is a matcher guard rather than a public Equality
+capability, even though both paths share the tag-first active-payload primitive.
 
 A direct explicit `return` in an admitted linear function body is resolved by
 the checked frontend as a control-flow boundary, not an optional optimization.
@@ -1822,7 +1827,7 @@ validated semantic interface.
 | New pass manager | O0 verification only | optimized pipelines wait for differential conformance coverage |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
-| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum decisions and active-payload repeated identity, modular bound validation, and fallible arithmetic control flow with typed result joins |
+| `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum decisions, active-payload repeated identity and derived Sum equality, modular bound validation, and fallible arithmetic control flow with typed result joins |
 | `insertvalue` and `extractvalue` | used | target-independent construction and decomposition of exact private Tuple, Record, Union, and Variant aggregate signatures |
 | DWARF debug metadata and frame pointers | used | GDB source debugging at the reference level, including explicit Scope/environment parameters, native enum/sum alternatives, nominal modular and modular-success Result values, SerializationStream descriptors, checked external Location headers, and bundled renderers for private finite/infinite Int, Rational, exact Range, modular, active sum, native-stream, and location values |
 | `llvm.ctlz` | used | target-independent significant-bit count for finite exact exponentiation |

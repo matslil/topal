@@ -342,6 +342,7 @@ pub struct UnionValue {
     alternative: String,
     payload_classifier: Option<String>,
     payload: Option<Box<Value>>,
+    supports_equality: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -5060,6 +5061,69 @@ impl Session {
             })
     }
 
+    fn classifier_supports_equality(&self, classifier: &str) -> bool {
+        self.classifier_supports_equality_inner(classifier.trim(), &mut BTreeSet::new())
+    }
+
+    fn classifier_supports_equality_inner(
+        &self,
+        classifier: &str,
+        visiting_sums: &mut BTreeSet<String>,
+    ) -> bool {
+        if matches!(
+            classifier,
+            "Unit"
+                | "Completed"
+                | "Effect"
+                | "Type"
+                | "Boolean"
+                | "Character"
+                | "Comparison"
+                | "Int"
+                | "Nat"
+                | "Rational"
+                | "String"
+        ) || self.enum_types.contains_key(classifier)
+        {
+            return true;
+        }
+        if let Some(payload) = optional_payload_classifier(classifier) {
+            return self.classifier_supports_equality_inner(payload, visiting_sums);
+        }
+        if let Some(element) = list_element_classifier(classifier) {
+            return self.classifier_supports_equality_inner(element, visiting_sums);
+        }
+        if let Some(fields) = tuple_classifiers(classifier) {
+            return fields
+                .into_iter()
+                .all(|field| self.classifier_supports_equality_inner(field, visiting_sums));
+        }
+        if let Some(fields) = record_classifiers(classifier) {
+            return fields
+                .into_iter()
+                .all(|(_, field)| self.classifier_supports_equality_inner(field, visiting_sums));
+        }
+        if let Some(alternatives) = self.union_types.get(classifier) {
+            if !visiting_sums.insert(classifier.to_owned()) {
+                return false;
+            }
+            let supports_equality = alternatives.values().all(|payload| {
+                payload.as_deref().is_none_or(|payload| {
+                    self.classifier_supports_equality_inner(payload, visiting_sums)
+                })
+            });
+            visiting_sums.remove(classifier);
+            return supports_equality;
+        }
+        match self.bindings.get(classifier) {
+            Some(Value::ModularType(_)) => true,
+            Some(Value::Constraint(constraint)) => {
+                self.classifier_supports_equality_inner(&constraint.base_classifier, visiting_sums)
+            }
+            _ => false,
+        }
+    }
+
     fn application_is_union_constructor(&self, source: &SourceText, items: &[Expression]) -> bool {
         matches!(items, [Expression::Identifier(constructor), _] if self.union_constructor(source.slice(*constructor)).is_some())
             || matches!(
@@ -6474,6 +6538,7 @@ impl Session {
             alternative: key,
             payload_classifier: Some(classifier.into()),
             payload: Some(Box::new(value)),
+            supports_equality: self.classifier_supports_equality(type_text),
         })))
     }
 
@@ -6511,6 +6576,7 @@ impl Session {
             alternative: name.to_owned(),
             payload_classifier: Some(classifier.to_owned()),
             payload: Some(Box::new(value)),
+            supports_equality: self.classifier_supports_equality(type_name),
         }));
         self.checkpoint(trace, Some(&result), Some(span));
         Ok(result)
@@ -10147,21 +10213,27 @@ fn declare_union(
             .classifier
             .map(|classifier| source.slice(classifier).to_owned());
         declared.insert(alternative_name.to_owned(), classifier.clone());
-        if classifier.is_none() {
-            session.bindings.insert(
-                alternative_name.to_owned(),
-                Value::Union(Box::new(UnionValue {
-                    type_name: type_name.to_owned(),
-                    alternative: alternative_name.to_owned(),
-                    payload_classifier: None,
-                    payload: None,
-                })),
-            );
-        }
         session.declared_names.insert(alternative_name.to_owned());
     }
     session.union_types.insert(type_name.to_owned(), declared);
     session.declared_names.insert(type_name.to_owned());
+    let supports_equality = session.classifier_supports_equality(type_name);
+    for alternative in alternatives
+        .iter()
+        .filter(|alternative| alternative.classifier.is_none())
+    {
+        let alternative_name = source.slice(alternative.name);
+        session.bindings.insert(
+            alternative_name.to_owned(),
+            Value::Union(Box::new(UnionValue {
+                type_name: type_name.to_owned(),
+                alternative: alternative_name.to_owned(),
+                payload_classifier: None,
+                payload: None,
+                supports_equality,
+            })),
+        );
+    }
     trace.record(TraceEvent {
         event: "union.declared",
         rule: "TOPAL-TYPE-UNION-001",
@@ -16399,8 +16471,21 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
             },
         ) if left_type == right_type => Some(left == right),
         (Value::Union(left), Value::Union(right))
-            if left.type_name == right.type_name && left.alternative == right.alternative =>
+            if left.type_name == right.type_name
+                && left.supports_equality
+                && right.supports_equality =>
         {
+            trace.record(TraceEvent {
+                event: "equality.sum",
+                rule: "TOPAL-TYPE-SUM-EQUALITY-001",
+                detail: &left.type_name,
+            });
+            if left.alternative != right.alternative {
+                return Some(false);
+            }
+            if left.payload_classifier != right.payload_classifier {
+                return None;
+            }
             match (left.payload, right.payload) {
                 (None, None) => Some(true),
                 (Some(left), Some(right)) => values_equal(*left, *right, trace),
@@ -17989,6 +18074,45 @@ mod tests {
             )
             .unwrap_err();
         assert_eq!(error.code, "E-NO-APPLICABLE-OVERLOAD");
+    }
+
+    #[test]
+    fn derives_equality_only_for_fully_equality_capable_nominal_sums() {
+        // TOPAL-TYPE-SUM-EQUALITY-001, TOPAL-TYPE-EQUALITY-001
+        let mut trace = Vec::new();
+        let value = Session::new()
+            .evaluate(
+                include_str!("../../../examples/language/sum-equality.t"),
+                &mut trace,
+            )
+            .unwrap();
+        assert_eq!(
+            value.to_string(),
+            "(true, false, true, false, true, true, true, false, true, false, true)"
+        );
+        assert_eq!(
+            trace
+                .iter()
+                .filter(|event| event.contains("equality.sum"))
+                .count(),
+            12
+        );
+
+        let unsupported = Session::new()
+            .evaluate(
+                "use language (version is v0.1)\nHolder is Union\n  Blank\n  Window : Range Int\n\nleft : Holder is Blank\nright : Holder is Blank\nleft = right\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(unsupported.code, "E-NO-APPLICABLE-OVERLOAD");
+
+        let nominal = Session::new()
+            .evaluate(
+                "use language (version is v0.1)\nLeft is Union\n  LeftEmpty\n\nRight is Union\n  RightEmpty\n\nleft : Left is LeftEmpty\nright : Right is RightEmpty\nleft = right\n",
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(nominal.code, "E-NO-APPLICABLE-OVERLOAD");
     }
 
     #[test]

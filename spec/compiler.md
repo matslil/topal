@@ -3415,9 +3415,10 @@ interpreter parity and reversible history; freestanding execution; and full O0
 GDB values/frames. This rule SHALL introduce no generic matcher, Sum-equality
 runtime, pattern table, allocation, callback, indirect dispatch, foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
-ABI, or native-ABI revision. General derived Sum Equality, recursive Sum
-declarations, Function-containing Sums, persistent storage, publication, and
-library adapters remain deferred. Future compiled-library metadata SHALL
+ABI, or native-ABI revision. General derived Sum Equality is governed by
+`TOPAL-COMPILER-SUM-EQUALITY-001`; recursive Sum declarations,
+Function-containing Sums, persistent storage, publication, and library adapters
+remain deferred. Future compiled-library metadata SHALL
 encode the stable nominal identity, positional/labeled form, ordered
 alternative identities, payload schemas, semantic identity/equality
 requirements, representation identity, and target adapters independently of
@@ -3678,6 +3679,37 @@ public or foreign sum ABI, a serialization identity, or a compiled-library
 metadata key. DWARF and the bundled GDB renderer SHALL preserve the nominal
 type, active alternative, and active payload without presenting inactive
 storage as a source value.
+
+### TOPAL-COMPILER-SUM-EQUALITY-001 — Derived nominal Sum equality
+
+The checked compiler model SHALL admit `=` and `!=` for two values of the same
+exact nominal Union or positional Variant type exactly when every declared
+payload provides an admitted canonical Equality operation. Payload-free
+alternatives SHALL contribute Unit. Tuple and Record payloads and fields MAY
+recursively contain an admitted Sum. A Sum with Function, Range, Result,
+authority-bearing, or any other payload without admitted Equality SHALL be
+rejected before LLVM lowering or artifact publication. Structurally identical
+but nominally distinct Sum declarations SHALL have no shared equality overload.
+
+Lowering SHALL compare tags first. Different tags SHALL produce false without
+observing either payload. Equal tags SHALL select the one active alternative and
+recursively compare only its payload; a payload-free alternative SHALL produce
+true. Invalid private tags SHALL fail closed as unequal. LLVM `switch`, direct
+recursive comparisons, and an `i1` `phi` MAY express this mandatory O0 control
+flow. `!=` SHALL negate precisely the same equality result and observations.
+
+The operation SHALL reuse the existing exact private tag-plus-payload aggregate,
+matching `fastcc` prototypes, nominal DWARF type, and active-value GDB renderer,
+while LLVM owns AMD64 register, stack, aggregate, and branch lowering. It SHALL
+introduce no whole-storage comparison, inactive-field load, generic matcher,
+Sum-equality runtime, allocation, callback, indirect dispatch, foreign
+dependency, C/C++ runtime, other-language standard library, public Sum ABI, or
+native-ABI revision. Future compiled-library metadata SHALL encode nominal
+identity, ordered alternatives, payload schemas, canonical Equality evidence,
+representation identity, and target adapters independently of private tags,
+inactive storage, LLVM types, and physical placement. Recursive Sum
+declarations, persistent/public storage, publication, and library adapters
+remain deferred.
 
 ### TOPAL-COMPILER-RETURN-001 — Mandatory direct-return lowering
 

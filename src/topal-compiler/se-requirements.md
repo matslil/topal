@@ -3736,9 +3736,10 @@ baselines; freestanding ELF/DWARF properties; and full O0 GDB values/frames.
 This shall add no generic matcher, Sum-equality runtime, pattern table,
 allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate ABI, or `topal-native/6`
-revision. General derived Sum Equality, recursive Sum declarations,
-Function-containing Sums, persistent storage, publication, and library adapters
-remain deferred. Future compiled-library metadata shall encode stable nominal
+revision. General derived Sum Equality is governed by
+`TOPAL-COMP-SUM-EQUALITY-001`; recursive Sum declarations, Function-containing
+Sums, persistent storage, publication, and library adapters remain deferred.
+Future compiled-library metadata shall encode stable nominal
 identity, positional/labeled form, ordered alternatives, payload schemas,
 semantic identity/equality requirements, representation identity, and target
 adapters; it shall not serialize private tags, inactive storage, LLVM types, or
@@ -5556,11 +5557,49 @@ an inspectable SSA aggregate. The bundled GDB renderer shall show only the
 active alternative and payload. This shall add no semantic heap allocation,
 sum runtime helper, foreign dependency, C/C++ runtime, other-language standard
 library, public aggregate ABI, or `topal-native/6` revision. Recursive nominal
-sums, nested declarations, derived equality/ordering, persistent/public
+sums, nested declarations, derived ordering, persistent/public
 storage, serialization, introspection, and library metadata remain deferred.
 This realizes `TOPAL-COMPILER-SUM-001`, `TOPAL-TYPE-UNION-001`,
 `TOPAL-TYPE-VARIANT-001`, and `TOPAL-DECISION-UNION-001` for compiler increment
 3b2-b5o.
+
+## TOPAL-COMP-SUM-EQUALITY-001 — Derived nominal Sum equality
+
+The checked compiler model shall admit `=` and `!=` for two values of one exact
+nominal Union or positional Variant type exactly when every declared payload
+has admitted canonical Equality. Payload-free alternatives shall contribute
+Unit. Tuple and Record payloads and fields may recursively contain an admitted
+Sum. Function, Range, Result, authority-bearing, and other payloads without
+admitted Equality shall reject the complete Sum operation before LLVM lowering
+or artifact publication. Structurally identical distinct declarations shall
+not share an overload.
+
+Lowering shall compare tags first, return false for different tags without
+observing either payload, and use LLVM `switch` to select and recursively
+compare only the active payload for equal tags. Payload-free alternatives shall
+return true, invalid private tags shall fail closed as unequal, and an `i1`
+`phi` shall join the explicit predecessor results at O0. `!=` shall negate the
+same equality result. The operation shall reuse the existing exact private
+tag-plus-payload aggregate, matching `fastcc` prototypes, nominal DWARF type,
+and active-value GDB rendering while LLVM owns AMD64 physical lowering.
+
+Tests shall cover labeled Union and positional Variant values; payload-free,
+Int, String, Tuple, Record, and nested Sum alternatives; equal payloads;
+same-tag payload inequality; distinct-tag short-circuiting; nominal mismatch;
+unsupported-payload rejection before publication; direct `switch`/`phi` IR;
+interpreter parity and reversible history; the shared corpus and separate
+resource baselines; freestanding ELF/DWARF properties; and full O0 GDB
+values/frames. This shall add no whole-storage comparison, inactive-field load,
+generic matcher, Sum-equality runtime, allocation, callback, indirect dispatch,
+foreign dependency, C/C++ runtime, other-language standard library, public Sum
+ABI, or `topal-native/6` revision. Future compiled-library metadata shall encode
+nominal identity, ordered alternatives, payload schemas, canonical Equality
+evidence, representation identity, and target adapters independently of private
+tags, inactive storage, LLVM types, and physical placement. Recursive Sum
+declarations, persistent/public storage, publication, and library adapters
+remain deferred. This realizes `TOPAL-COMPILER-SUM-EQUALITY-001`,
+`TOPAL-TYPE-SUM-EQUALITY-001`, and `TOPAL-TYPE-EQUALITY-001` for compiler
+increment 3b2-b5ah.
 
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
