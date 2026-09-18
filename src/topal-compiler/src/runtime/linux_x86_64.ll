@@ -44,6 +44,7 @@
 @topal.runtime.error.code.not.representable = private constant [17 x i8] c"not-representable", align 1
 @topal.runtime.error.code.division.by.zero = private constant [16 x i8] c"division-by-zero", align 1
 @topal.runtime.error.code.indeterminate = private constant [13 x i8] c"indeterminate", align 1
+@topal.runtime.pattern.identity.diagnostic = private constant [68 x i8] c"error[E-ANONYMOUS-PATTERN-IDENTITY]: repeated pattern values differ\0A", align 1
 @topal.runtime.task.next.identity = private global i64 1, align 8
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
@@ -58,6 +59,13 @@ entry:
 define internal void @topal.platform.exit(i64 %status) noreturn nounwind noinline {
 entry:
   %ignored = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},~{rcx},~{r11},~{memory}"(i64 60, i64 %status)
+  unreachable
+}
+
+define internal void @topal.runtime.pattern.identity.fail() noreturn nounwind noinline {
+entry:
+  %ignored = call i64 @topal.platform.write(i64 2, ptr @topal.runtime.pattern.identity.diagnostic, i64 68)
+  call void @topal.platform.exit(i64 65)
   unreachable
 }
 

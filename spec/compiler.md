@@ -2882,9 +2882,10 @@ field binding. This applies both to an opaque Tuple produced by a call or local
 binding and to the outer positional product supplied to a multi-parameter
 anonymous function. The checked compiler SHALL preserve any sound field facts
 from a direct Tuple construction without re-evaluating its field expressions.
-Non-Tuple operands, field-count mismatches, duplicate field bindings, and field
-representations outside the admitted private function boundary SHALL fail
-before the anonymous body or LLVM lowering.
+Non-Tuple operands, field-count mismatches, repeated field bindings outside
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, and field representations
+outside the admitted private function boundary SHALL fail before the anonymous
+body or LLVM lowering.
 
 The specialized private `fastcc` signature SHALL flatten ordinary binding
 parameters and product-pattern fields in lexical source order, followed by any
@@ -2898,8 +2899,41 @@ storage. This rule SHALL introduce no product-pattern object, environment
 object, function pointer, indirect call, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate or
 callable ABI, or native-ABI revision. Nested product patterns, repeated-name
-equality patterns, escaping/capturing Function boundaries, aggregate
+aggregate identity patterns, escaping/capturing Function boundaries, aggregate
 containment, publication, and library metadata/adapters remain deferred.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001 — Exact repeated anonymous pattern names
+
+A non-discard name MAY recur across the scalar parameters and flat positional
+product fields of an inferred anonymous function. The first occurrence SHALL
+create the sole source binding. Each later occurrence SHALL consume its normal
+source field and private machine operand but SHALL require the same exact
+classifier and value under `TOPAL-TYPE-MATCH-001`; it SHALL NOT create or
+replace a binding. Each `_` occurrence SHALL remain an independent discard.
+
+This increment SHALL admit exact identity for `Unit`, `Completed`, `Effect`,
+`Type`, `Function`, `Boolean`, `Int`, `Nat`, a single exact modular classifier,
+`Rational`, `Comparison`, `ErrorCode`, a single exact Enum classifier,
+`Character`, and `String`. Exact identity SHALL use no evidence forgetting,
+implicit conversion, user-visible Equality overload, canonical equivalence, or
+approximation. Different classifiers SHALL be rejected before LLVM lowering.
+
+The complete call operand SHALL be evaluated once before projection. Every
+repeated-name guard SHALL run in lexical order before the anonymous body. A
+failed native guard SHALL write `E-ANONYMOUS-PATTERN-IDENTITY` through the
+Topal-owned Linux syscall layer and terminate with status 65; the body SHALL NOT
+run. The specialized private `fastcc` signature SHALL retain every consumed
+machine operand. DWARF/GDB SHALL expose only the first occurrence as the named
+source parameter. Integer, Rational, String, Character, enum-like, and Function
+tag checks SHALL lower to their existing exact direct comparisons; a Function
+tag SHALL remain observational metadata and SHALL NOT become dispatch.
+
+This rule SHALL introduce no pattern object, matching table, function pointer,
+indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate or callable ABI, or
+native-ABI revision. Nested and aggregate repeated-name identity, ordinary
+named-function header repetition, publication, and library metadata/adapters
+remain deferred.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 

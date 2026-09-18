@@ -578,7 +578,12 @@ The pattern shall preserve the context-selected field classifiers, including
 generic classifier substitutions, and shall reject nonproducts or mismatched
 field counts before evaluating the body. Interpreter modes and reversible
 debugger history shall cover direct, bound capturing, returned non-capturing,
-and mixed product/scalar anonymous functions through one shared regression.
+and mixed product/scalar anonymous functions through one shared regression. A
+repeated non-discard name across ordinary or product parameters shall bind its
+first value once and require each later value to be exactly identical without
+conversion or user Equality selection under `TOPAL-TYPE-MATCH-001`. A mismatch
+shall report `E-ANONYMOUS-PATTERN-IDENTITY` before the body; successful matches
+shall be traceable and covered by the shared repeated-pattern regression.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 

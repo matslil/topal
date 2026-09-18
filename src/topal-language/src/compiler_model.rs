@@ -1126,6 +1126,13 @@ pub struct CompilerParameter {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerPatternIdentity {
+    pub first_parameter: usize,
+    pub repeated_parameter: usize,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerGeneratorLocal {
     pub parameter: CompilerParameter,
     pub activation_after_resumptions: usize,
@@ -1163,6 +1170,7 @@ pub struct CompilerFunction {
     pub source_name: String,
     pub symbol: String,
     pub parameters: Vec<CompilerParameter>,
+    pub pattern_identities: Vec<CompilerPatternIdentity>,
     pub result_type: CompilerType,
     pub body: CompilerBlock,
     pub span: Span,
@@ -3172,6 +3180,7 @@ fn exact_character_generator_local_close_handler(
             source_name: String::from("cleanup"),
             symbol: String::new(),
             parameters: vec![local_parameter],
+            pattern_identities: Vec::new(),
             result_type: CompilerType::Unit,
             body: CompilerBlock {
                 statements: Vec::new(),
@@ -3811,6 +3820,7 @@ fn exact_boolean_local_function_generator_body(
         source_name: String::from("label"),
         symbol: String::new(),
         parameters: vec![local_parameter.clone()],
+        pattern_identities: Vec::new(),
         result_type: CompilerType::String,
         body: CompilerBlock {
             statements: Vec::new(),
@@ -15999,21 +16009,14 @@ impl Analyzer {
         }
 
         let mut environment = BTreeMap::new();
-        let mut lowered_parameters = Vec::with_capacity(flattened_arguments.len());
+        let mut lowered_parameters: Vec<CompilerParameter> =
+            Vec::with_capacity(flattened_arguments.len());
         let mut arguments = Vec::with_capacity(flattened_arguments.len() + captures.len());
-        let mut declared = BTreeSet::new();
+        let mut pattern_identities = Vec::new();
         for (name_span, argument, argument_facts) in flattened_arguments {
             let facts = argument_facts.as_ref().unwrap_or(&argument);
             let name = self.source.slice(name_span).to_owned();
             let discarded = name == "_";
-            if !discarded && !declared.insert(name.clone()) {
-                return Err(source_diagnostic(
-                    &self.source,
-                    "E-DUPLICATE-BINDING",
-                    name_span,
-                    format!("`{name}` is already declared in this parameter pattern"),
-                ));
-            }
             if argument.value_type == CompilerType::Scope
                 || !compiler_function_parameter_supported(&argument.value_type)
             {
@@ -16023,7 +16026,21 @@ impl Analyzer {
                     "unsupported inferred anonymous-function parameter",
                 ));
             }
-            if !discarded {
+            let repeated = validate_repeated_anonymous_pattern_parameter(
+                &self.source,
+                &lowered_parameters,
+                &name,
+                discarded,
+                &argument.value_type,
+                name_span,
+            )?;
+            if let Some(first_parameter) = repeated {
+                pattern_identities.push(CompilerPatternIdentity {
+                    first_parameter,
+                    repeated_parameter: lowered_parameters.len(),
+                    span: name_span,
+                });
+            } else if !discarded {
                 environment.insert(
                     name.clone(),
                     BindingFacts {
@@ -16048,7 +16065,7 @@ impl Analyzer {
             arguments.push(argument.clone());
             lowered_parameters.push(CompilerParameter {
                 name,
-                discarded,
+                discarded: discarded || repeated.is_some(),
                 value_type: argument.value_type.clone(),
                 int_range: facts.int_range.clone(),
                 span: name_span,
@@ -16144,6 +16161,7 @@ impl Analyzer {
             source_name,
             symbol: symbol.clone(),
             parameters: lowered_parameters,
+            pattern_identities,
             result_type: result_type.clone(),
             body: analyzed_body,
             span: declaration_span,
@@ -18622,6 +18640,7 @@ impl Analyzer {
             source_name: function_name.to_owned(),
             symbol: symbol.clone(),
             parameters,
+            pattern_identities: Vec::new(),
             result_type: result_type.clone(),
             body,
             span: declaration.span,
@@ -20728,6 +20747,71 @@ fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Scope | CompilerType::Function)
         || is_admitted_function_generator_type(value_type)
         || compiler_function_result_supported(value_type)
+}
+
+fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Unit
+            | CompilerType::Completed
+            | CompilerType::Effect
+            | CompilerType::Type
+            | CompilerType::Function
+            | CompilerType::Boolean
+            | CompilerType::Int
+            | CompilerType::Nat
+            | CompilerType::Modular(_)
+            | CompilerType::Rational
+            | CompilerType::Comparison
+            | CompilerType::ErrorCode
+            | CompilerType::Enum(_)
+            | CompilerType::Character
+            | CompilerType::String
+    )
+}
+
+fn validate_repeated_anonymous_pattern_parameter(
+    source: &SourceText,
+    parameters: &[CompilerParameter],
+    name: &str,
+    discarded: bool,
+    value_type: &CompilerType,
+    span: Span,
+) -> Result<Option<usize>, Diagnostic> {
+    let Some((first_parameter, first)) = (!discarded)
+        .then(|| {
+            parameters
+                .iter()
+                .enumerate()
+                .find(|(_, parameter)| !parameter.discarded && parameter.name == name)
+        })
+        .flatten()
+    else {
+        return Ok(None);
+    };
+    if first.value_type != *value_type {
+        return Err(source_diagnostic(
+            source,
+            "E-ANONYMOUS-PATTERN-IDENTITY-CLASSIFIER",
+            span,
+            format!(
+                "repeated pattern name `{name}` requires `{}`, found `{}`",
+                first.value_type.name(),
+                value_type.name()
+            ),
+        ));
+    }
+    if !compiler_repeated_pattern_identity_supported(value_type) {
+        return Err(unsupported(
+            source,
+            span,
+            &format!(
+                "repeated anonymous pattern identity for `{}`",
+                value_type.name()
+            ),
+        ));
+    }
+    Ok(Some(first_parameter))
 }
 
 fn data_member_expression(facts: &CompilerDataMemberFacts, span: Span) -> CompilerExpression {
@@ -30167,13 +30251,65 @@ mod tests {
                 "use language (version is v0.1)\noperation : Function is { (left, right) } left + right\noperation (1, 2, 3)\n",
                 "E-ANONYMOUS-PRODUCT-PATTERN",
             ),
-            (
-                "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (1, 1)\n",
-                "E-DUPLICATE-BINDING",
-            ),
         ] {
             assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
         }
+    }
+
+    #[test]
+    fn models_repeated_anonymous_pattern_names_as_exact_identity_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
+        // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-anonymous-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated-pattern results")
+        };
+        assert_eq!(results.len(), 5);
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(results[1].value_type, CompilerType::Int);
+        assert!(matches!(
+            results[1].kind,
+            CompilerExpressionKind::PrivateBinding { .. }
+        ));
+        assert_eq!(exact_int(&results[2]), Some(BigInt::from(7)));
+        assert_eq!(results[3].value_type, CompilerType::String);
+        assert_eq!(exact_int(&results[4]), Some(BigInt::from(42)));
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| !function.pattern_identities.is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 5);
+        assert!(guarded.iter().all(|function| {
+            function.pattern_identities.as_slice()
+                == [CompilerPatternIdentity {
+                    first_parameter: 0,
+                    repeated_parameter: 1,
+                    span: function.parameters[1].span,
+                }]
+                && !function.parameters[0].discarded
+                && function.parameters[1].discarded
+                && function.parameters[0].name == function.parameters[1].name
+        }));
+
+        let classifier_mismatch = analyze_for_compiler(
+            "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (1, 1.0)\n",
+        )
+        .unwrap_err();
+        assert_eq!(
+            classifier_mismatch.code,
+            "E-ANONYMOUS-PATTERN-IDENTITY-CLASSIFIER"
+        );
+
+        let unsupported_identity = analyze_for_compiler(
+            "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (0 .. 1, 0 .. 1)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported_identity.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]
