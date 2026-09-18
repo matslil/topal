@@ -18487,13 +18487,42 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
+        let mut call_environment = environment.clone();
+        for binding in &argument_bindings {
+            if binding.value.value_type != CompilerType::Function {
+                continue;
+            }
+            let callable =
+                self.known_callable(&binding.value, environment, binding.value.span.start)?;
+            call_environment.insert(
+                binding.storage_name.clone(),
+                BindingFacts {
+                    storage_name: binding.storage_name.clone(),
+                    origin: binding.value.span.start,
+                    runtime_bound: true,
+                    value_type: binding.value.value_type.clone(),
+                    int_range: binding.value.int_range.clone(),
+                    rational_value: binding.value.rational_value.clone(),
+                    infinity_negative: None,
+                    string_value: None,
+                    closed_int_range: None,
+                    list_count: None,
+                    list_string_keys: None,
+                    tuple_fields: Vec::new(),
+                    record_fields: BTreeMap::new(),
+                    namespace: None,
+                    callable,
+                    static_capability: None,
+                },
+            );
+        }
         let callable_arguments = arguments
             .iter()
-            .map(|argument| self.known_callable(argument, environment, argument.span.start))
+            .map(|argument| self.known_callable(argument, &call_environment, argument.span.start))
             .collect::<Result<Vec<_>, _>>()?;
         let aggregate_arguments = arguments
             .iter()
-            .map(|argument| self.known_structural_value_facts(argument, environment))
+            .map(|argument| self.known_structural_value_facts(argument, &call_environment))
             .collect::<Result<Vec<_>, _>>()?;
         for (argument, facts) in arguments.iter().zip(&aggregate_arguments) {
             if compiler_type_is_function_aggregate(&argument.value_type)
@@ -18507,15 +18536,15 @@ impl Analyzer {
             }
         }
         let (callable_arguments, callable_captures) =
-            self.callable_parameter_arguments(&declaration, callable_arguments, environment)?;
+            self.callable_parameter_arguments(&declaration, callable_arguments, &call_environment)?;
         let (aggregate_arguments, aggregate_captures) = self.aggregate_parameter_arguments(
             &declaration,
             &arguments,
             aggregate_arguments,
-            environment,
+            &call_environment,
         )?;
         let (scope_arguments, scope_captures) =
-            self.scope_parameter_arguments(&declaration, &arguments, environment)?;
+            self.scope_parameter_arguments(&declaration, &arguments, &call_environment)?;
         let context_captures = self.defining_context_captures(&declaration)?;
         if self.in_function && !context_captures.is_empty() {
             return Err(unsupported(
@@ -18937,9 +18966,7 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(parameter.classifier)?;
-            if matches!(expected, CompilerType::Scope | CompilerType::Function)
-                || !compiler_packaged_field_supported(&expected)
-            {
+            if expected == CompilerType::Scope || !compiler_packaged_field_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
@@ -33298,6 +33325,71 @@ mod tests {
             arguments[0].kind,
             CompilerExpressionKind::Sum { .. }
         ));
+    }
+
+    #[test]
+    fn models_function_packaged_fields_with_exact_callable_facts() {
+        // TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-packaged-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Function packaged results")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: value_storage,
+            value,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first scalar field is retained first")
+        };
+        assert!(matches!(value.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: operation_storage,
+            value: operation,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Function field is retained second")
+        };
+        assert_eq!(operation.value_type, CompilerType::Function);
+        assert!(matches!(
+            operation.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order Function package call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == operation_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == value_storage
+        ));
+
+        let captured = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "apply-captured")
+            .expect("capturing Function package call is specialized");
+        assert_eq!(captured.parameters.len(), 3);
+        assert_eq!(captured.parameters[0].value_type, CompilerType::Function);
+        assert!(captured.parameters[0].source_visible);
+        assert_eq!(captured.parameters[2].value_type, CompilerType::Int);
+        assert!(!captured.parameters[2].source_visible);
     }
 
     #[test]

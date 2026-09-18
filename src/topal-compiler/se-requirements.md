@@ -3775,10 +3775,11 @@ governed by `TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001`. Two or mixed packages
 are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free
 Tuple and Record fields are governed by
 `TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
-governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`. Other non-scalar fields,
-nested package declarations, opaque package values, and invocation-dependent
-defaults remain rejected until their complete evaluation, storage, and public
-ABI rules are implemented. This shall add no foreign
+governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`; exact direct Function fields
+are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`. Other non-scalar
+fields, nested package declarations, opaque package values, and
+invocation-dependent defaults remain rejected until their complete evaluation,
+storage, and public ABI rules are implemented. This shall add no foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
 ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
@@ -3818,8 +3819,9 @@ of compiler-private binding names, LLVM types, and physical placement. Two or
 mixed packages are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`.
 Exact capture-free Tuple and Record fields are governed by
 `TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
-governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`. Other non-scalar fields,
-nested package declarations, opaque package values, invocation- or
+governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`; exact direct Function fields
+are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`. Other non-scalar
+fields, nested package declarations, opaque package values, invocation- or
 capture-dependent defaults, and public package adapters remain deferred. This
 realizes
 `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
@@ -3863,10 +3865,12 @@ default semantics/dependencies, evaluation effects, representation identity,
 and target adapters, independently of compiler-private names, LLVM types, and
 physical placement. Exact capture-free Tuple and Record fields are governed by
 `TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`; exact nominal Sum fields are
-governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`. Callable, Scope, other
-non-scalar fields, nested package declarations, opaque compound package values,
-invocation- or capture-dependent defaults, recursive compound signatures, and
-public package adapters remain deferred. This realizes
+governed by `TOPAL-COMP-SUM-PACKAGED-FIELD-001`; exact direct Function fields
+are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`. Scope,
+Function-containing aggregates, other non-scalar fields, nested package
+declarations, opaque compound package values, invocation- or capture-dependent
+defaults, recursive compound signatures, and public package adapters remain
+deferred. This realizes
 `TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5aj.
@@ -3909,7 +3913,8 @@ semantics and target adapters. Nested package declarations, opaque whole-package
 values, Function-containing aggregates, dependent defaults, recursive structured
 package signatures, public adapters, and other unsupported non-scalar fields
 remain deferred. Exact nominal Sum fields are governed by
-`TOPAL-COMP-SUM-PACKAGED-FIELD-001`. This realizes
+`TOPAL-COMP-SUM-PACKAGED-FIELD-001`; exact direct Function fields are governed
+by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`. This realizes
 `TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5ak.
@@ -3953,6 +3958,50 @@ other unsupported non-scalar fields remain deferred. This realizes
 `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5al.
+
+## TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001 — Exact direct Function package fields
+
+The checked compiler model shall admit an exact Function value as a direct
+field of a one- or two-operand package when its callable identity and any
+represented immutable capture snapshot are already admitted by the private
+Function parameter ABI. Supplied values and closed defaults shall retain the
+same named, symbolic, anonymous, or non-escaping nested callable facts used by
+an ordinary Function parameter. Opaque, dynamically selected, escaping, or
+otherwise unrepresentable callable values shall reject before LLVM lowering or
+artifact publication.
+
+The frontend shall preserve each explicit Function initializer once in package
+source order. A compiler-private ordering binding shall retain exact callable
+and capture facts beside the runtime Function observation tag, and the direct
+call shall permute that retained value into operand/field declaration order.
+One source Function field shall remain one source parameter; any deterministic
+hidden capture parameters required by the existing specialized callable
+boundary shall not become package fields or source parameters.
+
+LLVM definitions and calls shall use matching private `fastcc` Function-tag and
+capture parameters and leave physical AMD64 placement to LLVM. Callee
+application shall remain a direct specialized call without function-pointer
+dispatch. GDB shall expose the source field identity/value and ordinary frame,
+while compiler-private bindings and hidden capture transport remain absent from
+source debugging. Tests shall cover reordered once-only Function-returning and
+scalar calls, a closed symbolic default, positional parity, mixed operands,
+captured callable forwarding, opaque-package rejection, direct IR, all
+interpreter modes, reversible debugging, the shared corpus and separate
+resource baselines, freestanding ELF/DWARF properties, and O0 GDB values/frames.
+
+This shall add no package aggregate, function pointer, indirect call, closure
+allocation/runtime, `byval`, `sret`, `inalloca`, `preallocated`, foreign
+dependency, C/C++ runtime, other-language standard library, public callable ABI,
+or `topal-native/6` revision. Future compiled-library metadata shall preserve
+callable source/declaration identity, overload set, capture schema and equality,
+representation/lifetime/effect semantics, operand/field/default semantics, and
+target adapters. Function-containing aggregates, dynamic escape/selection,
+nested package declarations, opaque whole-package values, dependent defaults,
+recursive callable package signatures, public adapters, and other unsupported
+fields remain deferred. This realizes
+`TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`,
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5am.
 
 ## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
 

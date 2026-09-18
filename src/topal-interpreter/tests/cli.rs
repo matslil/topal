@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 234);
+    assert_eq!(examples.len(), 235);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -732,6 +732,26 @@ fn every_mode_applies_sum_packaged_fields() {
     // TOPAL-INTP-SUBSET-260, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
     // TOPAL-TYPE-CALL-001
     let source = include_str!("../../../examples/language/sum-packaged-function-fields.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains("(42, 42, 42, 42)"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_applies_function_packaged_fields() {
+    // TOPAL-INTP-SUBSET-261, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let source = include_str!("../../../examples/language/function-packaged-fields.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
