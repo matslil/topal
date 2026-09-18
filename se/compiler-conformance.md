@@ -73,7 +73,8 @@ evidence.
 | 3b2-b5z | recursive anonymous positional-product patterns, once-only nested Tuple projection, flattened private calls, recursive repeated names/discards, and leaf debugging | complete |
 | 3b2-b5aa | exact Function values in recursively nested private Tuple/Record bindings, capture-free parameters/results, direct specialization, and aggregate debugging | complete |
 | 3b2-b5ab | capturing anonymous and non-escaping nested Function leaves across exact private Tuple/Record parameters, capturing anonymous aggregate results, path-ordered hidden capture transport, forwarding/destructuring, and source-only aggregate/capture debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5ac | exact repeated anonymous-pattern identity for capture-free Function-containing Tuple/Record values, structural i32 observation-field guards, capture-bearing rejection, and single aggregate debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, capture-bearing and other unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -293,7 +294,10 @@ left-associative application chain while retaining once-only direct calls; and
 leaf parameters without replaying their outer operand; 3b2-b5aa retains exact
 callable facts beside Function observation fields in recursively nested private
 Tuple/Record bindings and capture-free boundaries while preserving direct
-specialization; and
+specialization; 3b2-b5ab transports capture state beside those private
+aggregate boundaries without changing their source representation; 3b2-b5ac
+extends repeated-pattern guards through capture-free Function-containing
+Tuple/Record values while keeping observation tags non-dispatching; and
 3b2-b5e8 continues with other escaping, recursive, overloaded, and
 dynamically contained callables, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the

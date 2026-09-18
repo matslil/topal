@@ -12821,6 +12821,31 @@ mod tests {
     }
 
     #[test]
+    fn emits_capture_free_function_aggregate_pattern_identity_as_direct_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-function-aggregate-patterns.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "repeated-function-aggregate-patterns.t").emit();
+
+        assert_eq!(llvm.matches("\npattern.identity.mismatch.").count(), 3);
+        assert!(llvm.contains("extractvalue { i32, ptr } %arg0, 0"));
+        assert!(llvm.contains("extractvalue { i32, ptr } %arg1, 0"));
+        assert!(llvm.contains("extractvalue { i32, ptr, i32, i32 } %arg0, 0"));
+        assert!(llvm.contains("icmp eq i32"));
+        assert!(llvm.contains("call i32 @topal.runtime.int.compare"));
+        assert!(llvm.contains("call void @topal.runtime.pattern.identity.fail()"));
+        assert!(llvm.contains("!DILocalVariable(name: \"value\", arg: 1"));
+        assert!(!llvm.contains("topal.runtime.pattern.identity.aggregate"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_nested_functions_with_exact_private_capture_parameters() {
         // TOPAL-COMPILER-NESTED-FUNCTION-001, TOPAL-FUNCTION-NESTED-001,
         // TOPAL-COMPILER-DEBUG-001
