@@ -10059,21 +10059,6 @@ fn captured_function_parameters_are_private_freestanding_and_debuggable() {
     assert_eq!(executed.stdout, b"(42, 42, (7, \"seven\"), 42)\n");
     assert_freestanding_elf_and_valid_dwarf(&executable);
 
-    let escaping_source = directory.join("escaping-capture.t");
-    fs::write(
-        &escaping_source,
-        "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
-    )
-    .unwrap();
-    let escaping = run(topalc().args([
-        "-o",
-        directory.join("escaping").to_str().unwrap(),
-        escaping_source.to_str().unwrap(),
-    ]));
-    assert!(!escaping.status.success());
-    assert!(String::from_utf8_lossy(&escaping.stderr).contains("E-COMPILER-UNSUPPORTED"));
-    assert!(String::from_utf8_lossy(&escaping.stderr).contains("Function result"));
-
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([
@@ -10152,6 +10137,175 @@ fn captured_function_parameters_are_private_freestanding_and_debuggable() {
     assert!(text.contains("topal.fn.forward_2dint"), "{text}");
     assert!(text.contains("topal.fn.anonymous"), "{text}");
     assert!(text.contains("topal.fn.add"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One native session covers factories, forwarding, returned captures, and frames.
+fn captured_function_results_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+    // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-VALUE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-capturing-function-results");
+    let source = directory.join("capturing-function-results.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/capturing-function-results.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, (7, \"seven\"), 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    for (name, rejected_source) in [
+        (
+            "nested-result",
+            "use language (version is v0.1)\nouter is fn (offset : Int) -> Function\n  add is fn (value : Int) -> Int\n    value + offset\n  add\noperation is outer 1\noperation 41\n",
+        ),
+        (
+            "function-capture",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n",
+        ),
+    ] {
+        let rejected = directory.join(format!("{name}.t"));
+        fs::write(&rejected, rejected_source).unwrap();
+        let output = run(topalc().args([
+            "-o",
+            directory.join(name).to_str().unwrap(),
+            rejected.to_str().unwrap(),
+        ]));
+        assert!(!output.status.success());
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("E-COMPILER-UNSUPPORTED"), "{stderr}");
+        assert!(stderr.contains("Function result"), "{stderr}");
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break capturing-function-results.t:10",
+            "-ex",
+            "break capturing-function-results.t:13",
+            "-ex",
+            "break capturing-function-results.t:7",
+            "-ex",
+            "break capturing-function-results.t:11",
+            "-ex",
+            "break capturing-function-results.t:14",
+            "-ex",
+            "break capturing-function-results.t:17",
+            "-ex",
+            "disable 4 5 6",
+            "-ex",
+            "run",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "continue",
+            "-ex",
+            "nexti",
+            "-ex",
+            "nexti",
+            "-ex",
+            "print pair",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "print operation",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 3",
+            "-ex",
+            "enable 4 5 6",
+            "-ex",
+            "continue",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 4",
+            "-ex",
+            "continue",
+            "-ex",
+            "nexti",
+            "-ex",
+            "nexti",
+            "-ex",
+            "print pair",
+            "-ex",
+            "disable 5",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "print left",
+            "-ex",
+            "print right",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 1"), "{text}");
+    assert!(text.contains("$2 = 2"), "{text}");
+    assert!(text.contains("$3 = {_0 = 7, _1 = \"seven\"}"), "{text}");
+    assert!(text.contains("$4 = <fn make-forwarded>"), "{text}");
+    assert!(text.contains("operation = <fn make-forwarded>"), "{text}");
+    assert!(text.contains("$5 = 39"), "{text}");
+    assert!(text.contains("$6 = 1"), "{text}");
+    assert!(text.contains("$7 = 2"), "{text}");
+    assert!(text.contains("$8 = {_0 = 7, _1 = \"seven\"}"), "{text}");
+    assert!(text.contains("$9 = 39"), "{text}");
+    assert!(text.contains("$10 = 1"), "{text}");
+    assert!(text.contains("$11 = 2"), "{text}");
+    assert!(!text.contains("topal.function.result"), "{text}");
+    assert!(!text.contains("operation capture"), "{text}");
+    assert!(text.contains("topal.fn.make_2dscalars"), "{text}");
+    assert!(text.contains("topal.fn.make_2dpair"), "{text}");
+    assert!(text.contains("topal.fn.return_2doperation"), "{text}");
+    assert!(text.contains("topal.fn.make_2dforwarded"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
 

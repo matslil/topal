@@ -68,7 +68,8 @@ evidence.
 | 3b2-b5u | exact repeated names across scalar and flat-product anonymous parameters, once-only guarded private operands, native mismatch diagnostics, and single-binding debugging | complete |
 | 3b2-b5v | exact repeated anonymous names over admitted Tuple, Record, Optional, and List values, structural pre-body guards, and single aggregate debug bindings | complete |
 | 3b2-b5w | private capturing anonymous and nested Function parameters, deterministic hidden scalar/aggregate environments, transitive direct forwarding, and source-only capture debugging | complete |
-| 3b2-b5e8 | remaining function forms, aggregate/capturing/dynamic Function results and boundaries, escaping anonymous Function values, nested parameter patterns and unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5x | private capturing anonymous Function results, exact tag-plus-capture aggregate returns, transitive result/parameter forwarding, and source-only result debugging | complete |
+| 3b2-b5e8 | remaining function forms, aggregate-contained/dynamic/nested Function results and boundaries, other escaping anonymous Function values, nested parameter patterns and unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -280,10 +281,12 @@ guards while retaining one source/debug binding; 3b2-b5v extends those guards
 through already-admitted exact Tuple, Record, Optional, and List
 representations; 3b2-b5w threads already-evaluated immutable capture
 environments through specialized private Function parameters and direct
-anonymous or nested calls; and 3b2-b5e8 continues with escaping, recursive,
-overloaded, and dynamically contained callables, remaining recursive and
-nested-block exit control flow, cleanup-bearing scopes, persistent aggregate
-storage, and the remaining user-defined value representations.
+anonymous or nested calls; 3b2-b5x returns the same immutable capture facts and
+values from specialized private anonymous factories in exact LLVM aggregates;
+and 3b2-b5e8 continues with other escaping, recursive, overloaded, and
+dynamically contained callables, remaining recursive and nested-block exit
+control flow, cleanup-bearing scopes, persistent aggregate storage, and the
+remaining user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

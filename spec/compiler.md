@@ -2800,8 +2800,10 @@ debug-only stack shadows so DWARF/GDB can observe the returned value even when
 specialization makes the tag computationally dead. LLVM SHALL own the physical
 AMD64 register and stack placement.
 
-Capturing anonymous, nested, dynamically computed, aggregate-contained, and
-published Function results remain outside this increment and SHALL be rejected.
+Capturing anonymous results are governed by
+`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`. Nested, dynamically computed,
+aggregate-contained, and published Function results remain outside this
+increment and SHALL be rejected.
 No function pointer, indirect call, closure allocation/runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
 ABI, or native ABI revision is permitted.
@@ -2859,8 +2861,9 @@ DWARF/GDB SHALL expose explicit parameters, material captures under their source
 names, the anonymous source frame, and returned Function locals at `-O0`.
 
 A capturing anonymous value crosses a private Function parameter only under
-`TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001`. Capturing Function results,
-captures without an admitted private representation, dynamic escape, aggregate
+`TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001` and crosses an admitted private
+result only under `TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`. Captures without
+an admitted private representation, other dynamic escape, aggregate
 containment, publication, and library boundaries SHALL be rejected before LLVM
 lowering. This rule SHALL introduce no environment object, function pointer,
 indirect call, closure or Function runtime, foreign dependency, C/C++ runtime,
@@ -2899,13 +2902,53 @@ frames.
 This rule SHALL introduce no environment object or allocation, function
 pointer, indirect call, callback, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
-ABI, or native-ABI revision. Capturing Function results, aggregate containment,
-dynamic selection or escape, recursive or overloaded nested callable values,
+ABI, or native-ABI revision. Capturing Function results outside
+`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`, aggregate containment, dynamic
+selection or escape, recursive or overloaded nested callable values,
 unsupported captured state, publication, and library metadata/adapters remain
 deferred. Future compiled-library metadata SHALL encode callable identity,
 ordered capture identities and classifiers, construction lifetime, effects,
 native-representation identities, and target adapters rather than expose this
 private hidden-parameter layout.
+
+### TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001 — Private captured Function results
+
+An ordinary or static private function MAY return a capturing anonymous
+Function when the exact anonymous body and every construction-time immutable
+capture remain known to the checked compiler. Every capture SHALL have an
+already-admitted complete private function-boundary representation and SHALL
+contain neither Generator nor Function. A specialized Function parameter with
+those same anonymous callable facts MAY be returned. An admitted captured
+result MAY subsequently cross another admitted private Function result or
+parameter while its returned values remain intact.
+
+The specialized callee SHALL evaluate the source Function result once and
+return one exact private aggregate containing the deterministic i32 observation
+tag followed by the already-evaluated captures in retained order. The caller
+SHALL issue one direct `fastcc` call, decompose the aggregate into compiler-only
+SSA storage, and retain the callable facts separately from the tag. Later
+application SHALL specialize the retained anonymous body and issue a direct
+call with the explicit operands followed by those returned values. The tag
+SHALL NOT dispatch application, and capture initializers SHALL NOT be replayed.
+
+LLVM SHALL derive physical scalar and aggregate return placement from the
+target data layout. DWARF SHALL describe the factory result and source binding
+as `Function`, omit the private returned transport fields, and expose the
+material captures under their source names in the eventually invoked anonymous
+frame. Tests SHALL cover multiple scalar captures, an aggregate capture, root
+and function-local factories, Function-parameter pass-through, transitive
+Function-result forwarding, exact interpreter parity, and full O0 GDB frames.
+
+This rule SHALL introduce no heap or environment object, environment pointer,
+allocation, function pointer, indirect call, callback, closure or Function
+runtime, foreign dependency, C/C++ runtime, other-language standard library,
+public callable ABI, or native-ABI revision. Immediate computed-call syntax,
+nested Function escape, Function-valued or otherwise unsupported captures,
+dynamic selection, aggregate containment, publication, and library
+metadata/adapters remain deferred. Future compiled-library metadata SHALL
+encode callable identity, ordered capture identities and classifiers,
+construction lifetime, effects, native-representation identities, and target
+adapters rather than expose this private aggregate transport.
 
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
@@ -2940,7 +2983,9 @@ storage. This rule SHALL introduce no product-pattern object, environment
 object, function pointer, indirect call, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate or
 callable ABI, or native-ABI revision. Nested product patterns, repeated-name
-aggregate identity patterns, escaping/capturing Function boundaries, aggregate
+aggregate identity patterns, capturing Function boundaries outside
+`TOPAL-COMPILER-FUNCTION-CAPTURE-PARAMETER-001` and
+`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`, other escape, aggregate
 containment, publication, and library metadata/adapters remain deferred.
 
 ### TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001 — Exact repeated anonymous pattern names

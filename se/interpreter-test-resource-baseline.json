@@ -1111,6 +1111,11 @@
       "cpu_time_ns": 14358740,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/capturing-function-results.t": {
+      "cpu_time_ns": 9643339,
+      "memory_peak_bytes": 18423808,
+      "samples_per_test": 50
     }
   }
 }

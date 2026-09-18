@@ -1173,10 +1173,18 @@ pub struct CompilerFunction {
     pub parameters: Vec<CompilerParameter>,
     pub pattern_identities: Vec<CompilerPatternIdentity>,
     pub result_type: CompilerType,
+    pub result_captures: Vec<CompilerFunctionResultCapture>,
     pub body: CompilerBlock,
     pub span: Span,
     pub is_static: bool,
     pub declared_effects: Option<CompilerEffectRow>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerFunctionResultCapture {
+    pub name: String,
+    pub value_type: CompilerType,
+    pub value: CompilerExpression,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -3187,6 +3195,7 @@ fn exact_character_generator_local_close_handler(
             parameters: vec![local_parameter],
             pattern_identities: Vec::new(),
             result_type: CompilerType::Unit,
+            result_captures: Vec::new(),
             body: CompilerBlock {
                 statements: Vec::new(),
                 result: unit_expression(*function_result_span),
@@ -3828,6 +3837,7 @@ fn exact_boolean_local_function_generator_body(
         parameters: vec![local_parameter.clone()],
         pattern_identities: Vec::new(),
         result_type: CompilerType::String,
+        result_captures: Vec::new(),
         body: CompilerBlock {
             statements: Vec::new(),
             result: CompilerExpression {
@@ -8799,6 +8809,16 @@ impl Analyzer {
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable =
                         self.known_callable(&value, environment, initializer.span().start)?;
+                    let returned_callable_captures = match &callable {
+                        Some(CompilerCallableFacts::Anonymous { captures, .. }) => captures
+                            .values()
+                            .filter(|capture| {
+                                is_function_result_capture_storage(&capture.storage_name)
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                        _ => Vec::new(),
+                    };
                     let static_capability = match &value.kind {
                         CompilerExpressionKind::Capability(capability) => Some(capability.clone()),
                         _ => None,
@@ -8866,6 +8886,9 @@ impl Analyzer {
                         generator_bindings.push((storage_name.clone(), name_text.clone(), *name));
                     }
                     environment.insert(name_text.clone(), facts.clone());
+                    for capture in returned_callable_captures {
+                        environment.insert(capture.storage_name.clone(), capture);
+                    }
                     if let Some(tag) = constraint_tag {
                         self.constraint_bindings.insert(name_text.clone(), tag);
                     }
@@ -15397,6 +15420,11 @@ impl Analyzer {
                 CompilerCallableFacts::Anonymous { captures, .. } => {
                     for (capture_name, capture) in captures {
                         let current = binding_facts_by_storage(environment, &capture.storage_name)
+                            .cloned()
+                            .or_else(|| {
+                                is_function_result_capture_storage(&capture.storage_name)
+                                    .then(|| capture.clone())
+                            })
                             .filter(|current| {
                                 current.origin == capture.origin
                                     && current.runtime_bound
@@ -15419,7 +15447,7 @@ impl Analyzer {
                             value_type: current.value_type.clone(),
                             int_range: current.int_range.clone(),
                             rational_value: current.rational_value.clone(),
-                            argument: binding_expression(current, parameter.name),
+                            argument: binding_expression(&current, parameter.name),
                             span: parameter.name,
                         });
                         capture.storage_name = hidden_name;
@@ -15530,12 +15558,32 @@ impl Analyzer {
                 .and_then(|facts| facts.callable.clone())
                 .map(Some)
                 .ok_or_else(|| unsupported(&self.source, value.span, "opaque Function value")),
-            CompilerExpressionKind::Call { symbol, .. } => self
-                .returned_function_values
-                .get(symbol)
-                .cloned()
-                .map(Some)
-                .ok_or_else(|| unsupported(&self.source, value.span, "opaque Function result")),
+            CompilerExpressionKind::Call { symbol, .. } => {
+                let mut callable = self
+                    .returned_function_values
+                    .get(symbol)
+                    .cloned()
+                    .ok_or_else(|| {
+                        unsupported(&self.source, value.span, "opaque Function result")
+                    })?;
+                if let CompilerCallableFacts::Anonymous { captures, .. } = &mut callable
+                    && !captures.is_empty()
+                {
+                    let result_captures = &self
+                        .instances
+                        .iter()
+                        .find(|function| function.symbol == *symbol)
+                        .expect("checked Function result has a generated specialization")
+                        .result_captures;
+                    debug_assert_eq!(captures.len(), result_captures.len());
+                    for (index, capture) in captures.values_mut().enumerate() {
+                        capture.storage_name =
+                            compiler_function_result_capture_storage(symbol, value.span, index);
+                        capture.origin = value.span.start;
+                    }
+                }
+                Ok(Some(callable))
+            }
             _ => Err(unsupported(
                 &self.source,
                 value.span,
@@ -16330,6 +16378,7 @@ impl Analyzer {
             parameters: lowered_parameters,
             pattern_identities,
             result_type: result_type.clone(),
+            result_captures: Vec::new(),
             body: analyzed_body,
             span: declaration_span,
             is_static: static_context,
@@ -18815,38 +18864,73 @@ impl Analyzer {
         } else {
             None
         };
-        let returned_function_value = if result_type == CompilerType::Function {
+        let (returned_function_value, result_captures) = if result_type == CompilerType::Function {
             let callable = self
                 .known_callable(&body.result, &environment, body.result.span.start)?
                 .expect("checked Function expression retains callable facts");
-            let supported = match &callable {
+            let result_captures = match &callable {
                 CompilerCallableFacts::Named {
                     name,
                     declarations,
                     captures,
                 } => {
-                    captures.is_empty()
+                    let supported = captures.is_empty()
                         && self.functions.get(name).is_some_and(|root_declarations| {
                             declarations.iter().all(|declaration| {
                                 root_declarations
                                     .iter()
                                     .any(|root| root.span == declaration.span)
                             })
-                        })
+                        });
+                    if !supported {
+                        return Err(unsupported(
+                            &self.source,
+                            body.result.span,
+                            "nested or dynamically computed Function result",
+                        ));
+                    }
+                    Vec::new()
                 }
-                CompilerCallableFacts::Symbolic(_) => true,
-                CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
+                CompilerCallableFacts::Symbolic(_) => Vec::new(),
+                CompilerCallableFacts::Anonymous { captures, .. } => captures
+                    .iter()
+                    .map(|(name, capture)| {
+                        let current = binding_facts_by_storage(
+                            &environment,
+                            &capture.storage_name,
+                        )
+                        .cloned()
+                        .or_else(|| {
+                            is_function_result_capture_storage(&capture.storage_name)
+                                .then(|| capture.clone())
+                        })
+                        .filter(|current| {
+                            current.origin == capture.origin
+                                && current.runtime_bound
+                                && current.value_type == capture.value_type
+                                && compiler_function_result_supported(&current.value_type)
+                                && !compiler_type_contains_generator(&current.value_type)
+                        })
+                        .ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                body.result.span,
+                                &format!(
+                                    "capturing Function result outside capture `{name}` lifetime or private representation"
+                                ),
+                            )
+                        })?;
+                        Ok(CompilerFunctionResultCapture {
+                            name: name.clone(),
+                            value_type: current.value_type.clone(),
+                            value: binding_expression(&current, body.result.span),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, Diagnostic>>()?,
             };
-            if !supported {
-                return Err(unsupported(
-                    &self.source,
-                    body.result.span,
-                    "capturing, anonymous, or nested Function result",
-                ));
-            }
-            Some(callable)
+            (Some(callable), result_captures)
         } else {
-            None
+            (None, Vec::new())
         };
         let symbol = reserved_symbol.map_or_else(
             || self.reserve_function_symbol(function_name),
@@ -18868,6 +18952,7 @@ impl Analyzer {
             parameters,
             pattern_identities: Vec::new(),
             result_type: result_type.clone(),
+            result_captures,
             body,
             span: declaration.span,
             is_static: declaration.is_static,
@@ -21558,6 +21643,18 @@ fn binding_expression(facts: &BindingFacts, span: Span) -> CompilerExpression {
         rational_value: facts.rational_value.clone(),
         span,
     }
+}
+
+#[must_use]
+pub fn compiler_function_result_capture_storage(symbol: &str, span: Span, index: usize) -> String {
+    format!(
+        "topal.function.result.{symbol}.{}.capture.{index}",
+        span.start
+    )
+}
+
+fn is_function_result_capture_storage(storage_name: &str) -> bool {
+    storage_name.starts_with("topal.function.result.")
 }
 
 fn compiler_expression_is_closed(expression: &CompilerExpression) -> bool {
@@ -30387,15 +30484,11 @@ mod tests {
                 && function.parameters[0].name == "value"
         }));
 
-        for rejected in [
-            "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
-            "use language (version is v0.1)\nwith-shadow is fn (offset : Int) -> Int\n  operation : Function is { value } value + offset\n  {\n    offset is 100\n    operation 41\n  }\nwith-shadow 1\n",
-        ] {
-            assert_eq!(
-                analyze_for_compiler(rejected).unwrap_err().code,
-                "E-COMPILER-UNSUPPORTED"
-            );
-        }
+        let rejected = "use language (version is v0.1)\nwith-shadow is fn (offset : Int) -> Int\n  operation : Function is { value } value + offset\n  {\n    offset is 100\n    operation 41\n  }\nwith-shadow 1\n";
+        assert_eq!(
+            analyze_for_compiler(rejected).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
@@ -30465,13 +30558,81 @@ mod tests {
                     .iter()
                     .all(|parameter| parameter.source_visible)
         }));
+    }
 
-        let escaping = analyze_for_compiler(
-            "use language (version is v0.1)\nmake is fn (offset : Int) -> Function\n  { value } value + offset\noperation is make 1\noperation 41\n",
-        )
-        .unwrap_err();
-        assert_eq!(escaping.code, "E-COMPILER-UNSUPPORTED");
-        assert!(escaping.message.contains("Function result"));
+    #[test]
+    fn models_captured_function_results_as_private_aggregate_returns() {
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-FUNCTION-VALUE-001,
+        // TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/capturing-function-results.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected capturing Function-result applications")
+        };
+        assert_eq!(results.len(), 4);
+        assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
+        assert_eq!(
+            results[1].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+        assert_eq!(exact_int(&results[2]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[3]), Some(BigInt::from(42)));
+
+        let scalar_factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-scalars")
+            .collect::<Vec<_>>();
+        assert_eq!(scalar_factories.len(), 2);
+        assert!(scalar_factories.iter().all(|function| {
+            function.result_type == CompilerType::Function
+                && function
+                    .result_captures
+                    .iter()
+                    .map(|capture| capture.name.as_str())
+                    .eq(["left", "right"])
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.value_type == CompilerType::Int)
+        }));
+        let pair_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-pair")
+            .unwrap();
+        assert_eq!(pair_factory.result_captures.len(), 1);
+        assert_eq!(pair_factory.result_captures[0].name, "pair");
+        assert_eq!(
+            pair_factory.result_captures[0].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+        for function_name in ["return-operation", "make-forwarded"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == function_name)
+                .unwrap();
+            assert_eq!(function.result_captures.len(), 2);
+            assert!(
+                function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.value_type == CompilerType::Int)
+            );
+        }
+
+        for rejected in [
+            "use language (version is v0.1)\nouter is fn (offset : Int) -> Function\n  add is fn (value : Int) -> Int\n    value + offset\n  add\noperation is outer 1\noperation 41\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+            assert!(diagnostic.message.contains("Function result"));
+        }
     }
 
     #[test]

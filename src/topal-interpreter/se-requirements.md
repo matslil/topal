@@ -594,6 +594,13 @@ and eventual direct invocation semantics under `TOPAL-FUNCTION-ANONYMOUS-001`,
 mode and reversible debugger history shall cover scalar and aggregate captures,
 root and function-local construction, and transitive forwarding through the
 shared captured-Function-parameter regression.
+Returning a capturing anonymous Function shall preserve the same
+construction-time lexical environment through bindings, Function-parameter
+pass-through, and another Function result under `TOPAL-FUNCTION-ANONYMOUS-001`
+and `TOPAL-FUNCTION-VALUE-001`. Every interpreter mode and reversible debugger
+history shall cover scalar and aggregate captures, root and function-local
+factories, and transitive result forwarding through the shared
+captured-Function-result regression.
 
 ## TOPAL-INTP-SUBSET-058 — Rational natural exponentiation
 
