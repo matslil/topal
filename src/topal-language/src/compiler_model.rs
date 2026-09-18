@@ -33463,6 +33463,129 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // One model check covers ordering for all represented container fields.
+    fn models_container_packaged_fields_in_source_and_declaration_order() {
+        // TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/container-packaged-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected represented-container packaged results")
+        };
+        assert_eq!(results.len(), 2);
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: span_storage,
+            value: span,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first Range field is retained first")
+        };
+        assert_eq!(
+            span.value_type,
+            CompilerType::Range(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: outcome_storage,
+            value: outcome,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Result field is retained second")
+        };
+        assert_eq!(
+            outcome.value_type,
+            CompilerType::Result(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: maybe_storage,
+            value: maybe,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-third Optional field is retained third")
+        };
+        assert_eq!(
+            maybe.value_type,
+            CompilerType::Optional(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: values_storage,
+            value: values,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-fourth List field is retained fourth")
+        };
+        assert_eq!(
+            values.value_type,
+            CompilerType::List(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order container package call")
+        };
+        assert_eq!(arguments.len(), 4);
+        for (argument, storage) in [
+            (&arguments[0], values_storage),
+            (&arguments[1], maybe_storage),
+            (&arguments[2], outcome_storage),
+            (&arguments[3], span_storage),
+        ] {
+            assert!(matches!(
+                &argument.kind,
+                CompilerExpressionKind::Local(actual) if actual == storage
+            ));
+        }
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: second_span_storage,
+            body,
+            ..
+        } = &results[1].kind
+        else {
+            panic!("the second call retains its explicit Range first")
+        };
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: second_outcome_storage,
+            body,
+            ..
+        } = &body.kind
+        else {
+            panic!("the second call retains its explicit Result second")
+        };
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: second_values_storage,
+            body,
+            ..
+        } = &body.kind
+        else {
+            panic!("the second call retains its explicit List third")
+        };
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected the closed Optional default after explicit values")
+        };
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == second_values_storage
+        ));
+        assert_eq!(
+            arguments[1].value_type,
+            CompilerType::Optional(Box::new(CompilerType::Int))
+        );
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == second_outcome_storage
+        ));
+        assert!(matches!(
+            &arguments[3].kind,
+            CompilerExpressionKind::Local(storage) if storage == second_span_storage
+        ));
+    }
+
+    #[test]
     fn models_discarded_function_parameters_without_binding_them() {
         // TOPAL-TYPE-MATCH-001, TOPAL-COMPILER-PATTERN-001
         let source = "use language (version is v0.1)\nsecond is fn (_ : Int, value : Int) -> Int\n  value\nsecond (0, 42)\n";
