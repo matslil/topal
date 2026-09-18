@@ -21420,6 +21420,36 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    if let Some(fields) = classifier
+        .strip_prefix("Array(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let (count, element) = split_classifier_once(fields)?;
+        return Some(CompilerType::Array {
+            count: count.parse().ok()?,
+            element: Box::new(parse_compact_classifier(element)?),
+        });
+    }
+    if let Some(fields) = classifier
+        .strip_prefix("Map(")
+        .and_then(|value| value.strip_suffix(')'))
+    {
+        let (key, value) = split_classifier_once(fields)?;
+        return Some(CompilerType::Map {
+            key: Box::new(parse_compact_classifier(key)?),
+            value: Box::new(parse_compact_classifier(value)?),
+        });
+    }
+    if let Some(element) = classifier.strip_prefix("Set") {
+        return Some(CompilerType::Set(Box::new(parse_compact_classifier(
+            element,
+        )?)));
+    }
+    if let Some(element) = classifier.strip_prefix("Bag") {
+        return Some(CompilerType::Bag(Box::new(parse_compact_classifier(
+            element,
+        )?)));
+    }
     if let Some(element) = classifier.strip_prefix("List") {
         let element = parse_compact_classifier(element)?;
         if compiler_list_node_element_supported(&element) {
@@ -21616,6 +21646,12 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 endpoint.as_ref(),
                 CompilerType::Int | CompilerType::Rational
             )
+        }
+        CompilerType::Array { element, .. }
+        | CompilerType::Set(element)
+        | CompilerType::Bag(element) => element.as_ref() == &CompilerType::Int,
+        CompilerType::Map { key, value } => {
+            key.as_ref() == &CompilerType::String && value.as_ref() == &CompilerType::Int
         }
         _ => true,
     }
@@ -33583,6 +33619,129 @@ mod tests {
             &arguments[3].kind,
             CompilerExpressionKind::Local(storage) if storage == second_span_storage
         ));
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // One model check covers ordering for all exact collection fields.
+    fn models_collection_packaged_fields_in_source_and_declaration_order() {
+        // TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/collection-packaged-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected exact-collection packaged results")
+        };
+        assert_eq!(results.len(), 2);
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: scores_storage,
+            value: scores,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first Map field is retained first")
+        };
+        assert_eq!(
+            scores.value_type,
+            CompilerType::Map {
+                key: Box::new(CompilerType::String),
+                value: Box::new(CompilerType::Int),
+            }
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: occurrences_storage,
+            value: occurrences,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Bag field is retained second")
+        };
+        assert_eq!(
+            occurrences.value_type,
+            CompilerType::Bag(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: members_storage,
+            value: members,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-third Set field is retained third")
+        };
+        assert_eq!(
+            members.value_type,
+            CompilerType::Set(Box::new(CompilerType::Int))
+        );
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: array_storage,
+            value: array,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-fourth Array field is retained fourth")
+        };
+        assert_eq!(
+            array.value_type,
+            CompilerType::Array {
+                count: 3,
+                element: Box::new(CompilerType::Int),
+            }
+        );
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order collection package call")
+        };
+        assert_eq!(arguments.len(), 4);
+        for (argument, storage) in [
+            (&arguments[0], array_storage),
+            (&arguments[1], members_storage),
+            (&arguments[2], occurrences_storage),
+            (&arguments[3], scores_storage),
+        ] {
+            assert!(matches!(
+                &argument.kind,
+                CompilerExpressionKind::Local(actual) if actual == storage
+            ));
+        }
+
+        let CompilerExpressionKind::Call { arguments, .. } = &results[1].kind else {
+            panic!("expected the positional collection package call")
+        };
+        assert_eq!(arguments.len(), 4);
+        assert_eq!(
+            arguments[0].value_type,
+            CompilerType::Array {
+                count: 3,
+                element: Box::new(CompilerType::Int),
+            }
+        );
+        assert_eq!(
+            arguments[1].value_type,
+            CompilerType::Set(Box::new(CompilerType::Int))
+        );
+        assert_eq!(
+            arguments[2].value_type,
+            CompilerType::Bag(Box::new(CompilerType::Int))
+        );
+        assert_eq!(
+            arguments[3].value_type,
+            CompilerType::Map {
+                key: Box::new(CompilerType::String),
+                value: Box::new(CompilerType::Int),
+            }
+        );
+        assert!(
+            arguments
+                .iter()
+                .all(|argument| matches!(argument.kind, CompilerExpressionKind::Call { .. }))
+        );
+
+        let unsupported = "use language (version is v0.1)\nidentity is fn (values : Set String) -> Set String\n  values\nidentity (collect-set Entry (\"Ada\", Empty))\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]

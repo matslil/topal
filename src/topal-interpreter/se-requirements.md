@@ -2268,3 +2268,14 @@ each complete classifier and value under its one source name. The shared
 regression and reversible debugger history shall cover reordered container-
 producing calls, List/Optional/Result/Range fields, a closed Optional default,
 and exact results.
+
+## TOPAL-INTP-SUBSET-264 — Represented collection packaged fields
+
+All source modes shall preserve exact Array, Set, Bag, and Map values when
+supplied as complete fields of a one- or two-operand package under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit collection-producing
+expressions shall execute once in source order, function entry shall expose
+each complete classifier and value under its one source name, and labeled and
+positional calls shall agree after declaration-order association. The shared
+regression and reversible debugger history shall cover `Array (3, Int)`,
+`Set Int`, `Bag Int`, and `Map (String, Int)` fields and exact results.

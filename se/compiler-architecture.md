@@ -414,8 +414,12 @@ Record fields may also contain admitted Function leaves and their represented
 immutable capture snapshots. Exact List, Optional, Result, and Range fields may
 also reuse the pointer-carrier representation already admitted at private
 function boundaries when their contained classifiers are supported and contain
-no Function. A full positional product already has declaration order. A labeled
-product is instead associated by stable field identity. For a
+no Function. Exact `Array (N, Int)`, `Set Int`, `Bag Int`, and
+`Map (String, Int)` fields likewise reuse their existing private pointer carriers while the
+checked model retains the constructor, Array extent, and element or key/value
+classifiers independently of that coincident machine representation. A full
+positional product already has declaration order. A labeled product is instead
+associated by stable field identity. For a
 compound call, the frontend retains every explicit operand and field once in
 global source order through compiler-private SSA bindings, then evaluates
 omitted defaults in operand/field declaration order and permutes retained values
@@ -424,8 +428,10 @@ callable identity and capture facts beside the observation tag; a
 Function-containing aggregate binding retains the complete recursive structural
 fact tree, canonical Function paths, and callable/capture facts beside the
 runtime aggregate; and a represented container binding retains its exact generic
-classifier beside the pointer carrier. Reordering therefore cannot make any
-admitted field opaque or replay its initializer.
+classifier beside the pointer carrier. An Array/Set/Bag/Map binding additionally
+retains its exact constructor and extent/element/key/value facts beside the
+pointer carrier. Reordering therefore cannot make any admitted field opaque or
+replay its initializer.
 The private callee receives one ordinary LLVM parameter per unpackaged operand
 or source field; a structured field remains one exact aggregate parameter
 rather than being decomposed into more package fields. This makes every
@@ -436,13 +442,15 @@ memory/ABI obligations and are reserved for a deliberate public aggregate
 interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Function containment outside Tuple/Record, Scope,
-unsupported container payloads and other non-scalar fields, nested package
-declarations, opaque whole-package values, context-dependent defaults,
-recursive compound signatures, and public package adapters remain
+unsupported container or collection payloads and other non-scalar fields,
+nested package declarations, opaque whole-package values, context-dependent
+defaults, recursive compound signatures, and public package adapters remain
 checked-frontend and library-interface work.
 Published metadata will need syntactic-operand partition/order, stable field
 identities and declaration order, complete canonical structural or nominal
-classifiers, Sum alternatives/payloads, canonical Function-leaf paths, callable
+classifiers, Sum alternatives/payloads, collection constructors and Array
+extents, element/key/value classifiers, collection ordering/uniqueness/
+multiplicity/collision semantics, canonical Function-leaf paths, callable
 source/declaration identity and overload sets, capture schemas, default
 semantics and dependencies, generic container constructors and contained/error-
 domain/endpoint classifiers, evaluation effects, representation/lifetime

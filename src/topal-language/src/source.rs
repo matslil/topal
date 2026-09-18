@@ -10311,23 +10311,8 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
     {
         return classifier == format!("Generator {yield_classifier} Unit Unit");
     }
-    if let Value::Optional {
-        payload_classifier, ..
-    } = value
-        && let Some(expected) = optional_payload_classifier(classifier)
-    {
-        return payload_classifier == expected;
-    }
-    if let Value::List {
-        element_classifier,
-        entries,
-    } = value
-        && let Some(expected) = list_element_classifier(classifier)
-    {
-        return element_classifier == expected
-            && entries
-                .iter()
-                .all(|entry| value_has_classifier(entry, expected));
+    if let Some(matches) = represented_value_has_classifier(value, classifier) {
+        return matches;
     }
     if let Some(success) = result_success_classifier(classifier) {
         return matches!(value, Value::Error { code, .. } if is_arithmetic_error_code(code))
@@ -10367,6 +10352,64 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         }
         (Value::Union(union), classifier) => union.type_name == classifier,
         _ => false,
+    }
+}
+
+fn represented_value_has_classifier(value: &Value, classifier: &str) -> Option<bool> {
+    match value {
+        Value::Optional {
+            payload_classifier, ..
+        } => optional_payload_classifier(classifier).map(|expected| payload_classifier == expected),
+        Value::List {
+            element_classifier,
+            entries,
+        } => list_element_classifier(classifier).map(|expected| {
+            element_classifier == expected
+                && entries
+                    .iter()
+                    .all(|entry| value_has_classifier(entry, expected))
+        }),
+        Value::Array {
+            element_classifier,
+            entries,
+        } => array_classifier_parts(classifier).map(|(count, expected)| {
+            entries.len() == count
+                && element_classifier == expected
+                && entries
+                    .iter()
+                    .all(|entry| value_has_classifier(entry, expected))
+        }),
+        Value::Set {
+            element_classifier,
+            entries,
+        } => applied_classifier(classifier, "Set").map(|expected| {
+            element_classifier == expected
+                && entries
+                    .iter()
+                    .all(|entry| value_has_classifier(entry, expected))
+        }),
+        Value::Bag {
+            element_classifier,
+            entries,
+        } => applied_classifier(classifier, "Bag").map(|expected| {
+            element_classifier == expected
+                && entries
+                    .iter()
+                    .all(|(entry, _)| value_has_classifier(entry, expected))
+        }),
+        Value::Map {
+            key_classifier,
+            value_classifier,
+            entries,
+        } => map_classifier_parts(classifier).map(|(expected_key, expected_value)| {
+            key_classifier == expected_key
+                && value_classifier == expected_value
+                && entries.iter().all(|(key, value)| {
+                    value_has_classifier(key, expected_key)
+                        && value_has_classifier(value, expected_value)
+                })
+        }),
+        _ => None,
     }
 }
 
@@ -12279,6 +12322,16 @@ fn supported_value_classifier(
             .is_some_and(|payload| supported_value_classifier(payload, enum_types))
         || list_element_classifier(classifier)
             .is_some_and(|element| supported_value_classifier(element, enum_types))
+        || array_classifier_parts(classifier)
+            .is_some_and(|(_, element)| supported_value_classifier(element, enum_types))
+        || applied_classifier(classifier, "Set")
+            .is_some_and(|element| supported_value_classifier(element, enum_types))
+        || applied_classifier(classifier, "Bag")
+            .is_some_and(|element| supported_value_classifier(element, enum_types))
+        || map_classifier_parts(classifier).is_some_and(|(key, value)| {
+            supported_value_classifier(key, enum_types)
+                && supported_value_classifier(value, enum_types)
+        })
         || tuple_classifiers(classifier).is_some_and(|items| {
             items
                 .into_iter()
@@ -12309,6 +12362,32 @@ fn record_classifiers(classifier: &str) -> Option<Vec<(&str, &str)>> {
             labels.insert(label).then_some((label, classifier))
         })
         .collect()
+}
+
+fn array_classifier_parts(classifier: &str) -> Option<(usize, &str)> {
+    let (count, element) = binary_classifier_parts(classifier, "Array")?;
+    Some((count.parse().ok()?, element))
+}
+
+fn map_classifier_parts(classifier: &str) -> Option<(&str, &str)> {
+    binary_classifier_parts(classifier, "Map")
+}
+
+fn binary_classifier_parts<'a>(
+    classifier: &'a str,
+    constructor: &str,
+) -> Option<(&'a str, &'a str)> {
+    let contents = classifier
+        .trim()
+        .strip_prefix(constructor)?
+        .trim()
+        .strip_prefix('(')?
+        .strip_suffix(')')?;
+    let fields = split_top_level_classifier_items(contents)?;
+    let [first, second] = fields.as_slice() else {
+        return None;
+    };
+    Some((*first, *second))
 }
 
 fn split_top_level_classifier_items(contents: &str) -> Option<Vec<&str>> {

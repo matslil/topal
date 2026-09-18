@@ -3780,7 +3780,9 @@ are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMP-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented List,
 Optional, Result, and Range fields are governed by
-`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Other non-scalar fields,
+`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map fields
+are governed by `TOPAL-COMP-COLLECTION-PACKAGED-FIELD-001`. Other non-scalar
+fields,
 nested package declarations, opaque package values, and invocation-dependent
 defaults remain rejected until their complete evaluation, storage, and public
 ABI rules are implemented. This shall add no foreign
@@ -3828,7 +3830,9 @@ are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMP-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented List,
 Optional, Result, and Range fields are governed by
-`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Other non-scalar fields,
+`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map fields
+are governed by `TOPAL-COMP-COLLECTION-PACKAGED-FIELD-001`. Other non-scalar
+fields,
 nested package declarations, opaque package values, invocation- or
 capture-dependent defaults, and public package adapters remain deferred. This
 realizes
@@ -3878,7 +3882,8 @@ are governed by `TOPAL-COMP-FUNCTION-PACKAGED-FIELD-001`; exact
 Function-containing Tuple and Record fields are governed by
 `TOPAL-COMP-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`. Exact represented List,
 Optional, Result, and Range fields are governed by
-`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Scope, other
+`TOPAL-COMP-CONTAINER-PACKAGED-FIELD-001`. Exact Array, Set, Bag, and Map fields
+are governed by `TOPAL-COMP-COLLECTION-PACKAGED-FIELD-001`. Scope, other
 Function-containing aggregates, other non-scalar fields, nested package
 declarations, opaque compound package values, invocation- or capture-dependent
 defaults, recursive compound signatures, and public package adapters remain
@@ -4124,6 +4129,55 @@ public adapters remain deferred. This realizes
 `TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5ao.
+
+## TOPAL-COMP-COLLECTION-PACKAGED-FIELD-001 — Exact represented collection package fields
+
+The checked compiler model shall recognize exact `Array (N, Int)`, `Set Int`,
+`Bag Int`, and `Map (String, Int)` private function parameter and result
+classifiers, with a statically parsed nonnegative Array extent, and admit those
+values as complete fields of one- or two-operand packages. Other element,
+key, or value classifiers and mismatched collection classifiers shall reject
+before LLVM lowering or artifact publication rather than being accepted from
+their pointer carrier alone.
+
+The frontend shall retain every explicit collection-producing initializer once
+in package source order with its exact constructor and extent/element/key/value
+classifier facts. Direct calls shall pass each complete source field in
+operand/field declaration order. Closed defaults remain governed by the
+existing exact checked-default rule; constructions not already analyzable as
+the declared collection classifier shall remain rejected.
+
+LLVM definitions and calls shall use one matching private pointer-carrier
+`fastcc` parameter per source field and leave physical AMD64 placement to LLVM.
+Entries, keys, values, multiplicities, and collision state shall not become
+package fields. Package normalization shall add no allocation or alter the
+existing process-lifetime ownership of collection construction. GDB shall
+expose the complete Array, Set, Bag, and Map source fields and ordinary frame
+while private ordering bindings remain absent from source debugging.
+
+Tests shall cover all four exact collection families, reordered once-only
+collection-producing calls, positional parity, exact output, unsupported or
+mismatched classifier artifact rejection, checked classifier retention,
+matching direct pointer-carrier IR, all interpreter modes, reversible
+debugging, the shared corpus and separate resource baselines, freestanding
+ELF/DWARF properties, and O0 GDB values/frames.
+
+This shall add no package aggregate, entry decomposition, `byval`, `sret`,
+`inalloca`, `preallocated`, package runtime, allocation beyond existing
+collection construction, foreign dependency, C/C++ runtime, other-language
+standard library, public collection ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall preserve the canonical constructor; Array
+extent; element or key/value classifiers; ordering, uniqueness, multiplicity,
+and collision semantics; representation/lifetime/default/effect semantics;
+stable operand/field identities and order; and target adapters independently
+of compiler-private binding names, LLVM pointer types, and physical placement.
+Function-containing collections, other generic specializations,
+context-dependent or otherwise unanalyzable defaults, nested package
+declarations, opaque whole-package values, recursive package signatures,
+persistent collection storage, publication, and public adapters remain
+deferred. This realizes `TOPAL-COMPILER-COLLECTION-PACKAGED-FIELD-001`,
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5ap.
 
 ## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
 
