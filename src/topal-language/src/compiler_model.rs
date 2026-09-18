@@ -117,6 +117,95 @@ pub struct CompilerTaskType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompilerExternalLayoutFamily {
+    UnsignedNat,
+    Utf8Text,
+    Product {
+        fields: Vec<(String, String)>,
+        packing: String,
+    },
+    TaggedOptionalNat {
+        tag_layout: String,
+        tags: Vec<(String, u64)>,
+        payload_placement: String,
+    },
+    NatArray {
+        count: usize,
+        element_layout: String,
+        stride_bits: u64,
+    },
+}
+
+/// Target-independent evidence for one closed external representation.
+///
+/// These fields describe Topal semantics, never an LLVM type or native object
+/// layout. A future compiled-library format can therefore serialize them
+/// without adopting the first backend's private representation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerExternalLayout {
+    pub identity: String,
+    pub semantic: String,
+    pub storage_size_bits: u64,
+    pub encoding: Option<String>,
+    pub endian: Option<String>,
+    pub access: String,
+    pub alignment_bytes: u64,
+    pub family: CompilerExternalLayoutFamily,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerAddressRangeType {
+    pub identity: String,
+    pub caching: String,
+    pub minimum_access_size_bits: u64,
+    pub medium: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerAddressRange {
+    pub identity: String,
+    pub range_type: CompilerAddressRangeType,
+    pub lower: BigInt,
+    pub upper: BigInt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerAddressOffsetType {
+    pub identity: String,
+    pub range: CompilerAddressRange,
+    pub alignment_bytes: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerAddressOffset {
+    pub identity: String,
+    pub offset_type: CompilerAddressOffsetType,
+    pub offset: BigInt,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerLocationType {
+    pub identity: String,
+    pub layout: CompilerExternalLayout,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerLocation {
+    pub location_type: CompilerLocationType,
+    pub offset: CompilerAddressOffset,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CompilerExternalMetadata {
+    Layout(CompilerExternalLayout),
+    AddressRangeType(CompilerAddressRangeType),
+    AddressRange(CompilerAddressRange),
+    AddressOffsetType(CompilerAddressOffsetType),
+    AddressOffset(CompilerAddressOffset),
+    LocationType(CompilerLocationType),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerIdentity {
     pub kind: ObjectKind,
     pub canonical: String,
@@ -239,6 +328,7 @@ pub enum CompilerType {
     LanguageContext,
     Capability,
     NativeSerializer(LanguageVersion),
+    ExternalMetadata,
     SerializationStream(Box<Self>),
     Constraint,
     Boolean,
@@ -266,6 +356,7 @@ pub enum CompilerType {
     TraversalControl(Box<Self>),
     Generator(CompilerGeneratorType),
     Task(Box<CompilerTaskType>),
+    ExternalLocation(Box<CompilerLocationType>),
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -310,6 +401,7 @@ impl CompilerType {
                 | Self::TraversalControl(_)
                 | Self::Generator(_)
                 | Self::Task(_)
+                | Self::ExternalLocation(_)
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -330,6 +422,7 @@ impl CompilerType {
             Self::LanguageContext => "lang LanguageContext".into(),
             Self::Capability => "Capability".into(),
             Self::NativeSerializer(_) => "lang NativeSerializer".into(),
+            Self::ExternalMetadata => "ExternalStorageMetadata".into(),
             Self::SerializationStream(_) => "SerializationStream".into(),
             Self::Constraint => "Constraint".into(),
             Self::Boolean => "Boolean".into(),
@@ -365,6 +458,7 @@ impl CompilerType {
                 generator.result_type.name()
             ),
             Self::Task(task) => task.classifier.clone(),
+            Self::ExternalLocation(location) => location.identity.clone(),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -567,6 +661,21 @@ pub enum CompilerExpressionKind {
     LanguageContext(CompilerLanguageContext),
     Capability(CompilerCapability),
     NativeSerializer(LanguageVersion),
+    ExternalMetadata(CompilerExternalMetadata),
+    ExternalLayoutCoerce {
+        layout: CompilerExternalLayout,
+        value: Box<CompilerExpression>,
+    },
+    ExternalLocationConstruct(CompilerLocation),
+    ExternalLocationWrite {
+        location: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+        metadata: CompilerLocation,
+    },
+    ExternalLocationRead {
+        location: Box<CompilerExpression>,
+        metadata: CompilerLocation,
+    },
     Serialize {
         bytes: Vec<u8>,
         value: Box<CompilerExpression>,
@@ -1249,6 +1358,8 @@ struct Analyzer {
     generators: BTreeMap<String, Vec<GeneratorSource>>,
     task_types: TaskTypes,
     task_definitions: TaskDefinitions,
+    external_metadata: BTreeMap<String, CompilerExternalMetadata>,
+    external_locations: BTreeMap<String, CompilerLocation>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
@@ -1292,6 +1403,8 @@ impl Analyzer {
             generators: BTreeMap::new(),
             task_types: BTreeMap::new(),
             task_definitions: BTreeMap::new(),
+            external_metadata: BTreeMap::new(),
+            external_locations: BTreeMap::new(),
             instances: Vec::new(),
             active_calls: Vec::new(),
             active_recursive_functions: BTreeMap::new(),
@@ -1982,6 +2095,12 @@ fn require_runtime_main_result(
             source,
             main.result.span,
             "runtime observation of a static compiler value",
+        ))
+    } else if compiler_type_contains_external_location(&main.result.value_type) {
+        Err(unsupported(
+            source,
+            main.result.span,
+            "runtime observation of an external Location value",
         ))
     } else {
         Ok(())
@@ -8494,6 +8613,49 @@ impl Analyzer {
                     } else {
                         None
                     };
+                    let external_binding = matches!(
+                        value.kind,
+                        CompilerExpressionKind::ExternalMetadata(_)
+                            | CompilerExpressionKind::ExternalLocationConstruct(_)
+                    );
+                    if external_binding && kind != BlockKind::TopLevel {
+                        return Err(unsupported(
+                            &self.source,
+                            *name,
+                            "non-root external-storage binding",
+                        ));
+                    }
+                    if matches!(value.value_type, CompilerType::ExternalLocation(_))
+                        && !matches!(
+                            value.kind,
+                            CompilerExpressionKind::ExternalLocationConstruct(_)
+                        )
+                    {
+                        return Err(unsupported(
+                            &self.source,
+                            value.span,
+                            "copied or selected external Location value",
+                        ));
+                    }
+                    if kind == BlockKind::TopLevel {
+                        self.external_metadata.remove(&name_text);
+                        self.external_locations.remove(&name_text);
+                    }
+                    let external_static =
+                        if let CompilerExpressionKind::ExternalMetadata(metadata) = &mut value.kind
+                        {
+                            assign_external_metadata_identity(metadata, &name_text);
+                            self.external_metadata
+                                .insert(name_text.clone(), metadata.clone());
+                            true
+                        } else {
+                            false
+                        };
+                    if let CompilerExpressionKind::ExternalLocationConstruct(location) = &value.kind
+                    {
+                        self.external_locations
+                            .insert(name_text.clone(), location.clone());
+                    }
                     let string_value = Self::known_string_value(&value, environment);
                     let closed_int_range = Self::known_closed_int_range(&value, environment);
                     let list_count = Self::known_list_count(&value, environment);
@@ -8545,7 +8707,8 @@ impl Analyzer {
                     };
                     let facts = BindingFacts {
                         storage_name: storage_name.clone(),
-                        runtime_bound: !compiler_type_contains_static_only(&value.value_type),
+                        runtime_bound: !external_static
+                            && !compiler_type_contains_static_only(&value.value_type),
                         value_type: value.value_type.clone(),
                         int_range: value.int_range.clone(),
                         rational_value: value.rational_value.clone(),
@@ -8724,7 +8887,11 @@ impl Analyzer {
                 Statement::Expression(expression) => {
                     let value = self.analyze_expression(expression, environment)?;
                     if value.value_type == CompilerType::Unit
-                        && matches!(value.kind, CompilerExpressionKind::TaskStateReplace { .. })
+                        && matches!(
+                            value.kind,
+                            CompilerExpressionKind::TaskStateReplace { .. }
+                                | CompilerExpressionKind::ExternalLocationWrite { .. }
+                        )
                     {
                         lowered.push(CompilerStatement::Discard(value));
                     } else {
@@ -11066,6 +11233,615 @@ impl Analyzer {
         Ok((id, serialized))
     }
 
+    #[allow(clippy::too_many_lines)] // The closed external-storage subset is validated in schema order.
+    fn analyze_external_storage(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let [Expression::Identifier(operation), location] = items
+            && self.source.slice(*operation) == "read"
+            && let Expression::Identifier(location_name) = location
+            && let Some(metadata) = self
+                .external_locations
+                .get(self.source.slice(*location_name))
+                .cloned()
+        {
+            if matches!(
+                metadata.location_type.layout.access.as_str(),
+                "WriteOnly" | "Reserved"
+            ) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-LAYOUT-NOT-READABLE",
+                    span,
+                    "location layout does not permit reads",
+                ));
+            }
+            let location = self.analyze_expression(location, environment)?;
+            require_same_type(
+                &self.source,
+                location.span,
+                &CompilerType::ExternalLocation(Box::new(metadata.location_type.clone())),
+                &location.value_type,
+            )?;
+            let value_type = external_layout_value_type(&metadata.location_type.layout)
+                .ok_or_else(|| unsupported(&self.source, span, "runtime external layout family"))?;
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::ExternalLocationRead {
+                    location: Box::new(location),
+                    metadata,
+                },
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+        if let [location, Expression::Identifier(operation), value] = items
+            && self.source.slice(*operation) == "write"
+            && let Expression::Identifier(location_name) = location
+            && let Some(metadata) = self
+                .external_locations
+                .get(self.source.slice(*location_name))
+                .cloned()
+        {
+            if matches!(
+                metadata.location_type.layout.access.as_str(),
+                "ReadOnly" | "Reserved"
+            ) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-LAYOUT-NOT-WRITABLE",
+                    span,
+                    "location layout does not permit writes",
+                ));
+            }
+            let location = self.analyze_expression(location, environment)?;
+            require_same_type(
+                &self.source,
+                location.span,
+                &CompilerType::ExternalLocation(Box::new(metadata.location_type.clone())),
+                &location.value_type,
+            )?;
+            let value = self.analyze_expression(value, environment)?;
+            let expected = external_layout_value_type(&metadata.location_type.layout)
+                .ok_or_else(|| unsupported(&self.source, span, "runtime external layout family"))?;
+            require_same_type(&self.source, value.span, &expected, &value.value_type)?;
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::ExternalLocationWrite {
+                    location: Box::new(location),
+                    value: Box::new(value),
+                    metadata,
+                },
+                value_type: CompilerType::Unit,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        if let [
+            attributes,
+            Expression::Identifier(constructor),
+            semantic @ ..,
+        ] = items
+            && self.source.slice(*constructor) == "Layout"
+            && !semantic.is_empty()
+        {
+            let layout = self.analyze_external_layout(attributes, semantic, span)?;
+            return Ok(Some(external_metadata_expression(
+                CompilerExternalMetadata::Layout(layout),
+                span,
+            )));
+        }
+        if let [Expression::Identifier(constructor), attributes] = items
+            && self.source.slice(*constructor) == "AddressRange"
+        {
+            let fields = external_record_fields(&self.source, attributes, "AddressRange")?;
+            require_external_fields(
+                &self.source,
+                span,
+                &fields,
+                &["caching", "medium", "minimum-access-size"],
+                "AddressRange",
+            )?;
+            let caching = external_identifier_field(&self.source, &fields, "caching")?;
+            let minimum_access_size_bits =
+                external_size_field(&self.source, &fields, "minimum-access-size")?;
+            let medium = external_identifier_field(&self.source, &fields, "medium")?;
+            if !matches!(caching.as_str(), "Cached" | "Uncached")
+                || !matches!(medium.as_str(), "Memory" | "MMIO")
+                || minimum_access_size_bits == 0
+            {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "closed AddressRange attribute values",
+                ));
+            }
+            return Ok(Some(external_metadata_expression(
+                CompilerExternalMetadata::AddressRangeType(CompilerAddressRangeType {
+                    identity: String::new(),
+                    caching,
+                    minimum_access_size_bits,
+                    medium,
+                }),
+                span,
+            )));
+        }
+        if let [Expression::Identifier(constructor), attributes] = items
+            && self.source.slice(*constructor) == "AddressOffset"
+        {
+            let fields = external_record_fields(&self.source, attributes, "AddressOffset")?;
+            require_external_fields(
+                &self.source,
+                span,
+                &fields,
+                &["alignment", "range"],
+                "AddressOffset",
+            )?;
+            let range_name = external_identifier_field(&self.source, &fields, "range")?;
+            let Some(CompilerExternalMetadata::AddressRange(range)) =
+                self.external_metadata.get(&range_name)
+            else {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "AddressOffset without one retained AddressRange value",
+                ));
+            };
+            let alignment = external_nat_field(&self.source, &fields, "alignment")?;
+            let alignment_bytes = u64::try_from(alignment)
+                .ok()
+                .filter(|value| *value > 0)
+                .ok_or_else(|| unsupported(&self.source, span, "positive byte alignment"))?;
+            return Ok(Some(external_metadata_expression(
+                CompilerExternalMetadata::AddressOffsetType(CompilerAddressOffsetType {
+                    identity: String::new(),
+                    range: range.clone(),
+                    alignment_bytes,
+                }),
+                span,
+            )));
+        }
+        if let [
+            Expression::Identifier(constructor),
+            Expression::Identifier(layout_name),
+        ] = items
+            && self.source.slice(*constructor) == "Location"
+        {
+            let layout_name = self.source.slice(*layout_name);
+            let Some(CompilerExternalMetadata::Layout(layout)) =
+                self.external_metadata.get(layout_name)
+            else {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-LOCATION-LAYOUT",
+                    span,
+                    "Location requires an explicit Layout value",
+                ));
+            };
+            return Ok(Some(external_metadata_expression(
+                CompilerExternalMetadata::LocationType(CompilerLocationType {
+                    identity: String::new(),
+                    layout: layout.clone(),
+                }),
+                span,
+            )));
+        }
+
+        let [Expression::Identifier(name), argument] = items else {
+            return Ok(None);
+        };
+        let name = self.source.slice(*name);
+        let Some(metadata) = self.external_metadata.get(name).cloned() else {
+            return Ok(None);
+        };
+        match metadata {
+            CompilerExternalMetadata::Layout(layout) => {
+                let Expression::Integer(literal) = argument else {
+                    return Err(unsupported(
+                        &self.source,
+                        argument.span(),
+                        "dynamic external-layout conversion",
+                    ));
+                };
+                if !matches!(layout.family, CompilerExternalLayoutFamily::UnsignedNat) {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "runtime external layout family",
+                    ));
+                }
+                let integer = parse_integer(self.source.slice(*literal)).ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-NUMERIC-LITERAL",
+                        *literal,
+                        "invalid integer literal",
+                    )
+                })?;
+                let limit = BigInt::from(1_u8) << layout.storage_size_bits;
+                if integer < BigInt::from(0) || integer >= limit {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-LAYOUT-NOT-REPRESENTABLE",
+                        *literal,
+                        "integer is not representable by the selected layout",
+                    ));
+                }
+                let value = CompilerExpression {
+                    kind: CompilerExpressionKind::Int(integer.clone()),
+                    value_type: CompilerType::Nat,
+                    int_range: Some(IntRange::exact(integer)),
+                    rational_value: None,
+                    span: argument.span(),
+                };
+                let value_type = external_layout_value_type(&layout)
+                    .expect("closed runtime layout has a semantic value type");
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::ExternalLayoutCoerce {
+                        layout,
+                        value: Box::new(value),
+                    },
+                    value_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                }))
+            }
+            CompilerExternalMetadata::AddressRangeType(range_type) => {
+                let (lower, upper) = external_inclusive_range(&self.source, argument)?;
+                if lower < BigInt::from(0) || upper < lower {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ADDRESS-RANGE",
+                        argument.span(),
+                        "AddressRange requires an ordered nonnegative Nat range",
+                    ));
+                }
+                Ok(Some(external_metadata_expression(
+                    CompilerExternalMetadata::AddressRange(CompilerAddressRange {
+                        identity: String::new(),
+                        range_type,
+                        lower,
+                        upper,
+                    }),
+                    span,
+                )))
+            }
+            CompilerExternalMetadata::AddressOffsetType(offset_type) => {
+                let Expression::Integer(literal) = argument else {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ADDRESS-OFFSET",
+                        argument.span(),
+                        "AddressOffset requires a Nat byte offset",
+                    ));
+                };
+                let offset = parse_integer(self.source.slice(*literal)).ok_or_else(|| {
+                    source_diagnostic(
+                        &self.source,
+                        "E-ADDRESS-OFFSET",
+                        *literal,
+                        "AddressOffset requires a Nat byte offset",
+                    )
+                })?;
+                if offset < BigInt::from(0)
+                    || &offset % offset_type.alignment_bytes != BigInt::from(0_u8)
+                {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ADDRESS-OFFSET-ALIGNMENT",
+                        *literal,
+                        "address offset does not satisfy its byte alignment",
+                    ));
+                }
+                if offset > offset_type.range.upper.clone() - &offset_type.range.lower {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ADDRESS-OFFSET-RANGE",
+                        *literal,
+                        "address offset lies outside its associated range",
+                    ));
+                }
+                Ok(Some(external_metadata_expression(
+                    CompilerExternalMetadata::AddressOffset(CompilerAddressOffset {
+                        identity: String::new(),
+                        offset_type,
+                        offset,
+                    }),
+                    span,
+                )))
+            }
+            CompilerExternalMetadata::LocationType(location_type) => {
+                let Expression::Identifier(offset_name) = argument else {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-LOCATION-OFFSET",
+                        argument.span(),
+                        "a location requires an AddressOffset value",
+                    ));
+                };
+                let Some(CompilerExternalMetadata::AddressOffset(offset)) = self
+                    .external_metadata
+                    .get(self.source.slice(*offset_name))
+                    .cloned()
+                else {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-LOCATION-OFFSET",
+                        argument.span(),
+                        "a location requires an AddressOffset value",
+                    ));
+                };
+                validate_compiler_location(&self.source, argument.span(), &location_type, &offset)?;
+                let location = CompilerLocation {
+                    location_type: location_type.clone(),
+                    offset,
+                };
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::ExternalLocationConstruct(location),
+                    value_type: CompilerType::ExternalLocation(Box::new(location_type)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                }))
+            }
+            CompilerExternalMetadata::AddressRange(_)
+            | CompilerExternalMetadata::AddressOffset(_) => Err(unsupported(
+                &self.source,
+                span,
+                "application of an external-storage value",
+            )),
+        }
+    }
+
+    #[allow(clippy::too_many_lines)] // Every admitted layout family keeps its closed schema visible.
+    fn analyze_external_layout(
+        &self,
+        attributes: &Expression,
+        semantic: &[Expression],
+        span: Span,
+    ) -> Result<CompilerExternalLayout, Diagnostic> {
+        let fields = external_record_fields(&self.source, attributes, "Layout")?;
+        let semantic_span = Span::new(
+            semantic
+                .first()
+                .expect("checked nonempty semantic")
+                .span()
+                .start,
+            semantic
+                .last()
+                .expect("checked nonempty semantic")
+                .span()
+                .end,
+        );
+        let semantic_name = compact_classifier(self.source.slice(semantic_span));
+        let mut layout = CompilerExternalLayout {
+            identity: String::new(),
+            semantic: semantic_name.clone(),
+            storage_size_bits: 0,
+            encoding: None,
+            endian: None,
+            access: "ReadWrite".into(),
+            alignment_bytes: 1,
+            family: CompilerExternalLayoutFamily::UnsignedNat,
+        };
+        match semantic_name.as_str() {
+            "Nat" => {
+                require_external_fields(
+                    &self.source,
+                    span,
+                    &fields,
+                    &["access", "encoding", "endian", "storage-size"],
+                    "Layout Nat",
+                )?;
+                layout.storage_size_bits =
+                    external_size_field(&self.source, &fields, "storage-size")?;
+                layout.encoding = Some(external_identifier_field(
+                    &self.source,
+                    &fields,
+                    "encoding",
+                )?);
+                layout.endian = Some(external_identifier_field(&self.source, &fields, "endian")?);
+                layout.access = external_identifier_field(&self.source, &fields, "access")?;
+                layout.alignment_bytes = 4;
+                if layout.storage_size_bits != 32
+                    || layout.encoding.as_deref() != Some("UnsignedBinary")
+                    || layout.endian.as_deref() != Some("Little")
+                    || layout.access != "ReadWrite"
+                {
+                    return Err(unsupported(&self.source, span, "closed UInt32LE layout"));
+                }
+            }
+            "String" => {
+                require_external_fields(
+                    &self.source,
+                    span,
+                    &fields,
+                    &["encoding", "length", "storage-size", "termination"],
+                    "Layout String",
+                )?;
+                layout.storage_size_bits =
+                    external_size_field(&self.source, &fields, "storage-size")?;
+                layout.encoding = Some(external_identifier_field(
+                    &self.source,
+                    &fields,
+                    "encoding",
+                )?);
+                let length = external_identifier_field(&self.source, &fields, "length")?;
+                let termination = external_identifier_field(&self.source, &fields, "termination")?;
+                layout.family = CompilerExternalLayoutFamily::Utf8Text;
+                if layout.storage_size_bits != 64
+                    || layout.encoding.as_deref() != Some("Utf8")
+                    || length != "NoLength"
+                    || termination != "NoTerminator"
+                {
+                    return Err(unsupported(&self.source, span, "closed Utf8Text layout"));
+                }
+            }
+            "OptionalNat" => {
+                require_external_fields(
+                    &self.source,
+                    span,
+                    &fields,
+                    &[
+                        "encoding",
+                        "payload-placement",
+                        "storage-size",
+                        "tag-layout",
+                        "tags",
+                    ],
+                    "Layout Optional Nat",
+                )?;
+                let tag_layout = external_identifier_field(&self.source, &fields, "tag-layout")?;
+                self.require_external_nat_layout(&tag_layout, span)?;
+                let tags_expression = fields.get("tags").expect("required tags field");
+                let tags = external_record_fields(&self.source, tags_expression, "layout tags")?;
+                require_external_fields(
+                    &self.source,
+                    tags_expression.span(),
+                    &tags,
+                    &["none", "some"],
+                    "layout tags",
+                )?;
+                let none = external_nat_field(&self.source, &tags, "none")?;
+                let some = external_nat_field(&self.source, &tags, "some")?;
+                let none = u64::try_from(none)
+                    .map_err(|_| unsupported(&self.source, span, "finite layout tag"))?;
+                let some = u64::try_from(some)
+                    .map_err(|_| unsupported(&self.source, span, "finite layout tag"))?;
+                let payload_placement =
+                    external_identifier_field(&self.source, &fields, "payload-placement")?;
+                layout.storage_size_bits =
+                    external_size_field(&self.source, &fields, "storage-size")?;
+                layout.encoding = Some(external_identifier_field(
+                    &self.source,
+                    &fields,
+                    "encoding",
+                )?);
+                layout.alignment_bytes = 4;
+                layout.family = CompilerExternalLayoutFamily::TaggedOptionalNat {
+                    tag_layout,
+                    tags: vec![("none".into(), none), ("some".into(), some)],
+                    payload_placement: payload_placement.clone(),
+                };
+                if layout.storage_size_bits != 64
+                    || layout.encoding.as_deref() != Some("Tagged")
+                    || payload_placement != "AfterTag"
+                    || !matches!(layout.family, CompilerExternalLayoutFamily::TaggedOptionalNat { ref tags, .. }
+                        if tags == &[("none".into(), 0), ("some".into(), 1)])
+                {
+                    return Err(unsupported(&self.source, span, "closed MaybeNatLayout"));
+                }
+            }
+            "Array2Nat" => {
+                require_external_fields(
+                    &self.source,
+                    span,
+                    &fields,
+                    &["element-layout", "storage-size", "stride"],
+                    "Layout Array 2 Nat",
+                )?;
+                let element_layout =
+                    external_identifier_field(&self.source, &fields, "element-layout")?;
+                self.require_external_nat_layout(&element_layout, span)?;
+                let stride_bits = external_size_field(&self.source, &fields, "stride")?;
+                layout.storage_size_bits =
+                    external_size_field(&self.source, &fields, "storage-size")?;
+                layout.alignment_bytes = 4;
+                layout.family = CompilerExternalLayoutFamily::NatArray {
+                    count: 2,
+                    element_layout,
+                    stride_bits,
+                };
+                if layout.storage_size_bits != 64 || stride_bits != 32 {
+                    return Err(unsupported(&self.source, span, "closed PairArrayLayout"));
+                }
+            }
+            _ if matches!(semantic, [Expression::Product { .. }]) => {
+                require_external_fields(
+                    &self.source,
+                    span,
+                    &fields,
+                    &["packing"],
+                    "product Layout",
+                )?;
+                let packing = external_identifier_field(&self.source, &fields, "packing")?;
+                let [
+                    Expression::Product {
+                        fields: components, ..
+                    },
+                ] = semantic
+                else {
+                    unreachable!("guard established one product semantic")
+                };
+                let mut retained = Vec::new();
+                for component in components {
+                    let Some(label) = component.label else {
+                        return Err(unsupported(&self.source, span, "positional product layout"));
+                    };
+                    let Expression::Identifier(layout_name) = &component.value else {
+                        return Err(unsupported(
+                            &self.source,
+                            span,
+                            "expanded product layout field",
+                        ));
+                    };
+                    let layout_name = self.source.slice(*layout_name).to_owned();
+                    self.require_external_nat_layout(&layout_name, component.value.span())?;
+                    retained.push((self.source.slice(label).to_owned(), layout_name));
+                }
+                layout.semantic = "(first : Nat, second : Nat)".into();
+                layout.storage_size_bits = u64::try_from(retained.len()).unwrap_or(u64::MAX) * 32;
+                layout.alignment_bytes = 4;
+                layout.family = CompilerExternalLayoutFamily::Product {
+                    fields: retained,
+                    packing: packing.clone(),
+                };
+                if packing != "Natural"
+                    || layout.storage_size_bits != 64
+                    || !matches!(
+                        &layout.family,
+                        CompilerExternalLayoutFamily::Product { fields, .. }
+                            if fields.iter().map(|(label, _)| label.as_str()).eq(["first", "second"])
+                    )
+                {
+                    return Err(unsupported(&self.source, span, "closed HeaderLayout"));
+                }
+            }
+            _ => {
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "external layout semantic family",
+                ));
+            }
+        }
+        Ok(layout)
+    }
+
+    fn require_external_nat_layout(&self, name: &str, span: Span) -> Result<(), Diagnostic> {
+        if matches!(
+            self.external_metadata.get(name),
+            Some(CompilerExternalMetadata::Layout(CompilerExternalLayout {
+                family: CompilerExternalLayoutFamily::UnsignedNat,
+                ..
+            }))
+        ) {
+            Ok(())
+        } else {
+            Err(unsupported(
+                &self.source,
+                span,
+                "external Nat component layout",
+            ))
+        }
+    }
+
     #[allow(clippy::too_many_lines)] // Root operations are admitted explicitly and in source-selection order.
     fn analyze_application(
         &mut self,
@@ -11073,6 +11849,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(value) = self.analyze_external_storage(items, span, environment)? {
+            return Ok(value);
+        }
         if let Some(value) = self.analyze_task_application(items, span, environment)? {
             return Ok(value);
         }
@@ -18735,7 +19514,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Generator(_)
         | CompilerType::SerializationStream(_)
         | CompilerType::TaskResponse(_)
-        | CompilerType::Task(_) => false,
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
                 || compiler_nested_int_string_list_element(element.as_ref())
@@ -18769,6 +19549,242 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     }
 }
 
+fn external_metadata_expression(
+    metadata: CompilerExternalMetadata,
+    span: Span,
+) -> CompilerExpression {
+    CompilerExpression {
+        kind: CompilerExpressionKind::ExternalMetadata(metadata),
+        value_type: CompilerType::ExternalMetadata,
+        int_range: None,
+        rational_value: None,
+        span,
+    }
+}
+
+fn assign_external_metadata_identity(metadata: &mut CompilerExternalMetadata, identity: &str) {
+    match metadata {
+        CompilerExternalMetadata::Layout(layout) => layout.identity = identity.into(),
+        CompilerExternalMetadata::AddressRangeType(range) => range.identity = identity.into(),
+        CompilerExternalMetadata::AddressRange(range) => range.identity = identity.into(),
+        CompilerExternalMetadata::AddressOffsetType(offset) => offset.identity = identity.into(),
+        CompilerExternalMetadata::AddressOffset(offset) => offset.identity = identity.into(),
+        CompilerExternalMetadata::LocationType(location) => location.identity = identity.into(),
+    }
+}
+
+fn external_layout_value_type(layout: &CompilerExternalLayout) -> Option<CompilerType> {
+    matches!(layout.family, CompilerExternalLayoutFamily::UnsignedNat).then(|| {
+        CompilerType::Refined {
+            constraint: layout.identity.clone(),
+            base: Box::new(CompilerType::Nat),
+        }
+    })
+}
+
+fn external_record_fields<'a>(
+    source: &SourceText,
+    expression: &'a Expression,
+    context: &str,
+) -> Result<BTreeMap<String, &'a Expression>, Diagnostic> {
+    let Expression::Product { fields, .. } = expression else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            &format!("{context} attributes outside a labeled record"),
+        ));
+    };
+    let mut result = BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(unsupported(
+                source,
+                field.value.span(),
+                &format!("unlabeled {context} attribute"),
+            ));
+        };
+        let label = source.slice(label).to_owned();
+        if result.insert(label.clone(), &field.value).is_some() {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-RECORD-FIELD",
+                field.value.span(),
+                format!("`{label}` occurs more than once"),
+            ));
+        }
+    }
+    Ok(result)
+}
+
+fn require_external_fields(
+    source: &SourceText,
+    span: Span,
+    fields: &BTreeMap<String, &Expression>,
+    expected: &[&str],
+    context: &str,
+) -> Result<(), Diagnostic> {
+    let actual = fields.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    let expected = expected.iter().copied().collect::<BTreeSet<_>>();
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(unsupported(
+            source,
+            span,
+            &format!("closed {context} field schema"),
+        ))
+    }
+}
+
+fn external_identifier_field(
+    source: &SourceText,
+    fields: &BTreeMap<String, &Expression>,
+    name: &str,
+) -> Result<String, Diagnostic> {
+    let expression = fields.get(name).expect("required external field");
+    let Expression::Identifier(value) = expression else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            &format!("static `{name}` attribute"),
+        ));
+    };
+    Ok(source.slice(*value).to_owned())
+}
+
+fn external_nat_field(
+    source: &SourceText,
+    fields: &BTreeMap<String, &Expression>,
+    name: &str,
+) -> Result<BigInt, Diagnostic> {
+    let expression = fields.get(name).expect("required external field");
+    let Expression::Integer(value) = expression else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            &format!("static Nat `{name}` attribute"),
+        ));
+    };
+    let value = parse_integer(source.slice(*value))
+        .filter(|value| value >= &BigInt::from(0_u8))
+        .ok_or_else(|| {
+            unsupported(
+                source,
+                expression.span(),
+                &format!("Nat `{name}` attribute"),
+            )
+        })?;
+    Ok(value)
+}
+
+fn external_size_field(
+    source: &SourceText,
+    fields: &BTreeMap<String, &Expression>,
+    name: &str,
+) -> Result<u64, Diagnostic> {
+    let expression = fields.get(name).expect("required external field");
+    let Expression::Measured { value, unit, .. } = expression else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            &format!("exact storage size `{name}`"),
+        ));
+    };
+    let count = parse_integer(source.slice(*value))
+        .and_then(|value| u64::try_from(value).ok())
+        .ok_or_else(|| unsupported(source, *value, &format!("finite storage size `{name}`")))?;
+    match source.slice(*unit) {
+        "b" => Ok(count),
+        "B" => count
+            .checked_mul(8)
+            .ok_or_else(|| unsupported(source, expression.span(), "finite storage size")),
+        _ => Err(unsupported(
+            source,
+            *unit,
+            "storage size outside bits or bytes",
+        )),
+    }
+}
+
+fn external_inclusive_range(
+    source: &SourceText,
+    expression: &Expression,
+) -> Result<(BigInt, BigInt), Diagnostic> {
+    let Expression::Application { items, .. } = expression else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            "AddressRange bounds",
+        ));
+    };
+    let [
+        Expression::Integer(lower),
+        Expression::Callable {
+            kind: CallableKind::RangeInclusive,
+            ..
+        },
+        Expression::Integer(upper),
+    ] = items.as_slice()
+    else {
+        return Err(unsupported(
+            source,
+            expression.span(),
+            "inclusive AddressRange bounds",
+        ));
+    };
+    let lower = parse_integer(source.slice(*lower))
+        .ok_or_else(|| unsupported(source, *lower, "AddressRange lower bound"))?;
+    let upper = parse_integer(source.slice(*upper))
+        .ok_or_else(|| unsupported(source, *upper, "AddressRange upper bound"))?;
+    Ok((lower, upper))
+}
+
+fn validate_compiler_location(
+    source: &SourceText,
+    span: Span,
+    location: &CompilerLocationType,
+    offset: &CompilerAddressOffset,
+) -> Result<(), Diagnostic> {
+    let layout = &location.layout;
+    let range = &offset.offset_type.range;
+    let bytes = layout.storage_size_bits.div_ceil(8);
+    let extent = &range.upper - &range.lower + BigInt::from(1_u8);
+    if &offset.offset + BigInt::from(bytes) > extent {
+        return Err(source_diagnostic(
+            source,
+            "E-LOCATION-RANGE",
+            span,
+            "layout does not fit in the associated address range",
+        ));
+    }
+    let physical_access_bits = range.range_type.minimum_access_size_bits;
+    let physical_alignment_bytes = physical_access_bits.div_ceil(8);
+    let absolute_address = &range.lower + &offset.offset;
+    if !offset
+        .offset_type
+        .alignment_bytes
+        .is_multiple_of(layout.alignment_bytes)
+        || physical_access_bits == 0
+        || !physical_access_bits.is_multiple_of(8)
+        || layout.storage_size_bits < physical_access_bits
+        || !layout
+            .storage_size_bits
+            .is_multiple_of(physical_access_bits)
+        || offset.offset_type.alignment_bytes < physical_alignment_bytes
+        || &absolute_address % layout.alignment_bytes != BigInt::from(0_u8)
+        || &absolute_address % physical_alignment_bytes != BigInt::from(0_u8)
+        || range.range_type.medium != "MMIO"
+        || range.range_type.caching != "Uncached"
+    {
+        return Err(unsupported(
+            source,
+            span,
+            "closed aligned uncached MMIO location",
+        ));
+    }
+    Ok(())
+}
+
 fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -18778,6 +19794,7 @@ fn compiler_type_is_static_only(value_type: &CompilerType) -> bool {
             | CompilerType::LanguageContext
             | CompilerType::Capability
             | CompilerType::NativeSerializer(_)
+            | CompilerType::ExternalMetadata
     )
 }
 
@@ -18806,6 +19823,33 @@ fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
             }),
             _ => false,
         }
+}
+
+fn compiler_type_contains_external_location(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::ExternalLocation(_) => true,
+        CompilerType::Range(value)
+        | CompilerType::Result(value)
+        | CompilerType::TaskResponse(value)
+        | CompilerType::Optional(value)
+        | CompilerType::List(value)
+        | CompilerType::SerializationStream(value)
+        | CompilerType::TraversalControl(value)
+        | CompilerType::Refined { base: value, .. } => {
+            compiler_type_contains_external_location(value)
+        }
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_external_location),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, field)| compiler_type_contains_external_location(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_contains_external_location)
+        }),
+        _ => false,
+    }
 }
 
 fn compiler_type_contains_generator(value_type: &CompilerType) -> bool {
@@ -19387,6 +20431,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::LanguageContext
         | CompilerType::Capability
         | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata
         | CompilerType::SerializationStream(_)
         | CompilerType::Constraint
         | CompilerType::Version
@@ -19403,7 +20448,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Map { .. }
         | CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
-        | CompilerType::Task(_) => false,
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => false,
     }
 }
 
@@ -19484,6 +20530,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::Capability(_)
         | CompilerExpressionKind::NativeSerializer(_)
+        | CompilerExpressionKind::ExternalMetadata(_)
+        | CompilerExpressionKind::ExternalLocationConstruct(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -19495,9 +20543,11 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Enum(_)
         | CompilerExpressionKind::OptionalNone
         | CompilerExpressionKind::ListEmpty => true,
-        CompilerExpressionKind::Serialize { value, .. }
-        | CompilerExpressionKind::Deserialize(value) => {
-            compiler_expression_is_closed_with(value, bound)
+        CompilerExpressionKind::ExternalLocationWrite {
+            location, value, ..
+        } => {
+            compiler_expression_is_closed_with(location, bound)
+                && compiler_expression_is_closed_with(value, bound)
         }
         CompilerExpressionKind::ListEntry { value, remaining } => {
             compiler_expression_is_closed_with(value, bound)
@@ -19547,7 +20597,13 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::CustomValueForeach { .. }
         | CompilerExpressionKind::IterateGeneratorForeach { .. }
         | CompilerExpressionKind::GeneratorCollect(_) => false,
-        CompilerExpressionKind::IntToModular { value, .. }
+        CompilerExpressionKind::Serialize { value, .. }
+        | CompilerExpressionKind::Deserialize(value)
+        | CompilerExpressionKind::ExternalLayoutCoerce { value, .. }
+        | CompilerExpressionKind::ExternalLocationRead {
+            location: value, ..
+        }
+        | CompilerExpressionKind::IntToModular { value, .. }
         | CompilerExpressionKind::ModularReduce { value, .. }
         | CompilerExpressionKind::Negate(value)
         | CompilerExpressionKind::Absolute(value)
@@ -29735,6 +30791,140 @@ mod tests {
                     1,
                 ),
                 "E-TYPE-MISMATCH",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(&invalid).unwrap_err().code, expected);
+        }
+    }
+
+    #[test]
+    fn models_closed_external_layout_location_access() {
+        // TOPAL-LAYOUT-SIZE-001, TOPAL-LAYOUT-CONSTRUCT-001,
+        // TOPAL-ADDRESS-RANGE-001, TOPAL-LOCATION-CONSTRUCT-001,
+        // TOPAL-LOCATION-READ-001, TOPAL-LOCATION-WRITE-001,
+        // TOPAL-COMPILER-EXTERNAL-LOCATION-001
+        let source = include_str!("../../../examples/language/external-layout-location.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let layout = program
+            .main
+            .statements
+            .iter()
+            .find_map(|statement| match statement {
+                CompilerStatement::Binding(CompilerBinding {
+                    name,
+                    value:
+                        CompilerExpression {
+                            kind:
+                                CompilerExpressionKind::ExternalMetadata(
+                                    CompilerExternalMetadata::Layout(layout),
+                                ),
+                            ..
+                        },
+                    ..
+                }) if name == "UInt32LE" => Some(layout),
+                _ => None,
+            })
+            .expect("UInt32LE metadata is retained");
+        assert_eq!(layout.storage_size_bits, 32);
+        assert_eq!(layout.encoding.as_deref(), Some("UnsignedBinary"));
+        assert_eq!(layout.endian.as_deref(), Some("Little"));
+        assert_eq!(layout.access, "ReadWrite");
+        assert_eq!(layout.alignment_bytes, 4);
+        assert!(matches!(
+            layout.family,
+            CompilerExternalLayoutFamily::UnsignedNat
+        ));
+
+        let location = program
+            .main
+            .statements
+            .iter()
+            .find_map(|statement| match statement {
+                CompilerStatement::Binding(CompilerBinding {
+                    name,
+                    value:
+                        CompilerExpression {
+                            kind: CompilerExpressionKind::ExternalLocationConstruct(location),
+                            ..
+                        },
+                    ..
+                }) if name == "control" => Some(location),
+                _ => None,
+            })
+            .expect("checked location is retained");
+        assert_eq!(location.location_type.identity, "ControlLocation");
+        assert_eq!(location.offset.offset_type.range.identity, "device");
+        assert_eq!(location.offset.offset, BigInt::from(32));
+        assert_eq!(
+            location.offset.offset_type.range.lower,
+            BigInt::from(0x4000_0000_u64)
+        );
+        assert!(matches!(
+            program.main.statements.last(),
+            Some(CompilerStatement::Discard(CompilerExpression {
+                kind: CompilerExpressionKind::ExternalLocationWrite { .. },
+                ..
+            }))
+        ));
+        assert!(matches!(
+            program.main.result.kind,
+            CompilerExpressionKind::ExternalLocationRead { .. }
+        ));
+        assert_eq!(program.main.result.value_type.name(), "UInt32LE");
+    }
+
+    #[test]
+    fn rejects_external_locations_outside_the_closed_increment() {
+        // TOPAL-COMPILER-EXTERNAL-LOCATION-001
+        let source = include_str!("../../../examples/language/external-layout-location.t");
+        for (invalid, expected) in [
+            (
+                source.replacen("storage-size is 32[b]", "storage-size is 16[b]", 1),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen("alignment is 4", "alignment is 3", 1),
+                "E-ADDRESS-OFFSET-ALIGNMENT",
+            ),
+            (
+                source.replacen("DeviceOffset 32", "DeviceOffset 65536", 1),
+                "E-ADDRESS-OFFSET-RANGE",
+            ),
+            (
+                source.replacen("access is ReadWrite", "access is ReadOnly", 1),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen("UInt32LE 42", "UInt32LE 0x100000000", 1),
+                "E-LAYOUT-NOT-REPRESENTABLE",
+            ),
+            (
+                source.replacen(
+                    "tags is (none is 0, some is 1)",
+                    "tags is (none is 18446744073709551616, some is 1)",
+                    1,
+                ),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen("first is UInt32LE", "left is UInt32LE", 1),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen("0x40000000 ..=", "0x40000001 ..=", 1),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen("control write stored\nread control", "control", 1),
+                "E-COMPILER-UNSUPPORTED",
+            ),
+            (
+                source.replacen(
+                    "control write stored\nread control",
+                    "copy is control\nread copy",
+                    1,
+                ),
+                "E-COMPILER-UNSUPPORTED",
             ),
         ] {
             assert_eq!(analyze_for_compiler(&invalid).unwrap_err().code, expected);

@@ -9,9 +9,10 @@ use topal_language::{
     CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField, CompilerExpression,
     CompilerExpressionKind, CompilerFallible, CompilerFunction, CompilerGeneratorCloseHandler,
     CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
-    CompilerListIndexOperation, CompilerListZipOperation, CompilerMapCollisionPolicy,
-    CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule,
-    CompilerSumType, CompilerTaskType, CompilerType, CompilerValidation, display_string_literal,
+    CompilerListIndexOperation, CompilerListZipOperation, CompilerLocationType,
+    CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType, CompilerType,
+    CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -70,7 +71,8 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::Modular(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
-        | CompilerType::Task(_) => true,
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => true,
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
         | CompilerType::TaskResponse(endpoint)
@@ -108,6 +110,7 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::LanguageContext
         | CompilerType::Capability
         | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata
         | CompilerType::Constraint
         | CompilerType::Boolean
         | CompilerType::Int
@@ -268,6 +271,10 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             .is_some_and(expression_uses_extended_debug),
         CompilerExpressionKind::Block(block) => block_uses_extended_debug(block),
         CompilerExpressionKind::IntToModular { value, .. }
+        | CompilerExpressionKind::ExternalLayoutCoerce { value, .. }
+        | CompilerExpressionKind::ExternalLocationRead {
+            location: value, ..
+        }
         | CompilerExpressionKind::Serialize { value, .. }
         | CompilerExpressionKind::Deserialize(value)
         | CompilerExpressionKind::ModularReduce { value, .. }
@@ -313,6 +320,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::TaskStateReplace { task, value, .. } => {
             expression_uses_extended_debug(task) || expression_uses_extended_debug(value)
         }
+        CompilerExpressionKind::ExternalLocationWrite {
+            location, value, ..
+        } => expression_uses_extended_debug(location) || expression_uses_extended_debug(value),
         CompilerExpressionKind::StringConcat { left, right }
         | CompilerExpressionKind::ListEntry {
             value: left,
@@ -464,6 +474,8 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::LanguageContext(_)
         | CompilerExpressionKind::Capability(_)
         | CompilerExpressionKind::NativeSerializer(_)
+        | CompilerExpressionKind::ExternalMetadata(_)
+        | CompilerExpressionKind::ExternalLocationConstruct(_)
         | CompilerExpressionKind::ConstraintValue(_)
         | CompilerExpressionKind::Boolean(_)
         | CompilerExpressionKind::Version(_)
@@ -648,6 +660,7 @@ impl<'a> Generator<'a> {
             LlValue::Version { value, .. }
             | LlValue::SerializationStream { stream: value, .. }
             | LlValue::Task { value, .. }
+            | LlValue::ExternalLocation { value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -1137,7 +1150,7 @@ impl<'a> Generator<'a> {
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
                         let machine_value = match base.as_ref() {
-                            CompilerType::Int => value.integer(),
+                            CompilerType::Int | CompilerType::Nat => value.integer(),
                             _ => unreachable!("checked refined debug base is supported"),
                         };
                         self.emit_aggregate_debug_shadow(
@@ -1258,7 +1271,51 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::TypeView(_)
             | CompilerExpressionKind::FunctionView(_)
             | CompilerExpressionKind::LanguageContext(_)
-            | CompilerExpressionKind::NativeSerializer(_) => LlValue::Unit,
+            | CompilerExpressionKind::NativeSerializer(_)
+            | CompilerExpressionKind::ExternalMetadata(_) => LlValue::Unit,
+            CompilerExpressionKind::ExternalLocationConstruct(location) => {
+                let range_start = self.emit_int_literal(&location.offset.offset_type.range.lower);
+                let offset = self.emit_int_literal(&location.offset.offset);
+                LlValue::ExternalLocation {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.location.make(ptr {}, ptr {})",
+                            range_start.integer(),
+                            offset.integer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    location: location.location_type.clone(),
+                }
+            }
+            CompilerExpressionKind::ExternalLocationWrite {
+                location, value, ..
+            } => {
+                let location = self.emit_expression(location, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                body.effect(
+                    &format!(
+                        "call void @topal.runtime.location.write(ptr {}, ptr {})",
+                        location.location_pointer(),
+                        value.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::Unit
+            }
+            CompilerExpressionKind::ExternalLocationRead { location, .. } => {
+                let location = self.emit_expression(location, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.location.read(ptr {})",
+                        location.location_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
             CompilerExpressionKind::Capability(capability) => {
                 LlValue::StaticDisplay(capability.display())
             }
@@ -1809,7 +1866,8 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
-            CompilerExpressionKind::IntToNat(value) => {
+            CompilerExpressionKind::IntToNat(value)
+            | CompilerExpressionKind::ExternalLayoutCoerce { value, .. } => {
                 self.emit_expression(value, body, environment)
             }
             CompilerExpressionKind::ResultSuccess(value) => {
@@ -2959,12 +3017,14 @@ impl<'a> Generator<'a> {
                     | CompilerType::LanguageContext
                     | CompilerType::Capability
                     | CompilerType::NativeSerializer(_)
+                    | CompilerType::ExternalMetadata
                     | CompilerType::SerializationStream(_)
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
                     | CompilerType::TraversalControl(_)
                     | CompilerType::TaskResponse(_)
-                    | CompilerType::Task(_) => {
+                    | CompilerType::Task(_)
+                    | CompilerType::ExternalLocation(_) => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Generator(ref generator) => LlValue::Generator {
@@ -6257,6 +6317,14 @@ impl<'a> Generator<'a> {
                 ),
                 task: task.clone(),
             },
+            LlValue::ExternalLocation { location, .. } => LlValue::ExternalLocation {
+                value: body.instruction(
+                    &format!("phi ptr {}", incoming(LlValue::location_pointer)),
+                    span,
+                    &mut self.debug,
+                ),
+                location: location.clone(),
+            },
             LlValue::Int(_) => LlValue::Int(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::integer)),
                 span,
@@ -6524,6 +6592,9 @@ impl<'a> Generator<'a> {
                     body,
                     span,
                 );
+            }
+            LlValue::ExternalLocation { location, .. } => {
+                self.emit_write_literal(&format!("<{}>", location.identity), body, span);
             }
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
@@ -8042,6 +8113,10 @@ enum LlValue {
         value: String,
         task: CompilerTaskType,
     },
+    ExternalLocation {
+        value: String,
+        location: CompilerLocationType,
+    },
     Int(String),
     Modular {
         value: String,
@@ -8285,6 +8360,13 @@ impl LlValue {
         value
     }
 
+    fn location_pointer(&self) -> &str {
+        let Self::ExternalLocation { value, .. } = self else {
+            unreachable!("checked value is an external Location")
+        };
+        value
+    }
+
     fn serialization_expected_pointer(&self) -> &str {
         let Self::SerializationStream { expected, .. } = self else {
             unreachable!("checked value is a SerializationStream")
@@ -8310,6 +8392,7 @@ impl LlValue {
             Self::Version { value, .. }
             | Self::SerializationStream { stream: value, .. }
             | Self::Task { value, .. }
+            | Self::ExternalLocation { value, .. }
             | Self::Int(value)
             | Self::Modular { value, .. }
             | Self::Rational(value)
@@ -8372,6 +8455,10 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Task(task) => LlValue::Task {
             value: "null".into(),
             task: task.as_ref().clone(),
+        },
+        CompilerType::ExternalLocation(location) => LlValue::ExternalLocation {
+            value: "null".into(),
+            location: location.as_ref().clone(),
         },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
@@ -8441,6 +8528,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         | CompilerType::LanguageContext
         | CompilerType::Capability
         | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata
         | CompilerType::SerializationStream(_)
         | CompilerType::Constraint => {
             unreachable!("static object values are not admitted in sum payloads")
@@ -8606,6 +8694,7 @@ impl FunctionBody {
             LlValue::Version { value, .. }
             | LlValue::SerializationStream { stream: value, .. }
             | LlValue::Task { value, .. }
+            | LlValue::ExternalLocation { value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -8713,6 +8802,7 @@ struct DebugInfo {
     record_types: Vec<(CompilerType, usize)>,
     sum_types: Vec<(CompilerType, usize)>,
     task_types: Vec<(CompilerTaskType, usize)>,
+    location_types: Vec<(CompilerLocationType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -8781,6 +8871,7 @@ impl DebugInfo {
             record_types: Vec::new(),
             sum_types: Vec::new(),
             task_types: Vec::new(),
+            location_types: Vec::new(),
             source,
             filename,
         };
@@ -9253,7 +9344,8 @@ impl DebugInfo {
             | CompilerType::FunctionView
             | CompilerType::LanguageContext
             | CompilerType::Capability
-            | CompilerType::NativeSerializer(_) => {
+            | CompilerType::NativeSerializer(_)
+            | CompilerType::ExternalMetadata => {
                 unreachable!("static-only compiler values have no runtime debug type")
             }
             CompilerType::SerializationStream(_) => self.serialization_stream_type,
@@ -9275,6 +9367,7 @@ impl DebugInfo {
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::Generator(generator) => self.generator_type(generator),
             CompilerType::Task(task) => self.task_type(task),
+            CompilerType::ExternalLocation(location) => self.location_type(location),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
@@ -9377,6 +9470,54 @@ impl DebugInfo {
             self.file
         ));
         self.task_types.push((task.clone(), type_id));
+        type_id
+    }
+
+    fn location_type(&mut self, location: &CompilerLocationType) -> usize {
+        if let Some((_, type_id)) = self
+            .location_types
+            .iter()
+            .find(|(known, _)| known == location)
+        {
+            return *type_id;
+        }
+        let range_start = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"range-start\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.nat_type
+        ));
+        let offset = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"offset\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.nat_type
+        ));
+        let initialized = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"initialized\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 128)",
+            self.file, self.unsigned64_type
+        ));
+        let layout_value = CompilerType::Refined {
+            constraint: location.layout.identity.clone(),
+            base: Box::new(CompilerType::Nat),
+        };
+        let layout_type = self.type_id(&layout_value);
+        let value = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"value\", file: !{}, baseType: !{layout_type}, size: 64, align: 64, offset: 192)",
+            self.file
+        ));
+        let members = self.node(format!(
+            "!{{!{range_start}, !{offset}, !{initialized}, !{value}}}"
+        ));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalLocation.{}\", file: !{}, size: 256, align: 64, elements: !{members})",
+            llvm_string(&location.identity), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&location.identity),
+            self.file
+        ));
+        self.location_types.push((location.clone(), type_id));
         type_id
     }
 
@@ -10059,7 +10200,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
-        | CompilerType::NativeSerializer(_) => {
+        | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata => {
             unreachable!("static-only compiler values have no target value layout")
         }
         CompilerType::Version
@@ -10083,7 +10225,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Map { .. }
         | CompilerType::Character
         | CompilerType::String
-        | CompilerType::Task(_) => TargetValueLayout {
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => TargetValueLayout {
             size: 64,
             alignment: 64,
         },
@@ -10165,8 +10308,10 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         | CompilerType::LanguageContext
         | CompilerType::Capability
         | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata
         | CompilerType::Generator(_)
-        | CompilerType::Task(_) => false,
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -10188,7 +10333,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
-        | CompilerType::NativeSerializer(_) => {
+        | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata => {
             unreachable!("static-only compiler values have no LLVM value type")
         }
         CompilerType::Unit | CompilerType::Completed | CompilerType::Effect => "i8".into(),
@@ -10214,7 +10360,8 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Set(_)
         | CompilerType::Bag(_)
         | CompilerType::Map { .. }
-        | CompilerType::Task(_) => "ptr".into(),
+        | CompilerType::Task(_)
+        | CompilerType::ExternalLocation(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -10281,7 +10428,8 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
         | CompilerType::Capability
-        | CompilerType::NativeSerializer(_) => {
+        | CompilerType::NativeSerializer(_)
+        | CompilerType::ExternalMetadata => {
             unreachable!("static-only compiler values have no machine representation")
         }
         CompilerType::SerializationStream(_) => {
@@ -10318,6 +10466,10 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Task(task) => LlValue::Task {
             value,
             task: task.as_ref().clone(),
+        },
+        CompilerType::ExternalLocation(location) => LlValue::ExternalLocation {
+            value,
+            location: location.as_ref().clone(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
@@ -15129,5 +15281,49 @@ mod tests {
         }
         assert!(!llvm.contains("@malloc"));
         assert!(!llvm.contains("topal.runtime.generator"));
+    }
+
+    #[test]
+    fn emits_checked_external_location_as_ordered_topal_owned_storage() {
+        // TOPAL-LAYOUT-CONSTRUCT-001, TOPAL-ADDRESS-RANGE-001,
+        // TOPAL-LOCATION-CONSTRUCT-001, TOPAL-LOCATION-READ-001,
+        // TOPAL-LOCATION-WRITE-001, TOPAL-COMPILER-EXTERNAL-LOCATION-001
+        let source = include_str!("../../../examples/language/external-layout-location.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "external-layout-location.t").emit();
+        let constructed = llvm
+            .find("call ptr @topal.runtime.location.make")
+            .expect("checked location allocates Topal-owned storage");
+        let written = llvm[constructed..]
+            .find("call void @topal.runtime.location.write")
+            .map(|offset| constructed + offset)
+            .expect("source write remains an ordered runtime call");
+        let read = llvm[written..]
+            .find("call ptr @topal.runtime.location.read")
+            .map(|offset| written + offset)
+            .expect("source read follows the write");
+        assert!(constructed < written && written < read);
+        assert_eq!(
+            llvm.matches("call void @topal.runtime.location.write")
+                .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.location.read")
+                .count(),
+            1
+        );
+        for expected in [
+            "%topal.LocationStorage = type { ptr, ptr, i64, ptr }",
+            "DW_TAG_typedef, name: \"UInt32LE\"",
+            "DW_TAG_typedef, name: \"ControlLocation\"",
+            "DW_TAG_structure_type, name: \"TopalLocation.ControlLocation\"",
+            "DILocalVariable(name: \"control\"",
+            "DILocalVariable(name: \"stored\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("inttoptr i64 1073741856"));
+        assert!(!llvm.contains("@malloc"));
     }
 }

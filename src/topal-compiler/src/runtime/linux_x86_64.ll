@@ -14,6 +14,7 @@
 %topal.SourceLocationStorage = type { ptr, ptr }
 %topal.SerializationStreamStorage = type { ptr, i64 }
 %topal.TaskStorage = type { i64, i64, ptr }
+%topal.LocationStorage = type { ptr, ptr, i64, ptr }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -98,6 +99,50 @@ entry:
   %state.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 2
   store ptr %value, ptr %state.pointer, align 8
   ret void
+}
+
+; A source-only location without a granted device adapter is backed by private
+; Topal storage. The semantic range start and offset remain available for
+; debugging, while every read and write remains an ordered runtime call.
+define internal ptr @topal.runtime.location.make(ptr %range.start, ptr %offset) nounwind noinline {
+entry:
+  %location = call ptr @topal.platform.allocate(i64 32)
+  %range.start.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 0
+  %offset.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 1
+  %initialized.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 2
+  %value.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 3
+  store ptr %range.start, ptr %range.start.pointer, align 8
+  store ptr %offset, ptr %offset.pointer, align 8
+  store i64 0, ptr %initialized.pointer, align 8
+  store ptr null, ptr %value.pointer, align 8
+  ret ptr %location
+}
+
+define internal void @topal.runtime.location.write(ptr %location, ptr %value) nounwind noinline {
+entry:
+  %initialized.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 2
+  %value.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 3
+  store ptr %value, ptr %value.pointer, align 8
+  store i64 1, ptr %initialized.pointer, align 8
+  ret void
+}
+
+define internal ptr @topal.runtime.location.read(ptr %location) nounwind noinline {
+entry:
+  %initialized.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 2
+  %initialized = load i64, ptr %initialized.pointer, align 8
+  %valid = icmp eq i64 %initialized, 1
+  br i1 %valid, label %load, label %failure
+load:
+  %value.pointer = getelementptr %topal.LocationStorage, ptr %location, i32 0, i32 3
+  %value = load ptr, ptr %value.pointer, align 8
+  %non.null = icmp ne ptr %value, null
+  br i1 %non.null, label %success, label %failure
+success:
+  ret ptr %value
+failure:
+  call void @topal.platform.exit(i64 74)
+  unreachable
 }
 
 define internal ptr @topal.runtime.serialization.make(ptr %data, i64 %length) nounwind noinline {

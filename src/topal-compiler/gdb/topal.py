@@ -178,6 +178,51 @@ class _TopalTaskPrinter:
         )
 
 
+class _TopalLocationPrinter:
+    """Render a checked process-owned external Location defensively."""
+
+    def __init__(self, value, name):
+        self._value = value
+        self._name = name
+
+    def to_string(self):
+        address = int(self._value)
+        if not address:
+            return "<invalid null Location>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 32))
+        except gdb.MemoryError:
+            return "<unreadable Location>"
+        range_start = int.from_bytes(header[0:8], "little")
+        offset = int.from_bytes(header[8:16], "little")
+        initialized = int.from_bytes(header[16:24], "little")
+        stored = int.from_bytes(header[24:32], "little")
+        if not range_start or not offset:
+            return "<invalid Location address evidence>"
+        if initialized not in (0, 1):
+            return "<invalid Location initialization state>"
+        range_start = _TopalIntPrinter(range_start).to_string()
+        offset = _TopalIntPrinter(offset).to_string()
+        if range_start.startswith("<") or offset.startswith("<"):
+            return "<invalid Location address evidence>"
+        if not initialized:
+            if stored:
+                return "<invalid uninitialized Location value>"
+            state = "uninitialized"
+        else:
+            if not stored:
+                return "<invalid null Location value>"
+            value = _TopalIntPrinter(stored).to_string()
+            if value.startswith("<"):
+                return f"<invalid Location value: {value}>"
+            state = f"value is {value}"
+        return (
+            f"{self._name} ( range-start is {range_start}, offset is {offset}, "
+            f"{state} )"
+        )
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -910,6 +955,8 @@ def _lookup_topal_value(value):
         return _TopalSerializationStreamPrinter(value)
     if storage_type.startswith("struct TopalTask."):
         return _TopalTaskPrinter(value, value_type)
+    if storage_type.startswith("struct TopalLocation."):
+        return _TopalLocationPrinter(value, value_type)
     if value_type == "Version" or storage_type == "struct TopalVersionHeader *":
         return _TopalVersionPrinter(value)
     if storage_type.startswith("struct TopalModular."):
