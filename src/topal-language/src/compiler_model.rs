@@ -18729,14 +18729,11 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(field.classifier)?;
-            if expected == CompilerType::Scope
-                || !expected.machine_scalar()
-                || !compiler_function_parameter_supported(&expected)
-            {
+            if expected == CompilerType::Scope || !compiler_packaged_field_supported(&expected) {
                 return Err(unsupported(
                     &self.source,
                     field.classifier,
-                    "non-scalar packaged field",
+                    "unsupported packaged field",
                 ));
             }
             let field_name = self.source.slice(field.name);
@@ -18941,13 +18938,12 @@ impl Analyzer {
             }
             let expected = self.parse_classifier(parameter.classifier)?;
             if matches!(expected, CompilerType::Scope | CompilerType::Function)
-                || !expected.machine_scalar()
-                || !compiler_function_parameter_supported(&expected)
+                || !compiler_packaged_field_supported(&expected)
             {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
-                    "non-scalar compound packaged operand field",
+                    "unsupported compound packaged operand field",
                 ));
             }
             let value = if let Some(value) = supplied {
@@ -22441,6 +22437,14 @@ fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
     matches!(value_type, CompilerType::Scope | CompilerType::Function)
         || is_admitted_function_generator_type(value_type)
         || compiler_function_result_supported(value_type)
+}
+
+fn compiler_packaged_field_supported(value_type: &CompilerType) -> bool {
+    compiler_function_parameter_supported(value_type)
+        && (value_type.machine_scalar()
+            || matches!(value_type, CompilerType::Tuple(_) | CompilerType::Record(_)))
+        && (!matches!(value_type, CompilerType::Tuple(_) | CompilerType::Record(_))
+            || !compiler_type_is_function_aggregate(value_type))
 }
 
 fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bool {
@@ -33151,6 +33155,81 @@ mod tests {
         assert!(matches!(
             &arguments[2].kind,
             CompilerExpressionKind::Local(storage) if storage == factor_storage
+        ));
+    }
+
+    #[test]
+    fn models_structured_packaged_fields_in_source_and_declaration_order() {
+        // TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/structured-packaged-function-fields.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected structured packaged results")
+        };
+        assert_eq!(results.len(), 4);
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: person_storage,
+            value: person,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("the source-first Record field is retained first")
+        };
+        assert!(matches!(person.value_type, CompilerType::Record(_)));
+        assert!(matches!(person.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: pair_storage,
+            value: pair,
+            body,
+        } = &body.kind
+        else {
+            panic!("the source-second Tuple field is retained second")
+        };
+        assert!(matches!(pair.value_type, CompilerType::Tuple(_)));
+        assert!(matches!(pair.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one declaration-order structured package call")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == pair_storage
+        ));
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == person_storage
+        ));
+
+        let CompilerExpressionKind::PrivateBinding { body, .. } = &results[2].kind else {
+            panic!("the explicit Tuple field is retained before its default")
+        };
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: enabled_storage,
+            value: enabled,
+            body,
+        } = &body.kind
+        else {
+            panic!("the explicit ordinary operand is retained before the default")
+        };
+        assert!(matches!(
+            enabled.kind,
+            CompilerExpressionKind::Boolean(false)
+        ));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected one structured call with a closed Record default")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            arguments[1].kind,
+            CompilerExpressionKind::Record(_)
+        ));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == enabled_storage
         ));
     }
 

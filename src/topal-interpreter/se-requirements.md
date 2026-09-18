@@ -2208,3 +2208,14 @@ function entry shall bind ordinary operands and flattened fields in that same
 declaration order. The shared regression and reversible debugger history shall
 cover package/package, package/scalar, scalar/package, labeled/defaulted and
 positional forms, and source-ordered function calls.
+
+## TOPAL-INTP-SUBSET-259 — Structured packaged fields
+
+All source modes shall preserve exact Tuple and Record values supplied as
+fields of one- or two-operand packages under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit structured field expressions
+shall execute once in source order, closed structured defaults shall bind
+afterward in operand/field declaration order, and function entry shall expose
+each complete field under its one source name. The shared regression and
+reversible debugger history shall cover reordered Tuple/Record function calls,
+a closed Record default, positional parity, and exact results.

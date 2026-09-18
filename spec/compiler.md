@@ -3486,10 +3486,12 @@ standard library, public aggregate ABI, or native ABI revision.
 Label association beyond a declaration-order prefix is governed by
 `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`. Two packaged operands and
 packages mixed with an unpackaged operand are governed by
-`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar or nested package
-fields, opaque package values, and defaults that depend on invocation or
-captured bindings remain outside this increment and SHALL be rejected rather
-than changing evaluation order or choosing a public memory ABI.
+`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free Tuple and
+Record fields are governed by
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
+package declarations, opaque package values, and defaults that depend on
+invocation or captured bindings remain outside this increment and SHALL be
+rejected rather than changing evaluation order or choosing a public memory ABI.
 
 ### TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
 
@@ -3519,9 +3521,11 @@ compiled-library metadata SHALL encode stable field identities, declaration
 order, default semantics and dependencies, evaluation effects, representation
 identity, and target adapters independently of compiler-private binding names,
 LLVM types, and physical placement. Compound packages are governed by
-`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar or nested fields,
-opaque package values, invocation- or capture-dependent defaults, and public
-package adapters remain deferred.
+`TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free Tuple and
+Record fields are governed by
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
+package declarations, opaque package values, invocation- or capture-dependent
+defaults, and public package adapters remain deferred.
 
 ### TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001 — Two and mixed scalar packages
 
@@ -3554,10 +3558,48 @@ Future compiled-library metadata SHALL additionally preserve syntactic-operand
 partition and order beside stable field identities, field declaration order,
 default semantics and dependencies, evaluation effects, representation
 identity, and target adapters. It SHALL remain independent of compiler-private
-binding names, LLVM types, and physical placement. Callable, Scope, non-scalar,
-nested, or opaque compound package values, invocation- or capture-dependent
-defaults, recursion through compound package signatures, and public package
-adapters remain deferred.
+binding names, LLVM types, and physical placement. Exact capture-free Tuple and
+Record fields are governed by
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`. Callable, Scope, other
+non-scalar fields, nested package declarations, opaque compound package values,
+invocation- or capture-dependent defaults, recursion through compound package
+signatures, and public package adapters remain deferred.
+
+### TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001 — Exact Tuple and Record package fields
+
+The compiler SHALL admit an exact Tuple or Record classifier as a field of the
+one- or two-operand packages governed by the preceding package rules when the
+complete structural classifier is already admitted by the private function ABI
+and contains no Function value or capture environment. Structured supplied
+values and closed structured defaults SHALL undergo the same exact classifier
+adaptation as ordinary private function parameters. Nested Tuple and Record
+classifiers MAY compose recursively. A Function-containing structure,
+unsupported leaf classifier, mismatched shape, or non-closed default SHALL
+reject before LLVM lowering or artifact publication.
+
+Each structured field SHALL remain one source field and one exact private
+`fastcc` parameter; its internal components SHALL NOT become additional package
+fields or a package-level aggregate. Explicit structured expressions SHALL be
+retained once in the source order established by the package rules, closed
+defaults SHALL execute afterward in operand/field declaration order, and the
+callee arguments SHALL remain in operand/field declaration order. LLVM SHALL
+own the AMD64 register and stack placement of each exact aggregate parameter.
+
+DWARF/GDB SHALL expose the source field name, complete Tuple or Record
+classifier, recursively structured value, and ordinary function frame. The
+compiler-private ordering bindings SHALL remain absent from source debugging.
+The lowering SHALL add no `byval`, `sret`, `inalloca`, `preallocated`, package
+runtime, allocation beyond the value's existing private representation, foreign
+dependency, C/C++ runtime, other-language standard library, public aggregate
+ABI, or native-ABI revision.
+
+Future compiled-library metadata SHALL preserve each field's complete canonical
+structural classifier and representation identity beside operand partition,
+field identity/order, default semantics/dependencies, evaluation effects, and
+target adapters. Nested package declarations, opaque whole-package values,
+Function-containing aggregates, nominal Sum fields, invocation- or
+capture-dependent defaults, recursive structured package signatures, public
+adapters, and other unsupported non-scalar fields remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 

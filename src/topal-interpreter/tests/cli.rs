@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 232);
+    assert_eq!(examples.len(), 233);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -700,6 +700,27 @@ fn every_mode_applies_compound_packaged_operands() {
         );
         assert!(
             String::from_utf8_lossy(&output.stdout).contains("(42, 42, 42, 42, 42)"),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_applies_structured_packaged_fields() {
+    // TOPAL-INTP-SUBSET-259, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let source = include_str!("../../../examples/language/structured-packaged-function-fields.t");
+    let expected = "(((20, 22), \"Ada\"), ((20, 22), \"Ada\", true), ((21, 21), \"default\", false), ((20, 22), \"Grace\", true))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
             "{arguments:?}: {}",
             String::from_utf8_lossy(&output.stdout)
         );

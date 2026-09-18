@@ -3772,10 +3772,12 @@ exact IR, execution, artifact independence, and debugger observation.
 The emitted IR shall use no `byval`, `sret`, `inalloca`, or `preallocated`
 attribute and no package runtime or allocation. General label association is
 governed by `TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001`. Two or mixed packages
-are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar/nested
-fields, opaque package values, and invocation-dependent defaults remain rejected
-until their complete evaluation, storage, and public ABI rules are implemented.
-This shall add no foreign
+are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Exact capture-free
+Tuple and Record fields are governed by
+`TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
+package declarations, opaque package values, and invocation-dependent defaults
+remain rejected until their complete evaluation, storage, and public ABI rules
+are implemented. This shall add no foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
 ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
@@ -3811,11 +3813,13 @@ C/C++ runtime, other-language standard library, public aggregate ABI, or
 `topal-native/6` revision. Future compiled-library metadata shall encode stable
 field identities, declaration order, default semantics and dependencies,
 evaluation effects, representation identity, and target adapters independently
-of compiler-private binding names, LLVM types, and physical placement. Two
-or mixed packages are governed by
-`TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`. Non-scalar/nested fields, opaque
-package values, invocation- or capture-dependent defaults, and public package
-adapters remain deferred. This realizes `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
+of compiler-private binding names, LLVM types, and physical placement. Two or
+mixed packages are governed by `TOPAL-COMP-COMPOUND-PACKAGED-OPERAND-001`.
+Exact capture-free Tuple and Record fields are governed by
+`TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`. Other non-scalar fields, nested
+package declarations, opaque package values, invocation- or capture-dependent
+defaults, and public package adapters remain deferred. This realizes
+`TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5ai.
 
@@ -3854,12 +3858,56 @@ C/C++ runtime, other-language standard library, public aggregate ABI, or
 syntactic-operand partition/order beside stable field identities and order,
 default semantics/dependencies, evaluation effects, representation identity,
 and target adapters, independently of compiler-private names, LLVM types, and
-physical placement. Callable, Scope, non-scalar, nested, or opaque compound
-package values, invocation- or capture-dependent defaults, recursive compound
-signatures, and public package adapters remain deferred. This realizes
+physical placement. Exact capture-free Tuple and Record fields are governed by
+`TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001`. Callable, Scope, other non-scalar
+fields, nested package declarations, opaque compound package values,
+invocation- or capture-dependent defaults, recursive compound signatures, and
+public package adapters remain deferred. This realizes
 `TOPAL-COMPILER-COMPOUND-PACKAGED-OPERAND-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5aj.
+
+## TOPAL-COMP-STRUCTURED-PACKAGED-FIELD-001 — Exact Tuple and Record package fields
+
+The checked compiler model shall admit exact capture-free Tuple and Record
+classifiers as fields of one- or two-operand packages when their recursively
+composed leaf classifiers are already supported by the private function ABI.
+Supplied values and closed defaults shall undergo the same exact structural
+adaptation as ordinary private aggregate parameters. Function-containing
+aggregates, unsupported leaves, mismatched shapes, and non-closed defaults shall
+reject before LLVM lowering or artifact publication.
+
+The frontend shall retain each explicit structured field once in the source
+order established by the package rules, evaluate structured closed defaults
+after explicit values in operand/field declaration order, and pass each complete
+field in operand/field declaration order. A structured field shall remain one
+source field and one exact private parameter; its internal components shall not
+become package fields. Compiler-private ordering bindings shall have no source
+or DWARF identity.
+
+LLVM definitions and calls shall use matching exact aggregate `fastcc`
+parameters and leave physical AMD64 placement to LLVM. GDB shall expose the
+source field name, complete recursively structured classifier/value, and
+ordinary function frame. Tests shall cover one-package and mixed two-operand
+calls, Tuple and Record fields, reordered once-only function calls, a closed
+Record default, positional parity, opaque and Function-containing rejection,
+exact aggregate IR, all interpreter modes, reversible debugging, the shared
+corpus and separate resource baselines, freestanding ELF/DWARF properties, and
+O0 GDB values/frames.
+
+This shall add no package-level aggregate, `byval`, `sret`, `inalloca`,
+`preallocated`, package runtime, allocation beyond an existing value
+representation, foreign dependency, C/C++ runtime, other-language standard
+library, public aggregate ABI, or `topal-native/6` revision. Future
+compiled-library metadata shall preserve complete canonical structural
+classifiers and representation identities beside operand/field/default/effect
+semantics and target adapters. Nested package declarations, opaque whole-package
+values, Function-containing aggregates, nominal Sum fields, dependent defaults,
+recursive structured package signatures, public adapters, and other unsupported
+non-scalar fields remain deferred. This realizes
+`TOPAL-COMPILER-STRUCTURED-PACKAGED-FIELD-001`,
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5ak.
 
 ## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
 
