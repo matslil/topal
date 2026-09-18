@@ -8848,6 +8848,91 @@ fn native_serialization_is_canonical_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn direct_task_transactions_are_freestanding_and_debuggable() {
+    // TOPAL-TASK-DEFINITION-001, TOPAL-TASK-LIFECYCLE-001,
+    // TOPAL-TASK-STATE-001, TOPAL-TASK-MESSAGE-001,
+    // TOPAL-COMPILER-TASK-DIRECT-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-direct-task");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/task-declaration-order.t");
+    let source_text = fs::read_to_string(&source).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_eq!(executed.stdout, b"3\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.runtime.task.state.load",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis 'ordered-counter'",
+            "-ex",
+            "print 'ordered-counter'",
+            "-ex",
+            "ptype OrderedCounter",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = OrderedCounter",
+        "$1 = OrderedCounter ( identity is 1, active, count is 3 )",
+        "struct TopalTask.OrderedCounter",
+        "u64 identity",
+        "u64 terminated",
+        "Nat count",
+        "task-declaration-order.t:23",
+        "topal.main",
+        "in _start",
+    ] {
+        assert!(text.contains(expected), "missing {expected:?}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn capability_composition_is_static_freestanding_and_absent_from_dwarf() {
     // TOPAL-CAPABILITY-EVIDENCE-001, TOPAL-CAPABILITY-COHERENCE-001,
     // TOPAL-CAPABILITY-COMPOSE-001, TOPAL-COMPILER-CAPABILITY-COMPOSE-001,

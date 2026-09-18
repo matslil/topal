@@ -11,7 +11,7 @@ use topal_language::{
     CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
     CompilerListIndexOperation, CompilerListZipOperation, CompilerMapCollisionPolicy,
     CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement, CompilerSumRule,
-    CompilerSumType, CompilerType, CompilerValidation, display_string_literal,
+    CompilerSumType, CompilerTaskType, CompilerType, CompilerValidation, display_string_literal,
 };
 use topal_source::Span;
 
@@ -69,9 +69,11 @@ fn type_uses_extended_debug(value_type: &CompilerType) -> bool {
         | CompilerType::SerializationStream(_)
         | CompilerType::Modular(_)
         | CompilerType::Optional(_)
-        | CompilerType::TraversalControl(_) => true,
+        | CompilerType::TraversalControl(_)
+        | CompilerType::Task(_) => true,
         CompilerType::Range(endpoint)
         | CompilerType::Result(endpoint)
+        | CompilerType::TaskResponse(endpoint)
         | CompilerType::List(endpoint)
         | CompilerType::Set(endpoint)
         | CompilerType::Bag(endpoint) => type_uses_extended_debug(endpoint),
@@ -304,6 +306,13 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::RangeEmpty(value)
         | CompilerExpressionKind::Not(value)
         | CompilerExpressionKind::Validate { value, .. } => expression_uses_extended_debug(value),
+        CompilerExpressionKind::TaskConstruct { initial, .. } => {
+            expression_uses_extended_debug(initial)
+        }
+        CompilerExpressionKind::TaskStateLoad { task, .. } => expression_uses_extended_debug(task),
+        CompilerExpressionKind::TaskStateReplace { task, value, .. } => {
+            expression_uses_extended_debug(task) || expression_uses_extended_debug(value)
+        }
         CompilerExpressionKind::StringConcat { left, right }
         | CompilerExpressionKind::ListEntry {
             value: left,
@@ -638,6 +647,7 @@ impl<'a> Generator<'a> {
             LlValue::Boolean(value) => body.terminator(&format!("ret i1 {value}"), location),
             LlValue::Version { value, .. }
             | LlValue::SerializationStream { stream: value, .. }
+            | LlValue::Task { value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -1288,6 +1298,58 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 *value
+            }
+            CompilerExpressionKind::TaskConstruct { task, initial } => {
+                let initial = self.emit_expression(initial, body, environment);
+                LlValue::Task {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.task.make(ptr {})",
+                            initial.integer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    task: task.clone(),
+                }
+            }
+            CompilerExpressionKind::TaskStateLoad { task, .. } => {
+                let task = self.emit_expression(task, body, environment);
+                let state = body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.task.state.load(ptr {})",
+                        task.task_pointer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                if let CompilerType::TaskResponse(success) = &expression.value_type {
+                    debug_assert_eq!(success.as_ref(), &CompilerType::Nat);
+                    LlValue::Result {
+                        value: body.instruction(
+                            &format!("call ptr @topal.runtime.result.success(ptr {state})"),
+                            expression.span,
+                            &mut self.debug,
+                        ),
+                        success: success.as_ref().clone(),
+                    }
+                } else {
+                    LlValue::Int(state)
+                }
+            }
+            CompilerExpressionKind::TaskStateReplace { task, value, .. } => {
+                let task = self.emit_expression(task, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                body.effect(
+                    &format!(
+                        "call void @topal.runtime.task.state.replace(ptr {}, ptr {})",
+                        task.task_pointer(),
+                        value.integer()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                LlValue::Unit
             }
             CompilerExpressionKind::Completed => LlValue::Completed("0".into()),
             CompilerExpressionKind::Effect => LlValue::Effect("0".into()),
@@ -2900,7 +2962,9 @@ impl<'a> Generator<'a> {
                     | CompilerType::SerializationStream(_)
                     | CompilerType::Constraint
                     | CompilerType::Refined { .. }
-                    | CompilerType::TraversalControl(_) => {
+                    | CompilerType::TraversalControl(_)
+                    | CompilerType::TaskResponse(_)
+                    | CompilerType::Task(_) => {
                         unreachable!("checked functions do not return this static object kind")
                     }
                     CompilerType::Generator(ref generator) => LlValue::Generator {
@@ -6185,6 +6249,14 @@ impl<'a> Generator<'a> {
                     value: Box::new(self.emit_decision_phi(&payload_branches, body, span)),
                 }
             }
+            LlValue::Task { task, .. } => LlValue::Task {
+                value: body.instruction(
+                    &format!("phi ptr {}", incoming(LlValue::task_pointer)),
+                    span,
+                    &mut self.debug,
+                ),
+                task: task.clone(),
+            },
             LlValue::Int(_) => LlValue::Int(body.instruction(
                 &format!("phi ptr {}", incoming(LlValue::integer)),
                 span,
@@ -6445,6 +6517,13 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 self.emit_write_literal(" bytes )", body, span);
+            }
+            LlValue::Task { task, .. } => {
+                self.emit_write_literal(
+                    &format!("<{} {}>", task.classifier, task.identity),
+                    body,
+                    span,
+                );
             }
             LlValue::Int(value) => body.effect(
                 &format!("call void @topal.runtime.int.print(ptr {value})"),
@@ -7959,6 +8038,10 @@ enum LlValue {
         byte_count: String,
         value: Box<Self>,
     },
+    Task {
+        value: String,
+        task: CompilerTaskType,
+    },
     Int(String),
     Modular {
         value: String,
@@ -8195,6 +8278,13 @@ impl LlValue {
         stream
     }
 
+    fn task_pointer(&self) -> &str {
+        let Self::Task { value, .. } = self else {
+            unreachable!("checked value is a Task instance")
+        };
+        value
+    }
+
     fn serialization_expected_pointer(&self) -> &str {
         let Self::SerializationStream { expected, .. } = self else {
             unreachable!("checked value is a SerializationStream")
@@ -8219,6 +8309,7 @@ impl LlValue {
             Self::Boolean(value) => format!("i1 {value}"),
             Self::Version { value, .. }
             | Self::SerializationStream { stream: value, .. }
+            | Self::Task { value, .. }
             | Self::Int(value)
             | Self::Modular { value, .. }
             | Self::Rational(value)
@@ -8278,11 +8369,15 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             captured_initial: None,
             captured_additional_initials: Vec::new(),
         },
+        CompilerType::Task(task) => LlValue::Task {
+            value: "null".into(),
+            task: task.as_ref().clone(),
+        },
         CompilerType::Range(endpoint) => LlValue::Range {
             value: "null".into(),
             endpoint: endpoint.as_ref().clone(),
         },
-        CompilerType::Result(success) => LlValue::Result {
+        CompilerType::Result(success) | CompilerType::TaskResponse(success) => LlValue::Result {
             value: "null".into(),
             success: success.as_ref().clone(),
         },
@@ -8510,6 +8605,7 @@ impl FunctionBody {
             LlValue::Boolean(value) => format!("i1 {value}"),
             LlValue::Version { value, .. }
             | LlValue::SerializationStream { stream: value, .. }
+            | LlValue::Task { value, .. }
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -8616,6 +8712,7 @@ struct DebugInfo {
     tuple_types: Vec<(CompilerType, usize)>,
     record_types: Vec<(CompilerType, usize)>,
     sum_types: Vec<(CompilerType, usize)>,
+    task_types: Vec<(CompilerTaskType, usize)>,
     source: topal_source::SourceText,
     filename: String,
 }
@@ -8683,6 +8780,7 @@ impl DebugInfo {
             tuple_types: Vec::new(),
             record_types: Vec::new(),
             sum_types: Vec::new(),
+            task_types: Vec::new(),
             source,
             filename,
         };
@@ -9176,6 +9274,7 @@ impl DebugInfo {
             CompilerType::Modular(modular) => self.modular_type(modular),
             CompilerType::Enum(enumeration) => self.enum_type(enumeration),
             CompilerType::Generator(generator) => self.generator_type(generator),
+            CompilerType::Task(task) => self.task_type(task),
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint) if endpoint.as_ref() == &CompilerType::Int => {
@@ -9212,6 +9311,7 @@ impl DebugInfo {
                 self.result_modular_type(modular)
             }
             CompilerType::Result(success) => self.dynamic_result_type(success),
+            CompilerType::TaskResponse(success) => self.task_response_type(success),
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => {
                 self.optional_int_type
             }
@@ -9244,6 +9344,40 @@ impl DebugInfo {
             CompilerType::Record(fields) => self.record_type(fields),
             CompilerType::Sum(sum) => self.sum_type(sum),
         }
+    }
+
+    fn task_type(&mut self, task: &CompilerTaskType) -> usize {
+        if let Some((_, type_id)) = self.task_types.iter().find(|(known, _)| known == task) {
+            return *type_id;
+        }
+        let identity = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"identity\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 0)",
+            self.file, self.unsigned64_type
+        ));
+        let terminated = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"terminated\", file: !{}, baseType: !{}, size: 64, align: 64, offset: 64)",
+            self.file, self.unsigned64_type
+        ));
+        let state_type = self.type_id(&task.state_type);
+        let state = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_member, name: \"{}\", file: !{}, baseType: !{state_type}, size: 64, align: 64, offset: 128)",
+            llvm_string(&task.state_name), self.file
+        ));
+        let members = self.node(format!("!{{!{identity}, !{terminated}, !{state}}}"));
+        let storage = self.node(format!(
+            "!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalTask.{}\", file: !{}, size: 192, align: 64, elements: !{members})",
+            llvm_string(&task.classifier), self.file
+        ));
+        let pointer = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
+        ));
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"{}\", file: !{}, baseType: !{pointer})",
+            llvm_string(&task.classifier),
+            self.file
+        ));
+        self.task_types.push((task.clone(), type_id));
+        type_id
     }
 
     fn modular_type(&mut self, modular: &CompilerModularType) -> usize {
@@ -9353,6 +9487,23 @@ impl DebugInfo {
             "!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{storage}, size: 64, align: 64)"
         ));
         let type_id = self.result_type(&success.name(), pointer);
+        self.result_types.push((value_type, type_id));
+        type_id
+    }
+
+    fn task_response_type(&mut self, success: &CompilerType) -> usize {
+        let value_type = CompilerType::TaskResponse(Box::new(success.clone()));
+        if let Some((_, type_id)) = self
+            .result_types
+            .iter()
+            .find(|(known, _)| known == &value_type)
+        {
+            return *type_id;
+        }
+        let type_id = self.node(format!(
+            "!DIDerivedType(tag: DW_TAG_typedef, name: \"Result ({}, ())\", file: !{}, baseType: !{})",
+            llvm_string(&success.name()), self.file, self.result_header_pointer_type
+        ));
         self.result_types.push((value_type, type_id));
         type_id
     }
@@ -9882,6 +10033,7 @@ struct TargetValueLayout {
     alignment: u64,
 }
 
+#[allow(clippy::too_many_lines)] // Every semantic representation has an explicit target layout.
 fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
     match value_type {
         CompilerType::Unit
@@ -9921,6 +10073,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::SourceLocation
         | CompilerType::Range(_)
         | CompilerType::Result(_)
+        | CompilerType::TaskResponse(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
         | CompilerType::List(_)
@@ -9929,7 +10082,8 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
         | CompilerType::Bag(_)
         | CompilerType::Map { .. }
         | CompilerType::Character
-        | CompilerType::String => TargetValueLayout {
+        | CompilerType::String
+        | CompilerType::Task(_) => TargetValueLayout {
             size: 64,
             alignment: 64,
         },
@@ -10011,7 +10165,8 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
         | CompilerType::LanguageContext
         | CompilerType::Capability
         | CompilerType::NativeSerializer(_)
-        | CompilerType::Generator(_) => false,
+        | CompilerType::Generator(_)
+        | CompilerType::Task(_) => false,
         CompilerType::Tuple(fields) => fields.iter().all(private_aggregate_value_supported),
         CompilerType::Record(fields) => fields
             .iter()
@@ -10051,13 +10206,15 @@ fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::String
         | CompilerType::Range(_)
         | CompilerType::Result(_)
+        | CompilerType::TaskResponse(_)
         | CompilerType::Optional(_)
         | CompilerType::TraversalControl(_)
         | CompilerType::List(_)
         | CompilerType::Array { .. }
         | CompilerType::Set(_)
         | CompilerType::Bag(_)
-        | CompilerType::Map { .. } => "ptr".into(),
+        | CompilerType::Map { .. }
+        | CompilerType::Task(_) => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -10158,12 +10315,16 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             captured_initial: None,
             captured_additional_initials: Vec::new(),
         },
+        CompilerType::Task(task) => LlValue::Task {
+            value,
+            task: task.as_ref().clone(),
+        },
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Range(endpoint) => LlValue::Range {
             value,
             endpoint: endpoint.as_ref().clone(),
         },
-        CompilerType::Result(success) => LlValue::Result {
+        CompilerType::Result(success) | CompilerType::TaskResponse(success) => LlValue::Result {
             value,
             success: success.as_ref().clone(),
         },
@@ -14866,5 +15027,52 @@ mod tests {
         assert!(!llvm.contains("topal.runtime.generator"));
         assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("call i32 %"));
+    }
+
+    #[test]
+    fn emits_private_direct_task_storage_and_transactions_in_source_order() {
+        // TOPAL-TASK-LIFECYCLE-001, TOPAL-TASK-STATE-001,
+        // TOPAL-TASK-MESSAGE-001, TOPAL-COMPILER-TASK-DIRECT-001
+        let source = include_str!("../../../examples/language/task-declaration-order.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "task-declaration-order.t").emit();
+        assert!(llvm.contains("%topal.TaskStorage = type { i64, i64, ptr }"));
+        assert!(llvm.contains("@topal.runtime.task.next.identity = private global i64 1"));
+        let constructed = llvm
+            .find("call ptr @topal.runtime.task.make")
+            .expect("start constructs a distinct Task instance");
+        let loaded_for_event = llvm[constructed..]
+            .find("call ptr @topal.runtime.task.state.load")
+            .map(|offset| constructed + offset)
+            .expect("event transaction reads private state");
+        let added = llvm[loaded_for_event..]
+            .find("call ptr @topal.runtime.int.add")
+            .map(|offset| loaded_for_event + offset)
+            .expect("event computes the replacement state");
+        let replaced = llvm[added..]
+            .find("call void @topal.runtime.task.state.replace")
+            .map(|offset| added + offset)
+            .expect("event commits state atomically");
+        let loaded_for_request = llvm[replaced..]
+            .find("call ptr @topal.runtime.task.state.load")
+            .map(|offset| replaced + offset)
+            .expect("request observes the committed state");
+        assert!(
+            constructed < loaded_for_event
+                && loaded_for_event < added
+                && added < replaced
+                && replaced < loaded_for_request
+        );
+        for expected in [
+            "DW_TAG_typedef, name: \"OrderedCounter\"",
+            "DW_TAG_structure_type, name: \"TopalTask.OrderedCounter\"",
+            "name: \"identity\"",
+            "name: \"terminated\"",
+            "name: \"count\"",
+            "DILocalVariable(name: \"ordered-counter\"",
+        ] {
+            assert!(llvm.contains(expected), "missing {expected:?}");
+        }
+        assert!(!llvm.contains("@malloc"));
     }
 }

@@ -13,6 +13,7 @@
 %topal.ErrorStorage = type { ptr, i32, i32, ptr, ptr, ptr, i64, i64 }
 %topal.SourceLocationStorage = type { ptr, ptr }
 %topal.SerializationStreamStorage = type { ptr, i64 }
+%topal.TaskStorage = type { i64, i64, ptr }
 
 @topal.runtime.int.zero = private constant { i64, i64, [0 x i32] } { i64 0, i64 0, [0 x i32] zeroinitializer }, align 8
 @topal.runtime.int.one = private constant { i64, i64, [1 x i32] } { i64 0, i64 1, [1 x i32] [i32 1] }, align 8
@@ -35,6 +36,7 @@
 @topal.runtime.error.code.not.representable = private constant [17 x i8] c"not-representable", align 1
 @topal.runtime.error.code.division.by.zero = private constant [16 x i8] c"division-by-zero", align 1
 @topal.runtime.error.code.indeterminate = private constant [13 x i8] c"indeterminate", align 1
+@topal.runtime.task.next.identity = private global i64 1, align 8
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 declare void @llvm.memcpy.inline.p0.p0.i64(ptr, ptr, i64, i1 immarg)
@@ -65,6 +67,37 @@ success:
 failure:
   call void @topal.platform.exit(i64 71)
   unreachable
+}
+
+; Closed direct tasks run on the deterministic root scheduler. Each instance
+; still owns distinct identity, lifecycle state, and private semantic state.
+define internal ptr @topal.runtime.task.make(ptr %initial) nounwind noinline {
+entry:
+  %task = call ptr @topal.platform.allocate(i64 24)
+  %identity = load i64, ptr @topal.runtime.task.next.identity, align 8
+  %next.identity = add i64 %identity, 1
+  store i64 %next.identity, ptr @topal.runtime.task.next.identity, align 8
+  %identity.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 0
+  %terminated.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 1
+  %state.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 2
+  store i64 %identity, ptr %identity.pointer, align 8
+  store i64 0, ptr %terminated.pointer, align 8
+  store ptr %initial, ptr %state.pointer, align 8
+  ret ptr %task
+}
+
+define internal ptr @topal.runtime.task.state.load(ptr %task) nounwind noinline {
+entry:
+  %state.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 2
+  %state = load ptr, ptr %state.pointer, align 8
+  ret ptr %state
+}
+
+define internal void @topal.runtime.task.state.replace(ptr %task, ptr %value) nounwind noinline {
+entry:
+  %state.pointer = getelementptr %topal.TaskStorage, ptr %task, i32 0, i32 2
+  store ptr %value, ptr %state.pointer, align 8
+  ret void
 }
 
 define internal ptr @topal.runtime.serialization.make(ptr %data, i64 %length) nounwind noinline {

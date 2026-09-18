@@ -4577,6 +4577,51 @@ standard library, public ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-NATIVE-SERIALIZATION-001` and `TOPAL-SER-SCOPE-001` through
 `TOPAL-SER-DESER-001` for compiler increment 8b1.
 
+## TOPAL-COMP-TASK-DIRECT-001 — Closed direct task transactions
+
+The checked compiler shall admit the unchanged task-declaration-order
+regression as compiler increment 7b2. It shall retain the nominal task
+classifier and definition identity, queue bound, deterministic immediate-FIFO
+scheduler policy, one private Nat state-field schema, lifecycle signatures,
+ordinary handler names/kinds/signatures, discarded-context evidence, and a
+stable source-ordered transaction identity for every admitted send. The
+admitted handlers are one exact Nat initializer, Nat-addition Unit events,
+current-Nat requests with an empty error vocabulary, and an optional declared
+no-op terminate handler. Other state schemas, handler bodies, observable
+MessageContext, streams, overlapping delivery, queue overflow, and termination
+delivery remain rejected with stable diagnostics.
+
+Construction shall evaluate the initial Nat once and allocate a fresh
+Topal-owned instance with a distinct nonzero identity, active lifecycle tag,
+and private state pointer. Immediate event delivery shall load the current
+state, compute arbitrary-precision Nat addition, and commit the replacement
+before a following request loads it. Since this closed root scheduler cannot
+overlap sends and every admitted context is explicitly discarded, generated
+O0 code may erase the unobservable context/transaction carrier and unused queue
+storage after the checked model has retained their semantic identities. This is
+a compiler semantic lowering and shall not depend on LLVM optimization.
+
+The Linux x86-64 backend shall use only the Topal mmap allocator, exact Int/Nat
+runtime, and direct private helpers. The instance layout and helpers shall not
+cross function, public, persistent, serialized, foreign, or compiled-library
+boundaries. LLVM shall remain responsible for physical target layout; no
+System V argument placement shall be encoded in the frontend, and no foreign
+dependency, C/C++ runtime, or other-language standard library may be added.
+
+DWARF and the bundled GDB renderer shall expose and safely render the nominal
+task type, identity, lifecycle state, and named private Nat state at the request
+source frame. Functional evidence shall include checked-model metadata and
+rejection tests, ordered O0 LLVM, exact interpreter differential, the complete
+shared corpus, freestanding ELF/DWARF/GDB inspection, and separate build/run
+resource baselines. A future compiled-library format shall carry versioned task
+and definition identities, queue/scheduler policy, state schema, complete
+handler/context/transaction signatures, effects, authorities, ownership,
+termination, debug provenance, and native adapter requirements independently of
+private LLVM types, object layouts, and symbol names. This realizes
+`TOPAL-COMPILER-TASK-DIRECT-001`, `TOPAL-TASK-DEFINITION-001`,
+`TOPAL-TASK-HANDLER-001`, `TOPAL-TASK-STATE-001`,
+`TOPAL-TASK-LIFECYCLE-001`, and `TOPAL-TASK-MESSAGE-001` for increment 7b2.
+
 ## TOPAL-COMP-DEBUG-001 — DWARF and GDB
 
 Debug-enabled O0 output shall map generated source functions, parameters,
@@ -4590,6 +4635,7 @@ modular-success Result objects, `List Effect`, `List Int`,
 `List (String, Int)`, exact-extent `Array Int`, `Set Int`, `Bag Int`, and
 `Map (String, Int)` container values, describe source-declared nominal enums,
 native `SerializationStream` descriptors,
+nominal direct Task instances with identity, lifecycle state, and private Nat state,
 retained Constraint identities and refined Int bindings with their semantic
 names, distinguish
 selected overload and static-function frames, and pass automated GDB

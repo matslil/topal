@@ -67,6 +67,52 @@ pub struct CompilerGeneratorType {
     pub result_type: Box<CompilerType>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerTaskHandlerKind {
+    Start,
+    Event,
+    Request,
+    Terminate,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerTaskHandler {
+    pub name: String,
+    pub payload_type: CompilerType,
+    /// Successful response payload. Events and lifecycle handlers use Unit.
+    pub response_type: CompilerType,
+    pub kind: CompilerTaskHandlerKind,
+    pub message_context_observable: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerTaskScheduler {
+    DeterministicImmediateFifo,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerTaskMessage {
+    pub operation: String,
+    pub transaction_identity: u64,
+}
+
+/// Target-independent task metadata retained by the checked compiler model.
+///
+/// This describes language identity and behavior, not the private LLVM layout.
+/// A compiled-library format can therefore carry it without freezing the first
+/// Linux x86-64 representation or calling convention.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerTaskType {
+    pub classifier: String,
+    pub definition: String,
+    pub identity: String,
+    pub queue_size: Option<u64>,
+    pub state_name: String,
+    pub state_type: Box<CompilerType>,
+    pub handlers: Vec<CompilerTaskHandler>,
+    pub scheduler: CompilerTaskScheduler,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerIdentity {
     pub kind: ObjectKind,
@@ -207,6 +253,7 @@ pub enum CompilerType {
     Sum(CompilerSumType),
     Range(Box<Self>),
     Result(Box<Self>),
+    TaskResponse(Box<Self>),
     Optional(Box<Self>),
     List(Box<Self>),
     Array { count: usize, element: Box<Self> },
@@ -215,6 +262,7 @@ pub enum CompilerType {
     Map { key: Box<Self>, value: Box<Self> },
     TraversalControl(Box<Self>),
     Generator(CompilerGeneratorType),
+    Task(Box<CompilerTaskType>),
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -249,6 +297,7 @@ impl CompilerType {
                 | Self::Enum(_)
                 | Self::Range(_)
                 | Self::Result(_)
+                | Self::TaskResponse(_)
                 | Self::Optional(_)
                 | Self::List(_)
                 | Self::Array { .. }
@@ -257,6 +306,7 @@ impl CompilerType {
                 | Self::Map { .. }
                 | Self::TraversalControl(_)
                 | Self::Generator(_)
+                | Self::Task(_)
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -297,6 +347,7 @@ impl CompilerType {
                 "Result ({}, lang arithmetic ArithmeticErrorCode)",
                 success.name()
             ),
+            Self::TaskResponse(success) => format!("Result ({}, ())", success.name()),
             Self::Optional(payload) => format!("Optional {}", payload.name()),
             Self::List(element) => format!("List {}", element.name()),
             Self::Array { count, element } => format!("Array {count} {}", element.name()),
@@ -310,6 +361,7 @@ impl CompilerType {
                 generator.resume_type.name(),
                 generator.result_type.name()
             ),
+            Self::Task(task) => task.classifier.clone(),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -517,6 +569,19 @@ pub enum CompilerExpressionKind {
         value: Box<CompilerExpression>,
     },
     Deserialize(Box<CompilerExpression>),
+    TaskConstruct {
+        task: CompilerTaskType,
+        initial: Box<CompilerExpression>,
+    },
+    TaskStateLoad {
+        task: Box<CompilerExpression>,
+        message: CompilerTaskMessage,
+    },
+    TaskStateReplace {
+        task: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+        message: CompilerTaskMessage,
+    },
     ConstraintValue(u32),
     Boolean(bool),
     Version(LanguageVersion),
@@ -968,6 +1033,7 @@ pub struct CompilerProgram {
     pub constraints: Vec<CompilerConstraint>,
     pub interfaces: Vec<CompilerInterface>,
     pub interface_implementations: Vec<CompilerInterfaceImplementation>,
+    pub tasks: Vec<CompilerTaskType>,
     /// Instances are in callee-before-caller order.
     pub functions: Vec<CompilerFunction>,
 }
@@ -1004,6 +1070,28 @@ struct GeneratorSource {
 }
 
 #[derive(Clone)]
+struct TaskTypeSource {
+    classifier: String,
+    identity: String,
+    queue_size: Option<u64>,
+    span: Span,
+}
+
+#[derive(Clone)]
+struct TaskHandlerSource {
+    name: String,
+    parameters: Vec<FunctionParameter>,
+    body: Vec<Statement>,
+    span: Span,
+}
+
+#[derive(Clone)]
+struct TaskDefinitionSource {
+    task: CompilerTaskType,
+    span: Span,
+}
+
+#[derive(Clone)]
 struct CompilerRecursionProof {
     rule: &'static str,
     nat_step_parameters: BTreeSet<usize>,
@@ -1023,6 +1111,8 @@ type EnumAlternativeBindings = BTreeMap<String, (CompilerEnumType, u32, Span)>;
 type SumTypes = BTreeMap<String, (CompilerSumType, Span)>;
 type SumAlternativeBindings = BTreeMap<String, (CompilerSumType, u32, Span)>;
 type ModularTypes = BTreeMap<String, (CompilerModularType, Span)>;
+type TaskTypes = BTreeMap<String, TaskTypeSource>;
+type TaskDefinitions = BTreeMap<String, TaskDefinitionSource>;
 type InterfaceTypes = BTreeMap<String, (CompilerInterface, Span)>;
 
 struct EnumSource {
@@ -1153,6 +1243,8 @@ struct Analyzer {
     interface_implementations: Vec<CompilerInterfaceImplementation>,
     functions: BTreeMap<String, Vec<FunctionSource>>,
     generators: BTreeMap<String, Vec<GeneratorSource>>,
+    task_types: TaskTypes,
+    task_definitions: TaskDefinitions,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
@@ -1168,6 +1260,7 @@ struct Analyzer {
     returned_generator_values: BTreeMap<String, CompilerExpression>,
     static_context: bool,
     next_instance: usize,
+    next_task_transaction: u64,
 }
 
 impl Analyzer {
@@ -1193,6 +1286,8 @@ impl Analyzer {
             interface_implementations: Vec::new(),
             functions: BTreeMap::new(),
             generators: BTreeMap::new(),
+            task_types: BTreeMap::new(),
+            task_definitions: BTreeMap::new(),
             instances: Vec::new(),
             active_calls: Vec::new(),
             active_recursive_functions: BTreeMap::new(),
@@ -1208,6 +1303,7 @@ impl Analyzer {
             returned_generator_values: BTreeMap::new(),
             static_context: false,
             next_instance: 0,
+            next_task_transaction: 1,
         }
     }
 }
@@ -1217,6 +1313,7 @@ impl Analyzer {
 /// # Errors
 ///
 /// Returns a shared source diagnostic for invalid or not-yet-supported input.
+#[allow(clippy::too_many_lines)] // Root collection order keeps declaration visibility explicit.
 pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     let source = SourceText::new(text).map_err(|error| {
         Diagnostic::error(error.code, 1, 1, error.message).with_source_span(error.span)
@@ -1275,6 +1372,9 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     analyzer.install_modular_types(&modular_sources)?;
     analyzer.install_interfaces(&interface_sources)?;
     analyzer.validate_interface_implementations(&parsed.statements)?;
+    let (task_types, task_definitions) = collect_compiler_tasks(&source, &parsed.statements)?;
+    analyzer.task_types = task_types;
+    analyzer.task_definitions = task_definitions;
     collect_functions(
         &source,
         &parsed.statements,
@@ -1303,6 +1403,11 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         .values()
         .map(|(interface, _)| interface.clone())
         .collect();
+    let tasks = analyzer
+        .task_definitions
+        .values()
+        .map(|definition| definition.task.clone())
+        .collect();
     Ok(CompilerProgram {
         source,
         language_version,
@@ -1312,8 +1417,380 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         constraints: analyzer.constraints,
         interfaces,
         interface_implementations: analyzer.interface_implementations,
+        tasks,
         functions: analyzer.instances,
     })
+}
+
+#[allow(clippy::too_many_lines)] // The closed task boundary is validated in declaration order.
+fn collect_compiler_tasks(
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<(TaskTypes, TaskDefinitions), Diagnostic> {
+    let mut task_types = BTreeMap::new();
+    let mut task_definitions = BTreeMap::new();
+    for statement in statements {
+        if let Statement::Binding { name, value, .. } = statement
+            && let Expression::Application { items, span } = value
+            && let [
+                Expression::Identifier(task),
+                Expression::Product { fields, .. },
+            ] = items.as_slice()
+            && source.slice(*task) == "Task"
+        {
+            let classifier = source.slice(*name).to_owned();
+            if task_types.contains_key(&classifier) {
+                return Err(source_diagnostic(
+                    source,
+                    "E-DUPLICATE-BINDING",
+                    *name,
+                    format!("`{classifier}` is already declared in this scope"),
+                ));
+            }
+            let mut identity = None;
+            let mut queue_size = None;
+            let mut option_names = BTreeSet::new();
+            for field in fields {
+                let Some(label) = field.label else {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-TASK-OPTIONS",
+                        field.value.span(),
+                        "Task options must be labeled",
+                    ));
+                };
+                let option_name = source.slice(label);
+                if !option_names.insert(option_name) {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-TASK-OPTIONS",
+                        label,
+                        format!("Task option `{option_name}` occurs more than once"),
+                    ));
+                }
+                match option_name {
+                    "identity" => {
+                        let Expression::Identifier(value) = &field.value else {
+                            return Err(source_diagnostic(
+                                source,
+                                "E-TASK-OPTIONS",
+                                field.value.span(),
+                                "Task identity must be a static identity",
+                            ));
+                        };
+                        identity = Some(source.slice(*value).to_owned());
+                    }
+                    "queue-size" => {
+                        let Expression::Integer(value) = &field.value else {
+                            return Err(source_diagnostic(
+                                source,
+                                "E-TASK-OPTIONS",
+                                field.value.span(),
+                                "Task queue-size must be a static Nat",
+                            ));
+                        };
+                        let value = parse_integer(source.slice(*value))
+                            .and_then(|value| u64::try_from(value).ok());
+                        queue_size = Some(value.ok_or_else(|| {
+                            source_diagnostic(
+                                source,
+                                "E-TASK-OPTIONS",
+                                field.value.span(),
+                                "Task queue-size must fit an unsigned 64-bit Nat",
+                            )
+                        })?);
+                    }
+                    option => {
+                        return Err(unsupported(
+                            source,
+                            label,
+                            &format!("Task option `{option}`"),
+                        ));
+                    }
+                }
+            }
+            let identity = identity.ok_or_else(|| {
+                source_diagnostic(
+                    source,
+                    "E-TASK-OPTIONS",
+                    *span,
+                    "the native task increment requires an identity option",
+                )
+            })?;
+            task_types.insert(
+                classifier.clone(),
+                TaskTypeSource {
+                    classifier,
+                    identity,
+                    queue_size,
+                    span: statement_span(statement),
+                },
+            );
+            continue;
+        }
+
+        let Statement::Implementation {
+            name,
+            classifier,
+            declarations,
+            span,
+        } = statement
+        else {
+            continue;
+        };
+        let Expression::Identifier(classifier_name) = classifier else {
+            continue;
+        };
+        let Some(task_type) = task_types.get(source.slice(*classifier_name)).cloned() else {
+            continue;
+        };
+        let definition = source.slice(*name).to_owned();
+        if task_definitions.contains_key(&definition) {
+            return Err(source_diagnostic(
+                source,
+                "E-DUPLICATE-BINDING",
+                *name,
+                format!("`{definition}` is already declared in this scope"),
+            ));
+        }
+        let mut state = None;
+        let mut handlers = BTreeMap::new();
+        let mut public_handlers = Vec::new();
+        for declaration in declarations {
+            match declaration {
+                Statement::StateField { name, classifier } => {
+                    if state.is_some() || compact_classifier(source.slice(*classifier)) != "Nat" {
+                        return Err(unsupported(
+                            source,
+                            statement_span(declaration),
+                            "task state outside one private Nat field",
+                        ));
+                    }
+                    state = Some(source.slice(*name).to_owned());
+                }
+                Statement::Function {
+                    name,
+                    is_static,
+                    parameters,
+                    result,
+                    effect_bound,
+                    clauses,
+                    body,
+                    span,
+                } => {
+                    if *is_static
+                        || effect_bound.is_some()
+                        || clauses.requires.is_some()
+                        || clauses.effects.is_some()
+                        || clauses.guarantees.is_some()
+                        || clauses.result_binding.is_some()
+                        || clauses.ensures.is_some()
+                    {
+                        return Err(unsupported(
+                            source,
+                            *span,
+                            "task handler contracts or static dispatch",
+                        ));
+                    }
+                    let handler_name = source.slice(*name).to_owned();
+                    if handlers.contains_key(&handler_name) {
+                        return Err(unsupported(source, *name, "overloaded task handler"));
+                    }
+                    let (kind, payload_type, response_type) = compiler_task_handler_shape(
+                        source,
+                        &handler_name,
+                        parameters,
+                        *result,
+                        *span,
+                    )?;
+                    handlers.insert(
+                        handler_name.clone(),
+                        TaskHandlerSource {
+                            name: handler_name.clone(),
+                            parameters: parameters.clone(),
+                            body: body.clone(),
+                            span: *span,
+                        },
+                    );
+                    public_handlers.push(CompilerTaskHandler {
+                        name: handler_name,
+                        payload_type,
+                        response_type,
+                        kind,
+                        message_context_observable: false,
+                    });
+                }
+                Statement::Generator { .. } => {
+                    return Err(unsupported(
+                        source,
+                        statement_span(declaration),
+                        "task stream handler",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        source,
+                        statement_span(declaration),
+                        "task implementation member",
+                    ));
+                }
+            }
+        }
+        let state_name = state.ok_or_else(|| {
+            source_diagnostic(
+                source,
+                "E-TASK-STATE-INITIALIZATION",
+                *name,
+                "the native task increment requires one private Nat state field",
+            )
+        })?;
+        if !handlers.contains_key("start") {
+            return Err(source_diagnostic(
+                source,
+                "E-TASK-START-REQUIRED",
+                *name,
+                "every task implementation requires a start handler",
+            ));
+        }
+        let task = CompilerTaskType {
+            classifier: task_type.classifier,
+            definition: definition.clone(),
+            identity: task_type.identity,
+            queue_size: task_type.queue_size,
+            state_name,
+            state_type: Box::new(CompilerType::Nat),
+            handlers: public_handlers,
+            scheduler: CompilerTaskScheduler::DeterministicImmediateFifo,
+        };
+        validate_direct_task_handlers(source, &task, &handlers)?;
+        task_definitions.insert(definition, TaskDefinitionSource { task, span: *span });
+    }
+    Ok((task_types, task_definitions))
+}
+
+fn compiler_task_handler_shape(
+    source: &SourceText,
+    name: &str,
+    parameters: &[FunctionParameter],
+    result: Span,
+    span: Span,
+) -> Result<(CompilerTaskHandlerKind, CompilerType, CompilerType), Diagnostic> {
+    let parameter_classifier = |index: usize| {
+        parameters
+            .get(index)
+            .map(|parameter| compact_classifier(source.slice(parameter.classifier)))
+    };
+    let result = compact_classifier(source.slice(result));
+    match name {
+        "start"
+            if parameters.len() == 1
+                && parameter_classifier(0).as_deref() == Some("Nat")
+                && result == "Completed" =>
+        {
+            Ok((
+                CompilerTaskHandlerKind::Start,
+                CompilerType::Nat,
+                CompilerType::Completed,
+            ))
+        }
+        "terminate"
+            if parameters.len() == 1
+                && parameter_classifier(0).as_deref() == Some("String")
+                && result == "Unit" =>
+        {
+            Ok((
+                CompilerTaskHandlerKind::Terminate,
+                CompilerType::String,
+                CompilerType::Unit,
+            ))
+        }
+        _ if parameters.len() == 2
+            && parameter_classifier(0).as_deref() == Some("MessageContext")
+            && source.slice(parameters[0].name) == "_"
+            && parameter_classifier(1).as_deref() == Some("Nat")
+            && result == "Unit" =>
+        {
+            Ok((
+                CompilerTaskHandlerKind::Event,
+                CompilerType::Nat,
+                CompilerType::Unit,
+            ))
+        }
+        _ if parameters.len() == 2
+            && parameter_classifier(0).as_deref() == Some("MessageContext")
+            && source.slice(parameters[0].name) == "_"
+            && parameter_classifier(1).as_deref() == Some("Unit")
+            && result == "Result(Nat,())" =>
+        {
+            Ok((
+                CompilerTaskHandlerKind::Request,
+                CompilerType::Unit,
+                CompilerType::Nat,
+            ))
+        }
+        _ => Err(unsupported(
+            source,
+            span,
+            "native direct task handler shape",
+        )),
+    }
+}
+
+fn validate_direct_task_handlers(
+    source: &SourceText,
+    task: &CompilerTaskType,
+    handlers: &BTreeMap<String, TaskHandlerSource>,
+) -> Result<(), Diagnostic> {
+    for handler in handlers.values() {
+        let kind = task
+            .handlers
+            .iter()
+            .find(|candidate| candidate.name == handler.name)
+            .expect("task metadata retains every handler")
+            .kind;
+        let valid = match kind {
+            CompilerTaskHandlerKind::Start => matches!(
+                handler.body.as_slice(),
+                [
+                    Statement::ContextAssignment { name, value: Expression::Identifier(value), .. },
+                    Statement::Expression(Expression::Identifier(completed))
+                ] if source.slice(*name) == task.state_name
+                    && source.slice(*value) == source.slice(handler.parameters[0].name)
+                    && source.slice(*completed) == "Completed"
+            ),
+            CompilerTaskHandlerKind::Event => matches!(
+                handler.body.as_slice(),
+                [Statement::ContextAssignment {
+                    name,
+                    value: Expression::Application { items, .. },
+                    ..
+                }] if source.slice(*name) == task.state_name
+                    && matches!(items.as_slice(), [
+                        Expression::ContextIdentifier(state),
+                        Expression::Callable { kind: CallableKind::Plus, .. },
+                        Expression::Identifier(amount)
+                    ] if source.slice(*state) == task.state_name
+                        && source.slice(*amount) == source.slice(handler.parameters[1].name))
+            ),
+            CompilerTaskHandlerKind::Request => matches!(
+                handler.body.as_slice(),
+                [Statement::Expression(Expression::ContextIdentifier(state))]
+                    if source.slice(*state) == task.state_name
+            ),
+            CompilerTaskHandlerKind::Terminate => matches!(
+                handler.body.as_slice(),
+                [Statement::Expression(Expression::Unit(_))]
+            ),
+        };
+        if !valid {
+            return Err(unsupported(
+                source,
+                handler.span,
+                &format!("task handler body `{}`", handler.name),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn compiler_language_context(
@@ -7547,6 +8024,18 @@ impl Analyzer {
         {
             return true;
         }
+        let span = statement_span(statement);
+        if self
+            .task_types
+            .values()
+            .any(|declaration| declaration.span == span)
+            || self
+                .task_definitions
+                .values()
+                .any(|declaration| declaration.span == span)
+        {
+            return true;
+        }
         if let Some(declaration) = enum_declaration(&self.source, statement) {
             let name = self.source.slice(declaration.name);
             return self
@@ -7786,7 +8275,9 @@ impl Analyzer {
                                 || self.sums.contains_key(&name_text)
                                 || self.sum_alternatives.contains_key(&name_text)
                                 || self.modulars.contains_key(&name_text)
-                                || self.interfaces.contains_key(&name_text)))
+                                || self.interfaces.contains_key(&name_text)
+                                || self.task_types.contains_key(&name_text)
+                                || self.task_definitions.contains_key(&name_text)))
                     {
                         return Err(source_diagnostic(
                             &self.source,
@@ -8115,13 +8606,20 @@ impl Analyzer {
                         enclosing_result,
                     )?);
                 }
-                Statement::Expression(_) => {
-                    return Err(source_diagnostic(
-                        &self.source,
-                        "E-NONFINAL-VALUE",
-                        statement_span(statement),
-                        "a non-final value expression must be explicitly discarded or bound",
-                    ));
+                Statement::Expression(expression) => {
+                    let value = self.analyze_expression(expression, environment)?;
+                    if value.value_type == CompilerType::Unit
+                        && matches!(value.kind, CompilerExpressionKind::TaskStateReplace { .. })
+                    {
+                        lowered.push(CompilerStatement::Discard(value));
+                    } else {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-NONFINAL-VALUE",
+                            statement_span(statement),
+                            "a non-final value expression must be explicitly discarded or bound",
+                        ));
+                    }
                 }
                 Statement::Return { value, .. } if kind == BlockKind::Function => {
                     explicit_return = true;
@@ -9953,6 +10451,166 @@ impl Analyzer {
         }))
     }
 
+    #[allow(clippy::too_many_lines)] // Transaction admission and lowering stay visibly coupled.
+    fn analyze_task_application(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let [Expression::Identifier(definition_name), initial] = items
+            && let Some(definition) = self
+                .task_definitions
+                .get(self.source.slice(*definition_name))
+                .filter(|definition| definition.span.end <= definition_name.start)
+                .cloned()
+        {
+            let mut initial = self.analyze_expression(initial, environment)?;
+            if initial.value_type == CompilerType::Int {
+                let initial_span = initial.span;
+                initial = self.finish_nat_conversion(initial, span, initial_span)?;
+            }
+            require_type(
+                &self.source,
+                initial.span,
+                definition.task.state_type.as_ref(),
+                &initial.value_type,
+            )?;
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::TaskConstruct {
+                    task: definition.task.clone(),
+                    initial: Box::new(initial),
+                },
+                value_type: CompilerType::Task(Box::new(definition.task)),
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+
+        let [instance, Expression::Identifier(operation), payload] = items else {
+            return Ok(None);
+        };
+        let Expression::Identifier(instance_name) = instance else {
+            return Ok(None);
+        };
+        let Some(CompilerType::Task(task)) = environment
+            .get(self.source.slice(*instance_name))
+            .map(|facts| &facts.value_type)
+        else {
+            return Ok(None);
+        };
+        let task = task.as_ref().clone();
+        let operation_name = self.source.slice(*operation);
+        if operation_name == "start" {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-TASK-START-PRIVATE",
+                *operation,
+                "start is a lifecycle handler and cannot receive a message",
+            ));
+        }
+        let handler = task
+            .handlers
+            .iter()
+            .find(|handler| handler.name == operation_name)
+            .ok_or_else(|| {
+                source_diagnostic(
+                    &self.source,
+                    "E-TASK-HANDLER",
+                    *operation,
+                    "task capability exposes no such message handler",
+                )
+            })?
+            .clone();
+        let message = CompilerTaskMessage {
+            operation: operation_name.to_owned(),
+            transaction_identity: self.next_task_transaction,
+        };
+        self.next_task_transaction = self
+            .next_task_transaction
+            .checked_add(1)
+            .ok_or_else(|| unsupported(&self.source, span, "task transaction identity"))?;
+        let task_value = self.analyze_expression(instance, environment)?;
+        match handler.kind {
+            CompilerTaskHandlerKind::Event => {
+                let mut payload = self.analyze_expression(payload, environment)?;
+                if payload.value_type == CompilerType::Int {
+                    let payload_span = payload.span;
+                    payload = self.finish_nat_conversion(payload, span, payload_span)?;
+                }
+                require_type(
+                    &self.source,
+                    payload.span,
+                    &handler.payload_type,
+                    &payload.value_type,
+                )?;
+                let state = CompilerExpression {
+                    kind: CompilerExpressionKind::TaskStateLoad {
+                        task: Box::new(task_value.clone()),
+                        message: message.clone(),
+                    },
+                    value_type: CompilerType::Nat,
+                    int_range: None,
+                    rational_value: None,
+                    span: *operation,
+                };
+                let next = CompilerExpression {
+                    kind: CompilerExpressionKind::Binary {
+                        operation: CompilerBinary::Add,
+                        left: Box::new(state),
+                        right: Box::new(payload),
+                    },
+                    value_type: CompilerType::Nat,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::TaskStateReplace {
+                        task: Box::new(task_value),
+                        value: Box::new(next),
+                        message,
+                    },
+                    value_type: CompilerType::Unit,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                }))
+            }
+            CompilerTaskHandlerKind::Request => {
+                let payload = self.analyze_expression(payload, environment)?;
+                require_type(
+                    &self.source,
+                    payload.span,
+                    &handler.payload_type,
+                    &payload.value_type,
+                )?;
+                if !matches!(payload.kind, CompilerExpressionKind::Unit) {
+                    return Err(unsupported(
+                        &self.source,
+                        payload.span,
+                        "effectful direct task request payload",
+                    ));
+                }
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::TaskStateLoad {
+                        task: Box::new(task_value),
+                        message,
+                    },
+                    value_type: CompilerType::TaskResponse(Box::new(handler.response_type)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                }))
+            }
+            CompilerTaskHandlerKind::Terminate => {
+                Err(unsupported(&self.source, span, "task termination delivery"))
+            }
+            CompilerTaskHandlerKind::Start => unreachable!("start was rejected before dispatch"),
+        }
+    }
+
     fn native_serialization_bytes(
         &self,
         version: LanguageVersion,
@@ -10144,6 +10802,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(value) = self.analyze_task_application(items, span, environment)? {
+            return Ok(value);
+        }
         if let Some(value) = self.analyze_native_serialization(items, span, environment)? {
             return Ok(value);
         }
@@ -17801,7 +18462,9 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
-        | CompilerType::SerializationStream(_) => false,
+        | CompilerType::SerializationStream(_)
+        | CompilerType::TaskResponse(_)
+        | CompilerType::Task(_) => false,
         CompilerType::List(element) => {
             matches!(element.as_ref(), CompilerType::Effect | CompilerType::Int)
                 || compiler_nested_int_string_list_element(element.as_ref())
@@ -17852,6 +18515,7 @@ fn compiler_type_contains_static_only(value_type: &CompilerType) -> bool {
         || match value_type {
             CompilerType::Range(value)
             | CompilerType::Result(value)
+            | CompilerType::TaskResponse(value)
             | CompilerType::Optional(value)
             | CompilerType::List(value)
             | CompilerType::SerializationStream(value)
@@ -17878,6 +18542,7 @@ fn compiler_type_contains_generator(value_type: &CompilerType) -> bool {
         CompilerType::Generator(_) => true,
         CompilerType::Range(value)
         | CompilerType::Result(value)
+        | CompilerType::TaskResponse(value)
         | CompilerType::Optional(value)
         | CompilerType::List(value)
         | CompilerType::TraversalControl(value)
@@ -18460,12 +19125,14 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         | CompilerType::Sum(_)
         | CompilerType::Range(_)
         | CompilerType::Result(_)
+        | CompilerType::TaskResponse(_)
         | CompilerType::Array { .. }
         | CompilerType::Set(_)
         | CompilerType::Bag(_)
         | CompilerType::Map { .. }
         | CompilerType::TraversalControl(_)
-        | CompilerType::Generator(_) => false,
+        | CompilerType::Generator(_)
+        | CompilerType::Task(_) => false,
     }
 }
 
@@ -18582,7 +19249,10 @@ fn compiler_expression_is_closed_with(
         }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
         CompilerExpressionKind::Local(name) => bound.contains(name),
-        CompilerExpressionKind::Call { .. }
+        CompilerExpressionKind::TaskConstruct { .. }
+        | CompilerExpressionKind::TaskStateLoad { .. }
+        | CompilerExpressionKind::TaskStateReplace { .. }
+        | CompilerExpressionKind::Call { .. }
         | CompilerExpressionKind::Fallible { .. }
         | CompilerExpressionKind::Validate { .. }
         | CompilerExpressionKind::ModularValidate { .. }
@@ -28591,6 +29261,98 @@ mod tests {
             source.replacen("initial append 9", "initial append 8", 1),
             source.replacen("entry-count values", "empty? values", 1),
             source.replacen("consume generated", "consume (relay (one 7))", 1),
+        ] {
+            assert_eq!(
+                analyze_for_compiler(&invalid).unwrap_err().code,
+                "E-COMPILER-UNSUPPORTED"
+            );
+        }
+    }
+
+    #[test]
+    fn models_direct_task_identity_state_and_messages() {
+        // TOPAL-TASK-DEFINITION-001, TOPAL-TASK-LIFECYCLE-001,
+        // TOPAL-TASK-STATE-001, TOPAL-TASK-MESSAGE-001,
+        // TOPAL-COMPILER-TASK-DIRECT-001
+        let source = include_str!("../../../examples/language/task-declaration-order.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let [task] = program.tasks.as_slice() else {
+            panic!("one direct task definition is retained")
+        };
+        assert_eq!(task.classifier, "OrderedCounter");
+        assert_eq!(task.definition, "ordered-counter-service");
+        assert_eq!(task.identity, "ordered-counter");
+        assert_eq!(task.queue_size, Some(4));
+        assert_eq!(task.state_name, "count");
+        assert_eq!(task.state_type.as_ref(), &CompilerType::Nat);
+        assert!(task.handlers.iter().any(|handler| {
+            handler.name == "increment" && handler.kind == CompilerTaskHandlerKind::Event
+        }));
+        assert!(task.handlers.iter().any(|handler| {
+            handler.name == "current" && handler.kind == CompilerTaskHandlerKind::Request
+        }));
+        assert!(matches!(
+            program.main.statements.as_slice(),
+            [
+                CompilerStatement::Binding(CompilerBinding {
+                    value: CompilerExpression {
+                        kind: CompilerExpressionKind::TaskConstruct { .. },
+                        value_type: CompilerType::Task(_),
+                        ..
+                    },
+                    ..
+                }),
+                CompilerStatement::Discard(CompilerExpression {
+                    kind: CompilerExpressionKind::TaskStateReplace { value, .. },
+                    value_type: CompilerType::Unit,
+                    ..
+                })
+            ] if matches!(value.kind, CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            })
+        ));
+        assert!(matches!(
+            program.main.result,
+            CompilerExpression {
+                kind: CompilerExpressionKind::TaskStateLoad { .. },
+                value_type: CompilerType::TaskResponse(success),
+                ..
+            } if success.as_ref() == &CompilerType::Nat
+        ));
+        let CompilerStatement::Discard(CompilerExpression {
+            kind: CompilerExpressionKind::TaskStateReplace { message, .. },
+            ..
+        }) = &program.main.statements[1]
+        else {
+            unreachable!("checked event transaction is retained")
+        };
+        assert_eq!(message.operation, "increment");
+        assert_eq!(message.transaction_identity, 1);
+        let CompilerExpressionKind::TaskStateLoad { message, .. } = &program.main.result.kind
+        else {
+            unreachable!("checked request transaction is retained")
+        };
+        assert_eq!(message.operation, "current");
+        assert_eq!(message.transaction_identity, 2);
+    }
+
+    #[test]
+    fn rejects_task_shapes_outside_the_direct_transaction_increment() {
+        // TOPAL-COMPILER-TASK-DIRECT-001
+        let source = include_str!("../../../examples/language/task-declaration-order.t");
+        let stream_source = include_str!("../../../examples/language/task-message-transactions.t");
+        for invalid in [
+            source.replacen("count : Nat", "count : Int", 1),
+            source.replacen("  count : Nat", "  count : Nat\n  previous : Nat", 1),
+            source.replacen("@ count + amount", "@ count - amount", 1),
+            source.replacen("_ : MessageContext", "context : MessageContext", 1),
+            source.replacen(
+                "ordered-counter current ()",
+                "ordered-counter terminate \"done\"",
+                1,
+            ),
+            stream_source.to_owned(),
         ] {
             assert_eq!(
                 analyze_for_compiler(&invalid).unwrap_err().code,

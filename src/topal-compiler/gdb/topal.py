@@ -136,6 +136,48 @@ class _TopalSerializationStreamPrinter:
         return f"SerializationStream ( {length} bytes )"
 
 
+class _TopalTaskPrinter:
+    """Render a private direct Task instance without exposing LLVM symbols."""
+
+    def __init__(self, value, name):
+        self._value = value
+        self._name = name
+
+    def to_string(self):
+        address = int(self._value)
+        if address == 0:
+            return "<invalid null Task>"
+        inferior = gdb.selected_inferior()
+        try:
+            header = bytes(inferior.read_memory(address, 24))
+        except gdb.MemoryError:
+            return "<unreadable Task>"
+        identity = int.from_bytes(header[0:8], "little")
+        terminated = int.from_bytes(header[8:16], "little")
+        state = int.from_bytes(header[16:24], "little")
+        if not identity:
+            return "<invalid Task identity>"
+        if terminated not in (0, 1):
+            return "<invalid Task lifecycle state>"
+        if not state:
+            return "<invalid null Task state>"
+        rendered = _TopalIntPrinter(state).to_string()
+        if rendered.startswith("<"):
+            return f"<invalid Task state: {rendered}>"
+        state_name = "state"
+        try:
+            fields = self._value.type.strip_typedefs().target().fields()
+            if len(fields) >= 3 and fields[2].name:
+                state_name = fields[2].name
+        except gdb.error:
+            pass
+        lifecycle = "terminated" if terminated else "active"
+        return (
+            f"{self._name} ( identity is {identity}, {lifecycle}, "
+            f"{state_name} is {rendered} )"
+        )
+
+
 def _display_string(value):
     if '"' not in value:
         return f'"{value}"'
@@ -866,6 +908,8 @@ def _lookup_topal_value(value):
         or storage_type == "struct TopalSerializationStreamHeader *"
     ):
         return _TopalSerializationStreamPrinter(value)
+    if storage_type.startswith("struct TopalTask."):
+        return _TopalTaskPrinter(value, value_type)
     if value_type == "Version" or storage_type == "struct TopalVersionHeader *":
         return _TopalVersionPrinter(value)
     if storage_type.startswith("struct TopalModular."):
@@ -929,6 +973,11 @@ def _lookup_topal_value(value):
         if value_type.startswith("Map ") or value_type.startswith("Map("):
             return _TopalMapPrinter(value)
     prefix = "Result ("
+    task_suffix = ", ())"
+    if value_type.startswith(prefix) and value_type.endswith(task_suffix):
+        return _TopalResultPrinter(
+            value, value_type[len(prefix) : -len(task_suffix)]
+        )
     suffix = ", lang arithmetic ArithmeticErrorCode)"
     if value_type.startswith(prefix) and value_type.endswith(suffix):
         return _TopalResultPrinter(value, value_type[len(prefix) : -len(suffix)])

@@ -18,8 +18,10 @@ pub use compiler_model::{
     CompilerInterfaceOperation, CompilerInterfaceOperationEvidence, CompilerLanguageContext,
     CompilerListIndexOperation, CompilerListZipOperation, CompilerMapCollisionPolicy,
     CompilerModularType, CompilerParameter, CompilerProgram, CompilerStatement,
-    CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerType, CompilerTypeView,
-    CompilerTypeViewForm, CompilerValidation, IntRange, analyze_for_compiler,
+    CompilerSumAlternative, CompilerSumRule, CompilerSumType, CompilerTaskHandler,
+    CompilerTaskHandlerKind, CompilerTaskMessage, CompilerTaskScheduler, CompilerTaskType,
+    CompilerType, CompilerTypeView, CompilerTypeViewForm, CompilerValidation, IntRange,
+    analyze_for_compiler,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,
