@@ -3534,8 +3534,9 @@ the same exact recursively nested Tuple or Record classifier containing
 Function leaves when every Function leaf retains one exact capture-free
 callable identity and every other leaf has existing exact compiler equality.
 It shall preserve complete recursive structural facts for the first and later
-occurrences and reject missing, opaque, or capture-bearing callable facts
-before LLVM lowering.
+occurrences and reject missing or opaque callable facts before LLVM lowering.
+Capture-bearing leaves shall be governed by
+`TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001`.
 
 The first occurrence shall remain the sole body binding and DWARF parameter.
 Every later occurrence shall retain its complete recursive private aggregate
@@ -3548,16 +3549,16 @@ diagnostic and exit 65.
 
 Tests shall cover named, symbolic, and non-capturing anonymous Function leaves,
 nested Tuple/Record values, exact interpreter modes, native success and mismatch
-failure, capture-bearing rejection, checked structural facts, direct guarded IR,
-freestanding artifact properties, full O0 aggregate GDB observation,
+failure, checked structural facts, direct guarded IR, freestanding artifact
+properties, full O0 aggregate GDB observation,
 reversible debugging, the shared corpus, and separate resource baselines. This
 shall add no closure or environment object, allocation, generic matcher,
 pattern table, function pointer, indirect call, callback, dispatch table,
 foreign dependency, C/C++ runtime, other-language standard library, public
-aggregate/callable ABI, or `topal-native/6` revision. Capture-bearing
-Function-aggregate repeated identity, dynamic aggregate selection, Function
-containment in other aggregates, ordinary named-function header repetition,
-publication, and library adapters remain deferred. Compiled-library metadata
+aggregate/callable ABI, or `topal-native/6` revision. Dynamic aggregate
+selection, Function containment in other aggregates, ordinary named-function
+header repetition, publication, and library adapters remain deferred.
+Compiled-library metadata
 shall eventually encode canonical aggregate paths and stable
 callable/representation identities without serializing private LLVM types,
 observation tags, or target-specific argument placement. This realizes
@@ -3594,9 +3595,9 @@ freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
 no closure or environment object, allocation, pattern table, function pointer,
 indirect call, dispatch table, foreign dependency, C/C++ runtime,
 other-language standard library, public callable ABI, or `topal-native/6`
-revision. Named or nested captured callable identity, captured Function
-aggregates, unsupported capture classifiers, publication, and library adapters
-remain deferred. Future compiled-library metadata shall encode stable callable
+revision. Scalar identity for captured named or nested callables, unsupported
+capture classifiers, publication, and library adapters remain deferred. Future
+compiled-library metadata shall encode stable callable
 source identity plus the ordered capture schema/classifiers, equality
 requirements, representation identity, lifetime/effects, and target adapter;
 it shall not serialize private observation tags, hidden parameter names, LLVM
@@ -3605,6 +3606,55 @@ types, or target-specific placement. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5ad.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001 — Exact captured Function aggregate values
+
+The checked compiler model shall admit a repeated anonymous-pattern name with
+the same exact recursively nested Tuple or Record classifier containing
+captured Function leaves when both operands retain complete callable facts.
+Ordinary fields shall retain their existing semantic-order structural guards.
+When every corresponding Function leaf has the same stable named, symbolic,
+nested, or canonical anonymous source identity, the model shall forward both
+path-ordered capture snapshots, require the same capture schema at each path,
+and require exact compiler equality for each represented capture classifier. If
+any callable identity differs, its observation-field guard shall make the
+aggregate unequal without requiring capture transport. Missing callable facts,
+inconsistent schemas, and required non-equality capture state shall fail before
+LLVM or artifact publication.
+
+The first aggregate occurrence shall remain the sole source binding and DWARF
+parameter. Its captures and, when required, the later occurrence's captures
+shall follow source parameters as deterministic hidden operands ordered by
+canonical aggregate path and capture order. Lowering shall compare ordinary
+aggregate fields first and required capture pairs afterward, then reuse the
+Topal-owned mismatch diagnostic and exit 65. Matching private definitions and
+calls shall use exact `fastcc` prototypes while LLVM owns physical AMD64
+placement. Observation fields shall remain non-dispatching.
+
+Tests shall cover captured anonymous Function leaves in Record and nested
+Tuple/Record values, captured nested named leaves, equal and unequal capture
+payloads, callable-identity mismatch without unnecessary capture equality,
+non-equality capture rejection before artifact publication when identities
+match, checked-model path/capture guards, direct ordered IR, interpreter modes
+and reversible history, the shared corpus, separate resource baselines,
+freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
+no closure or environment object, allocation, pattern table, function pointer,
+indirect call, dispatch table, foreign dependency, C/C++ runtime,
+other-language standard library, public aggregate/callable ABI, or
+`topal-native/6` revision. Dynamic aggregate selection, Function containment in
+other aggregates, unsupported capture classifiers, ordinary named-function
+header repetition, publication, and library adapters remain deferred. Future
+compiled-library metadata shall encode canonical aggregate paths, stable
+callable identities, ordered capture schemas and classifiers, semantic equality
+requirements, representation identity, lifetime/effects, and target adapters;
+it shall not serialize private observation tags, hidden operand names or layout,
+LLVM types, or target-specific placement. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001`,
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5ae.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

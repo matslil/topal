@@ -3230,8 +3230,9 @@ Tuple or Record classifier containing Function leaves when every Function leaf
 retains one exact named, symbolic, non-capturing anonymous, or other
 capture-free callable identity under `TOPAL-COMPILER-FUNCTION-AGGREGATE-001`.
 Every non-Function leaf SHALL have exact compiler equality already admitted by
-`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. A missing, opaque, or
-capture-bearing callable fact SHALL be rejected before LLVM lowering.
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. A missing or opaque callable
+fact SHALL be rejected before LLVM lowering. Capture-bearing leaves are governed
+by `TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001`.
 
 The first occurrence SHALL remain the sole source binding and DWARF parameter.
 Every later occurrence SHALL retain the same recursive private aggregate
@@ -3243,17 +3244,16 @@ and status SHALL remain those of
 aggregate argument placement from the qualified target data layout.
 
 Tests SHALL cover named, symbolic, and non-capturing anonymous Function leaves,
-nested Tuple/Record values, exact success and mismatch behavior,
-capture-bearing rejection, structural guarded IR, interpreter parity and
-reversible history, freestanding execution, and full O0 GDB values/frames. This
+nested Tuple/Record values, exact success and mismatch behavior, structural
+guarded IR, interpreter parity and reversible history, freestanding execution,
+and full O0 GDB values/frames. This
 rule SHALL introduce no closure or environment object, allocation, generic
 matcher, pattern table, function pointer, indirect call, callback, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
-public aggregate/callable ABI, or native-ABI revision. Capture-bearing
-Function-aggregate repeated identity, dynamic aggregate selection, Function
-containment in other aggregates, ordinary named-function header repetition,
-publication, and library adapters remain deferred. Future compiled-library
-metadata SHALL encode canonical aggregate paths and stable
+public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
+selection, Function containment in other aggregates, ordinary named-function
+header repetition, publication, and library adapters remain deferred. Future
+compiled-library metadata SHALL encode canonical aggregate paths and stable
 callable/representation identities independently of private LLVM types,
 observation tags, and target-specific argument placement.
 
@@ -3285,14 +3285,57 @@ state, guard order, interpreter parity and reversible history, freestanding
 execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
 or environment object, allocation, pattern table, function pointer, indirect
 call, dispatch table, foreign dependency, C/C++ runtime, other-language
-standard library, public callable ABI, or native-ABI revision. Named or nested
-captured callable identity, captured Function aggregates, unsupported capture
-classifiers, publication, and library adapters remain deferred. Future
+standard library, public callable ABI, or native-ABI revision. Scalar identity
+for captured named or nested callables, unsupported capture classifiers,
+publication, and library adapters remain deferred. Future
 compiled-library metadata SHALL encode the stable callable source identity and
 ordered capture schema, classifiers, semantic equality requirements,
 representation identity, lifetime/effects, and target adapter without
 serializing private observation tags, parameter names, LLVM types, or physical
 argument placement.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001 — Exact captured Function aggregate values
+
+A repeated anonymous-pattern name MAY match the same exact recursively nested
+Tuple or Record classifier containing captured Function leaves when both
+operands retain complete callable facts at every Function path. Each ordinary
+field SHALL compare in the semantic order established by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`. When every pair of
+corresponding Function leaves has the same named, symbolic, nested, or canonical
+anonymous source identity, the two values SHALL additionally retain the same
+path-ordered capture schema and every represented capture classifier SHALL have
+exact compiler equality. If any callable identity differs, its observation
+field makes the aggregate unequal and no capture comparison is required.
+Missing callable facts, inconsistent capture schemas, or a required capture
+without admitted exact equality SHALL be rejected before LLVM lowering.
+
+The first aggregate occurrence SHALL remain the sole source binding and DWARF
+parameter. Its captures and, when required, the later occurrence's captures
+SHALL be deterministic hidden private operands ordered by canonical aggregate
+path and retained capture order. Guards SHALL compare ordinary aggregate fields
+first and then required capture pairs in that same deterministic order before
+body entry. A mismatch SHALL use
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`; observation tags SHALL remain
+non-dispatching, and LLVM SHALL own physical AMD64 placement for the exact
+private prototype.
+
+Tests SHALL cover captured anonymous leaves in Record and nested Tuple/Record
+values, captured nested named leaves, equal and unequal capture payloads,
+callable-identity mismatch without unnecessary capture equality, rejected
+non-equality capture state when identities match, checked path/capture metadata,
+direct guard order, interpreter parity and reversible history, freestanding
+execution, and full O0 GDB values/frames. This rule SHALL introduce no closure or environment
+object, allocation, pattern table, function pointer, indirect call, dispatch
+table, foreign dependency, C/C++ runtime, other-language standard library,
+public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
+selection, Function containment in other aggregates, unsupported capture
+classifiers, ordinary named-function header repetition, publication, and
+library adapters remain deferred. Future compiled-library metadata SHALL encode
+canonical aggregate paths, stable callable identities, ordered capture schemas
+and classifiers, semantic equality requirements, representation identity,
+lifetime/effects, and target adapters without serializing private observation
+tags, hidden operand names or layout, LLVM types, or physical argument
+placement.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 
