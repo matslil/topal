@@ -12915,6 +12915,41 @@ mod tests {
     }
 
     #[test]
+    fn emits_captured_named_function_pattern_identity_as_direct_guards() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001,
+        // TOPAL-FUNCTION-NESTED-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-named-function-patterns.t"
+        ))
+        .unwrap();
+        let guarded = program
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 2)
+            .unwrap();
+        let llvm = Generator::new(&program, "repeated-captured-named-function-patterns.t").emit();
+        let signature = format!(
+            "define internal fastcc ptr @{}(i32 %arg0, i32 %arg1, ptr %arg2, ptr %arg3)",
+            guarded.symbol
+        );
+        let start = llvm.find(&signature).unwrap();
+        let body = &llvm[start..];
+        let source_identity = body.find("icmp eq i32 %arg0, %arg1").unwrap();
+        let capture_identity = body
+            .find("call i32 @topal.runtime.int.compare(ptr %arg2, ptr %arg3)")
+            .unwrap();
+        assert!(source_identity < capture_identity);
+        assert!(llvm.contains("call void @topal.runtime.pattern.identity.fail()"));
+        assert!(llvm.contains("!DILocalVariable(name: \"operation\", arg: 1"));
+        assert!(!llvm.contains("!DILocalVariable(name: \"operation\", arg: 2"));
+        assert!(llvm.contains("@topal.fn.increase"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
     fn emits_captured_function_aggregate_pattern_identity_as_direct_guards() {
         // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001,
         // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,

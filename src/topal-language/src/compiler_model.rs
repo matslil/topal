@@ -16796,7 +16796,7 @@ impl Analyzer {
                     let mut current_callable = self
                         .known_callable(facts, call_environment, facts.span.start)?
                         .expect("repeated Function pattern occurrence retains callable facts");
-                    if same_anonymous_callable_identity(first_callable, &current_callable) {
+                    if same_callable_identity(first_callable, &current_callable) {
                         let capture_start = parameter_callable_captures.len();
                         self.forward_callable_captures(
                             &format!("{name} repeated {}", lowered_parameters.len()),
@@ -21908,23 +21908,6 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
         }
         _ => true,
     }
-}
-
-fn same_anonymous_callable_identity(
-    left: &CompilerCallableFacts,
-    right: &CompilerCallableFacts,
-) -> bool {
-    matches!(
-        (left, right),
-        (
-            CompilerCallableFacts::Anonymous {
-                span: left_span, ..
-            },
-            CompilerCallableFacts::Anonymous {
-                span: right_span, ..
-            }
-        ) if left_span == right_span
-    )
 }
 
 fn same_callable_identity(left: &CompilerCallableFacts, right: &CompilerCallableFacts) -> bool {
@@ -32429,6 +32412,67 @@ mod tests {
                 .message
                 .contains("without exact capture equality"),
             "{unsupported_capture:?}"
+        );
+    }
+
+    #[test]
+    fn models_captured_named_function_pattern_identity() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001,
+        // TOPAL-FUNCTION-NESTED-001, TOPAL-TYPE-MATCH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-captured-named-function-patterns.t"
+        ))
+        .unwrap();
+        assert_eq!(exact_int(&program.main.result), Some(BigInt::from(42)));
+        let guarded = program
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 2)
+            .expect("captured nested Function repetition retains both guards");
+        assert_eq!(guarded.parameters.len(), 4);
+        assert_eq!(guarded.parameters[0].value_type, CompilerType::Function);
+        assert_eq!(guarded.parameters[1].value_type, CompilerType::Function);
+        assert_eq!(guarded.parameters[2].value_type, CompilerType::Int);
+        assert_eq!(guarded.parameters[3].value_type, CompilerType::Int);
+        assert_eq!(
+            guarded
+                .pattern_identities
+                .iter()
+                .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                .collect::<Vec<_>>(),
+            [(0, 1), (2, 3)]
+        );
+
+        let differing = analyze_for_compiler(
+            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  left is fn (value : Int) -> Token\n    token\n  right is fn (value : Int) -> Token\n    token\n  repeat : Function is { operation, operation } 42\n  repeat (left, right)\ncompare (Value 1)\n",
+        )
+        .unwrap();
+        let differing_guard = differing
+            .functions
+            .iter()
+            .find(|function| function.pattern_identities.len() == 1)
+            .expect("different nested declarations retain only their source guard");
+        assert_eq!(differing_guard.parameters.len(), 3);
+        assert_eq!(
+            differing_guard
+                .pattern_identities
+                .iter()
+                .map(|identity| (identity.first_parameter, identity.repeated_parameter))
+                .collect::<Vec<_>>(),
+            [(0, 1)]
+        );
+
+        let unsupported = analyze_for_compiler(
+            "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  operation is fn (value : Int) -> Token\n    token\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Value 1)\n",
+        )
+        .unwrap_err();
+        assert_eq!(unsupported.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            unsupported
+                .message
+                .contains("without exact capture equality"),
+            "{unsupported:?}"
         );
     }
 

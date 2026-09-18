@@ -3285,14 +3285,54 @@ state, guard order, interpreter parity and reversible history, freestanding
 execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
 or environment object, allocation, pattern table, function pointer, indirect
 call, dispatch table, foreign dependency, C/C++ runtime, other-language
-standard library, public callable ABI, or native-ABI revision. Scalar identity
-for captured named or nested callables, unsupported capture classifiers,
-publication, and library adapters remain deferred. Future
+standard library, public callable ABI, or native-ABI revision. Captured named
+identity is governed by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001`. Unsupported
+capture classifiers, publication, and library adapters remain deferred. Future
 compiled-library metadata SHALL encode the stable callable source identity and
 ordered capture schema, classifiers, semantic equality requirements,
 representation identity, lifetime/effects, and target adapter without
 serializing private observation tags, parameter names, LLVM types, or physical
 argument placement.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001 — Exact captured named Function values
+
+A repeated anonymous-pattern name MAY match two captured named Function values
+when both retain the same stable declaration identity, the same ordered capture
+schema, and exact compiler equality for every represented capture classifier.
+The initial admitted set SHALL be a non-escaping nested lexical Function used
+within its defining invocation. Exact named identity SHALL comprise its source
+name and declaration identity independently of a compiler-private observation
+tag or private specialization. When declaration identities differ, the
+observation-field guard makes the values unequal and capture comparison is not
+required. Missing declaration facts, inconsistent required capture schemas, or
+a required capture without admitted exact equality SHALL be rejected before
+LLVM lowering.
+
+The first Function occurrence SHALL remain the sole source binding and DWARF
+parameter. When identities match, both already-evaluated capture snapshots
+SHALL follow the source operands as deterministic hidden private operands.
+Guards SHALL compare the callable identity first and then each required capture
+in retained order before body entry. A mismatch SHALL use
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`; no observation tag SHALL
+dispatch executable code. LLVM SHALL own physical AMD64 placement for the exact
+private prototype.
+
+Tests SHALL cover a captured nested Function repeated and then invoked,
+different captured nested declarations whose identity guard mismatches without
+requiring capture equality, same-declaration non-equality capture rejection,
+direct ordered IR, interpreter parity and reversible history, freestanding
+execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
+or environment object, allocation, pattern table, function pointer, indirect
+call, dispatch table, foreign dependency, C/C++ runtime, other-language
+standard library, public callable ABI, or native-ABI revision. Escaping nested
+Functions, unsupported capture classifiers, ordinary named-function header
+repetition, publication, and library adapters remain deferred. Future
+compiled-library metadata SHALL encode stable declaration/source identity,
+ordered capture schemas and classifiers, semantic equality requirements,
+representation identity, lifetime/effects, and target adapters without
+serializing source offsets, private observation tags, hidden operand names or
+layout, LLVM types, or physical argument placement.
 
 ### TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001 — Exact captured Function aggregate values
 

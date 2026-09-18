@@ -11324,6 +11324,128 @@ fn repeated_captured_function_values_are_exact_freestanding_and_debuggable() {
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
 #[allow(clippy::too_many_lines)] // One session covers success, mismatch, rejection, artifacts, and GDB.
+fn repeated_captured_named_function_values_are_exact_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-NAMED-FUNCTION-001,
+    // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-001,
+    // TOPAL-FUNCTION-NESTED-001, TOPAL-TYPE-MATCH-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-repeated-captured-named-function-patterns");
+    let source = directory.join("repeated-captured-named-function-patterns.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/repeated-captured-named-function-patterns.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"42\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let differing_source = directory.join("differing-captured-named-functions.t");
+    let differing_executable = directory.join("differing");
+    fs::write(
+        &differing_source,
+        "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  left is fn (value : Int) -> Token\n    token\n  right is fn (value : Int) -> Token\n    token\n  repeat : Function is { operation, operation } 42\n  repeat (left, right)\ncompare (Value 1)\n",
+    )
+    .unwrap();
+    let differing_compiled = run(topalc().args([
+        "-o",
+        differing_executable.to_str().unwrap(),
+        differing_source.to_str().unwrap(),
+    ]));
+    assert!(
+        differing_compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&differing_compiled.stderr)
+    );
+    let differing = run(&mut Command::new(&differing_executable));
+    assert_eq!(differing.status.code(), Some(65));
+    assert_eq!(
+        differing.stderr,
+        b"error[E-ANONYMOUS-PATTERN-IDENTITY]: repeated pattern values differ\n"
+    );
+
+    let unsupported_source = directory.join("unsupported-captured-named-function.t");
+    let unsupported_executable = directory.join("unsupported");
+    fs::write(
+        &unsupported_source,
+        "use language (version is v0.1)\nToken is Union\n  Value : Int\n\ncompare is fn (token : Token) -> Int\n  operation is fn (value : Int) -> Token\n    token\n  repeat : Function is { function, function } 42\n  repeat (operation, operation)\ncompare (Value 1)\n",
+    )
+    .unwrap();
+    let unsupported = run(topalc().args([
+        "-o",
+        unsupported_executable.to_str().unwrap(),
+        unsupported_source.to_str().unwrap(),
+    ]));
+    assert!(!unsupported.status.success());
+    assert!(!unsupported_executable.exists());
+    assert!(!metadata_path(&unsupported_executable).exists());
+    let diagnostic = String::from_utf8_lossy(&unsupported.stderr);
+    assert!(
+        diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains("without exact capture equality"),
+        "{diagnostic}"
+    );
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break repeated-captured-named-function-patterns.t:10",
+            "-ex",
+            "break topal.runtime.int.compare",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "finish",
+            "-ex",
+            "whatis operation",
+            "-ex",
+            "print operation",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = enum Function"), "{text}");
+    assert!(text.contains("operation = <fn increase>"), "{text}");
+    assert!(!text.contains("operation repeated"), "{text}");
+    assert!(text.contains("topal.fn.anonymous"), "{text}");
+    assert!(text.contains("topal.fn.compare_2dnested"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers success, mismatch, rejection, artifacts, and GDB.
 fn repeated_captured_function_aggregate_values_are_exact_freestanding_and_debuggable() {
     // TOPAL-COMPILER-ANONYMOUS-REPEATED-CAPTURED-FUNCTION-AGGREGATE-001,
     // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,

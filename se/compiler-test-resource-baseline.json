@@ -2286,6 +2286,16 @@
       "cpu_time_ns": 159070,
       "memory_peak_bytes": 18657280,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/repeated-captured-named-function-patterns.t": {
+      "cpu_time_ns": 130147459,
+      "memory_peak_bytes": 41947136,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/repeated-captured-named-function-patterns.t": {
+      "cpu_time_ns": 152389,
+      "memory_peak_bytes": 18341888,
+      "samples_per_test": 500
     }
   }
 }

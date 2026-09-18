@@ -347,11 +347,15 @@ creates only the first source binding. Later same-classifier scalar occurrences
 become lexically ordered function-entry identity guards. They reuse direct
 exact integer, Rational, String/Character, or enum-like comparison. A
 capture-free Function compares its observation tag. When both operands retain
-the same captured anonymous source, that source receives one canonical tag
-across its private specializations and the boundary additionally forwards both
-already-evaluated ordered capture snapshots. The guard compares the source tag
-first and then every capture having admitted exact compiler equality. Missing,
-inconsistent, or non-equality capture facts fail before LLVM. Neither case
+the same captured anonymous source or captured named declaration identity, the
+boundary additionally forwards both already-evaluated ordered capture
+snapshots. Anonymous sources receive one canonical tag across their private
+specializations; captured named identity uses the exact source name and
+declaration set, initially for a non-escaping nested Function within its
+defining invocation. The guard compares callable identity first and then every
+capture having admitted exact compiler equality. A different callable identity
+mismatches without transporting the later capture state. Missing, inconsistent,
+or required non-equality capture facts fail before LLVM. Neither case
 invokes user Equality, conversion, canonical equivalence, or tag dispatch. A
 mismatch calls a Topal-owned diagnostic helper which writes through the Linux
 syscall service and exits 65 before the body. Repeated operands are
@@ -380,9 +384,9 @@ callable identities, ordered capture schemas/classifiers, semantic equality
 requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result, Sum, Range, Generator, refined, authority-bearing, unsupported
-capture classifiers, scalar identity for captured named or nested callables,
-Function containment outside Tuple/Record, and ordinary named-header repetition
-remain deferred with their broader representation and overload consequences.
+capture classifiers, escaping nested callable identity, Function containment
+outside Tuple/Record, and ordinary named-header repetition remain deferred with
+their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general

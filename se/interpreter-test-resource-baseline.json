@@ -1151,6 +1151,11 @@
       "cpu_time_ns": 10793979,
       "memory_peak_bytes": 18395136,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/repeated-captured-named-function-patterns.t": {
+      "cpu_time_ns": 4906720,
+      "memory_peak_bytes": 18284544,
+      "samples_per_test": 50
     }
   }
 }
