@@ -74,6 +74,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/decision-operand-expressions.t",
     "examples/language/diagnostic-controls.t",
     "examples/language/discard-function-pattern.t",
+    "examples/language/dynamic-infinity-results.t",
     "examples/language/dynamic-rational-int-validation.t",
     "examples/language/dynamic-rational-construction.t",
     "examples/language/effect-classifier.t",

@@ -202,11 +202,16 @@ infinity SHALL use the canonical finite embedding. The semantics SHALL hold at
 `-O0` without relying on an optional LLVM optimization. Closed root-scope
 negation, absolute value, addition, subtraction, and multiplication SHALL admit
 every statically proved total case in `TOPAL-NUM-INFINITY-ARITHMETIC-001` and
-SHALL diagnose every statically evident indeterminate case. A context-free
-constant, negative Nat infinity, dynamic indeterminate Result path, other
-infinity arithmetic, implicit cross-domain Int/Rational infinity conversion,
-or function, persistent, serialized, public, or compiled-library infinity
-boundary SHALL be rejected explicitly in this increment.
+SHALL diagnose every statically evident indeterminate case. When an Int or
+Rational multiplication has exactly one admitted infinity operand and the
+finite factor's zero-ness is not statically provable, it SHALL have the
+ordinary arithmetic `Result` classifier: zero SHALL return code
+`indeterminate` with source provenance and nonzero SHALL return the correctly
+signed infinity. A context-free constant, negative Nat infinity, other dynamic
+indeterminate Result path, other infinity arithmetic, implicit cross-domain
+Int/Rational infinity conversion, or function, persistent, serialized,
+public, or compiled-library infinity boundary SHALL be rejected explicitly in
+this increment.
 
 Linux x86-64 lowering MAY use immutable executable-private sentinel Int
 objects with reserved non-finite tags because the checker prevents those
@@ -214,10 +219,11 @@ objects from crossing a machine signature. Existing finite Int objects and
 their `topal-native/6` function representation SHALL remain unchanged. Exact
 comparison and output SHALL recognize the sentinels before finite limb logic;
 negation, absolute value, addition, subtraction, and multiplication SHALL
-recognize them before finite zero, sign, length, or limb logic; range operations
-SHALL reuse the existing opaque exact endpoint pointers. A violated checked
-indeterminate invariant SHALL fail closed rather than treating a sentinel as
-finite storage.
+recognize them before finite zero, sign, length, or limb logic. Dynamic
+multiplication helpers SHALL validate the infinity operand before constructing
+Result success or failure. Range operations SHALL reuse the existing opaque
+exact endpoint pointers. A violated checked indeterminate invariant SHALL fail
+closed rather than treating a sentinel as finite storage.
 Rational infinity MAY use a runtime-constructed Rational wrapper whose
 numerator is the matching sentinel and whose denominator is canonical one;
 construction, arithmetic normalization, comparison, display, and debugging

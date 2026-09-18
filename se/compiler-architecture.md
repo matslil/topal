@@ -372,9 +372,17 @@ finite storage logic. Rational arithmetic composes those operations and its
 canonical constructor returns a sentinel numerator over denominator one before
 finite greatest-common-divisor reduction. Thus correctness does not depend on
 constant folding. Opposite sums, equal-direction infinity subtraction, and
-zero products are source diagnostics; a runtime-dependent zero product remains
-closed until the ordinary indeterminate Result path is implemented. The
-runtime also fails closed if checked code violates that invariant.
+statically proven zero products are source diagnostics. A runtime-dependent
+zero product is an ordinary arithmetic `Result`, with zero producing the
+`indeterminate` code and nonzero returning the signed infinity. This path is
+restricted to closed root expressions: it reuses the private Result/Error
+representation and source provenance without admitting an infinity at a Topal
+function or external boundary. Dedicated Int and Rational helpers validate
+that one operand is the expected sentinel, test zero before finite arithmetic,
+and fail closed if checked code violates that invariant. At O0 the generator
+appends this runtime fragment only when the checked program contains the
+fallible operation; this is dependency selection rather than optional semantic
+optimization, and unrelated programs do not compile or carry the helpers.
 
 Finite `Rational` values are immutable objects containing two private Int
 pointers: a coprime numerator and a positive denominator. The compiler emits

@@ -2126,6 +2126,16 @@
       "cpu_time_ns": 405425,
       "memory_peak_bytes": 18423808,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/dynamic-infinity-results.t": {
+      "cpu_time_ns": 132302779,
+      "memory_peak_bytes": 42008576,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/dynamic-infinity-results.t": {
+      "cpu_time_ns": 214636,
+      "memory_peak_bytes": 18554880,
+      "samples_per_test": 500
     }
   }
 }

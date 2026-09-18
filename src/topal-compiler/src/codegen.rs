@@ -510,6 +510,7 @@ struct Generator<'a> {
     globals: Vec<String>,
     functions: Vec<String>,
     next_global: usize,
+    needs_infinity_result_runtime: bool,
     list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
     debug: DebugInfo,
 }
@@ -534,6 +535,7 @@ impl<'a> Generator<'a> {
             globals: Vec::new(),
             functions: Vec::new(),
             next_global: 0,
+            needs_infinity_result_runtime: false,
             list_int_runtime_fragments: BTreeSet::new(),
             debug,
         }
@@ -554,6 +556,10 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
+        if self.needs_infinity_result_runtime {
+            module.push_str(INFINITY_RESULT_RUNTIME);
+            module.push('\n');
+        }
         if self
             .list_int_runtime_fragments
             .iter()
@@ -5084,6 +5090,28 @@ impl<'a> Generator<'a> {
                 left.integer(),
                 right.integer(),
             ),
+            CompilerFallible::InfinityMultiply => {
+                self.needs_infinity_result_runtime = true;
+                match (&left, &right) {
+                    (LlValue::Int(left), LlValue::Int(right)) => (
+                        "int.try.multiply.infinity",
+                        "root.*(Int,Int)",
+                        CompilerType::Int,
+                        left.as_str(),
+                        right.as_str(),
+                    ),
+                    (LlValue::Rational(left), LlValue::Rational(right)) => (
+                        "rational.try.multiply.infinity",
+                        "root.*(Rational,Rational)",
+                        CompilerType::Rational,
+                        left.as_str(),
+                        right.as_str(),
+                    ),
+                    _ => {
+                        unreachable!("checked dynamic infinity multiplication has one exact domain")
+                    }
+                }
+            }
         };
         let domain_global = self.emit_string_value(domain, body, span);
         let source_global = self.emit_string_value(self.source_name, body, span);
@@ -10578,6 +10606,7 @@ fn llvm_string(value: &str) -> String {
 }
 
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
+const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
@@ -11059,6 +11088,32 @@ mod tests {
         assert!(llvm.contains("label %make.infinity"));
         assert!(llvm.contains("name: \"Int\""));
         assert!(llvm.contains("name: \"Rational\""));
+        assert!(!llvm.contains("try.multiply.infinity"));
+    }
+
+    #[test]
+    fn emits_dynamic_infinity_multiplication_through_result_runtime_paths() {
+        // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/dynamic-infinity-results.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/dynamic-infinity-results.t").emit();
+
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.int.try.multiply.infinity")
+                .count(),
+            2
+        );
+        assert_eq!(
+            llvm.matches("call ptr @topal.runtime.rational.try.multiply.infinity")
+                .count(),
+            2
+        );
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 3"));
+        assert!(llvm.contains("%exactly.one.infinity = xor i1"));
+        assert!(llvm.contains("br i1 %valid, label %validate.zero, label %invalid"));
+        assert!(llvm.contains("name: \"Result (Int, lang arithmetic ArithmeticErrorCode)\""));
+        assert!(llvm.contains("name: \"Result (Rational, lang arithmetic ArithmeticErrorCode)\""));
     }
 
     #[test]
