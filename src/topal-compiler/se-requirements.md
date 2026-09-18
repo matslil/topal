@@ -3518,13 +3518,55 @@ the shared corpus, and separate resource baselines. This shall add no generic
 aggregate matcher, pattern table, allocation, callback, indirect dispatch,
 foreign dependency, C/C++ runtime, other-language standard library, public
 aggregate ABI, or `topal-native/6` revision. Result, Sum, Range, Generator,
-refined, authority-bearing, and Function-containing aggregate identity;
-ordinary named-function header repetition;
+refined, authority-bearing, and Function-containing aggregate identity outside
+`TOPAL-COMP-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`; ordinary named-function
+header repetition;
 publication; and library metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`,
 `TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
 `TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5v.
+
+## TOPAL-COMP-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001 — Exact capture-free Function aggregate values
+
+The checked compiler model shall admit a repeated anonymous-pattern name with
+the same exact recursively nested Tuple or Record classifier containing
+Function leaves when every Function leaf retains one exact capture-free
+callable identity and every other leaf has existing exact compiler equality.
+It shall preserve complete recursive structural facts for the first and later
+occurrences and reject missing, opaque, or capture-bearing callable facts
+before LLVM lowering.
+
+The first occurrence shall remain the sole body binding and DWARF parameter.
+Every later occurrence shall retain its complete recursive private aggregate
+operand and a lexically ordered pre-body guard. Direct recursive Tuple/Record
+comparison shall compare each Function observation field as i32 without using
+that field for dispatch. Definitions and calls shall use matching exact private
+`fastcc` aggregate signatures, with physical AMD64 placement left to LLVM's
+qualified target data layout. Failure shall reuse the Topal-owned syscall
+diagnostic and exit 65.
+
+Tests shall cover named, symbolic, and non-capturing anonymous Function leaves,
+nested Tuple/Record values, exact interpreter modes, native success and mismatch
+failure, capture-bearing rejection, checked structural facts, direct guarded IR,
+freestanding artifact properties, full O0 aggregate GDB observation,
+reversible debugging, the shared corpus, and separate resource baselines. This
+shall add no closure or environment object, allocation, generic matcher,
+pattern table, function pointer, indirect call, callback, dispatch table,
+foreign dependency, C/C++ runtime, other-language standard library, public
+aggregate/callable ABI, or `topal-native/6` revision. Capture-bearing repeated
+identity, dynamic aggregate selection, Function containment in other
+aggregates, ordinary named-function header repetition, publication, and
+library adapters remain deferred. Compiled-library metadata shall eventually
+encode canonical aggregate paths and stable callable/representation identities
+without serializing private LLVM types, observation tags, or target-specific
+argument placement. This realizes
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`,
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-001`,
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`, `TOPAL-TYPE-MATCH-001`,
+`TOPAL-FUNCTION-ANONYMOUS-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
+3b2-b5ac.
 
 ## TOPAL-COMP-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 

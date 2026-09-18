@@ -3217,10 +3217,44 @@ Mismatch reporting and status SHALL remain those of
 This rule SHALL introduce no generic aggregate matcher, pattern table,
 allocation, callback, indirect dispatch, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate ABI, or native-ABI revision.
-Result, Sum, Range, Generator, refined, authority-bearing, and
-Function-containing aggregate identity; ordinary named-function header
-repetition; publication; and library
+Result, Sum, Range, Generator, refined, authority-bearing, and Function-containing
+aggregate identity outside
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001`; ordinary
+named-function header repetition; publication; and library
 metadata/adapters remain deferred.
+
+### TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001 — Exact capture-free Function aggregate values
+
+A repeated anonymous-pattern name MAY match the same exact recursively nested
+Tuple or Record classifier containing Function leaves when every Function leaf
+retains one exact named, symbolic, non-capturing anonymous, or other
+capture-free callable identity under `TOPAL-COMPILER-FUNCTION-AGGREGATE-001`.
+Every non-Function leaf SHALL have exact compiler equality already admitted by
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001`. A missing, opaque, or
+capture-bearing callable fact SHALL be rejected before LLVM lowering.
+
+The first occurrence SHALL remain the sole source binding and DWARF parameter.
+Every later occurrence SHALL retain the same recursive private aggregate
+representation and compare fields in semantic order before body entry. A
+Function leaf SHALL compare its deterministic private i32 observation field;
+that field SHALL NOT select or dispatch executable code. Mismatch reporting
+and status SHALL remain those of
+`TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001`. LLVM SHALL own physical AMD64
+aggregate argument placement from the qualified target data layout.
+
+Tests SHALL cover named, symbolic, and non-capturing anonymous Function leaves,
+nested Tuple/Record values, exact success and mismatch behavior,
+capture-bearing rejection, structural guarded IR, interpreter parity and
+reversible history, freestanding execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
+or environment object, allocation, generic matcher, pattern table, function
+pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
+runtime, other-language standard library, public aggregate/callable ABI, or
+native-ABI revision. Capture-bearing repeated identity, dynamic aggregate
+selection, Function containment in other aggregates, ordinary named-function
+header repetition, publication, and library adapters remain deferred. Future
+compiled-library metadata SHALL encode canonical aggregate paths and stable
+callable/representation identities independently of private LLVM types,
+observation tags, and target-specific argument placement.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 

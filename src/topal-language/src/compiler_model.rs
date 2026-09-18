@@ -16753,6 +16753,9 @@ impl Analyzer {
                     "unsupported inferred anonymous-function parameter",
                 ));
             }
+            let structural_facts = compiler_type_is_function_aggregate(&argument.value_type)
+                .then(|| self.known_structural_value_facts(facts, call_environment))
+                .transpose()?;
             let repeated = validate_repeated_anonymous_pattern_parameter(
                 &self.source,
                 &lowered_parameters,
@@ -16762,6 +16765,23 @@ impl Analyzer {
                 name_span,
             )?;
             if let Some(first_parameter) = repeated {
+                if compiler_type_is_function_aggregate(&argument.value_type) {
+                    let current = structural_facts
+                        .as_ref()
+                        .expect("Function aggregate argument retains structural facts");
+                    let first = environment
+                        .get(&name)
+                        .expect("first repeated pattern occurrence retains binding facts");
+                    if !function_aggregate_binding_facts_capture_free(&argument.value_type, first)
+                        || !function_aggregate_facts_capture_free(&argument.value_type, current)
+                    {
+                        return Err(unsupported(
+                            &self.source,
+                            name_span,
+                            "repeated anonymous Function aggregate identity requires exact capture-free callable facts",
+                        ));
+                    }
+                }
                 pattern_identities.push(CompilerPatternIdentity {
                     first_parameter,
                     repeated_parameter: lowered_parameters.len(),
@@ -16793,8 +16813,14 @@ impl Analyzer {
                         closed_int_range: None,
                         list_count: Self::known_list_count(facts, call_environment),
                         list_string_keys: Self::known_list_string_keys(facts, call_environment),
-                        tuple_fields: Vec::new(),
-                        record_fields: BTreeMap::new(),
+                        tuple_fields: structural_facts
+                            .as_ref()
+                            .map(|facts| facts.tuple_fields.clone())
+                            .unwrap_or_default(),
+                        record_fields: structural_facts
+                            .as_ref()
+                            .map(|facts| facts.record_fields.clone())
+                            .unwrap_or_default(),
                         namespace: None,
                         callable,
                         static_capability: None,
@@ -21784,6 +21810,68 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
     }
 }
 
+fn callable_facts_capture_free(callable: &CompilerCallableFacts) -> bool {
+    match callable {
+        CompilerCallableFacts::Named { captures, .. } => captures.is_empty(),
+        CompilerCallableFacts::Symbolic(_) => true,
+        CompilerCallableFacts::Anonymous { captures, .. } => captures.is_empty(),
+    }
+}
+
+fn function_aggregate_facts_capture_free(
+    value_type: &CompilerType,
+    facts: &StaticValueFacts,
+) -> bool {
+    match value_type {
+        CompilerType::Function => facts
+            .callable
+            .as_ref()
+            .is_some_and(callable_facts_capture_free),
+        CompilerType::Tuple(fields) => {
+            fields.len() == facts.tuple_fields.len()
+                && fields
+                    .iter()
+                    .zip(&facts.tuple_fields)
+                    .all(|(field, facts)| function_aggregate_facts_capture_free(field, facts))
+        }
+        CompilerType::Record(fields) => {
+            fields.len() == facts.record_fields.len()
+                && fields.iter().all(|(name, field)| {
+                    facts
+                        .record_fields
+                        .get(name)
+                        .is_some_and(|facts| function_aggregate_facts_capture_free(field, facts))
+                })
+        }
+        _ => true,
+    }
+}
+
+fn function_aggregate_binding_facts_capture_free(
+    value_type: &CompilerType,
+    facts: &BindingFacts,
+) -> bool {
+    match value_type {
+        CompilerType::Tuple(fields) => {
+            fields.len() == facts.tuple_fields.len()
+                && fields
+                    .iter()
+                    .zip(&facts.tuple_fields)
+                    .all(|(field, facts)| function_aggregate_facts_capture_free(field, facts))
+        }
+        CompilerType::Record(fields) => {
+            fields.len() == facts.record_fields.len()
+                && fields.iter().all(|(name, field)| {
+                    facts
+                        .record_fields
+                        .get(name)
+                        .is_some_and(|facts| function_aggregate_facts_capture_free(field, facts))
+                })
+        }
+        _ => false,
+    }
+}
+
 fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFacts> {
     let mut returned = Vec::new();
     if let Some(CompilerCallableFacts::Anonymous { captures, .. }) = &facts.callable {
@@ -21933,7 +22021,21 @@ fn compiler_repeated_pattern_identity_supported(value_type: &CompilerType) -> bo
             | CompilerType::Record(_)
             | CompilerType::Optional(_)
             | CompilerType::List(_)
-    ) && compiler_equality_supported(value_type))
+    ) && (compiler_equality_supported(value_type)
+        || compiler_repeated_function_aggregate_identity_supported(value_type)))
+}
+
+fn compiler_repeated_function_aggregate_identity_supported(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Function => true,
+        CompilerType::Tuple(fields) => fields
+            .iter()
+            .all(compiler_repeated_function_aggregate_identity_supported),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .all(|(_, field)| compiler_repeated_function_aggregate_identity_supported(field)),
+        _ => compiler_equality_supported(value_type),
+    }
 }
 
 fn validate_repeated_anonymous_pattern_parameter(
@@ -31971,6 +32073,50 @@ mod tests {
                 .message
                 .contains("repeated anonymous pattern identity for `Result")
         );
+    }
+
+    #[test]
+    fn models_capture_free_function_aggregate_pattern_identity() {
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-FUNCTION-AGGREGATE-001,
+        // TOPAL-COMPILER-ANONYMOUS-REPEATED-AGGREGATE-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-001, TOPAL-TYPE-MATCH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/repeated-function-aggregate-patterns.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected repeated Function-aggregate pattern results")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(
+            results
+                .iter()
+                .all(|result| exact_int(result) == Some(BigInt::from(42)))
+        );
+
+        let guarded = program
+            .functions
+            .iter()
+            .filter(|function| !function.pattern_identities.is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(guarded.len(), 3);
+        assert!(guarded.iter().all(|function| {
+            function.pattern_identities.as_slice()
+                == [CompilerPatternIdentity {
+                    first_parameter: 0,
+                    repeated_parameter: 1,
+                    span: function.parameters[1].span,
+                }]
+                && compiler_type_is_function_aggregate(&function.parameters[0].value_type)
+                && function.parameters[0].value_type == function.parameters[1].value_type
+        }));
+
+        let capturing = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 1\ncaptured : Function is { value } value + offset\npackage is (operation is captured, value is 41)\nrepeat : Function is { value, value } 42\nrepeat (package, package)\n",
+        )
+        .unwrap_err();
+        assert_eq!(capturing.code, "E-COMPILER-UNSUPPORTED");
+        assert!(capturing.message.contains("capture-free callable facts"));
     }
 
     #[test]

@@ -354,12 +354,17 @@ The same metadata and control-flow shape extends to repeated aggregate values
 only when the private boundary and exact comparison already exist: recursive
 Tuple/Record fields are decomposed in semantic order, while admitted Optional
 and List pointers reuse their Topal-owned tag/payload or ordered-entry
-comparisons. LLVM still owns aggregate register/stack coercion, and the first
+comparisons. A recursive Tuple/Record may also contain capture-free Function
+leaves when the frontend retains one exact callable fact at every path. Those
+leaves compare only their deterministic private i32 observation fields; the
+facts continue to select direct specializations, and the fields never dispatch
+control flow. Missing, opaque, or capture-bearing callable facts fail before
+LLVM. LLVM still owns aggregate register/stack coercion, and the first
 occurrence alone receives the existing target-derived debug shadow. No generic
 aggregate matcher or allocation identity is introduced. Result, Sum, Range,
-Generator, refined, authority-bearing, and Function-containing aggregates and
-ordinary named-header repetition remain
-deferred with their broader representation and overload consequences.
+Generator, refined, authority-bearing, capture-bearing Function aggregates,
+Function containment outside Tuple/Record, and ordinary named-header repetition
+remain deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general
