@@ -2807,8 +2807,8 @@ library, public callable ABI, or native ABI revision is permitted.
 
 Lexical data captures, anonymous product parameter patterns, escaping closure
 storage, Function results or aggregate Function boundaries, and published
-callable interfaces remain outside this increment and SHALL be rejected rather
-than referencing storage from another call frame.
+callable interfaces are not admitted by this rule alone; unsupported forms
+SHALL be rejected rather than referencing storage from another call frame.
 
 ### TOPAL-COMPILER-ANONYMOUS-CAPTURE-001 — Private anonymous captures and results
 
@@ -2835,12 +2835,47 @@ DWARF/GDB SHALL expose explicit parameters, material captures under their source
 names, the anonymous source frame, and returned Function locals at `-O0`.
 
 A capturing anonymous value SHALL NOT cross a Function parameter or result
-boundary. Captures without an admitted private representation, product
-parameter patterns, dynamic escape, aggregate containment, publication, and
-library boundaries SHALL be rejected before LLVM lowering. This rule SHALL
-introduce no environment object, function pointer, indirect call, closure or
-Function runtime, foreign dependency, C/C++ runtime, other-language standard
-library, public callable ABI, or native-ABI revision.
+boundary. Captures without an admitted private representation, dynamic escape,
+aggregate containment, publication, and library boundaries SHALL be rejected
+before LLVM lowering. This rule SHALL introduce no environment object,
+function pointer, indirect call, closure or Function runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public callable
+ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
+
+An inferred anonymous function MAY contain a flat positional product parameter
+pattern in any source parameter position. Each such pattern SHALL consume one
+Tuple operand, require the same field count, and bind its fields in source order
+under `TOPAL-FUNCTION-ANONYMOUS-001`. A bound or directly applied function MAY
+capture the private immutable data admitted by
+`TOPAL-COMPILER-ANONYMOUS-CAPTURE-001`, and a non-capturing function with such a
+pattern MAY pass through the admitted private Function-parameter or result
+paths.
+
+The complete application operand SHALL be evaluated exactly once before any
+field binding. This applies both to an opaque Tuple produced by a call or local
+binding and to the outer positional product supplied to a multi-parameter
+anonymous function. The checked compiler SHALL preserve any sound field facts
+from a direct Tuple construction without re-evaluating its field expressions.
+Non-Tuple operands, field-count mismatches, duplicate field bindings, and field
+representations outside the admitted private function boundary SHALL fail
+before the anonymous body or LLVM lowering.
+
+The specialized private `fastcc` signature SHALL flatten ordinary binding
+parameters and product-pattern fields in lexical source order, followed by any
+hidden capture parameters. This machine flattening SHALL NOT change the source
+arity or `<anonymous fn/N>` identity. LLVM SHALL own physical AMD64 placement.
+DWARF/GDB SHALL expose every non-discarded destructured field as a source-named
+parameter with its exact classifier and value, plus any material capture.
+
+The once-only operand binding is compiler-private SSA state, not source-visible
+storage. This rule SHALL introduce no product-pattern object, environment
+object, function pointer, indirect call, closure or Function runtime, foreign
+dependency, C/C++ runtime, other-language standard library, public aggregate or
+callable ABI, or native-ABI revision. Nested product patterns, repeated-name
+equality patterns, escaping/capturing Function boundaries, aggregate
+containment, publication, and library metadata/adapters remain deferred.
 
 ### TOPAL-COMPILER-NESTED-FUNCTION-001 — Private direct nested lexical functions
 

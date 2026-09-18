@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 214);
+    assert_eq!(examples.len(), 215);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3064,6 +3064,25 @@ fn records_anonymous_captures_and_results_reversibly() {
     assert!(stdout.contains("function.anonymous.captured"));
     assert!(stdout.contains("function.anonymous.called"));
     assert!(stdout.contains("<anonymous fn/1>"));
+}
+
+#[test]
+fn records_anonymous_product_functions_reversibly() {
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}anonymous-product-functions.debug"),
+            &language_example("anonymous-product-functions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("TOPAL-FUNCTION-ANONYMOUS-001"));
+    assert!(stdout.contains("function.anonymous.captured"));
+    assert!(stdout.contains("function.anonymous.called"));
+    assert!(stdout.contains("<anonymous fn/2>"));
 }
 
 #[test]

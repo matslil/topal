@@ -229,12 +229,17 @@ invocation passes represented immutable captures after the explicit operands
 as deterministic exact private parameters, so the anonymous frame never reads
 another native frame. A non-capturing value may additionally pass through a
 specialized private Function parameter or result. Multi-parameter calls
-decompose their positional product in source order, and flat mixed symbolic
-applications are explicitly regrouped left-to-right before ordinary operation
-checking. The observation tag exists only for `<anonymous fn/N>` display and
-DWARF. Capturing Function parameters/results, unsupported captured state,
-escaping environments, and a public closure representation remain one
-coordinated later design.
+decompose their positional product in source order. A flat product parameter
+pattern first materializes its complete Tuple operand as compiler-private SSA,
+then projects every field exactly once in lexical order. The generated private
+signature flattens those fields among ordinary source parameters and appends
+captures afterward, while source arity and callable identity continue to count
+patterns rather than machine parameters. Flat mixed symbolic applications are
+explicitly regrouped left-to-right before ordinary operation checking. The
+observation tag exists only for `<anonymous fn/N>` display and DWARF. Capturing
+Function parameters/results, nested/repeated-name patterns, unsupported
+captured state, escaping environments, and a public closure representation
+remain one coordinated later design.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general

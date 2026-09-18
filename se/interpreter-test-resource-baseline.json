@@ -1086,6 +1086,11 @@
       "cpu_time_ns": 4932120,
       "memory_peak_bytes": 18427904,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/anonymous-product-functions.t": {
+      "cpu_time_ns": 6679100,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 50
     }
   }
 }

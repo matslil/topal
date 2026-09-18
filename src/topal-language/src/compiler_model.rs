@@ -811,6 +811,10 @@ pub enum CompilerExpressionKind {
         payload: Option<Box<CompilerExpression>>,
     },
     Tuple(Vec<CompilerExpression>),
+    TupleField {
+        tuple: Box<CompilerExpression>,
+        index: usize,
+    },
     Record(Vec<(String, CompilerExpression)>),
     RecordReconstruct {
         base: Box<CompilerExpression>,
@@ -821,6 +825,11 @@ pub enum CompilerExpressionKind {
         label: String,
     },
     Block(Box<CompilerBlock>),
+    PrivateBinding {
+        storage_name: String,
+        value: Box<CompilerExpression>,
+        body: Box<CompilerExpression>,
+    },
     Local(String),
     InfinityLocal {
         storage_name: String,
@@ -15827,79 +15836,160 @@ impl Analyzer {
                 "an anonymous Function value accepts exactly one direct or product operand",
             ));
         };
-        if let Some(pattern_span) = parameters.iter().find_map(|parameter| match parameter {
-            AnonymousPattern::Binding(_) => None,
-            AnonymousPattern::Product { span, .. } => Some(*span),
-        }) {
-            return Err(unsupported(
-                &self.source,
-                pattern_span,
-                "anonymous product parameter pattern",
-            ));
-        }
-
         let argument = self.analyze_expression(argument_source, call_environment)?;
-        let mut arguments = if parameters.len() == 1 {
-            vec![argument]
-        } else if let CompilerExpressionKind::Tuple(values) = argument.kind {
-            values
-        } else if let CompilerType::Tuple(fields) = &argument.value_type {
-            if fields.len() != parameters.len() {
+        let destructures_product = parameters
+            .iter()
+            .any(|parameter| matches!(parameter, AnonymousPattern::Product { .. }));
+        let materialize_argument = parameters.len() != 1 || destructures_product;
+        let literal_fields = match &argument.kind {
+            CompilerExpressionKind::Tuple(fields) => Some(fields.clone()),
+            _ => None,
+        };
+        let (parameter_arguments, parameter_facts, private_argument) = if materialize_argument {
+            let storage_name = format!("topal.anonymous.argument.{}", call_span.start);
+            let local = CompilerExpression {
+                kind: CompilerExpressionKind::Local(storage_name.clone()),
+                value_type: argument.value_type.clone(),
+                int_range: argument.int_range.clone(),
+                rational_value: argument.rational_value.clone(),
+                span: argument.span,
+            };
+            let (values, facts) = if parameters.len() == 1 {
+                (vec![local], vec![Some(argument.clone())])
+            } else if let CompilerType::Tuple(fields) = &argument.value_type {
+                if fields.len() != parameters.len() {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-ANONYMOUS-FUNCTION-ARITY",
+                        argument_source.span(),
+                        format!(
+                            "anonymous function expects {} arguments, found {}",
+                            parameters.len(),
+                            fields.len()
+                        ),
+                    ));
+                }
+                let values = fields
+                    .iter()
+                    .enumerate()
+                    .map(|(index, value_type)| CompilerExpression {
+                        kind: CompilerExpressionKind::TupleField {
+                            tuple: Box::new(local.clone()),
+                            index,
+                        },
+                        value_type: value_type.clone(),
+                        int_range: literal_fields
+                            .as_ref()
+                            .and_then(|values| values[index].int_range.clone()),
+                        rational_value: literal_fields
+                            .as_ref()
+                            .and_then(|values| values[index].rational_value.clone()),
+                        span: argument.span,
+                    })
+                    .collect();
+                let facts = (0..fields.len())
+                    .map(|index| literal_fields.as_ref().map(|values| values[index].clone()))
+                    .collect();
+                (values, facts)
+            } else {
                 return Err(source_diagnostic(
                     &self.source,
-                    "E-ANONYMOUS-FUNCTION-ARITY",
+                    "E-ANONYMOUS-ARGUMENT-PACKAGE",
                     argument_source.span(),
                     format!(
-                        "anonymous function expects {} arguments, found {}",
+                        "anonymous function expects {} arguments packaged as a tuple, found `{}`",
                         parameters.len(),
-                        fields.len()
+                        argument.value_type.name()
                     ),
                 ));
-            }
-            return Err(unsupported(
-                &self.source,
-                argument_source.span(),
-                "opaque anonymous argument product decomposition",
-            ));
+            };
+            (values, facts, Some((storage_name, argument)))
         } else {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-ANONYMOUS-ARGUMENT-PACKAGE",
-                argument_source.span(),
-                format!(
-                    "anonymous function expects {} arguments packaged as a tuple, found `{}`",
-                    parameters.len(),
-                    argument.value_type.name()
-                ),
-            ));
+            (vec![argument], vec![None], None)
         };
-        if arguments.len() != parameters.len() {
-            return Err(source_diagnostic(
-                &self.source,
-                "E-ANONYMOUS-FUNCTION-ARITY",
-                argument_source.span(),
-                format!(
-                    "anonymous function expects {} arguments, found {}",
-                    parameters.len(),
-                    arguments.len()
-                ),
-            ));
+
+        let mut flattened_arguments = Vec::new();
+        for ((parameter, argument), argument_facts) in parameters
+            .iter()
+            .zip(parameter_arguments)
+            .zip(parameter_facts)
+        {
+            match parameter {
+                AnonymousPattern::Binding(name_span) => {
+                    flattened_arguments.push((*name_span, argument, argument_facts));
+                }
+                AnonymousPattern::Product {
+                    bindings,
+                    span: pattern_span,
+                } => {
+                    let CompilerType::Tuple(field_types) = &argument.value_type else {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-ANONYMOUS-PRODUCT-PATTERN",
+                            argument.span,
+                            "anonymous product pattern requires a positional product",
+                        ));
+                    };
+                    if bindings.len() != field_types.len() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-ANONYMOUS-PRODUCT-PATTERN",
+                            *pattern_span,
+                            format!(
+                                "anonymous product pattern expects {} fields, found {}",
+                                bindings.len(),
+                                field_types.len()
+                            ),
+                        ));
+                    }
+                    let literal_product_fields = argument_facts.and_then(|facts| {
+                        if let CompilerExpressionKind::Tuple(fields) = facts.kind {
+                            Some(fields)
+                        } else {
+                            None
+                        }
+                    });
+                    flattened_arguments.extend(bindings.iter().zip(field_types).enumerate().map(
+                        |(index, (binding, value_type))| {
+                            (
+                                *binding,
+                                CompilerExpression {
+                                    kind: CompilerExpressionKind::TupleField {
+                                        tuple: Box::new(argument.clone()),
+                                        index,
+                                    },
+                                    value_type: value_type.clone(),
+                                    int_range: literal_product_fields
+                                        .as_ref()
+                                        .and_then(|values| values[index].int_range.clone()),
+                                    rational_value: literal_product_fields
+                                        .as_ref()
+                                        .and_then(|values| values[index].rational_value.clone()),
+                                    span: argument.span,
+                                },
+                                literal_product_fields
+                                    .as_ref()
+                                    .map(|values| values[index].clone()),
+                            )
+                        },
+                    ));
+                }
+            }
         }
 
         let mut environment = BTreeMap::new();
-        let mut lowered_parameters = Vec::with_capacity(parameters.len());
+        let mut lowered_parameters = Vec::with_capacity(flattened_arguments.len());
+        let mut arguments = Vec::with_capacity(flattened_arguments.len() + captures.len());
         let mut declared = BTreeSet::new();
-        for (parameter, argument) in parameters.iter().zip(&arguments) {
-            let AnonymousPattern::Binding(name_span) = parameter else {
-                unreachable!("anonymous product patterns were rejected above")
-            };
-            let name = self.source.slice(*name_span).to_owned();
+        for (name_span, argument, argument_facts) in flattened_arguments {
+            let facts = argument_facts.as_ref().unwrap_or(&argument);
+            let name = self.source.slice(name_span).to_owned();
             let discarded = name == "_";
             if !discarded && !declared.insert(name.clone()) {
                 return Err(source_diagnostic(
                     &self.source,
                     "E-DUPLICATE-BINDING",
-                    *name_span,
+                    name_span,
                     format!("`{name}` is already declared in this parameter pattern"),
                 ));
             }
@@ -15920,30 +16010,27 @@ impl Analyzer {
                         origin: name_span.start,
                         runtime_bound: true,
                         value_type: argument.value_type.clone(),
-                        int_range: argument.int_range.clone(),
-                        rational_value: argument.rational_value.clone(),
-                        infinity_negative: compiler_infinity_direction(argument),
-                        string_value: exact_string(argument),
+                        int_range: facts.int_range.clone(),
+                        rational_value: facts.rational_value.clone(),
+                        infinity_negative: compiler_infinity_direction(facts),
+                        string_value: exact_string(facts),
                         closed_int_range: None,
-                        list_count: Self::known_list_count(argument, call_environment),
-                        list_string_keys: Self::known_list_string_keys(argument, call_environment),
+                        list_count: Self::known_list_count(facts, call_environment),
+                        list_string_keys: Self::known_list_string_keys(facts, call_environment),
                         record_fields: BTreeMap::new(),
                         namespace: None,
-                        callable: self.known_callable(
-                            argument,
-                            call_environment,
-                            argument.span.start,
-                        )?,
+                        callable: self.known_callable(facts, call_environment, facts.span.start)?,
                         static_capability: None,
                     },
                 );
             }
+            arguments.push(argument.clone());
             lowered_parameters.push(CompilerParameter {
                 name,
                 discarded,
                 value_type: argument.value_type.clone(),
-                int_range: argument.int_range.clone(),
-                span: *name_span,
+                int_range: facts.int_range.clone(),
+                span: name_span,
             });
         }
 
@@ -16042,12 +16129,27 @@ impl Analyzer {
             is_static: static_context,
             declared_effects: None,
         });
-        Ok(CompilerExpression {
+        let call = CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
-            value_type: result_type,
-            int_range,
-            rational_value,
+            value_type: result_type.clone(),
+            int_range: int_range.clone(),
+            rational_value: rational_value.clone(),
             span: call_span,
+        };
+        Ok(if let Some((storage_name, value)) = private_argument {
+            CompilerExpression {
+                kind: CompilerExpressionKind::PrivateBinding {
+                    storage_name,
+                    value: Box::new(value),
+                    body: Box::new(call),
+                },
+                value_type: result_type,
+                int_range,
+                rational_value,
+                span: call_span,
+            }
+        } else {
+            call
         })
     }
 
@@ -21158,6 +21260,9 @@ fn compiler_expression_is_closed_with(
         CompilerExpressionKind::Tuple(values) => values
             .iter()
             .all(|value| compiler_expression_is_closed_with(value, bound)),
+        CompilerExpressionKind::TupleField { tuple, .. } => {
+            compiler_expression_is_closed_with(tuple, bound)
+        }
         CompilerExpressionKind::Record(fields) => fields
             .iter()
             .all(|(_, value)| compiler_expression_is_closed_with(value, bound)),
@@ -21168,6 +21273,18 @@ fn compiler_expression_is_closed_with(
                     .all(|(_, value)| compiler_expression_is_closed_with(value, bound))
         }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
+        CompilerExpressionKind::PrivateBinding {
+            storage_name,
+            value,
+            body,
+        } => {
+            if !compiler_expression_is_closed_with(value, bound) {
+                return false;
+            }
+            let mut nested = bound.clone();
+            nested.insert(storage_name.clone());
+            compiler_expression_is_closed_with(body, &nested)
+        }
         CompilerExpressionKind::Local(name)
         | CompilerExpressionKind::InfinityLocal {
             storage_name: name, ..
@@ -29749,11 +29866,13 @@ mod tests {
         };
         assert_eq!(exact_int(&results[0]), Some(BigInt::from(42)));
         assert_eq!(exact_int(&results[1]), Some(BigInt::from(42)));
-        assert!(
-            results
-                .iter()
-                .all(|result| matches!(result.kind, CompilerExpressionKind::Call { .. }))
-        );
+        assert!(results.iter().all(|result| match &result.kind {
+            CompilerExpressionKind::Call { .. } => true,
+            CompilerExpressionKind::PrivateBinding { body, .. } => {
+                matches!(body.kind, CompilerExpressionKind::Call { .. })
+            }
+            _ => false,
+        }));
 
         let left_associative = analyze_for_compiler(
             "use language (version is v0.1)\ncalculate is { value } value + 3 * 4\ncalculate 2\n",
@@ -29847,6 +29966,115 @@ mod tests {
                 analyze_for_compiler(rejected).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
             );
+        }
+    }
+
+    #[test]
+    fn models_private_anonymous_product_patterns() {
+        // TOPAL-COMPILER-ANONYMOUS-PRODUCT-001,
+        // TOPAL-FUNCTION-ANONYMOUS-001, TOPAL-TYPE-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/anonymous-product-functions.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected four anonymous product calls")
+        };
+        assert_eq!(results.len(), 4);
+        assert!(
+            results
+                .iter()
+                .all(|result| result.value_type == CompilerType::Int)
+        );
+        assert_eq!(exact_int(&results[2]), Some(BigInt::from(42)));
+        assert_eq!(exact_int(&results[3]), Some(BigInt::from(42)));
+
+        let anonymous = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name.starts_with("<anonymous fn/"))
+            .collect::<Vec<_>>();
+        assert_eq!(anonymous.len(), 4);
+        assert!(anonymous.iter().any(|function| {
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .eq(["left", "right", "offset"])
+        }));
+        assert!(anonymous.iter().any(|function| {
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .eq(["left", "right", "extra"])
+        }));
+        assert!(anonymous.iter().all(|function| {
+            function
+                .parameters
+                .iter()
+                .all(|parameter| parameter.value_type == CompilerType::Int)
+        }));
+
+        let CompilerExpressionKind::PrivateBinding { value, body, .. } = &results[0].kind else {
+            panic!("expected once-only materialization of the Tuple-producing call")
+        };
+        assert!(matches!(value.kind, CompilerExpressionKind::Call { .. }));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected a direct anonymous call after destructuring")
+        };
+        assert_eq!(arguments.len(), 2);
+        assert!(
+            arguments
+                .iter()
+                .all(|argument| matches!(argument.kind, CompilerExpressionKind::TupleField { .. }))
+        );
+
+        let heterogeneous = analyze_for_compiler(
+            "use language (version is v0.1)\nchoose : Function is { (condition, text) } text\nchoose (true, \"kept\")\n",
+        )
+        .unwrap();
+        let function = &heterogeneous.functions[0];
+        assert_eq!(
+            function
+                .parameters
+                .iter()
+                .map(|parameter| parameter.value_type.clone())
+                .collect::<Vec<_>>(),
+            [CompilerType::Boolean, CompilerType::String]
+        );
+        assert_eq!(function.result_type, CompilerType::String);
+        assert_eq!(heterogeneous.main.result.value_type, CompilerType::String);
+
+        let boundary = analyze_for_compiler(
+            "use language (version is v0.1)\napply is fn (operation : Function, values : (Int, Int)) -> Int\n  operation values\napply ({ (left, right) } left + right, (20, 22))\n",
+        )
+        .unwrap();
+        assert_eq!(boundary.main.result.value_type, CompilerType::Int);
+        assert!(boundary.functions.iter().any(|function| {
+            function.source_name == "<anonymous fn/1>"
+                && function
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.name.as_str())
+                    .eq(["left", "right"])
+        }));
+
+        for (source, code) in [
+            (
+                "use language (version is v0.1)\noperation : Function is { (left, right) } left + right\noperation 42\n",
+                "E-ANONYMOUS-PRODUCT-PATTERN",
+            ),
+            (
+                "use language (version is v0.1)\noperation : Function is { (left, right) } left + right\noperation (1, 2, 3)\n",
+                "E-ANONYMOUS-PRODUCT-PATTERN",
+            ),
+            (
+                "use language (version is v0.1)\noperation : Function is { (value, value) } value\noperation (1, 1)\n",
+                "E-DUPLICATE-BINDING",
+            ),
+        ] {
+            assert_eq!(analyze_for_compiler(source).unwrap_err().code, code);
         }
     }
 
