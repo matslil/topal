@@ -12890,6 +12890,187 @@ fn function_aggregate_packaged_fields_retain_recursive_callable_facts() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers represented containers, rejection, artifacts, and GDB.
+fn container_packaged_fields_retain_exact_private_representations() {
+    // TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-container-packaged-fields");
+    let source = directory.join("container-packaged-fields.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/container-packaged-fields.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"((Entry ( 20, Entry ( 22, Empty ) ), Some 42, 42, 40 ..= 42), (Entry ( 20, Entry ( 22, Empty ) ), None, 42, 40 ..= 42))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert!(
+        ir.contains(
+            "define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.4(ptr %arg0, ptr %arg1, ptr %arg2, ptr %arg3)"
+        ),
+        "{ir}"
+    );
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let span = main
+        .find("call fastcc ptr @topal.fn.make_2dspan.0")
+        .unwrap();
+    let outcome = main
+        .find("call fastcc ptr @topal.fn.make_2doutcome.1")
+        .unwrap();
+    let maybe = main
+        .find("call fastcc ptr @topal.fn.make_2dmaybe.2")
+        .unwrap();
+    let values = main
+        .find("call fastcc ptr @topal.fn.make_2dvalues.3")
+        .unwrap();
+    let retained = main
+        .find("call fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.4")
+        .unwrap();
+    assert!(
+        span < outcome && outcome < maybe && maybe < values && values < retained,
+        "{main}"
+    );
+    assert!(
+        main.contains("@topal.fn.retain.4(ptr %v3, ptr %v2, ptr %v1, ptr %v0)"),
+        "{main}"
+    );
+    let second_span = main.find("call ptr @topal.runtime.range.make").unwrap();
+    let second_outcome = main
+        .find("call fastcc ptr @topal.fn.make_2doutcome.5")
+        .unwrap();
+    let second_values = main
+        .find("call fastcc ptr @topal.fn.make_2dvalues.6")
+        .unwrap();
+    let defaulted_maybe = main.find("call ptr @topal.runtime.optional.none").unwrap();
+    let second_retained = main
+        .find("call fastcc { ptr, ptr, ptr, ptr } @topal.fn.retain.7")
+        .unwrap();
+    assert!(
+        second_span < second_outcome
+            && second_outcome < second_values
+            && second_values < defaulted_maybe
+            && defaulted_maybe < second_retained,
+        "{main}"
+    );
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+        "topal.package.argument",
+        "topal.package.operand",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("unsupported-scope-field.t");
+    let rejected_executable = directory.join("unsupported-scope-field");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\napply is fn ((scope : Scope)) -> Int\n  0\napply (scope is root)\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break container-packaged-fields.t:20",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis values",
+            "-ex",
+            "print values",
+            "-ex",
+            "whatis maybe",
+            "-ex",
+            "print maybe",
+            "-ex",
+            "whatis outcome",
+            "-ex",
+            "print outcome",
+            "-ex",
+            "whatis span",
+            "-ex",
+            "print span",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = List Int"), "{text}");
+    assert!(
+        text.contains("$1 = Entry ( 20, Entry ( 22, Empty ) )"),
+        "{text}"
+    );
+    assert!(text.contains("type = Optional Int"), "{text}");
+    assert!(text.contains("$2 = Some 42"), "{text}");
+    assert!(
+        text.contains("type = Result (Int, lang arithmetic ArithmeticErrorCode)"),
+        "{text}"
+    );
+    assert!(text.contains("$3 = 42"), "{text}");
+    assert!(text.contains("type = Range Int"), "{text}");
+    assert!(text.contains("$4 = 40 ..= 42"), "{text}");
+    assert!(text.contains("topal.fn.retain.4"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

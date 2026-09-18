@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 236);
+    assert_eq!(examples.len(), 237);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3431,6 +3431,42 @@ fn records_function_aggregate_packaged_fields_reversibly() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(stdout.contains("function.selected [TOPAL-TYPE-CALL-001] make-record"));
     assert!(stdout.contains("function.selected [TOPAL-TYPE-CALL-001] make-tuple"));
+    assert!(stdout.contains("function.argument.defaulted"));
+    assert!(stdout.contains("TOPAL-FUNCTION-PACKAGED-OPERAND-001"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_container_packaged_fields_reversibly() {
+    // TOPAL-INTP-SUBSET-263, TOPAL-FUNCTION-PACKAGED-OPERAND-001,
+    // TOPAL-TYPE-CALL-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}container-packaged-fields.debug"),
+            &language_example("container-packaged-fields.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let span = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-span")
+        .unwrap();
+    let outcome = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-outcome")
+        .unwrap();
+    let maybe = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-maybe")
+        .unwrap();
+    let values = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-values")
+        .unwrap();
+    assert!(
+        span < outcome && outcome < maybe && maybe < values,
+        "{stdout}"
+    );
     assert!(stdout.contains("function.argument.defaulted"));
     assert!(stdout.contains("TOPAL-FUNCTION-PACKAGED-OPERAND-001"));
     assert!(stdout.contains("function.exit"));

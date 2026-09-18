@@ -2256,3 +2256,15 @@ capture snapshots under its one source name. The shared regression and
 reversible debugger history shall cover reordered aggregate/scalar calls,
 capture-free Record and capture-bearing Tuple fields, a closed symbolic Record
 default, and exact results.
+
+## TOPAL-INTP-SUBSET-263 — Represented container packaged fields
+
+All source modes shall preserve exact List, Optional, Result, and Range values
+when supplied as complete fields of a one- or two-operand package under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Explicit container expressions shall
+execute once in source order, exact closed container defaults shall bind
+afterward in operand/field declaration order, and function entry shall expose
+each complete classifier and value under its one source name. The shared
+regression and reversible debugger history shall cover reordered container-
+producing calls, List/Optional/Result/Range fields, a closed Optional default,
+and exact results.
