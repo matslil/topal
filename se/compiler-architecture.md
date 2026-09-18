@@ -406,17 +406,23 @@ constraint/evidence, or defining-context state remain deferred to the unified
 closure and library-interface design.
 
 One scalar packaged operand is normalized at the same checked boundary. A full
-positional product already has declaration order; the initial labeled form is
-limited to a declaration-order prefix with trailing closed defaults, so the
-lowered argument sequence exactly preserves source evaluation followed by
-default evaluation. The private callee receives one ordinary LLVM parameter per
+positional product already has declaration order. A labeled product is instead
+associated by stable field identity: the frontend retains supplied expressions
+once in source order through compiler-private SSA bindings, then permutes those
+bindings into declaration order and evaluates omitted closed defaults in
+declaration order. The private callee receives one ordinary LLVM parameter per
 source field. This makes every parameter classifier and DWARF binding explicit
 while LLVM retains responsibility for target register/stack placement. It also
 avoids `byval`, `sret`, `inalloca`, and `preallocated`: those attributes encode
 specific memory/ABI obligations and are reserved for a deliberate public
 aggregate interface rather than being inferred from source packaging syntax.
-Broader labeled-map ordering, invocation-dependent defaults, and multiple or
-mixed packages remain checked-frontend work.
+The private bindings are deliberately absent from source-level debugging.
+Multiple or mixed packages, non-scalar or nested fields, opaque package values,
+invocation- or capture-dependent defaults, and public package adapters remain
+checked-frontend and library-interface work. Published metadata will need stable
+field identities and declaration order, default semantics and dependencies,
+evaluation effects, representation identity, and target adapters without
+exposing compiler-private binding names, LLVM types, or physical placement.
 
 Recursion identity uses that complete selected input header, not source-name
 spelling alone. A call from an active `String` overload to a same-named `Int`

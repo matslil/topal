@@ -2186,3 +2186,14 @@ any unsupported payload shall report no applicable Equality operation. Formal
 traces, LSP validation, reversible debugger history, and the shared regression
 shall cover payload-free, scalar, Tuple, Record, nested Sum, and positional
 alternatives.
+
+## TOPAL-INTP-SUBSET-257 — Label-based packaged operand association
+
+All source modes shall associate a packaged function operand's unique known
+labeled fields by label rather than source position under
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`. Supplied expressions shall execute once
+in source order, every required field shall be present, and an omitted closed
+defaulted field may occur at any declaration position. Function binding and
+entry shall expose fields in declaration order. The shared regression and
+reversible debugger history shall cover reordered supplied function calls,
+non-trailing default omission, explicit labeled supply, and positional parity.

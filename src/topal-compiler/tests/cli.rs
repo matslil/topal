@@ -12050,6 +12050,131 @@ fn packaged_function_operand_is_flat_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers ordering, rejection, artifacts, and GDB.
+fn packaged_field_association_preserves_source_order_and_remains_debuggable() {
+    // TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001,
+    // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-packaged-function-association-order");
+    let source = directory.join("packaged-function-association-order.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/packaged-function-association-order.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 42, 42)\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    let main = ir.split("define internal void @topal.main").nth(1).unwrap();
+    let right = main
+        .find("call fastcc ptr @topal.fn.right_2dvalue")
+        .unwrap();
+    let left = main.find("call fastcc ptr @topal.fn.left_2dvalue").unwrap();
+    let combine = main.find("call fastcc ptr @topal.fn.combine").unwrap();
+    assert!(right < left && left < combine, "{main}");
+    assert!(
+        main.contains("@topal.fn.combine.2(ptr %v1, ptr @.topal.int.2, ptr %v0)"),
+        "{main}"
+    );
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        " preallocated",
+        "package.runtime",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, call) in [
+        ("unknown", "combine (left is 39, unknown is 1, right is 2)"),
+        ("duplicate", "combine (left is 39, right is 1, right is 2)"),
+    ] {
+        let rejected_source = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(
+            &rejected_source,
+            format!(
+                "use language (version is v0.1)\ncombine is fn ((left : Int, offset : Int default 1, right : Int)) -> Int\n  left + offset + right\n{call}\n"
+            ),
+        )
+        .unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break packaged-function-association-order.t:14",
+            "-ex",
+            "run",
+            "-ex",
+            "print left",
+            "-ex",
+            "print offset",
+            "-ex",
+            "print right",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 39"), "{text}");
+    assert!(text.contains("$2 = 1"), "{text}");
+    assert!(text.contains("$3 = 2"), "{text}");
+    assert!(text.contains("topal.fn.combine.2"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn defining_context_capture_is_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-CONTEXT-CAPTURE-001, TOPAL-CONTEXT-SELECT-001,
     // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001

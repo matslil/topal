@@ -1382,6 +1382,17 @@ struct CompilerCallMetadata {
     context_captures: Vec<CompilerContextCapture>,
 }
 
+struct CompilerArgumentBinding {
+    storage_name: String,
+    value: CompilerExpression,
+}
+
+type NormalizedPackagedCall = (
+    FunctionSource,
+    Vec<CompilerExpression>,
+    Vec<CompilerArgumentBinding>,
+);
+
 #[derive(Clone)]
 enum CompilerCallableFacts {
     Named {
@@ -18401,10 +18412,10 @@ impl Analyzer {
                 .iter()
                 .any(|parameter| !parameter.fields.is_empty())
             {
-                if let Some((normalized, adapted)) =
+                if let Some((normalized, adapted, bindings)) =
                     self.normalize_packaged_call(declaration, &arguments)?
                 {
-                    selected = Some((normalized, adapted));
+                    selected = Some((normalized, adapted, bindings));
                     break;
                 }
                 continue;
@@ -18456,11 +18467,11 @@ impl Analyzer {
                 adapted.push(argument);
             }
             if adapted.len() == declaration.parameters.len() {
-                selected = Some((declaration.clone(), adapted));
+                selected = Some((declaration.clone(), adapted, Vec::new()));
                 break;
             }
         }
-        let Some((declaration, arguments)) = selected else {
+        let Some((declaration, arguments, argument_bindings)) = selected else {
             let actual = arguments
                 .iter()
                 .map(|argument| argument.value_type.name())
@@ -18551,7 +18562,25 @@ impl Analyzer {
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
-        self.finish_selected_call(function_name, &declaration, arguments, &metadata, span)
+        let mut call =
+            self.finish_selected_call(function_name, &declaration, arguments, &metadata, span)?;
+        for binding in argument_bindings.into_iter().rev() {
+            let value_type = call.value_type.clone();
+            let int_range = call.int_range.clone();
+            let rational_value = call.rational_value.clone();
+            call = CompilerExpression {
+                kind: CompilerExpressionKind::PrivateBinding {
+                    storage_name: binding.storage_name,
+                    value: Box::new(binding.value),
+                    body: Box::new(call),
+                },
+                value_type,
+                int_range,
+                rational_value,
+                span,
+            };
+        }
+        Ok(call)
     }
 
     #[allow(clippy::too_many_lines)] // Every admitted and deferred package shape is checked explicitly.
@@ -18559,7 +18588,7 @@ impl Analyzer {
         &mut self,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
-    ) -> Result<Option<(FunctionSource, Vec<CompilerExpression>)>, Diagnostic> {
+    ) -> Result<Option<NormalizedPackagedCall>, Diagnostic> {
         let [package] = declaration.parameters.as_slice() else {
             return Err(unsupported(
                 &self.source,
@@ -18593,6 +18622,7 @@ impl Analyzer {
             return Ok(None);
         };
 
+        let mut argument_bindings = Vec::new();
         let supplied = match &argument.kind {
             CompilerExpressionKind::Record(values) => {
                 let declared_names = package
@@ -18600,9 +18630,14 @@ impl Analyzer {
                     .iter()
                     .map(|field| self.source.slice(field.name))
                     .collect::<Vec<_>>();
+                let supplied_names = values
+                    .iter()
+                    .map(|(label, _)| label.as_str())
+                    .collect::<BTreeSet<_>>();
                 if values
                     .iter()
                     .any(|(label, _)| !declared_names.contains(&label.as_str()))
+                    || supplied_names.len() != values.len()
                     || package.fields.iter().any(|field| {
                         field.default.is_none()
                             && !values
@@ -18612,25 +18647,60 @@ impl Analyzer {
                 {
                     return Ok(None);
                 }
-                if values.len() > package.fields.len()
-                    || values
-                        .iter()
-                        .zip(&package.fields)
-                        .any(|((label, _), field)| label != self.source.slice(field.name))
-                {
-                    return Err(unsupported(
-                        &self.source,
-                        argument.span,
-                        "non-prefix or reordered labeled function package",
-                    ));
-                }
+                let supplied_positions = package
+                    .fields
+                    .iter()
+                    .filter_map(|field| {
+                        let name = self.source.slice(field.name);
+                        values.iter().position(|(label, _)| label == name)
+                    })
+                    .collect::<Vec<_>>();
+                let reordered = supplied_positions
+                    .windows(2)
+                    .any(|positions| positions[0] > positions[1]);
+                let omitted_before_supplied = package
+                    .fields
+                    .iter()
+                    .rposition(|field| supplied_names.contains(self.source.slice(field.name)))
+                    .is_some_and(|last_supplied| {
+                        package.fields[..last_supplied]
+                            .iter()
+                            .any(|field| !supplied_names.contains(self.source.slice(field.name)))
+                    });
+                let requires_bindings = reordered || omitted_before_supplied;
                 values
                     .iter()
-                    .map(|(_, value)| value.clone())
-                    .collect::<Vec<_>>()
+                    .enumerate()
+                    .map(|(index, (label, value))| {
+                        if !requires_bindings {
+                            return (label.clone(), value.clone());
+                        }
+                        let storage_name = format!(
+                            "topal.package.argument.{}.{}.{}",
+                            argument.span.start, argument.span.end, index
+                        );
+                        let local = CompilerExpression {
+                            kind: CompilerExpressionKind::Local(storage_name.clone()),
+                            value_type: value.value_type.clone(),
+                            int_range: value.int_range.clone(),
+                            rational_value: value.rational_value.clone(),
+                            span: value.span,
+                        };
+                        argument_bindings.push(CompilerArgumentBinding {
+                            storage_name,
+                            value: value.clone(),
+                        });
+                        (label.clone(), local)
+                    })
+                    .collect::<BTreeMap<_, _>>()
             }
             CompilerExpressionKind::Tuple(values) if values.len() == package.fields.len() => {
-                values.clone()
+                package
+                    .fields
+                    .iter()
+                    .zip(values)
+                    .map(|(field, value)| (self.source.slice(field.name).to_owned(), value.clone()))
+                    .collect()
             }
             _ if matches!(
                 argument.value_type,
@@ -18647,7 +18717,7 @@ impl Analyzer {
         };
 
         let mut adapted = Vec::with_capacity(package.fields.len());
-        for (index, field) in package.fields.iter().enumerate() {
+        for field in &package.fields {
             if field.qualifier.is_some() || !field.fields.is_empty() {
                 return Err(unsupported(
                     &self.source,
@@ -18666,7 +18736,8 @@ impl Analyzer {
                     "non-scalar packaged field",
                 ));
             }
-            let value = if let Some(value) = supplied.get(index) {
+            let field_name = self.source.slice(field.name);
+            let value = if let Some(value) = supplied.get(field_name) {
                 value.clone()
             } else {
                 let Some(default) = &field.default else {
@@ -18708,7 +18779,7 @@ impl Analyzer {
                 field
             })
             .collect();
-        Ok(Some((normalized, adapted)))
+        Ok(Some((normalized, adapted, argument_bindings)))
     }
 
     fn defining_context_captures(
@@ -32658,6 +32729,7 @@ mod tests {
 
         for (call, expected) in [
             ("sum (value is 40, fallback is 5)", 45),
+            ("sum (fallback is 2, value is 40)", 42),
             ("sum (40, 2)", 42),
         ] {
             let source = format!(
@@ -32676,15 +32748,101 @@ mod tests {
         .unwrap_err();
         assert_eq!(missing.code, "E-NO-APPLICABLE-OVERLOAD");
 
-        for rejected in [
-            "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default 2)) -> Int\n  value + fallback\nsum (fallback is 2, value is 40)\n",
-            "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default value)) -> Int\n  value + fallback\nsum (value is 40)\n",
-        ] {
-            assert_eq!(
-                analyze_for_compiler(rejected).unwrap_err().code,
-                "E-COMPILER-UNSUPPORTED"
-            );
-        }
+        let rejected = "use language (version is v0.1)\nsum is fn ((value : Int, fallback : Int default value)) -> Int\n  value + fallback\nsum (value is 40)\n";
+        assert_eq!(
+            analyze_for_compiler(rejected).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_labeled_package_association_in_declaration_order() {
+        // TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001,
+        // TOPAL-FUNCTION-PACKAGED-OPERAND-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/packaged-function-association-order.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected packaged association results")
+        };
+        assert_eq!(results.len(), 3);
+        assert!(
+            results
+                .iter()
+                .all(|result| exact_int(result) == Some(BigInt::from(42)))
+        );
+
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: right_storage,
+            value: right_value,
+            body,
+        } = &results[0].kind
+        else {
+            panic!("reordered fields evaluate their first source expression once")
+        };
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: left_storage,
+            value: left_value,
+            body,
+        } = &body.kind
+        else {
+            panic!("reordered fields evaluate their second source expression once")
+        };
+        assert!(matches!(
+            right_value.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        assert!(matches!(
+            left_value.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected flattened direct packaged call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == left_storage
+        ));
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(1)));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == right_storage
+        ));
+
+        let aligned_omission = analyze_for_compiler(
+            "use language (version is v0.1)\ncombine is fn ((left : Int, offset : Int default 1, right : Int)) -> Int\n  left + offset + right\ncombine (left is 39, right is 2)\n",
+        )
+        .unwrap();
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: left_storage,
+            body,
+            ..
+        } = &aligned_omission.main.result.kind
+        else {
+            panic!("a supplied field before a non-trailing omission is retained once")
+        };
+        let CompilerExpressionKind::PrivateBinding {
+            storage_name: right_storage,
+            body,
+            ..
+        } = &body.kind
+        else {
+            panic!("a supplied field after a non-trailing omission is retained once")
+        };
+        let CompilerExpressionKind::Call { arguments, .. } = &body.kind else {
+            panic!("expected a declaration-order call after supplied values")
+        };
+        assert!(matches!(
+            &arguments[0].kind,
+            CompilerExpressionKind::Local(storage) if storage == left_storage
+        ));
+        assert_eq!(exact_int(&arguments[1]), Some(BigInt::from(1)));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == right_storage
+        ));
     }
 
     #[test]

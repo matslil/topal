@@ -3770,14 +3770,52 @@ default and explicit/positional field supply, invalid and unsupported shapes,
 exact IR, execution, artifact independence, and debugger observation.
 
 The emitted IR shall use no `byval`, `sret`, `inalloca`, or `preallocated`
-attribute and no package runtime or allocation. Multiple or mixed packages,
-non-scalar/nested fields, opaque or non-prefix/reordered labeled values, and
+attribute and no package runtime or allocation. General label association is
+governed by `TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001`. Multiple or mixed
+packages, non-scalar/nested fields, opaque package values, and
 invocation-dependent defaults remain rejected until their complete evaluation,
 storage, and public ABI rules are implemented. This shall add no foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
 ABI, or `topal-native/6` revision. This realizes
 `TOPAL-COMPILER-PACKAGED-OPERAND-001`, `TOPAL-FUNCTION-PACKAGED-OPERAND-001`,
 and `TOPAL-TYPE-CALL-001` for compiler increment 3b2-b5n.
+
+## TOPAL-COMP-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
+
+The checked compiler model shall extend the single admitted scalar package so a
+labeled argument may supply each unique known field in any source order and may
+omit a closed-defaulted field at any declaration position. It shall require
+every nondefaulted field and reject unknown labels, duplicate labels, and
+classifier mismatches before LLVM lowering or artifact publication.
+
+The frontend shall retain every supplied expression exactly once in labeled
+source order. If declaration order differs, it shall nest compiler-private
+immutable bindings in source order and form the direct call from adapted local
+references permuted into declaration order. Omitted closed defaults shall be
+evaluated once in declaration order after supplied expressions. The private
+bindings shall have no source-level or DWARF identity.
+
+LLVM definitions and calls shall retain the existing matching flattened
+private `fastcc` prototype in declaration order, with AMD64 register and stack
+placement left to LLVM. GDB shall expose only the source fields, classifiers,
+values, and function frame. Tests shall cover reordered supplied calls,
+non-trailing omission, source-order function-call evaluation, positional
+parity, unknown and duplicate rejection, exact IR, all interpreter modes,
+reversible debugging, the shared corpus and separate resource baselines,
+freestanding ELF/DWARF properties, and O0 GDB values/frames.
+
+This shall add no package aggregate at the call boundary, `byval`, `sret`,
+`inalloca`, `preallocated`, package runtime, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public aggregate ABI, or
+`topal-native/6` revision. Future compiled-library metadata shall encode stable
+field identities, declaration order, default semantics and dependencies,
+evaluation effects, representation identity, and target adapters independently
+of compiler-private binding names, LLVM types, and physical placement. Multiple
+or mixed packages, non-scalar/nested fields, opaque package values,
+invocation- or capture-dependent defaults, and public package adapters remain
+deferred. This realizes `TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`,
+`TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
+increment 3b2-b5ai.
 
 ## TOPAL-COMP-CONTEXT-CAPTURE-001 — Private defining-context capture
 

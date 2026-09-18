@@ -3483,11 +3483,43 @@ NOT use `byval`, `sret`, `inalloca`, or `preallocated`, and SHALL require no
 package runtime, allocation, foreign dependency, C/C++ runtime, other-language
 standard library, public aggregate ABI, or native ABI revision.
 
-Multiple packaged operands, packages mixed with unpackaged operands,
-non-scalar or nested package fields, non-prefix/reordered labeled packages,
+Label association beyond a declaration-order prefix is governed by
+`TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001`. Multiple packaged operands,
+packages mixed with unpackaged operands, non-scalar or nested package fields,
 opaque package values, and defaults that depend on invocation or captured
 bindings remain outside this increment and SHALL be rejected rather than
 changing evaluation order or choosing a public memory ABI.
+
+### TOPAL-COMPILER-PACKAGED-ASSOCIATION-ORDER-001 — Label-based scalar package association
+
+The compiler SHALL extend the one admitted scalar operand package of
+`TOPAL-COMPILER-PACKAGED-OPERAND-001` so a labeled product may supply each
+unique known field in any source order. Every nondefaulted field SHALL be
+present, and any omitted field MAY occur at any declaration position only when
+it has a checked closed default. Unknown or duplicate labels, missing required
+fields, and classifier mismatches SHALL reject the call before LLVM lowering or
+artifact publication.
+
+Every supplied expression SHALL execute exactly once in labeled source order.
+When declaration order differs, the checked model SHALL introduce
+compiler-private immutable bindings in source order, then adapt and permute
+references to those values into declaration field order. Omitted closed
+defaults SHALL execute once in declaration order after all supplied
+expressions. These private bindings SHALL NOT become source variables or DWARF
+locals.
+
+The callee SHALL retain the existing exact flattened private `fastcc` signature
+and source field DWARF parameters in declaration order. LLVM SHALL own AMD64
+register and stack placement. This extension SHALL introduce no package
+aggregate at the call boundary, `byval`, `sret`, `inalloca`, `preallocated`,
+package runtime, allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public aggregate ABI, or native-ABI revision. Future
+compiled-library metadata SHALL encode stable field identities, declaration
+order, default semantics and dependencies, evaluation effects, representation
+identity, and target adapters independently of compiler-private binding names,
+LLVM types, and physical placement. Multiple or mixed packages, non-scalar or
+nested fields, opaque package values, invocation- or capture-dependent defaults,
+and public package adapters remain deferred.
 
 ### TOPAL-COMPILER-CONTEXT-CAPTURE-001 — Private defining-context capture
 

@@ -79,6 +79,7 @@ evidence.
 | 3b2-b5af | exact repeated scalar identity for captured non-escaping nested Functions, declaration-first ordered capture guards, distinct-declaration short-circuit, and single-binding debugging | complete |
 | 3b2-b5ag | exact repeated nominal Union/Variant identity with tag-first active-payload guards, nested structural payloads, and single Sum debugging | complete |
 | 3b2-b5ah | canonical equality and inequality for exact nominal Union/Variant values with all-payload evidence and tag-first active-payload lowering | complete |
+| 3b2-b5ai | arbitrary label-order association for one closed scalar package, source-order once-only bindings, non-trailing closed defaults, declaration-order flat calls, and field debugging | complete |
 | 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab, other escaping anonymous Function values, escaping captured nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, general packaged operands/default scopes, return-through-block cleanup, remaining recursion/totality evidence, escaping/recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
@@ -314,7 +315,9 @@ extends repeated identity through exact nominal Sum values by comparing tags
 before selecting only the active payload through explicit LLVM control flow;
 3b2-b5ah derives public Equality for an exact nominal Sum only when every
 declared payload supplies canonical Equality and reuses that tag-first lowering;
-and
+3b2-b5ai associates one admitted scalar package by label through source-ordered
+private bindings, declaration-order permutation, and non-trailing closed
+defaults while keeping the existing flat private call boundary; and
 3b2-b5e8 continues with other escaping, recursive, overloaded, and
 dynamically contained callables, remaining recursive and nested-block exit
 control flow, cleanup-bearing scopes, persistent aggregate storage, and the
