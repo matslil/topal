@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 245);
+    assert_eq!(examples.len(), 246);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5281,6 +5281,28 @@ fn every_mode_forwards_overload_selected_environments() {
         assert!(
             String::from_utf8_lossy(&output.stdout).contains(
                 "(40, \"context\", (2, \"context-pair\"), (7, \"root-pair\"), 7, \"root\", 47, 40, \"root\")"
+            ),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_forwards_local_named_function_environments() {
+    // TOPAL-INTP-SUBSET-272,
+    // TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001
+    let source = include_str!("../../../examples/language/local-function-environments.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(
+                "((42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\")), (42, 10))"
             ),
             "{arguments:?}: {}",
             String::from_utf8_lossy(&output.stdout)

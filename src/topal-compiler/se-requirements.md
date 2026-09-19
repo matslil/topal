@@ -2958,8 +2958,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Overload forwarding beyond
 `TOPAL-COMP-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
-`TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
-anonymous/nested functions, aggregate environments beyond
+`TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, local named Function forwarding
+beyond `TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`, anonymous functions,
+aggregate environments beyond
 `TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported root members,
 defining-context forwarding beyond
 `TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001`, escape, and
@@ -3112,7 +3113,9 @@ requirements, and published callable interfaces remain rejected. This realizes
 The checked compiler model shall admit an unpublished ordinary nested function
 declared as a direct statement of an ordinary non-static function body. It
 shall bind that function from its declaration point, retain its source
-declaration, and apply it only by direct name within the same invocation scope.
+declaration, and apply it by direct name within the same invocation scope or by
+an exact local alias governed by
+`TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`.
 It shall snapshot every visible immutable lexical data value with an admitted
 private representation, excluding names shadowed by explicit nested
 parameters, and shall reject any attempted value escape. A call shall reuse
@@ -3128,6 +3131,9 @@ source parameters, and material captures as named arguments. Native tests shall
 cover the existing interpreter regression, exact execution, capture forwarding,
 value-escape rejection, private direct IR, freestanding artifacts, source
 frames, argument values, the shared corpus, and separate resource baselines.
+Exact local alias calls and exact defining-context/live-root parameters are
+governed by `TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`; those environment
+parameters shall not be duplicated as lexical captures.
 
 This shall add no caller-frame reference, environment allocation/runtime,
 function pointer, indirect call, foreign dependency, C/C++ runtime,
@@ -3135,8 +3141,9 @@ other-language standard library, public closure ABI, or `topal-native/6`
 revision. Declarations inside nested lexical/decision blocks and published,
 static, measured, constrained, or effectful nested functions; nested overloads,
 recursion, sibling calls, visible/active named-callable collisions, anonymous
-captures, Scope/Function/Constraint/refined/defining-context captures, escaping
-closures, and public/library closure metadata remain rejected. This realizes
+captures, Scope/Function/Constraint/refined captures, context/root environments
+beyond `TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`, escaping closures, and
+public/library closure metadata remain rejected. This realizes
 `TOPAL-COMPILER-NESTED-FUNCTION-001` and `TOPAL-FUNCTION-NESTED-001` for compiler
 increment 3b2-b5p.
 
@@ -4366,8 +4373,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Overload forwarding beyond
 `TOPAL-COMP-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
-`TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
-anonymous/nested functions, aggregate environments beyond
+`TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, local named Function forwarding
+beyond `TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`, anonymous functions,
+aggregate environments beyond
 `TOPAL-COMP-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported context members,
 escape, and public/library environments remain deferred. Future
 compiled-library metadata shall preserve canonical
@@ -4407,9 +4415,10 @@ initializer replay, allocation, dispatcher, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Unproven, incomplete, or mixed-proof cycles;
 overload selection beyond `TOPAL-COMP-OVERLOAD-ENVIRONMENT-001`; unsupported
-representations; named-function aliases; anonymous/nested/escaping recursion;
-and public/library recursive environments remain deferred. Future library
-metadata shall retain
+representations; local named Function recursion beyond
+`TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`; anonymous/nested/escaping
+recursion; and public/library recursive environments remain deferred. Future
+library metadata shall retain
 recursion graph/member identity, proof rule/evidence, every ordered call and
 capture edge, canonical context/root instance, member identity and declaration
 position, classifier/semantic representation, capture order/lifetime/effects,
@@ -4452,9 +4461,10 @@ pointer, indirect call, foreign dependency, C/C++ runtime, other-language
 standard library, public ABI, or `topal-native/6` revision. Function-bearing
 aggregates; Scope, Generator, constraint, evidence, static-only, opaque, or
 otherwise unsupported representations; overload selection beyond
-`TOPAL-COMP-OVERLOAD-ENVIRONMENT-001`; named-function aliases;
-anonymous/nested/escaping functions; and public/library aggregate environments
-remain deferred. Future library metadata shall retain
+`TOPAL-COMP-OVERLOAD-ENVIRONMENT-001`; local named Function forwarding beyond
+`TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001`; anonymous/escaping functions; and
+public/library aggregate environments remain deferred. Future library metadata
+shall retain
 canonical context/root instance and source session, every selection/call edge,
 callee identity/overload, member identity/declaration position, complete
 semantic classifier and recursive component structure, Tuple/Record ordering
@@ -4486,7 +4496,9 @@ When selection could change with retained value facts—including `Int` to
 packaged/defaulted/qualified, locally inferred, higher-order, anonymous,
 nested, dynamic, or otherwise unresolved call, the frontend shall reject before
 artifact publication whenever any candidate carries an environment. It shall
-not union candidate capture sets or invent a provisional ABI. Tests shall cover
+not union candidate capture sets or invent a provisional ABI. An exact retained
+named alias admitted by `TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001` shall use the
+same admitted evidence and is not otherwise unresolved here. Tests shall cover
 distinct overload capture sets, unselected-capture isolation, closed literal
 and explicit-parameter selection, exact aggregate values, acyclic and
 cross-overload forwarding, proven recursion, checked capture vectors, exact
@@ -4505,6 +4517,54 @@ classifier/representation, ordered capture schema/lifetime/effects, and a
 versioned target adapter independently of private capture names, LLVM
 types/symbols, debug shadows, and physical placement. This realizes
 `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001` for increments 6b2b2f and 6c2d.
+
+## TOPAL-COMP-LOCAL-FUNCTION-ENVIRONMENT-001 — Exact local named Function environments
+
+Within an ordinary root-function invocation, the checked model shall retain an
+already-visible named root Function through source-ordered local alias bindings
+and shall follow an exact directly applied alias back to its original visible
+declaration snapshot while discovering context/root captures. The same scan
+shall follow an already-admitted non-escaping ordinary nested Function called
+directly or through an exact local alias. Shadowing or rebinding to any other
+value shall terminate the retained edge.
+
+An alias shall preserve original function identity, staticness, source-ordered
+visible overload declarations, and selection behavior. Overloaded alias calls
+shall reuse only the evidence admitted by
+`TOPAL-COMP-OVERLOAD-ENVIRONMENT-001` and shall select one exact capture vector.
+A nested Function shall retain existing lexical captures, but the model shall
+exclude standard `@ member` and `root member` parameters from that lexical
+vector and add them exactly once through the environment group. Alias discovery
+shall neither prove recursion nor admit unsupported nested declarations,
+overload choices, capture representations, or escapes.
+
+The Linux x86-64 backend shall emit matching direct private `fastcc` definitions
+and calls for outer, nested, and selected target functions, leaving physical
+placement to LLVM and requiring no optimization. Full O0 DWARF/GDB shall expose
+each Function alias, selected frame, explicit parameter, and exact source-named
+capture in active and suspended frames. Tests shall cover scalar and aggregate
+context/root values, multi-binding alias chains, overloaded alias selection,
+nested direct and aliased calls, lexical shadow isolation, value-fact-dependent
+artifact-free rejection, checked capture vectors, exact output/IR, interpreter
+modes, reversible history, freestanding ELF/DWARF, GDB frames, the shared
+corpus, and separate resource baselines.
+
+This shall add no closure/environment object, Function dispatcher, function
+pointer, indirect call, global context/root state, lookup, replay, allocation,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Anonymous Function environments; Function
+parameters, results, or aggregate fields carrying root/context environments;
+escaping local Functions; recursive/overloaded nested Functions; opaque or
+dynamically selected aliases; and public/library local-Function environments
+remain deferred. Future library metadata shall retain canonical source-session
+and context/root identities, lexical invocation scope, alias binding stable
+identity/declaration position, retained root Function and visible overload
+snapshot or nested declaration path, selected declaration/call edge, selection
+evidence/conversions, recursion proof identity, ordered capture
+schema/classifiers/representations/lifetimes/effects, and a versioned target
+adapter independently of observation tags, private capture names, LLVM
+types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001` for increments 6b2b2g and 6c2e.
 
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 

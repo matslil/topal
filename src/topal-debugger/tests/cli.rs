@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 245);
+    assert_eq!(examples.len(), 246);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4296,6 +4296,56 @@ fn records_overload_selected_environments_reversibly() {
         "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] choose-product (Record (amount : Int, label : String))"
     ));
     assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001]"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_local_named_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-272,
+    // TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}local-function-environments.debug"),
+            &language_example("local-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let root_alias = stdout
+        .find("binding.resolved [TOPAL-SYN-BIND-001] read-context")
+        .unwrap();
+    let chained_alias = stdout
+        .find("binding.resolved [TOPAL-SYN-BIND-001] context-operation")
+        .unwrap();
+    let first_call = stdout
+        .find("function.value.called [TOPAL-FUNCTION-VALUE-001] read-context")
+        .unwrap();
+    let nested_declaration = stdout
+        .find("function.declared [TOPAL-FUNCTION-ORDINARY-001] nested-context")
+        .unwrap();
+    let nested_call = stdout
+        .find("function.value.called [TOPAL-FUNCTION-VALUE-001] nested-context")
+        .unwrap();
+    assert!(root_alias < chained_alias);
+    assert!(chained_alias < first_call);
+    assert!(first_call < nested_declaration);
+    assert!(nested_declaration < nested_call);
+    for event in [
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] context-chain (Int)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] context-chain (String)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] root-chain (Int)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] root-chain (String)",
+        "function.selected [TOPAL-TYPE-CALL-001] context-operation (Int)",
+        "function.selected [TOPAL-TYPE-CALL-001] root-operation (Int)",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-pair",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-pair",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
     assert!(stdout.contains("function.exit"));
 }
 

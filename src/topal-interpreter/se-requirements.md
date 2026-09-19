@@ -2362,3 +2362,15 @@ and reversible debugger history shall cover distinct selected context/root
 members, closed literal and explicit-parameter overload choices, cross-overload
 calls, recursion, source-ordered events, exact results, and unchanged once-only
 source values.
+
+## TOPAL-INTP-SUBSET-272 — Local named Function environments
+
+All source modes shall preserve a retained named Function's original visible
+declaration snapshot through source-ordered local alias chains and shall apply
+that snapshot when the alias is called. Non-escaping nested ordinary Functions
+shall observe their defining context and qualified live root under the ordinary
+language rules whether called directly or through an exact local alias.
+Shadowing with any other value shall terminate the alias relationship. The
+shared regression and reversible debugger history shall cover overloaded alias
+selection, scalar and aggregate context/root values, nested calls, binding and
+call order, exact results, and unchanged once-only source values.
