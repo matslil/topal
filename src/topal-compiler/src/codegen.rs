@@ -2912,11 +2912,34 @@ impl<'a> Generator<'a> {
                 self.list_int_runtime_fragments
                     .insert(ListIntRuntimeFragment::FundamentalContainers);
                 let source = self.emit_expression(source, body, environment);
+                let function_captures = match (&expression.value_type, &source) {
+                    (
+                        CompilerType::Array { element, .. },
+                        LlValue::List {
+                            function_captures, ..
+                        },
+                    ) if element.as_ref() == &CompilerType::Function => function_captures.clone(),
+                    _ => Vec::new(),
+                };
                 let call = match kind {
-                    CompilerContainerKind::Array => format!(
-                        "call ptr @topal.runtime.container.array.int.collect(ptr {})",
-                        source.list_pointer()
-                    ),
+                    CompilerContainerKind::Array
+                        if matches!(
+                            &expression.value_type,
+                            CompilerType::Array { element, .. }
+                                if element.as_ref() == &CompilerType::Function
+                        ) =>
+                    {
+                        format!(
+                            "call ptr @topal.runtime.container.array.function.collect(ptr {})",
+                            source.list_pointer()
+                        )
+                    }
+                    CompilerContainerKind::Array => {
+                        format!(
+                            "call ptr @topal.runtime.container.array.int.collect(ptr {})",
+                            source.list_pointer()
+                        )
+                    }
                     CompilerContainerKind::Set => format!(
                         "call ptr @topal.runtime.container.set.int.collect(ptr {})",
                         source.list_pointer()
@@ -2937,6 +2960,7 @@ impl<'a> Generator<'a> {
                 LlValue::Container {
                     value: body.instruction(&call, expression.span, &mut self.debug),
                     value_type: expression.value_type.clone(),
+                    function_captures,
                 }
             }
             CompilerExpressionKind::ContainerEntryCount(container) => {
@@ -2969,17 +2993,35 @@ impl<'a> Generator<'a> {
                 self.list_int_runtime_fragments
                     .insert(ListIntRuntimeFragment::FundamentalContainers);
                 let array = self.emit_expression(array, body, environment);
+                let LlValue::Container {
+                    value: array,
+                    value_type,
+                    function_captures,
+                } = array
+                else {
+                    unreachable!("checked Array access retains its container value")
+                };
+                let CompilerType::Array { element, .. } = value_type else {
+                    unreachable!("checked Array access retains its Array classifier")
+                };
+                let helper = match element.as_ref() {
+                    CompilerType::Int => "topal.runtime.container.array.int.at",
+                    CompilerType::Function => "topal.runtime.container.array.function.at",
+                    _ => unreachable!("checked Array access has an admitted element classifier"),
+                };
+                let captures = if element.as_ref() == &CompilerType::Function {
+                    function_captures.get(*index).cloned().unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
                 LlValue::Optional {
                     value: body.instruction(
-                        &format!(
-                            "call ptr @topal.runtime.container.array.int.at(ptr {}, i64 {index})",
-                            array.container_pointer()
-                        ),
+                        &format!("call ptr @{helper}(ptr {array}, i64 {index})"),
                         expression.span,
                         &mut self.debug,
                     ),
-                    payload: CompilerType::Int,
-                    function_captures: Vec::new(),
+                    payload: element.as_ref().clone(),
+                    function_captures: captures,
                 }
             }
             CompilerExpressionKind::SetContains { set, value } => {
@@ -3486,6 +3528,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             value_type: expression.value_type.clone(),
+                            function_captures: Vec::new(),
                         },
                         CompilerType::Tuple(ref field_types) => {
                             let aggregate_type = llvm_value_type(&expression.value_type);
@@ -7088,6 +7131,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     value_type,
+                    function_captures: Vec::new(),
                 }
             }
             LlValue::Sum { sum, .. } => {
@@ -7339,7 +7383,9 @@ impl<'a> Generator<'a> {
             LlValue::List { value, element, .. } => {
                 self.emit_print_list(value, element, body, span);
             }
-            LlValue::Container { value, value_type } => {
+            LlValue::Container {
+                value, value_type, ..
+            } => {
                 self.emit_print_container(value, value_type, body, span);
             }
             LlValue::String(value) => {
@@ -7474,7 +7520,10 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         span: Span,
     ) {
-        debug_assert!(matches!(element, CompilerType::Int | CompilerType::String));
+        debug_assert!(matches!(
+            element,
+            CompilerType::Int | CompilerType::String | CompilerType::Function
+        ));
         self.emit_write_literal(&format!("{name} ("), body, span);
         let initial = body.current_block.clone();
         let loop_label = body.label("print.container.loop");
@@ -7521,14 +7570,26 @@ impl<'a> Generator<'a> {
         body.terminator(&format!("br label %{render}"), location);
 
         body.start_block(&render);
-        let value = body.instruction(
-            &format!("load ptr, ptr {current}, align 8"),
-            span,
-            &mut self.debug,
-        );
         let value = match element {
-            CompilerType::Int => LlValue::Int(value),
-            CompilerType::String => LlValue::String(value),
+            CompilerType::Int => LlValue::Int(body.instruction(
+                &format!("load ptr, ptr {current}, align 8"),
+                span,
+                &mut self.debug,
+            )),
+            CompilerType::String => LlValue::String(body.instruction(
+                &format!("load ptr, ptr {current}, align 8"),
+                span,
+                &mut self.debug,
+            )),
+            CompilerType::Function => LlValue::Function {
+                value: body.instruction(
+                    &format!("load i32, ptr {current}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: function_value_enumeration(self.program),
+                captures: Vec::new(),
+            },
             _ => unreachable!("checked sequence container element is supported"),
         };
         self.emit_print(&value, body, span);
@@ -8823,6 +8884,7 @@ enum LlValue {
     Container {
         value: String,
         value_type: CompilerType,
+        function_captures: Vec<Vec<(String, Self)>>,
     },
     String(String),
     Tuple(Vec<Self>),
@@ -8880,6 +8942,17 @@ fn attach_function_capture(
             function_captures[*index].push((storage_name, capture_value));
         }
         (
+            CompilerAggregatePathElement::ArrayEntry(index),
+            LlValue::Container {
+                function_captures, ..
+            },
+        ) if rest.is_empty() => {
+            if function_captures.len() <= *index {
+                function_captures.resize_with(*index + 1, Vec::new);
+            }
+            function_captures[*index].push((storage_name, capture_value));
+        }
+        (
             CompilerAggregatePathElement::OptionalPayload,
             LlValue::Optional {
                 function_captures, ..
@@ -8922,6 +8995,9 @@ fn function_capture_value(value: &LlValue, storage_name: &str) -> Option<LlValue
             .iter()
             .find_map(|(_, field)| function_capture_value(field, storage_name)),
         LlValue::List {
+            function_captures, ..
+        }
+        | LlValue::Container {
             function_captures, ..
         } => function_captures.iter().find_map(|captures| {
             captures
@@ -8966,6 +9042,9 @@ fn extend_function_capture_environment(
             }
         }
         LlValue::List {
+            function_captures, ..
+        }
+        | LlValue::Container {
             function_captures, ..
         } => {
             for captures in function_captures {
@@ -9307,6 +9386,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         | CompilerType::Map { .. }) => LlValue::Container {
             value: "null".into(),
             value_type: value_type.clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
         CompilerType::Refined { base, .. } => zero_machine_value(base),
@@ -11402,6 +11482,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         | CompilerType::Map { .. }) => LlValue::Container {
             value,
             value_type: value_type.clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::Refined { base, .. } => machine_value(base, value),
         CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {

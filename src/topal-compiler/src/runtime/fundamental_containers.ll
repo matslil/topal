@@ -34,6 +34,17 @@ entry:
   ret ptr %array
 }
 
+define internal ptr @topal.runtime.container.array.function.collect(ptr %list) nounwind noinline {
+entry:
+  %count = call i64 @topal.runtime.container.list.count(ptr %list)
+  %array = call ptr @topal.platform.allocate(i64 16)
+  %count.pointer = getelementptr %topal.ContainerSequenceHeader, ptr %array, i32 0, i32 0
+  %entries.pointer = getelementptr %topal.ContainerSequenceHeader, ptr %array, i32 0, i32 1
+  store i64 %count, ptr %count.pointer, align 8
+  store ptr %list, ptr %entries.pointer, align 8
+  ret ptr %array
+}
+
 define internal i1 @topal.runtime.container.int.list.contains(ptr %list, ptr %value) nounwind noinline {
 entry:
   br label %loop
@@ -306,6 +317,36 @@ advance:
 present:
   %value = load ptr, ptr %current, align 8
   %some = call ptr @topal.runtime.optional.some(ptr %value)
+  ret ptr %some
+absent:
+  %none = call ptr @topal.runtime.optional.none()
+  ret ptr %none
+}
+
+define internal ptr @topal.runtime.container.array.function.at(ptr %array, i64 %index) nounwind noinline {
+entry:
+  %count = load i64, ptr %array, align 8
+  %in.bounds = icmp ult i64 %index, %count
+  br i1 %in.bounds, label %find, label %absent
+find:
+  %entries.pointer = getelementptr %topal.ContainerSequenceHeader, ptr %array, i32 0, i32 1
+  %entries = load ptr, ptr %entries.pointer, align 8
+  br label %loop
+loop:
+  %current = phi ptr [%entries, %find], [%next, %advance]
+  %position = phi i64 [0, %find], [%position.next, %advance]
+  %found = icmp eq i64 %position, %index
+  br i1 %found, label %present, label %advance
+advance:
+  %next.pointer = getelementptr i8, ptr %current, i64 8
+  %next = load ptr, ptr %next.pointer, align 8
+  %position.next = add i64 %position, 1
+  br label %loop
+present:
+  %value = load i32, ptr %current, align 4
+  %payload = call ptr @topal.platform.allocate(i64 4)
+  store i32 %value, ptr %payload, align 4
+  %some = call ptr @topal.runtime.optional.some(ptr %payload)
   ret ptr %some
 absent:
   %none = call ptr @topal.runtime.optional.none()

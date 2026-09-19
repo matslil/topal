@@ -1194,6 +1194,7 @@ pub enum CompilerAggregatePathElement {
     Tuple(usize),
     Record(String),
     ListEntry(usize),
+    ArrayEntry(usize),
     OptionalPayload,
     SumPayload(String),
     ResultSuccess,
@@ -1342,6 +1343,7 @@ struct BindingFacts {
     list_count: Option<usize>,
     list_string_keys: Option<Vec<String>>,
     list_entries: Option<Vec<StaticValueFacts>>,
+    array_entries: Option<Vec<StaticValueFacts>>,
     tuple_fields: Vec<StaticValueFacts>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     optional: Option<CompilerOptionalFacts>,
@@ -1455,6 +1457,7 @@ struct StaticValueFacts {
     tuple_fields: Vec<Self>,
     record_fields: BTreeMap<String, Self>,
     list_entries: Option<Vec<Self>>,
+    array_entries: Option<Vec<Self>>,
     optional: Option<CompilerOptionalFacts>,
     sum: Option<CompilerSumFacts>,
     result: Option<CompilerResultFacts>,
@@ -1486,6 +1489,7 @@ fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFact
     binding.tuple_fields.clone_from(&value.tuple_fields);
     binding.record_fields.clone_from(&value.record_fields);
     binding.list_entries.clone_from(&value.list_entries);
+    binding.array_entries.clone_from(&value.array_entries);
     binding.optional.clone_from(&value.optional);
     binding.sum.clone_from(&value.sum);
     binding.result.clone_from(&value.result);
@@ -8626,6 +8630,7 @@ impl Analyzer {
                 list_count: None,
                 list_string_keys: None,
                 list_entries: None,
+                array_entries: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
@@ -8926,6 +8931,7 @@ impl Analyzer {
                     let tuple_fields = aggregate_facts.tuple_fields;
                     let record_fields = aggregate_facts.record_fields;
                     let list_entries = aggregate_facts.list_entries;
+                    let array_entries = aggregate_facts.array_entries;
                     let optional = aggregate_facts.optional;
                     let sum = aggregate_facts.sum;
                     let result_facts = aggregate_facts.result;
@@ -8987,6 +8993,7 @@ impl Analyzer {
                         list_count,
                         list_string_keys,
                         list_entries,
+                        array_entries,
                         tuple_fields,
                         record_fields,
                         optional,
@@ -9115,6 +9122,7 @@ impl Analyzer {
                             list_count: Self::known_list_count(&value, environment),
                             list_string_keys: Self::known_list_string_keys(&value, environment),
                             list_entries: None,
+                            array_entries: None,
                             tuple_fields: Vec::new(),
                             record_fields: BTreeMap::new(),
                             optional: None,
@@ -9863,6 +9871,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -9922,6 +9931,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -10527,6 +10537,7 @@ impl Analyzer {
                 list_count: None,
                 list_string_keys: None,
                 list_entries: None,
+                array_entries: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
@@ -12637,10 +12648,43 @@ impl Analyzer {
             && self.source.slice(*classifier) == "Array"
         {
             let list = self.analyze_expression(list, environment)?;
-            require_int_list(&self.source, &list, "Array collection source")?;
+            let CompilerType::List(element) = &list.value_type else {
+                return Err(unsupported(
+                    &self.source,
+                    list.span,
+                    "Array collection source outside List",
+                ));
+            };
+            let element = element.as_ref().clone();
+            if !matches!(&element, CompilerType::Int | CompilerType::Function) {
+                return Err(unsupported(
+                    &self.source,
+                    list.span,
+                    "Array collection source element classifier",
+                ));
+            }
             let count = Self::known_list_count(&list, environment).ok_or_else(|| {
                 unsupported(&self.source, list.span, "Array with a dynamic entry count")
             })?;
+            if element == CompilerType::Function {
+                let entries = self
+                    .known_structural_value_facts(&list, environment)?
+                    .list_entries
+                    .ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            list.span,
+                            "Array Function source without exact finite entry facts",
+                        )
+                    })?;
+                if entries.len() != count {
+                    return Err(unsupported(
+                        &self.source,
+                        list.span,
+                        "Array Function source with inconsistent exact entry facts",
+                    ));
+                }
+            }
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ContainerCollect {
                     source: Box::new(list),
@@ -12649,7 +12693,7 @@ impl Analyzer {
                 },
                 value_type: CompilerType::Array {
                     count,
-                    element: Box::new(CompilerType::Int),
+                    element: Box::new(element),
                 },
                 int_range: None,
                 rational_value: None,
@@ -15853,6 +15897,35 @@ impl Analyzer {
                 }
                 Ok(())
             }
+            CompilerType::Array { count, element }
+                if element.as_ref() == &CompilerType::Function =>
+            {
+                let entries = facts.array_entries.as_mut().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Array Function boundary without exact entry facts",
+                    )
+                })?;
+                if entries.len() != *count {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Array Function boundary with inconsistent exact entry facts",
+                    ));
+                }
+                for (index, entry_facts) in entries.iter_mut().enumerate() {
+                    self.forward_function_aggregate_captures(
+                        element,
+                        entry_facts,
+                        &format!("{boundary_name} Array entry {index}"),
+                        span,
+                        environment,
+                        forwarded,
+                    )?;
+                }
+                Ok(())
+            }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
                 match facts.optional.as_mut() {
                     Some(CompilerOptionalFacts::Some(payload_facts)) => self
@@ -16157,6 +16230,7 @@ impl Analyzer {
             tuple_fields: Vec::new(),
             record_fields: Self::known_record_fields(value, environment),
             list_entries: None,
+            array_entries: None,
             optional: None,
             sum: None,
             result: None,
@@ -16209,6 +16283,50 @@ impl Analyzer {
                 entries.append(&mut remaining_entries);
                 facts.list_entries = Some(entries);
             }
+            CompilerExpressionKind::ContainerCollect {
+                source,
+                kind: CompilerContainerKind::Array,
+                ..
+            } if matches!(
+                &value.value_type,
+                CompilerType::Array { element, .. }
+                    if element.as_ref() == &CompilerType::Function
+            ) =>
+            {
+                facts.array_entries = self
+                    .known_structural_value_facts(source, environment)?
+                    .list_entries;
+            }
+            CompilerExpressionKind::ArrayAt { array, index }
+                if value.value_type == CompilerType::Optional(Box::new(CompilerType::Function)) =>
+            {
+                let CompilerType::Array { count, element } = &array.value_type else {
+                    unreachable!("checked Array access retains its Array classifier")
+                };
+                debug_assert_eq!(element.as_ref(), &CompilerType::Function);
+                let entries = self
+                    .known_structural_value_facts(array, environment)?
+                    .array_entries
+                    .ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            array.span,
+                            "Array Function access without exact entry facts",
+                        )
+                    })?;
+                if entries.len() != *count {
+                    return Err(unsupported(
+                        &self.source,
+                        array.span,
+                        "Array Function access with inconsistent exact entry facts",
+                    ));
+                }
+                facts.optional = Some(if *index < *count {
+                    CompilerOptionalFacts::Some(Box::new(entries[*index].clone()))
+                } else {
+                    CompilerOptionalFacts::None
+                });
+            }
             CompilerExpressionKind::OptionalSome(payload) => {
                 facts.optional = Some(CompilerOptionalFacts::Some(Box::new(
                     self.known_structural_value_facts(payload, environment)?,
@@ -16258,6 +16376,7 @@ impl Analyzer {
                     facts.tuple_fields.clone_from(&binding.tuple_fields);
                     facts.record_fields.clone_from(&binding.record_fields);
                     facts.list_entries.clone_from(&binding.list_entries);
+                    facts.array_entries.clone_from(&binding.array_entries);
                     facts.optional.clone_from(&binding.optional);
                     facts.sum.clone_from(&binding.sum);
                     facts.result.clone_from(&binding.result);
@@ -16439,6 +16558,37 @@ impl Analyzer {
                 })?;
                 for (index, entry_facts) in entries.iter().enumerate() {
                     path.push(CompilerAggregatePathElement::ListEntry(index));
+                    self.collect_function_aggregate_result_captures(
+                        element,
+                        entry_facts,
+                        environment,
+                        span,
+                        path,
+                        result,
+                    )?;
+                    path.pop();
+                }
+                Ok(())
+            }
+            CompilerType::Array { count, element }
+                if element.as_ref() == &CompilerType::Function =>
+            {
+                let entries = facts.array_entries.as_ref().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Array Function result without exact entry facts",
+                    )
+                })?;
+                if entries.len() != *count {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "Array Function result with inconsistent exact entry facts",
+                    ));
+                }
+                for (index, entry_facts) in entries.iter().enumerate() {
+                    path.push(CompilerAggregatePathElement::ArrayEntry(index));
                     self.collect_function_aggregate_result_captures(
                         element,
                         entry_facts,
@@ -17555,6 +17705,9 @@ impl Analyzer {
                         list_entries: structural_facts
                             .as_ref()
                             .and_then(|facts| facts.list_entries.clone()),
+                        array_entries: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.array_entries.clone()),
                         tuple_fields: structural_facts
                             .as_ref()
                             .map(|facts| facts.tuple_fields.clone())
@@ -17609,6 +17762,7 @@ impl Analyzer {
                         call_environment,
                     ),
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -19180,6 +19334,7 @@ impl Analyzer {
                         list_count: None,
                         list_string_keys: None,
                         list_entries: None,
+                        array_entries: None,
                         tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
                         optional: None,
@@ -19222,6 +19377,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: facts.list_entries,
+                    array_entries: facts.array_entries,
                     tuple_fields: facts.tuple_fields,
                     record_fields: facts.record_fields,
                     optional: facts.optional,
@@ -20387,6 +20543,7 @@ impl Analyzer {
                             .then(|| Self::known_list_string_keys(argument, &BTreeMap::new()))
                             .flatten(),
                         list_entries: aggregate_arguments[parameter_index].list_entries.clone(),
+                        array_entries: aggregate_arguments[parameter_index].array_entries.clone(),
                         tuple_fields: aggregate_arguments[parameter_index].tuple_fields.clone(),
                         record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
                         optional: aggregate_arguments[parameter_index].optional.clone(),
@@ -20439,6 +20596,7 @@ impl Analyzer {
                     list_count: Self::known_list_count(argument, &BTreeMap::new()),
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20483,6 +20641,7 @@ impl Analyzer {
                     list_count: Self::known_list_count(argument, &BTreeMap::new()),
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20526,6 +20685,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20570,6 +20730,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20613,6 +20774,7 @@ impl Analyzer {
                     list_count: None,
                     list_string_keys: None,
                     list_entries: None,
+                    array_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -23376,9 +23538,12 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Int | CompilerType::Rational
             )
         }
-        CompilerType::Array { element, .. }
-        | CompilerType::Set(element)
-        | CompilerType::Bag(element) => element.as_ref() == &CompilerType::Int,
+        CompilerType::Array { element, .. } => {
+            matches!(element.as_ref(), CompilerType::Int | CompilerType::Function)
+        }
+        CompilerType::Set(element) | CompilerType::Bag(element) => {
+            element.as_ref() == &CompilerType::Int
+        }
         CompilerType::Map { key, value } => {
             key.as_ref() == &CompilerType::String && value.as_ref() == &CompilerType::Int
         }
@@ -24029,7 +24194,9 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields.iter().any(|(_, field)| {
             field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
         }),
-        CompilerType::List(element) => element.as_ref() == &CompilerType::Function,
+        CompilerType::List(element) | CompilerType::Array { element, .. } => {
+            element.as_ref() == &CompilerType::Function
+        }
         CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
         CompilerType::Result(success) => success.as_ref() == &CompilerType::Function,
         CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
@@ -24085,6 +24252,14 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
                 entries
                     .iter()
                     .all(|facts| function_aggregate_facts_exact(element, facts))
+            })
+        }
+        CompilerType::Array { count, element } if element.as_ref() == &CompilerType::Function => {
+            facts.array_entries.as_ref().is_some_and(|entries| {
+                entries.len() == *count
+                    && entries
+                        .iter()
+                        .all(|facts| function_aggregate_facts_exact(element, facts))
             })
         }
         CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
@@ -24376,6 +24551,7 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         list_count: None,
         list_string_keys: None,
         list_entries: None,
+        array_entries: None,
         tuple_fields: Vec::new(),
         record_fields: BTreeMap::new(),
         optional: None,
@@ -24414,6 +24590,11 @@ fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFa
             returned.extend(returned_function_capture_bindings(entry));
         }
     }
+    if let Some(entries) = &facts.array_entries {
+        for entry in entries {
+            returned.extend(returned_function_capture_bindings(entry));
+        }
+    }
     if let Some(CompilerOptionalFacts::Some(payload)) = &facts.optional {
         returned.extend(returned_function_capture_bindings(payload));
     }
@@ -24446,6 +24627,9 @@ fn aggregate_callable_at_path_mut<'a>(
         }
         CompilerAggregatePathElement::ListEntry(index) => {
             aggregate_callable_at_path_mut(facts.list_entries.as_mut()?.get_mut(*index)?, rest)
+        }
+        CompilerAggregatePathElement::ArrayEntry(index) => {
+            aggregate_callable_at_path_mut(facts.array_entries.as_mut()?.get_mut(*index)?, rest)
         }
         CompilerAggregatePathElement::OptionalPayload => {
             let CompilerOptionalFacts::Some(payload) = facts.optional.as_mut()? else {
@@ -24763,6 +24947,7 @@ fn decision_binding_environment(
             list_count: None,
             list_string_keys: None,
             list_entries: None,
+            array_entries: None,
             tuple_fields: Vec::new(),
             record_fields: BTreeMap::new(),
             optional: None,
@@ -35789,6 +35974,96 @@ mod tests {
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> List Function\n  nested is fn (value : Int) -> Int\n    operation value\n  Entry (nested, Empty)\nwrap increment\n",
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> List Function\n  Entry (increment, Empty)\nwrap is fn (candidate : List Function) -> List Function\n  nested is fn (value : Int) -> Int\n    candidate\n      Entry (operation, remaining) then operation value\n      Empty then 0\n  Entry (nested, Empty)\nwrap (source ())\n",
             "use language (version is v0.1)\nmake is fn (offset : Int) -> List Function\n  increase is fn (value : Int) -> Int\n    value + offset\n  Entry (increase, Empty)\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        }
+    }
+
+    #[test]
+    fn models_array_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-ARRAY-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-ARRAY-COLLECT-001, TOPAL-ARRAY-GET-CHECKED-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/array-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Array Function environment results")
+        };
+        assert_eq!(results.len(), 15);
+        for index in [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11] {
+            assert_eq!(results[index].value_type, CompilerType::Int);
+        }
+        assert_eq!(results[12].value_type, CompilerType::Boolean);
+        assert_eq!(
+            results[6].value_type,
+            CompilerType::Array {
+                count: 1,
+                element: Box::new(CompilerType::Function),
+            }
+        );
+        assert_eq!(
+            results[13].value_type,
+            CompilerType::Array {
+                count: 2,
+                element: Box::new(CompilerType::Function),
+            }
+        );
+        assert_eq!(
+            results[14].value_type,
+            CompilerType::Array {
+                count: 0,
+                element: Box::new(CompilerType::Function),
+            }
+        );
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-array")
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 6);
+        assert!(factories.iter().all(|function| {
+            function.result_captures.len() == 3
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path == [CompilerAggregatePathElement::ArrayEntry(1)])
+        }));
+
+        let record_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-record")
+            .unwrap();
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Record("candidate".into()),
+                    CompilerAggregatePathElement::ArrayEntry(1),
+                ]
+        }));
+        let tuple_forwarder = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-tuple")
+            .unwrap();
+        assert!(tuple_forwarder.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Tuple(0),
+                    CompilerAggregatePathElement::ArrayEntry(1),
+                ]
+        }));
+
+        for rejected in [
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nleft is fn () -> Array (1, Function)\n  values : List Function is Entry (increment, Empty)\n  values collect Array\nright is fn () -> Array (1, Function)\n  values : List Function is Entry (decrement, Empty)\n  values collect Array\nchoose is fn (flag : Boolean) -> Array (1, Function)\n  flag\n    true then left ()\n    false then right ()\nchoose true\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    operation value\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap increment\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Array (1, Function)\n  values : List Function is Entry (increment, Empty)\n  values collect Array\nwrap is fn (candidate : Array (1, Function)) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    array-at? (candidate, 0)\n      Some operation then operation value\n      None then 0\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap (source ())\n",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Array (1, Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  values : List Function is Entry (increase, Empty)\n  values collect Array\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
         ] {
             let diagnostic = analyze_for_compiler(rejected).unwrap_err();
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");

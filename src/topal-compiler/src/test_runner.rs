@@ -15,6 +15,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/anonymous-product-pattern.t",
     "examples/language/arithmetic-error-codes.t",
     "examples/language/arbitrary-integer-arithmetic.t",
+    "examples/language/array-function-environments.t",
     "examples/language/bindings-and-discard.t",
     "examples/language/boolean-decisions.t",
     "examples/language/boolean-logic.t",
