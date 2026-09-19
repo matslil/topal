@@ -2499,3 +2499,14 @@ decompose them through complete List decisions, observe entry count and
 emptiness, and render their canonical source form with String delimiters. The
 shared regression and reversible debugger history shall cover each path with
 the same source used by the native compiler.
+
+## TOPAL-INTP-SUBSET-283 — Ordinary Character List values
+
+All source modes shall construct empty and nonempty `List Character` values,
+preserve exact constrained entries—including multi-scalar user-perceived
+characters—across ordinary parameters/results, packages, Tuples, and Records,
+compare them structurally through the equality derived from String, decompose
+them through complete List decisions, observe entry count and emptiness, and
+render their canonical source form with delimiters. The shared regression and
+reversible debugger history shall cover each path with the same source used by
+the native compiler.

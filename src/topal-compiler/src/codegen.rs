@@ -2203,6 +2203,7 @@ impl<'a> Generator<'a> {
                 let (allocation_size, next_offset) = match &element {
                     CompilerType::Effect
                     | CompilerType::Boolean
+                    | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::String
                     | CompilerType::Function => (16, 8),
@@ -2238,11 +2239,13 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     (CompilerType::Int, LlValue::Int(value))
-                    | (CompilerType::String, LlValue::String(value)) => body.effect(
-                        &format!("store ptr {value}, ptr {node}, align 8"),
-                        expression.span,
-                        &mut self.debug,
-                    ),
+                    | (CompilerType::Character | CompilerType::String, LlValue::String(value)) => {
+                        body.effect(
+                            &format!("store ptr {value}, ptr {node}, align 8"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
                     (
                         CompilerType::Function,
                         LlValue::Function { value, .. } | LlValue::Enum { value, .. },
@@ -2529,7 +2532,8 @@ impl<'a> Generator<'a> {
                 );
                 let string = matches!(
                     &value.value_type,
-                    CompilerType::List(element) if element.as_ref() == &CompilerType::String
+                    CompilerType::List(element)
+                        if matches!(element.as_ref(), CompilerType::Character | CompilerType::String)
                 );
                 let nested_int_string = matches!(
                     &value.value_type,
@@ -4181,7 +4185,7 @@ impl<'a> Generator<'a> {
                     )),
                     Vec::new(),
                 ),
-                CompilerType::String => (
+                CompilerType::Character | CompilerType::String => (
                     LlValue::String(body.instruction(
                         &format!("load ptr, ptr {list}, align 8"),
                         *first_span,
@@ -6471,7 +6475,7 @@ impl<'a> Generator<'a> {
         let runtime = if element == &CompilerType::Boolean {
             self.needs_list_boolean_core = true;
             "boolean"
-        } else if element == &CompilerType::String {
+        } else if matches!(element, CompilerType::Character | CompilerType::String) {
             self.needs_list_string_core = true;
             "string"
         } else if compiler_nested_int_string_list_element(element) {
@@ -8266,7 +8270,7 @@ impl<'a> Generator<'a> {
                 )),
                 8,
             ),
-            CompilerType::String => (
+            CompilerType::Character | CompilerType::String => (
                 LlValue::String(body.instruction(
                     &format!("load ptr, ptr {current}, align 8"),
                     span,

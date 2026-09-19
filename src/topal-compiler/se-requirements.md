@@ -5397,6 +5397,52 @@ types/symbols, debug shadows, and physical placement. This realizes
 `TOPAL-LIST-ENTRY-COUNT-001`, and `TOPAL-LIST-EMPTY-PREDICATE-001` for compiler
 increment 4b3d-n.
 
+## TOPAL-COMP-LIST-CHARACTER-CORE-001 — Ordinary immutable Character Lists
+
+The checked compiler model shall admit contextual `Empty` and `Entry`
+construction for `List Character`, immutable bindings, ordinary private
+parameters and results, package fields, recursively admitted Tuple/Record
+fields, structural equality and inequality, complete `Empty`/`Entry` decisions,
+entry count, emptiness, canonical display, and debugging. Every constructor and
+call operand shall evaluate once in source order. Stored entries shall retain
+their Character constraint evidence and complete preserved scalar sequence.
+Unsupported Character-List transforms shall remain `E-COMPILER-UNSUPPORTED`
+before artifact publication.
+
+The Linux x86-64 backend shall represent `Empty` as a null private pointer and
+each `Entry` as an immutable 16-byte node containing the constrained String
+descriptor pointer and remaining-node pointer. The compiler-selected finite
+String-List fragment shall implement structural equality through the canonical
+preserved-sequence comparator and entry counting; emptiness shall remain a null
+test and decisions shall load the exact descriptor pointer. Correctness at O0
+shall not depend on optimization. Private pointer-bearing definitions, calls,
+returns, Tuple/Record/package fields, target-derived DWARF, and the bounded GDB
+renderer shall preserve the complete source classifier, multi-scalar character
+contents, and delimiters while LLVM owns physical AMD64 placement.
+
+Tests shall cover empty and nonempty construction, a multi-scalar grapheme and
+a ZWJ emoji, same/different structural equality, complete decomposition, count,
+emptiness, private parameter/result, package, Tuple, and Record passage,
+display, all interpreter modes, reversible history, exact private IR,
+artifact-free unsupported-transform rejection, freestanding ELF/DWARF, GDB
+values/frames, the shared corpus, and separate interpreter/compiler resource
+baselines.
+
+This increment shall add no code-point Character representation, copied String,
+implicit normalization, host text API, runtime type tag, type-erased generic
+List, public, foreign, serialized, or compiled-library node ABI, foreign
+allocator, C/C++ runtime, other-language standard library, or `topal-native/6`
+revision. Projections, insertion, concatenation, reversal, removal, range
+selection, traversal, higher-order transforms, final reclamation, and other
+element types remain separately governed. Future library metadata shall retain
+the Character classifier and constraint evidence, representation/ownership,
+lifetime, effects, and versioned target-adapter facts independently of node
+offsets, private helper names, LLVM types/symbols, debug shadows, and physical
+placement. This realizes `TOPAL-COMPILER-LIST-CHARACTER-CORE-001`,
+`TOPAL-TYPE-LIST-CONSTRUCT-001`, `TOPAL-DECISION-LIST-001`,
+`TOPAL-TYPE-LIST-EQUALITY-001`, `TOPAL-LIST-ENTRY-COUNT-001`, and
+`TOPAL-LIST-EMPTY-PREDICATE-001` for compiler increment 4b3d-q.
+
 ## TOPAL-COMP-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The checked compiler model shall extend contextual homogeneous List
