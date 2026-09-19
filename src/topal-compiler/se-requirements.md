@@ -5992,8 +5992,8 @@ or retained in an immutable binding. Each invocation shall bind fields in
 source order and return one Int result. Mapping shall visit every pair exactly
 once in List order, preserve every exact arbitrary-precision value, publish a
 `List Int`, and leave the source unchanged. Duplicate bindings, wrong product
-arity, non-Int fields/results, select/fold use, and unsupported pair-List
-boundaries shall receive stable checked diagnostics.
+arity, non-Int fields/results, select/fold use, and pair-List boundaries outside
+the later ordinary core increment shall receive stable checked diagnostics.
 
 The Linux x86-64 backend shall store each pair inline as two canonical Int
 pointers followed by the remaining-node pointer in one naturally aligned
@@ -6013,6 +6013,23 @@ relocation, public/foreign/serialized/persistent/generic List ABI, or
 `TOPAL-COMPILER-LIST-INT-PAIR-MAP-001`, `TOPAL-TYPE-LIST-CONSTRUCT-001`,
 `TOPAL-COLLECTION-MAP-001`, and `TOPAL-FUNCTION-ANONYMOUS-001` for compiler
 increment 4b3d-i.
+
+## TOPAL-COMP-LIST-INT-PAIR-CORE-001 — Ordinary Int-pair Lists
+
+The checked model shall admit construction, private parameter/result/package
+and nested Tuple/Record passage, derived equality, complete decisions, count,
+emptiness, display, and debugging for `List (Int, Int)`. Linux x86-64 shall
+retain the existing immutable 24-byte two-Int-pointer/remaining-pointer nodes;
+a conditional finite fragment shall compare both exact fields in order and
+count correctly at O0. LLVM owns physical placement, while DWARF/GDB retain the
+recursive List and positional Tuple classifiers.
+
+Tests cover small and arbitrary-precision signed fields, same/different content
+and length, all private boundaries, rejection, IR, ELF/DWARF, GDB, corpus,
+history, and separate baselines. This adds no Tuple allocation, generic/public/
+foreign ABI, foreign allocation, C/C++, other-language library, or ABI revision.
+Future metadata remains independent of private nodes and offsets. This realizes
+`TOPAL-COMPILER-LIST-INT-PAIR-CORE-001` for increment 4b3d-ae.
 
 ## TOPAL-COMP-LIST-RECURSIVE-001 — Exact recursive Int/String Lists
 

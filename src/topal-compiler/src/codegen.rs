@@ -521,6 +521,7 @@ enum ScalarListRuntimeFragment {
     OptionalInt,
     OptionalRational,
     OptionalString,
+    IntPair,
     Boolean,
     Comparison,
     ErrorCode,
@@ -688,6 +689,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::OptionalString,
                 LIST_OPTIONAL_STRING_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::IntPair,
+                LIST_INT_PAIR_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -965,6 +970,9 @@ impl<'a> Generator<'a> {
                 || (carries_function_boundary
                     && parameter.value_type.machine_scalar()
                     && parameter.value_type != CompilerType::Unit)
+                || matches!(&parameter.value_type, CompilerType::List(element)
+                    if matches!(element.as_ref(), CompilerType::Tuple(fields)
+                        if fields.as_slice() == [CompilerType::Int, CompilerType::Int]))
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -2697,6 +2705,12 @@ impl<'a> Generator<'a> {
                         if matches!(element.as_ref(), CompilerType::Optional(payload)
                             if payload.as_ref() == &CompilerType::String)
                 );
+                let int_pair = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if matches!(element.as_ref(), CompilerType::Tuple(fields)
+                            if fields.as_slice() == [CompilerType::Int, CompilerType::Int])
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2746,6 +2760,9 @@ impl<'a> Generator<'a> {
                 } else if optional_string {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::OptionalString);
+                } else if int_pair {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntPair);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2791,6 +2808,8 @@ impl<'a> Generator<'a> {
                             "optional.rational"
                         } else if optional_string {
                             "optional.string"
+                        } else if int_pair {
+                            "int.pair"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4576,10 +4595,42 @@ impl<'a> Generator<'a> {
                         remaining_captures,
                     )
                 }
+                CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::Int, CompilerType::Int] =>
+                {
+                    let left = body.instruction(
+                        &format!("load ptr, ptr {list}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right_address = body.instruction(
+                        &format!("getelementptr i8, ptr {list}, i64 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right = body.instruction(
+                        &format!("load ptr, ptr {right_address}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    (
+                        LlValue::Tuple(vec![LlValue::Int(left), LlValue::Int(right)]),
+                        Vec::new(),
+                    )
+                }
                 _ => unreachable!("checked List decision has an admitted element type"),
             };
+            let rest_offset = if matches!(
+                &element,
+                CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+            ) {
+                16
+            } else {
+                8
+            };
             let rest_address = body.instruction(
-                &format!("getelementptr i8, ptr {list}, i64 8"),
+                &format!("getelementptr i8, ptr {list}, i64 {rest_offset}"),
                 *rest_span,
                 &mut self.debug,
             );
@@ -6869,6 +6920,12 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::OptionalString);
             "optional.string"
+        } else if matches!(element, CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::Int])
+        {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::IntPair);
+            "int.pair"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -12269,6 +12326,7 @@ const LIST_OPTIONAL_RATIONAL_CORE_RUNTIME: &str =
     include_str!("runtime/list_optional_rational_core.ll");
 const LIST_OPTIONAL_STRING_CORE_RUNTIME: &str =
     include_str!("runtime/list_optional_string_core.ll");
+const LIST_INT_PAIR_CORE_RUNTIME: &str = include_str!("runtime/list_int_pair_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");

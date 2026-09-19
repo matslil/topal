@@ -2621,3 +2621,10 @@ All source modes shall preserve `None` and exact UTF-8 String-bearing `Some`
 values through List construction, private boundaries, products, structural
 equality, complete decisions, count, emptiness, and display. Shared native/
 interpreter regression and reversible history shall cover every admitted path.
+
+## TOPAL-INTP-SUBSET-297 — Ordinary Int-pair List values
+
+All source modes shall preserve both exact arbitrary-precision Int fields
+through List construction, private boundaries, nested products, structural
+equality, complete decisions, count, emptiness, and display. Shared native/
+interpreter regression and reversible history shall cover every admitted path.

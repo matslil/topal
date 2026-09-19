@@ -2716,6 +2716,16 @@
       "cpu_time_ns": 321690,
       "memory_peak_bytes": 18911232,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/list-int-pair-values.t": {
+      "cpu_time_ns": 151163100,
+      "memory_peak_bytes": 43433984,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/list-int-pair-values.t": {
+      "cpu_time_ns": 339987,
+      "memory_peak_bytes": 18718720,
+      "samples_per_test": 500
     }
   }
 }

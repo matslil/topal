@@ -5774,9 +5774,29 @@ This rule SHALL add no tuple payload allocation, generic or type-erased List
 runtime, callback ABI, indirect call, foreign allocator, C/C++ runtime,
 other-language standard library, undefined symbol, needed library, relocation,
 public/foreign/serialized/persistent/generic List ABI, stabilized private
-layout, or native ABI revision. Pair-List function boundaries, other product
-shapes and classifiers, pair-returning transformations, and remaining
-operations over pair Lists SHALL remain rejected pending later increments.
+layout, or native ABI revision. Except for the ordinary boundaries later
+admitted by `TOPAL-COMPILER-LIST-INT-PAIR-CORE-001`, other product shapes and
+classifiers, pair-returning transformations, and remaining operations over pair
+Lists SHALL remain rejected pending later increments.
+
+### TOPAL-COMPILER-LIST-INT-PAIR-CORE-001 — Ordinary Int-pair Lists
+
+The compiler SHALL admit empty/nonempty `List (Int, Int)` construction,
+immutable binding, private parameter/result/package and nested Tuple/Record
+passage, derived structural equality, complete decisions, count, emptiness,
+display, and debugging. List equality SHALL compare both arbitrary-precision
+Int fields in source order, stop at the first mismatch, distinguish unequal
+lengths, and remain correct at O0.
+
+On Linux x86-64, an Entry MAY retain the existing immutable 24-byte inline node
+containing two canonical Int pointers and the remaining pointer. LLVM SHALL own
+physical AMD64 placement. This rule SHALL add no allocated Tuple payload,
+type-erased container, public/foreign/library ABI, foreign allocator, C/C++
+runtime, other-language standard library, or native-ABI revision. Future
+metadata SHALL encode the recursive List and positional Tuple classifiers,
+exact field types, representation/ownership/lifetime/effects, and target
+adapters independently of private offsets, LLVM types, helpers, and debug
+shadows.
 
 ### TOPAL-COMPILER-LIST-RECURSIVE-001 — Exact recursive Int/String Lists
 

@@ -1366,6 +1366,11 @@
       "cpu_time_ns": 27711000,
       "memory_peak_bytes": 18317312,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-int-pair-values.t": {
+      "cpu_time_ns": 20763159,
+      "memory_peak_bytes": 18399232,
+      "samples_per_test": 50
     }
   }
 }
