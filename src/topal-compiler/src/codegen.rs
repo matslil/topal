@@ -870,9 +870,11 @@ impl<'a> Generator<'a> {
             let retained_unused_enum = matches!(parameter.value_type, CompilerType::Enum(_))
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
+            let retained_root_capture = parameter.name.starts_with("root ");
             if retained_character_generator_source
                 || retained_value_generator_source
                 || retained_unused_enum
+                || retained_root_capture
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -889,7 +891,7 @@ impl<'a> Generator<'a> {
                     variable,
                     location,
                     body,
-                    parameter.span,
+                    function_parameter_debug_shadow_span(function, parameter),
                 );
             } else {
                 body.debug_value(&value, variable, location);
@@ -10650,6 +10652,17 @@ fn llvm_type(value_type: &CompilerType) -> String {
     }
 }
 
+fn function_parameter_debug_shadow_span(
+    function: &CompilerFunction,
+    parameter: &CompilerParameter,
+) -> Span {
+    if parameter.name.starts_with("root ") {
+        function.span
+    } else {
+        parameter.span
+    }
+}
+
 fn function_llvm_return_type(function: &CompilerFunction) -> String {
     if function.result_captures.is_empty() {
         llvm_type(&function.result_type)
@@ -12036,6 +12049,60 @@ mod tests {
         );
         assert!(llvm.contains("!DILocalVariable(name: \"api\", arg: 1"));
         assert!(llvm.contains("!DILocalVariable(name: \"api answer\", arg: 2"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("topal.runtime.scope"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn forwards_live_root_data_as_exact_private_arguments() {
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-NAMESPACE-ROOT-001, TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-root-data-forwarding.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "function-root-data-forwarding.t").emit();
+        for name in ["read", "relay", "forward"] {
+            let symbol = &program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap()
+                .symbol;
+            assert!(llvm.contains(&format!(
+                "define internal fastcc {{ ptr, ptr, ptr }} @{symbol}(ptr %arg0, ptr %arg1, ptr %arg2)"
+            )));
+        }
+        let read = &program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "read")
+            .unwrap()
+            .symbol;
+        let relay = &program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "relay")
+            .unwrap()
+            .symbol;
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr, ptr }} @{read}(ptr %arg0, ptr %arg1, ptr %arg2)"
+        )));
+        assert!(llvm.contains(&format!(
+            "call fastcc {{ ptr, ptr, ptr }} @{relay}(ptr %arg0, ptr %arg1, ptr %arg2)"
+        )));
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"root label\", arg: 2")
+                .count(),
+            3
+        );
+        assert_eq!(
+            llvm.matches("!DILocalVariable(name: \"root answer\", arg: 3")
+                .count(),
+            3
+        );
+        assert!(llvm.matches("alloca ptr, align 8").count() >= 6);
         assert!(!llvm.contains("topal.runtime.namespace"));
         assert!(!llvm.contains("topal.runtime.scope"));
         assert!(!llvm.contains("call ptr %"));

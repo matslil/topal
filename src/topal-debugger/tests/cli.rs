@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 240);
+    assert_eq!(examples.len(), 241);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -3569,6 +3569,44 @@ fn records_function_root_data_reversibly() {
         .unwrap();
     assert!(initializer < invocation && invocation < root_answer && root_answer < root_label);
     assert!(stdout.contains("function.argument.bound [TOPAL-FUNCTION-ORDINARY-001] answer"));
+    assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001] (Int, Int, String)"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_function_root_data_forwarding_reversibly() {
+    // TOPAL-INTP-SUBSET-267, TOPAL-NAMESPACE-ROOT-001,
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-root-data-forwarding.debug"),
+            &language_example("function-root-data-forwarding.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let forward = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] forward")
+        .unwrap();
+    let relay = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] relay")
+        .unwrap();
+    let read = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] read")
+        .unwrap();
+    let root_answer = stdout
+        .find("namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] answer")
+        .unwrap();
+    let root_label = stdout
+        .find("namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] label")
+        .unwrap();
+    assert!(
+        forward < relay && relay < read && read < root_answer && root_answer < root_label,
+        "{stdout}"
+    );
     assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001] (Int, Int, String)"));
     assert!(stdout.contains("function.exit"));
 }

@@ -2303,3 +2303,14 @@ captured lexical binding shall remain isolated from root qualification. Each
 root initializer shall execute once. The shared regression and reversible
 debugger history shall cover later declaration, initializer-before-call order,
 parameter shadow isolation, multiple root classifiers, and the exact result.
+
+## TOPAL-INTP-SUBSET-267 — Live root data through function call chains
+
+All source modes shall retain the current source session's live root namespace
+through ordinary function calls. A leaf function's exact `root member`
+selection shall therefore observe the same once-initialized root value when one
+or more intermediate functions forward only ordinary explicit parameters.
+Same-named parameters in every frame shall remain isolated from root
+qualification. The shared regression and reversible debugger history shall
+cover a three-function call chain, multiple root classifiers, parameter shadow
+isolation, source-ordered selection events, and the exact result.
