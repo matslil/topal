@@ -1361,6 +1361,12 @@ representative. Future metadata carries the canonical declaration, signedness,
 bounds, representation/ownership/lifetime/effects, and a versioned target
 adapter independently of private Int/List layouts, offsets, and helpers.
 
+`List Optional Int` uses immutable private 16-byte nodes containing an existing
+Optional header pointer and remaining pointer. Its conditional finite fragment
+delegates entry comparison to Optional-Int equality and counts at O0. Decisions,
+private aggregates, DWARF, and GDB preserve both container layers; metadata must
+describe them independently of headers, node offsets, and helper names.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

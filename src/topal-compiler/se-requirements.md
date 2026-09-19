@@ -5510,6 +5510,23 @@ effects, and target adapters independently of private details. This realizes
 List construction, decision, equality, count, and empty rules for compiler
 increment 4b3d-aa.
 
+## TOPAL-COMP-LIST-OPTIONAL-INT-CORE-001 — Ordinary Optional Int Lists
+
+The checked model shall admit construction, private parameter/result/package
+and Tuple/Record passage, derived equality, complete decisions, count,
+emptiness, display, and debugging for `List Optional Int`. Linux x86-64 shall
+use null List Empty and immutable 16-byte Optional-pointer/remaining-pointer
+nodes; a conditional finite fragment shall delegate exact element equality to
+the existing Optional-Int runtime and count correctly at O0. LLVM owns physical
+placement, while DWARF/GDB retain both classifiers.
+
+Tests cover `None`, positive/negative `Some`, same/different content and length,
+all boundaries, rejection, IR, ELF/DWARF, GDB, corpus, history, and separate
+baselines. This adds no flattened Optional, copied Int, generic/public/foreign
+ABI, foreign allocation, C/C++, other-language library, or ABI revision. Future
+metadata remains independent of private headers and nodes. This realizes
+`TOPAL-COMPILER-LIST-OPTIONAL-INT-CORE-001` for increment 4b3d-ab.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`
