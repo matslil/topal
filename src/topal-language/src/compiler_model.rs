@@ -969,6 +969,7 @@ pub enum CompilerExpressionKind {
         source: Box<CompilerExpression>,
         kind: CompilerContainerKind,
         map_policy: Option<CompilerMapCollisionPolicy>,
+        map_keys: Option<Vec<String>>,
     },
     ContainerEntryCount(Box<CompilerExpression>),
     ContainerEmpty(Box<CompilerExpression>),
@@ -987,6 +988,7 @@ pub enum CompilerExpressionKind {
     MapLookup {
         mapping: Box<CompilerExpression>,
         key: Box<CompilerExpression>,
+        exact_key: Option<String>,
     },
     TraversalControl {
         finish: bool,
@@ -1195,6 +1197,7 @@ pub enum CompilerAggregatePathElement {
     Record(String),
     ListEntry(usize),
     ArrayEntry(usize),
+    MapValue(String),
     OptionalPayload,
     SumPayload(String),
     ResultSuccess,
@@ -1344,6 +1347,7 @@ struct BindingFacts {
     list_string_keys: Option<Vec<String>>,
     list_entries: Option<Vec<StaticValueFacts>>,
     array_entries: Option<Vec<StaticValueFacts>>,
+    map_entries: Option<Vec<(String, StaticValueFacts)>>,
     tuple_fields: Vec<StaticValueFacts>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     optional: Option<CompilerOptionalFacts>,
@@ -1458,6 +1462,7 @@ struct StaticValueFacts {
     record_fields: BTreeMap<String, Self>,
     list_entries: Option<Vec<Self>>,
     array_entries: Option<Vec<Self>>,
+    map_entries: Option<Vec<(String, Self)>>,
     optional: Option<CompilerOptionalFacts>,
     sum: Option<CompilerSumFacts>,
     result: Option<CompilerResultFacts>,
@@ -1490,6 +1495,7 @@ fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFact
     binding.record_fields.clone_from(&value.record_fields);
     binding.list_entries.clone_from(&value.list_entries);
     binding.array_entries.clone_from(&value.array_entries);
+    binding.map_entries.clone_from(&value.map_entries);
     binding.optional.clone_from(&value.optional);
     binding.sum.clone_from(&value.sum);
     binding.result.clone_from(&value.result);
@@ -8631,6 +8637,7 @@ impl Analyzer {
                 list_string_keys: None,
                 list_entries: None,
                 array_entries: None,
+                map_entries: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
@@ -8932,6 +8939,7 @@ impl Analyzer {
                     let record_fields = aggregate_facts.record_fields;
                     let list_entries = aggregate_facts.list_entries;
                     let array_entries = aggregate_facts.array_entries;
+                    let map_entries = aggregate_facts.map_entries;
                     let optional = aggregate_facts.optional;
                     let sum = aggregate_facts.sum;
                     let result_facts = aggregate_facts.result;
@@ -8994,6 +9002,7 @@ impl Analyzer {
                         list_string_keys,
                         list_entries,
                         array_entries,
+                        map_entries,
                         tuple_fields,
                         record_fields,
                         optional,
@@ -9123,6 +9132,7 @@ impl Analyzer {
                             list_string_keys: Self::known_list_string_keys(&value, environment),
                             list_entries: None,
                             array_entries: None,
+                            map_entries: None,
                             tuple_fields: Vec::new(),
                             record_fields: BTreeMap::new(),
                             optional: None,
@@ -9872,6 +9882,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -9932,6 +9943,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -10538,6 +10550,7 @@ impl Analyzer {
                 list_string_keys: None,
                 list_entries: None,
                 array_entries: None,
+                map_entries: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
@@ -12690,6 +12703,7 @@ impl Analyzer {
                     source: Box::new(list),
                     kind: CompilerContainerKind::Array,
                     map_policy: None,
+                    map_keys: None,
                 },
                 value_type: CompilerType::Array {
                     count,
@@ -12722,6 +12736,7 @@ impl Analyzer {
                     source: Box::new(list),
                     kind,
                     map_policy: None,
+                    map_keys: None,
                 },
                 value_type,
                 int_range: None,
@@ -12752,15 +12767,49 @@ impl Analyzer {
                 }
             };
             let pairs = self.analyze_expression(pairs, environment)?;
-            let pair_type = CompilerType::Tuple(vec![CompilerType::String, CompilerType::Int]);
-            require_type(
-                &self.source,
-                pairs.span,
-                &CompilerType::List(Box::new(pair_type)),
-                &pairs.value_type,
-            )?;
+            let CompilerType::List(element) = &pairs.value_type else {
+                return Err(unsupported(
+                    &self.source,
+                    pairs.span,
+                    "Map collection source outside List",
+                ));
+            };
+            let CompilerType::Tuple(fields) = element.as_ref() else {
+                return Err(unsupported(
+                    &self.source,
+                    pairs.span,
+                    "Map collection source outside key/value products",
+                ));
+            };
+            let [
+                CompilerType::String,
+                map_value @ (CompilerType::Int | CompilerType::Function),
+            ] = fields.as_slice()
+            else {
+                return Err(unsupported(
+                    &self.source,
+                    pairs.span,
+                    "Map collection key/value classifiers",
+                ));
+            };
+            let map_value = map_value.clone();
+            let map_keys = Self::known_list_string_keys(&pairs, environment);
+            if map_value == CompilerType::Function && map_keys.is_none() {
+                return Err(unsupported(
+                    &self.source,
+                    pairs.span,
+                    "Map Function source without exact String keys",
+                ));
+            }
+            if map_value == CompilerType::Function && map_keys.as_ref().is_some_and(Vec::is_empty) {
+                return Err(unsupported(
+                    &self.source,
+                    pairs.span,
+                    "empty Map Function collection before typed empty Map parity",
+                ));
+            }
             if policy == CompilerMapCollisionPolicy::Reject {
-                let keys = Self::known_list_string_keys(&pairs, environment).ok_or_else(|| {
+                let keys = map_keys.as_ref().ok_or_else(|| {
                     unsupported(&self.source, pairs.span, "dynamic reject-policy Map keys")
                 })?;
                 let mut distinct = BTreeSet::new();
@@ -12778,10 +12827,11 @@ impl Analyzer {
                     source: Box::new(pairs),
                     kind: CompilerContainerKind::Map,
                     map_policy: Some(policy),
+                    map_keys,
                 },
                 value_type: CompilerType::Map {
                     key: Box::new(CompilerType::String),
-                    value: Box::new(CompilerType::Int),
+                    value: Box::new(map_value),
                 },
                 int_range: None,
                 rational_value: None,
@@ -13961,10 +14011,19 @@ impl Analyzer {
                     let key_type = key.as_ref().clone();
                     let value = value.clone();
                     require_same_type(&self.source, query.span, &key_type, &query.value_type)?;
+                    let exact_key = Self::known_string_expression(&query, environment);
+                    if value.as_ref() == &CompilerType::Function && exact_key.is_none() {
+                        return Err(unsupported(
+                            &self.source,
+                            query.span,
+                            "dynamic Map Function lookup key",
+                        ));
+                    }
                     (
                         CompilerExpressionKind::MapLookup {
                             mapping: Box::new(collection),
                             key: Box::new(query),
+                            exact_key,
                         },
                         CompilerType::Optional(value),
                     )
@@ -15926,6 +15985,29 @@ impl Analyzer {
                 }
                 Ok(())
             }
+            CompilerType::Map { key, value }
+                if key.as_ref() == &CompilerType::String
+                    && value.as_ref() == &CompilerType::Function =>
+            {
+                let entries = facts.map_entries.as_mut().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Map Function boundary without exact entry facts",
+                    )
+                })?;
+                for (key, value_facts) in entries {
+                    self.forward_function_aggregate_captures(
+                        value,
+                        value_facts,
+                        &format!("{boundary_name} Map value {key:?}"),
+                        span,
+                        environment,
+                        forwarded,
+                    )?;
+                }
+                Ok(())
+            }
             CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
                 match facts.optional.as_mut() {
                     Some(CompilerOptionalFacts::Some(payload_facts)) => self
@@ -16231,6 +16313,7 @@ impl Analyzer {
             record_fields: Self::known_record_fields(value, environment),
             list_entries: None,
             array_entries: None,
+            map_entries: None,
             optional: None,
             sum: None,
             result: None,
@@ -16261,14 +16344,17 @@ impl Analyzer {
                     .collect::<Result<BTreeMap<_, _>, _>>()?;
             }
             CompilerExpressionKind::ListEmpty
-                if value.value_type == CompilerType::List(Box::new(CompilerType::Function)) =>
+                if matches!(&value.value_type, CompilerType::List(element)
+                    if compiler_type_contains_function(element)) =>
             {
                 facts.list_entries = Some(Vec::new());
             }
             CompilerExpressionKind::ListEntry {
                 value: entry,
                 remaining,
-            } if value.value_type == CompilerType::List(Box::new(CompilerType::Function)) => {
+            } if matches!(&value.value_type, CompilerType::List(element)
+                if compiler_type_contains_function(element)) =>
+            {
                 let mut entries = vec![self.known_structural_value_facts(entry, environment)?];
                 let mut remaining_entries = self
                     .known_structural_value_facts(remaining, environment)?
@@ -16296,6 +16382,56 @@ impl Analyzer {
                 facts.array_entries = self
                     .known_structural_value_facts(source, environment)?
                     .list_entries;
+            }
+            CompilerExpressionKind::ContainerCollect {
+                source,
+                kind: CompilerContainerKind::Map,
+                map_policy,
+                map_keys: Some(keys),
+            } if matches!(
+                &value.value_type,
+                CompilerType::Map { key, value }
+                    if key.as_ref() == &CompilerType::String
+                        && value.as_ref() == &CompilerType::Function
+            ) =>
+            {
+                let source_entries = self
+                    .known_structural_value_facts(source, environment)?
+                    .list_entries
+                    .ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            source.span,
+                            "Map Function source without exact finite entry facts",
+                        )
+                    })?;
+                if source_entries.len() != keys.len() {
+                    return Err(unsupported(
+                        &self.source,
+                        source.span,
+                        "Map Function source with inconsistent exact key/value facts",
+                    ));
+                }
+                let mut positions = BTreeMap::new();
+                let mut entries = Vec::new();
+                for (key, pair_facts) in keys.iter().zip(source_entries) {
+                    let value_facts = pair_facts.tuple_fields.get(1).cloned().ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            source.span,
+                            "Map Function source without exact pair value facts",
+                        )
+                    })?;
+                    if let Some(index) = positions.get(key).copied() {
+                        if matches!(map_policy, Some(CompilerMapCollisionPolicy::KeepLast)) {
+                            entries[index] = (key.clone(), value_facts);
+                        }
+                    } else {
+                        positions.insert(key.clone(), entries.len());
+                        entries.push((key.clone(), value_facts));
+                    }
+                }
+                facts.map_entries = Some(entries);
             }
             CompilerExpressionKind::ArrayAt { array, index }
                 if value.value_type == CompilerType::Optional(Box::new(CompilerType::Function)) =>
@@ -16326,6 +16462,31 @@ impl Analyzer {
                 } else {
                     CompilerOptionalFacts::None
                 });
+            }
+            CompilerExpressionKind::MapLookup {
+                mapping,
+                exact_key: Some(key),
+                ..
+            } if value.value_type == CompilerType::Optional(Box::new(CompilerType::Function)) => {
+                let entries = self
+                    .known_structural_value_facts(mapping, environment)?
+                    .map_entries
+                    .ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            mapping.span,
+                            "Map Function lookup without exact entry facts",
+                        )
+                    })?;
+                facts.optional = Some(
+                    entries
+                        .into_iter()
+                        .find_map(|(candidate, facts)| {
+                            (candidate == *key)
+                                .then_some(CompilerOptionalFacts::Some(Box::new(facts)))
+                        })
+                        .unwrap_or(CompilerOptionalFacts::None),
+                );
             }
             CompilerExpressionKind::OptionalSome(payload) => {
                 facts.optional = Some(CompilerOptionalFacts::Some(Box::new(
@@ -16377,6 +16538,7 @@ impl Analyzer {
                     facts.record_fields.clone_from(&binding.record_fields);
                     facts.list_entries.clone_from(&binding.list_entries);
                     facts.array_entries.clone_from(&binding.array_entries);
+                    facts.map_entries.clone_from(&binding.map_entries);
                     facts.optional.clone_from(&binding.optional);
                     facts.sum.clone_from(&binding.sum);
                     facts.result.clone_from(&binding.result);
@@ -16592,6 +16754,31 @@ impl Analyzer {
                     self.collect_function_aggregate_result_captures(
                         element,
                         entry_facts,
+                        environment,
+                        span,
+                        path,
+                        result,
+                    )?;
+                    path.pop();
+                }
+                Ok(())
+            }
+            CompilerType::Map { key, value }
+                if key.as_ref() == &CompilerType::String
+                    && value.as_ref() == &CompilerType::Function =>
+            {
+                let entries = facts.map_entries.as_ref().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Map Function result without exact entry facts",
+                    )
+                })?;
+                for (key, value_facts) in entries {
+                    path.push(CompilerAggregatePathElement::MapValue(key.clone()));
+                    self.collect_function_aggregate_result_captures(
+                        value,
+                        value_facts,
                         environment,
                         span,
                         path,
@@ -17708,6 +17895,9 @@ impl Analyzer {
                         array_entries: structural_facts
                             .as_ref()
                             .and_then(|facts| facts.array_entries.clone()),
+                        map_entries: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.map_entries.clone()),
                         tuple_fields: structural_facts
                             .as_ref()
                             .map(|facts| facts.tuple_fields.clone())
@@ -17763,6 +17953,7 @@ impl Analyzer {
                     ),
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -19335,6 +19526,7 @@ impl Analyzer {
                         list_string_keys: None,
                         list_entries: None,
                         array_entries: None,
+                        map_entries: None,
                         tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
                         optional: None,
@@ -19378,6 +19570,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: facts.list_entries,
                     array_entries: facts.array_entries,
+                    map_entries: facts.map_entries,
                     tuple_fields: facts.tuple_fields,
                     record_fields: facts.record_fields,
                     optional: facts.optional,
@@ -20544,6 +20737,7 @@ impl Analyzer {
                             .flatten(),
                         list_entries: aggregate_arguments[parameter_index].list_entries.clone(),
                         array_entries: aggregate_arguments[parameter_index].array_entries.clone(),
+                        map_entries: aggregate_arguments[parameter_index].map_entries.clone(),
                         tuple_fields: aggregate_arguments[parameter_index].tuple_fields.clone(),
                         record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
                         optional: aggregate_arguments[parameter_index].optional.clone(),
@@ -20597,6 +20791,7 @@ impl Analyzer {
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20642,6 +20837,7 @@ impl Analyzer {
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20686,6 +20882,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20731,6 +20928,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -20775,6 +20973,7 @@ impl Analyzer {
                     list_string_keys: None,
                     list_entries: None,
                     array_entries: None,
+                    map_entries: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
@@ -23274,6 +23473,14 @@ fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::Function]
+    )
+}
+
 fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -23291,6 +23498,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
             if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
     ) || compiler_int_string_pair(value_type)
         || compiler_string_int_pair(value_type)
+        || compiler_string_function_pair(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
 
@@ -23504,6 +23712,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 element.as_ref(),
                 CompilerType::Effect | CompilerType::Int | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
+                || compiler_string_function_pair(element.as_ref())
         }
         CompilerType::Optional(payload) => {
             matches!(
@@ -23545,7 +23754,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
             element.as_ref() == &CompilerType::Int
         }
         CompilerType::Map { key, value } => {
-            key.as_ref() == &CompilerType::String && value.as_ref() == &CompilerType::Int
+            key.as_ref() == &CompilerType::String
+                && matches!(value.as_ref(), CompilerType::Int | CompilerType::Function)
         }
         _ => true,
     }
@@ -24197,6 +24407,9 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
         CompilerType::List(element) | CompilerType::Array { element, .. } => {
             element.as_ref() == &CompilerType::Function
         }
+        CompilerType::Map { key, value } => {
+            key.as_ref() == &CompilerType::String && value.as_ref() == &CompilerType::Function
+        }
         CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
         CompilerType::Result(success) => success.as_ref() == &CompilerType::Function,
         CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
@@ -24260,6 +24473,16 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
                     && entries
                         .iter()
                         .all(|facts| function_aggregate_facts_exact(element, facts))
+            })
+        }
+        CompilerType::Map { key, value }
+            if key.as_ref() == &CompilerType::String
+                && value.as_ref() == &CompilerType::Function =>
+        {
+            facts.map_entries.as_ref().is_some_and(|entries| {
+                entries
+                    .iter()
+                    .all(|(_, facts)| function_aggregate_facts_exact(value.as_ref(), facts))
             })
         }
         CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
@@ -24458,6 +24681,16 @@ fn function_aggregate_binding_facts_exact(value_type: &CompilerType, facts: &Bin
             .result
             .as_ref()
             .is_some_and(|result| function_aggregate_facts_exact(success, &result.success)),
+        CompilerType::Map { key, value }
+            if key.as_ref() == &CompilerType::String
+                && value.as_ref() == &CompilerType::Function =>
+        {
+            facts.map_entries.as_ref().is_some_and(|entries| {
+                entries
+                    .iter()
+                    .all(|(_, facts)| function_aggregate_facts_exact(value.as_ref(), facts))
+            })
+        }
         _ => false,
     }
 }
@@ -24552,6 +24785,7 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         list_string_keys: None,
         list_entries: None,
         array_entries: None,
+        map_entries: None,
         tuple_fields: Vec::new(),
         record_fields: BTreeMap::new(),
         optional: None,
@@ -24595,6 +24829,11 @@ fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFa
             returned.extend(returned_function_capture_bindings(entry));
         }
     }
+    if let Some(entries) = &facts.map_entries {
+        for (_, entry) in entries {
+            returned.extend(returned_function_capture_bindings(entry));
+        }
+    }
     if let Some(CompilerOptionalFacts::Some(payload)) = &facts.optional {
         returned.extend(returned_function_capture_bindings(payload));
     }
@@ -24630,6 +24869,14 @@ fn aggregate_callable_at_path_mut<'a>(
         }
         CompilerAggregatePathElement::ArrayEntry(index) => {
             aggregate_callable_at_path_mut(facts.array_entries.as_mut()?.get_mut(*index)?, rest)
+        }
+        CompilerAggregatePathElement::MapValue(key) => {
+            let (_, value) = facts
+                .map_entries
+                .as_mut()?
+                .iter_mut()
+                .find(|(candidate, _)| candidate == key)?;
+            aggregate_callable_at_path_mut(value, rest)
         }
         CompilerAggregatePathElement::OptionalPayload => {
             let CompilerOptionalFacts::Some(payload) = facts.optional.as_mut()? else {
@@ -24948,6 +25195,7 @@ fn decision_binding_environment(
             list_string_keys: None,
             list_entries: None,
             array_entries: None,
+            map_entries: None,
             tuple_fields: Vec::new(),
             record_fields: BTreeMap::new(),
             optional: None,
@@ -25661,6 +25909,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::MapLookup {
             mapping: left,
             key: right,
+            ..
         }
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
@@ -36064,6 +36313,98 @@ mod tests {
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    operation value\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap increment\n",
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Array (1, Function)\n  values : List Function is Entry (increment, Empty)\n  values collect Array\nwrap is fn (candidate : Array (1, Function)) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    array-at? (candidate, 0)\n      Some operation then operation value\n      None then 0\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap (source ())\n",
             "use language (version is v0.1)\nmake is fn (offset : Int) -> Array (1, Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  values : List Function is Entry (increase, Empty)\n  values collect Array\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        }
+    }
+
+    #[test]
+    fn models_map_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-MAP-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-MAP-COLLECT-001, TOPAL-MAP-LOOKUP-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/map-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Map Function environment results")
+        };
+        assert_eq!(results.len(), 16);
+        for result in &results[..14] {
+            assert_eq!(result.value_type, CompilerType::Int);
+        }
+        assert_eq!(results[14].value_type, CompilerType::Boolean);
+        assert_eq!(
+            results[15].value_type,
+            CompilerType::Map {
+                key: Box::new(CompilerType::String),
+                value: Box::new(CompilerType::Function),
+            }
+        );
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-map")
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 6);
+        assert!(factories.iter().all(|function| {
+            function.result_captures.len() == 3
+                && function.result_captures.iter().all(|capture| {
+                    capture.path == [CompilerAggregatePathElement::MapValue("increase".into())]
+                })
+        }));
+
+        let record_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-record")
+            .unwrap();
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Record("candidate".into()),
+                    CompilerAggregatePathElement::MapValue("increase".into()),
+                ]
+        }));
+        let tuple_forwarder = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-tuple")
+            .unwrap();
+        assert!(tuple_forwarder.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Tuple(0),
+                    CompilerAggregatePathElement::MapValue("increase".into()),
+                ]
+        }));
+        let keep_first = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "keep-first-map")
+            .unwrap();
+        assert!(keep_first.result_captures.is_empty());
+        let keep_last = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "keep-last-map")
+            .unwrap();
+        assert!(keep_last.result_captures.iter().all(|capture| {
+            capture.path == [CompilerAggregatePathElement::MapValue("operation".into())]
+        }));
+
+        for rejected in [
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nleft is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nright is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", decrement), Empty)\n  collect-map pairs resolving reject\nchoose is fn (flag : Boolean) -> Map (String, Function)\n  flag\n    true then left ()\n    false then right ()\nchoose true\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Map (String, Function)\n  nested is fn (value : Int) -> Int\n    operation value\n  pairs : List (String, Function) is Entry ((\"operation\", nested), Empty)\n  collect-map pairs resolving reject\nwrap increment\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nwrap is fn (candidate : Map (String, Function)) -> Map (String, Function)\n  nested is fn (value : Int) -> Int\n    map-lookup (candidate, \"operation\")\n      Some operation then operation value\n      None then 0\n  pairs : List (String, Function) is Entry ((\"nested\", nested), Empty)\n  collect-map pairs resolving reject\nwrap (source ())\n",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Map (String, Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  pairs : List (String, Function) is Entry ((\"operation\", increase), Empty)\n  collect-map pairs resolving reject\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nselect is fn (flag : Boolean) -> String\n  flag\n    true then \"operation\"\n    false then \"missing\"\nlookup is fn (candidate : Map (String, Function), key : String) -> Int\n  map-lookup (candidate, key)\n    Some operation then operation 1\n    None then 0\nlookup (source (), select true)\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (key : String) -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((key, increment), Empty)\n  collect-map pairs resolving reject\nmake \"operation\"\n",
+            "use language (version is v0.1)\nempty is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Empty\n  collect-map pairs resolving reject\nempty ()\n",
         ] {
             let diagnostic = analyze_for_compiler(rejected).unwrap_err();
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");

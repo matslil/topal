@@ -2466,3 +2466,17 @@ and captured factory invocations shall remain independent. The shared
 regression and reversible debugger history shall cover zero and nonzero
 extents; named, symbolic, anonymous, and nested Function entries; collection,
 forwarding, checked access, count, emptiness, display, and exact results.
+
+## TOPAL-INTP-SUBSET-280 — String-keyed Map Function environments
+
+All source modes shall preserve exact Function identities and lexical
+environments when a nonempty finite `List (String, Function)` is collected as
+a `Map (String, Function)` under `reject`, `keep-first`, or `keep-last`, passed
+through ordinary source parameters/results or package and Tuple/Record fields,
+looked up by exact present and missing String keys through `Optional Function`,
+and eventually applied. Collision resolution, distinct keys, and captured
+factory invocations shall preserve the selected independent callable snapshots.
+The shared regression and reversible debugger history shall cover named,
+symbolic, anonymous, and nested Function values; all collision policies;
+collection, forwarding, exact lookup, count, emptiness, display, and exact
+results.

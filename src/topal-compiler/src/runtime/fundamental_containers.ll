@@ -281,6 +281,67 @@ done:
   ret ptr %mapping
 }
 
+define internal ptr @topal.runtime.container.map.string-function.collect(ptr %pairs, i1 %keep.last) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%pairs, %entry], [%source.next, %advance]
+  %head = phi ptr [null, %entry], [%head.next, %advance]
+  %tail = phi ptr [null, %entry], [%tail.next, %advance]
+  %count = phi i64 [0, %entry], [%count.next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %done, label %visit
+visit:
+  %key = load ptr, ptr %current, align 8
+  %source.value.pointer = getelementptr i8, ptr %current, i64 8
+  %source.next.pointer = getelementptr i8, ptr %current, i64 16
+  %value = load i32, ptr %source.value.pointer, align 4
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %existing = call ptr @topal.runtime.container.map.string-int.find(ptr %head, ptr %key)
+  %found = icmp ne ptr %existing, null
+  br i1 %found, label %collision, label %add
+collision:
+  br i1 %keep.last, label %replace, label %keep
+replace:
+  %existing.value = getelementptr %topal.ContainerMapNode, ptr %existing, i32 0, i32 1
+  store i32 %value, ptr %existing.value, align 4
+  br label %advance
+keep:
+  br label %advance
+add:
+  %node = call ptr @topal.platform.allocate(i64 24)
+  %node.key = getelementptr %topal.ContainerMapNode, ptr %node, i32 0, i32 0
+  %node.value = getelementptr %topal.ContainerMapNode, ptr %node, i32 0, i32 1
+  %node.next = getelementptr %topal.ContainerMapNode, ptr %node, i32 0, i32 2
+  store ptr %key, ptr %node.key, align 8
+  store i32 %value, ptr %node.value, align 4
+  store ptr null, ptr %node.next, align 8
+  %first = icmp eq ptr %tail, null
+  br i1 %first, label %start, label %link
+start:
+  br label %added
+link:
+  %tail.next.pointer = getelementptr %topal.ContainerMapNode, ptr %tail, i32 0, i32 2
+  store ptr %node, ptr %tail.next.pointer, align 8
+  br label %added
+added:
+  %added.head = phi ptr [%node, %start], [%head, %link]
+  %added.count = add i64 %count, 1
+  br label %advance
+advance:
+  %head.next = phi ptr [%head, %replace], [%head, %keep], [%added.head, %added]
+  %tail.next = phi ptr [%tail, %replace], [%tail, %keep], [%node, %added]
+  %count.next = phi i64 [%count, %replace], [%count, %keep], [%added.count, %added]
+  br label %loop
+done:
+  %mapping = call ptr @topal.platform.allocate(i64 16)
+  %mapping.count = getelementptr %topal.ContainerSequenceHeader, ptr %mapping, i32 0, i32 0
+  %mapping.entries = getelementptr %topal.ContainerSequenceHeader, ptr %mapping, i32 0, i32 1
+  store i64 %count, ptr %mapping.count, align 8
+  store ptr %head, ptr %mapping.entries, align 8
+  ret ptr %mapping
+}
+
 define internal ptr @topal.runtime.container.entry.count(ptr %container) nounwind noinline {
 entry:
   %count = load i64, ptr %container, align 8
@@ -389,6 +450,25 @@ some:
   %value.pointer = getelementptr %topal.ContainerMapNode, ptr %node, i32 0, i32 1
   %value = load ptr, ptr %value.pointer, align 8
   %some.value = call ptr @topal.runtime.optional.some(ptr %value)
+  ret ptr %some.value
+none:
+  %none.value = call ptr @topal.runtime.optional.none()
+  ret ptr %none.value
+}
+
+define internal ptr @topal.runtime.container.map.string-function.lookup(ptr %mapping, ptr %key) nounwind noinline {
+entry:
+  %entries.pointer = getelementptr %topal.ContainerSequenceHeader, ptr %mapping, i32 0, i32 1
+  %entries = load ptr, ptr %entries.pointer, align 8
+  %node = call ptr @topal.runtime.container.map.string-int.find(ptr %entries, ptr %key)
+  %absent = icmp eq ptr %node, null
+  br i1 %absent, label %none, label %some
+some:
+  %value.pointer = getelementptr %topal.ContainerMapNode, ptr %node, i32 0, i32 1
+  %value = load i32, ptr %value.pointer, align 4
+  %payload = call ptr @topal.platform.allocate(i64 4)
+  store i32 %value, ptr %payload, align 4
+  %some.value = call ptr @topal.runtime.optional.some(ptr %payload)
   ret ptr %some.value
 none:
   %none.value = call ptr @topal.runtime.optional.none()

@@ -386,6 +386,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::MapLookup {
             mapping: left,
             key: right,
+            ..
         }
         | CompilerExpressionKind::RationalConstruct {
             numerator: left,
@@ -2196,7 +2197,10 @@ impl<'a> Generator<'a> {
                         if matches!(
                             fields.as_slice(),
                             [CompilerType::Int, CompilerType::Int | CompilerType::String,]
-                                | [CompilerType::String, CompilerType::Int]
+                                | [
+                                    CompilerType::String,
+                                    CompilerType::Int | CompilerType::Function
+                                ]
                         ) =>
                     {
                         (24, 16)
@@ -2233,7 +2237,10 @@ impl<'a> Generator<'a> {
                         if matches!(
                             field_types.as_slice(),
                             [CompilerType::Int, CompilerType::Int | CompilerType::String,]
-                                | [CompilerType::String, CompilerType::Int]
+                                | [
+                                    CompilerType::String,
+                                    CompilerType::Int | CompilerType::Function
+                                ]
                         ) =>
                     {
                         let [left, right] = values.as_slice() else {
@@ -2252,14 +2259,23 @@ impl<'a> Generator<'a> {
                             expression.span,
                             &mut self.debug,
                         );
-                        body.effect(
-                            &format!(
-                                "store ptr {}, ptr {right_address}, align 8",
-                                right.int_or_string_pointer()
+                        match right {
+                            LlValue::Function { value, .. } | LlValue::Enum { value, .. } => {
+                                body.effect(
+                                    &format!("store i32 {value}, ptr {right_address}, align 4"),
+                                    expression.span,
+                                    &mut self.debug,
+                                );
+                            }
+                            _ => body.effect(
+                                &format!(
+                                    "store ptr {}, ptr {right_address}, align 8",
+                                    right.int_or_string_pointer()
+                                ),
+                                expression.span,
+                                &mut self.debug,
                             ),
-                            expression.span,
-                            &mut self.debug,
-                        );
+                        }
                     }
                     (
                         CompilerType::List(inner),
@@ -2287,13 +2303,20 @@ impl<'a> Generator<'a> {
                     expression.span,
                     &mut self.debug,
                 );
-                if element == CompilerType::Function {
+                if element == CompilerType::Function || compiler_string_function_pair(&element) {
                     let captures = match value {
                         LlValue::Function { captures, .. } => captures,
                         LlValue::Enum { .. } => Vec::new(),
-                        _ => {
-                            unreachable!("checked List Function entry retains callable captures")
+                        LlValue::Tuple(mut values) if compiler_string_function_pair(&element) => {
+                            match values.pop().expect("checked Map pair has a Function value") {
+                                LlValue::Function { captures, .. } => captures,
+                                LlValue::Enum { .. } => Vec::new(),
+                                _ => unreachable!(
+                                    "checked Map pair retains callable captures in its value"
+                                ),
+                            }
                         }
+                        _ => unreachable!("checked List entry retains callable captures"),
                     };
                     function_captures.insert(0, captures);
                 }
@@ -2908,19 +2931,54 @@ impl<'a> Generator<'a> {
                 source,
                 kind,
                 map_policy,
+                map_keys,
             } => {
                 self.list_int_runtime_fragments
                     .insert(ListIntRuntimeFragment::FundamentalContainers);
                 let source = self.emit_expression(source, body, environment);
-                let function_captures = match (&expression.value_type, &source) {
-                    (
-                        CompilerType::Array { element, .. },
-                        LlValue::List {
-                            function_captures, ..
-                        },
-                    ) if element.as_ref() == &CompilerType::Function => function_captures.clone(),
-                    _ => Vec::new(),
-                };
+                let (function_captures, function_capture_keys) =
+                    match (&expression.value_type, &source) {
+                        (
+                            CompilerType::Array { element, .. },
+                            LlValue::List {
+                                function_captures, ..
+                            },
+                        ) if element.as_ref() == &CompilerType::Function => {
+                            (function_captures.clone(), Vec::new())
+                        }
+                        (
+                            CompilerType::Map { key, value },
+                            LlValue::List {
+                                function_captures, ..
+                            },
+                        ) if key.as_ref() == &CompilerType::String
+                            && value.as_ref() == &CompilerType::Function =>
+                        {
+                            let keys = map_keys
+                                .as_ref()
+                                .expect("checked Map Function collection retains exact keys");
+                            debug_assert_eq!(keys.len(), function_captures.len());
+                            let mut positions: BTreeMap<String, usize> = BTreeMap::new();
+                            let mut unique_keys = Vec::new();
+                            let mut unique_captures: Vec<Vec<(String, LlValue)>> = Vec::new();
+                            for (key, captures) in keys.iter().zip(function_captures) {
+                                if let Some(index) = positions.get(key).copied() {
+                                    if matches!(
+                                        map_policy,
+                                        Some(CompilerMapCollisionPolicy::KeepLast)
+                                    ) {
+                                        unique_captures[index].clone_from(captures);
+                                    }
+                                } else {
+                                    positions.insert(key.clone(), unique_keys.len());
+                                    unique_keys.push(key.clone());
+                                    unique_captures.push(captures.clone());
+                                }
+                            }
+                            (unique_captures, unique_keys)
+                        }
+                        _ => (Vec::new(), Vec::new()),
+                    };
                 let call = match kind {
                     CompilerContainerKind::Array
                         if matches!(
@@ -2951,8 +3009,18 @@ impl<'a> Generator<'a> {
                     CompilerContainerKind::Map => {
                         let keep_last =
                             matches!(map_policy, Some(CompilerMapCollisionPolicy::KeepLast));
+                        let helper = if matches!(
+                            &expression.value_type,
+                            CompilerType::Map { key, value }
+                                if key.as_ref() == &CompilerType::String
+                                    && value.as_ref() == &CompilerType::Function
+                        ) {
+                            "topal.runtime.container.map.string-function.collect"
+                        } else {
+                            "topal.runtime.container.map.string-int.collect"
+                        };
                         format!(
-                            "call ptr @topal.runtime.container.map.string-int.collect(ptr {}, i1 {keep_last})",
+                            "call ptr @{helper}(ptr {}, i1 {keep_last})",
                             source.list_pointer()
                         )
                     }
@@ -2961,6 +3029,7 @@ impl<'a> Generator<'a> {
                     value: body.instruction(&call, expression.span, &mut self.debug),
                     value_type: expression.value_type.clone(),
                     function_captures,
+                    function_capture_keys,
                 }
             }
             CompilerExpressionKind::ContainerEntryCount(container) => {
@@ -2997,6 +3066,7 @@ impl<'a> Generator<'a> {
                     value: array,
                     value_type,
                     function_captures,
+                    ..
                 } = array
                 else {
                     unreachable!("checked Array access retains its container value")
@@ -3054,23 +3124,57 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
-            CompilerExpressionKind::MapLookup { mapping, key } => {
+            CompilerExpressionKind::MapLookup {
+                mapping,
+                key,
+                exact_key,
+            } => {
                 self.list_int_runtime_fragments
                     .insert(ListIntRuntimeFragment::FundamentalContainers);
                 let mapping = self.emit_expression(mapping, body, environment);
                 let key = self.emit_expression(key, body, environment);
+                let LlValue::Container {
+                    value: mapping,
+                    value_type,
+                    function_captures,
+                    function_capture_keys,
+                } = mapping
+                else {
+                    unreachable!("checked Map lookup retains its container value")
+                };
+                let CompilerType::Map {
+                    key: map_key,
+                    value: map_value,
+                } = value_type
+                else {
+                    unreachable!("checked Map lookup retains its Map classifier")
+                };
+                debug_assert_eq!(map_key.as_ref(), &CompilerType::String);
+                let helper = match map_value.as_ref() {
+                    CompilerType::Int => "topal.runtime.container.map.string-int.lookup",
+                    CompilerType::Function => "topal.runtime.container.map.string-function.lookup",
+                    _ => unreachable!("checked Map lookup has an admitted value classifier"),
+                };
+                let captures = if map_value.as_ref() == &CompilerType::Function {
+                    let exact_key = exact_key
+                        .as_ref()
+                        .expect("checked Map Function lookup retains an exact key");
+                    function_capture_keys
+                        .iter()
+                        .position(|candidate| candidate == exact_key)
+                        .and_then(|index| function_captures.get(index).cloned())
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
                 LlValue::Optional {
                     value: body.instruction(
-                        &format!(
-                            "call ptr @topal.runtime.container.map.string-int.lookup(ptr {}, ptr {})",
-                            mapping.container_pointer(),
-                            key.string()
-                        ),
+                        &format!("call ptr @{helper}(ptr {mapping}, ptr {})", key.string()),
                         expression.span,
                         &mut self.debug,
                     ),
-                    payload: CompilerType::Int,
-                    function_captures: Vec::new(),
+                    payload: map_value.as_ref().clone(),
+                    function_captures: captures,
                 }
             }
             CompilerExpressionKind::ListFold {
@@ -3529,6 +3633,7 @@ impl<'a> Generator<'a> {
                             ),
                             value_type: expression.value_type.clone(),
                             function_captures: Vec::new(),
+                            function_capture_keys: Vec::new(),
                         },
                         CompilerType::Tuple(ref field_types) => {
                             let aggregate_type = llvm_value_type(&expression.value_type);
@@ -7132,6 +7237,7 @@ impl<'a> Generator<'a> {
                     ),
                     value_type,
                     function_captures: Vec::new(),
+                    function_capture_keys: Vec::new(),
                 }
             }
             LlValue::Sum { sum, .. } => {
@@ -7484,10 +7590,13 @@ impl<'a> Generator<'a> {
                 key,
                 value: map_value,
             } if key.as_ref() == &CompilerType::String
-                && map_value.as_ref() == &CompilerType::Int =>
+                && matches!(
+                    map_value.as_ref(),
+                    CompilerType::Int | CompilerType::Function
+                ) =>
             {
                 let entries = self.emit_container_entries(container, 8, body, span);
-                self.emit_print_map(&entries, body, span);
+                self.emit_print_map(&entries, map_value, body, span);
             }
             _ => unreachable!("checked fundamental container has an admitted printer"),
         }
@@ -7701,7 +7810,13 @@ impl<'a> Generator<'a> {
         self.emit_write_literal(")", body, span);
     }
 
-    fn emit_print_map(&mut self, entries: &str, body: &mut FunctionBody, span: Span) {
+    fn emit_print_map(
+        &mut self,
+        entries: &str,
+        value_type: &CompilerType,
+        body: &mut FunctionBody,
+        span: Span,
+    ) {
         self.emit_write_literal("Map (", body, span);
         let initial = body.current_block.clone();
         let loop_label = body.label("print.map.loop");
@@ -7757,13 +7872,25 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let value = body.instruction(
-            &format!("load ptr, ptr {value_address}, align 8"),
-            span,
-            &mut self.debug,
-        );
+        let value = match value_type {
+            CompilerType::Int => LlValue::Int(body.instruction(
+                &format!("load ptr, ptr {value_address}, align 8"),
+                span,
+                &mut self.debug,
+            )),
+            CompilerType::Function => LlValue::Function {
+                value: body.instruction(
+                    &format!("load i32, ptr {value_address}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: function_value_enumeration(self.program),
+                captures: Vec::new(),
+            },
+            _ => unreachable!("checked Map value has an admitted printer"),
+        };
         self.emit_print(
-            &LlValue::Tuple(vec![LlValue::String(key), LlValue::Int(value)]),
+            &LlValue::Tuple(vec![LlValue::String(key), value]),
             body,
             span,
         );
@@ -8885,6 +9012,7 @@ enum LlValue {
         value: String,
         value_type: CompilerType,
         function_captures: Vec<Vec<(String, Self)>>,
+        function_capture_keys: Vec<String>,
     },
     String(String),
     Tuple(Vec<Self>),
@@ -8951,6 +9079,24 @@ fn attach_function_capture(
                 function_captures.resize_with(*index + 1, Vec::new);
             }
             function_captures[*index].push((storage_name, capture_value));
+        }
+        (
+            CompilerAggregatePathElement::MapValue(key),
+            LlValue::Container {
+                function_captures,
+                function_capture_keys,
+                ..
+            },
+        ) if rest.is_empty() => {
+            let index = function_capture_keys
+                .iter()
+                .position(|candidate| candidate == key)
+                .unwrap_or_else(|| {
+                    function_capture_keys.push(key.clone());
+                    function_captures.push(Vec::new());
+                    function_capture_keys.len() - 1
+                });
+            function_captures[index].push((storage_name, capture_value));
         }
         (
             CompilerAggregatePathElement::OptionalPayload,
@@ -9387,6 +9533,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
             value: "null".into(),
             value_type: value_type.clone(),
             function_captures: Vec::new(),
+            function_capture_keys: Vec::new(),
         },
         CompilerType::Character | CompilerType::String => LlValue::String("null".into()),
         CompilerType::Refined { base, .. } => zero_machine_value(base),
@@ -11263,6 +11410,14 @@ fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::Function]
+    )
+}
+
 fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -11483,6 +11638,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
             value,
             value_type: value_type.clone(),
             function_captures: Vec::new(),
+            function_capture_keys: Vec::new(),
         },
         CompilerType::Refined { base, .. } => machine_value(base, value),
         CompilerType::Tuple(_) | CompilerType::Record(_) | CompilerType::Sum(_) => {

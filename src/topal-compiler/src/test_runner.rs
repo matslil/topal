@@ -154,6 +154,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/lint-language-variant.t",
     "examples/language/list-containment.t",
     "examples/language/list-function-environments.t",
+    "examples/language/map-function-environments.t",
     "examples/language/list-removal.t",
     "examples/language/list-sequence-operations.t",
     "examples/language/lists.t",
