@@ -5335,6 +5335,29 @@ ownership, lifetime, effects, and target adapters independently of private
 details. This realizes `TOPAL-COMPILER-LIST-EFFECT-CORE-001` and the List
 construction/decision/equality/count/empty rules for increment 4b3d-t.
 
+## TOPAL-COMP-LIST-COMPARISON-CORE-001 — Ordinary immutable Comparison Lists
+
+The checked model shall admit contextual construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for
+`List Comparison`. Entries retain exactly `Less`, `Equal`, or `Greater`, every
+operand evaluates once, and unsupported transforms fail before publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing i32 Comparison carrier and remaining pointer. A conditional finite
+fragment shall compare exact alternatives and count correctly at O0. LLVM owns
+private AMD64 placement; DWARF/GDB retain and validate exact source identities.
+Tests cover all admitted boundaries and observations, interpreter modes and
+history, exact IR, artifact rejection, ELF/DWARF, GDB, corpus, and baselines.
+
+This adds no runtime tag, generic/public/foreign/library node or enum ABI,
+foreign allocator, C/C++ runtime, other-language standard library, or ABI
+revision. Future metadata carries the semantic alternative mapping,
+representation/ownership, lifetime, effects, and target adapters independently
+of private details. This realizes
+`TOPAL-COMPILER-LIST-COMPARISON-CORE-001`, List construction, decision,
+equality, count, and empty rules for compiler increment 4b3d-u.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

@@ -2536,3 +2536,11 @@ empty/nonempty List construction, ordinary parameters/results, packages,
 Tuples, Records, structural equality, complete decisions, count, emptiness, and
 canonical display without performing an effect. Shared native/interpreter
 regression and reversible history shall cover each path.
+
+## TOPAL-INTP-SUBSET-287 — Ordinary Comparison List values
+
+All source modes shall preserve `Less`, `Equal`, and `Greater` entries through
+empty/nonempty List construction, ordinary parameters/results, packages,
+Tuples, Records, structural equality, complete decisions, count, emptiness, and
+canonical display. Shared native/interpreter regression and reversible history
+shall cover each path.

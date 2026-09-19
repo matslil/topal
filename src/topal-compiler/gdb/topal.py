@@ -699,6 +699,12 @@ class _TopalListPrinter:
                 if payload > 1:
                     return f"<invalid List Boolean entry {payload}>"
                 entries.append("true" if payload else "false")
+            elif self._element_type == "Comparison":
+                payload = int.from_bytes(node[0:4], "little", signed=True)
+                rendered = {-1: "Less", 0: "Equal", 1: "Greater"}.get(payload)
+                if rendered is None:
+                    return f"<invalid List Comparison entry {payload}>"
+                entries.append(rendered)
             elif self._element_type in ("Int", "Nat"):
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:

@@ -1292,6 +1292,16 @@ identity rule for future nonempty effect rows. DWARF and GDB retain `List Effect
 and future library metadata must carry effect-row identity/evidence separately
 from node representation, ownership, lifetime, effects, and target adapters.
 
+`List Comparison` uses immutable 16-byte private nodes whose first four bytes
+retain the existing closed i32 carrier (`Less = -1`, `Equal = 0`,
+`Greater = 1`) and whose remaining pointer begins at byte eight. A conditional
+finite fragment compares exact carriers and counts nodes; decisions use i32
+loads and emptiness remains a null test. LLVM owns private AMD64 placement, and
+DWARF/GDB preserve both `List Comparison` and each alternative. The node is not
+a public enum or container ABI; future library metadata carries the semantic
+alternative mapping, representation/ownership/lifetime/effect facts, and a
+versioned target adapter independently of offsets, LLVM types, and helpers.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List
