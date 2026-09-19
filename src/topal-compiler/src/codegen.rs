@@ -2087,6 +2087,10 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::OptionalSome(value) => {
                 let payload_value = self.emit_expression(value, body, environment);
+                let function_captures = match &payload_value {
+                    LlValue::Function { captures, .. } => captures.clone(),
+                    _ => Vec::new(),
+                };
                 let payload = self.emit_optional_payload_pointer(
                     &payload_value,
                     &value.value_type,
@@ -2100,6 +2104,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: value.value_type.clone(),
+                    function_captures,
                 }
             }
             CompilerExpressionKind::OptionalNone => {
@@ -2113,6 +2118,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: payload.as_ref().clone(),
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::TraversalControl { finish, value } => {
@@ -2503,6 +2509,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: payload.as_ref().clone(),
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListMap {
@@ -2914,6 +2921,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::SetContains { set, value } => {
@@ -2962,6 +2970,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListFold {
@@ -3030,6 +3039,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         payload: CompilerType::String,
+                        function_captures: Vec::new(),
                     },
                     CompilerErrorField::Cause => LlValue::Optional {
                         value: body.instruction(
@@ -3038,6 +3048,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         payload: CompilerType::Error,
+                        function_captures: Vec::new(),
                     },
                     CompilerErrorField::Source => LlValue::Optional {
                         value: body.instruction(
@@ -3046,6 +3057,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         payload: CompilerType::SourceLocation,
+                        function_captures: Vec::new(),
                     },
                 }
             }
@@ -3394,6 +3406,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             payload: payload.as_ref().clone(),
+                            function_captures: Vec::new(),
                         },
                         CompilerType::List(ref element) => LlValue::List {
                             value: body.instruction(
@@ -3682,7 +3695,12 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let optional = self.emit_expression(subject, body, environment);
-        let LlValue::Optional { value, payload } = optional else {
+        let LlValue::Optional {
+            value,
+            payload,
+            function_captures,
+        } = optional
+        else {
             unreachable!("checked Optional decision subject is Optional")
         };
         let is_some = body.instruction(
@@ -3713,6 +3731,18 @@ impl<'a> Generator<'a> {
                 body,
                 *some_binding_span,
             );
+            let payload_value = if let LlValue::Function {
+                value, enumeration, ..
+            } = payload_value
+            {
+                LlValue::Function {
+                    value,
+                    enumeration,
+                    captures: function_captures.clone(),
+                }
+            } else {
+                payload_value
+            };
             let variable =
                 self.debug
                     .local(some_binding, *some_binding_span, &payload, body.subprogram);
@@ -3761,6 +3791,15 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ),
                 enumeration: enumeration.clone(),
+            },
+            CompilerType::Function => LlValue::Function {
+                value: body.instruction(
+                    &format!("load i32, ptr {value}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: function_value_enumeration(self.program),
+                captures: Vec::new(),
             },
             CompilerType::Tuple(fields)
                 if fields.as_slice() == [CompilerType::Int, CompilerType::String] =>
@@ -5450,10 +5489,19 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         span: Span,
     ) -> String {
-        if let (LlValue::Enum { value, enumeration }, CompilerType::Enum(expected_enumeration)) =
-            (value, value_type)
-            && enumeration == expected_enumeration
-        {
+        let boxed_i32 = match (value, value_type) {
+            (LlValue::Enum { value, enumeration }, CompilerType::Enum(expected_enumeration))
+                if enumeration == expected_enumeration =>
+            {
+                Some(value)
+            }
+            (
+                LlValue::Function { value, .. } | LlValue::Enum { value, .. },
+                CompilerType::Function,
+            ) => Some(value),
+            _ => None,
+        };
+        if let Some(value) = boxed_i32 {
             let storage = body.instruction(
                 "call ptr @topal.platform.allocate(i64 4)",
                 span,
@@ -5845,6 +5893,18 @@ impl<'a> Generator<'a> {
                     value: right,
                     enumeration: right_enumeration,
                 },
+            )
+            | (
+                LlValue::Function {
+                    value: left,
+                    enumeration,
+                    ..
+                },
+                LlValue::Function {
+                    value: right,
+                    enumeration: right_enumeration,
+                    ..
+                },
             ) => {
                 debug_assert_eq!(enumeration, right_enumeration);
                 body.instruction(
@@ -5872,10 +5932,12 @@ impl<'a> Generator<'a> {
                 LlValue::Optional {
                     value: left,
                     payload,
+                    ..
                 },
                 LlValue::Optional {
                     value: right,
                     payload: right_payload,
+                    ..
                 },
             ) => self.emit_optional_equal(left, right, payload, right_payload, body, span),
             (
@@ -6135,7 +6197,7 @@ impl<'a> Generator<'a> {
             CompilerType::Rational => "optional.rational.equal",
             CompilerType::String => "optional.string.equal",
             payload
-                if matches!(payload, CompilerType::Enum(_))
+                if matches!(payload, CompilerType::Enum(_) | CompilerType::Function)
                     || matches!(payload, CompilerType::Tuple(fields)
                         if fields.as_slice() == [CompilerType::Int, CompilerType::String]) =>
             {
@@ -6820,6 +6882,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload,
+                    function_captures: Vec::new(),
                 }
             }
             LlValue::TraversalControl { payload, .. } => {
@@ -7095,7 +7158,7 @@ impl<'a> Generator<'a> {
             LlValue::Result { value, success } => {
                 self.emit_print_result(value, success, body, span);
             }
-            LlValue::Optional { value, payload } => {
+            LlValue::Optional { value, payload, .. } => {
                 self.emit_print_optional(value, payload, body, span);
             }
             LlValue::TraversalControl { value, payload } => {
@@ -8560,6 +8623,7 @@ enum LlValue {
     Optional {
         value: String,
         payload: CompilerType,
+        function_captures: Vec<(String, Self)>,
     },
     TraversalControl {
         value: String,
@@ -8617,6 +8681,14 @@ fn attach_function_capture(
                 .expect("checked capture path names a Record field");
             attach_function_capture(field, rest, storage_name, capture_value);
         }
+        (
+            CompilerAggregatePathElement::OptionalPayload,
+            LlValue::Optional {
+                function_captures, ..
+            },
+        ) if rest.is_empty() => {
+            function_captures.push((storage_name, capture_value));
+        }
         _ => unreachable!("checked capture path follows its aggregate representation"),
     }
 }
@@ -8632,6 +8704,11 @@ fn function_capture_value(value: &LlValue, storage_name: &str) -> Option<LlValue
         LlValue::Record { fields, .. } => fields
             .iter()
             .find_map(|(_, field)| function_capture_value(field, storage_name)),
+        LlValue::Optional {
+            function_captures, ..
+        } => function_captures
+            .iter()
+            .find_map(|(name, value)| (name == storage_name).then(|| value.clone())),
         LlValue::Sum { payloads, .. } => payloads.iter().find_map(|payload| {
             payload
                 .as_deref()
@@ -8658,6 +8735,11 @@ fn extend_function_capture_environment(
             for (_, field) in fields {
                 extend_function_capture_environment(environment, field);
             }
+        }
+        LlValue::Optional {
+            function_captures, ..
+        } => {
+            environment.extend(function_captures.iter().cloned());
         }
         LlValue::Sum { payloads, .. } => {
             for payload in payloads.iter().flatten() {
@@ -8968,6 +9050,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Optional(payload) => LlValue::Optional {
             value: "null".into(),
             payload: payload.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::TraversalControl(payload) => LlValue::TraversalControl {
             value: "null".into(),
@@ -10697,6 +10780,7 @@ fn compiler_type_contains_function(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields
             .iter()
             .any(|(_, field)| compiler_type_contains_function(field)),
+        CompilerType::Optional(payload) => compiler_type_contains_function(payload),
         _ => false,
     }
 }
@@ -11044,6 +11128,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Optional(payload) => LlValue::Optional {
             value,
             payload: payload.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::TraversalControl(payload) => LlValue::TraversalControl {
             value,
@@ -13121,6 +13206,52 @@ mod tests {
         }
         assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.environment"));
+    }
+
+    #[test]
+    fn emits_optional_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-OPTIONAL-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-function-environments.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "optional-function-environments.t").emit();
+
+        assert_eq!(
+            llvm.matches(
+                "define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.make_2doptional."
+            )
+            .count(),
+            5
+        );
+        assert!(llvm.contains(
+            "define internal fastcc { { ptr, ptr }, ptr, ptr, ptr } @topal.fn.return_2dtuple."
+        ));
+        assert!(llvm.contains(
+            "define internal fastcc { { ptr, ptr, i32, i32 }, ptr, ptr, ptr, ptr } @topal.fn.make_2drecord."
+        ));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.some(ptr"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.none()"));
+        assert_eq!(
+            llvm.matches("call void @topal.runtime.pattern.identity.fail()")
+                .count(),
+            4
+        );
+        for name in [
+            "candidate",
+            "operation",
+            "offset",
+            "@ context-offset",
+            "root live-offset",
+        ] {
+            assert!(llvm.contains(&format!("!DILocalVariable(name: \"{name}\"")));
+        }
+        assert!(!llvm.contains("call ptr %"));
         assert!(!llvm.contains("topal.runtime.closure"));
         assert!(!llvm.contains("topal.runtime.environment"));
     }

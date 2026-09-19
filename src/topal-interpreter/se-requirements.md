@@ -2400,3 +2400,16 @@ snapshots. The shared regression and reversible debugger history shall cover
 scalar and aggregate captures, scalar and Record results, forwarding,
 immediate result application, source-ordered factory and call events, and exact
 results.
+
+## TOPAL-INTP-SUBSET-275 — Optional Function environments
+
+All source modes shall preserve exact Function identity and lexical environment
+when a Function is wrapped in `Some`, bound, displayed, passed through ordinary
+function parameters/results or package and Tuple/Record fields, selected by an
+Optional decision, and eventually applied. `None Function` shall retain its
+complete classifier without a payload. Distinct captured factory invocations
+shall remain independent. Existing repeated anonymous-pattern exact identity
+shall compare Optional presence, callable identity, and captures without using
+allocation identity. The shared regression and reversible debugger history
+shall cover named, symbolic, anonymous, and nested payloads, absence, forwarding,
+selection, repeated match/mismatch, and exact results.

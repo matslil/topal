@@ -137,12 +137,15 @@ Represented immutable values captured from its enclosing invocation appear as
 named arguments after the declared parameters, so GDB can inspect both without
 a foreign closure runtime or an opaque environment object. An exact
 nonrecursive, nonoverloaded nested function may also escape its factory through
-a compiler-private `Function`, Tuple, or Record result: the result carries the
-same observation value and immutable capture snapshot, and later application
-remains a direct specialized call. Separate factory invocations retain separate
-snapshots. Recursive, overloaded, opaque, persistently stored, and published
-nested callables remain outside this private boundary; no public callable ABI
-is defined.
+a compiler-private `Function`, Tuple, Record, or exact `Optional Function`
+result: the result carries the same observation value and immutable capture
+snapshot, and later application remains a direct specialized call. An
+`Optional Function` stores only the ordinary `Some`/`None` representation and
+Function observation value; capture snapshots stay in the same hidden private
+boundary transport used by other exact Function results. Separate factory
+invocations retain separate snapshots. Recursive, overloaded, opaque,
+dynamically selected, persistently stored, and published nested callables remain
+outside this private boundary; no public callable ABI is defined.
 
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
