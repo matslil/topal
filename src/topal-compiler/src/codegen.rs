@@ -13087,6 +13087,45 @@ mod tests {
     }
 
     #[test]
+    fn emits_escaping_nested_function_environments_as_exact_private_results() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/escaping-nested-function-environments.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "escaping-nested-function-environments.t").emit();
+
+        assert_eq!(
+            llvm.matches(
+                "define internal fastcc { i32, ptr, ptr, ptr } @topal.fn.make_2doperation."
+            )
+            .count(),
+            4
+        );
+        assert!(llvm.contains(
+            "define internal fastcc { i32, { ptr, ptr } } @topal.fn.make_2dpair_2doperation."
+        ));
+        assert!(llvm.contains(
+            "define internal fastcc { { i32, ptr, i32, i32 }, ptr, ptr, ptr, ptr } @topal.fn.make_2drecord."
+        ));
+        assert!(llvm.contains("define internal fastcc ptr @topal.fn.increase."));
+        assert!(llvm.contains("call fastcc { i32, ptr, ptr, ptr }"));
+        assert!(llvm.contains("call fastcc { { i32, ptr, i32, i32 }, ptr, ptr, ptr, ptr }"));
+        assert!(llvm.contains("extractvalue { i32, ptr, ptr, ptr }"));
+        assert!(llvm.contains("extractvalue { { i32, ptr, i32, i32 }, ptr, ptr, ptr, ptr }"));
+        for name in ["offset", "pair", "@ context-offset", "root live-offset"] {
+            assert!(llvm.contains(&format!("!DILocalVariable(name: \"{name}\"")));
+        }
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.function"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.environment"));
+    }
+
+    #[test]
     fn emits_repeated_anonymous_patterns_as_exact_private_guards() {
         // TOPAL-COMPILER-ANONYMOUS-REPEATED-PATTERN-001,
         // TOPAL-TYPE-MATCH-001, TOPAL-FUNCTION-ANONYMOUS-001,

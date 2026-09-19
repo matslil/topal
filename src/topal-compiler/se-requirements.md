@@ -3299,8 +3299,9 @@ This shall add no heap or environment object, environment pointer, allocation,
 function pointer, indirect call, callback, closure or Function runtime, foreign
 dependency, C/C++ runtime, other-language standard library, public callable
 ABI, or `topal-native/6` revision. Immediate exact result application is
-governed by `TOPAL-COMP-FUNCTION-RESULT-CHAIN-001`. Nested Function escape,
-Function-valued or otherwise unsupported captures, dynamic selection,
+governed by `TOPAL-COMP-FUNCTION-RESULT-CHAIN-001`. Exact nested Function escape
+is governed by `TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`. Function-valued or
+otherwise unsupported captures, dynamic selection,
 capture-bearing aggregate containment outside
 `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`, publication, and library
 metadata/adapters remain deferred. Future library metadata shall describe
@@ -3339,7 +3340,8 @@ environment object, function pointer, indirect call, callback, closure or
 Function runtime, foreign dependency, C/C++ runtime, other-language standard
 library, public callable ABI, or `topal-native/6` revision. Aggregate-contained
 Function values outside `TOPAL-COMP-FUNCTION-AGGREGATE-001`, dynamically
-selected Function values, nested escape, publication, and library
+selected Function values, nested escape outside
+`TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`, publication, and library
 metadata/adapters remain deferred. This realizes
 `TOPAL-COMPILER-FUNCTION-RESULT-CHAIN-001`,
 `TOPAL-FUNCTION-CALLABLE-VALUE-001`, `TOPAL-FUNCTION-VALUE-001`, and
@@ -3398,11 +3400,12 @@ independently of private LLVM types and observation tags. This realizes
 
 The checked compiler model shall admit exact recursively nested Tuple and
 Record parameters whose Function leaves are capturing anonymous Functions or
-non-escaping nested Functions, and results whose Function leaves are capturing
-anonymous Functions. Every leaf shall retain its exact callable identity,
-ordered capture facts, and canonical zero-based-Tuple-index/Record-label path.
+nested Functions, and results whose Function leaves are capturing anonymous
+Functions or exact nested Functions under
+`TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`. Every leaf shall retain its exact
+callable identity, ordered capture facts, and canonical
+zero-based-Tuple-index/Record-label path.
 Paths and their captures shall be traversed depth-first from left to right.
-Nested named Functions shall not escape through aggregate results.
 
 For each specialized parameter, the frontend shall append every path-ordered
 capture after the source-visible aggregate argument and bind those operands to
@@ -3423,18 +3426,19 @@ aggregate fields or compiler-named variables; invoked anonymous and nested
 frames shall expose captures under source names.
 
 Tests shall cover multiple captured Record leaves, a captured Tuple leaf,
-parameter-to-result forwarding, recursive destructuring, a non-escaping nested
-Function parameter, rejected nested escape and Function-containing capture
-state, checked path ordering, exact direct IR, all interpreter modes and
-reversible history, the shared corpus and separate resource baselines,
-freestanding ELF/DWARF validation, and full O0 GDB aggregate values and capture
-frames.
+parameter-to-result forwarding, recursive destructuring, a nested Function
+parameter, exact nested escape under `TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`,
+rejected Function-containing capture state, checked path ordering, exact direct
+IR, all interpreter modes and reversible history, the shared corpus and separate
+resource baselines, freestanding ELF/DWARF validation, and full O0 GDB aggregate
+values and capture frames.
 
 This shall add no closure object, environment pointer, allocation, function
 pointer, indirect call, callback, dispatch table, foreign dependency, C/C++
 runtime, other-language standard library, public aggregate/callable ABI, or
 `topal-native/6` revision. Dynamic Function selection, other aggregate
-constructors, escaping nested Functions, persistent storage, publication, and
+constructors, escaping nested Functions outside
+`TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`, persistent storage, publication, and
 public library adapters remain deferred. Future compiled-library metadata shall
 encode the canonical aggregate path; callable and capture identities; capture
 classifiers and order; construction lifetime; effects; representation identity;
@@ -3446,6 +3450,57 @@ and the current hidden-operand layout. This realizes
 `TOPAL-FUNCTION-ANONYMOUS-001`, `TOPAL-FUNCTION-NESTED-001`,
 `TOPAL-TYPE-PRODUCT-001`, and `TOPAL-TYPE-CALL-001` for compiler increment
 3b2-b5ab.
+
+## TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001 — Exact private nested Function escape
+
+The checked compiler model shall admit an exact nonrecursive, nonoverloaded
+nested ordinary Function as a scalar Function result or a Function leaf of a
+recursively nested Tuple or labeled Record result within one compilation unit.
+It shall retain the nested declaration identity separately from its observation
+tag and retain each already-evaluated immutable lexical, defining-context, and
+live-root capture with its exact classifier, storage identity, and source name.
+Function- or Generator-containing capture state, missing lifetime storage,
+opaque facts, and dynamic selection shall remain `E-COMPILER-UNSUPPORTED`.
+Separate factory invocations shall retain independent capture snapshots.
+
+Scalar results shall reuse the exact tag-plus-capture return representation of
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`. Tuple and Record results shall reuse
+the canonical Function-leaf path ordering and extended result aggregate of
+`TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. The caller shall extract every
+field once into compiler-only SSA storage. Binding, private Function
+parameter/result forwarding, aggregate forwarding/selection/destructuring, and
+immediate result application shall remap those values without replaying the
+factory, aggregate, or capture initializers.
+
+The backend shall emit matching direct private `fastcc` prototypes and calls,
+with the explicit source operands followed by the returned captures. It shall
+never dispatch on the Function tag or consult the ended factory frame. LLVM
+shall own AMD64 aggregate classification and physical placement from the
+qualified target data layout, and correctness shall require no optimization.
+Source DWARF shall expose the factory result and bindings as `Function`, retain
+ordinary Tuple/Record layouts, omit hidden transport fields, and expose nested
+parameters and captures under source names in active and suspended frames.
+
+Tests shall cover distinct factory invocations; scalar, Tuple, context, and
+root captures; scalar and Record results; transitive forwarding; immediate
+application; exact interpreter output and reversible history; checked capture
+paths; direct IR; unsupported Function-valued capture rejection without
+artifacts; freestanding ELF/DWARF; full O0 GDB values/frames; the shared corpus;
+and separate interpreter/compiler resource baselines.
+
+This shall add no heap, closure/environment object, environment pointer,
+allocation, function pointer, indirect call, callback, runtime dispatcher,
+global context/root state, caller-frame lookup, foreign dependency, C/C++
+runtime, other-language standard library, public ABI, or `topal-native/6`
+revision. Recursive, overloaded, sibling-dependent, opaque, dynamically
+selected, persistently stored, or published nested Functions remain deferred.
+Future library metadata shall retain canonical source-session, lexical-scope,
+nested-declaration, callable, aggregate-path, capture
+identity/order/classifier/representation/lifetime, effect, and versioned
+target-adapter facts independently of observation tags, compiler-private names,
+LLVM types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001` for increments 3b2-b5ar, 6b2b2i,
+and 6c2g.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
@@ -4575,8 +4630,8 @@ types/symbols, debug shadows, and physical placement. This realizes
 
 The checked compiler model shall preserve the complete exact environment of a
 named root Function value and retained overload set, an anonymous Function
-constructed within an ordinary root-function invocation, or an admitted
-non-escaping nested Function across private scalar Function parameters and
+constructed within an ordinary root-function invocation, or an admitted nested
+Function across private scalar Function parameters and
 results and represented Tuple or labeled Record parameters and results that
 contain Function leaves. Each Function leaf shall retain one exact callable
 identity and complete semantic capture schema; opaque and dynamically selected
@@ -4610,8 +4665,9 @@ This shall add no global context/root state, closure/environment object,
 overload/environment table, runtime dispatcher, function pointer, indirect
 call, lookup, replay, allocation, foreign dependency, C/C++ runtime,
 other-language standard library, public ABI, or `topal-native/6` revision. Sum
-or unsupported Function-containing representations; escaping anonymous/nested
-results; recursive/overloaded nested Functions; fact-dependent, opaque, or
+or unsupported Function-containing representations; escaping anonymous results
+or nested results outside `TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`;
+recursive/overloaded nested Functions; fact-dependent, opaque, or
 dynamic selection; and public/library Function environments remain deferred.
 Future library metadata shall retain canonical source-session, context/root,
 lexical-scope, callable, declaration, overload-snapshot, aggregate-path, and

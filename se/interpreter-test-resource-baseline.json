@@ -1251,6 +1251,11 @@
       "cpu_time_ns": 38496219,
       "memory_peak_bytes": 18460672,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/escaping-nested-function-environments.t": {
+      "cpu_time_ns": 20517580,
+      "memory_peak_bytes": 18456576,
+      "samples_per_test": 50
     }
   }
 }

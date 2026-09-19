@@ -2486,6 +2486,16 @@
       "cpu_time_ns": 334190,
       "memory_peak_bytes": 18718720,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/escaping-nested-function-environments.t": {
+      "cpu_time_ns": 149821380,
+      "memory_peak_bytes": 43335680,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/escaping-nested-function-environments.t": {
+      "cpu_time_ns": 248620,
+      "memory_peak_bytes": 18587648,
+      "samples_per_test": 500
     }
   }
 }

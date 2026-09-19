@@ -135,9 +135,14 @@ of the separately versioned interface-metadata pipeline.
 A directly applied nested lexical function appears as its own source frame.
 Represented immutable values captured from its enclosing invocation appear as
 named arguments after the declared parameters, so GDB can inspect both without
-a foreign closure runtime or an opaque environment object. This is a private
-compiler boundary; the nested function value cannot yet escape or define a
-published callable ABI.
+a foreign closure runtime or an opaque environment object. An exact
+nonrecursive, nonoverloaded nested function may also escape its factory through
+a compiler-private `Function`, Tuple, or Record result: the result carries the
+same observation value and immutable capture snapshot, and later application
+remains a direct specialized call. Separate factory invocations retain separate
+snapshots. Recursive, overloaded, opaque, persistently stored, and published
+nested callables remain outside this private boundary; no public callable ABI
+is defined.
 
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or

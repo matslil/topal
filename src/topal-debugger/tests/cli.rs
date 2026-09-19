@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 247);
+    assert_eq!(examples.len(), 248);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4391,6 +4391,53 @@ fn records_function_environment_boundaries_reversibly() {
     ] {
         assert!(stdout.contains(event), "{event}: {stdout}");
     }
+}
+
+#[test]
+fn records_escaping_nested_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-274,
+    // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}escaping-nested-function-environments.debug"),
+            &language_example("escaping-nested-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first_factory = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-operation")
+        .unwrap();
+    let forwarded = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] return-operation")
+        .unwrap();
+    let aggregate = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] forward-record")
+        .unwrap();
+    let first_nested = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] increase")
+        .unwrap();
+    assert!(first_factory < forwarded);
+    assert!(forwarded < aggregate);
+    assert!(aggregate < first_nested);
+    for event in [
+        "binding.bind [TOPAL-SYN-BIND-001] first-operation",
+        "binding.bind [TOPAL-SYN-BIND-001] second-operation",
+        "binding.bind [TOPAL-SYN-BIND-001] forwarded-operation",
+        "binding.bind [TOPAL-SYN-BIND-001] pair-operation",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-record",
+        "function.value.called [TOPAL-FUNCTION-VALUE-001] read-pair",
+        "function.selected [TOPAL-TYPE-CALL-001] pair-operation",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
 }
 
 #[test]

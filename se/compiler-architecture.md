@@ -320,11 +320,11 @@ shown. A nested callable receives a module-private observation tag only when it
 enters this path. No tag dispatch, environment object, capture allocation, or
 cross-frame lookup is introduced, and LLVM continues to lower every exact
 private prototype for the target. Recursive patterns compose with this path as
-described below. Capturing Function results outside the private
-anonymous-result boundary below, unsupported captured state, other escaping
-environments, and a public/library closure representation remain coordinated
-later design with canonical callable, ordered-capture, lifetime/effect,
-representation, and target-adapter metadata.
+described below. Capturing Function results outside the admitted private
+anonymous and exact nested-result boundaries below, unsupported captured state,
+other escaping environments, and a public/library closure representation
+remain coordinated later design with canonical callable, ordered-capture,
+lifetime/effect, representation, and target-adapter metadata.
 
 A private capturing anonymous Function result uses the same facts without
 turning them into a public closure representation. The specialized callee
@@ -336,9 +336,10 @@ reuse the exact callable and values without a heap object, environment pointer,
 or tag dispatch. LLVM derives the physical x86-64 aggregate-return convention
 from the target data layout. Source DWARF continues to describe a `Function`
 result; the returned transport fields remain hidden, while an eventual direct
-anonymous call exposes the captures under their source names. Nested Function
-escape, Function-valued or otherwise unsupported captures, dynamic selection,
-capture-bearing aggregate containment outside
+anonymous call exposes the captures under their source names. Exact nested
+Function escape is admitted by
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`. Function-valued or otherwise
+unsupported captures, dynamic selection, capture-bearing aggregate containment outside
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, publication, and the canonical
 library closure ABI remain deferred.
 
@@ -383,9 +384,9 @@ aggregate whose first field is the unchanged source aggregate and whose
 remaining fields are the captures in that same path order. The caller extracts
 the source value once, attaches each capture to its checked callable facts, and
 can forward or recursively destructure it without replaying construction.
-Capturing anonymous results and non-escaping nested Function parameters are
-therefore direct specializations; nested result escape and Function-containing
-capture state remain rejected.
+Capturing anonymous results, nested Function parameters, and exact nested
+Function results under `TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001` are therefore
+direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
 matching `fastcc` prototype. DWARF exposes only the source Tuple/Record and the
@@ -397,6 +398,23 @@ library must serialize the canonical aggregate path, callable/capture
 identities, capture classifiers and order, lifetime, effects, representation
 identity, and target adapter; it must not serialize the current private LLVM
 aggregate, observation tags, or hidden-operand layout.
+
+The exact nested-result extension reuses these scalar and aggregate transports
+for one nonrecursive, nonoverloaded nested declaration whose identity remains
+known throughout the private path. A factory result contains the nested
+observation tag followed by its already-evaluated lexical, defining-context,
+and live-root values; a Tuple or Record result associates the same values with
+the Function leaf's canonical path. The caller immediately owns those SSA
+snapshots, so the factory frame may return before a later direct application.
+Separate factory calls may share the declaration tag but retain independent
+capture values. Private forwarding remaps storage identities without replaying
+the factory or consulting a dead frame. O0 DWARF exposes the factory result as
+`Function`, the source aggregate without hidden fields, and the captures as
+source-named arguments in the eventual nested frame. Recursive or overloaded
+nested identities, Function- or Generator-containing capture state, opaque or
+dynamic selection, persistent storage, and public/library escape remain
+rejected pending canonical lifetime/effect, callable/capture-schema,
+representation, and target-adapter metadata.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
@@ -452,7 +470,8 @@ callable identities, ordered capture schemas/classifiers, semantic equality
 requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result, Range, Generator, refined, authority-bearing, unsupported
-capture classifiers, escaping nested callable identity, Function containment
+capture classifiers, recursive/overloaded or otherwise unsupported escaping
+nested callable identity, Function containment
 outside Tuple/Record, and ordinary named-header repetition remain deferred with
 their broader representation and overload consequences.
 
@@ -463,15 +482,18 @@ visible immutable environment and retains every value with an admitted private
 representation, except names shadowed by the nested function's explicit
 parameters. Direct application specializes the nested declaration and passes
 source parameters followed by those original SSA values as deterministic exact
-hidden `fastcc` parameters. The nested name has no runtime value and cannot
-escape, so there is no function pointer, indirect dispatch, environment
+hidden `fastcc` parameters. Under
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`, an exact private result may instead
+materialize the nested observation tag and those same immutable values; it
+still introduces no function pointer, indirect dispatch, environment
 allocation, or caller-frame reference. LLVM owns the physical AMD64 parameter
-classification, while DWARF presents the nested source frame and both explicit
-and captured arguments under their source names. Static, effectful, recursive,
-overloaded, sibling-referencing, anonymous, or escaping closures, name
-collisions with visible or active callables, and captures of callable, Scope,
-constraint/evidence, or defining-context state remain deferred to the unified
-closure and library-interface design.
+and result classification, while DWARF presents the nested source frame and
+both explicit and captured arguments under their source names. Static,
+effectful, recursive, overloaded, sibling-referencing, opaque/dynamically
+selected, persistently stored, or published nested closures; name collisions
+with visible or active callables; and captures of callable, Scope, or
+constraint/evidence state remain deferred to the unified closure and
+library-interface design.
 
 One or both syntactic operands may contain a closed package at the same checked
 boundary, and either package may be mixed with an admitted ordinary scalar
