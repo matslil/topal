@@ -15587,16 +15587,6 @@ impl Analyzer {
         Ok((facts, forwarded))
     }
 
-    fn named_callable_is_root(&self, name: &str, declarations: &[FunctionSource]) -> bool {
-        self.functions.get(name).is_some_and(|root_declarations| {
-            declarations.iter().all(|declaration| {
-                root_declarations
-                    .iter()
-                    .any(|root| root.span == declaration.span)
-            })
-        })
-    }
-
     fn named_callable_environment_captures(
         &self,
         declarations: &[FunctionSource],
@@ -15920,7 +15910,7 @@ impl Analyzer {
                     .find(|function| function.symbol == *symbol)
                     .expect("checked Function result has a generated specialization")
                     .result_captures;
-                remap_returned_root_callable_captures(
+                remap_returned_callable_captures(
                     &mut callable,
                     result_captures,
                     symbol,
@@ -16193,18 +16183,7 @@ impl Analyzer {
                     });
                 }
             }
-            CompilerCallableFacts::Named {
-                name,
-                declarations,
-                captures,
-            } => {
-                if !self.named_callable_is_root(name, declarations) {
-                    return Err(unsupported(
-                        &self.source,
-                        span,
-                        "escaping nested Function aggregate result",
-                    ));
-                }
+            CompilerCallableFacts::Named { captures, .. } => {
                 self.collect_named_callable_result_captures(
                     captures,
                     environment,
@@ -20702,17 +20681,9 @@ impl Analyzer {
                 .expect("checked Function expression retains callable facts");
             let result_captures = match &callable {
                 CompilerCallableFacts::Named {
-                    name,
-                    declarations,
                     captures,
+                    ..
                 } => {
-                    if !self.named_callable_is_root(name, declarations) {
-                        return Err(unsupported(
-                            &self.source,
-                            body.result.span,
-                            "nested or dynamically computed Function result",
-                        ));
-                    }
                     let mut result = Vec::new();
                     self.collect_named_callable_result_captures(
                         captures,
@@ -23770,7 +23741,7 @@ fn remap_returned_callable_capture(
     debug_assert!(remapped, "checked result capture retains its callable path");
 }
 
-fn remap_returned_root_callable_captures(
+fn remap_returned_callable_captures(
     callable: &mut CompilerCallableFacts,
     result_captures: &[CompilerFunctionResultCapture],
     symbol: &str,
@@ -33938,6 +33909,7 @@ mod tests {
     #[test]
     fn models_closed_specialized_function_results() {
         // TOPAL-COMPILER-FUNCTION-RESULT-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
         // TOPAL-FUNCTION-CALLABLE-VALUE-001, TOPAL-FUNCTION-VALUE-001
         let program = analyze_for_compiler(include_str!(
             "../../../examples/language/function-results.t"
@@ -33976,10 +33948,20 @@ mod tests {
         );
 
         let escaping_nested = analyze_for_compiler(
-            "use language (version is v0.1)\nouter is fn () -> Function\n  inner is fn (value : Int) -> Int\n    value + 1\n  inner\nouter ()\n",
+            "use language (version is v0.1)\nouter is fn () -> Function\n  inner is fn (value : Int) -> Int\n    value + 1\n  inner\noperation is outer ()\noperation 41\n",
         )
-        .unwrap_err();
-        assert_eq!(escaping_nested.code, "E-COMPILER-UNSUPPORTED");
+        .unwrap();
+        assert_eq!(
+            exact_int(&escaping_nested.main.result),
+            Some(BigInt::from(42))
+        );
+        let factory = escaping_nested
+            .functions
+            .iter()
+            .find(|function| function.source_name == "outer")
+            .unwrap();
+        assert_eq!(factory.result_type, CompilerType::Function);
+        assert!(factory.result_captures.is_empty());
     }
 
     #[test]
@@ -34247,14 +34229,10 @@ mod tests {
             );
         }
 
-        for rejected in [
-            "use language (version is v0.1)\nouter is fn (offset : Int) -> Function\n  add is fn (value : Int) -> Int\n    value + offset\n  add\noperation is outer 1\noperation 41\n",
-            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n",
-        ] {
-            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
-            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
-            assert!(diagnostic.message.contains("Function result"));
-        }
+        let rejected = "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n";
+        let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+        assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        assert!(diagnostic.message.contains("Function result"));
     }
 
     #[test]
@@ -34629,20 +34607,76 @@ mod tests {
                     == 1
         }));
 
-        for (source, detail) in [
-            (
-                "use language (version is v0.1)\nmake is fn (offset : Int) -> Record (operation : Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  (operation is increase)\nmake 1\n",
-                "escaping nested Function aggregate result",
-            ),
-            (
-                "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
-                "private representation",
-            ),
-        ] {
-            let diagnostic = analyze_for_compiler(source).unwrap_err();
-            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
-            assert!(diagnostic.message.contains(detail), "{diagnostic:?}");
+        let rejected = "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n";
+        let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+        assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            diagnostic.message.contains("private representation"),
+            "{diagnostic:?}"
+        );
+    }
+
+    #[test]
+    fn models_escaping_nested_function_environments_as_private_results() {
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-FUNCTION-NESTED-001, TOPAL-TYPE-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/escaping-nested-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected escaping nested Function applications")
+        };
+        assert_eq!(results.len(), 6);
+        for (result, expected) in results[..5].iter().zip([43, 44, 45, 46, 47]) {
+            assert_eq!(exact_int(result), Some(BigInt::from(expected)));
         }
+        assert_eq!(
+            results[5].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
+
+        let scalar_factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-operation")
+            .collect::<Vec<_>>();
+        assert_eq!(scalar_factories.len(), 4);
+        assert!(scalar_factories.iter().all(|function| {
+            function.result_type == CompilerType::Function
+                && function
+                    .result_captures
+                    .iter()
+                    .map(|capture| capture.name.as_str())
+                    .eq(["offset", "@ context-offset", "root live-offset"])
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path.is_empty())
+        }));
+
+        let record_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-record")
+            .unwrap();
+        assert_eq!(record_factory.result_captures.len(), 4);
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path == [CompilerAggregatePathElement::Record("operation".into())]
+        }));
+        let pair_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-pair-operation")
+            .unwrap();
+        assert_eq!(pair_factory.result_captures.len(), 1);
+        assert_eq!(pair_factory.result_captures[0].name, "pair");
+        assert_eq!(
+            pair_factory.result_captures[0].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
+        );
     }
 
     #[test]

@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 247);
+    assert_eq!(examples.len(), 248);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5326,6 +5326,27 @@ fn every_mode_forwards_function_environments_across_value_boundaries() {
             String::from_utf8_lossy(&output.stdout).contains(
                 "(42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\"), (42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\")), 48, 49, (49, 50))"
             ),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+}
+
+#[test]
+fn every_mode_preserves_escaping_nested_function_environments() {
+    // TOPAL-INTP-SUBSET-274,
+    // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001
+    let source = include_str!("../../../examples/language/escaping-nested-function-environments.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout)
+                .contains("(43, 44, 45, 46, 47, (7, \"seven\"))"),
             "{arguments:?}: {}",
             String::from_utf8_lossy(&output.stdout)
         );

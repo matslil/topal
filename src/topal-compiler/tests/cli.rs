@@ -10163,28 +10163,21 @@ fn captured_function_results_are_private_freestanding_and_debuggable() {
     assert_eq!(executed.stdout, b"(42, (7, \"seven\"), 42, 42)\n");
     assert_freestanding_elf_and_valid_dwarf(&executable);
 
-    for (name, rejected_source) in [
-        (
-            "nested-result",
-            "use language (version is v0.1)\nouter is fn (offset : Int) -> Function\n  add is fn (value : Int) -> Int\n    value + offset\n  add\noperation is outer 1\noperation 41\n",
-        ),
-        (
-            "function-capture",
-            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n",
-        ),
-    ] {
-        let rejected = directory.join(format!("{name}.t"));
-        fs::write(&rejected, rejected_source).unwrap();
-        let output = run(topalc().args([
-            "-o",
-            directory.join(name).to_str().unwrap(),
-            rejected.to_str().unwrap(),
-        ]));
-        assert!(!output.status.success());
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(stderr.contains("E-COMPILER-UNSUPPORTED"), "{stderr}");
-        assert!(stderr.contains("Function result"), "{stderr}");
-    }
+    let rejected = directory.join("function-capture.t");
+    fs::write(
+        &rejected,
+        "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  { value } operation value\nresult is make increment\nresult 41\n",
+    )
+    .unwrap();
+    let output = run(topalc().args([
+        "-o",
+        directory.join("function-capture").to_str().unwrap(),
+        rejected.to_str().unwrap(),
+    ]));
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("E-COMPILER-UNSUPPORTED"), "{stderr}");
+    assert!(stderr.contains("Function result"), "{stderr}");
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -10761,36 +10754,30 @@ fn captured_function_aggregates_are_private_freestanding_and_debuggable() {
     assert_eq!(executed.stdout, b"((42, 40), (42, 40), 42, 42)\n");
     assert_freestanding_elf_and_valid_dwarf(&executable);
 
-    for (name, rejected_source, detail) in [
-        (
-            "nested-result",
-            "use language (version is v0.1)\nmake is fn (offset : Int) -> Record (operation : Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  (operation is increase)\nmake 1\n",
-            "escaping nested Function aggregate result",
-        ),
-        (
-            "function-capture",
-            "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
-            "private representation",
-        ),
-    ] {
-        let rejected_source_path = directory.join(format!("{name}.t"));
-        let rejected_executable = directory.join(name);
-        fs::write(&rejected_source_path, rejected_source).unwrap();
-        let rejected = run(topalc().args([
-            "-o",
-            rejected_executable.to_str().unwrap(),
-            rejected_source_path.to_str().unwrap(),
-        ]));
-        assert!(!rejected.status.success());
-        let diagnostic = String::from_utf8_lossy(&rejected.stderr);
-        assert!(
-            diagnostic.contains("E-COMPILER-UNSUPPORTED"),
-            "{diagnostic}"
-        );
-        assert!(diagnostic.contains(detail), "{diagnostic}");
-        assert!(!rejected_executable.exists());
-        assert!(!metadata_path(&rejected_executable).exists());
-    }
+    let rejected_source_path = directory.join("function-capture.t");
+    let rejected_executable = directory.join("function-capture");
+    fs::write(
+        &rejected_source_path,
+        "use language (version is v0.1)\nmake is fn (operation : Function) -> Record (wrapped : Function)\n  wrapped : Function is { value } operation value\n  (wrapped is wrapped)\noffset is 1\ncaptured : Function is { value } value + offset\nmake captured\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+    assert!(
+        diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains("private representation"),
+        "{diagnostic}"
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -15176,6 +15163,206 @@ fn function_environment_boundaries_are_exact_private_freestanding_and_debuggable
         "topal.main",
     ] {
         assert!(text.contains(frame), "{frame}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers scalar/aggregate escape, rejection, IR, and GDB frames.
+fn escaping_nested_function_environments_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+    // TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001,
+    // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-escaping-nested-function-environments");
+    let source = directory.join("escaping-nested-function-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/escaping-nested-function-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(43, 44, 45, 46, 47, (7, \"seven\"))\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains(
+                    "define internal fastcc { i32, ptr, ptr, ptr } @topal.fn.make_2doperation.",
+                ) && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+            })
+            .count(),
+        4,
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains(
+                "define internal fastcc { i32, { ptr, ptr } } @topal.fn.make_2dpair_2doperation.",
+            ) && line.contains("({ ptr, ptr } %arg0)")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc { { i32, ptr, i32, i32 }, ptr, ptr, ptr, ptr } @topal.fn.make_2drecord.")
+                && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2, ptr %arg3)")
+        }),
+        "{ir}"
+    );
+    for name in [
+        "make_2doperation",
+        "return_2doperation",
+        "make_2dpair_2doperation",
+        "make_2drecord",
+        "forward_2drecord",
+        "apply_2drecord",
+        "increase",
+        "read_2dpair",
+    ] {
+        assert!(
+            ir.lines().any(|line| line.contains("call fastcc ")
+                && line.contains(&format!("@topal.fn.{name}."))),
+            "{name}: {ir}"
+        );
+    }
+    for variable in [
+        "offset",
+        "pair",
+        "operation",
+        "package",
+        "@ context-offset",
+        "root live-offset",
+    ] {
+        assert!(
+            ir.contains(&format!("!DILocalVariable(name: \"{variable}\"")),
+            "{variable}: {ir}"
+        );
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "closure.runtime",
+        "environment.runtime",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("function-capture.t");
+    let rejected_executable = directory.join("function-capture");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nmake is fn (operation : Function) -> Function\n  wrapped is fn (value : Int) -> Int\n    operation value\n  wrapped\nresult is make increment\nresult 41\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+    assert!(
+        diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+        "{diagnostic}"
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break escaping-nested-function-environments.t:10",
+            "-ex",
+            "break escaping-nested-function-environments.t:20",
+            "-ex",
+            "break escaping-nested-function-environments.t:25",
+            "-ex",
+            "disable 2 3",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "enable 3",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "operation = <fn increase>",
+        "value = 1",
+        "operand = 1",
+        "offset = 1",
+        "offset = 4",
+        "@ context-offset = 40",
+        "root live-offset = 1",
+        "topal.fn.return_2doperation.",
+        "topal.fn.increase.",
+        "topal.fn.apply_2drecord.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
     }
 }
 

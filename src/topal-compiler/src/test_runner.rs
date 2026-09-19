@@ -100,6 +100,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/enum-values.t",
     "examples/language/error-code-decisions.t",
     "examples/language/error-field-selection.t",
+    "examples/language/escaping-nested-function-environments.t",
     "examples/language/exact-arithmetic.t",
     "examples/language/exact-numeric-absolute.t",
     "examples/language/exact-numeric-negate.t",

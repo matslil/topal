@@ -2387,3 +2387,16 @@ regression and reversible debugger history shall cover scalar and Record
 parameters/results, named, anonymous, and nested Function values, distinct
 scalar and aggregate context/root members, source-ordered binding, selection,
 and call events, exact results, and unchanged once-only source values.
+
+## TOPAL-INTP-SUBSET-274 — Escaping nested Function environments
+
+All source modes shall preserve the exact lexical environment of a nested
+ordinary Function when that Function is returned from its defining invocation,
+bound or forwarded directly or in a Tuple or labeled Record, and later
+applied. The value shall continue to observe the immutable lexical,
+defining-context, and qualified live-root values captured by its factory rather
+than caller bindings; distinct factory invocations shall retain distinct
+snapshots. The shared regression and reversible debugger history shall cover
+scalar and aggregate captures, scalar and Record results, forwarding,
+immediate result application, source-ordered factory and call events, and exact
+results.
