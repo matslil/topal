@@ -252,6 +252,12 @@ specialization across private functions and aggregates. Equality compares both
 canonical Int pointers in field order; future metadata describes the recursive
 List and Tuple classifiers without publishing the three-word node.
 
+Ordinary `List (Int, String)` values likewise retain the existing inline inner
+node from recursive Lists while crossing private functions and aggregates on
+their own. The conditional core loop compares the canonical arbitrary-precision
+Int and exact immutable String fields in order and is reused by outer recursive
+List equality; no Tuple allocation or foreign runtime is introduced.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

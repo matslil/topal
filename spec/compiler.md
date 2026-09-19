@@ -5830,10 +5830,31 @@ expose both recursive semantic List identities and complete nested values.
 This rule SHALL add no public, foreign, serialized, persistent, or compiled-
 library List layout; stabilized private layout; C/C++ runtime; other-language
 standard library; foreign allocator; undefined symbol; needed library;
-relocation; or native ABI revision. Direct inner pair-List function passage
-and equality, deeper recursion, outer `rest`/`uncons`, other product shapes and
-element classifiers, remaining List algorithms, reclamation beyond process
-lifetime, and versioned library metadata/adapters remain deferred.
+relocation; or native ABI revision. Except for the ordinary inner boundaries
+later admitted by `TOPAL-COMPILER-LIST-INT-STRING-PAIR-CORE-001`, deeper
+recursion, outer `rest`/`uncons`, other product shapes and element classifiers,
+remaining List algorithms, reclamation beyond process lifetime, and versioned
+library metadata/adapters remain deferred.
+
+### TOPAL-COMPILER-LIST-INT-STRING-PAIR-CORE-001 — Ordinary Int/String-pair Lists
+
+The compiler SHALL admit empty/nonempty `List (Int, String)` construction,
+immutable binding, private parameter/result/package and nested Tuple/Record
+passage, derived structural equality, complete decisions, count, emptiness,
+display, and debugging. Equality SHALL compare each arbitrary-precision Int and
+exact String field in source order, stop at the first mismatch, distinguish
+unequal lengths, and remain correct at O0. The same exact inner equality loop
+MAY serve the recursive outer-List specialization.
+
+On Linux x86-64, an Entry MAY retain the existing immutable 24-byte inline node
+containing the canonical Int pointer, immutable String pointer, and remaining
+pointer. LLVM SHALL own physical AMD64 placement. This rule SHALL add no
+allocated Tuple payload, type-erased container, public/foreign/library ABI,
+foreign allocator, C/C++ runtime, other-language standard library, or native-
+ABI revision. Future metadata SHALL encode the recursive List and positional
+Tuple classifiers, exact field types, representation/ownership/lifetime/
+effects, and target adapters independently of private offsets, LLVM types,
+helpers, and debug shadows.
 
 ### TOPAL-COMPILER-LIST-SEQUENCE-001 — Closed ordered List sequences
 
