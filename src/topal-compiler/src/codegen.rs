@@ -518,6 +518,7 @@ enum ScalarListRuntimeFragment {
     Type,
     Enum,
     Modular,
+    OptionalInt,
     Boolean,
     Comparison,
     ErrorCode,
@@ -673,6 +674,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::Modular,
                 LIST_MODULAR_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::OptionalInt,
+                LIST_OPTIONAL_INT_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -2261,6 +2266,9 @@ impl<'a> Generator<'a> {
                     | CompilerType::Rational
                     | CompilerType::String
                     | CompilerType::Function => (16, 8),
+                    CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => {
+                        (16, 8)
+                    }
                     CompilerType::Tuple(fields)
                         if matches!(
                             fields.as_slice(),
@@ -2326,6 +2334,22 @@ impl<'a> Generator<'a> {
                             modular: value_modular,
                         },
                     ) if modular == value_modular => {
+                        body.effect(
+                            &format!("store ptr {value}, ptr {node}, align 8"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
+                    (
+                        CompilerType::Optional(payload),
+                        LlValue::Optional {
+                            value,
+                            payload: value_payload,
+                            ..
+                        },
+                    ) if payload.as_ref() == value_payload
+                        && value_payload == &CompilerType::Int =>
+                    {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
                             expression.span,
@@ -2632,6 +2656,12 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if matches!(element.as_ref(), CompilerType::Modular(_))
                 );
+                let optional_int = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if matches!(element.as_ref(), CompilerType::Optional(payload)
+                            if payload.as_ref() == &CompilerType::Int)
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2672,6 +2702,9 @@ impl<'a> Generator<'a> {
                 } else if modular {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Modular);
+                } else if optional_int {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::OptionalInt);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2711,6 +2744,8 @@ impl<'a> Generator<'a> {
                             "enum"
                         } else if modular {
                             "modular"
+                        } else if optional_int {
+                            "optional.int"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4392,6 +4427,18 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         modular: modular.clone(),
+                    },
+                    Vec::new(),
+                ),
+                CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => (
+                    LlValue::Optional {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {list}, align 8"),
+                            *first_span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::Int,
+                        function_captures: Vec::new(),
                     },
                     Vec::new(),
                 ),
@@ -6738,6 +6785,11 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Modular);
             "modular"
+        } else if matches!(element, CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int)
+        {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::OptionalInt);
+            "optional.int"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -8580,6 +8632,18 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     modular: modular.clone(),
+                },
+                8,
+            ),
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Int => (
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!("load ptr, ptr {current}, align 8"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    payload: CompilerType::Int,
+                    function_captures: Vec::new(),
                 },
                 8,
             ),
@@ -12097,6 +12161,7 @@ const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll
 const LIST_ENUM_CORE_RUNTIME: &str = include_str!("runtime/list_enum_core.ll");
 const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");
 const LIST_MODULAR_CORE_RUNTIME: &str = include_str!("runtime/list_modular_core.ll");
+const LIST_OPTIONAL_INT_CORE_RUNTIME: &str = include_str!("runtime/list_optional_int_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");

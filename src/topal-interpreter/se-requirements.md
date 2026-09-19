@@ -2600,3 +2600,10 @@ display. Distinct modular types shall not become interchangeable through List
 containment, and representatives shall not be narrowed or re-reduced. Shared
 native/interpreter regression and reversible history shall cover boundary and
 interior representatives plus every admitted path.
+
+## TOPAL-INTP-SUBSET-294 — Ordinary Optional Int List values
+
+All source modes shall preserve `None` and exact Int-bearing `Some` values
+through List construction, private boundaries, products, structural equality,
+complete decisions, count, emptiness, and display. Shared native/interpreter
+regression and reversible history shall cover every admitted path.

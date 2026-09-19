@@ -232,6 +232,11 @@ declaration; it never narrows, wraps, or treats the pointer as a machine integer
 Future library metadata retains the declaration, signedness, exact bounds, and
 target adapter without publishing Int/List layouts or compiler helpers.
 
+Ordinary `List Optional Int` values keep each existing Optional header pointer
+in a private pointer/pointer node. List equality delegates element comparison to
+canonical Optional-Int equality; future metadata retains both constructors and
+the Int payload contract without publishing either private layout.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates
