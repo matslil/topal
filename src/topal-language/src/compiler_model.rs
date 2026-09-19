@@ -25,9 +25,9 @@ use topal_syntax::{
 };
 
 use crate::source::{
-    body_mentions_name, explicit_single_measure, expression_mentions_name, parse_integer,
-    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
-    prove_mutual_bounded_recursion_edge,
+    body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
+    expression_mentions_name, parse_integer, parse_rational, parse_string,
+    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -847,6 +847,10 @@ pub enum CompilerExpressionKind {
         label: String,
     },
     Block(Box<CompilerBlock>),
+    ExitSequence {
+        preceding: Box<CompilerExpression>,
+        result: Box<CompilerExpression>,
+    },
     PrivateBinding {
         storage_name: String,
         value: Box<CompilerExpression>,
@@ -8700,6 +8704,12 @@ impl Analyzer {
         function_result: Option<&CompilerType>,
         allow_function_return: bool,
     ) -> Result<(CompilerExpression, bool), Diagnostic> {
+        if allow_function_return
+            && let Some(value) =
+                self.analyze_returning_operator_operand(expression, environment, function_result)?
+        {
+            return Ok((value, true));
+        }
         let Expression::Block { statements, .. } = expression else {
             return self
                 .analyze_expression_with_expected(expression, environment, expected)
@@ -8738,6 +8748,72 @@ impl Analyzer {
             };
         }
         Ok((value, returns_from_function))
+    }
+
+    fn analyze_returning_operator_operand(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        if items.len() >= 2
+            && direct_expression_returns_from_function(&items[0])
+            && matches!(items[1], Expression::Callable { .. })
+        {
+            let (value, returned) = self.analyze_direct_statement_expression(
+                &items[0],
+                environment,
+                function_result,
+                function_result,
+                true,
+            )?;
+            assert!(returned, "a checked returning operand exits its function");
+            return Ok(Some(value));
+        }
+        let Some(returning_index) = (2..items.len()).find(|index| {
+            matches!(items[index - 1], Expression::Callable { .. })
+                && direct_expression_returns_from_function(&items[*index])
+        }) else {
+            return Ok(None);
+        };
+        let preceding = &items[..returning_index - 1];
+        let right = &items[returning_index];
+        let preceding_span = Span::new(
+            preceding[0].span().start,
+            preceding.last().expect("nonempty prefix").span().end,
+        );
+        let preceding = if let [preceding] = preceding {
+            self.analyze_expression(preceding, environment)?
+        } else {
+            self.analyze_expression(
+                &Expression::Application {
+                    items: preceding.to_vec(),
+                    span: preceding_span,
+                },
+                environment,
+            )?
+        };
+        let (result, returned) = self.analyze_direct_statement_expression(
+            right,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(returned, "a checked returning operand exits its function");
+        Ok(Some(CompilerExpression {
+            value_type: result.value_type.clone(),
+            int_range: result.int_range.clone(),
+            rational_value: result.rational_value.clone(),
+            kind: CompilerExpressionKind::ExitSequence {
+                preceding: Box::new(preceding),
+                result: Box::new(result),
+            },
+            span: expression.span(),
+        }))
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
@@ -26008,6 +26084,10 @@ fn compiler_expression_is_closed_with(
                     .all(|(_, value)| compiler_expression_is_closed_with(value, bound))
         }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
+        CompilerExpressionKind::ExitSequence { preceding, result } => {
+            compiler_expression_is_closed_with(preceding, bound)
+                && compiler_expression_is_closed_with(result, bound)
+        }
         CompilerExpressionKind::PrivateBinding {
             storage_name,
             value,
@@ -39767,7 +39847,7 @@ mod tests {
             .unwrap();
         assert_eq!(function.body.result.value_type, CompilerType::Int);
 
-        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  1 + {\n    return 41\n    }\nanswer ()\n";
+        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  Some {\n    return 41\n    }\nanswer ()\n";
         let error = analyze_for_compiler(embedded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
@@ -39810,6 +39890,60 @@ mod tests {
             function.body.result.kind,
             CompilerExpressionKind::Block(_)
         ));
+    }
+
+    #[test]
+    fn models_return_bearing_direct_symbolic_operands_in_source_order() {
+        // TOPAL-FUNCTION-RETURN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-operator-operand.t"
+        ))
+        .unwrap();
+        let right = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "right-exit")
+            .unwrap();
+        let CompilerExpressionKind::ExitSequence { preceding, result } = &right.body.result.kind
+        else {
+            panic!("expected the evaluated left operand before the right-side exit")
+        };
+        assert!(matches!(
+            preceding.kind,
+            CompilerExpressionKind::Call { .. }
+        ));
+        assert!(matches!(result.kind, CompilerExpressionKind::Block(_)));
+        assert!(right.body.statements.is_empty());
+
+        let left = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "left-exit")
+            .unwrap();
+        assert!(matches!(
+            left.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(left.body.statements.is_empty());
+
+        let abandoned_classifier = "use language (version is v0.1)\nanswer is fn () -> Int\n  abandoned : String is 1 + { return 42 }\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(abandoned_classifier).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::ExitSequence { .. }
+        ));
+
+        let conditional = "use language (version is v0.1)\nanswer is fn () -> Int\n  true\n    true then { return 42 }\n    false then 0\nanswer ()\n";
+        let error = analyze_for_compiler(conditional).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("direct statement position"));
     }
 
     #[test]

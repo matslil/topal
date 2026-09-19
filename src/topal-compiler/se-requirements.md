@@ -5211,9 +5211,10 @@ shall preserve preceding outer and inner evaluation exactly once, validate the
 returned expression against the function result classifier rather than an
 abandoned binding classifier, and omit both lexical and enclosing unreachable
 tails at O0. Except for the whole explicit-return operand admitted by
-`TOPAL-COMP-LEXICAL-RETURN-OPERAND-001`, a return-bearing block nested in an
-operand, decision, callback, or other compound expression shall remain
-rejected.
+`TOPAL-COMP-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand admitted
+by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, a return-bearing block nested in
+another expression, decision, callback, or other compound expression shall
+remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5239,15 +5240,40 @@ time. A block that completes normally remains the ordinary outer return value.
 
 The compiler shall retain the lexical expression and nested DWARF scope while
 lowering the inner value through the function's existing private result and
-single machine return. The implementation shall admit no other embedded,
-conditional, callback, generator, or cleanup-bearing exit and add no runtime
-control-flow value, unwind edge, allocation, foreign dependency, C/C++
-runtime, other-language standard library, public ABI, or `topal-native/6`
-revision. Tests shall share the interpreter/compiler source, assert exactly one
-semantic return and skipped tails, inspect LLVM/DWARF/GDB behavior, and record
-separate interpreter, compiler-build, and native-run baselines. This realizes
+single machine return. Except for the direct symbolic operator operand admitted
+by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, the implementation shall admit no
+other embedded, conditional, callback, generator, or cleanup-bearing exit and
+add no runtime control-flow value, unwind edge, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Tests shall share the interpreter/compiler source,
+assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
+behavior, and record separate interpreter, compiler-build, and native-run
+baselines. This realizes
 `TOPAL-FUNCTION-RETURN-001` and
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` for increment 3b2-b5e8b.
+
+## TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as a direct left or
+right operand of a symbolic operator. A left exit shall omit the operator and
+right operand. A right exit shall retain the complete left application prefix
+exactly once in source order, abandon its value, and omit the operator. Both
+forms shall validate the returned value against the function result classifier
+and omit the lexical and function tails at O0.
+
+The compiler shall represent an evaluated left prefix and returned lexical
+block as a private exit sequence, emit the prefix in its enclosing debug scope,
+retain the block's nested DWARF scope, and use the existing private result and
+single machine return. Constructors, named-call arguments, decisions,
+callbacks, generators, and cleanup-bearing scopes shall remain fail-closed.
+The implementation shall add no runtime control-flow value, unwind edge,
+allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or `topal-native/6` revision. Tests shall share the
+interpreter/compiler source, verify both operand positions and once-only left
+evaluation, omitted operators and tails, LLVM/DWARF/GDB behavior, and separate
+resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001` and
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001` for increment 3b2-b5e8c.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

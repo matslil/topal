@@ -5039,10 +5039,12 @@ revision.
 This increment admits only an unconditional block at a direct statement
 boundary for which every exited scope is proven cleanup-free. Except for the
 whole explicit-return operand admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001`, a return-bearing block embedded in
-another operand, conditional or callback, and any exit whose scope owns
-generator close, resource, destructor, or other cleanup obligations SHALL
-remain rejected until explicit exit-edge and cleanup lowering is implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, a return-bearing block
+embedded in another expression, conditional or callback, and any exit whose
+scope owns generator close, resource, destructor, or other cleanup obligations
+SHALL remain rejected until explicit exit-edge and cleanup lowering is
+implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5055,9 +5057,32 @@ block and function SHALL be excluded from generated IR at `-O0`.
 
 The checked compiler model SHALL retain the lexical block as the function
 result expression and the backend SHALL preserve its nested DWARF scope while
-normalizing the exit into the function's existing single machine return. This
-rule admits no other compound-expression, conditional, callback, generator, or
-cleanup-bearing propagation and SHALL introduce no runtime control-flow
+normalizing the exit into the function's existing single machine return.
+Except for the direct symbolic operator operand admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, this rule admits no other
+compound-expression, conditional, callback, generator, or cleanup-bearing
+propagation and SHALL introduce no runtime control-flow object, unwind edge,
+allocation, foreign dependency, C/C++ standard library, public ABI, or
+native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
+
+An admitted cleanup-free lexical block in the direct left or right operand
+position of a symbolic operator MAY execute an explicit `return`. A left-side
+exit SHALL occur before the operator or any right operand is evaluated. For a
+right-side exit, the complete left application prefix SHALL be evaluated once
+in source order, its abandoned value SHALL NOT be passed to the operator, and
+the operator SHALL NOT be invoked. In both cases the returned value SHALL be
+validated against the enclosing function result classifier and every remaining
+statement in the lexical block and function SHALL be excluded from generated
+IR at `-O0`.
+
+The checked compiler model SHALL retain any evaluated left prefix as a private
+exit sequence followed by the lexical block result. The backend SHALL emit that
+prefix in the enclosing debug scope, retain the block's nested DWARF scope, and
+normalize the exit into the function's existing single machine return. This
+rule admits no constructor, named-call argument, decision, callback, generator,
+or cleanup-bearing propagation and SHALL introduce no runtime control-flow
 object, unwind edge, allocation, foreign dependency, C/C++ standard library,
 public ABI, or native-ABI revision.
 
