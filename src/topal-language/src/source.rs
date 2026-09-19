@@ -3178,7 +3178,11 @@ impl Session {
             Some(Value::Constraint(constraint))
                 if constraint.base_classifier == "Int"
         );
-        if (!built_in && !declared_union && !declared_constraint)
+        let declared_modular = matches!(
+            self.bindings.get(constructor_name),
+            Some(Value::ModularType(_))
+        );
+        if (!built_in && !declared_union && !declared_constraint && !declared_modular)
             || !direct_expression_returns_from_function(argument)
         {
             return Ok(None);
@@ -19804,6 +19808,38 @@ fn named_constraint_argument_block_propagates_return_before_validation() {
     assert!(!trace.iter().any(|event| event.contains("abandoned")));
 
     let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  Positive { return 42 }\nPositive is Int constraint { candidate } candidate > 0\nanswer ()\n";
+    let error = Session::new()
+        .evaluate(forward, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn named_modular_argument_block_propagates_return_before_validation() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-modular-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("numeric.modular.constructed"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  Counter { return 42 }\nCounter is ModNat (0 ..= 255)\nanswer ()\n";
     let error = Session::new()
         .evaluate(forward, &mut std::io::sink())
         .unwrap_err();

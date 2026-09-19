@@ -9048,7 +9048,11 @@ impl Analyzer {
                             .get(constructor_name)
                             .is_some_and(|end| *end <= constructor.start)
                 });
-        if (!built_in && !declared_union && !declared_constraint)
+        let declared_modular = self
+            .modulars
+            .get(constructor_name)
+            .is_some_and(|(_, declaration)| declaration.end <= constructor.start);
+        if (!built_in && !declared_union && !declared_constraint && !declared_modular)
             || !direct_expression_returns_from_function(argument)
         {
             return Ok(None);
@@ -40511,6 +40515,43 @@ mod tests {
         let non_int = "use language (version is v0.1)\nNonempty is String constraint { candidate } candidate = candidate\nanswer is fn () -> Int\n  Nonempty { return 42 }\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(non_int).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_named_modular_argument() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-NUM-MODULAR-CONSTRUCT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-modular-constructor.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  Counter { return 42 }\nCounter is ModNat (0 ..= 255)\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(forward).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let reduction = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  { return 42 } modulo Counter\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(reduction).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  Counter ({ return 42 }, 0)\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }
