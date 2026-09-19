@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 278);
+    assert_eq!(examples.len(), 279);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5295,6 +5295,45 @@ fn records_operator_operand_block_exits_reversibly() {
         1
     );
     for function in ["right-exit", "left-exit"] {
+        assert!(
+            stdout.contains(&format!(
+                "function.exit [TOPAL-FUNCTION-ORDINARY-001] {function}"
+            )),
+            "{stdout}"
+        );
+    }
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
+    assert!(!stdout.contains("missing"));
+}
+
+#[test]
+fn records_product_field_block_exits_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-product-field.debug"),
+            &language_example("function-return-product-field.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("function.return.explicit").count(), 2);
+    assert_eq!(
+        stdout
+            .lines()
+            .filter(|line| line.contains("function.entry") && line.contains("preceding"))
+            .count(),
+        4
+    );
+    for function in ["tuple-exit", "record-exit"] {
         assert!(
             stdout.contains(&format!(
                 "function.exit [TOPAL-FUNCTION-ORDINARY-001] {function}"

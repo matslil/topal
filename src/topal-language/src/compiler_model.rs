@@ -848,7 +848,7 @@ pub enum CompilerExpressionKind {
     },
     Block(Box<CompilerBlock>),
     ExitSequence {
-        preceding: Box<CompilerExpression>,
+        preceding: Vec<CompilerExpression>,
         result: Box<CompilerExpression>,
     },
     PrivateBinding {
@@ -8706,6 +8706,12 @@ impl Analyzer {
     ) -> Result<(CompilerExpression, bool), Diagnostic> {
         if allow_function_return
             && let Some(value) =
+                self.analyze_returning_product_field(expression, environment, function_result)?
+        {
+            return Ok((value, true));
+        }
+        if allow_function_return
+            && let Some(value) =
                 self.analyze_returning_operator_operand(expression, environment, function_result)?
         {
             return Ok((value, true));
@@ -8748,6 +8754,66 @@ impl Analyzer {
             };
         }
         Ok((value, returns_from_function))
+    }
+
+    fn analyze_returning_product_field(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Product { fields, .. } = expression else {
+            return Ok(None);
+        };
+        let Some(returning_index) = fields
+            .iter()
+            .position(|field| direct_expression_returns_from_function(&field.value))
+        else {
+            return Ok(None);
+        };
+        let mut labels = BTreeSet::new();
+        let mut preceding = Vec::with_capacity(returning_index);
+        for (index, field) in fields[..=returning_index].iter().enumerate() {
+            if let Some(label_span) = field.label {
+                let label = self.source.slice(label_span).to_owned();
+                if !labels.insert(label) {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-DUPLICATE-RECORD-FIELD",
+                        label_span,
+                        "record field label occurs more than once",
+                    ));
+                }
+            }
+            if index == returning_index {
+                break;
+            }
+            preceding.push(self.analyze_expression(&field.value, environment)?);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            &fields[returning_index].value,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning product field exits its function"
+        );
+        if preceding.is_empty() {
+            return Ok(Some(result));
+        }
+        Ok(Some(CompilerExpression {
+            value_type: result.value_type.clone(),
+            int_range: result.int_range.clone(),
+            rational_value: result.rational_value.clone(),
+            kind: CompilerExpressionKind::ExitSequence {
+                preceding,
+                result: Box::new(result),
+            },
+            span: expression.span(),
+        }))
     }
 
     fn analyze_returning_operator_operand(
@@ -8809,7 +8875,7 @@ impl Analyzer {
             int_range: result.int_range.clone(),
             rational_value: result.rational_value.clone(),
             kind: CompilerExpressionKind::ExitSequence {
-                preceding: Box::new(preceding),
+                preceding: vec![preceding],
                 result: Box::new(result),
             },
             span: expression.span(),
@@ -26085,7 +26151,9 @@ fn compiler_expression_is_closed_with(
         }
         CompilerExpressionKind::Block(block) => compiler_block_is_closed(block, bound),
         CompilerExpressionKind::ExitSequence { preceding, result } => {
-            compiler_expression_is_closed_with(preceding, bound)
+            preceding
+                .iter()
+                .all(|value| compiler_expression_is_closed_with(value, bound))
                 && compiler_expression_is_closed_with(result, bound)
         }
         CompilerExpressionKind::PrivateBinding {
@@ -39910,8 +39978,11 @@ mod tests {
             panic!("expected the evaluated left operand before the right-side exit")
         };
         assert!(matches!(
-            preceding.kind,
-            CompilerExpressionKind::Call { .. }
+            preceding.as_slice(),
+            [CompilerExpression {
+                kind: CompilerExpressionKind::Call { .. },
+                ..
+            }]
         ));
         assert!(matches!(result.kind, CompilerExpressionKind::Block(_)));
         assert!(right.body.statements.is_empty());
@@ -39942,6 +40013,73 @@ mod tests {
 
         let conditional = "use language (version is v0.1)\nanswer is fn () -> Int\n  true\n    true then { return 42 }\n    false then 0\nanswer ()\n";
         let error = analyze_for_compiler(conditional).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("direct statement position"));
+    }
+
+    #[test]
+    fn models_return_bearing_direct_product_fields_in_source_order() {
+        // TOPAL-FUNCTION-RETURN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-product-field.t"
+        ))
+        .unwrap();
+        for name in ["tuple-exit", "record-exit"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            let CompilerExpressionKind::ExitSequence { preceding, result } =
+                &function.body.result.kind
+            else {
+                panic!("expected the evaluated product prefix before the field exit")
+            };
+            assert!(matches!(
+                preceding.as_slice(),
+                [
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { .. },
+                        ..
+                    },
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::Call { .. },
+                        ..
+                    }
+                ]
+            ));
+            assert!(matches!(result.kind, CompilerExpressionKind::Block(_)));
+            assert!(function.body.statements.is_empty());
+        }
+
+        let first = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, missing)\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(first).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+
+        let abandoned_classifier = "use language (version is v0.1)\nanswer is fn () -> Int\n  abandoned : String is (1, { return 42 }, missing)\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(abandoned_classifier).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::ExitSequence { .. }
+        ));
+
+        let nested_call = "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nanswer is fn () -> Int\n  identity (1, { return 42 })\nanswer ()\n";
+        let error = analyze_for_compiler(nested_call).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
     }

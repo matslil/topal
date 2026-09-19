@@ -5212,9 +5212,10 @@ returned expression against the function result classifier rather than an
 abandoned binding classifier, and omit both lexical and enclosing unreachable
 tails at O0. Except for the whole explicit-return operand admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand admitted
-by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, a return-bearing block nested in
-another expression, decision, callback, or other compound expression shall
-remain rejected.
+by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, and the direct product field
+admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, a return-bearing block
+nested in another expression, decision, callback, or other compound expression
+shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5241,10 +5242,11 @@ time. A block that completes normally remains the ordinary outer return value.
 The compiler shall retain the lexical expression and nested DWARF scope while
 lowering the inner value through the function's existing private result and
 single machine return. Except for the direct symbolic operator operand admitted
-by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, the implementation shall admit no
-other embedded, conditional, callback, generator, or cleanup-bearing exit and
-add no runtime control-flow value, unwind edge, allocation, foreign dependency,
-C/C++ runtime, other-language standard library, public ABI, or
+by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001` and the direct product field
+admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, the implementation shall
+admit no other embedded, conditional, callback, generator, or cleanup-bearing
+exit and add no runtime control-flow value, unwind edge, allocation, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
 `topal-native/6` revision. Tests shall share the interpreter/compiler source,
 assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
 behavior, and record separate interpreter, compiler-build, and native-run
@@ -5274,6 +5276,31 @@ interpreter/compiler source, verify both operand positions and once-only left
 evaluation, omitted operators and tails, LLVM/DWARF/GDB behavior, and separate
 resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001` and
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001` for increment 3b2-b5e8c.
+
+## TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001 — Product-field lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as a direct positional
+or labeled product field. It shall evaluate every preceding field exactly once
+in source order, abandon those values, and omit product construction, later
+fields, the lexical tail, and the function tail at O0. It shall validate the
+returned value against the function result classifier rather than the product
+or an abandoned binding classifier.
+
+The compiler shall represent the evaluated field prefix and returned lexical
+block as a private exit sequence, emit prefix expressions in their enclosing
+debug scope, retain the block's nested DWARF scope, and use the existing private
+result and single machine return. Only products at an otherwise admitted direct
+statement or initializer boundary are covered. Products nested in constructors
+or call arguments, decisions, callbacks, generators, and cleanup-bearing scopes
+shall remain fail-closed. The implementation shall add no runtime control-flow
+value, unwind edge, aggregate allocation, foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or `topal-native/6` revision.
+Tests shall share the interpreter/compiler source, cover positional and labeled
+fields, verify once-only prefix evaluation and omitted construction/tails,
+inspect LLVM/DWARF/GDB behavior, and record separate resource baselines. This
+realizes `TOPAL-FUNCTION-RETURN-001` and
+`TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001` for increment 3b2-b5e8d.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 
