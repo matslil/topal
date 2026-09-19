@@ -98,6 +98,7 @@ evidence.
 | 3b2-b5ax | exact nonempty Map (String, Function) values collected from finite pair Lists, collision-policy resolution, private parameters/results/packages and Tuple/Record containment, semantic key-path capture transport, exact lookup, display, and debugging | complete |
 | 3b2-b5e8a | unconditional cleanup-free lexical blocks that return through a direct function-body statement boundary, with skipped-tail exclusion and nested DWARF | complete |
 | 3b2-b5e8b | cleanup-free lexical blocks that return while serving as the whole operand of an outer explicit return, with one semantic return, skipped-tail exclusion, and nested DWARF | complete |
+| 3b2-b5e8c | cleanup-free lexical blocks that return from a direct symbolic-operator operand, with ordered once-only left-prefix evaluation, omitted operator and tails, and nested DWARF | complete |
 | 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional/Sum/Result/List/Array/Map, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as/3b2-b5at/3b2-b5au/3b2-b5av/3b2-b5aw/3b2-b5ax, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, indirect/conditional and cleanup-bearing return-through-block lowering, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
@@ -423,10 +424,12 @@ checked access; and
 lexical block by retaining its nested scope and normalizing the exit into the
 ordinary function result; 3b2-b5e8b admits the same cleanup-free exit when the
 block is the whole operand of another explicit return, without duplicating the
-semantic return; 3b2-b5e8 continues with other escaping, recursive, overloaded,
-and dynamically contained callables, conditional or otherwise embedded
-nested-block exits, cleanup-bearing scopes, persistent aggregate storage, and
-the remaining user-defined value representations.
+semantic return; 3b2-b5e8c propagates the exit from a direct symbolic operand,
+retaining a left application prefix once while omitting the abandoned operator;
+3b2-b5e8 continues with other escaping, recursive, overloaded, and dynamically
+contained callables, conditional or otherwise embedded nested-block exits,
+cleanup-bearing scopes, persistent aggregate storage, and the remaining
+user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

@@ -1401,6 +1401,11 @@
       "cpu_time_ns": 3161779,
       "memory_peak_bytes": 18436096,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-operator-operand.t": {
+      "cpu_time_ns": 5225519,
+      "memory_peak_bytes": 18432000,
+      "samples_per_test": 50
     }
   }
 }

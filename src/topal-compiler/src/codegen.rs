@@ -331,7 +331,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::ExternalLocationWrite {
             location, value, ..
         } => expression_uses_extended_debug(location) || expression_uses_extended_debug(value),
-        CompilerExpressionKind::StringConcat { left, right }
+        CompilerExpressionKind::ExitSequence {
+            preceding: left,
+            result: right,
+        }
+        | CompilerExpressionKind::StringConcat { left, right }
         | CompilerExpressionKind::ListEntry {
             value: left,
             remaining: right,
@@ -2084,6 +2088,10 @@ impl<'a> Generator<'a> {
                 let value = self.emit_block(block, body, &mut nested);
                 body.subprogram = parent_scope;
                 value
+            }
+            CompilerExpressionKind::ExitSequence { preceding, result } => {
+                let _ = self.emit_expression(preceding, body, environment);
+                self.emit_expression(result, body, environment)
             }
             CompilerExpressionKind::PrivateBinding {
                 storage_name,

@@ -1909,6 +1909,18 @@ machine return and nested `DILexicalBlock`, so the extension changes neither
 runtime representation nor ABI. Other compound-expression and conditional
 joins remain deferred.
 
+Increment 3b2-b5e8c admits that checked exit in either direct operand of a
+symbolic operator. A left-side block result replaces the abandoned application
+before any right operand is checked or emitted. A right-side block result is
+wrapped in a private exit sequence whose preceding expression retains the
+complete left application prefix, so source-order calls and effects occur once
+without fabricating an operand value or invoking the abandoned operator. The
+backend emits that prefix in the enclosing scope, emits the returned block in
+its `DILexicalBlock`, and reaches the existing single machine return. The
+sequence is compiler-private structure rather than a runtime carrier and
+therefore changes no ABI. Constructors, named-call arguments, conditional
+joins, callbacks, and cleanup-bearing exits remain deferred.
+
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
 its purpose is to keep a typed SSA result and therefore an explicit completion

@@ -2906,6 +2906,61 @@ impl Session {
         });
     }
 
+    fn evaluate_returning_operator_operand_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let (returning, preceding) = if items.len() >= 2
+            && direct_expression_returns_from_function(&items[0])
+            && matches!(items[1], Expression::Callable { .. })
+        {
+            (&items[0], None)
+        } else {
+            let Some(returning_index) = (2..items.len()).find(|index| {
+                matches!(items[index - 1], Expression::Callable { .. })
+                    && direct_expression_returns_from_function(&items[*index])
+            }) else {
+                return Ok(None);
+            };
+            (&items[returning_index], Some(&items[..returning_index - 1]))
+        };
+        if let Some(preceding) = preceding {
+            if let [preceding] = preceding {
+                let _ = self.evaluate_expression(source, preceding, trace)?;
+            } else {
+                let preceding = Expression::Application {
+                    span: Span::new(
+                        preceding[0].span().start,
+                        preceding.last().expect("nonempty prefix").span().end,
+                    ),
+                    items: preceding.to_vec(),
+                };
+                let _ = self.evaluate_expression(source, &preceding, trace)?;
+            }
+        }
+        let Expression::Block { statements, .. } = returning else {
+            unreachable!("a direct returning operator operand is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning operator operand exits its function"
+        );
+        Ok(Some(step))
+    }
+
     #[allow(clippy::too_many_lines)] // Keep recursive expression cases together and auditable.
     fn evaluate_expression(
         &self,
@@ -9178,6 +9233,14 @@ impl Execution {
                 ExecutionStep::Advanced { .. } => unreachable!("a block runs to completion"),
             },
             Statement::Discard { span, value } => {
+                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                    &self.source,
+                    value,
+                    self.return_classifier.as_deref(),
+                    trace,
+                )? {
+                    return Ok(step);
+                }
                 self.execute_discard(session, trace, *span, value)?
             }
             Statement::Return { keyword, value } => {
@@ -9190,6 +9253,14 @@ impl Execution {
                     ));
                 }
                 let span = cover(*keyword, value.span());
+                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                    &self.source,
+                    value,
+                    self.return_classifier.as_deref(),
+                    trace,
+                )? {
+                    return Ok(step);
+                }
                 let value = if let Expression::Block { statements, .. } = value {
                     match session.evaluate_block_step(
                         &self.source,
@@ -9228,6 +9299,14 @@ impl Execution {
                 let expected = final_expression
                     .then_some(self.result_classifier.as_deref())
                     .flatten();
+                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                    &self.source,
+                    expression,
+                    self.return_classifier.as_deref(),
+                    trace,
+                )? {
+                    return Ok(step);
+                }
                 let value = if let Expression::Block { statements, .. } = expression {
                     match session.evaluate_block_step(
                         &self.source,
@@ -9319,6 +9398,17 @@ impl Execution {
             declare_variant(&self.source, name, initializer, session, trace)
         {
             return Ok(BindingOutcome::Bound(value, span));
+        }
+        if let Some(step) = session.evaluate_returning_operator_operand_step(
+            &self.source,
+            initializer,
+            self.return_classifier.as_deref(),
+            trace,
+        )? {
+            let ExecutionStep::Returned { value, span } = step else {
+                unreachable!("a returning operator operand exits its function")
+            };
+            return Ok(BindingOutcome::Returned(value, span));
         }
         let mut evaluated = if let Expression::Block { statements, .. } = initializer {
             match session.evaluate_block_step(
@@ -9682,6 +9772,19 @@ fn evaluate_list_expression(
         element_classifier: element_classifier.to_owned(),
         entries,
     }))
+}
+
+pub(super) fn direct_expression_returns_from_function(expression: &Expression) -> bool {
+    let Expression::Block { statements, .. } = expression else {
+        return false;
+    };
+    statements.iter().any(|statement| match statement {
+        Statement::Return { .. } => true,
+        Statement::Binding { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Expression(value) => direct_expression_returns_from_function(value),
+        _ => false,
+    })
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -19161,6 +19264,42 @@ fn return_operand_block_propagates_its_inner_return_once() {
             .count(),
         1
     );
+}
+
+#[test]
+fn operator_operand_blocks_propagate_returns_in_source_order() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-operator-operand.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 43)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.entry") && event.contains("preceding"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("missing")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  abandoned : String is 1 + { return 42 }\n  0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
 }
 
 #[test]
