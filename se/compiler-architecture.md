@@ -1299,6 +1299,19 @@ record element classification, node representation and ownership, lifetime,
 effects, and a versioned target adapter independently of private offsets,
 helper names, LLVM types, and physical placement.
 
+`List String` retains immutable 16-byte nodes containing the existing String
+descriptor pointer followed by the remaining-node pointer. A separately
+selected finite runtime fragment performs structural equality by delegating
+each entry to canonical preserved-sequence String equality and counts nodes;
+complete decomposition loads the exact descriptor pointer and emptiness remains
+a null test. Private parameter/result/package and Tuple/Record passage uses the
+same exact source pointer with LLVM-owned AMD64 placement. Canonical display,
+target-derived DWARF, and GDB preserve String delimiters and the full List
+classifier. This adds no String copy, host text API, foreign allocator, C/C++
+runtime, other-language standard library, public/generic node ABI, or ABI
+revision. Future compiled-library metadata remains independent of private node
+offsets, helper names, LLVM types, and physical placement.
+
 `List Int` reuses only that node's private size and next-pointer position: its
 first word is the existing canonical arbitrary-precision Int pointer rather
 than an Effect byte. This is a statically selected node interpretation, not a

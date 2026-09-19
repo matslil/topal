@@ -158,6 +158,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/map-function-environments.t",
     "examples/language/list-removal.t",
     "examples/language/list-sequence-operations.t",
+    "examples/language/list-string-values.t",
     "examples/language/lists.t",
     "examples/language/local-function-environments.t",
     "examples/language/modular-checked-construction.t",

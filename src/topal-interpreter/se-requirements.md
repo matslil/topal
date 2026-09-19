@@ -2489,3 +2489,13 @@ Tuples, and Records, compare them structurally, decompose them through complete
 List decisions, observe entry count and emptiness, and render their canonical
 source form. The shared regression and reversible debugger history shall cover
 each of these paths with the same source used by the native compiler.
+
+## TOPAL-INTP-SUBSET-282 — Ordinary String List values
+
+All source modes shall construct empty and nonempty `List String` values,
+preserve exact String entries across ordinary parameters/results, packages,
+Tuples, and Records, compare them structurally through String equality,
+decompose them through complete List decisions, observe entry count and
+emptiness, and render their canonical source form with String delimiters. The
+shared regression and reversible debugger history shall cover each path with
+the same source used by the native compiler.

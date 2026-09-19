@@ -175,6 +175,13 @@ type-erased generic container nor a compiled-library ABI; future library
 metadata describes the semantic element type, ownership, lifetime, and target
 adapter independently of the node offsets.
 
+Ordinary `List String` values use the same private pointer-payload node shape
+already selected for contextual String Lists, now across private boundaries,
+structural equality, complete decisions, count, and emptiness. Equality delegates
+to canonical preserved-sequence String equality. The node remains an internal
+representation; future library metadata retains the semantic element type and
+target adapter without publishing compiler helper names or physical offsets.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux
