@@ -5213,9 +5213,10 @@ abandoned binding classifier, and omit both lexical and enclosing unreachable
 tails at O0. Except for the whole explicit-return operand admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand admitted
 by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, and the direct product field
-admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, a return-bearing block
-nested in another expression, decision, callback, or other compound expression
-shall remain rejected.
+admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, and the direct named-call
+argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, a return-bearing
+block nested in another expression, decision, callback, or other compound
+expression shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5243,11 +5244,13 @@ The compiler shall retain the lexical expression and nested DWARF scope while
 lowering the inner value through the function's existing private result and
 single machine return. Except for the direct symbolic operator operand admitted
 by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001` and the direct product field
-admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, the implementation shall
-admit no other embedded, conditional, callback, generator, or cleanup-bearing
-exit and add no runtime control-flow value, unwind edge, allocation, foreign
-dependency, C/C++ runtime, other-language standard library, public ABI, or
-`topal-native/6` revision. Tests shall share the interpreter/compiler source,
+admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, and the direct named-call
+argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, the implementation
+shall admit no other embedded, conditional, callback, generator, or exit with
+cleanup obligations and add no runtime control-flow value, unwind edge,
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public ABI, or `topal-native/6` revision. Tests shall share the
+interpreter/compiler source,
 assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
 behavior, and record separate interpreter, compiler-build, and native-run
 baselines. This realizes
@@ -5267,8 +5270,9 @@ and omit the lexical and function tails at O0.
 The compiler shall represent an evaluated left prefix and returned lexical
 block as a private exit sequence, emit the prefix in its enclosing debug scope,
 retain the block's nested DWARF scope, and use the existing private result and
-single machine return. Constructors, named-call arguments, decisions,
-callbacks, generators, and cleanup-bearing scopes shall remain fail-closed.
+single machine return. Constructors, packaged or nested call arguments,
+overloaded or indirect calls, decisions, callbacks, generators, and scopes with
+cleanup obligations shall remain fail-closed.
 The implementation shall add no runtime control-flow value, unwind edge,
 allocation, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or `topal-native/6` revision. Tests shall share the
@@ -5301,6 +5305,32 @@ fields, verify once-only prefix evaluation and omitted construction/tails,
 inspect LLVM/DWARF/GDB behavior, and record separate resource baselines. This
 realizes `TOPAL-FUNCTION-RETURN-001` and
 `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001` for increment 3b2-b5e8d.
+
+## TOPAL-COMP-LEXICAL-RETURN-CALL-001 — Named-call argument lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as a direct argument of
+an unshadowed named function with exactly one flat declaration. It shall cover
+the sole argument of a unary prefix call and either direct argument of a binary
+infix call. A left or sole-argument exit shall precede every other argument. A
+right exit shall evaluate the complete left application prefix exactly once,
+abandon that value, and omit callee selection, invocation, later arguments, and
+the enclosing function tail at O0.
+
+The compiler shall validate the returned value against the enclosing function
+result classifier, represent an evaluated prefix in the private exit sequence,
+retain the block's nested DWARF scope, and use the existing private result and
+single machine return. Overloaded, bound, nested, qualified, packaged,
+defaulted, or constructor calls; products nested in arguments; decisions;
+callbacks; generators; and cleanup-bearing scopes shall remain fail-closed.
+The implementation shall add no runtime control-flow value, indirect call,
+unwind edge, allocation, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. Tests shall share
+the interpreter/compiler source, cover unary, left, and right arguments, verify
+once-only prefix evaluation and omitted invocation/tails, inspect
+LLVM/DWARF/GDB behavior, and record separate resource baselines. This realizes
+`TOPAL-FUNCTION-RETURN-001` and
+`TOPAL-COMPILER-LEXICAL-RETURN-CALL-001` for increment 3b2-b5e8e.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

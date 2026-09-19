@@ -8716,6 +8716,15 @@ impl Analyzer {
         {
             return Ok((value, true));
         }
+        if allow_function_return
+            && let Some(value) = self.analyze_returning_named_call_argument(
+                expression,
+                environment,
+                function_result,
+            )?
+        {
+            return Ok((value, true));
+        }
         let Expression::Block { statements, .. } = expression else {
             return self
                 .analyze_expression_with_expected(expression, environment, expected)
@@ -8876,6 +8885,104 @@ impl Analyzer {
             rational_value: result.rational_value.clone(),
             kind: CompilerExpressionKind::ExitSequence {
                 preceding: vec![preceding],
+                result: Box::new(result),
+            },
+            span: expression.span(),
+        }))
+    }
+
+    fn analyze_returning_named_call_argument(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let Some((function_index, function_name)) =
+            items.iter().enumerate().rev().find_map(|(index, item)| {
+                let Expression::Identifier(name) = item else {
+                    return None;
+                };
+                let name = self.source.slice(*name);
+                (!environment.contains_key(name) && self.functions.contains_key(name))
+                    .then_some((index, name))
+            })
+        else {
+            return Ok(None);
+        };
+        let Some((argument_count, returning_index, preceding_source)) =
+            (if function_index == 0 && items.len() == 2 {
+                direct_expression_returns_from_function(&items[1]).then_some((1, 1, None))
+            } else if function_index >= 1 && function_index + 2 == items.len() {
+                if function_index == 1 && direct_expression_returns_from_function(&items[0]) {
+                    Some((2, 0, None))
+                } else if direct_expression_returns_from_function(&items[function_index + 1]) {
+                    Some((2, function_index + 1, Some(&items[..function_index])))
+                } else {
+                    None
+                }
+            } else {
+                None
+            })
+        else {
+            return Ok(None);
+        };
+        let admitted_declaration = self
+            .functions
+            .get(function_name)
+            .is_some_and(|declarations| {
+                matches!(declarations.as_slice(), [declaration]
+                if declaration.parameters.len() == argument_count
+                    && (!self.static_context || declaration.is_static)
+                    && declaration.parameters.iter().all(|parameter| {
+                        parameter.fields.is_empty()
+                            && parameter.default.is_none()
+                            && parameter.qualifier.is_none()
+                    }))
+            });
+        if !admitted_declaration {
+            return Ok(None);
+        }
+        let mut preceding = Vec::with_capacity(usize::from(preceding_source.is_some()));
+        if let Some(source) = preceding_source {
+            let value = if let [value] = source {
+                self.analyze_expression(value, environment)?
+            } else {
+                self.analyze_expression(
+                    &Expression::Application {
+                        items: source.to_vec(),
+                        span: Span::new(
+                            source[0].span().start,
+                            source.last().expect("nonempty call prefix").span().end,
+                        ),
+                    },
+                    environment,
+                )?
+            };
+            preceding.push(value);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            &items[returning_index],
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning named-call argument exits its function"
+        );
+        if preceding.is_empty() {
+            return Ok(Some(result));
+        }
+        Ok(Some(CompilerExpression {
+            value_type: result.value_type.clone(),
+            int_range: result.int_range.clone(),
+            rational_value: result.rational_value.clone(),
+            kind: CompilerExpressionKind::ExitSequence {
+                preceding,
                 result: Box::new(result),
             },
             span: expression.span(),
@@ -40080,6 +40187,61 @@ mod tests {
 
         let nested_call = "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nanswer is fn () -> Int\n  identity (1, { return 42 })\nanswer ()\n";
         let error = analyze_for_compiler(nested_call).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("direct statement position"));
+    }
+
+    #[test]
+    fn models_return_bearing_direct_named_call_arguments_in_source_order() {
+        // TOPAL-FUNCTION-RETURN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-CALL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-call-argument.t"
+        ))
+        .unwrap();
+        let right = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "right-exit")
+            .unwrap();
+        let CompilerExpressionKind::ExitSequence { preceding, result } = &right.body.result.kind
+        else {
+            panic!("expected the evaluated left argument before the right-side exit")
+        };
+        assert!(matches!(
+            preceding.as_slice(),
+            [CompilerExpression {
+                kind: CompilerExpressionKind::Call { .. },
+                ..
+            }]
+        ));
+        assert!(matches!(result.kind, CompilerExpressionKind::Block(_)));
+        assert!(right.body.statements.is_empty());
+
+        for name in ["left-exit", "unary-exit"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert!(matches!(
+                function.body.result.kind,
+                CompilerExpressionKind::Block(_)
+            ));
+            assert!(function.body.statements.is_empty());
+        }
+
+        let abandoned_classifier = "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nanswer is fn () -> Int\n  abandoned : String is identity { return 42 }\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(abandoned_classifier).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+
+        let overloaded = "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nidentity is fn (value : String) -> String\n  value\nanswer is fn () -> Int\n  identity { return 42 }\nanswer ()\n";
+        let error = analyze_for_compiler(overloaded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
     }

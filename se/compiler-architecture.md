@@ -1918,8 +1918,9 @@ without fabricating an operand value or invoking the abandoned operator. The
 backend emits that prefix in the enclosing scope, emits the returned block in
 its `DILexicalBlock`, and reaches the existing single machine return. The
 sequence is compiler-private structure rather than a runtime carrier and
-therefore changes no ABI. Constructors, named-call arguments, conditional
-joins, callbacks, and cleanup-bearing exits remain deferred.
+therefore changes no ABI. Constructors, packaged or nested call arguments,
+overloaded or indirect calls, conditional joins, callbacks, and cleanup-bearing
+exits remain deferred.
 
 Increment 3b2-b5e8d admits that same checked exit from a direct positional or
 labeled product field. The checked model retains each preceding field
@@ -1930,6 +1931,17 @@ reaches the existing single machine return. Later fields and the function tail
 are absent even at O0. This changes neither runtime representation nor ABI;
 products nested in constructors or call arguments and conditional or
 cleanup-bearing joins remain deferred.
+
+Increment 3b2-b5e8e admits a return-bearing block as the sole argument of a
+unary prefix call or either direct argument of a binary infix call when the
+callee is an unshadowed named function with one flat declaration. A right-side
+exit retains the complete evaluated left application prefix in the same private
+exit sequence; a left or sole-argument exit needs no prefix. In every case the
+named callee is neither selected nor invoked, the returned block keeps its
+`DILexicalBlock`, and the existing single machine return completes the enclosing
+function. This changes no runtime representation or ABI. Overload selection,
+bound or qualified callables, packages, constructors, conditional joins, and
+cleanup-bearing exits remain deferred.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
