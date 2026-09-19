@@ -89,7 +89,8 @@ evidence.
 | 3b2-b5ap | exact Array/Set/Bag/Map package fields, exact function-header classifiers, source-order fact retention, pointer-carrier private calls, and collection field debugging | complete |
 | 3b2-b5aq | exact root/root-alias Scope package fields, source-order namespace-fact retention, closed root defaults, existing specialized hidden-data transport, and Scope/data debugging | complete |
 | 3b2-b5ar | exact nonrecursive/nonoverloaded nested Function escape through scalar and Tuple/Record private results, immutable lexical/context/root snapshots, direct application, and source-only debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment in other aggregates, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5as | exact Optional Function construction, absence/presence facts, private parameters/results/packages and Tuple/Record containment, capture transport, decisions, repeated identity, display, and debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -173,7 +174,8 @@ evidence.
 | 6b2b2g | exact local retained named Function alias chains and non-escaping nested calls with selected live-root capture sets, shadow isolation, direct lowering, and GDB observation | complete |
 | 6b2b2h | exact private named-overload, anonymous, and non-escaping nested Function values carrying live-root environments through scalar and Tuple/Record parameters/results, with direct selected calls and GDB observation | complete |
 | 6b2b2i | exact nonrecursive/nonoverloaded nested Function values escaping private scalar and Tuple/Record results with immutable live-root snapshots and GDB observation | complete |
-| 6b2b2 | recursive/overloaded nested Function environments beyond 6b2b2i; escaping anonymous Functions and nested Functions outside 6b2b2i; Function-containing Sum or unsupported representations; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
+| 6b2b2j | exact Optional Function values carrying immutable live-root snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
+| 6b2b2 | recursive/overloaded nested Function environments beyond 6b2b2j; escaping anonymous Functions and nested Functions outside 6b2b2i; Function-containing Sum or unsupported representations; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
@@ -183,7 +185,8 @@ evidence.
 | 6c2e | exact local retained named Function alias chains and non-escaping nested calls with selected defining-context capture sets, shadow isolation, direct lowering, and GDB observation | complete |
 | 6c2f | exact private named-overload, anonymous, and non-escaping nested Function values carrying defining-context environments through scalar and Tuple/Record parameters/results, with direct selected calls and GDB observation | complete |
 | 6c2g | exact nonrecursive/nonoverloaded nested Function values escaping private scalar and Tuple/Record results with immutable defining-context snapshots and GDB observation | complete |
-| 6c2 | recursive/overloaded nested Function environments beyond 6c2g; escaping anonymous Functions and nested Functions outside 6c2g; Function-containing Sum or unsupported representations; other callable environments; qualified root access beyond 6b2b2i; and public/library context ABI | planned |
+| 6c2h | exact Optional Function values carrying immutable defining-context snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
+| 6c2 | recursive/overloaded nested Function environments beyond 6c2h; escaping anonymous Functions and nested Functions outside 6c2g; Function-containing Sum or unsupported representations; other callable environments; qualified root access beyond 6b2b2j; and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
@@ -359,7 +362,10 @@ boundary; 3b2-b5aq retains exact root/root-alias namespace snapshots through
 package ordering while reusing the specialized Scope tag and hidden represented
 data boundary; 3b2-b5ar returns exact nonrecursive/nonoverloaded nested
 declarations with their immutable lexical/context/root snapshots through scalar
-and Tuple/Record private results while preserving direct application; and
+and Tuple/Record private results while preserving direct application; 3b2-b5as
+extends the same exact callable and capture facts through present/absent
+Optional construction, private boundaries, decisions, repeated identity, and
+debugging without tag dispatch; and
 3b2-b5e8 continues with other escaping, recursive,
 overloaded, and dynamically contained callables, remaining recursive and
 nested-block exit control flow, cleanup-bearing scopes, persistent aggregate
@@ -902,7 +908,9 @@ results, retains per-declaration selection separately from the boundary
 environment, and preserves active and suspended frames without indirect calls;
 6b2b2i/6c2g permits one exact nonrecursive/nonoverloaded nested declaration to
 escape those private result boundaries with its immutable live-root and
-defining-context snapshots while retaining direct application; and
+defining-context snapshots while retaining direct application;
+6b2b2j/6c2h carries those same exact environments through Optional payload
+paths, package and Tuple/Record containment, and `Some` decisions; and
 6b2b2/6c2 retain unsupported root/context forwarding graphs and members, Scope
 escape, nested Scope and generator shapes or boundaries not otherwise admitted,
 external path resolution, package construction, published interfaces, and

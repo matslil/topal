@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 248);
+    assert_eq!(examples.len(), 249);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4431,6 +4431,51 @@ fn records_escaping_nested_function_environments_reversibly() {
         "function.selected [TOPAL-TYPE-CALL-001] apply-record",
         "function.value.called [TOPAL-FUNCTION-VALUE-001] read-pair",
         "function.selected [TOPAL-TYPE-CALL-001] pair-operation",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_optional_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-275,
+    // TOPAL-COMPILER-OPTIONAL-FUNCTION-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}optional-function-environments.debug"),
+            &language_example("optional-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first_factory = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-optional")
+        .unwrap();
+    let first_selection = stdout
+        .find("optional.payload.bound [TOPAL-DECISION-OPTIONAL-001] operation")
+        .unwrap();
+    let first_nested = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] operation")
+        .unwrap();
+    assert!(first_factory < first_selection);
+    assert!(first_selection < first_nested);
+    for event in [
+        "optional.some.constructed [TOPAL-TYPE-OPTIONAL-CONTEXT-001] Function",
+        "optional.none.constructed [TOPAL-TYPE-OPTIONAL-CONTEXT-001] Function",
+        "binding.bind [TOPAL-SYN-BIND-001] first",
+        "binding.bind [TOPAL-SYN-BIND-001] second",
+        "function.selected [TOPAL-TYPE-CALL-001] return-optional",
+        "function.selected [TOPAL-TYPE-CALL-001] return-tuple",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-package",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-record",
+        "pattern.identity.matched [TOPAL-TYPE-MATCH-001] candidate",
         "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
         "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
         "evaluation.result [TOPAL-SYN-GRAMMAR-001]",

@@ -25,8 +25,9 @@ use topal_syntax::{
 };
 
 use crate::source::{
-    explicit_single_measure, expression_mentions_name, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
+    body_mentions_name, explicit_single_measure, expression_mentions_name, parse_integer,
+    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
+    prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -1192,6 +1193,7 @@ pub struct CompilerFunctionResultCapture {
 pub enum CompilerAggregatePathElement {
     Tuple(usize),
     Record(String),
+    OptionalPayload,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1338,6 +1340,7 @@ struct BindingFacts {
     list_string_keys: Option<Vec<String>>,
     tuple_fields: Vec<StaticValueFacts>,
     record_fields: BTreeMap<String, StaticValueFacts>,
+    optional: Option<CompilerOptionalFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
     static_capability: Option<CompilerCapability>,
@@ -1445,6 +1448,30 @@ struct StaticValueFacts {
     callable: Option<CompilerCallableFacts>,
     tuple_fields: Vec<Self>,
     record_fields: BTreeMap<String, Self>,
+    optional: Option<CompilerOptionalFacts>,
+}
+
+#[derive(Clone)]
+enum CompilerOptionalFacts {
+    None,
+    Some(Box<StaticValueFacts>),
+}
+
+fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFacts) {
+    binding.int_range.clone_from(&value.int_range);
+    binding.rational_value.clone_from(&value.rational_value);
+    binding.string_value.clone_from(&value.string_value);
+    binding.callable.clone_from(&value.callable);
+    binding.tuple_fields.clone_from(&value.tuple_fields);
+    binding.record_fields.clone_from(&value.record_fields);
+    binding.optional.clone_from(&value.optional);
+}
+
+fn present_optional_payload(facts: StaticValueFacts) -> Option<StaticValueFacts> {
+    match facts.optional {
+        Some(CompilerOptionalFacts::Some(payload)) => Some(*payload),
+        Some(CompilerOptionalFacts::None) | None => None,
+    }
 }
 
 struct Analyzer {
@@ -8508,6 +8535,20 @@ impl Analyzer {
             .iter()
             .map(|parameter| self.source.slice(parameter.name))
             .collect::<BTreeSet<_>>();
+        if let Some((candidate, _)) = environment.iter().find(|(candidate, facts)| {
+            !parameter_names.contains(candidate.as_str())
+                && body_mentions_name(&self.source, body, candidate)
+                && (!facts.runtime_bound
+                    || !compiler_environment_capture_supported(&facts.value_type))
+        }) {
+            return Err(unsupported(
+                &self.source,
+                *name,
+                &format!(
+                    "nested Function capture `{candidate}` without an admitted private representation"
+                ),
+            ));
+        }
         let captures = environment
             .iter()
             .filter(|(candidate, facts)| {
@@ -8515,7 +8556,7 @@ impl Analyzer {
                     && !candidate.starts_with("@ ")
                     && !candidate.starts_with("root ")
                     && !parameter_names.contains(candidate.as_str())
-                    && compiler_function_result_supported(&facts.value_type)
+                    && compiler_environment_capture_supported(&facts.value_type)
             })
             .map(|(candidate, facts)| CompilerContextCapture {
                 parameter_name: candidate.clone(),
@@ -8558,6 +8599,7 @@ impl Analyzer {
                 list_string_keys: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
+                optional: None,
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
                     name: name_text.clone(),
@@ -8852,6 +8894,7 @@ impl Analyzer {
                         returned_function_capture_bindings(&aggregate_facts);
                     let tuple_fields = aggregate_facts.tuple_fields;
                     let record_fields = aggregate_facts.record_fields;
+                    let optional = aggregate_facts.optional;
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable = aggregate_facts.callable;
@@ -8911,6 +8954,7 @@ impl Analyzer {
                         list_string_keys,
                         tuple_fields,
                         record_fields,
+                        optional,
                         namespace,
                         callable,
                         static_capability,
@@ -9035,6 +9079,7 @@ impl Analyzer {
                             list_string_keys: Self::known_list_string_keys(&value, environment),
                             tuple_fields: Vec::new(),
                             record_fields: BTreeMap::new(),
+                            optional: None,
                             namespace: None,
                             callable: None,
                             static_capability: None,
@@ -9779,6 +9824,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -9834,6 +9880,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -10435,6 +10482,7 @@ impl Analyzer {
                 list_string_keys: None,
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
+                optional: None,
                 namespace: None,
                 callable: None,
                 static_capability: None,
@@ -15735,6 +15783,25 @@ impl Analyzer {
                 }
                 Ok(())
             }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+                match facts.optional.as_mut() {
+                    Some(CompilerOptionalFacts::Some(payload_facts)) => self
+                        .forward_function_aggregate_captures(
+                            payload,
+                            payload_facts,
+                            &format!("{boundary_name} optional payload"),
+                            span,
+                            environment,
+                            forwarded,
+                        ),
+                    Some(CompilerOptionalFacts::None) => Ok(()),
+                    None => Err(unsupported(
+                        &self.source,
+                        span,
+                        "Optional Function boundary without exact presence facts",
+                    )),
+                }
+            }
             _ => Ok(()),
         }
     }
@@ -15952,6 +16019,7 @@ impl Analyzer {
             callable: None,
             tuple_fields: Vec::new(),
             record_fields: Self::known_record_fields(value, environment),
+            optional: None,
         }
     }
 
@@ -15977,6 +16045,14 @@ impl Analyzer {
                     })
                     .collect::<Result<BTreeMap<_, _>, _>>()?;
             }
+            CompilerExpressionKind::OptionalSome(payload) => {
+                facts.optional = Some(CompilerOptionalFacts::Some(Box::new(
+                    self.known_structural_value_facts(payload, environment)?,
+                )));
+            }
+            CompilerExpressionKind::OptionalNone => {
+                facts.optional = Some(CompilerOptionalFacts::None);
+            }
             CompilerExpressionKind::RecordReconstruct { base, replacements } => {
                 facts = self.known_structural_value_facts(base, environment)?;
                 for (name, replacement) in replacements {
@@ -15991,6 +16067,7 @@ impl Analyzer {
                     facts.callable.clone_from(&binding.callable);
                     facts.tuple_fields.clone_from(&binding.tuple_fields);
                     facts.record_fields.clone_from(&binding.record_fields);
+                    facts.optional.clone_from(&binding.optional);
                 }
             }
             CompilerExpressionKind::TupleField { tuple, index } => {
@@ -16129,6 +16206,29 @@ impl Analyzer {
                     path.pop();
                 }
                 Ok(())
+            }
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+                match facts.optional.as_ref() {
+                    Some(CompilerOptionalFacts::Some(payload_facts)) => {
+                        path.push(CompilerAggregatePathElement::OptionalPayload);
+                        let result = self.collect_function_aggregate_result_captures(
+                            payload,
+                            payload_facts,
+                            environment,
+                            span,
+                            path,
+                            result,
+                        );
+                        path.pop();
+                        result
+                    }
+                    Some(CompilerOptionalFacts::None) => Ok(()),
+                    None => Err(unsupported(
+                        &self.source,
+                        span,
+                        "Optional Function result without exact presence facts",
+                    )),
+                }
             }
             _ => Ok(()),
         }
@@ -17139,6 +17239,9 @@ impl Analyzer {
                             .as_ref()
                             .map(|facts| facts.record_fields.clone())
                             .unwrap_or_default(),
+                        optional: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.optional.clone()),
                         namespace: None,
                         callable,
                         static_capability: None,
@@ -17177,6 +17280,7 @@ impl Analyzer {
                     ),
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -18744,6 +18848,7 @@ impl Analyzer {
                         list_string_keys: None,
                         tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
+                        optional: None,
                         namespace: Some(namespace),
                         callable: None,
                         static_capability: None,
@@ -18782,6 +18887,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: facts.tuple_fields,
                     record_fields: facts.record_fields,
+                    optional: facts.optional,
                     namespace: None,
                     callable: facts.callable,
                     static_capability: None,
@@ -19943,6 +20049,7 @@ impl Analyzer {
                             .flatten(),
                         tuple_fields: aggregate_arguments[parameter_index].tuple_fields.clone(),
                         record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
+                        optional: aggregate_arguments[parameter_index].optional.clone(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                         static_capability: None,
@@ -19991,6 +20098,7 @@ impl Analyzer {
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20031,6 +20139,7 @@ impl Analyzer {
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20070,6 +20179,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20110,6 +20220,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20149,6 +20260,7 @@ impl Analyzer {
                     list_string_keys: None,
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
+                    optional: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -21089,6 +21201,8 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        let subject_facts = self.known_structural_value_facts(&subject, environment)?;
+        let payload_facts = present_optional_payload(subject_facts);
         let mut some = None;
         let mut none = None;
         let mut otherwise = None;
@@ -21108,12 +21222,18 @@ impl Analyzer {
                     ..
                 } if some.is_none() => {
                     let name = self.source.slice(binding).to_owned();
-                    let branch = decision_binding_environment(
+                    let mut branch = decision_binding_environment(
                         environment,
                         &name,
                         payload_type.clone(),
                         binding.start,
                     );
+                    if let Some(payload_facts) = &payload_facts {
+                        let binding_facts = branch
+                            .get_mut(&name)
+                            .expect("Optional payload binding was inserted");
+                        retain_static_value_facts(binding_facts, payload_facts);
+                    }
                     some = Some((
                         name,
                         binding,
@@ -22812,6 +22932,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::String
                     | CompilerType::Error
                     | CompilerType::SourceLocation
+                    | CompilerType::Function
             ) || compiler_int_string_pair(payload)
         }
         CompilerType::Result(success) => {
@@ -23484,6 +23605,7 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
         CompilerType::Record(fields) => fields.iter().any(|(_, field)| {
             field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
         }),
+        CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
         _ => false,
     }
 }
@@ -23506,6 +23628,15 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
                         .get(name)
                         .is_some_and(|facts| function_aggregate_facts_exact(field, facts))
                 })
+        }
+        CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+            match facts.optional.as_ref() {
+                Some(CompilerOptionalFacts::None) => true,
+                Some(CompilerOptionalFacts::Some(payload_facts)) => {
+                    function_aggregate_facts_exact(payload, payload_facts)
+                }
+                None => false,
+            }
         }
         _ => true,
     }
@@ -23582,6 +23713,16 @@ fn function_aggregate_facts_same_callable_identity(
                         })
                 })
         }
+        CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+            match (left.optional.as_ref(), right.optional.as_ref()) {
+                (Some(CompilerOptionalFacts::None), Some(CompilerOptionalFacts::None)) => true,
+                (
+                    Some(CompilerOptionalFacts::Some(left)),
+                    Some(CompilerOptionalFacts::Some(right)),
+                ) => function_aggregate_facts_same_callable_identity(payload, left, right),
+                _ => false,
+            }
+        }
         _ => true,
     }
 }
@@ -23603,6 +23744,15 @@ fn function_aggregate_binding_facts_exact(value_type: &CompilerType, facts: &Bin
                         .get(name)
                         .is_some_and(|facts| function_aggregate_facts_exact(field, facts))
                 })
+        }
+        CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+            match facts.optional.as_ref() {
+                Some(CompilerOptionalFacts::None) => true,
+                Some(CompilerOptionalFacts::Some(payload_facts)) => {
+                    function_aggregate_facts_exact(payload, payload_facts)
+                }
+                None => false,
+            }
         }
         _ => false,
     }
@@ -23637,6 +23787,16 @@ fn function_aggregate_binding_facts_same_callable_identity(
                         })
                 })
         }
+        CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::Function => {
+            match (left.optional.as_ref(), right.optional.as_ref()) {
+                (Some(CompilerOptionalFacts::None), Some(CompilerOptionalFacts::None)) => true,
+                (
+                    Some(CompilerOptionalFacts::Some(left)),
+                    Some(CompilerOptionalFacts::Some(right)),
+                ) => function_aggregate_facts_same_callable_identity(payload, left, right),
+                _ => false,
+            }
+        }
         _ => false,
     }
 }
@@ -23661,6 +23821,7 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         list_string_keys: None,
         tuple_fields: Vec::new(),
         record_fields: BTreeMap::new(),
+        optional: None,
         namespace: None,
         callable: None,
         static_capability: None,
@@ -23689,6 +23850,9 @@ fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFa
     for field in facts.record_fields.values() {
         returned.extend(returned_function_capture_bindings(field));
     }
+    if let Some(CompilerOptionalFacts::Some(payload)) = &facts.optional {
+        returned.extend(returned_function_capture_bindings(payload));
+    }
     returned
 }
 
@@ -23705,6 +23869,12 @@ fn aggregate_callable_at_path_mut<'a>(
         }
         CompilerAggregatePathElement::Record(name) => {
             aggregate_callable_at_path_mut(facts.record_fields.get_mut(name)?, rest)
+        }
+        CompilerAggregatePathElement::OptionalPayload => {
+            let CompilerOptionalFacts::Some(payload) = facts.optional.as_mut()? else {
+                return None;
+            };
+            aggregate_callable_at_path_mut(payload, rest)
         }
     }
 }
@@ -23863,6 +24033,9 @@ fn compiler_repeated_function_aggregate_identity_supported(value_type: &Compiler
         CompilerType::Record(fields) => fields
             .iter()
             .all(|(_, field)| compiler_repeated_function_aggregate_identity_supported(field)),
+        CompilerType::Optional(payload) => {
+            compiler_repeated_function_aggregate_identity_supported(payload)
+        }
         _ => compiler_equality_supported(value_type),
     }
 }
@@ -23998,6 +24171,7 @@ fn decision_binding_environment(
             list_string_keys: None,
             tuple_fields: Vec::new(),
             record_fields: BTreeMap::new(),
+            optional: None,
             namespace: None,
             callable: None,
             static_capability: None,
@@ -24423,6 +24597,7 @@ fn require_optional_payload(
             | CompilerType::String
             | CompilerType::Error
             | CompilerType::SourceLocation
+            | CompilerType::Function
     ) || matches!(value_type, CompilerType::Tuple(fields)
         if fields.as_slice() == [CompilerType::Int, CompilerType::String])
     {
@@ -34677,6 +34852,90 @@ mod tests {
             pair_factory.result_captures[0].value_type,
             CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String])
         );
+    }
+
+    #[test]
+    fn models_optional_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-OPTIONAL-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-TYPE-MATCH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/optional-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Optional Function environment results")
+        };
+        assert_eq!(results.len(), 13);
+        for index in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10] {
+            assert_eq!(results[index].value_type, CompilerType::Int);
+        }
+        for index in [5, 11, 12] {
+            assert_eq!(
+                results[index].value_type,
+                CompilerType::Optional(Box::new(CompilerType::Function))
+            );
+        }
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-optional")
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 5);
+        assert!(factories.iter().all(|function| {
+            function.result_captures.len() == 3
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path == [CompilerAggregatePathElement::OptionalPayload])
+        }));
+
+        let record_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-record")
+            .unwrap();
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Record("candidate".into()),
+                    CompilerAggregatePathElement::OptionalPayload,
+                ]
+        }));
+        let tuple_forwarder = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-tuple")
+            .unwrap();
+        assert!(tuple_forwarder.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Tuple(0),
+                    CompilerAggregatePathElement::OptionalPayload,
+                ]
+        }));
+        let repeated = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/2>" && function.pattern_identities.len() == 4
+            })
+            .unwrap();
+        assert_eq!(
+            repeated.parameters[0].value_type,
+            repeated.parameters[1].value_type
+        );
+
+        for rejected in [
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nchoose is fn (flag : Boolean) -> Optional Function\n  flag\n    true then Some increment\n    false then Some decrement\nchoose true\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Optional Function\n  nested is fn (value : Int) -> Int\n    operation value\n  Some nested\napply is fn (candidate : Optional Function) -> Int\n  candidate\n    Some operation then operation 41\n    None then 0\napply (wrap increment)\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (candidate : Optional Function) -> Optional Function\n  nested is fn (value : Int) -> Int\n    candidate\n      Some operation then operation value\n      None then 0\n  Some nested\nwrap (Some increment)\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        }
     }
 
     #[test]

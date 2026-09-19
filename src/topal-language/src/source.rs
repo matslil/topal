@@ -1059,7 +1059,7 @@ fn statement_mentions_name(source: &SourceText, statement: &Statement, name: &st
     }
 }
 
-fn body_mentions_name(source: &SourceText, body: &[Statement], name: &str) -> bool {
+pub(crate) fn body_mentions_name(source: &SourceText, body: &[Statement], name: &str) -> bool {
     body.iter()
         .any(|statement| statement_mentions_name(source, statement, name))
 }

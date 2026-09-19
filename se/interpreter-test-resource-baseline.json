@@ -1256,6 +1256,11 @@
       "cpu_time_ns": 20517580,
       "memory_peak_bytes": 18456576,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/optional-function-environments.t": {
+      "cpu_time_ns": 26005280,
+      "memory_peak_bytes": 18333696,
+      "samples_per_test": 50
     }
   }
 }

@@ -363,8 +363,10 @@ LLVM transports. Bindings, Record selection, and anonymous product projection
 recover the appropriate subtree, so eventual application remains a direct
 specialization. A local aggregate may retain a capturing callable while its
 lexical values remain alive. The capture-free base boundary carries the same
-structural facts without an environment transport. Opaque, branch-selected,
-and non-Tuple/Record containers fail before LLVM.
+structural facts without an environment transport. Exact `Optional Function`
+containment extends that tree under `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`;
+other containers and opaque or branch-selected identities still fail before
+LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -377,24 +379,25 @@ representation identity, and target adapter rather than publish this LLVM
 aggregate or its observation tags.
 
 The capture-bearing extension assigns every Function leaf a canonical path of
-zero-based Tuple indexes and Record labels, visited depth-first from left to
-right. Parameter specialization carries the ordinary source aggregate followed
-by each leaf's ordered capture operands. Result lowering returns a private
-aggregate whose first field is the unchanged source aggregate and whose
-remaining fields are the captures in that same path order. The caller extracts
-the source value once, attaches each capture to its checked callable facts, and
-can forward or recursively destructure it without replaying construction.
+zero-based Tuple indexes, Record labels, and admitted `Optional` payload edges,
+visited depth-first from left to right. Parameter specialization carries the
+ordinary source aggregate followed by each leaf's ordered capture operands.
+Result lowering returns a private aggregate whose first field is the unchanged
+source aggregate and whose remaining fields are the captures in that same path
+order. The caller extracts the source value once, attaches each capture to its
+checked callable facts, and can forward, select, or recursively destructure it
+without replaying construction.
 Capturing anonymous results, nested Function parameters, and exact nested
 Function results under `TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001` are therefore
 direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
-matching `fastcc` prototype. DWARF exposes only the source Tuple/Record and the
-eventual callable's source-named captures, never the extended result fields or
-hidden parameter names. This transport remains module-private and creates no
-closure object, environment pointer, allocation, callback, function pointer,
-indirect dispatch, foreign dependency, or native ABI change. A future compiled
-library must serialize the canonical aggregate path, callable/capture
+matching `fastcc` prototype. DWARF exposes only the source Tuple/Record/Optional
+and the eventual callable's source-named captures, never the extended result
+fields or hidden parameter names. This transport remains module-private and
+creates no closure object, environment pointer, allocation, callback, function
+pointer, indirect dispatch, foreign dependency, or native ABI change. A future
+compiled library must serialize the canonical aggregate path, callable/capture
 identities, capture classifiers and order, lifetime, effects, representation
 identity, and target adapter; it must not serialize the current private LLVM
 aggregate, observation tags, or hidden-operand layout.
@@ -415,6 +418,26 @@ nested identities, Function- or Generator-containing capture state, opaque or
 dynamic selection, persistent storage, and public/library escape remain
 rejected pending canonical lifetime/effect, callable/capture-schema,
 representation, and target-adapter metadata.
+
+The exact Optional extension boxes only the existing private i32 Function
+observation value beneath the Topal-owned `Some` header; `None Function` has no
+payload. The checked fact tree separately records exact absence or the present
+callable identity and ordered captures. A `Some` decision recovers those facts
+for its payload binding, so application is one direct specialization rather
+than Optional-tag or Function-tag dispatch. Optional parameters and results may
+forward the source pointer followed by path-ordered captures, including an
+escaping exact nested Function environment. Repeated anonymous-pattern
+identity first compares the ordinary Optional tag/payload representation and,
+when both present callables have the same identity, compares both admitted
+capture snapshots. Opaque or branch-selected present identities and a
+Function-valued capture remain rejected. Allocation is limited to the existing
+Topal Optional representation and does not create a closure/environment object.
+DWARF and the GDB printer retain `Optional Function` and render the boxed
+Function observation value without exposing the hidden capture transport.
+Future compiled-library metadata must identify the Optional payload path,
+presence requirements, callable/capture schema, representation, lifetime,
+effects, and target adapter independently of the private header, observation
+tag, or hidden operands.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
@@ -471,8 +494,8 @@ requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
-nested callable identity, Function containment
-outside Tuple/Record, and ordinary named-header repetition remain deferred with
+nested callable identity, Function containment outside Tuple/Record/Optional,
+and ordinary named-header repetition remain deferred with
 their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
@@ -539,8 +562,9 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside Tuple/Record, opaque/computed/nested/non-root Scope values,
-unsupported container or collection payloads and other non-scalar fields,
+containment outside Tuple/Record/Optional,
+opaque/computed/nested/non-root Scope values, unsupported container or
+collection payloads and other non-scalar fields,
 nested package declarations, opaque whole-package values, context-dependent
 defaults, recursive compound signatures, and public package adapters remain
 checked-frontend and library-interface work.

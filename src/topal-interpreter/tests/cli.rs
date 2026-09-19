@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 248);
+    assert_eq!(examples.len(), 249);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5351,6 +5351,41 @@ fn every_mode_preserves_escaping_nested_function_environments() {
             String::from_utf8_lossy(&output.stdout)
         );
     }
+}
+
+#[test]
+fn every_mode_preserves_optional_function_environments() {
+    // TOPAL-INTP-SUBSET-275,
+    // TOPAL-COMPILER-OPTIONAL-FUNCTION-001
+    let source = include_str!("../../../examples/language/optional-function-environments.t");
+    let expected = "(43, 44, 45, 5, 42, Some +, 46, 47, 48, 0, 1, Some <fn increase>, None)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("pattern.identity.matched"));
+    assert!(trace.contains(
+        "\"event\":\"function.value.called\",\"rule\":\"TOPAL-FUNCTION-VALUE-001\",\"detail\":\"increase\""
+    ));
+
+    let mismatch = run(
+        &[],
+        "use language (version is v0.1)\nmake is fn (offset : Int) -> Optional Function\n  increase is fn (value : Int) -> Int\n    value + offset\n  Some increase\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 2)\n",
+    );
+    assert!(!mismatch.status.success());
+    assert!(
+        String::from_utf8_lossy(&mismatch.stderr).contains("error[E-ANONYMOUS-PATTERN-IDENTITY]")
+    );
 }
 
 #[test]
