@@ -8726,6 +8726,15 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
+            && let Some(value) = self.analyze_returning_variant_constructor_argument(
+                expression,
+                environment,
+                function_result,
+            )?
+        {
+            return Ok((value, true));
+        }
+        if allow_function_return
             && let Some(value) = self.analyze_returning_named_call_argument(
                 expression,
                 environment,
@@ -9038,6 +9047,52 @@ impl Analyzer {
         assert!(
             returned,
             "a checked returning unary constructor argument exits its function"
+        );
+        Ok(Some(result))
+    }
+
+    fn analyze_returning_variant_constructor_argument(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [
+            Expression::Identifier(type_name),
+            Expression::Identifier(at),
+            Expression::Integer(index),
+            argument,
+        ] = items.as_slice()
+        else {
+            return Ok(None);
+        };
+        let admitted = self.source.slice(*at) == "at"
+            && self
+                .sums
+                .get(self.source.slice(*type_name))
+                .is_some_and(|(sum, declaration)| {
+                    sum.positional
+                        && declaration.end <= type_name.start
+                        && parse_integer(self.source.slice(*index))
+                            .and_then(|value| value.to_string().parse::<usize>().ok())
+                            .is_some_and(|value| value < sum.alternatives.len())
+                });
+        if !admitted || !direct_expression_returns_from_function(argument) {
+            return Ok(None);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            argument,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning Variant constructor argument exits its function"
         );
         Ok(Some(result))
     }
@@ -40357,6 +40412,31 @@ mod tests {
         let error = analyze_for_compiler(positional).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("application"));
+    }
+
+    #[test]
+    fn models_return_bearing_positional_variant_argument() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-VARIANT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-variant-constructor.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let invalid = "use language (version is v0.1)\nChoice is Variant (Int)\n\nanswer is fn () -> Int\n  Choice at 1 { return 42 }\nanswer ()\n";
+        let error = analyze_for_compiler(invalid).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

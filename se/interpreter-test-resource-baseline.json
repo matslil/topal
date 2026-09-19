@@ -1426,6 +1426,11 @@
       "cpu_time_ns": 7523039,
       "memory_peak_bytes": 18386944,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-variant-constructor.t": {
+      "cpu_time_ns": 3945180,
+      "memory_peak_bytes": 18513920,
+      "samples_per_test": 50
     }
   }
 }
