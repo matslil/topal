@@ -5206,6 +5206,41 @@ constraint evidence, representation and ownership, lifetime, effects, and
 versioned target adapters independently of node offsets, private helper names,
 LLVM types/symbols, debug shadows, and physical placement.
 
+### TOPAL-COMPILER-LIST-NAT-CORE-001 — Ordinary immutable Nat Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List Nat`, immutable binding, ordinary private parameters and results,
+package fields, recursively admitted Tuple/Record fields, structural equality
+and inequality, complete `Empty`/`Entry (first, rest)` decisions, entry count,
+emptiness, canonical display, and debugging. Construction and calls SHALL
+evaluate their operands once in source order. Finite entries SHALL be validated
+as nonnegative and retain reusable Nat evidence; `+Infinity` SHALL remain a
+valid Nat entry. Equality SHALL compare length and corresponding exact numeric
+values in order, stopping at the first mismatch without mutating either input.
+
+On Linux x86-64, `Empty` MAY remain a null private pointer and each `Entry` MAY
+use an immutable 16-byte node containing the existing exact Int-compatible
+pointer and the remaining-node pointer. Equality and counting MAY reuse the
+private finite Int-List runtime fragment, including its canonical handling of
+the positive-infinity sentinel. Their nonrecursive control flow SHALL remain
+correct at O0. Private definitions, calls, returns, and containing private
+aggregates SHALL use exact pointer-bearing prototypes with physical AMD64
+placement selected by LLVM. DWARF and the bundled GDB renderer SHALL preserve
+and safely render the source `List Nat` identity, arbitrary-precision finite
+entries, and `+Infinity`.
+
+This rule SHALL add no machine-unsigned width, truncation, wrapping, second
+numeric representation, runtime type tag, type-erased generic List, public,
+foreign, serialized, or compiled-library node ABI, foreign allocator, C/C++
+runtime, other-language standard library, or native-ABI revision. Projections,
+insertion, concatenation, reversal, removal, range selection, traversal,
+higher-order transforms, reclamation beyond process lifetime, and other
+element classifiers remain governed by separate rules. Future compiled-library
+metadata SHALL encode Nat constraint evidence and infinity capability,
+representation and ownership, lifetime, effects, and versioned target adapters
+independently of node offsets, private helper names, LLVM types/symbols, debug
+shadows, and physical placement.
+
 ### TOPAL-COMPILER-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The compiler SHALL extend contextual homogeneous construction, immutable

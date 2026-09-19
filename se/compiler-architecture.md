@@ -1325,6 +1325,18 @@ Published-library metadata must preserve the Character classifier and constraint
 evidence separately from the private physical reuse, along with representation,
 ownership, lifetime, effects, and a versioned target adapter.
 
+`List Nat` is another checked/debug specialization over an existing private
+payload shape. Each node stores the exact Int-compatible pointer followed by
+the remaining-node pointer; finite entries are validated as nonnegative before
+publication and the existing positive-infinity sentinel remains a valid Nat
+entry. Structural equality and counting reuse the finite Int-List fragment,
+while decisions, display, DWARF, and GDB retain the Nat classifier. No unsigned
+machine width, truncation, wrapping, second numeric representation, foreign
+runtime, public layout, or ABI revision is introduced. Published-library
+metadata must carry Nat constraint evidence, infinity capability,
+representation, ownership, lifetime, effects, and a versioned target adapter
+independently of this private physical reuse.
+
 `List Int` reuses only that node's private size and next-pointer position: its
 first word is the existing canonical arbitrary-precision Int pointer rather
 than an Effect byte. This is a statically selected node interpretation, not a
