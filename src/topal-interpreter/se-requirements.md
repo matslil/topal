@@ -2528,3 +2528,11 @@ infinities through empty/nonempty `List Rational` construction, ordinary
 parameters/results, packages, Tuples, Records, structural equality, complete
 decisions, count, emptiness, and canonical display. Shared native/interpreter
 regression and reversible history shall cover each path.
+
+## TOPAL-INTP-SUBSET-286 — Ordinary canonical-empty Effect List values
+
+All source modes shall preserve inert canonical-empty Effect entries through
+empty/nonempty List construction, ordinary parameters/results, packages,
+Tuples, Records, structural equality, complete decisions, count, emptiness, and
+canonical display without performing an effect. Shared native/interpreter
+regression and reversible history shall cover each path.

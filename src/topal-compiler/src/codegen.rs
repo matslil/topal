@@ -511,7 +511,8 @@ enum ListIntRuntimeFragment {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-enum PointerListRuntimeFragment {
+enum ScalarListRuntimeFragment {
+    Effect,
     Boolean,
     Rational,
     String,
@@ -524,7 +525,7 @@ struct Generator<'a> {
     functions: Vec<String>,
     next_global: usize,
     needs_infinity_result_runtime: bool,
-    pointer_list_runtime_fragments: BTreeSet<PointerListRuntimeFragment>,
+    scalar_list_runtime_fragments: BTreeSet<ScalarListRuntimeFragment>,
     list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
     current_result_captures: Vec<CompilerFunctionResultCapture>,
     current_function_return_type: Option<String>,
@@ -552,7 +553,7 @@ impl<'a> Generator<'a> {
             functions: Vec::new(),
             next_global: 0,
             needs_infinity_result_runtime: false,
-            pointer_list_runtime_fragments: BTreeSet::new(),
+            scalar_list_runtime_fragments: BTreeSet::new(),
             list_int_runtime_fragments: BTreeSet::new(),
             current_result_captures: Vec::new(),
             current_function_return_type: None,
@@ -579,7 +580,7 @@ impl<'a> Generator<'a> {
             module.push_str(INFINITY_RESULT_RUNTIME);
             module.push('\n');
         }
-        self.emit_pointer_list_runtimes(&mut module);
+        self.emit_scalar_list_runtimes(&mut module);
         if self
             .list_int_runtime_fragments
             .iter()
@@ -652,19 +653,20 @@ impl<'a> Generator<'a> {
         module
     }
 
-    fn emit_pointer_list_runtimes(&self, module: &mut String) {
+    fn emit_scalar_list_runtimes(&self, module: &mut String) {
         for (fragment, runtime) in [
+            (ScalarListRuntimeFragment::Effect, LIST_EFFECT_CORE_RUNTIME),
             (
-                PointerListRuntimeFragment::Boolean,
+                ScalarListRuntimeFragment::Boolean,
                 LIST_BOOLEAN_CORE_RUNTIME,
             ),
             (
-                PointerListRuntimeFragment::Rational,
+                ScalarListRuntimeFragment::Rational,
                 LIST_RATIONAL_CORE_RUNTIME,
             ),
-            (PointerListRuntimeFragment::String, LIST_STRING_CORE_RUNTIME),
+            (ScalarListRuntimeFragment::String, LIST_STRING_CORE_RUNTIME),
         ] {
-            if self.pointer_list_runtime_fragments.contains(&fragment) {
+            if self.scalar_list_runtime_fragments.contains(&fragment) {
                 module.push_str(runtime);
                 module.push('\n');
             }
@@ -2550,6 +2552,10 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Boolean
                 );
+                let effect = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Effect
+                );
                 let string = matches!(
                     &value.value_type,
                     CompilerType::List(element)
@@ -2564,15 +2570,18 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
-                if boolean {
-                    self.pointer_list_runtime_fragments
-                        .insert(PointerListRuntimeFragment::Boolean);
+                if effect {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Effect);
+                } else if boolean {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Boolean);
                 } else if rational {
-                    self.pointer_list_runtime_fragments
-                        .insert(PointerListRuntimeFragment::Rational);
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Rational);
                 } else if string {
-                    self.pointer_list_runtime_fragments
-                        .insert(PointerListRuntimeFragment::String);
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::String);
                 } else {
                     self.list_int_runtime_fragments
                         .insert(if nested_int_string {
@@ -2585,7 +2594,9 @@ impl<'a> Generator<'a> {
                 LlValue::Int(body.instruction(
                     &format!(
                         "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
-                        if boolean {
+                        if effect {
+                            "effect"
+                        } else if boolean {
                             "boolean"
                         } else if rational {
                             "rational"
@@ -4208,6 +4219,14 @@ impl<'a> Generator<'a> {
         let mut entry_environment = environment.clone();
         if let Some(((first_name, first_span), (rest_name, rest_span))) = entry_bindings {
             let (first_value, rest_function_captures) = match &element {
+                CompilerType::Effect => (
+                    LlValue::Effect(body.instruction(
+                        &format!("load i8, ptr {list}, align 1"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
                 CompilerType::Boolean => (
                     LlValue::Boolean(body.instruction(
                         &format!("load i1, ptr {list}, align 1"),
@@ -6511,17 +6530,21 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         debug_assert_eq!(element, right_element);
-        let runtime = if element == &CompilerType::Boolean {
-            self.pointer_list_runtime_fragments
-                .insert(PointerListRuntimeFragment::Boolean);
+        let runtime = if element == &CompilerType::Effect {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Effect);
+            "effect"
+        } else if element == &CompilerType::Boolean {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Boolean);
             "boolean"
         } else if matches!(element, CompilerType::Character | CompilerType::String) {
-            self.pointer_list_runtime_fragments
-                .insert(PointerListRuntimeFragment::String);
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::String);
             "string"
         } else if element == &CompilerType::Rational {
-            self.pointer_list_runtime_fragments
-                .insert(PointerListRuntimeFragment::Rational);
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Rational);
             "rational"
         } else if compiler_nested_int_string_list_element(element) {
             self.list_int_runtime_fragments
@@ -11791,6 +11814,7 @@ fn llvm_string(value: &str) -> String {
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll");
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("runtime/list_boolean_core.ll");
+const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");

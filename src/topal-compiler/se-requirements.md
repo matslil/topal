@@ -5311,6 +5311,30 @@ layout, C/C++ runtime, other-language standard library, foreign allocator, or
 `topal-native/6` revision. It realizes `TOPAL-COMPILER-LIST-EFFECT-001` and
 `TOPAL-TYPE-LIST-CONSTRUCT-001` for compiler increment 4b3d-a.
 
+## TOPAL-COMP-LIST-EFFECT-CORE-001 — Ordinary canonical-empty Effect Lists
+
+The checked model shall extend the Effect List foundation with private
+parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging. Operands shall
+evaluate once. Since only `Effects ()` is admitted, equality shall compare
+length without performing an effect; unsupported transforms fail before
+artifact publication.
+
+Linux x86-64 shall retain null `Empty` and immutable 16-byte i8/pointer nodes.
+A conditional finite fragment shall implement equality/count at O0, decisions
+shall load the exact sealed carrier, and emptiness shall be a null test. LLVM
+owns private AMD64 placement; DWARF/GDB retain exact source identities. Tests
+cover all admitted boundaries and observations, interpreter modes/history,
+exact IR, artifact rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not define future nonempty effect-row equality or representation,
+perform effects, or add runtime tags, generic/public/foreign/library ABI,
+foreign allocation, C/C++, another-language library, or an ABI revision.
+Future metadata shall carry effect-row identity/evidence, representation,
+ownership, lifetime, effects, and target adapters independently of private
+details. This realizes `TOPAL-COMPILER-LIST-EFFECT-CORE-001` and the List
+construction/decision/equality/count/empty rules for increment 4b3d-t.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

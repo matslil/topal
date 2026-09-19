@@ -175,6 +175,13 @@ type-erased generic container nor a compiled-library ABI; future library
 metadata describes the semantic element type, ownership, lifetime, and target
 adapter independently of the node offsets.
 
+The earlier `List Effect` node foundation now also supports complete
+decomposition, structural equality, count, and emptiness across private
+parameters/results and aggregate fields. Because this increment admits only
+the sealed canonical empty Effect row, equality compares List length; future
+nonempty effect identities require distinct semantic metadata and must not
+inherit that private specialization accidentally.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

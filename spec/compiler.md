@@ -5108,6 +5108,32 @@ decisions, traversal, mutation, or a final reclamation policy, and SHALL add no
 foreign allocator, C/C++ runtime, other-language standard library, or native
 ABI revision.
 
+### TOPAL-COMPILER-LIST-EFFECT-CORE-001 — Ordinary canonical-empty Effect Lists
+
+The compiler SHALL extend `TOPAL-COMPILER-LIST-EFFECT-001` with ordinary
+private parameter/result/package and recursively admitted Tuple/Record passage,
+structural equality and inequality, complete `Empty`/`Entry (first, rest)`
+decisions, entry count, emptiness, canonical display, and debugging. Every
+operand SHALL evaluate once in source order. Within this increment every entry
+is the sealed canonical empty Effect row, so structural equality SHALL compare
+List lengths without performing an effect.
+
+On Linux x86-64, equality and counting MAY use a conditional finite
+nonrecursive fragment over the existing private 16-byte Effect node. Decisions
+SHALL load the exact sealed i8 carrier and emptiness SHALL be a null test.
+Correctness SHALL not depend on optimization. LLVM SHALL select physical AMD64
+placement for exact private prototypes and aggregates; DWARF/GDB SHALL preserve
+the `List Effect` identity and safely render every entry.
+
+This rule SHALL NOT define representation or equality for future nonempty
+effect-row identities, perform an effect, or add a runtime tag, generic/public/
+foreign/library node ABI, foreign allocator, C/C++ runtime, other-language
+standard library, or native-ABI revision. Other List operations, reclamation,
+and element classifiers remain separately governed. Future library metadata
+SHALL encode effect-row identity/evidence, representation, ownership, lifetime,
+effects, and versioned target adapters independently of private offsets, helper
+names, LLVM types/symbols, debug shadows, and physical placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for
