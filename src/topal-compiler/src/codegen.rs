@@ -520,6 +520,7 @@ enum ScalarListRuntimeFragment {
     Modular,
     OptionalInt,
     OptionalRational,
+    OptionalString,
     Boolean,
     Comparison,
     ErrorCode,
@@ -683,6 +684,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::OptionalRational,
                 LIST_OPTIONAL_RATIONAL_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::OptionalString,
+                LIST_OPTIONAL_STRING_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -2279,6 +2284,11 @@ impl<'a> Generator<'a> {
                     {
                         (16, 8)
                     }
+                    CompilerType::Optional(payload)
+                        if payload.as_ref() == &CompilerType::String =>
+                    {
+                        (16, 8)
+                    }
                     CompilerType::Tuple(fields)
                         if matches!(
                             fields.as_slice(),
@@ -2358,7 +2368,10 @@ impl<'a> Generator<'a> {
                             ..
                         },
                     ) if payload.as_ref() == value_payload
-                        && matches!(value_payload, CompilerType::Int | CompilerType::Rational) =>
+                        && matches!(
+                            value_payload,
+                            CompilerType::Int | CompilerType::Rational | CompilerType::String
+                        ) =>
                     {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
@@ -2678,6 +2691,12 @@ impl<'a> Generator<'a> {
                         if matches!(element.as_ref(), CompilerType::Optional(payload)
                             if payload.as_ref() == &CompilerType::Rational)
                 );
+                let optional_string = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if matches!(element.as_ref(), CompilerType::Optional(payload)
+                            if payload.as_ref() == &CompilerType::String)
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2724,6 +2743,9 @@ impl<'a> Generator<'a> {
                 } else if optional_rational {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::OptionalRational);
+                } else if optional_string {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::OptionalString);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2767,6 +2789,8 @@ impl<'a> Generator<'a> {
                             "optional.int"
                         } else if optional_rational {
                             "optional.rational"
+                        } else if optional_string {
+                            "optional.string"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4471,6 +4495,18 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         payload: CompilerType::Rational,
+                        function_captures: Vec::new(),
+                    },
+                    Vec::new(),
+                ),
+                CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => (
+                    LlValue::Optional {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {list}, align 8"),
+                            *first_span,
+                            &mut self.debug,
+                        ),
+                        payload: CompilerType::String,
                         function_captures: Vec::new(),
                     },
                     Vec::new(),
@@ -6828,6 +6864,11 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::OptionalRational);
             "optional.rational"
+        } else if matches!(element, CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String)
+        {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::OptionalString);
+            "optional.string"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -8693,6 +8734,18 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     payload: CompilerType::Rational,
+                    function_captures: Vec::new(),
+                },
+                8,
+            ),
+            CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::String => (
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!("load ptr, ptr {current}, align 8"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    payload: CompilerType::String,
                     function_captures: Vec::new(),
                 },
                 8,
@@ -12214,6 +12267,8 @@ const LIST_MODULAR_CORE_RUNTIME: &str = include_str!("runtime/list_modular_core.
 const LIST_OPTIONAL_INT_CORE_RUNTIME: &str = include_str!("runtime/list_optional_int_core.ll");
 const LIST_OPTIONAL_RATIONAL_CORE_RUNTIME: &str =
     include_str!("runtime/list_optional_rational_core.ll");
+const LIST_OPTIONAL_STRING_CORE_RUNTIME: &str =
+    include_str!("runtime/list_optional_string_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");

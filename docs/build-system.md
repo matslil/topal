@@ -242,6 +242,11 @@ header and canonical Rational payload. Their private nodes, equality delegation,
 and metadata keep the List, Optional, and Rational contracts distinct without
 publishing target offsets or helper identities.
 
+Ordinary `List Optional String` values retain the existing Optional header and
+canonical String descriptor. Equality delegates through Optional-String and
+exact String comparison, while future metadata describes all classifier layers
+without exposing the two private pointer representations.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates
