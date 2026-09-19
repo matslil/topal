@@ -239,6 +239,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/strings-and-products.t",
     "examples/language/structured-packaged-function-fields.t",
     "examples/language/sum-equality.t",
+    "examples/language/sum-function-environments.t",
     "examples/language/sum-packaged-function-fields.t",
     "examples/language/task-declaration-order.t",
     "examples/language/task-message-transactions.t",

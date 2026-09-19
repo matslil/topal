@@ -3011,8 +3011,9 @@ boundary. Capture-bearing aggregate boundaries are governed by
 A local aggregate MAY contain a capturing anonymous Function while selection
 and application remain within the captured values' defining lifetime.
 Opaque, branch-selected, or otherwise dynamically computed Function leaves;
-and Function containment outside Tuple, Record, or the exact Optional path of
-`TOPAL-COMPILER-OPTIONAL-FUNCTION-001` SHALL be rejected before LLVM lowering.
+and Function containment outside Tuple, Record, the exact Optional path of
+`TOPAL-COMPILER-OPTIONAL-FUNCTION-001`, or the exact nominal Sum path of
+`TOPAL-COMPILER-SUM-FUNCTION-001` SHALL be rejected before LLVM lowering.
 
 Each represented Function leaf SHALL occupy its existing private i32
 observation field. Exact private `fastcc` prototypes SHALL use the corresponding
@@ -3047,9 +3048,11 @@ anonymous Function leaves and exact nested Function leaves under
 `TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`. Every leaf SHALL retain one exact
 callable identity, its complete ordered capture facts, and its canonical
 aggregate path.
-Canonical paths SHALL consist of zero-based Tuple indexes, Record labels, and
-admitted Optional payload edges and SHALL be ordered by a depth-first,
-left-to-right traversal of the source aggregate.
+Canonical paths SHALL consist of zero-based Tuple indexes, Record labels,
+admitted Optional payload edges, and admitted nominal Sum alternative-name
+payload edges and SHALL be ordered by a depth-first, left-to-right traversal of
+the source aggregate. Optional and Sum edges SHALL satisfy their respective
+exact-container rules.
 
 The checked frontend SHALL append one hidden capture operand for every capture
 at every Function path after the source-visible aggregate operand. A result
@@ -3093,10 +3096,11 @@ the current hidden-operand layout.
 
 Within one compilation unit, an ordinary private function MAY return an exact
 nested named Function directly, in a recursively nested Tuple or labeled
-Record, or under the exact present Optional path governed by
-`TOPAL-COMPILER-OPTIONAL-FUNCTION-001`. The nested declaration SHALL be one
-nonrecursive, nonoverloaded ordinary declaration whose identity remains known
-at every private boundary.
+Record, under the exact present Optional path governed by
+`TOPAL-COMPILER-OPTIONAL-FUNCTION-001`, or under an exact selected nominal Sum
+path governed by `TOPAL-COMPILER-SUM-FUNCTION-001`. The nested declaration
+SHALL be one nonrecursive, nonoverloaded ordinary declaration whose identity
+remains known at every private boundary.
 Each captured value SHALL be an already-evaluated immutable lexical,
 defining-context, or live-root value with a complete admitted private
 representation; capture state SHALL contain neither Function nor Generator.
@@ -3104,8 +3108,8 @@ Separate invocations of the same factory SHALL retain separate capture
 snapshots even though the nested declaration has one observation tag.
 
 A scalar result SHALL use the exact private Function-result aggregate of
-`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`. A Tuple or Record result SHALL use
-the canonical Function-leaf path and capture ordering of
+`TOPAL-COMPILER-FUNCTION-CAPTURE-RESULT-001`. A Tuple, Record, Optional, or Sum
+result SHALL use the canonical Function-leaf path and capture ordering of
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`. The caller SHALL decompose the
 result once into compiler-only SSA storage and own the returned values after the
 factory frame ends. Binding, private parameter/result forwarding, direct field
@@ -3196,13 +3200,78 @@ foreign dependency, C/C++ runtime, other-language standard library, public
 callable/container ABI, or native-ABI revision. Allocation SHALL be limited to
 the already-defined process-lifetime Optional representation. Optional
 callables with opaque or dynamically selected identity, persistent storage,
-publication, and Function containment in other containers remain deferred and
+publication, and Function containment in containers other than exact nominal
+Sums governed by `TOPAL-COMPILER-SUM-FUNCTION-001` remain deferred and
 SHALL fail before artifact publication. Future compiled-library metadata SHALL
 encode canonical source-session, scope, callable/declaration, Optional payload
 and enclosing aggregate paths, presence/selection proof, ordered capture
 identity/classifier/representation/lifetime, effects, container representation,
 and versioned target adapter independently of private observation tags, header
 layout, compiler names, LLVM types/symbols, debug shadows, and physical
+placement.
+
+### TOPAL-COMPILER-SUM-FUNCTION-001 — Exact private nominal Sum Function environments
+
+Within one compilation unit, an exact nominal labeled `Union` or positional
+`Variant` MAY contain a Function-bearing payload, be constructed, bound,
+displayed, passed through an ordinary private parameter or result, used as a
+package field, and be recursively contained in an admitted Tuple or labeled
+Record. The checked frontend SHALL retain the exact selected alternative and
+its complete payload fact tree independently of the runtime Sum tag. Every
+active Function leaf SHALL retain one exact named, symbolic, anonymous, or
+admitted nested callable identity. Opaque or branch-selected alternatives or
+callable identities SHALL reject before LLVM lowering.
+
+The source Sum SHALL retain the exact private tag-plus-declaration-ordered-
+payload representation of `TOPAL-COMPILER-SUM-001`. A complete Sum decision
+over an exact selected value SHALL attach its retained payload facts to the
+selected binding; eventual Function application SHALL remain one direct
+specialized private `fastcc` call, and neither tag SHALL dispatch it. Display,
+DWARF, and GDB SHALL expose the nominal source classifier and active
+alternative/payload without exposing inactive slots or compiler facts.
+
+Each active Function leaf SHALL add an alternative-name payload edge to the
+canonical path of `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, composed
+with enclosing Tuple and Record edges. Private parameters SHALL pass the source
+Sum aggregate followed by canonical-path-ordered captures. Private results
+SHALL return the unchanged source aggregate followed by those captures, and the
+caller SHALL extract and remap them exactly once. An exact nested Function MAY
+therefore escape through a selected Sum payload under
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`. Function- or Generator-containing
+capture state and recursive Sum declarations SHALL remain unsupported.
+
+A repeated anonymous-pattern name MAY compare two exact Function-bearing Sums.
+The guard SHALL compare nominally identical tags first and then only the active
+payload. Function observation values SHALL be compared before captures. When
+both operands retain the same selected alternative and callable identity, the
+guard SHALL additionally compare corresponding captures in canonical order
+using admitted exact compiler equality. A different tag or callable SHALL
+mismatch without observing inactive payloads or requiring an unselected
+capture schema. This compiler-private guard SHALL NOT grant general source
+Equality to a Function-bearing Sum.
+
+Tests SHALL cover labeled and positional Sums; named, symbolic, anonymous, and
+nested Function payloads; payload-free and non-Function alternatives; distinct
+captured factory results; direct decision application; private parameter,
+result, package, Tuple, and Record passage; repeated match/mismatch; display;
+interpreter parity and reversible history; direct LLVM IR; artifact-free
+opaque/capture rejection; freestanding ELF/DWARF; full O0 GDB values and
+callable frames; the shared corpus; and separate interpreter/compiler resource
+baselines.
+
+This rule SHALL add no closure/environment object, environment pointer,
+function pointer, indirect call, callback, dispatch table, caller-frame lookup,
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public callable/Sum ABI, or native-ABI revision. Inactive payload slots SHALL
+remain a private LLVM representation detail. Opaque or dynamically selected
+Sum callables, recursive Sums, persistent storage, publication, and Function
+containment in other containers remain deferred. Future compiled-library
+metadata SHALL encode canonical source-session/scope and nominal Sum identity,
+labeled/positional form, ordered alternatives and payload classifiers, exact
+active-alternative proof, callable/declaration and aggregate paths, ordered
+capture identity/classifier/representation/lifetime, effects, Sum
+representation, and versioned target adapters independently of private tags,
+inactive layout, compiler names, LLVM types/symbols, debug shadows, and physical
 placement.
 
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
@@ -3376,8 +3445,9 @@ rule SHALL introduce no closure or environment object, allocation, generic
 matcher, pattern table, function pointer, indirect call, callback, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment in other aggregates, ordinary named-function
-header repetition, publication, and library adapters remain deferred. Future
+selection, Function containment outside exact Optional and nominal Sum rules,
+ordinary named-function header repetition, publication, and library adapters
+remain deferred. Future
 compiled-library metadata SHALL encode canonical aggregate paths and stable
 callable/representation identities independently of private LLVM types,
 observation tags, and target-specific argument placement.
@@ -3489,14 +3559,14 @@ values, captured nested named leaves, equal and unequal capture payloads,
 callable-identity mismatch without unnecessary capture equality, rejected
 non-equality capture state when identities match, checked path/capture metadata,
 direct guard order, interpreter parity and reversible history, freestanding
-execution, and full O0 GDB values/frames. This rule SHALL introduce no closure or environment
-object, allocation, pattern table, function pointer, indirect call, dispatch
+execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
+or environment object, allocation, pattern table, function pointer, indirect call, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment in other aggregates, unsupported capture
-classifiers, ordinary named-function header repetition, publication, and
-library adapters remain deferred. Future compiled-library metadata SHALL encode
-canonical aggregate paths, stable callable identities, ordered capture schemas
+selection, Function containment outside admitted Tuple/Record/Optional/Sum paths,
+unsupported capture classifiers, ordinary named-function header repetition,
+publication, and library adapters remain deferred. Future compiled-library
+metadata SHALL encode canonical aggregate paths, stable callable identities, ordered capture schemas
 and classifiers, semantic equality requirements, representation identity,
 lifetime/effects, and target adapters without serializing private observation
 tags, hidden operand names or layout, LLVM types, or physical argument
@@ -3541,8 +3611,9 @@ runtime, pattern table, allocation, callback, indirect dispatch, foreign
 dependency, C/C++ runtime, other-language standard library, public aggregate
 ABI, or native-ABI revision. General derived Sum Equality is governed by
 `TOPAL-COMPILER-SUM-EQUALITY-001`; recursive Sum declarations,
-Function-containing Sums, persistent storage, publication, and library adapters
-remain deferred. Future compiled-library metadata SHALL
+Function-containing Sums outside the exact selected-value rules of
+`TOPAL-COMPILER-SUM-FUNCTION-001`, persistent storage, publication, and library
+adapters remain deferred. Future compiled-library metadata SHALL
 encode the stable nominal identity, positional/labeled form, ordered
 alternative identities, payload schemas, semantic identity/equality
 requirements, representation identity, and target adapters independently of
@@ -3772,8 +3843,9 @@ fields are governed by `TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001`.
 
 The compiler SHALL admit an exact nominal Sum classifier as a field of the one-
 or two-operand packages governed by the package rules when every declared
-alternative payload is already admitted by the private Sum function ABI and
-contains no Function value or capture environment. Supplied Sum values and
+alternative payload is already admitted by the private Sum function ABI.
+Function-bearing payloads SHALL additionally satisfy
+`TOPAL-COMPILER-SUM-FUNCTION-001`. Supplied Sum values and
 closed Sum defaults SHALL retain their exact nominal identity, tag, and active
 payload through ordinary classifier adaptation. Unsupported payloads, nominal
 mismatches, and non-closed defaults SHALL reject before LLVM lowering or
@@ -3799,8 +3871,9 @@ Future compiled-library metadata SHALL preserve the Sum's canonical nominal
 identity, complete alternatives/payload classifiers, and representation identity
 beside operand/field/default/effect semantics and target adapters. Nested
 package declarations, opaque whole-package values, Function-containing Sum
-payloads, dependent defaults, recursive Sum package signatures, public adapters,
-and other unsupported non-scalar fields remain deferred.
+payloads outside `TOPAL-COMPILER-SUM-FUNCTION-001`, dependent defaults,
+recursive Sum package signatures, public adapters, and other unsupported
+non-scalar fields remain deferred.
 
 ### TOPAL-COMPILER-FUNCTION-PACKAGED-FIELD-001 — Exact direct Function package fields
 
@@ -3887,7 +3960,8 @@ canonical path, callable source/declaration identity and overload set, capture
 schema/equality/lifetime/effect semantics, operand/field/default semantics, and
 target adapters independently of private binding names, LLVM types, tags, and
 physical placement. Optional Function fields are governed by
-`TOPAL-COMPILER-OPTIONAL-FUNCTION-001`. Function containment in List, Sum, and
+`TOPAL-COMPILER-OPTIONAL-FUNCTION-001`; exact nominal Sum Function fields are
+governed by `TOPAL-COMPILER-SUM-FUNCTION-001`. Function containment in List and
 other aggregates; dynamic escape/selection; dependent defaults; nested package
 declarations; recursive callable package signatures; persistent storage;
 publication; and public adapters remain deferred.
@@ -4420,7 +4494,8 @@ scalar or aggregate boundaries SHALL preserve the original immutable value and
 callable identity without replaying an initializer or consulting a caller
 frame. A private Function result SHALL return the Function representation and
 its ordered captures together; a Function-containing aggregate result SHALL
-associate each capture with its canonical Tuple-index or Record-label path.
+associate each capture with its canonical Tuple-index, Record-label, Optional-
+payload, or nominal-Sum-alternative path.
 Named root Function results MAY cross further private boundaries. Anonymous
 Functions SHALL remain non-escaping from the ordinary invocation that owns
 their captured values. Nested Functions MAY escape only under
@@ -4437,7 +4512,8 @@ The lowering SHALL add no global context/root state, closure or environment
 object, overload/environment table, runtime dispatcher, function pointer,
 indirect call, lookup, initializer replay, allocation, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or native-ABI
-revision. Sum or other unsupported Function-containing representations;
+revision. Sum representations outside `TOPAL-COMPILER-SUM-FUNCTION-001` or
+other unsupported Function-containing representations;
 escaping anonymous Function results or nested Function results outside
 `TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`; recursive or overloaded nested
 Functions; fact-dependent, opaque, or dynamic selection; and public/library

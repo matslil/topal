@@ -364,9 +364,11 @@ recover the appropriate subtree, so eventual application remains a direct
 specialization. A local aggregate may retain a capturing callable while its
 lexical values remain alive. The capture-free base boundary carries the same
 structural facts without an environment transport. Exact `Optional Function`
-containment extends that tree under `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`;
-other containers and opaque or branch-selected identities still fail before
-LLVM.
+containment extends that tree under `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`.
+Exact selected nominal Sum payloads extend it under
+`TOPAL-COMPILER-SUM-FUNCTION-001`, retaining the semantic alternative
+separately from the runtime tag. Other containers and opaque or branch-selected
+identities still fail before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -379,8 +381,9 @@ representation identity, and target adapter rather than publish this LLVM
 aggregate or its observation tags.
 
 The capture-bearing extension assigns every Function leaf a canonical path of
-zero-based Tuple indexes, Record labels, and admitted `Optional` payload edges,
-visited depth-first from left to right. Parameter specialization carries the
+zero-based Tuple indexes, Record labels, admitted `Optional` payload edges, and
+admitted nominal Sum alternative-name payload edges, visited depth-first from
+left to right. Parameter specialization carries the
 ordinary source aggregate followed by each leaf's ordered capture operands.
 Result lowering returns a private aggregate whose first field is the unchanged
 source aggregate and whose remaining fields are the captures in that same path
@@ -392,10 +395,11 @@ Function results under `TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001` are therefore
 direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
-matching `fastcc` prototype. DWARF exposes only the source Tuple/Record/Optional
-and the eventual callable's source-named captures, never the extended result
-fields or hidden parameter names. This transport remains module-private and
-creates no closure object, environment pointer, allocation, callback, function
+matching `fastcc` prototype. DWARF exposes only the source
+Tuple/Record/Optional/Sum and the eventual callable's source-named captures,
+never the extended result fields or hidden parameter names. This transport
+remains module-private and creates no closure object, environment pointer,
+allocation, callback, function
 pointer, indirect dispatch, foreign dependency, or native ABI change. A future
 compiled library must serialize the canonical aggregate path, callable/capture
 identities, capture classifiers and order, lifetime, effects, representation
@@ -438,6 +442,22 @@ Future compiled-library metadata must identify the Optional payload path,
 presence requirements, callable/capture schema, representation, lifetime,
 effects, and target adapter independently of the private header, observation
 tag, or hidden operands.
+
+The exact nominal Sum extension preserves the existing private i32 tag plus
+declaration-ordered statically typed payload slots. The checked fact tree
+separately records the exact selected alternative and its active payload facts;
+a complete decision recovers those facts for the payload binding so eventual
+Function application remains a direct specialization. Captures follow a
+semantic alternative-name path and the ordinary source Sum aggregate travels
+before the hidden capture operands or result fields. Repeated anonymous-pattern
+identity compares tags and the active payload observation first, then matching
+capture snapshots only for the same retained callable. Inactive slots are never
+observed. No allocation, closure object, tag dispatcher, or public Sum ABI is
+introduced. Future compiled-library metadata must preserve nominal identity,
+ordered alternatives and payload schemas, active-selection proof, callable and
+capture paths, representation, lifetime, effects, and target adapters
+independently of private tags, inactive LLVM layout, hidden operands, and
+physical placement.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
@@ -494,9 +514,9 @@ requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
-nested callable identity, Function containment outside Tuple/Record/Optional,
-and ordinary named-header repetition remain deferred with
-their broader representation and overload consequences.
+nested callable identity, Function containment outside admitted
+Tuple/Record/Optional/Sum paths, and ordinary named-header repetition remain
+deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
 establish the first private capture boundary without choosing that general
@@ -562,10 +582,10 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside Tuple/Record/Optional,
+containment outside admitted Tuple/Record/Optional/Sum paths,
 opaque/computed/nested/non-root Scope values, unsupported container or
-collection payloads and other non-scalar fields,
-nested package declarations, opaque whole-package values, context-dependent
+collection payloads and other non-scalar fields, nested package declarations,
+opaque whole-package values, context-dependent
 defaults, recursive compound signatures, and public package adapters remain
 checked-frontend and library-interface work.
 Published metadata will need syntactic-operand partition/order, stable field
