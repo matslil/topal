@@ -6087,6 +6087,24 @@ language library, or ABI revision. Future metadata remains independent of
 private nodes and offsets. This realizes
 `TOPAL-COMPILER-LIST-INT-STRING-PAIR-CORE-001` for increment 4b3d-af.
 
+## TOPAL-COMP-LIST-STRING-INT-PAIR-CORE-001 — Ordinary String/Int-pair Lists
+
+The checked model shall admit construction, private parameter/result/package
+and nested Tuple/Record passage, derived equality, complete decisions, count,
+emptiness, display, and debugging for `List (String, Int)`. Linux x86-64 shall
+retain the existing immutable 24-byte String-pointer/Int-pointer/remaining-
+pointer Map-input nodes. A conditional finite fragment shall compare both exact
+fields in source order and count correctly at O0. LLVM owns physical placement,
+while DWARF/GDB retain the recursive List and positional Tuple classifiers.
+
+Tests cover empty and non-ASCII Strings, arbitrary-precision signed Ints,
+same/different fields and length, all private boundaries, rejection, IR,
+ELF/DWARF, GDB, corpus, history, and separate baselines. This adds no Tuple
+allocation, generic/public/foreign ABI, Map representation change, foreign
+allocation, C/C++, other-language library, or ABI revision. Future metadata
+remains independent of private nodes and offsets. This realizes
+`TOPAL-COMPILER-LIST-STRING-INT-PAIR-CORE-001` for increment 4b3d-ag.
+
 ## TOPAL-COMP-LIST-SEQUENCE-001 — Closed ordered List sequence operations
 
 The checked compiler shall admit the unchanged

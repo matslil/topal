@@ -258,6 +258,12 @@ their own. The conditional core loop compares the canonical arbitrary-precision
 Int and exact immutable String fields in order and is reused by outer recursive
 List equality; no Tuple allocation or foreign runtime is introduced.
 
+Ordinary `List (String, Int)` values promote the inline pair nodes already used
+as exact Map-collection input to the same private function, aggregate,
+decomposition, equality, and observation boundary. Their conditional loop
+compares exact String keys before arbitrary-precision Int values in source
+field order without changing the Map or native ABI.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

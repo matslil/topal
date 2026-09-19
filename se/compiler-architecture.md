@@ -1541,7 +1541,10 @@ while keeping the same layout executable-local; it does not create a
 compiled-library ABI or revise `topal-native/6`. The corresponding ordinary
 `List (Int, String)` increment reuses the same inline product design and its
 exact Int/String equality loop for both direct inner values and outer recursive
-List equality.
+List equality. The ordinary `List (String, Int)` increment applies the same
+executable-private design to the existing Map-collector input node, adds an
+exact source-order String/Int equality loop, and leaves the Map representation
+and native ABI unchanged.
 
 The first recursive List specialization composes that inline product approach
 without declaring a generic node. An inner `List (Int, String)` uses three
