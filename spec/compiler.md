@@ -5040,11 +5040,12 @@ This increment admits only an unconditional block at a direct statement
 boundary for which every exited scope is proven cleanup-free. Except for the
 whole explicit-return operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand
-admitted by `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, a return-bearing block
-embedded in another expression, conditional or callback, and any exit whose
-scope owns generator close, resource, destructor, or other cleanup obligations
-SHALL remain rejected until explicit exit-edge and cleanup lowering is
-implemented.
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, and the direct product
+field admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, a return-bearing
+block embedded in another expression, conditional or callback, and any exit
+whose scope owns generator close, resource, destructor, or other cleanup
+obligations SHALL remain rejected until explicit exit-edge and cleanup lowering
+is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5059,8 +5060,9 @@ The checked compiler model SHALL retain the lexical block as the function
 result expression and the backend SHALL preserve its nested DWARF scope while
 normalizing the exit into the function's existing single machine return.
 Except for the direct symbolic operator operand admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, this rule admits no other
-compound-expression, conditional, callback, generator, or cleanup-bearing
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001` and the direct product field
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, this rule admits no
+other compound-expression, conditional, callback, generator, or cleanup-bearing
 propagation and SHALL introduce no runtime control-flow object, unwind edge,
 allocation, foreign dependency, C/C++ standard library, public ABI, or
 native-ABI revision.
@@ -5084,6 +5086,28 @@ normalize the exit into the function's existing single machine return. This
 rule admits no constructor, named-call argument, decision, callback, generator,
 or cleanup-bearing propagation and SHALL introduce no runtime control-flow
 object, unwind edge, allocation, foreign dependency, C/C++ standard library,
+public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001 — Product-field lexical exit
+
+An admitted cleanup-free lexical block used as a direct positional or labeled
+product field MAY execute an explicit `return`. Fields preceding the exiting
+field SHALL be evaluated exactly once in source order and their values SHALL be
+abandoned. The product SHALL NOT be constructed, and the exiting field's
+remaining statements, every later field, and the enclosing function tail SHALL
+be excluded from generated IR at `-O0`. The returned value SHALL be validated
+against the enclosing function result classifier rather than a product-field
+or abandoned binding classifier.
+
+The checked compiler model SHALL retain the evaluated field prefix as a private
+exit sequence followed by the lexical block result. The backend SHALL emit each
+prefix expression in the enclosing debug scope, retain the block's nested DWARF
+scope, and normalize the exit into the function's existing single machine
+return. This rule admits only a product that is itself at an admitted direct
+statement or initializer boundary; a product nested in a constructor or call
+argument, and every decision, callback, generator, or cleanup-bearing exit,
+SHALL remain rejected. It SHALL introduce no runtime control-flow object,
+unwind edge, aggregate allocation, foreign dependency, C/C++ standard library,
 public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering

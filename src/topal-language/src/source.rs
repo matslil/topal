@@ -2961,6 +2961,84 @@ impl Session {
         Ok(Some(step))
     }
 
+    fn evaluate_returning_embedded_expression_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        if let Some(step) = self.evaluate_returning_product_field_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
+        self.evaluate_returning_operator_operand_step(source, expression, return_classifier, trace)
+    }
+
+    fn evaluate_returning_product_field_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Product { fields, span } = expression else {
+            return Ok(None);
+        };
+        let Some(returning_index) = fields
+            .iter()
+            .position(|field| direct_expression_returns_from_function(&field.value))
+        else {
+            return Ok(None);
+        };
+        let labeled = fields.iter().filter(|field| field.label.is_some()).count();
+        if labeled != 0 && labeled != fields.len() {
+            return Err(diagnostic(
+                source,
+                "E-MIXED-PRODUCT-FIELDS",
+                *span,
+                "a product cannot mix positional and labeled fields",
+            ));
+        }
+        let mut labels = BTreeSet::new();
+        for (index, field) in fields[..=returning_index].iter().enumerate() {
+            if let Some(label_span) = field.label {
+                let label = source.slice(label_span);
+                if !labels.insert(label) {
+                    return Err(diagnostic(
+                        source,
+                        "E-DUPLICATE-RECORD-FIELD",
+                        label_span,
+                        "record field label occurs more than once",
+                    ));
+                }
+            }
+            if index == returning_index {
+                break;
+            }
+            let _ = self.evaluate_expression(source, &field.value, trace)?;
+        }
+        let Expression::Block { statements, .. } = &fields[returning_index].value else {
+            unreachable!("a direct returning product field is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning product field exits its function"
+        );
+        Ok(Some(step))
+    }
+
     #[allow(clippy::too_many_lines)] // Keep recursive expression cases together and auditable.
     fn evaluate_expression(
         &self,
@@ -9233,7 +9311,7 @@ impl Execution {
                 ExecutionStep::Advanced { .. } => unreachable!("a block runs to completion"),
             },
             Statement::Discard { span, value } => {
-                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                if let Some(step) = session.evaluate_returning_embedded_expression_step(
                     &self.source,
                     value,
                     self.return_classifier.as_deref(),
@@ -9253,7 +9331,7 @@ impl Execution {
                     ));
                 }
                 let span = cover(*keyword, value.span());
-                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                if let Some(step) = session.evaluate_returning_embedded_expression_step(
                     &self.source,
                     value,
                     self.return_classifier.as_deref(),
@@ -9299,7 +9377,7 @@ impl Execution {
                 let expected = final_expression
                     .then_some(self.result_classifier.as_deref())
                     .flatten();
-                if let Some(step) = session.evaluate_returning_operator_operand_step(
+                if let Some(step) = session.evaluate_returning_embedded_expression_step(
                     &self.source,
                     expression,
                     self.return_classifier.as_deref(),
@@ -9399,7 +9477,7 @@ impl Execution {
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
-        if let Some(step) = session.evaluate_returning_operator_operand_step(
+        if let Some(step) = session.evaluate_returning_embedded_expression_step(
             &self.source,
             initializer,
             self.return_classifier.as_deref(),
@@ -19296,6 +19374,42 @@ fn operator_operand_blocks_propagate_returns_in_source_order() {
     let value = Session::new()
         .evaluate(
             "answer is fn () -> Int\n  abandoned : String is 1 + { return 42 }\n  0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+}
+
+#[test]
+fn product_field_blocks_propagate_returns_in_source_order() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-product-field.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 43)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.entry") && event.contains("preceding"))
+            .count(),
+        4
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("missing")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  abandoned : String is (1, { return 42 }, missing)\n  0\nanswer ()\n",
             &mut std::io::sink(),
         )
         .unwrap();

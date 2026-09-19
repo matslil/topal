@@ -331,11 +331,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         CompilerExpressionKind::ExternalLocationWrite {
             location, value, ..
         } => expression_uses_extended_debug(location) || expression_uses_extended_debug(value),
-        CompilerExpressionKind::ExitSequence {
-            preceding: left,
-            result: right,
+        CompilerExpressionKind::ExitSequence { preceding, result } => {
+            preceding.iter().any(expression_uses_extended_debug)
+                || expression_uses_extended_debug(result)
         }
-        | CompilerExpressionKind::StringConcat { left, right }
+        CompilerExpressionKind::StringConcat { left, right }
         | CompilerExpressionKind::ListEntry {
             value: left,
             remaining: right,
@@ -2090,7 +2090,9 @@ impl<'a> Generator<'a> {
                 value
             }
             CompilerExpressionKind::ExitSequence { preceding, result } => {
-                let _ = self.emit_expression(preceding, body, environment);
+                for value in preceding {
+                    let _ = self.emit_expression(value, body, environment);
+                }
                 self.emit_expression(result, body, environment)
             }
             CompilerExpressionKind::PrivateBinding {

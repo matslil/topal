@@ -1921,6 +1921,16 @@ sequence is compiler-private structure rather than a runtime carrier and
 therefore changes no ABI. Constructors, named-call arguments, conditional
 joins, callbacks, and cleanup-bearing exits remain deferred.
 
+Increment 3b2-b5e8d admits that same checked exit from a direct positional or
+labeled product field. The checked model retains each preceding field
+expression, in source order, in the compiler-private exit sequence and then the
+returning lexical block. The backend emits those abandoned expressions without
+constructing a partial aggregate, enters the block's `DILexicalBlock`, and
+reaches the existing single machine return. Later fields and the function tail
+are absent even at O0. This changes neither runtime representation nor ABI;
+products nested in constructors or call arguments and conditional or
+cleanup-bearing joins remain deferred.
+
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
 its purpose is to keep a typed SSA result and therefore an explicit completion
