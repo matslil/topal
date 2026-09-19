@@ -166,6 +166,15 @@ overloaded, opaque,
 dynamically selected, persistently stored, and published nested callables remain
 outside this private boundary; no public callable ABI is defined.
 
+Ordinary `List Boolean` values use another compiler-selected private node
+interpretation: the Boolean payload occupies the first byte and the remaining
+List pointer stays naturally aligned at byte eight. Construction, structural
+equality, complete List decisions, count, emptiness, private passage, display,
+and debugging retain the source classifier. This representation is neither a
+type-erased generic container nor a compiled-library ABI; future library
+metadata describes the semantic element type, ownership, lifetime, and target
+adapter independently of the node offsets.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux

@@ -694,6 +694,11 @@ class _TopalListPrinter:
                 if payload:
                     return f"<invalid Effect value {payload}>"
                 entries.append("Effects ()")
+            elif self._element_type == "Boolean":
+                payload = node[0]
+                if payload > 1:
+                    return f"<invalid List Boolean entry {payload}>"
+                entries.append("true" if payload else "false")
             elif self._element_type == "Int":
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:

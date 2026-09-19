@@ -2480,3 +2480,12 @@ The shared regression and reversible debugger history shall cover named,
 symbolic, anonymous, and nested Function values; all collision policies;
 collection, forwarding, exact lookup, count, emptiness, display, and exact
 results.
+
+## TOPAL-INTP-SUBSET-281 — Ordinary Boolean List values
+
+All source modes shall construct empty and nonempty `List Boolean` values,
+preserve true and false entries across ordinary parameters/results, packages,
+Tuples, and Records, compare them structurally, decompose them through complete
+List decisions, observe entry count and emptiness, and render their canonical
+source form. The shared regression and reversible debugger history shall cover
+each of these paths with the same source used by the native compiler.

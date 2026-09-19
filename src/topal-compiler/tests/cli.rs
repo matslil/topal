@@ -6607,6 +6607,132 @@ fn effect_list_is_freestanding_and_gdb_renders_its_source_shape() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, rejection, and source-level GDB values.
+fn boolean_lists_are_private_freestanding_and_debuggable() {
+    // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+    // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
+    // TOPAL-LIST-EMPTY-PREDICATE-001, TOPAL-COMPILER-LIST-BOOLEAN-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-list-boolean-values");
+    let source = directory.join("list-boolean-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/list-boolean-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(true, false, true, true, 2, true, true, true, false, Entry ( true, Entry ( false, Empty ) ))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for expected in [
+        "%topal.ListBooleanStorage = type { i1, ptr }",
+        "define internal i1 @topal.runtime.list.boolean.equal(ptr",
+        "define internal ptr @topal.runtime.list.boolean.entry.count(ptr",
+        "define internal fastcc ptr @topal.fn.return_2dlist.",
+        "define internal fastcc { ptr, i1 } @topal.fn.return_2dpair.",
+        "store i1 false, ptr",
+        "load i1, ptr",
+    ] {
+        assert!(ir.contains(expected), "{expected}: {ir}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.runtime.list.int.equal",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("unsupported-transform.t");
+    let rejected_executable = directory.join("unsupported-transform");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nvalues : List Boolean is Entry (true, Empty)\nvalues reverse\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("E-COMPILER-UNSUPPORTED"));
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-boolean-values.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis candidate",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List Boolean",
+        "candidate = Entry ( true, Entry ( false, Empty ) )",
+        "fallback = false",
+        "topal.fn.head_2dor.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
     // TOPAL-LIST-CONTAINS-ENTRY-001, TOPAL-LIST-CONTAINS-SEQUENCE-001,
     // TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,

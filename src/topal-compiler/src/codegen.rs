@@ -517,6 +517,7 @@ struct Generator<'a> {
     functions: Vec<String>,
     next_global: usize,
     needs_infinity_result_runtime: bool,
+    needs_list_boolean_core: bool,
     list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
     current_result_captures: Vec<CompilerFunctionResultCapture>,
     current_function_return_type: Option<String>,
@@ -544,6 +545,7 @@ impl<'a> Generator<'a> {
             functions: Vec::new(),
             next_global: 0,
             needs_infinity_result_runtime: false,
+            needs_list_boolean_core: false,
             list_int_runtime_fragments: BTreeSet::new(),
             current_result_captures: Vec::new(),
             current_function_return_type: None,
@@ -568,6 +570,10 @@ impl<'a> Generator<'a> {
         module.push('\n');
         if self.needs_infinity_result_runtime {
             module.push_str(INFINITY_RESULT_RUNTIME);
+            module.push('\n');
+        }
+        if self.needs_list_boolean_core {
+            module.push_str(LIST_BOOLEAN_CORE_RUNTIME);
             module.push('\n');
         }
         if self
@@ -2190,6 +2196,7 @@ impl<'a> Generator<'a> {
                 };
                 let (allocation_size, next_offset) = match &element {
                     CompilerType::Effect
+                    | CompilerType::Boolean
                     | CompilerType::Int
                     | CompilerType::String
                     | CompilerType::Function => (16, 8),
@@ -2216,6 +2223,11 @@ impl<'a> Generator<'a> {
                 match (&element, &value) {
                     (CompilerType::Effect, LlValue::Effect(value)) => body.effect(
                         &format!("store i8 {value}, ptr {node}, align 1"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    (CompilerType::Boolean, LlValue::Boolean(value)) => body.effect(
+                        &format!("store i1 {value}, ptr {node}, align 1"),
                         expression.span,
                         &mut self.debug,
                     ),
@@ -2505,22 +2517,32 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListEntryCount(value) => {
+                let boolean = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Boolean
+                );
                 let nested_int_string = matches!(
                     &value.value_type,
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
-                self.list_int_runtime_fragments
-                    .insert(if nested_int_string {
-                        ListIntRuntimeFragment::NestedIntStringCore
-                    } else {
-                        ListIntRuntimeFragment::Core
-                    });
+                if boolean {
+                    self.needs_list_boolean_core = true;
+                } else {
+                    self.list_int_runtime_fragments
+                        .insert(if nested_int_string {
+                            ListIntRuntimeFragment::NestedIntStringCore
+                        } else {
+                            ListIntRuntimeFragment::Core
+                        });
+                }
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Int(body.instruction(
                     &format!(
                         "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
-                        if nested_int_string {
+                        if boolean {
+                            "boolean"
+                        } else if nested_int_string {
                             "nested.int-string"
                         } else {
                             "int"
@@ -4099,7 +4121,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)] // Mirrors both source List alternatives and their scoped bindings.
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Keeps typed alternatives and scoped bindings together.
     fn emit_list_decision(
         &mut self,
         subject: &CompilerExpression,
@@ -4137,6 +4159,14 @@ impl<'a> Generator<'a> {
         let mut entry_environment = environment.clone();
         if let Some(((first_name, first_span), (rest_name, rest_span))) = entry_bindings {
             let (first_value, rest_function_captures) = match &element {
+                CompilerType::Boolean => (
+                    LlValue::Boolean(body.instruction(
+                        &format!("load i1, ptr {list}, align 1"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
                 CompilerType::Int => (
                     LlValue::Int(body.instruction(
                         &format!("load ptr, ptr {list}, align 8"),
@@ -6416,7 +6446,10 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         debug_assert_eq!(element, right_element);
-        let runtime = if compiler_nested_int_string_list_element(element) {
+        let runtime = if element == &CompilerType::Boolean {
+            self.needs_list_boolean_core = true;
+            "boolean"
+        } else if compiler_nested_int_string_list_element(element) {
             self.list_int_runtime_fragments
                 .insert(ListIntRuntimeFragment::NestedIntStringCore);
             "nested.int-string"
@@ -8187,6 +8220,14 @@ impl<'a> Generator<'a> {
             CompilerType::Effect => (
                 LlValue::Effect(body.instruction(
                     &format!("load i8, ptr {current}, align 1"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
+            CompilerType::Boolean => (
+                LlValue::Boolean(body.instruction(
+                    &format!("load i1, ptr {current}, align 1"),
                     span,
                     &mut self.debug,
                 )),
@@ -11667,6 +11708,7 @@ fn llvm_string(value: &str) -> String {
 
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll");
+const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("runtime/list_boolean_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");

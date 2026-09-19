@@ -14865,7 +14865,7 @@ impl Analyzer {
         if operation == "entry-count"
             && let CompilerType::List(element) = &operand_value.value_type
         {
-            if element.as_ref() != &CompilerType::Int
+            if !matches!(element.as_ref(), CompilerType::Boolean | CompilerType::Int)
                 && !compiler_nested_int_string_list_element(element.as_ref())
             {
                 return Err(unsupported(
@@ -17165,7 +17165,7 @@ impl Analyzer {
         if operation == "empty?"
             && let CompilerType::List(element) = &operand.value_type
         {
-            if element.as_ref() != &CompilerType::Int {
+            if !matches!(element.as_ref(), CompilerType::Boolean | CompilerType::Int) {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
@@ -21886,7 +21886,10 @@ impl Analyzer {
                 self.analyze_optional_decision(subject, &payload, rules, span, environment)
             }
             CompilerType::List(element)
-                if matches!(element.as_ref(), CompilerType::Int | CompilerType::Function) =>
+                if matches!(
+                    element.as_ref(),
+                    CompilerType::Boolean | CompilerType::Int | CompilerType::Function
+                ) =>
             {
                 let element = element.as_ref().clone();
                 self.analyze_list_decision(subject, &element, rules, span, environment)
@@ -23491,7 +23494,11 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
 fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
-        CompilerType::Effect | CompilerType::Int | CompilerType::String | CompilerType::Function
+        CompilerType::Effect
+            | CompilerType::Boolean
+            | CompilerType::Int
+            | CompilerType::String
+            | CompilerType::Function
     ) || matches!(
         value_type,
         CompilerType::Tuple(fields)
@@ -23710,7 +23717,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::List(element) => {
             matches!(
                 element.as_ref(),
-                CompilerType::Effect | CompilerType::Int | CompilerType::Function
+                CompilerType::Effect
+                    | CompilerType::Boolean
+                    | CompilerType::Int
+                    | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
                 || compiler_string_function_pair(element.as_ref())
         }
@@ -25558,7 +25568,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             if fields.as_slice() == [CompilerType::Int, CompilerType::String])
         }
         CompilerType::List(element) => {
-            element.as_ref() == &CompilerType::Int
+            matches!(element.as_ref(), CompilerType::Boolean | CompilerType::Int)
                 || compiler_nested_int_string_list_element(element.as_ref())
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
@@ -32582,6 +32592,83 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(duplicate_binding).unwrap_err().code,
             "E-DUPLICATE-BINDING"
+        );
+    }
+
+    #[test]
+    fn models_boolean_lists_across_private_boundaries() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-LIST-EMPTY-PREDICATE-001, TOPAL-COMPILER-LIST-BOOLEAN-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-boolean-values.t"
+        ))
+        .unwrap();
+        let list_boolean = CompilerType::List(Box::new(CompilerType::Boolean));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list_boolean);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_list = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-list")
+            .unwrap();
+        assert_eq!(return_list.result_type, list_boolean);
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list_boolean.clone(), CompilerType::Boolean])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list_boolean.clone()),
+                ("fallback".into(), CompilerType::Boolean),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Boolean List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list_boolean);
+
+        let unsupported_transform = "use language (version is v0.1)\nvalues : List Boolean is Entry (true, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_transform)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 

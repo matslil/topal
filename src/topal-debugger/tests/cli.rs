@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 254);
+    assert_eq!(examples.len(), 255);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4697,6 +4697,32 @@ fn records_map_function_environments_reversibly() {
         "collection.empty.tested [TOPAL-COLLECTION-EMPTY-PREDICATE-001] false",
         "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
         "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_boolean_list_values_reversibly() {
+    // TOPAL-INTP-SUBSET-281, TOPAL-COMPILER-LIST-BOOLEAN-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-boolean-values.debug"),
+            &language_example("list-boolean-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for event in [
+        "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] Boolean",
+        "list.entry.decomposed [TOPAL-DECISION-LIST-001] first=first;rest=rest",
+        "list.entry-count [TOPAL-LIST-ENTRY-COUNT-001] entries=2",
+        "list.empty.tested [TOPAL-LIST-EMPTY-PREDICATE-001] true",
         "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
     ] {
         assert!(stdout.contains(event), "{event}: {stdout}");
