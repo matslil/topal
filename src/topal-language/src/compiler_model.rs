@@ -1387,6 +1387,14 @@ struct CompilerArgumentBinding {
     value: CompilerExpression,
 }
 
+#[derive(Clone)]
+struct CompilerFunctionCallReference {
+    name: String,
+    span: Span,
+    arguments: Vec<Expression>,
+    is_ordinary_unqualified: bool,
+}
+
 type NormalizedPackagedCall = (
     FunctionSource,
     Vec<CompilerExpression>,
@@ -19200,12 +19208,30 @@ impl Analyzer {
             return Ok(None);
         }
         let references =
-            function_body_called_function_spans(&self.source, &self.functions, declaration);
-        for (called_name, call_span) in references {
+            function_body_called_function_references(&self.source, &self.functions, declaration);
+        for reference in references {
             let declarations = self
                 .functions
-                .get(&called_name)
+                .get(&reference.name)
                 .expect("collected call reference has declarations");
+            if declarations.len() != 1
+                && let Some(called) =
+                    self.capture_forwarding_overload(declaration, &reference, declarations)
+            {
+                if self
+                    .transitive_context_member_span(
+                        &called,
+                        member_name,
+                        member_declaration_end,
+                        visiting,
+                    )?
+                    .is_some()
+                {
+                    visiting.remove(&identity);
+                    return Ok(Some(reference.span));
+                }
+                continue;
+            }
             let mut carries_member = false;
             for called in declarations {
                 if self
@@ -19225,11 +19251,11 @@ impl Analyzer {
                 if declarations.len() != 1 {
                     return Err(unsupported(
                         &self.source,
-                        call_span,
+                        reference.span,
                         "overload-dependent defining-context capture forwarding",
                     ));
                 }
-                return Ok(Some(call_span));
+                return Ok(Some(reference.span));
             }
         }
         visiting.remove(&identity);
@@ -19256,12 +19282,25 @@ impl Analyzer {
             return Ok(None);
         }
         let references =
-            function_body_called_function_spans(&self.source, &self.functions, declaration);
-        for (called_name, call_span) in references {
+            function_body_called_function_references(&self.source, &self.functions, declaration);
+        for reference in references {
             let declarations = self
                 .functions
-                .get(&called_name)
+                .get(&reference.name)
                 .expect("collected call reference has declarations");
+            if declarations.len() != 1
+                && let Some(called) =
+                    self.capture_forwarding_overload(declaration, &reference, declarations)
+            {
+                if self
+                    .transitive_root_member_span(&called, member_name, visiting)?
+                    .is_some()
+                {
+                    visiting.remove(&identity);
+                    return Ok(Some(reference.span));
+                }
+                continue;
+            }
             let mut carries_member = false;
             for called in declarations {
                 if self
@@ -19276,15 +19315,253 @@ impl Analyzer {
                 if declarations.len() != 1 {
                     return Err(unsupported(
                         &self.source,
-                        call_span,
+                        reference.span,
                         "overload-dependent root-data capture forwarding",
                     ));
                 }
-                return Ok(Some(call_span));
+                return Ok(Some(reference.span));
             }
         }
         visiting.remove(&identity);
         Ok(None)
+    }
+
+    fn capture_forwarding_overload(
+        &self,
+        caller: &FunctionSource,
+        reference: &CompilerFunctionCallReference,
+        declarations: &[FunctionSource],
+    ) -> Option<FunctionSource> {
+        if !reference.is_ordinary_unqualified {
+            return None;
+        }
+        let arguments = reference
+            .arguments
+            .iter()
+            .map(|argument| self.capture_forwarding_argument(caller, argument))
+            .collect::<Option<Vec<_>>>()?;
+        let flattened_arguments = match arguments.as_slice() {
+            [
+                CompilerExpression {
+                    kind: CompilerExpressionKind::Tuple(values),
+                    ..
+                },
+            ] => Some(values.as_slice()),
+            _ => None,
+        };
+        for declaration in declarations
+            .iter()
+            .filter(|declaration| !caller.is_static || declaration.is_static)
+        {
+            if declaration.parameters.iter().any(|parameter| {
+                !parameter.fields.is_empty()
+                    || parameter.default.is_some()
+                    || parameter.qualifier.is_some()
+            }) {
+                return None;
+            }
+            let candidate_arguments = if declaration.parameters.is_empty()
+                && matches!(
+                    arguments.as_slice(),
+                    [CompilerExpression {
+                        value_type: CompilerType::Unit,
+                        ..
+                    }]
+                ) {
+                &[][..]
+            } else if declaration.parameters.len() > 1 {
+                flattened_arguments.unwrap_or(arguments.as_slice())
+            } else {
+                arguments.as_slice()
+            };
+            if candidate_arguments.len() != declaration.parameters.len() {
+                continue;
+            }
+            let mut applicable = true;
+            let mut fact_dependent = false;
+            for (parameter, argument) in declaration.parameters.iter().zip(candidate_arguments) {
+                let expected = self.parse_classifier(parameter.classifier).ok()?;
+                if adapt_call_argument(&expected, argument).is_none() {
+                    if capture_argument_adaptation_may_depend_on_facts(&expected, argument) {
+                        fact_dependent = true;
+                    } else {
+                        applicable = false;
+                        break;
+                    }
+                }
+            }
+            if applicable && fact_dependent {
+                return None;
+            }
+            if applicable {
+                return Some(declaration.clone());
+            }
+        }
+        None
+    }
+
+    #[allow(clippy::too_many_lines)] // The fail-closed pre-instantiation classifier replay keeps each admitted syntax form explicit.
+    fn capture_forwarding_argument(
+        &self,
+        caller: &FunctionSource,
+        expression: &Expression,
+    ) -> Option<CompilerExpression> {
+        let span = expression.span();
+        match expression {
+            Expression::Unit(_) => Some(CompilerExpression {
+                kind: CompilerExpressionKind::Unit,
+                value_type: CompilerType::Unit,
+                int_range: None,
+                rational_value: None,
+                span,
+            }),
+            Expression::Boolean(value) => Some(CompilerExpression {
+                kind: CompilerExpressionKind::Boolean(self.source.slice(*value) == "true"),
+                value_type: CompilerType::Boolean,
+                int_range: None,
+                rational_value: None,
+                span,
+            }),
+            Expression::Integer(value) => {
+                let value = parse_integer(self.source.slice(*value))?;
+                Some(CompilerExpression {
+                    kind: CompilerExpressionKind::Int(value.clone()),
+                    value_type: CompilerType::Int,
+                    int_range: Some(IntRange::exact(value)),
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Rational(value) => {
+                let value = parse_rational(self.source.slice(*value))?;
+                Some(CompilerExpression {
+                    kind: CompilerExpressionKind::Rational(value.clone()),
+                    value_type: CompilerType::Rational,
+                    int_range: None,
+                    rational_value: Some(value),
+                    span,
+                })
+            }
+            Expression::String(value) => Some(CompilerExpression {
+                kind: CompilerExpressionKind::String(
+                    parse_string(self.source.slice(*value))?.to_owned(),
+                ),
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            }),
+            Expression::Identifier(name) => {
+                let name_text = self.source.slice(*name);
+                let parameter = caller
+                    .parameters
+                    .iter()
+                    .find(|parameter| self.source.slice(parameter.name) == name_text)?;
+                let value_type = self.parse_classifier(parameter.classifier).ok()?;
+                Some(CompilerExpression {
+                    kind: CompilerExpressionKind::Local(name_text.to_owned()),
+                    value_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Product { fields, .. }
+                if !fields.is_empty() && fields.iter().all(|field| field.label.is_some()) =>
+            {
+                let mut values = Vec::with_capacity(fields.len());
+                let mut value_types = Vec::with_capacity(fields.len());
+                for field in fields {
+                    let label = self.source.slice(field.label?).to_owned();
+                    let value = self.capture_forwarding_argument(caller, &field.value)?;
+                    value_types.push((label.clone(), value.value_type.clone()));
+                    values.push((label, value));
+                }
+                value_types.sort_by(|left, right| left.0.cmp(&right.0));
+                Some(CompilerExpression {
+                    kind: CompilerExpressionKind::Record(values),
+                    value_type: CompilerType::Record(value_types),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Product { fields, .. } => {
+                let values = fields
+                    .iter()
+                    .map(|field| self.capture_forwarding_argument(caller, &field.value))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(CompilerExpression {
+                    value_type: CompilerType::Tuple(
+                        values
+                            .iter()
+                            .map(|value| value.value_type.clone())
+                            .collect(),
+                    ),
+                    kind: CompilerExpressionKind::Tuple(values),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Application { items, .. } => {
+                let (callable_index, callable) =
+                    items.iter().enumerate().find_map(|(index, item)| {
+                        let Expression::Callable { kind, .. } = item else {
+                            return None;
+                        };
+                        Some((index, *kind))
+                    })?;
+                let operands = items
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, item)| (index != callable_index).then_some(item))
+                    .map(|operand| self.capture_forwarding_argument(caller, operand))
+                    .collect::<Option<Vec<_>>>()?;
+                let value_type = match (callable, operands.as_slice()) {
+                    (CallableKind::Plus, [left, right])
+                        if left.value_type == right.value_type
+                            && matches!(
+                                left.value_type,
+                                CompilerType::Int
+                                    | CompilerType::Nat
+                                    | CompilerType::Rational
+                                    | CompilerType::String
+                            ) =>
+                    {
+                        left.value_type.clone()
+                    }
+                    (CallableKind::Minus | CallableKind::Multiply, [left, right])
+                        if left.value_type == right.value_type
+                            && matches!(
+                                left.value_type,
+                                CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+                            ) =>
+                    {
+                        left.value_type.clone()
+                    }
+                    _ => return None,
+                };
+                Some(CompilerExpression {
+                    kind: CompilerExpressionKind::Local(format!(
+                        "topal.capture.overload.{}.{}",
+                        span.start, span.end
+                    )),
+                    value_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Expression::Block { .. }
+            | Expression::DecisionTable { .. }
+            | Expression::Infinity(_)
+            | Expression::Measured { .. }
+            | Expression::Discard(_)
+            | Expression::AnonymousFunction { .. }
+            | Expression::ContextIdentifier(_)
+            | Expression::Callable { .. } => None,
+        }
     }
 
     fn finish_selected_call(
@@ -21605,11 +21882,11 @@ fn expression_root_member_span(
     }
 }
 
-fn function_body_called_function_spans(
+fn function_body_called_function_references(
     source: &SourceText,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     declaration: &FunctionSource,
-) -> Vec<(String, Span)> {
+) -> Vec<CompilerFunctionCallReference> {
     let mut locals = BTreeSet::new();
     for parameter in &declaration.parameters {
         collect_parameter_binding_names(source, parameter, &mut locals);
@@ -21641,7 +21918,7 @@ fn collect_statement_function_calls(
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     statements: &[Statement],
     locals: &mut BTreeSet<String>,
-    references: &mut Vec<(String, Span)>,
+    references: &mut Vec<CompilerFunctionCallReference>,
 ) {
     for statement in statements {
         match statement {
@@ -21710,12 +21987,13 @@ fn collect_statement_function_calls(
     }
 }
 
+#[allow(clippy::too_many_lines)] // Recursive syntax coverage and exact call arguments stay co-located for capture discovery.
 fn collect_expression_function_calls(
     source: &SourceText,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     expression: &Expression,
     locals: &BTreeSet<String>,
-    references: &mut Vec<(String, Span)>,
+    references: &mut Vec<CompilerFunctionCallReference>,
 ) {
     match expression {
         Expression::Block { statements, .. } => {
@@ -21787,16 +22065,34 @@ fn collect_expression_function_calls(
                 && source.slice(*root) == "root"
                 && functions.contains_key(source.slice(*member))
             {
-                references.push((source.slice(*member).to_owned(), *member));
-            } else if let Some((name, span)) = items.iter().find_map(|item| {
-                let Expression::Identifier(name) = item else {
-                    return None;
-                };
-                let name_text = source.slice(*name);
-                (!locals.contains(name_text) && functions.contains_key(name_text))
-                    .then(|| (name_text.to_owned(), *name))
-            }) {
-                references.push((name, span));
+                references.push(CompilerFunctionCallReference {
+                    name: source.slice(*member).to_owned(),
+                    span: *member,
+                    arguments: items[2..].to_vec(),
+                    is_ordinary_unqualified: false,
+                });
+            } else if let Some((function_index, name, span)) =
+                items.iter().enumerate().find_map(|(index, item)| {
+                    let Expression::Identifier(name) = item else {
+                        return None;
+                    };
+                    let name_text = source.slice(*name);
+                    (!locals.contains(name_text) && functions.contains_key(name_text))
+                        .then(|| (index, name_text.to_owned(), *name))
+                })
+            {
+                references.push(CompilerFunctionCallReference {
+                    name,
+                    span,
+                    arguments: items
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, item)| {
+                            (index != function_index).then_some(item.clone())
+                        })
+                        .collect(),
+                    is_ordinary_unqualified: true,
+                });
             }
             for item in items {
                 collect_expression_function_calls(source, functions, item, locals, references);
@@ -24207,6 +24503,24 @@ fn adapt_call_argument(
         }
         _ => None,
     }
+}
+
+fn capture_argument_adaptation_may_depend_on_facts(
+    expected: &CompilerType,
+    argument: &CompilerExpression,
+) -> bool {
+    if !matches!(argument.kind, CompilerExpressionKind::Local(_)) {
+        return false;
+    }
+    matches!(
+        (expected, &argument.value_type),
+        (CompilerType::Character, CompilerType::String)
+            | (
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::Rational
+            )
+            | (CompilerType::Nat, CompilerType::Int)
+    )
 }
 
 fn validate_list_custom_generator_initial(
@@ -31796,10 +32110,15 @@ mod tests {
         ));
 
         let overloaded = analyze_for_compiler(
-            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
+            "use language (version is v0.1)\noffset is 40\nread is fn (value : Nat) -> Int\n  @ offset\nread is fn (value : Int) -> Int\n  0\nwrapper is fn (value : Int) -> Int\n  read value\nwrapper 0\n",
         )
         .unwrap_err();
         assert_eq!(overloaded.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            overloaded
+                .message
+                .contains("overload-dependent defining-context capture forwarding")
+        );
 
         let aliased = analyze_for_compiler(
             "use language (version is v0.1)\noffset is 40\nread is fn () -> Int\n  @ offset\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nwrapper ()\n",
@@ -31936,10 +32255,15 @@ mod tests {
         ));
 
         let overloaded = analyze_for_compiler(
-            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
+            "use language (version is v0.1)\nread is fn (value : Nat) -> Int\n  root answer\nread is fn (value : Int) -> Int\n  0\nwrapper is fn (value : Int) -> Int\n  read value\nanswer is 42\nwrapper 0\n",
         )
         .unwrap_err();
         assert_eq!(overloaded.code, "E-COMPILER-UNSUPPORTED");
+        assert!(
+            overloaded
+                .message
+                .contains("overload-dependent root-data capture forwarding")
+        );
 
         let aliased = analyze_for_compiler(
             "use language (version is v0.1)\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nanswer is 42\nwrapper ()\n",
@@ -32137,6 +32461,166 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(root_callable.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // One model test compares every selected overload vector plus mutual and rejection boundaries.
+    fn models_overload_selected_private_environments() {
+        // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/overload-environments.t"
+        ))
+        .unwrap();
+        for (name, explicit_type, captures) in [
+            (
+                "choose-context",
+                CompilerType::Int,
+                vec!["@ context-number"],
+            ),
+            (
+                "choose-context",
+                CompilerType::String,
+                vec!["@ context-label"],
+            ),
+            ("choose-pair", CompilerType::Int, vec!["@ context-pair"]),
+            ("choose-pair", CompilerType::String, vec!["root live-pair"]),
+            ("choose-root", CompilerType::Int, vec!["root live-number"]),
+            ("choose-root", CompilerType::String, vec!["root live-label"]),
+            (
+                "cross",
+                CompilerType::Int,
+                vec!["@ context-number", "root live-number"],
+            ),
+            (
+                "cross",
+                CompilerType::String,
+                vec!["@ context-number", "root live-number"],
+            ),
+            (
+                "choose-product",
+                CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String]),
+                vec!["@ context-number"],
+            ),
+            (
+                "choose-product",
+                CompilerType::Record(vec![
+                    ("amount".into(), CompilerType::Int),
+                    ("label".into(), CompilerType::String),
+                ]),
+                vec!["root live-label"],
+            ),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| {
+                    function.source_name == name
+                        && function.parameters[0].value_type == explicit_type
+                })
+                .unwrap();
+            assert_eq!(
+                function.parameters[1..]
+                    .iter()
+                    .map(|parameter| parameter.name.as_str())
+                    .collect::<Vec<_>>(),
+                captures
+            );
+        }
+        for (name, captures) in [
+            ("forward-context-number", vec!["@ context-number"]),
+            ("forward-context-label", vec!["@ context-label"]),
+            ("forward-context-pair", vec!["@ context-pair"]),
+            ("forward-root-pair", vec!["root live-pair"]),
+            ("forward-root-number", vec!["root live-number"]),
+            ("forward-root-label", vec!["root live-label"]),
+            (
+                "forward-cross",
+                vec!["@ context-number", "root live-number"],
+            ),
+            ("forward-product-tuple", vec!["@ context-number"]),
+            ("forward-product-record", vec!["root live-label"]),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(
+                function
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.name.as_str())
+                    .collect::<Vec<_>>(),
+                captures
+            );
+        }
+
+        let mutual = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\neven is fn (value : Int) -> Int\n  value\n    <= 0 then @ offset\n    otherwise odd (value - 1)\neven is fn (value : String) -> Int\n  1\nodd is fn (value : Int) -> Int\n  value\n    <= 0 then @ offset\n    otherwise even (value - 1)\nodd is fn (value : String) -> Int\n  0\n(even 2, odd \"selected\")\n",
+        )
+        .unwrap();
+        for name in ["even", "odd"] {
+            let integer = mutual
+                .functions
+                .iter()
+                .find(|function| {
+                    function.source_name == name
+                        && function.parameters[0].value_type == CompilerType::Int
+                })
+                .unwrap();
+            assert_eq!(integer.parameters[1].name, "@ offset");
+        }
+        let string = mutual
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "odd"
+                    && function.parameters[0].value_type == CompilerType::String
+            })
+            .unwrap();
+        assert_eq!(string.parameters.len(), 1);
+
+        let context_ambiguous = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  select value\nforward 0\n",
+        )
+        .unwrap_err();
+        assert!(
+            context_ambiguous
+                .message
+                .contains("overload-dependent defining-context capture forwarding")
+        );
+
+        let root_ambiguous = analyze_for_compiler(
+            "use language (version is v0.1)\nselect is fn (value : Nat) -> Int\n  root answer\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  select value\nanswer is 40\nforward 0\n",
+        )
+        .unwrap_err();
+        assert!(
+            root_ambiguous
+                .message
+                .contains("overload-dependent root-data capture forwarding")
+        );
+
+        let qualified = analyze_for_compiler(
+            "use language (version is v0.1)\nselect is fn (value : Int) -> Int\n  root answer\nselect is fn (value : String) -> Int\n  0\nforward is fn () -> Int\n  root select 0\nanswer is 40\nforward ()\n",
+        )
+        .unwrap_err();
+        assert!(
+            qualified
+                .message
+                .contains("overload-dependent root-data capture forwarding")
+        );
+
+        let locally_inferred = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nselect is fn (value : Int) -> Int\n  @ offset\nselect is fn (value : String) -> Int\n  0\nforward is fn () -> Int\n  value is 1\n  select value\nforward ()\n",
+        )
+        .unwrap_err();
+        assert!(
+            locally_inferred
+                .message
+                .contains("overload-dependent defining-context capture forwarding")
+        );
     }
 
     #[test]

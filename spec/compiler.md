@@ -3958,8 +3958,8 @@ source-visible state or change execution semantics.
 The lowering SHALL use no global context storage, namespace, capture, or
 environment table, initializer replay, lookup, allocation, function pointer,
 indirect call, foreign dependency, C/C++ runtime, other-language standard
-library, public ABI, or native-ABI revision. Overload-dependent selection,
-recursive forwarding beyond
+library, public ABI, or native-ABI revision. Overload selection beyond
+`TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
 `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
 anonymous or nested functions, aggregate environments beyond
 `TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported context
@@ -4036,9 +4036,10 @@ NOT add source-visible state or change execution semantics.
 The lowering SHALL use no global root storage, namespace or environment table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or native-ABI revision. Overload-dependent selection, recursive forwarding
-beyond `TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
-aliases, anonymous or nested functions, aggregate environments beyond
+or native-ABI revision. Overload selection beyond
+`TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
+`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
+anonymous or nested functions, aggregate environments beyond
 `TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported root members,
 context (`@ member`) forwarding beyond
 `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`, escape, and public/library root
@@ -4088,8 +4089,9 @@ allocation, dispatcher, function pointer, indirect call, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or native-ABI
 revision.
 
-An unproven, incomplete, or mixed-proof cycle; overload-dependent capture
-selection; unsupported captured representation; named-function alias;
+An unproven, incomplete, or mixed-proof cycle; overload selection beyond
+`TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; unsupported captured representation;
+named-function alias;
 anonymous, nested, or escaping recursion; and public/library recursive
 environments remain deferred and SHALL fail before artifact publication.
 Future compiled-library metadata SHALL preserve the recursion graph and member
@@ -4134,10 +4136,10 @@ object, environment or namespace table, lookup, initializer replay,
 allocation, dispatcher, function pointer, indirect call, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or native-ABI
 revision. Function-bearing aggregates; Scope, Generator, constraint, evidence,
-static-only, opaque, or otherwise unsupported representations; overload-
-dependent selection; named-function aliases; anonymous, nested, or escaping
-functions; and public/library aggregate environments remain deferred and SHALL
-fail before artifact publication.
+static-only, opaque, or otherwise unsupported representations; overload
+selection beyond `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; named-function
+aliases; anonymous, nested, or escaping functions; and public/library aggregate
+environments remain deferred and SHALL fail before artifact publication.
 
 Future compiled-library metadata for such an environment SHALL preserve its
 canonical context/root instance, source session, selection and call edges,
@@ -4147,6 +4149,52 @@ ordering and labels, Sum identity/alternative/payload, capture order, lifetime
 and effects, and versioned target adapter. Those facts SHALL remain independent
 of compiler-private capture names, LLVM aggregate types or symbols, debug
 shadows, and physical argument placement.
+
+### TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001 — Exact overload-selected private environments
+
+For an ordinary statically named call through an overload set, the checked
+frontend SHALL propagate defining-context and live-root captures from only the
+source-ordered overload selected by the ordinary call rules when that selection
+is determined before function instantiation by closed Unit, Boolean, Int,
+Rational, or String literal arguments, explicit parameter classifiers, exact
+Tuple or Record products of those values, or classifier-preserving `+`, `-`, or
+`*` expressions over equal admitted classifiers. The same selected declaration
+identity SHALL govern capture-graph
+discovery and the eventual direct call. This admission SHALL compose with
+direct entry, finite acyclic and cross-overload chains, represented aggregate
+environments, and independently proven direct or mutual recursion.
+
+Each overload SHALL retain its own exact ordered capture set. An unselected
+overload SHALL neither add a hidden parameter nor suppress a capture required by
+the selected overload. A selected cross-overload edge SHALL forward the current
+exact hidden values to the selected target, and recursive edges SHALL continue
+to require their independent termination proof. Definitions and calls SHALL use
+matching compiler-private `fastcc` prototypes; LLVM SHALL own AMD64 physical
+placement. No optimization SHALL be required for correctness.
+
+If capture selection could change with retained value facts rather than the
+admitted classifier/literal evidence—including `Int` to `Nat`, `String` to
+`Character`, or exact `Rational` narrowing—or depends on a packaged, defaulted,
+qualified, locally inferred, higher-order, anonymous, nested, dynamic, or
+otherwise unresolved call, the compiler SHALL reject the program before
+artifact publication whenever any candidate carries an environment. It SHALL
+not union candidate capture sets or assign a provisional overload-environment
+ABI.
+
+Full O0 DWARF/GDB information SHALL expose the selected overload's explicit
+parameters and exact source-named captures in active and suspended direct,
+cross-overload, forwarding, and recursive frames. The lowering SHALL add no
+global context/root state, overload or environment table, dispatcher, function
+pointer, indirect call, lookup, replay, allocation, foreign dependency, C/C++
+runtime, other-language standard library, public ABI, or native-ABI revision.
+
+Future compiled-library metadata SHALL preserve canonical source-session and
+context/root identities, call position, source-ordered overload set and exact
+selected declaration identity, selection evidence and conversions, recursion
+proof identity, member stable identity/declaration position, complete semantic
+classifier and representation, ordered capture schema/lifetime/effects, and a
+versioned target adapter. Those facts SHALL remain independent of private
+capture names, LLVM types or symbols, debug shadows, and physical placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

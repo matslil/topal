@@ -2350,3 +2350,15 @@ payload intact. The shared regression and reversible debugger history shall
 cover defining-context and live-root selections for all three aggregate
 classes, acyclic forwarding, proven recursion, source-ordered selection events,
 exact results, and unchanged once-only source values.
+
+## TOPAL-INTP-SUBSET-271 — Overload-selected environments
+
+All source modes shall apply ordinary source-ordered overload selection before
+executing defining-context or live-root member selections in the chosen
+ordinary function. Distinct overloads shall observe only their own source
+semantics through direct, acyclic, cross-overload, and independently proven
+recursive calls, including exact Tuple/Record/Sum values. The shared regression
+and reversible debugger history shall cover distinct selected context/root
+members, closed literal and explicit-parameter overload choices, cross-overload
+calls, recursion, source-ordered events, exact results, and unchanged once-only
+source values.

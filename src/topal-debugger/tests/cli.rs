@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 244);
+    assert_eq!(examples.len(), 245);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4243,6 +4243,58 @@ fn records_aggregate_environments_reversibly() {
     assert!(root_pair < root_record);
     assert!(root_record < context_sum);
     assert!(context_sum < root_sum);
+    assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001]"));
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_overload_selected_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-271,
+    // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}overload-environments.debug"),
+            &language_example("overload-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let context_number = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] context-number")
+        .unwrap();
+    let context_label = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] context-label")
+        .unwrap();
+    let context_pair = stdout
+        .find("context.member.selected [TOPAL-CONTEXT-SELECT-001] context-pair")
+        .unwrap();
+    let root_pair = stdout
+        .find("namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-pair")
+        .unwrap();
+    assert!(context_number < context_label);
+    assert!(context_label < context_pair);
+    assert!(context_pair < root_pair);
+    assert!(
+        stdout.contains(
+            "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] choose-context (Int)"
+        )
+    );
+    assert!(stdout.contains(
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] choose-context (String)"
+    ));
+    assert!(
+        stdout.contains("function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] cross (String)")
+    );
+    assert!(stdout.contains("function.selected [TOPAL-TYPE-CALL-001] cross (Int)"));
+    assert!(stdout.contains(
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] choose-product ((Int, String))"
+    ));
+    assert!(stdout.contains(
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] choose-product (Record (amount : Int, label : String))"
+    ));
     assert!(stdout.contains("evaluation.result [TOPAL-SYN-GRAMMAR-001]"));
     assert!(stdout.contains("function.exit"));
 }

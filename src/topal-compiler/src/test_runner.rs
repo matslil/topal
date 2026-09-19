@@ -181,6 +181,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/optional-result-composition.t",
     "examples/language/optional-rational-values.t",
     "examples/language/optional-values.t",
+    "examples/language/overload-environments.t",
     "examples/language/overload-recursion-identity.t",
     "examples/language/packaged-function-association-order.t",
     "examples/language/packaged-function-operand.t",

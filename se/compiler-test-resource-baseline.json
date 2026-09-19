@@ -2456,6 +2456,16 @@
       "cpu_time_ns": 250643,
       "memory_peak_bytes": 18669568,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/overload-environments.t": {
+      "cpu_time_ns": 149509420,
+      "memory_peak_bytes": 42930176,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/overload-environments.t": {
+      "cpu_time_ns": 253403,
+      "memory_peak_bytes": 18595840,
+      "samples_per_test": 500
     }
   }
 }
