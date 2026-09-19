@@ -2984,7 +2984,7 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
-        if let Some(step) = self.evaluate_returning_optional_constructor_argument_step(
+        if let Some(step) = self.evaluate_returning_unary_constructor_argument_step(
             source,
             expression,
             return_classifier,
@@ -3146,7 +3146,7 @@ impl Session {
         Ok(Some(step))
     }
 
-    fn evaluate_returning_optional_constructor_argument_step(
+    fn evaluate_returning_unary_constructor_argument_step(
         &self,
         source: &SourceText,
         expression: &Expression,
@@ -3159,13 +3159,17 @@ impl Session {
         let [Expression::Identifier(constructor), argument] = items.as_slice() else {
             return Ok(None);
         };
-        if source.slice(*constructor) != "Some"
-            || !direct_expression_returns_from_function(argument)
-        {
+        let constructor_name = source.slice(*constructor);
+        let built_in = matches!(
+            constructor_name,
+            "Some" | "String" | "Int" | "Nat" | "Rational"
+        );
+        let declared_union = self.union_constructor(constructor_name).is_some();
+        if (!built_in && !declared_union) || !direct_expression_returns_from_function(argument) {
             return Ok(None);
         }
         let Expression::Block { statements, .. } = argument else {
-            unreachable!("a direct returning Optional constructor argument is a lexical block")
+            unreachable!("a direct returning unary constructor argument is a lexical block")
         };
         let step = self.evaluate_block_step(
             source,
@@ -3176,7 +3180,7 @@ impl Session {
         )?;
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
-            "a direct returning Optional constructor argument exits its function"
+            "a direct returning unary constructor argument exits its function"
         );
         Ok(Some(step))
     }
@@ -19620,6 +19624,36 @@ fn optional_constructor_argument_block_propagates_return() {
             .iter()
             .any(|event| event.contains("optional.some.constructed"))
     );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+}
+
+#[test]
+fn strict_unary_constructor_argument_blocks_propagate_returns() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-unary-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 43, 44, 45, 46)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        5
+    );
+    for event in [
+        "string.from-character",
+        "numeric.int.constructed",
+        "numeric.nat.constructed",
+        "numeric.rational.constructed",
+        "union.constructed",
+    ] {
+        assert!(!trace.iter().any(|entry| entry.contains(event)), "{event}");
+    }
     assert!(!trace.iter().any(|event| event.contains("1000")));
     assert!(!trace.iter().any(|event| event.contains("abandoned")));
 }
