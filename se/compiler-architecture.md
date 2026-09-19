@@ -367,8 +367,10 @@ structural facts without an environment transport. Exact `Optional Function`
 containment extends that tree under `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`.
 Exact selected nominal Sum payloads extend it under
 `TOPAL-COMPILER-SUM-FUNCTION-001`, retaining the semantic alternative
-separately from the runtime tag. Other containers and opaque or branch-selected
-identities still fail before LLVM.
+separately from the runtime tag. Exact arithmetic Result success payloads extend
+it under `TOPAL-COMPILER-RESULT-FUNCTION-001`, retaining conditional success
+facts independently of the runtime success/Error tag. Other containers and
+opaque or branch-selected identities still fail before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -381,9 +383,9 @@ representation identity, and target adapter rather than publish this LLVM
 aggregate or its observation tags.
 
 The capture-bearing extension assigns every Function leaf a canonical path of
-zero-based Tuple indexes, Record labels, admitted `Optional` payload edges, and
-admitted nominal Sum alternative-name payload edges, visited depth-first from
-left to right. Parameter specialization carries the
+zero-based Tuple indexes, Record labels, admitted `Optional` payload edges,
+admitted nominal Sum alternative-name payload edges, and admitted `Result`
+success edges, visited depth-first from left to right. Parameter specialization carries the
 ordinary source aggregate followed by each leaf's ordered capture operands.
 Result lowering returns a private aggregate whose first field is the unchanged
 source aggregate and whose remaining fields are the captures in that same path
@@ -396,7 +398,7 @@ direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
 matching `fastcc` prototype. DWARF exposes only the source
-Tuple/Record/Optional/Sum and the eventual callable's source-named captures,
+Tuple/Record/Optional/Sum/Result and the eventual callable's source-named captures,
 never the extended result fields or hidden parameter names. This transport
 remains module-private and creates no closure object, environment pointer,
 allocation, callback, function
@@ -410,8 +412,8 @@ The exact nested-result extension reuses these scalar and aggregate transports
 for one nonrecursive, nonoverloaded nested declaration whose identity remains
 known throughout the private path. A factory result contains the nested
 observation tag followed by its already-evaluated lexical, defining-context,
-and live-root values; a Tuple or Record result associates the same values with
-the Function leaf's canonical path. The caller immediately owns those SSA
+and live-root values; a Tuple, Record, Optional, Sum, or Result result associates
+the same values with the Function leaf's canonical path. The caller immediately owns those SSA
 snapshots, so the factory frame may return before a later direct application.
 Separate factory calls may share the declaration tag but retain independent
 capture values. Private forwarding remaps storage identities without replaying
@@ -458,6 +460,24 @@ ordered alternatives and payload schemas, active-selection proof, callable and
 capture paths, representation, lifetime, effects, and target adapters
 independently of private tags, inactive LLVM layout, hidden operands, and
 physical placement.
+
+The exact Result extension preserves the existing Topal-owned success/Error
+pointer representation. A success boxes the private i32 Function observation;
+an Error remains the original structured Error, including provenance. The
+checked fact tree records the callable and capture schema that applies
+conditionally to the success payload. A complete Result decision attaches
+those facts only to the `Ok` binding, so eventual application is a direct
+specialization. Captures follow a semantic Result-success path, and private
+parameters/results carry the ordinary source pointer before hidden captures.
+An early Error return fills otherwise-unobservable hidden capture result fields
+with representation-valid zero carriers, never evaluates skipped capture
+initializers, and exposes neither those carriers nor a callable on the Error
+path. Allocation remains limited to the existing Result object and successful
+i32 payload box. Future compiled-library metadata must preserve the Result
+success classifier and Error-code vocabulary, conditional-success proof,
+propagation semantics, callable/capture paths, representation, lifetime,
+effects, and target adapters independently of private headers, zero carriers,
+LLVM symbols, and physical placement.
 
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
@@ -512,10 +532,10 @@ Canonical library metadata must record canonical aggregate paths, stable
 callable identities, ordered capture schemas/classifiers, semantic equality
 requirements, representation identity, lifetime/effects, and target adapters
 independently of the module-private tag, hidden-parameter layout, and LLVM
-types. Result, Range, Generator, refined, authority-bearing, unsupported
+types. Result repeated identity, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
 nested callable identity, Function containment outside admitted
-Tuple/Record/Optional/Sum paths, and ordinary named-header repetition remain
+Tuple/Record/Optional/Sum/Result paths, and ordinary named-header repetition remain
 deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
@@ -582,7 +602,7 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside admitted Tuple/Record/Optional/Sum paths,
+containment outside admitted Tuple/Record/Optional/Sum/Result paths,
 opaque/computed/nested/non-root Scope values, unsupported container or
 collection payloads and other non-scalar fields, nested package declarations,
 opaque whole-package values, context-dependent

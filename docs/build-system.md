@@ -138,14 +138,18 @@ named arguments after the declared parameters, so GDB can inspect both without
 a foreign closure runtime or an opaque environment object. An exact
 nonrecursive, nonoverloaded nested function may also escape its factory through
 a compiler-private `Function`, Tuple, Record, exact `Optional Function`, or an
-exact selected nominal `Union`/`Variant` Function payload result: the result
-carries the same observation value and immutable capture
-snapshot, and later application remains a direct specialized call. An
+exact selected nominal `Union`/`Variant` Function payload result. It may also
+escape as the successful payload of an exact arithmetic `Result Function`;
+the Error path retains the original structured Error. The result carries the
+same observation value and immutable capture snapshot, and later application
+remains a direct specialized call. An
 `Optional Function` stores only the ordinary `Some`/`None` representation and
 Function observation value. A Function-bearing nominal Sum retains its normal
-tag and declaration-ordered payload slots. In both cases capture snapshots stay
-in the same hidden private boundary transport used by other exact Function
-results, with semantic Optional-payload or Sum-alternative paths. Separate factory
+tag and declaration-ordered payload slots. A `Result Function` uses the
+existing success/Error pointer representation and boxes only the Function
+observation on success. In all cases capture snapshots stay in the same hidden
+private boundary transport used by other exact Function results, with semantic
+Optional-payload, Sum-alternative, or Result-success paths. Separate factory
 invocations retain separate snapshots. Recursive, overloaded, opaque,
 dynamically selected, persistently stored, and published nested callables remain
 outside this private boundary; no public callable ABI is defined.

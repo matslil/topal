@@ -3364,7 +3364,8 @@ into the callee or back to the caller. Capture-bearing aggregate boundaries are
 governed by `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. Missing, opaque, or
 branch-selected facts and Function containment outside Tuple, Record, the exact
 Optional path of `TOPAL-COMP-OPTIONAL-FUNCTION-001`, or the exact nominal Sum
-path of `TOPAL-COMP-SUM-FUNCTION-001` shall fail before LLVM lowering.
+path of `TOPAL-COMP-SUM-FUNCTION-001`, or the exact Result-success path of
+`TOPAL-COMP-RESULT-FUNCTION-001` shall fail before LLVM lowering.
 
 The backend shall represent each Function leaf with its existing private i32
 observation tag inside the recursively exact aggregate. Definitions and calls
@@ -3405,9 +3406,10 @@ nested Functions, and results whose Function leaves are capturing anonymous
 Functions or exact nested Functions under
 `TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`. Every leaf shall retain its exact
 callable identity, ordered capture facts, and canonical zero-based-Tuple-index,
-Record-label, Optional-payload, or nominal-Sum-alternative path. Paths and their
-captures shall be traversed depth-first from left to right. Optional and Sum
-edges shall satisfy their respective exact-container requirements.
+Record-label, Optional-payload, nominal-Sum-alternative, or Result-success path.
+Paths and their captures shall be traversed depth-first from left to right.
+Optional, Sum, and Result edges shall satisfy their respective exact-container
+requirements.
 
 For each specialized parameter, the frontend shall append every path-ordered
 capture after the source-visible aggregate argument and bind those operands to
@@ -3458,7 +3460,9 @@ and the current hidden-operand layout. This realizes
 The checked compiler model shall admit an exact nonrecursive, nonoverloaded
 nested ordinary Function as a scalar Function result, a Function leaf of a
 recursively nested Tuple or labeled Record result, or an exact present Optional
-payload under `TOPAL-COMP-OPTIONAL-FUNCTION-001` within one compilation unit.
+payload under `TOPAL-COMP-OPTIONAL-FUNCTION-001`, an exact selected Sum payload
+under `TOPAL-COMP-SUM-FUNCTION-001`, or an exact arithmetic Result success under
+`TOPAL-COMP-RESULT-FUNCTION-001` within one compilation unit.
 It shall retain the nested declaration identity separately from its observation
 tag and retain each already-evaluated immutable lexical, defining-context, and
 live-root capture with its exact classifier, storage identity, and source name.
@@ -3467,7 +3471,8 @@ opaque facts, and dynamic selection shall remain `E-COMPILER-UNSUPPORTED`.
 Separate factory invocations shall retain independent capture snapshots.
 
 Scalar results shall reuse the exact tag-plus-capture return representation of
-`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`. Tuple and Record results shall reuse
+`TOPAL-COMP-FUNCTION-CAPTURE-RESULT-001`. Tuple, Record, Optional, Sum, and
+Result results shall reuse
 the canonical Function-leaf path ordering and extended result aggregate of
 `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. The caller shall extract every
 field once into compiler-only SSA storage. Binding, private Function
@@ -3613,6 +3618,63 @@ effects, Sum representation, and versioned target-adapter facts independently
 of private tags, inactive layout, compiler names, LLVM types/symbols, debug
 shadows, and physical placement. This realizes
 `TOPAL-COMPILER-SUM-FUNCTION-001` for increments 3b2-b5at, 6b2b2k, and 6c2i.
+
+## TOPAL-COMP-RESULT-FUNCTION-001 — Exact private Result Function environments
+
+The checked compiler model shall admit an exact
+`Result (Function, lang arithmetic ArithmeticErrorCode)` as a local value,
+ordinary private parameter or result, package field, or recursively contained
+Tuple/Record field. It shall retain one exact named, symbolic, anonymous, or
+admitted nested callable identity and complete capture facts conditionally for
+the success payload while allowing the runtime success/Error tag to remain
+dynamic. Opaque or branch-selected success callables shall remain
+`E-COMPILER-UNSUPPORTED` before artifact publication.
+
+The backend shall preserve the existing Topal-owned Result pointer. Success
+shall box the private i32 Function observation value; failure and contextual
+projection shall preserve the complete original Error. A complete decision
+shall attach retained callable facts only to its `Ok` binding and lower
+eventual application as one direct specialized `fastcc` call. It shall add a
+Result-success edge to the callable capture path. Private parameters shall pass
+the source pointer followed by ordered captures; private results shall return
+the pointer followed by those captures for one-time caller extraction and
+remapping.
+
+Every Error exit from a capture-bearing Result Function shall return the same
+private aggregate shape with representation-valid zero carriers in hidden
+capture fields. It shall not evaluate skipped callable or capture initializers,
+and neither caller nor callee shall expose or consume those carriers on the
+Error path. Source Result values, structured Error provenance, successful
+Function observations, and eventual source-named captures shall remain fully
+visible to DWARF/GDB without exposing hidden fields.
+
+Tests shall cover named, symbolic, anonymous, and nested success payloads; a
+dynamically propagated original Error; distinct factory snapshots; `Ok`
+application and `Error` handling; private parameter/result, package, Tuple, and
+Record passage; display; all interpreter modes and reversible history; checked
+Result-success paths and direct IR including aggregate Error exits;
+artifact-free opaque/capture rejection; freestanding ELF/DWARF; full O0 GDB
+Result/callable frames; the shared corpus; and separate interpreter/compiler
+resource baselines.
+
+This shall add no closure/environment object, environment pointer, function
+pointer, indirect call, callback, dispatch table, caller-frame lookup, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Allocation shall remain limited to the existing
+process-lifetime Result object and successful i32 payload box. Function- or
+Generator-containing capture state, opaque or dynamically selected success
+callables, general Result Function equality/repeated identity, recursive Result
+Function payloads, persistent storage, publication, and Function containment
+in other containers remain deferred. Future library metadata shall retain the
+canonical source-session/scope, Result success classifier and Error-code
+vocabulary, conditional-success proof, Error propagation semantics,
+callable/declaration and aggregate paths, ordered capture
+identity/classifier/representation/lifetime, effects, Result representation,
+and versioned target-adapter facts independently of private headers,
+observation tags, failure-path zero carriers, compiler names, LLVM
+types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-RESULT-FUNCTION-001` for increments 3b2-b5au, 6b2b2l, and
+6c2j.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
@@ -4329,8 +4391,9 @@ lifetime/effect semantics, operand/field/default semantics, and target adapters
 independently of private binding names, LLVM types, tags, and physical
 placement. Optional Function fields are governed by
 `TOPAL-COMP-OPTIONAL-FUNCTION-001`; exact nominal Sum Function fields are
-governed by `TOPAL-COMP-SUM-FUNCTION-001`. Function containment in List and other
-aggregates; dynamic escape/selection; dependent defaults; nested package declarations;
+governed by `TOPAL-COMP-SUM-FUNCTION-001`; exact arithmetic Result Function
+fields are governed by `TOPAL-COMP-RESULT-FUNCTION-001`. Function containment
+in List and other aggregates; dynamic escape/selection; dependent defaults; nested package declarations;
 recursive callable package signatures; persistent storage; publication; and
 public adapters remain deferred. This realizes
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`,
@@ -4347,8 +4410,9 @@ classifier is already admitted by its private function parameter boundary. The
 contained element, value, success/error-domain, or endpoint classifiers shall
 remain within that existing represented boundary and shall contain no Function
 value or capture environment under this requirement. Exact `Optional Function`
-fields are instead governed by `TOPAL-COMP-OPTIONAL-FUNCTION-001`. Unsupported
-contained classifiers and mismatched container classifiers shall reject before
+fields are instead governed by `TOPAL-COMP-OPTIONAL-FUNCTION-001`; exact
+arithmetic `Result Function` fields are governed by
+`TOPAL-COMP-RESULT-FUNCTION-001`. Unsupported contained classifiers and mismatched container classifiers shall reject before
 LLVM lowering or artifact publication.
 
 The frontend shall retain every explicit represented-container initializer
@@ -4384,7 +4448,7 @@ contained classifier or Result error domain, Range endpoint classifier,
 representation/lifetime/default/effect semantics, stable operand/field
 identities and order, and target adapters independently of compiler-private
 binding names, LLVM pointer types, and physical placement. Function-containing
-containers outside exact `Optional Function`, unsupported List elements and
+containers outside exact `Optional Function` and arithmetic `Result Function`, unsupported List elements and
 container payloads, context-dependent defaults, nested package declarations,
 opaque whole-package values, recursive package signatures, persistent storage,
 publication, and public adapters remain deferred. This realizes

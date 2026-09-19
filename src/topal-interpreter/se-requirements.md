@@ -2428,3 +2428,17 @@ without observing inactive payloads or using allocation identity. The shared
 regression and reversible debugger history shall cover named, symbolic,
 anonymous, and nested payloads, Union/Variant construction, forwarding,
 selection, repeated match/mismatch, display, and exact results.
+
+## TOPAL-INTP-SUBSET-277 — Result Function environments
+
+All source modes shall preserve exact Function identity and lexical environment
+when a Function is the successful value of
+`Result (Function, lang arithmetic ArithmeticErrorCode)`, passed through
+ordinary private source parameters/results or package fields, selected by a
+complete Result decision, and eventually applied. A dynamically propagated
+Error shall remain the original structured Error and shall not expose or
+evaluate an unselected callable or its captures. Distinct captured factory
+invocations shall remain independent. The shared regression and reversible
+debugger history shall cover named, symbolic, anonymous, and nested success
+payloads, original Error propagation, Result construction, forwarding,
+selection, display, and exact results.
