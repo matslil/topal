@@ -5161,6 +5161,34 @@ mapping, representation and ownership, lifetime, effects, and versioned target
 adapters independently of private offsets, helper names, LLVM types/symbols,
 debug shadows, and physical placement.
 
+### TOPAL-COMPILER-LIST-ERROR-CODE-CORE-001 — Ordinary arithmetic ErrorCode Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List ErrorCode` whose entries belong to the closed
+`lang arithmetic ArithmeticErrorCode` vocabulary, immutable binding, ordinary
+private parameters/results, package and recursively admitted Tuple/Record
+fields, structural equality and inequality, complete decisions, entry count,
+emptiness, canonical display, and debugging. Operands SHALL evaluate once in
+source order. Equality SHALL compare List length and corresponding qualified
+code identities without mutating either input.
+
+On Linux x86-64, `Empty` MAY be null and `Entry` MAY use an immutable 16-byte
+node containing the existing i32 arithmetic-code carrier and remaining pointer.
+A conditional finite nonrecursive fragment MAY implement equality and counting
+and SHALL remain correct at O0. LLVM SHALL select physical AMD64 placement for
+exact private prototypes and aggregates. DWARF and the bundled GDB renderer
+SHALL preserve the complete arithmetic vocabulary and validate all four codes.
+
+This rule SHALL NOT assign the same tags or representation to another
+ErrorCode vocabulary by coincidence or add a runtime type tag, generic/public/
+foreign/serialized/library node or enum ABI, foreign allocator, C/C++ runtime,
+other-language standard library, or native-ABI revision. Other List operations,
+reclamation, and vocabularies remain separately governed. Future library
+metadata SHALL encode canonical vocabulary/alternative identities,
+representation and ownership, lifetime, effects, and versioned target adapters
+independently of private offsets, helpers, LLVM types/symbols, debug shadows,
+and physical placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for

@@ -121,6 +121,7 @@ evidence.
 | 4b3d-s | ordinary immutable List Rational private parameter/result/package and Tuple/Record passage, finite and infinity entries, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-t | ordinary immutable canonical-empty List Effect private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-u | ordinary immutable List Comparison private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
+| 4b3d-v | ordinary immutable List ErrorCode private parameter/result/package and Tuple/Record passage for the closed arithmetic vocabulary, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |

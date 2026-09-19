@@ -1321,6 +1321,11 @@
       "cpu_time_ns": 16732099,
       "memory_peak_bytes": 18399232,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-error-code-values.t": {
+      "cpu_time_ns": 19284540,
+      "memory_peak_bytes": 18718720,
+      "samples_per_test": 50
     }
   }
 }

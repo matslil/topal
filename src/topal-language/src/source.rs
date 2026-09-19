@@ -5263,6 +5263,7 @@ impl Session {
                 | "Boolean"
                 | "Character"
                 | "Comparison"
+                | "ErrorCode"
                 | "Int"
                 | "Nat"
                 | "Rational"
@@ -10581,6 +10582,9 @@ fn value_has_classifier(value: &Value, classifier: &str) -> bool {
         | (Value::Unit, "Unit") => true,
         (Value::String(value), "Character") => character_count(value) == 1,
         (Value::Int(value), "Nat") => value >= &BigInt::from(0),
+        (Value::Enum { type_name, .. }, "ErrorCode") => {
+            type_name == "lang arithmetic ArithmeticErrorCode"
+        }
         (Value::Enum { type_name, .. } | Value::Modular { type_name, .. }, classifier) => {
             type_name == classifier
         }
@@ -12529,6 +12533,7 @@ fn supported_value_classifier(
             | "Constraint"
             | "Effect"
             | "Error"
+            | "ErrorCode"
             | "Generator Character Unit Unit"
             | "Generator Character Unit Character"
             | "Generator String Unit Unit"

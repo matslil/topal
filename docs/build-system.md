@@ -190,6 +190,13 @@ This remains an internal executable representation; future library metadata
 records the semantic enum mapping and target adapter rather than publishing
 node offsets or compiler helper symbols.
 
+Ordinary `List ErrorCode` values currently retain the closed
+`lang arithmetic ArithmeticErrorCode` vocabulary in private i32/pointer nodes.
+The four qualified identities remain distinct through equality, decomposition,
+display, and debugging. The private tags do not identify future vocabularies;
+compiled-library metadata must name the vocabulary and alternatives canonically
+and independently of the selected target representation.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

@@ -515,6 +515,7 @@ enum ScalarListRuntimeFragment {
     Effect,
     Boolean,
     Comparison,
+    ErrorCode,
     Rational,
     String,
 }
@@ -664,6 +665,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::Comparison,
                 LIST_COMPARISON_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::ErrorCode,
+                LIST_ERROR_CODE_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Rational,
@@ -2229,6 +2234,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Comparison
+                    | CompilerType::ErrorCode
                     | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
@@ -2266,6 +2272,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     (CompilerType::Comparison, LlValue::Comparison(value))
+                    | (CompilerType::ErrorCode, LlValue::ErrorCode(value))
                     | (
                         CompilerType::Function,
                         LlValue::Function { value, .. } | LlValue::Enum { value, .. },
@@ -2567,6 +2574,10 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
                 );
+                let error_code = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::ErrorCode
+                );
                 let string = matches!(
                     &value.value_type,
                     CompilerType::List(element)
@@ -2590,6 +2601,9 @@ impl<'a> Generator<'a> {
                 } else if comparison {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Comparison);
+                } else if error_code {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::ErrorCode);
                 } else if rational {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Rational);
@@ -2614,6 +2628,8 @@ impl<'a> Generator<'a> {
                             "boolean"
                         } else if comparison {
                             "comparison"
+                        } else if error_code {
+                            "error.code"
                         } else if rational {
                             "rational"
                         } else if string {
@@ -4253,6 +4269,14 @@ impl<'a> Generator<'a> {
                 ),
                 CompilerType::Comparison => (
                     LlValue::Comparison(body.instruction(
+                        &format!("load i32, ptr {list}, align 4"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
+                CompilerType::ErrorCode => (
+                    LlValue::ErrorCode(body.instruction(
                         &format!("load i32, ptr {list}, align 4"),
                         *first_span,
                         &mut self.debug,
@@ -6566,6 +6590,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Comparison);
             "comparison"
+        } else if element == &CompilerType::ErrorCode {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::ErrorCode);
+            "error.code"
         } else if matches!(element, CompilerType::Character | CompilerType::String) {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::String);
@@ -8360,6 +8388,14 @@ impl<'a> Generator<'a> {
             ),
             CompilerType::Comparison => (
                 LlValue::Comparison(body.instruction(
+                    &format!("load i32, ptr {current}, align 4"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
+            CompilerType::ErrorCode => (
+                LlValue::ErrorCode(body.instruction(
                     &format!("load i32, ptr {current}, align 4"),
                     span,
                     &mut self.debug,
@@ -11852,6 +11888,7 @@ const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll")
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("runtime/list_boolean_core.ll");
 const LIST_COMPARISON_CORE_RUNTIME: &str = include_str!("runtime/list_comparison_core.ll");
 const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll");
+const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
