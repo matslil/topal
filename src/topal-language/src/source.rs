@@ -2976,7 +2976,20 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
-        self.evaluate_returning_operator_operand_step(source, expression, return_classifier, trace)
+        if let Some(step) = self.evaluate_returning_operator_operand_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
+        self.evaluate_returning_named_call_argument_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )
     }
 
     fn evaluate_returning_product_field_step(
@@ -3035,6 +3048,92 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a direct returning product field exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_named_call_argument_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let Some((function_index, function_name)) =
+            items.iter().enumerate().rev().find_map(|(index, item)| {
+                let Expression::Identifier(name) = item else {
+                    return None;
+                };
+                let name = source.slice(*name);
+                let unshadowed = !self.bindings.contains_key(name)
+                    || matches!(
+                        self.bindings.get(name),
+                        Some(Value::NamedFunction(function)) if function.name == name
+                    );
+                (unshadowed && self.functions.contains_key(name)).then_some((index, name))
+            })
+        else {
+            return Ok(None);
+        };
+        let Some((argument_count, returning_index, preceding_source)) =
+            (if function_index == 0 && items.len() == 2 {
+                direct_expression_returns_from_function(&items[1]).then_some((1, 1, None))
+            } else if function_index >= 1 && function_index + 2 == items.len() {
+                if function_index == 1 && direct_expression_returns_from_function(&items[0]) {
+                    Some((2, 0, None))
+                } else if direct_expression_returns_from_function(&items[function_index + 1]) {
+                    Some((2, function_index + 1, Some(&items[..function_index])))
+                } else {
+                    None
+                }
+            } else {
+                None
+            })
+        else {
+            return Ok(None);
+        };
+        let admitted_declaration = self
+            .functions
+            .get(function_name)
+            .is_some_and(|declarations| {
+                matches!(declarations.as_slice(), [declaration]
+                if declaration.parameters.len() == argument_count
+                    && declaration.parameter_packages.is_empty()
+                    && (!self.static_context || declaration.is_static))
+            });
+        if !admitted_declaration {
+            return Ok(None);
+        }
+        if let Some(preceding) = preceding_source {
+            if let [preceding] = preceding {
+                let _ = self.evaluate_expression(source, preceding, trace)?;
+            } else {
+                let preceding = Expression::Application {
+                    span: Span::new(
+                        preceding[0].span().start,
+                        preceding.last().expect("nonempty call prefix").span().end,
+                    ),
+                    items: preceding.to_vec(),
+                };
+                let _ = self.evaluate_expression(source, &preceding, trace)?;
+            }
+        }
+        let Expression::Block { statements, .. } = &items[returning_index] else {
+            unreachable!("a direct returning named-call argument is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning named-call argument exits its function"
         );
         Ok(Some(step))
     }
@@ -19410,6 +19509,46 @@ fn product_field_blocks_propagate_returns_in_source_order() {
     let value = Session::new()
         .evaluate(
             "answer is fn () -> Int\n  abandoned : String is (1, { return 42 }, missing)\n  0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+}
+
+#[test]
+fn named_call_argument_blocks_propagate_returns_in_source_order() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-call-argument.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(42, 43, 44)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.entry") && event.contains("preceding"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| {
+        event.contains("function.entry")
+            && (event.contains("combine") || event.contains("identity"))
+    }));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("missing")));
+
+    let value = Session::new()
+        .evaluate(
+            "identity is fn (value : Int) -> Int\n  value\nanswer is fn () -> Int\n  abandoned : String is identity { return 42 }\n  0\nanswer ()\n",
             &mut std::io::sink(),
         )
         .unwrap();
