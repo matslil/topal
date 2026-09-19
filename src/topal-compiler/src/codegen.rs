@@ -513,6 +513,7 @@ enum ListIntRuntimeFragment {
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum ScalarListRuntimeFragment {
     Unit,
+    Completed,
     Effect,
     Boolean,
     Comparison,
@@ -659,6 +660,10 @@ impl<'a> Generator<'a> {
     fn emit_scalar_list_runtimes(&self, module: &mut String) {
         for (fragment, runtime) in [
             (ScalarListRuntimeFragment::Unit, LIST_UNIT_CORE_RUNTIME),
+            (
+                ScalarListRuntimeFragment::Completed,
+                LIST_COMPLETED_CORE_RUNTIME,
+            ),
             (ScalarListRuntimeFragment::Effect, LIST_EFFECT_CORE_RUNTIME),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -2233,6 +2238,7 @@ impl<'a> Generator<'a> {
                 };
                 let (allocation_size, next_offset) = match &element {
                     CompilerType::Unit
+                    | CompilerType::Completed
                     | CompilerType::Effect
                     | CompilerType::Boolean
                     | CompilerType::Character
@@ -2269,7 +2275,8 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    (CompilerType::Effect, LlValue::Effect(value)) => body.effect(
+                    (CompilerType::Completed, LlValue::Completed(value))
+                    | (CompilerType::Effect, LlValue::Effect(value)) => body.effect(
                         &format!("store i8 {value}, ptr {node}, align 1"),
                         expression.span,
                         &mut self.debug,
@@ -2574,6 +2581,10 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Unit
                 );
+                let completed = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Completed
+                );
                 let boolean = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Boolean
@@ -2607,6 +2618,9 @@ impl<'a> Generator<'a> {
                 if unit {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Unit);
+                } else if completed {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Completed);
                 } else if effect {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Effect);
@@ -2639,6 +2653,8 @@ impl<'a> Generator<'a> {
                         "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
                         if unit {
                             "unit"
+                        } else if completed {
+                            "completed"
                         } else if effect {
                             "effect"
                         } else if boolean {
@@ -4276,6 +4292,14 @@ impl<'a> Generator<'a> {
                     );
                     (LlValue::Unit, Vec::new())
                 }
+                CompilerType::Completed => (
+                    LlValue::Completed(body.instruction(
+                        &format!("load i8, ptr {list}, align 1"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
                 CompilerType::Effect => (
                     LlValue::Effect(body.instruction(
                         &format!("load i8, ptr {list}, align 1"),
@@ -6607,6 +6631,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Unit);
             "unit"
+        } else if element == &CompilerType::Completed {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Completed);
+            "completed"
         } else if element == &CompilerType::Effect {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Effect);
@@ -8407,6 +8435,14 @@ impl<'a> Generator<'a> {
                 );
                 (LlValue::Unit, 8)
             }
+            CompilerType::Completed => (
+                LlValue::Completed(body.instruction(
+                    &format!("load i8, ptr {current}, align 1"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
             CompilerType::Effect => (
                 LlValue::Effect(body.instruction(
                     &format!("load i8, ptr {current}, align 1"),
@@ -11923,6 +11959,7 @@ fn llvm_string(value: &str) -> String {
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll");
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("runtime/list_boolean_core.ll");
+const LIST_COMPLETED_CORE_RUNTIME: &str = include_str!("runtime/list_completed_core.ll");
 const LIST_COMPARISON_CORE_RUNTIME: &str = include_str!("runtime/list_comparison_core.ll");
 const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll");
 const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");

@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 263);
+    assert_eq!(examples.len(), 264);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5758,6 +5758,36 @@ fn every_mode_preserves_unit_list_values() {
     // TOPAL-INTP-SUBSET-289, TOPAL-COMPILER-LIST-UNIT-CORE-001
     let source = include_str!("../../../examples/language/list-unit-values.t");
     let expected = "((), (), true, true, 3, true, (), (), (), Entry ( (), Entry ( (), Entry ( (), Empty ) ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_completed_list_values() {
+    // TOPAL-INTP-SUBSET-290, TOPAL-COMPILER-LIST-COMPLETED-CORE-001
+    let source = include_str!("../../../examples/language/list-completed-values.t");
+    let expected = "(Completed, Completed, true, true, 3, true, Completed, Completed, Completed, Entry ( Completed, Entry ( Completed, Entry ( Completed, Empty ) ) ))";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

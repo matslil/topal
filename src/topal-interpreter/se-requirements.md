@@ -2561,3 +2561,12 @@ All source modes shall preserve Unit's sole value `()` through empty/nonempty
 Records, structural length equality, complete decisions, count, emptiness, and
 canonical display without introducing completion or effect evidence. Shared
 native/interpreter regression and reversible history shall cover each path.
+
+## TOPAL-INTP-SUBSET-290 — Ordinary Completed List values
+
+All source modes shall preserve the sole `Completed` value and its completion-
+evidence meaning through empty/nonempty `List Completed` construction, ordinary
+parameters/results, packages, Tuples, Records, structural length equality,
+complete decisions, count, emptiness, and canonical display without conflating
+it with Unit or Effect. Shared native/interpreter regression and reversible
+history shall cover each path.

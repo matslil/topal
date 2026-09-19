@@ -204,6 +204,13 @@ preserve the distinction between an entry carrying Unit and `Empty`. This
 private carrier is not completion evidence and must never be conflated with
 `Completed`, `Effect`, or a public library representation.
 
+Ordinary `List Completed` values use a separate private i8/pointer
+specialization. Their singleton equality is also length equality, but each
+entry retains explicit completion evidence rather than Unit's absence of a
+dependency. Private function results and aggregate fields therefore keep the
+existing typed i8 carrier, and future library metadata must preserve Completed
+identity even when its current physical node resembles another singleton type.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

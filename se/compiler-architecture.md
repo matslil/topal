@@ -1321,6 +1321,15 @@ and `List Unit`; neither carrier supplies `Completed` evidence or publishes a
 node ABI. Future metadata records Unit identity, representation/ownership,
 lifetime, effects, and target adapters independently of private details.
 
+`List Completed` uses a distinct compiler-selected specialization with an
+immutable validated-zero i8/pointer node. Its conditional finite fragment also
+compares length and counts nodes, but decisions yield explicit `Completed`
+evidence and private function results retain the existing typed i8 convention.
+LLVM owns physical AMD64 placement; DWARF/GDB preserve the distinct Completed
+and List identities. Similar private layouts never make Completed equivalent to
+Unit or Effect, and future metadata carries completion semantics, representation
+and ownership, lifetime, effects, and target adapters independently of offsets.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

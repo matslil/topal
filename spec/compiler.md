@@ -5217,6 +5217,34 @@ library metadata SHALL encode Unit identity, representation and ownership,
 lifetime, effects, and versioned target adapters independently of private
 offsets, helper names, LLVM types/symbols, debug shadows, and placement.
 
+### TOPAL-COMPILER-LIST-COMPLETED-CORE-001 — Ordinary immutable Completed Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List Completed`, immutable binding, ordinary private parameters/results,
+package and recursively admitted Tuple/Record fields, structural equality and
+inequality, complete decisions, entry count, emptiness, canonical display, and
+debugging. Each entry SHALL retain the sole `Completed` value as explicit
+completion evidence. Operands SHALL evaluate once in source order, and equality
+SHALL compare List length without mutating either input.
+
+On Linux x86-64, `Empty` MAY be null and `Entry` MAY use an immutable 16-byte
+node containing the existing validated-zero i8 Completed carrier and remaining
+pointer. A conditional finite nonrecursive fragment MAY implement length
+equality and counting and SHALL remain correct at O0. Private Completed
+parameters, results, and aggregate fields SHALL retain exact typed i8
+prototypes while LLVM selects physical AMD64 placement. DWARF and the bundled
+GDB renderer SHALL preserve `Completed`, `List Completed`, and every
+entry/empty distinction.
+
+This rule SHALL NOT reinterpret Completed as Unit or Effect, discard its
+completion-evidence meaning, or add payload state, a runtime tag, generic/
+public/foreign/serialized/library node ABI, foreign allocator, C/C++ runtime,
+other-language standard library, or native-ABI revision. Other List operations,
+reclamation, and element classifiers remain separately governed. Future
+library metadata SHALL encode completion semantics, representation and
+ownership, lifetime, effects, and versioned target adapters independently of
+private offsets, helper names, LLVM types/symbols, debug shadows, and placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for

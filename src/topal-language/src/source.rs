@@ -16831,7 +16831,7 @@ fn values_equal(left: Value, right: Value, trace: &mut impl TraceSink) -> Option
                 _ => Some(false),
             }
         }
-        (Value::Unit, Value::Unit) => Some(true),
+        (Value::Completed, Value::Completed) | (Value::Unit, Value::Unit) => Some(true),
         (Value::Tuple(left), Value::Tuple(right)) if left.len() == right.len() => left
             .into_iter()
             .zip(right)
