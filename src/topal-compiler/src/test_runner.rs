@@ -152,6 +152,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/layout-packing.t",
     "examples/language/layout-payload-placement.t",
     "examples/language/lint-language-variant.t",
+    "examples/language/list-boolean-values.t",
     "examples/language/list-containment.t",
     "examples/language/list-function-environments.t",
     "examples/language/map-function-environments.t",

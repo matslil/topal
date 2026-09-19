@@ -114,6 +114,7 @@ evidence.
 | 4b3d-j | exact `List (Int, String)` and `List List (Int, String)` construction, private outer passage, first/count/equality, nested display, and debugging | complete |
 | 4b3d-k | closed direct String Character foreach through pinned segmentation and ordered inline Unit actions, with Character debugging and no Generator runtime | complete |
 | 4b3d-l | exact named `Generator Character Unit Unit` construction, explicit classification, compiler-held sequence provenance, one local foreach transfer, consumed-use rejection, and Generator debugging | complete |
+| 4b3d-m | ordinary immutable List Boolean construction, private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |

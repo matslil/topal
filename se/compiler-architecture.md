@@ -1284,6 +1284,21 @@ contract, or layout commitment for other element types. General reachability
 reclamation remains deferred; process-lifetime retention is safe for this
 immutable executable-only slice and does not revise `topal-native/6`.
 
+`List Boolean` uses a separately selected 16-byte private node with the source
+i1 value at offset zero, target padding that is never source state, and the
+remaining-node pointer at offset eight. Construction and complete List
+decomposition use checked element facts to select i1 loads and stores. A
+conditional Boolean-List runtime fragment provides finite structural equality
+and entry counting; emptiness is a direct null test. Private pointer passage,
+Tuple/Record/package containment, canonical display, target-derived DWARF, and
+the bounded GDB renderer retain the complete `List Boolean` classifier. LLVM
+owns physical AMD64 argument and result placement. The fragment introduces no
+type tag, generic node ABI, foreign allocator, C/C++ runtime, other-language
+standard library, or native-ABI revision. Future compiled-library metadata must
+record element classification, node representation and ownership, lifetime,
+effects, and a versioned target adapter independently of private offsets,
+helper names, LLVM types, and physical placement.
+
 `List Int` reuses only that node's private size and next-pointer position: its
 first word is the existing canonical arbitrary-precision Int pointer rather
 than an Effect byte. This is a statically selected node interpretation, not a

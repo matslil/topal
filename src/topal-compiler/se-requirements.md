@@ -5311,6 +5311,48 @@ layout, C/C++ runtime, other-language standard library, foreign allocator, or
 `topal-native/6` revision. It realizes `TOPAL-COMPILER-LIST-EFFECT-001` and
 `TOPAL-TYPE-LIST-CONSTRUCT-001` for compiler increment 4b3d-a.
 
+## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
+
+The checked compiler model shall admit contextual `Empty` and `Entry`
+construction for `List Boolean`, immutable bindings, ordinary private
+parameters and results, package fields, recursively admitted Tuple/Record
+fields, structural equality and inequality, complete `Empty`/`Entry` decisions,
+entry count, emptiness, canonical display, and debugging. Every constructor and
+call operand shall evaluate once in source order. Unsupported Boolean-List
+transforms shall remain `E-COMPILER-UNSUPPORTED` before artifact publication.
+
+The Linux x86-64 backend shall represent `Empty` as a null private pointer and
+each `Entry` as an immutable naturally aligned 16-byte node with its i1 payload
+at offset zero and remaining-node pointer at offset eight. Padding shall carry
+no source value. A compiler-selected runtime fragment shall implement finite
+nonrecursive structural equality and entry counting; emptiness shall remain a
+null test and decisions shall load the exact i1 payload. Correctness at O0 shall
+not depend on optimization. Private pointer-bearing definitions, calls,
+returns, Tuple/Record/package fields, target-derived DWARF, and the bounded GDB
+renderer shall preserve the complete source classifier while LLVM owns physical
+AMD64 placement.
+
+Tests shall cover empty and nonempty construction, true and false entries,
+same/different structural equality, complete decomposition, count, emptiness,
+private parameter/result, package, Tuple, and Record passage, display, all
+interpreter modes, reversible history, exact private IR, artifact-free
+unsupported-transform rejection, freestanding ELF/DWARF, GDB values/frames,
+the shared corpus, and separate interpreter/compiler resource baselines.
+
+This increment shall add no runtime type tag, type-erased generic List, public,
+foreign, serialized, or compiled-library node ABI, foreign allocator, C/C++
+runtime, other-language standard library, or `topal-native/6` revision.
+Projections, insertion, concatenation, reversal, removal, range selection,
+traversal, higher-order transforms, final reclamation, and other element types
+remain separately governed. Future library metadata shall retain element
+classification, representation/ownership/lifetime/effects, and versioned
+target-adapter facts independently of node offsets, private helper names, LLVM
+types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-LIST-BOOLEAN-001`, `TOPAL-TYPE-LIST-CONSTRUCT-001`,
+`TOPAL-DECISION-LIST-001`, `TOPAL-TYPE-LIST-EQUALITY-001`,
+`TOPAL-LIST-ENTRY-COUNT-001`, and `TOPAL-LIST-EMPTY-PREDICATE-001` for compiler
+increment 4b3d-m.
+
 ## TOPAL-COMP-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The checked compiler model shall extend contextual homogeneous List

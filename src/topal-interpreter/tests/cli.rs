@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 254);
+    assert_eq!(examples.len(), 255);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5532,6 +5532,31 @@ fn every_mode_preserves_map_function_environments() {
     assert!(trace.contains(
         "\"event\":\"function.value.called\",\"rule\":\"TOPAL-FUNCTION-VALUE-001\",\"detail\":\"increase\""
     ));
+}
+
+#[test]
+fn every_mode_preserves_boolean_list_values() {
+    // TOPAL-INTP-SUBSET-281, TOPAL-COMPILER-LIST-BOOLEAN-001
+    let source = include_str!("../../../examples/language/list-boolean-values.t");
+    let expected = "(true, false, true, true, 2, true, true, true, false, Entry ( true, Entry ( false, Empty ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("list.entry.constructed"));
+    assert!(trace.contains("list.entry.decomposed"));
+    assert!(trace.contains("list.entry-count"));
+    assert!(trace.contains("list.empty.tested"));
 }
 
 #[test]
