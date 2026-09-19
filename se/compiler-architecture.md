@@ -1949,8 +1949,19 @@ classification, so neither an Optional header nor an abandoned classified
 binding is generated. The returned block remains the enclosing function's
 private result with its nested `DILexicalBlock`, and the existing single machine
 return completes the function. This changes no runtime representation or ABI;
-other constructors, nested payload expressions, conditional joins, and
-cleanup-bearing exits remain deferred.
+constructors outside the next strict-unary increment, nested payload
+expressions, conditional joins, and cleanup-bearing exits remain deferred.
+
+Increment 3b2-b5e8g extends the same pre-construction exit to the strict unary
+`String`, `Int`, `Nat`, and `Rational` built-ins and to an already-declared
+payload-bearing Union alternative. Constructor recognition uses the checked
+source identity and declaration position rather than treating an arbitrary
+callable as a constructor. Conversion, payload classification, Union tag
+selection, and abandoned binding generation are all omitted. The returned
+block remains the private result with nested `DILexicalBlock` and the existing
+single machine return. This changes no runtime representation or ABI;
+`Character`, positional Variant, constraint, modular, collection, qualified,
+nested-payload, conditional, and cleanup-bearing forms remain deferred.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
