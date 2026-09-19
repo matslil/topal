@@ -218,6 +218,13 @@ host-language descriptor or LLVM type. Future library metadata names the
 fundamental identity set and its target adapter without publishing the private
 numeric mapping, node offsets, or compiler helpers.
 
+Ordinary Lists of payload-free nominal Enums also use private i32/pointer
+nodes, but every List retains its exact declaration identity and ordered source
+alternatives. A common private runtime may compare declaration-local tags only
+after checking has established the same nominal element type. Future library
+metadata records the declaration identity and alternatives, never the numeric
+tags, node offsets, or runtime helper as a portable enum or container ABI.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

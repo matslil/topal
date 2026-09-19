@@ -1340,6 +1340,16 @@ metadata carries the canonical identity set, representation/ownership/lifetime/
 effect facts, and a versioned target adapter independently of private numbers,
 offsets, types, and helpers.
 
+Lists of payload-free nominal Enums use the same private physical class while
+retaining the exact declaration identity and ordered alternatives in the checked
+model and debug metadata. A conditional shared finite fragment compares i32 tags
+only for operands already proven to have the same nominal List classifier and
+counts nodes at O0; decisions recover that exact nominal enum. LLVM owns physical
+AMD64 placement. The declaration-local tag mapping is neither portable nor
+interchangeable with another enum. Future metadata carries canonical declaration
+and alternative identities, representation/ownership/lifetime/effects, and a
+versioned target adapter independently of private tags, offsets, and helpers.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

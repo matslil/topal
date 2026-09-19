@@ -1341,6 +1341,11 @@
       "cpu_time_ns": 17130020,
       "memory_peak_bytes": 18452480,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-enum-values.t": {
+      "cpu_time_ns": 15746520,
+      "memory_peak_bytes": 18149376,
+      "samples_per_test": 50
     }
   }
 }

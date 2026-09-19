@@ -2666,6 +2666,16 @@
       "cpu_time_ns": 268156,
       "memory_peak_bytes": 18522112,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/list-enum-values.t": {
+      "cpu_time_ns": 145800039,
+      "memory_peak_bytes": 43130880,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/list-enum-values.t": {
+      "cpu_time_ns": 195695,
+      "memory_peak_bytes": 18616320,
+      "samples_per_test": 500
     }
   }
 }

@@ -2579,3 +2579,13 @@ All source modes shall preserve the canonical identities of `Boolean`, `Int`,
 Records, structural equality, complete decisions, count, emptiness, and
 canonical display. Shared native/interpreter regression and reversible history
 shall cover every fundamental identity and admitted path.
+
+## TOPAL-INTP-SUBSET-292 — Ordinary payload-free nominal Enum List values
+
+All source modes shall preserve each payload-free Enum's exact declaration
+identity and alternatives through empty/nonempty List construction, ordinary
+parameters/results, packages, Tuples, Records, structural equality, complete
+decisions, count, emptiness, and canonical display. Distinct nominal Enums shall
+not become interchangeable through List containment. Shared native/interpreter
+regression and reversible history shall cover every alternative and admitted
+path.

@@ -5274,6 +5274,37 @@ representation and ownership, lifetime, effects, and versioned target adapters
 independently of private numeric mappings, offsets, helper names, LLVM types/
 symbols, debug shadows, and placement.
 
+### TOPAL-COMPILER-LIST-ENUM-CORE-001 — Ordinary payload-free nominal Enum Lists
+
+For every admitted payload-free nominal Enum, the compiler SHALL admit
+contextual `Empty` and `Entry` construction, immutable binding, ordinary private
+parameters/results, package and recursively admitted Tuple/Record fields,
+structural equality and inequality, complete decisions, entry count, emptiness,
+canonical display, and debugging for its List type. Every value SHALL retain
+the enum declaration identity and source alternative. Equality SHALL apply only
+to Lists with the same nominal element type, compare alternatives in order, and
+stop at the first mismatch without mutation. Operands SHALL evaluate once in
+source order.
+
+On Linux x86-64, `Empty` MAY be null and `Entry` MAY use an immutable 16-byte
+node containing the existing declaration-ordered i32 enum carrier and remaining
+pointer. A conditional finite nonrecursive fragment MAY compare tags and count
+nodes and SHALL remain correct at O0; checking SHALL establish equal nominal
+element identity before that common fragment is selected. Private enum
+parameters, results, and aggregate fields SHALL retain exact typed i32
+prototypes while LLVM selects physical AMD64 placement. DWARF and the bundled
+GDB renderer SHALL preserve the nominal enum, its alternatives, and List shape.
+
+This rule SHALL NOT exchange tags between distinct enum declarations or expose
+them as a portable foreign enum. It SHALL add no List runtime tag, type-erased
+generic/public/foreign/serialized/library node ABI, foreign allocator, C/C++
+runtime, other-language standard library, or native-ABI revision. Other List
+operations, reclamation, and element classifiers remain separately governed.
+Future library metadata SHALL encode canonical enum declaration/alternative
+identities, representation and ownership, lifetime, effects, and versioned
+target adapters independently of private numeric mappings, offsets, helper
+names, LLVM types/symbols, debug shadows, and placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for
