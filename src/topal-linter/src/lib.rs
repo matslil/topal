@@ -1776,7 +1776,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 286);
+        assert_eq!(examples.len(), 287);
         for example in examples {
             let source = std::fs::read_to_string(&example).unwrap();
             let report = lint_text(&source, &[]).unwrap();

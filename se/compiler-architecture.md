@@ -1961,9 +1961,9 @@ selection, and abandoned binding generation are all omitted. The returned
 block remains the private result with nested `DILexicalBlock` and the existing
 single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
-3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside 3b2-b5e8k,
-collection, qualified, nested-payload, conditional, and cleanup-bearing forms
-remain deferred.
+3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
+3b2-b5e8k/3b2-b5e8l, collection, qualified, nested-payload, conditional, and
+cleanup-bearing forms remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -2001,8 +2001,18 @@ classification, canonical-range validation, dynamic Result or nominal-value
 construction, and omits the abandoned binding and tails. The block remains the
 private result with nested `DILexicalBlock` and the existing single machine
 return. This changes no runtime representation or ABI; forward, unknown,
-dynamically selected, qualified, explicit-reduction, nested-operand,
-conditional, and cleanup-bearing forms remain fail-closed.
+dynamically selected, qualified, explicit-reduction forms outside 3b2-b5e8l,
+nested-operand, conditional, and cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8l admits a direct return-bearing block as the left operand of
+`operand modulo Name` when `Name` is an already-declared named `ModNat` or
+`ModInt` type. Exact target identity and declaration order are checked before
+the operand; the exit then precedes Int classification and the
+subtract/modulo/add reduction chain and omits nominal construction, the
+abandoned binding, and tails. The block remains the private result with nested
+`DILexicalBlock` and the existing single machine return. This changes no runtime
+representation or ABI; forward, unknown, dynamically selected, qualified,
+nested-operand, conditional, and cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
