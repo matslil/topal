@@ -2816,6 +2816,16 @@
       "cpu_time_ns": 174536,
       "memory_peak_bytes": 18391040,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/function-return-optional-constructor.t": {
+      "cpu_time_ns": 125680540,
+      "memory_peak_bytes": 41889792,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/function-return-optional-constructor.t": {
+      "cpu_time_ns": 146538,
+      "memory_peak_bytes": 18452480,
+      "samples_per_test": 500
     }
   }
 }

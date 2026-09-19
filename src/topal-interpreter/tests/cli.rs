@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 280);
+    assert_eq!(examples.len(), 281);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1491,6 +1491,30 @@ fn every_mode_returns_from_direct_named_call_arguments() {
             }));
             assert!(!trace.contains("\"detail\":\"1000\""));
             assert!(!trace.contains("missing"));
+        }
+    }
+}
+
+#[test]
+fn every_mode_returns_from_direct_optional_constructor_arguments() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001
+    let source = include_str!("../../../examples/language/function-return-optional-constructor.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"42\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert_eq!(trace.matches("function.return.explicit").count(), 1);
+            assert!(!trace.contains("optional.some.constructed"));
+            assert!(!trace.contains("\"detail\":\"1000\""));
+            assert!(!trace.contains("\"detail\":\"abandoned\""));
         }
     }
 }

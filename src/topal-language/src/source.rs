@@ -2984,6 +2984,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_optional_constructor_argument_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         self.evaluate_returning_named_call_argument_step(
             source,
             expression,
@@ -3134,6 +3142,41 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a direct returning named-call argument exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_optional_constructor_argument_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [Expression::Identifier(constructor), argument] = items.as_slice() else {
+            return Ok(None);
+        };
+        if source.slice(*constructor) != "Some"
+            || !direct_expression_returns_from_function(argument)
+        {
+            return Ok(None);
+        }
+        let Expression::Block { statements, .. } = argument else {
+            unreachable!("a direct returning Optional constructor argument is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning Optional constructor argument exits its function"
         );
         Ok(Some(step))
     }
@@ -19553,6 +19596,32 @@ fn named_call_argument_blocks_propagate_returns_in_source_order() {
         )
         .unwrap();
     assert_eq!(value.to_string(), "42");
+}
+
+#[test]
+fn optional_constructor_argument_block_propagates_return() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-optional-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("optional.some.constructed"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
 }
 
 #[test]

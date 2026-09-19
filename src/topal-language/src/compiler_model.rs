@@ -8717,6 +8717,15 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
+            && let Some(value) = self.analyze_returning_optional_constructor_argument(
+                expression,
+                environment,
+                function_result,
+            )?
+        {
+            return Ok((value, true));
+        }
+        if allow_function_return
             && let Some(value) = self.analyze_returning_named_call_argument(
                 expression,
                 environment,
@@ -8987,6 +8996,37 @@ impl Analyzer {
             },
             span: expression.span(),
         }))
+    }
+
+    fn analyze_returning_optional_constructor_argument(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [Expression::Identifier(constructor), argument] = items.as_slice() else {
+            return Ok(None);
+        };
+        if self.source.slice(*constructor) != "Some"
+            || !direct_expression_returns_from_function(argument)
+        {
+            return Ok(None);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            argument,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning Optional constructor argument exits its function"
+        );
+        Ok(Some(result))
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
@@ -40022,7 +40062,7 @@ mod tests {
             .unwrap();
         assert_eq!(function.body.result.value_type, CompilerType::Int);
 
-        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  Some {\n    return 41\n    }\nanswer ()\n";
+        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  String {\n    return 41\n    }\nanswer ()\n";
         let error = analyze_for_compiler(embedded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
@@ -40242,6 +40282,32 @@ mod tests {
 
         let overloaded = "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nidentity is fn (value : String) -> String\n  value\nanswer is fn () -> Int\n  identity { return 42 }\nanswer ()\n";
         let error = analyze_for_compiler(overloaded).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("direct statement position"));
+    }
+
+    #[test]
+    fn models_return_bearing_optional_constructor_argument() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-OPTIONAL-CONSTRUCT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-optional-constructor.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  Some (1, { return 42 })\nanswer ()\n";
+        let error = analyze_for_compiler(nested).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
     }
