@@ -3014,7 +3014,8 @@ Opaque, branch-selected, or otherwise dynamically computed Function leaves;
 and Function containment outside Tuple, Record, the exact Optional path of
 `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`, or the exact nominal Sum path of
 `TOPAL-COMPILER-SUM-FUNCTION-001`, or the exact Result-success path of
-`TOPAL-COMPILER-RESULT-FUNCTION-001` SHALL be rejected before LLVM lowering.
+`TOPAL-COMPILER-RESULT-FUNCTION-001`, or the exact finite List-entry paths of
+`TOPAL-COMPILER-LIST-FUNCTION-001` SHALL be rejected before LLVM lowering.
 
 Each represented Function leaf SHALL occupy its existing private i32
 observation field. Exact private `fastcc` prototypes SHALL use the corresponding
@@ -3101,7 +3102,8 @@ Record, under the exact present Optional path governed by
 `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`, or under an exact selected nominal Sum
 path governed by `TOPAL-COMPILER-SUM-FUNCTION-001`, or under the success path
 of an exact arithmetic Result governed by
-`TOPAL-COMPILER-RESULT-FUNCTION-001`. The nested declaration SHALL be one
+`TOPAL-COMPILER-RESULT-FUNCTION-001`, or under exact finite List-entry paths
+governed by `TOPAL-COMPILER-LIST-FUNCTION-001`. The nested declaration SHALL be one
 nonrecursive, nonoverloaded ordinary declaration whose identity remains known
 at every private boundary.
 Each captured value SHALL be an already-evaluated immutable lexical,
@@ -3338,6 +3340,61 @@ representation, and versioned target adapters independently of private
 headers, observation tags, failure-path zero carriers, compiler names, LLVM
 types/symbols, debug shadows, and physical placement.
 
+### TOPAL-COMPILER-LIST-FUNCTION-001 — Exact private finite List Function environments
+
+Within one compilation unit, an exact finite `List Function` MAY be
+constructed from `Entry` and `Empty`, bound, displayed, passed through an
+ordinary private parameter or result, used as a package field, recursively
+contained in an admitted Tuple or labeled Record, and decomposed by a complete
+List decision. The checked frontend SHALL retain the exact length and one
+source-ordered named, symbolic, anonymous, or admitted nested callable identity
+for every entry. An opaque, branch-selected, transformed, or otherwise
+inexact entry sequence or callable identity SHALL reject before LLVM lowering.
+
+The source List SHALL retain a Topal-owned singly linked representation. Each
+Function entry node SHALL contain the existing private i32 Function observation
+and an aligned next pointer, and `Empty` SHALL remain null. Capture snapshots
+SHALL NOT be embedded in the source nodes. A complete List decision SHALL
+attach the first entry's callable facts to the first binding and the remaining
+ordered facts to the rest binding. Eventual application SHALL remain one direct
+specialized private `fastcc` call; neither node traversal nor Function
+observation SHALL dispatch it. Display and DWARF/GDB SHALL expose the source
+`List Function` and Function observations without compiler facts.
+
+Each Function entry SHALL add its canonical zero-based source entry index to
+the path of `TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, composed with
+enclosing Tuple and Record edges. Private parameters SHALL pass the source List
+pointer followed by captures in entry order and existing per-callable capture
+order. Private results SHALL return the unchanged pointer followed by those
+captures for one-time caller extraction and remapping. An exact nested Function
+MAY therefore escape through an entry under
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`. Distinct entries and factory
+invocations SHALL retain independent snapshots. Function- or
+Generator-containing capture state SHALL remain unsupported.
+
+Tests SHALL cover empty, named, symbolic, anonymous, and nested entries;
+multiple entry positions and independent factory snapshots; complete decision
+application; private parameter/result, package, Tuple, and Record passage;
+exact display; interpreter parity and reversible history; direct LLVM IR;
+artifact-free opaque/capture/repeated-identity rejection; freestanding
+ELF/DWARF; full O0 GDB List/callable values and active frames; the shared
+corpus; and separate interpreter/compiler resource baselines.
+
+This rule SHALL add no closure/environment object, environment pointer,
+function pointer, indirect call, callback, dispatch table, caller-frame lookup,
+foreign dependency, C/C++ runtime, other-language standard library, public
+callable/List ABI, or native-ABI revision. Allocation SHALL remain the existing
+process-lifetime List nodes. General List Function equality or repeated
+identity, operations that lose exact entry facts, opaque or dynamically
+selected entries, persistent storage, publication, recursive element
+classifiers, and Function containment in other collection representations
+remain deferred. Future compiled-library metadata SHALL encode canonical
+source-session/scope, exact length and entry order, callable/declaration and
+aggregate paths, ordered capture identity/classifier/representation/lifetime,
+effects, List representation and ownership, and versioned target adapters
+independently of node offsets, private observation tags, compiler names, LLVM
+types/symbols, debug shadows, and physical placement.
+
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
 An inferred anonymous function MAY contain a flat positional product parameter
@@ -3509,7 +3566,7 @@ rule SHALL introduce no closure or environment object, allocation, generic
 matcher, pattern table, function pointer, indirect call, callback, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result paths,
+selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List paths,
 ordinary named-function header repetition, publication, and library adapters
 remain deferred. Future
 compiled-library metadata SHALL encode canonical aggregate paths and stable
@@ -3627,7 +3684,7 @@ execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
 or environment object, allocation, pattern table, function pointer, indirect call, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result paths,
+selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List paths,
 unsupported capture classifiers, ordinary named-function header repetition,
 publication, and library adapters remain deferred. Future compiled-library
 metadata SHALL encode canonical aggregate paths, stable callable identities, ordered capture schemas
@@ -4026,8 +4083,9 @@ target adapters independently of private binding names, LLVM types, tags, and
 physical placement. Optional Function fields are governed by
 `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`; exact nominal Sum Function fields are
 governed by `TOPAL-COMPILER-SUM-FUNCTION-001`; exact arithmetic Result Function
-fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`. Function containment
-in List and other aggregates; dynamic escape/selection; dependent defaults; nested package
+fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`; exact finite List
+Function fields are governed by `TOPAL-COMPILER-LIST-FUNCTION-001`. Function containment
+in other aggregates; dynamic escape/selection; dependent defaults; nested package
 declarations; recursive callable package signatures; persistent storage;
 publication; and public adapters remain deferred.
 
@@ -4041,7 +4099,9 @@ error domain, or Range endpoint classifier SHALL remain within that existing
 represented boundary and SHALL contain no Function value or capture
 environment under this rule. Exact `Optional Function` fields are instead
 governed by `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`; exact arithmetic
-`Result Function` fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`.
+`Result Function` fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`;
+exact finite `List Function` fields are governed by
+`TOPAL-COMPILER-LIST-FUNCTION-001`.
 Unsupported contained classifiers and mismatched container classifiers SHALL reject before LLVM
 lowering or artifact publication.
 
@@ -4079,8 +4139,8 @@ constructor, contained classifier or Result error domain, Range endpoint
 classifier, representation/lifetime/default/effect semantics, stable
 operand/field identities and order, and target adapters independently of
 compiler-private binding names, LLVM pointer types, and physical placement.
-Function-containing containers outside exact `Optional Function` and arithmetic
-`Result Function`, unsupported List elements and container payloads, context-dependent defaults, nested
+Function-containing containers outside exact `Optional Function`, arithmetic
+`Result Function`, and finite `List Function`, unsupported List elements and container payloads, context-dependent defaults, nested
 package declarations, opaque whole-package values, recursive package
 signatures, persistent container storage, publication, and public adapters
 remain deferred.

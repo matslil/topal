@@ -140,7 +140,9 @@ nonrecursive, nonoverloaded nested function may also escape its factory through
 a compiler-private `Function`, Tuple, Record, exact `Optional Function`, or an
 exact selected nominal `Union`/`Variant` Function payload result. It may also
 escape as the successful payload of an exact arithmetic `Result Function`;
-the Error path retains the original structured Error. The result carries the
+the Error path retains the original structured Error. An exact finite
+`List Function` may carry source-ordered identities and capture snapshots
+through the same private boundary. The result carries the
 same observation value and immutable capture snapshot, and later application
 remains a direct specialized call. An
 `Optional Function` stores only the ordinary `Some`/`None` representation and
@@ -149,7 +151,9 @@ tag and declaration-ordered payload slots. A `Result Function` uses the
 existing success/Error pointer representation and boxes only the Function
 observation on success. In all cases capture snapshots stay in the same hidden
 private boundary transport used by other exact Function results, with semantic
-Optional-payload, Sum-alternative, or Result-success paths. Separate factory
+Optional-payload, Sum-alternative, Result-success, or zero-based List-entry
+paths. A `List Function` node stores the ordinary Function observation and next
+pointer; capture snapshots are not embedded in the source list. Separate factory
 invocations retain separate snapshots. Recursive, overloaded, opaque,
 dynamically selected, persistently stored, and published nested callables remain
 outside this private boundary; no public callable ABI is defined.

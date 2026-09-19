@@ -2173,6 +2173,7 @@ impl<'a> Generator<'a> {
                 LlValue::List {
                     value: "null".into(),
                     element: element.as_ref().clone(),
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListEntry { value, remaining } => {
@@ -2181,12 +2182,16 @@ impl<'a> Generator<'a> {
                 let LlValue::List {
                     value: remaining,
                     element,
+                    mut function_captures,
                 } = remaining
                 else {
                     unreachable!("checked Entry tail retains its List classifier")
                 };
                 let (allocation_size, next_offset) = match &element {
-                    CompilerType::Effect | CompilerType::Int | CompilerType::String => (16, 8),
+                    CompilerType::Effect
+                    | CompilerType::Int
+                    | CompilerType::String
+                    | CompilerType::Function => (16, 8),
                     CompilerType::Tuple(fields)
                         if matches!(
                             fields.as_slice(),
@@ -2213,6 +2218,14 @@ impl<'a> Generator<'a> {
                     (CompilerType::Int, LlValue::Int(value))
                     | (CompilerType::String, LlValue::String(value)) => body.effect(
                         &format!("store ptr {value}, ptr {node}, align 8"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    (
+                        CompilerType::Function,
+                        LlValue::Function { value, .. } | LlValue::Enum { value, .. },
+                    ) => body.effect(
+                        &format!("store i32 {value}, ptr {node}, align 4"),
                         expression.span,
                         &mut self.debug,
                     ),
@@ -2253,6 +2266,7 @@ impl<'a> Generator<'a> {
                         LlValue::List {
                             value,
                             element: value_element,
+                            ..
                         },
                     ) if compiler_int_string_pair(inner) && value_element == inner.as_ref() => {
                         body.effect(
@@ -2273,9 +2287,20 @@ impl<'a> Generator<'a> {
                     expression.span,
                     &mut self.debug,
                 );
+                if element == CompilerType::Function {
+                    let captures = match value {
+                        LlValue::Function { captures, .. } => captures,
+                        LlValue::Enum { .. } => Vec::new(),
+                        _ => {
+                            unreachable!("checked List Function entry retains callable captures")
+                        }
+                    };
+                    function_captures.insert(0, captures);
+                }
                 LlValue::List {
                     value: node,
                     element,
+                    function_captures,
                 }
             }
             CompilerExpressionKind::ListContainsEntry { list, value } => {
@@ -2333,6 +2358,7 @@ impl<'a> Generator<'a> {
                 let LlValue::List {
                     value: list,
                     element,
+                    ..
                 } = list
                 else {
                     unreachable!("checked removal subject is a List")
@@ -2349,6 +2375,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListPrepend { list, value } => {
@@ -2377,6 +2404,7 @@ impl<'a> Generator<'a> {
                 LlValue::List {
                     value: node,
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListAppend { list, value } => {
@@ -2414,6 +2442,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListConcat { left, right } => {
@@ -2432,6 +2461,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListReverse(value) => {
@@ -2448,6 +2478,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListEntryCount(value) => {
@@ -2567,6 +2598,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListForeach {
@@ -2623,6 +2655,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListIndexOperation {
@@ -2663,6 +2696,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             element: CompilerType::Int,
+                            function_captures: Vec::new(),
                         },
                         LlValue::List {
                             value: body.instruction(
@@ -2671,12 +2705,14 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             element: CompilerType::Int,
+                            function_captures: Vec::new(),
                         },
                     ])
                 } else {
                     LlValue::List {
                         value,
                         element: CompilerType::Int,
+                        function_captures: Vec::new(),
                     }
                 }
             }
@@ -2696,6 +2732,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListReject {
@@ -2770,6 +2807,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         element: pair,
+                        function_captures: Vec::new(),
                     },
                     CompilerListZipOperation::Longest => LlValue::List {
                         value: body.instruction(
@@ -2790,6 +2828,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         element: pair,
+                        function_captures: Vec::new(),
                     },
                 }
             }
@@ -2818,6 +2857,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         element: CompilerType::Int,
+                        function_captures: Vec::new(),
                     },
                     LlValue::List {
                         value: body.instruction(
@@ -2826,6 +2866,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         element: CompilerType::Int,
+                        function_captures: Vec::new(),
                     },
                 ])
             }
@@ -2846,6 +2887,7 @@ impl<'a> Generator<'a> {
                         ("index".into(), CompilerType::Int),
                         ("value".into(), CompilerType::Int),
                     ]),
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListCollectString(list) => {
@@ -3432,6 +3474,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             element: element.as_ref().clone(),
+                            function_captures: Vec::new(),
                         },
                         CompilerType::Array { .. }
                         | CompilerType::Set(_)
@@ -3834,6 +3877,7 @@ impl<'a> Generator<'a> {
             CompilerType::List(element) => LlValue::List {
                 value,
                 element: element.as_ref().clone(),
+                function_captures: Vec::new(),
             },
             CompilerType::Enum(enumeration) => LlValue::Enum {
                 value: body.instruction(
@@ -3899,6 +3943,7 @@ impl<'a> Generator<'a> {
                     LlValue::List {
                         value: rest,
                         element: CompilerType::Int,
+                        function_captures: Vec::new(),
                     },
                 ])
             }
@@ -3921,6 +3966,7 @@ impl<'a> Generator<'a> {
         let LlValue::List {
             value: list,
             element,
+            function_captures,
         } = list
         else {
             unreachable!("checked List decision subject is a List")
@@ -3942,11 +3988,34 @@ impl<'a> Generator<'a> {
         body.start_block(&entry_label);
         let mut entry_environment = environment.clone();
         if let Some(((first_name, first_span), (rest_name, rest_span))) = entry_bindings {
-            let first = body.instruction(
-                &format!("load ptr, ptr {list}, align 8"),
-                *first_span,
-                &mut self.debug,
-            );
+            let (first_value, rest_function_captures) = match &element {
+                CompilerType::Int => (
+                    LlValue::Int(body.instruction(
+                        &format!("load ptr, ptr {list}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
+                CompilerType::Function => {
+                    let first_captures = function_captures.first().cloned().unwrap_or_default();
+                    let remaining_captures =
+                        function_captures.get(1..).unwrap_or_default().to_vec();
+                    (
+                        LlValue::Function {
+                            value: body.instruction(
+                                &format!("load i32, ptr {list}, align 4"),
+                                *first_span,
+                                &mut self.debug,
+                            ),
+                            enumeration: function_value_enumeration(self.program),
+                            captures: first_captures,
+                        },
+                        remaining_captures,
+                    )
+                }
+                _ => unreachable!("checked List decision has an admitted element type"),
+            };
             let rest_address = body.instruction(
                 &format!("getelementptr i8, ptr {list}, i64 8"),
                 *rest_span,
@@ -3957,10 +4026,10 @@ impl<'a> Generator<'a> {
                 *rest_span,
                 &mut self.debug,
             );
-            let first_value = LlValue::Int(first);
             let rest_value = LlValue::List {
                 value: rest,
                 element: element.clone(),
+                function_captures: rest_function_captures,
             };
             let first_variable =
                 self.debug
@@ -4171,6 +4240,7 @@ impl<'a> Generator<'a> {
         LlValue::List {
             value: head,
             element: CompilerType::Int,
+            function_captures: Vec::new(),
         }
     }
 
@@ -4233,6 +4303,7 @@ impl<'a> Generator<'a> {
             &[LlValue::List {
                 value: current.clone(),
                 element: CompilerType::Int,
+                function_captures: Vec::new(),
             }],
             body,
             environment,
@@ -4322,6 +4393,7 @@ impl<'a> Generator<'a> {
         LlValue::List {
             value: head,
             element: CompilerType::Int,
+            function_captures: Vec::new(),
         }
     }
 
@@ -4524,6 +4596,7 @@ impl<'a> Generator<'a> {
         let LlValue::List {
             value: source,
             element,
+            ..
         } = self.emit_expression(list, body, environment)
         else {
             unreachable!("checked map subject retains its List classifier")
@@ -4671,6 +4744,7 @@ impl<'a> Generator<'a> {
         LlValue::List {
             value: head,
             element: CompilerType::Int,
+            function_captures: Vec::new(),
         }
     }
 
@@ -4865,6 +4939,7 @@ impl<'a> Generator<'a> {
         LlValue::List {
             value: head,
             element: CompilerType::Int,
+            function_captures: Vec::new(),
         }
     }
 
@@ -5653,6 +5728,7 @@ impl<'a> Generator<'a> {
             CompilerType::List(element) => LlValue::List {
                 value: payload.into(),
                 element: element.as_ref().clone(),
+                function_captures: Vec::new(),
             },
             CompilerType::Enum(enumeration) => LlValue::Enum {
                 value: body.instruction(
@@ -6012,10 +6088,12 @@ impl<'a> Generator<'a> {
                 LlValue::List {
                     value: left,
                     element,
+                    ..
                 },
                 LlValue::List {
                     value: right,
                     element: right_element,
+                    ..
                 },
             ) => self.emit_list_equal(left, right, element, right_element, body, span),
             (
@@ -6998,6 +7076,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element,
+                    function_captures: Vec::new(),
                 }
             }
             LlValue::Container { value_type, .. } => {
@@ -7257,7 +7336,7 @@ impl<'a> Generator<'a> {
             LlValue::TraversalControl { value, payload } => {
                 self.emit_print_traversal_control(value, payload, body, span);
             }
-            LlValue::List { value, element } => {
+            LlValue::List { value, element, .. } => {
                 self.emit_print_list(value, element, body, span);
             }
             LlValue::Container { value, value_type } => {
@@ -7941,6 +8020,18 @@ impl<'a> Generator<'a> {
                 )),
                 8,
             ),
+            CompilerType::Function => (
+                LlValue::Function {
+                    value: body.instruction(
+                        &format!("load i32, ptr {current}, align 4"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    enumeration: function_value_enumeration(self.program),
+                    captures: Vec::new(),
+                },
+                8,
+            ),
             CompilerType::Tuple(fields)
                 if matches!(
                     fields.as_slice(),
@@ -7987,6 +8078,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: inner.as_ref().clone(),
+                    function_captures: Vec::new(),
                 },
                 8,
             ),
@@ -8726,6 +8818,7 @@ enum LlValue {
     List {
         value: String,
         element: CompilerType,
+        function_captures: Vec<Vec<(String, Self)>>,
     },
     Container {
         value: String,
@@ -8776,6 +8869,17 @@ fn attach_function_capture(
             attach_function_capture(field, rest, storage_name, capture_value);
         }
         (
+            CompilerAggregatePathElement::ListEntry(index),
+            LlValue::List {
+                function_captures, ..
+            },
+        ) if rest.is_empty() => {
+            if function_captures.len() <= *index {
+                function_captures.resize_with(*index + 1, Vec::new);
+            }
+            function_captures[*index].push((storage_name, capture_value));
+        }
+        (
             CompilerAggregatePathElement::OptionalPayload,
             LlValue::Optional {
                 function_captures, ..
@@ -8817,6 +8921,13 @@ fn function_capture_value(value: &LlValue, storage_name: &str) -> Option<LlValue
         LlValue::Record { fields, .. } => fields
             .iter()
             .find_map(|(_, field)| function_capture_value(field, storage_name)),
+        LlValue::List {
+            function_captures, ..
+        } => function_captures.iter().find_map(|captures| {
+            captures
+                .iter()
+                .find_map(|(name, value)| (name == storage_name).then(|| value.clone()))
+        }),
         LlValue::Optional {
             function_captures, ..
         } => function_captures
@@ -8852,6 +8963,13 @@ fn extend_function_capture_environment(
         LlValue::Record { fields, .. } => {
             for (_, field) in fields {
                 extend_function_capture_environment(environment, field);
+            }
+        }
+        LlValue::List {
+            function_captures, ..
+        } => {
+            for captures in function_captures {
+                environment.extend(captures.iter().cloned());
             }
         }
         LlValue::Optional {
@@ -9181,6 +9299,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::List(element) => LlValue::List {
             value: "null".into(),
             element: element.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         value_type @ (CompilerType::Array { .. }
         | CompilerType::Set(_)
@@ -11275,6 +11394,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::List(element) => LlValue::List {
             value,
             element: element.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         value_type @ (CompilerType::Array { .. }
         | CompilerType::Set(_)

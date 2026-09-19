@@ -710,6 +710,17 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid List String entry: {rendered}>"
                 entries.append(rendered)
+            elif self._element_type == "Function":
+                payload = int.from_bytes(node[0:4], "little")
+                try:
+                    rendered = str(
+                        gdb.Value(payload).cast(gdb.lookup_type("enum Function"))
+                    )
+                except gdb.error:
+                    return "<unreadable List Function entry>"
+                if rendered.startswith("<unknown:"):
+                    return f"<invalid List Function entry {payload}>"
+                entries.append(rendered)
             elif self._element_type == "(Int, Int)":
                 left = int.from_bytes(node[0:8], "little")
                 right = int.from_bytes(node[8:16], "little")
