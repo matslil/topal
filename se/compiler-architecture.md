@@ -1302,6 +1302,15 @@ a public enum or container ABI; future library metadata carries the semantic
 alternative mapping, representation/ownership/lifetime/effect facts, and a
 versioned target adapter independently of offsets, LLVM types, and helpers.
 
+`List ErrorCode` uses the same private physical class while retaining the
+distinct `lang arithmetic ArithmeticErrorCode` vocabulary and its four closed
+qualified alternatives. Its conditional finite fragment compares exact i32
+tags and counts nodes; decisions, display, DWARF, and GDB map those tags only
+through that vocabulary. The mapping is not a generic ErrorCode ABI and must
+not be reused for a future vocabulary by tag coincidence. Library metadata
+therefore carries canonical vocabulary/alternative identities alongside
+representation, ownership, lifetime, effects, and the target adapter.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

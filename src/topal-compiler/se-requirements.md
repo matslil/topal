@@ -5358,6 +5358,29 @@ of private details. This realizes
 `TOPAL-COMPILER-LIST-COMPARISON-CORE-001`, List construction, decision,
 equality, count, and empty rules for compiler increment 4b3d-u.
 
+## TOPAL-COMP-LIST-ERROR-CODE-CORE-001 — Ordinary arithmetic ErrorCode Lists
+
+The checked model shall admit contextual construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for
+`List ErrorCode` containing the four closed qualified arithmetic codes. Every
+operand evaluates once; unsupported transforms fail before publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing i32 arithmetic-code carrier and remaining pointer. A conditional
+finite fragment shall compare exact qualified identities and count at O0. LLVM
+owns private AMD64 placement; DWARF/GDB retain and validate the vocabulary.
+Tests cover all four codes, admitted boundaries and observations, interpreter
+modes/history, IR, rejection, ELF/DWARF, GDB, corpus, and baselines.
+
+This shall not equate tags across ErrorCode vocabularies or add a runtime tag,
+generic/public/foreign/library ABI, foreign allocator, C/C++, another-language
+library, or ABI revision. Future metadata carries canonical vocabulary and
+alternative identities, representation/ownership, lifetime, effects, and
+target adapters independently of private details. This realizes
+`TOPAL-COMPILER-LIST-ERROR-CODE-CORE-001`, List construction, decision,
+equality, count, and empty rules for compiler increment 4b3d-v.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

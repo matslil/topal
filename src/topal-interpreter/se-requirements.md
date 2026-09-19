@@ -2544,3 +2544,12 @@ empty/nonempty List construction, ordinary parameters/results, packages,
 Tuples, Records, structural equality, complete decisions, count, emptiness, and
 canonical display. Shared native/interpreter regression and reversible history
 shall cover each path.
+
+## TOPAL-INTP-SUBSET-288 — Ordinary arithmetic ErrorCode List values
+
+All source modes shall preserve the four qualified
+`lang arithmetic ArithmeticErrorCode` identities through empty/nonempty
+`List ErrorCode` construction, ordinary parameters/results, packages, Tuples,
+Records, structural equality, complete decisions, count, emptiness, and
+canonical display. Shared native/interpreter regression and reversible history
+shall cover each path.

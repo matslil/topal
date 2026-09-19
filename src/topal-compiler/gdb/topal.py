@@ -705,6 +705,17 @@ class _TopalListPrinter:
                 if rendered is None:
                     return f"<invalid List Comparison entry {payload}>"
                 entries.append(rendered)
+            elif self._element_type == "lang arithmetic ArithmeticErrorCode":
+                payload = int.from_bytes(node[0:4], "little")
+                rendered = {
+                    0: "out-of-range",
+                    1: "not-representable",
+                    2: "division-by-zero",
+                    3: "indeterminate",
+                }.get(payload)
+                if rendered is None:
+                    return f"<invalid List ArithmeticErrorCode entry {payload}>"
+                entries.append(rendered)
             elif self._element_type in ("Int", "Nat"):
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:
