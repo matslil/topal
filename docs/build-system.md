@@ -182,6 +182,14 @@ the sealed canonical empty Effect row, equality compares List length; future
 nonempty effect identities require distinct semantic metadata and must not
 inherit that private specialization accidentally.
 
+Ordinary `List Comparison` values use a private 16-byte node with the existing
+closed i32 comparison carrier and a naturally aligned remaining pointer.
+Construction, structural equality, complete decisions, count, emptiness,
+private passage, display, and debugging preserve the three source alternatives.
+This remains an internal executable representation; future library metadata
+records the semantic enum mapping and target adapter rather than publishing
+node offsets or compiler helper symbols.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

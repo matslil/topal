@@ -14884,16 +14884,8 @@ impl Analyzer {
         if operation == "entry-count"
             && let CompilerType::List(element) = &operand_value.value_type
         {
-            if !matches!(
-                element.as_ref(),
-                CompilerType::Effect
-                    | CompilerType::Boolean
-                    | CompilerType::Character
-                    | CompilerType::Int
-                    | CompilerType::Nat
-                    | CompilerType::Rational
-                    | CompilerType::String
-            ) && !compiler_nested_int_string_list_element(element.as_ref())
+            if !compiler_list_observation_element_supported(element.as_ref())
+                && !compiler_nested_int_string_list_element(element.as_ref())
             {
                 return Err(unsupported(
                     &self.source,
@@ -17192,16 +17184,7 @@ impl Analyzer {
         if operation == "empty?"
             && let CompilerType::List(element) = &operand.value_type
         {
-            if !matches!(
-                element.as_ref(),
-                CompilerType::Effect
-                    | CompilerType::Boolean
-                    | CompilerType::Character
-                    | CompilerType::Int
-                    | CompilerType::Nat
-                    | CompilerType::Rational
-                    | CompilerType::String
-            ) {
+            if !compiler_list_observation_element_supported(element.as_ref()) {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
@@ -21922,17 +21905,8 @@ impl Analyzer {
                 self.analyze_optional_decision(subject, &payload, rules, span, environment)
             }
             CompilerType::List(element)
-                if matches!(
-                    element.as_ref(),
-                    CompilerType::Effect
-                        | CompilerType::Boolean
-                        | CompilerType::Character
-                        | CompilerType::Int
-                        | CompilerType::Nat
-                        | CompilerType::Rational
-                        | CompilerType::String
-                        | CompilerType::Function
-                ) =>
+                if compiler_list_observation_element_supported(element.as_ref())
+                    || element.as_ref() == &CompilerType::Function =>
             {
                 let element = element.as_ref().clone();
                 self.analyze_list_decision(subject, &element, rules, span, environment)
@@ -23534,12 +23508,27 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_list_observation_element_supported(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Effect
+            | CompilerType::Boolean
+            | CompilerType::Character
+            | CompilerType::Comparison
+            | CompilerType::Int
+            | CompilerType::Nat
+            | CompilerType::Rational
+            | CompilerType::String
+    )
+}
+
 fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
         CompilerType::Effect
             | CompilerType::Boolean
             | CompilerType::Character
+            | CompilerType::Comparison
             | CompilerType::Int
             | CompilerType::Nat
             | CompilerType::Rational
@@ -23766,6 +23755,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Effect
                     | CompilerType::Boolean
                     | CompilerType::Character
+                    | CompilerType::Comparison
                     | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
@@ -25618,16 +25608,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             if fields.as_slice() == [CompilerType::Int, CompilerType::String])
         }
         CompilerType::List(element) => {
-            matches!(
-                element.as_ref(),
-                CompilerType::Effect
-                    | CompilerType::Boolean
-                    | CompilerType::Character
-                    | CompilerType::Int
-                    | CompilerType::Nat
-                    | CompilerType::Rational
-                    | CompilerType::String
-            ) || compiler_nested_int_string_list_element(element.as_ref())
+            compiler_list_observation_element_supported(element.as_ref())
+                || compiler_nested_int_string_list_element(element.as_ref())
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
         CompilerType::Record(fields) => fields
@@ -33083,6 +33065,76 @@ mod tests {
         assert_eq!(results[9].value_type, list_effect);
 
         let unsupported = "use language (version is v0.1)\nvalues : List Effect is Entry (Effects (), Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_comparison_lists_across_private_boundaries() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-LIST-EMPTY-PREDICATE-001, TOPAL-COMPILER-LIST-COMPARISON-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-comparison-values.t"
+        ))
+        .unwrap();
+        let list = CompilerType::List(Box::new(CompilerType::Comparison));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, CompilerType::Comparison);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list.clone(), CompilerType::Comparison])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list.clone()),
+                ("fallback".into(), CompilerType::Comparison),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Comparison List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list);
+
+        let unsupported = "use language (version is v0.1)\nvalues : List Comparison is Entry (1 <=> 2, Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
