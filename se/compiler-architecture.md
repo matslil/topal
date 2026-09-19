@@ -1373,6 +1373,12 @@ separate conditional fragment delegates exact entry comparison to
 Optional-Rational equality. LLVM owns placement; DWARF/GDB and future metadata
 retain all three classifier layers without exposing headers, offsets, or helpers.
 
+`List Optional String` similarly stores each existing Optional header pointer in
+an immutable private node and delegates element equality through Optional-String
+to exact descriptor/byte comparison. Topal retains allocation and output; LLVM
+owns placement, while DWARF/GDB and future metadata retain List, Optional, and
+String identity without publishing either private representation.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

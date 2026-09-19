@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 269);
+    assert_eq!(examples.len(), 270);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5934,6 +5934,32 @@ fn every_mode_preserves_optional_rational_list_values() {
     // TOPAL-INTP-SUBSET-295, TOPAL-COMPILER-LIST-OPTIONAL-RATIONAL-CORE-001
     let source = include_str!("../../../examples/language/list-optional-rational-values.t");
     let expected = "(Some Rational ( 1, 2 ), None, true, true, true, 3, true, Some Rational ( 7, 3 ), Some Rational ( 1, 2 ), Some Rational ( 8, 5 ), Entry ( Some Rational ( 1, 2 ), Entry ( None, Entry ( Some Rational ( -3, 4 ), Empty ) ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_optional_string_list_values() {
+    // TOPAL-INTP-SUBSET-296, TOPAL-COMPILER-LIST-OPTIONAL-STRING-CORE-001
+    let source = include_str!("../../../examples/language/list-optional-string-values.t");
+    let expected = "(Some \"first\", None, true, true, true, 3, true, Some \"fallback\", Some \"first\", Some \"record\", Entry ( Some \"first\", Entry ( None, Entry ( Some \"世界\", Empty ) ) ))";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
