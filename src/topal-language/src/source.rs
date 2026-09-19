@@ -884,6 +884,7 @@ pub struct Execution {
     source: SourceText,
     statements: Vec<Statement>,
     cursor: usize,
+    result_classifier: Option<String>,
     return_classifier: Option<String>,
 }
 
@@ -1956,6 +1957,7 @@ impl Session {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Handler contracts and state remain one auditable boundary.
     fn invoke_task_handler(
         &self,
         definition: &TaskDefinitionValue,
@@ -2019,6 +2021,7 @@ impl Session {
             source: definition.source.clone(),
             statements: (*function.body).clone(),
             cursor: 0,
+            result_classifier: Some(function.result.clone()),
             return_classifier: Some(function.result.clone()),
         };
         let value = loop {
@@ -2728,6 +2731,7 @@ impl Session {
             source,
             statements: parsed.statements,
             cursor: 0,
+            result_classifier: None,
             return_classifier: None,
         })
     }
@@ -4907,20 +4911,39 @@ impl Session {
         statements: &[Statement],
         trace: &mut impl TraceSink,
     ) -> Result<Value, Diagnostic> {
+        match self.evaluate_block_step(source, statements, None, None, trace)? {
+            ExecutionStep::Complete(value) => Ok(value),
+            ExecutionStep::Advanced { .. } => unreachable!("a block runs to completion"),
+            ExecutionStep::Returned { .. } => {
+                unreachable!("a standalone block rejects return without a function context")
+            }
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_block_step(
+        &self,
+        source: &SourceText,
+        statements: &[Statement],
+        result_classifier: Option<&str>,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<ExecutionStep, Diagnostic> {
         if statements.is_empty() {
             trace.record(TraceEvent {
                 event: "block.empty.evaluated",
                 rule: "TOPAL-SYN-GRAMMAR-001",
                 detail: "Unit",
             });
-            return Ok(Value::Unit);
+            return Ok(ExecutionStep::Complete(Value::Unit));
         }
         let mut branch = self.clone();
         let mut execution = Execution {
             source: source.clone(),
             statements: statements.to_vec(),
             cursor: 0,
-            return_classifier: None,
+            result_classifier: result_classifier.map(str::to_owned),
+            return_classifier: return_classifier.map(str::to_owned),
         };
         loop {
             match execution.step(&mut branch, trace)? {
@@ -4930,11 +4953,11 @@ impl Session {
                         rule: "TOPAL-SYN-GRAMMAR-001",
                         detail: &structural_value_classifier(&value),
                     });
-                    return Ok(value);
+                    return Ok(ExecutionStep::Complete(value));
                 }
                 ExecutionStep::Advanced { .. } => {}
-                ExecutionStep::Returned { .. } => {
-                    unreachable!("a standalone block rejects return without a function context")
+                returned @ ExecutionStep::Returned { .. } => {
+                    return Ok(returned);
                 }
             }
         }
@@ -5780,6 +5803,7 @@ impl Session {
             source: function.source.clone(),
             statements: (*function.body).clone(),
             cursor: 0,
+            result_classifier: Some(function.result.clone()),
             return_classifier: Some(function.result.clone()),
         };
         let (value, result_span) = loop {
@@ -7734,6 +7758,7 @@ impl Execution {
                 source: self.source.clone(),
                 statements: body.to_vec(),
                 cursor: 0,
+                result_classifier: None,
                 return_classifier: None,
             };
             loop {
@@ -7836,6 +7861,7 @@ impl Execution {
                 source: self.source.clone(),
                 statements: body.to_vec(),
                 cursor: 0,
+                result_classifier: None,
                 return_classifier: None,
             };
             loop {
@@ -7920,6 +7946,7 @@ impl Execution {
                     source: self.source.clone(),
                     statements: body.to_vec(),
                     cursor: 0,
+                    result_classifier: None,
                     return_classifier: None,
                 };
                 loop {
@@ -9065,6 +9092,7 @@ impl Execution {
                         source: self.source.clone(),
                         statements: vec![declaration.clone()],
                         cursor: 0,
+                        result_classifier: None,
                         return_classifier: None,
                     };
                     let _ = nested.step(session, trace)?;
@@ -9122,6 +9150,33 @@ impl Execution {
                 }
                 (value, span)
             }
+            Statement::Discard {
+                span,
+                value:
+                    Expression::Block {
+                        statements,
+                        span: block_span,
+                    },
+            } => match session.evaluate_block_step(
+                &self.source,
+                statements,
+                None,
+                self.return_classifier.as_deref(),
+                trace,
+            )? {
+                ExecutionStep::Complete(_) => {
+                    trace.record(TraceEvent {
+                        event: "binding.discarded",
+                        rule: "TOPAL-SYN-BIND-001",
+                        detail: "_",
+                    });
+                    (Value::Unit, cover(*span, *block_span))
+                }
+                ExecutionStep::Returned { value, span } => {
+                    return Ok(ExecutionStep::Returned { value, span });
+                }
+                ExecutionStep::Advanced { .. } => unreachable!("a block runs to completion"),
+            },
             Statement::Discard { span, value } => {
                 self.execute_discard(session, trace, *span, value)?
             }
@@ -9153,13 +9208,35 @@ impl Execution {
                 return Ok(ExecutionStep::Returned { value, span });
             }
             Statement::Expression(expression) => {
-                let value = evaluate_expression_with_optional_context(
-                    &self.source,
-                    session,
-                    expression,
-                    self.return_classifier.as_deref(),
-                    trace,
-                )?;
+                let final_expression = self.cursor + 1 == self.statements.len();
+                let expected = final_expression
+                    .then_some(self.result_classifier.as_deref())
+                    .flatten();
+                let value = if let Expression::Block { statements, .. } = expression {
+                    match session.evaluate_block_step(
+                        &self.source,
+                        statements,
+                        expected,
+                        self.return_classifier.as_deref(),
+                        trace,
+                    )? {
+                        ExecutionStep::Complete(value) => value,
+                        ExecutionStep::Returned { value, span } => {
+                            return Ok(ExecutionStep::Returned { value, span });
+                        }
+                        ExecutionStep::Advanced { .. } => {
+                            unreachable!("a block runs to completion")
+                        }
+                    }
+                } else {
+                    evaluate_expression_with_optional_context(
+                        &self.source,
+                        session,
+                        expression,
+                        expected,
+                        trace,
+                    )?
+                };
                 if self.cursor + 1 != self.statements.len() && value != Value::Unit {
                     return Err(diagnostic(
                         &self.source,
@@ -9194,6 +9271,7 @@ impl Execution {
             source: self.source.clone(),
             statements: vec![declaration.clone()],
             cursor: 0,
+            result_classifier: self.result_classifier.clone(),
             return_classifier: self.return_classifier.clone(),
         };
         published.step(session, trace)
@@ -9226,8 +9304,23 @@ impl Execution {
         {
             return Ok(BindingOutcome::Bound(value, span));
         }
-        let mut evaluated =
-            evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?;
+        let mut evaluated = if let Expression::Block { statements, .. } = initializer {
+            match session.evaluate_block_step(
+                &self.source,
+                statements,
+                classifier.map(|classifier| self.source.slice(classifier)),
+                self.return_classifier.as_deref(),
+                trace,
+            )? {
+                ExecutionStep::Complete(value) => value,
+                ExecutionStep::Returned { value, span } => {
+                    return Ok(BindingOutcome::Returned(value, span));
+                }
+                ExecutionStep::Advanced { .. } => unreachable!("a block runs to completion"),
+            }
+        } else {
+            evaluate_binding_initializer(&self.source, session, initializer, classifier, trace)?
+        };
         consume_generator_argument(&self.source, session, initializer);
         if let Some(classifier) = classifier {
             let classifier_text =
@@ -10047,6 +10140,7 @@ fn advance_custom_generator(
             source: source.clone(),
             statements: vec![statement.clone()],
             cursor: 0,
+            result_classifier: None,
             return_classifier: None,
         };
         match execution.step(scope, trace)? {
@@ -18982,6 +19076,37 @@ fn explicit_return_skips_later_function_statements() {
 
     let error = Session::new()
         .evaluate("return 42\n", &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn lexical_block_return_completes_the_nearest_function() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "answer is fn (value : Int) -> Int\n  adjusted is value + 1\n  { return adjusted }\n  1000\nanswer 41\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert!(
+        trace
+            .iter()
+            .any(|event| event.contains("function.return.explicit"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  abandoned : String is {\n    return 42\n    }\n  0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate("{\n  return 42\n}\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }

@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 275);
+    assert_eq!(examples.len(), 276);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1353,6 +1353,27 @@ fn return_outside_a_function_is_rejected() {
             .unwrap()
             .contains("E-RETURN-OUTSIDE-FUNCTION")
     );
+}
+
+#[test]
+fn every_mode_returns_from_an_unconditional_lexical_block() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-COMPILER-LEXICAL-RETURN-001
+    let source = include_str!("../../../examples/language/function-return-from-block.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"42\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert!(trace.contains("function.return.explicit"));
+            assert!(!trace.contains("\"detail\":\"1000\""));
+        }
+    }
 }
 
 #[test]

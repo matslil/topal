@@ -5199,8 +5199,32 @@ implicit final result. A return at root shall remain a source diagnostic.
 
 This requirement covers the direct-body case of
 `TOPAL-FUNCTION-RETURN-001` and realizes `TOPAL-COMPILER-RETURN-001` for
-compiler increment 3b2-a. Returns from nested lexical blocks remain with their
-scope and cleanup lowering in increment 3b2-b2.
+compiler increment 3b2-a. Indirect, conditional, or cleanup-bearing returns
+from nested lexical blocks remain in increment 3b2-b5e8.
+
+## TOPAL-COMP-LEXICAL-RETURN-001 — Cleanup-free lexical return
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from an unconditional lexical block used directly as a
+statement, discard initializer, binding initializer, or final expression. It
+shall preserve preceding outer and inner evaluation exactly once, validate the
+returned expression against the function result classifier rather than an
+abandoned binding classifier, and omit both lexical and enclosing unreachable
+tails at O0. A return-bearing block nested in an operand, decision, callback,
+or other compound expression shall remain rejected.
+
+The compiler shall retain the block expression and its nested DWARF lexical
+scope, then lower its returned value through the enclosing function's existing
+private result and single machine return. Every exited scope must be proven to
+have no generator-close, resource, destructor, or other cleanup obligation;
+otherwise compilation shall fail closed. The implementation shall add no
+unwind edge, runtime control-flow value, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or `topal-native/6`
+revision. Tests shall use one unchanged interpreter/compiler source, verify
+skipped tails, direct LLVM/DWARF/GDB behavior and rejection boundaries, and
+record separate interpreter, compiler-build, and native-run baselines. This
+realizes `TOPAL-FUNCTION-RETURN-001` and
+`TOPAL-COMPILER-LEXICAL-RETURN-001` for increment 3b2-b5e8a.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 
@@ -5213,8 +5237,9 @@ before introducing its own binding.
 
 Generated instructions and machine-represented immutable locals shall use a
 nested DWARF lexical scope so GDB resolves the innermost visible binding. The
-compiler shall reject nested declarations and return-through-block until their
-declaration, cleanup, and exit-edge lowerings are admitted.
+compiler shall reject nested declarations and any indirect, conditional, or
+cleanup-bearing return-through-block until their declaration, cleanup, and
+exit-edge lowerings are admitted.
 
 This requirement covers the cleanup-free block subset of
 `TOPAL-EXEC-BLOCK-001` and the block case of `TOPAL-SYN-GRAMMAR-001`. It

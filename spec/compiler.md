@@ -5019,6 +5019,30 @@ semantic lowering at `-O0`, not dead-code optimization. The backend SHALL use
 the function's ordinary private result representation and truthful return-line
 debug location. A root-level return SHALL be rejected.
 
+### TOPAL-COMPILER-LEXICAL-RETURN-001 — Cleanup-free lexical return
+
+An explicit `return` inside an admitted unconditional lexical block used
+directly as a function-body statement, discard initializer, binding
+initializer, or final expression SHALL complete the nearest enclosing ordinary
+function. The checked compiler model SHALL evaluate preceding outer and inner
+statements once in source order, validate the returned value against the
+function result classifier, and exclude both the inner and outer unreachable
+tails from generated IR at `-O0`.
+
+The compiler MAY normalize that exit into the enclosing function's single
+ordinary return after retaining the lexical block as its result expression.
+Generated instructions before the exit SHALL retain the nested DWARF lexical
+scope. This rule SHALL introduce no runtime control-flow object, unwinding
+dependency, foreign runtime, C/C++ standard library, public ABI, or native-ABI
+revision.
+
+This increment admits only an unconditional block at a direct statement
+boundary for which every exited scope is proven cleanup-free. A return-bearing
+block embedded in another operand, conditional or callback, and any exit whose
+scope owns generator close, resource, destructor, or other cleanup obligations
+SHALL remain rejected until explicit exit-edge and cleanup lowering is
+implemented.
+
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 
 For the admitted cleanup-free subset of `TOPAL-EXEC-BLOCK-001`, an empty block

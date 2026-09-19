@@ -2675,10 +2675,7 @@ impl Parser<'_> {
             if let Some(statement) = block_parser.statement() {
                 statements.push(statement);
             }
-            if block_parser
-                .peek()
-                .is_some_and(|token| token.kind != TokenKind::Newline)
-            {
+            if block_parser.peek_nontrivia().is_some() {
                 block_parser.error_current(
                     "E-UNEXPECTED-TOKEN",
                     "unexpected token after block statement",
@@ -3180,6 +3177,18 @@ mod tests {
             parsed.statements,
             vec![Statement::Expression(Expression::Unit(Span::new(0, 2)))]
         );
+    }
+
+    #[test]
+    fn parses_inline_single_statement_block_before_closing_brace() {
+        let source = SourceText::new("{ return 42 }").unwrap();
+        let parsed = parse(&source, &lex(&source));
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(matches!(
+            parsed.statements.as_slice(),
+            [Statement::Expression(Expression::Block { statements, .. })]
+                if matches!(statements.as_slice(), [Statement::Return { .. }])
+        ));
     }
 
     #[test]

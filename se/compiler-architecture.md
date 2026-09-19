@@ -1887,9 +1887,17 @@ constructing the final value. This implements inner shadowing and non-escape
 without mutating an outer compiler environment. The backend mirrors that rule
 with a private LLVM-value environment and a nested `DILexicalBlock`, so GDB
 resolves an innermost scalar binding by its source scope. An empty block is the
-zero-data Unit value and allocates nothing. Returns through a nested block,
-nested declarations, and scopes requiring cleanup retain their later explicit
-exit-edge and lifetime lowering.
+zero-data Unit value and allocates nothing.
+
+For one unconditional cleanup-free lexical block used directly by a function
+body statement boundary, increment 3b2-b5e8a retains a distinct checked exit
+outcome, omits both unreachable tails, and makes the lexical expression the
+ordinary function result. The backend therefore emits the existing single
+machine return while preserving the nested debug scope; it needs no control-
+flow carrier, unwind edge, runtime helper, or ABI change. Embedded or
+conditional return-bearing blocks, nested declarations, and scopes requiring
+cleanup retain their later explicit exit-edge and lifetime lowering in
+increment 3b2-b5e8.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
