@@ -523,6 +523,7 @@ enum ScalarListRuntimeFragment {
     OptionalString,
     IntPair,
     IntStringPair,
+    StringIntPair,
     Boolean,
     Comparison,
     ErrorCode,
@@ -705,6 +706,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::IntStringPair,
                 LIST_INT_STRING_PAIR_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::StringIntPair,
+                LIST_STRING_INT_PAIR_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -985,7 +990,8 @@ impl<'a> Generator<'a> {
                 || matches!(&parameter.value_type, CompilerType::List(element)
                     if matches!(element.as_ref(), CompilerType::Tuple(fields)
                         if matches!(fields.as_slice(),
-                            [CompilerType::Int, CompilerType::Int | CompilerType::String])))
+                            [CompilerType::Int, CompilerType::Int | CompilerType::String]
+                                | [CompilerType::String, CompilerType::Int])))
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -2729,6 +2735,11 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_int_string_pair(element.as_ref())
                 );
+                let string_int_pair = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_string_int_pair(element.as_ref())
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2784,6 +2795,9 @@ impl<'a> Generator<'a> {
                 } else if int_string_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntStringPair);
+                } else if string_int_pair {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::StringIntPair);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2833,6 +2847,8 @@ impl<'a> Generator<'a> {
                             "int.pair"
                         } else if int_string_pair {
                             "int-string"
+                        } else if string_int_pair {
+                            "string-int"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4664,13 +4680,37 @@ impl<'a> Generator<'a> {
                         Vec::new(),
                     )
                 }
+                CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::String, CompilerType::Int] =>
+                {
+                    let left = body.instruction(
+                        &format!("load ptr, ptr {list}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right_address = body.instruction(
+                        &format!("getelementptr i8, ptr {list}, i64 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right = body.instruction(
+                        &format!("load ptr, ptr {right_address}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    (
+                        LlValue::Tuple(vec![LlValue::String(left), LlValue::Int(right)]),
+                        Vec::new(),
+                    )
+                }
                 _ => unreachable!("checked List decision has an admitted element type"),
             };
             let rest_offset = if matches!(
                 &element,
                 CompilerType::Tuple(fields)
                     if matches!(fields.as_slice(),
-                        [CompilerType::Int, CompilerType::Int | CompilerType::String])
+                        [CompilerType::Int, CompilerType::Int | CompilerType::String]
+                            | [CompilerType::String, CompilerType::Int])
             ) {
                 16
             } else {
@@ -6977,6 +7017,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::IntStringPair);
             "int-string"
+        } else if compiler_string_int_pair(element) {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::StringIntPair);
+            "string-int"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -12108,6 +12152,14 @@ fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::Int]
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -12380,6 +12432,8 @@ const LIST_OPTIONAL_STRING_CORE_RUNTIME: &str =
 const LIST_INT_PAIR_CORE_RUNTIME: &str = include_str!("runtime/list_int_pair_core.ll");
 const LIST_INT_STRING_PAIR_CORE_RUNTIME: &str =
     include_str!("runtime/list_int_string_pair_core.ll");
+const LIST_STRING_INT_PAIR_CORE_RUNTIME: &str =
+    include_str!("runtime/list_string_int_pair_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");

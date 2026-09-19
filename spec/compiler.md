@@ -5856,6 +5856,26 @@ Tuple classifiers, exact field types, representation/ownership/lifetime/
 effects, and target adapters independently of private offsets, LLVM types,
 helpers, and debug shadows.
 
+### TOPAL-COMPILER-LIST-STRING-INT-PAIR-CORE-001 — Ordinary String/Int-pair Lists
+
+The compiler SHALL admit empty/nonempty `List (String, Int)` construction,
+immutable binding, private parameter/result/package and nested Tuple/Record
+passage, derived structural equality, complete decisions, count, emptiness,
+display, and debugging. Equality SHALL compare each exact String and arbitrary-
+precision Int field in source order, stop at the first mismatch, distinguish
+unequal lengths, and remain correct at O0.
+
+On Linux x86-64, an Entry MAY retain the existing immutable 24-byte inline node
+used as exact Map-collection input, containing the immutable String pointer,
+canonical Int pointer, and remaining pointer. LLVM SHALL own physical AMD64
+placement. This rule SHALL add no allocated Tuple payload, type-erased
+container, public/foreign/library ABI, foreign allocator, C/C++ runtime, other-
+language standard library, Map ABI change, or native-ABI revision. Future
+metadata SHALL encode the recursive List and positional Tuple classifiers,
+exact field types, representation/ownership/lifetime/effects, and target
+adapters independently of private offsets, LLVM types, helpers, and debug
+shadows.
+
 ### TOPAL-COMPILER-LIST-SEQUENCE-001 — Closed ordered List sequences
 
 The compiler SHALL admit the complete shared
