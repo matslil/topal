@@ -8689,6 +8689,17 @@ fn attach_function_capture(
         ) if rest.is_empty() => {
             function_captures.push((storage_name, capture_value));
         }
+        (CompilerAggregatePathElement::SumPayload(name), LlValue::Sum { payloads, sum, .. }) => {
+            let index = sum
+                .alternatives
+                .iter()
+                .position(|alternative| alternative.name == *name)
+                .expect("checked capture path names a Sum alternative");
+            let payload = payloads[index]
+                .as_deref_mut()
+                .expect("checked capture path names a payload-bearing Sum alternative");
+            attach_function_capture(payload, rest, storage_name, capture_value);
+        }
         _ => unreachable!("checked capture path follows its aggregate representation"),
     }
 }
@@ -9101,8 +9112,15 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
                 scope_enumeration()
             },
         },
-        CompilerType::Function
-        | CompilerType::Identity
+        CompilerType::Function => LlValue::Function {
+            value: "0".into(),
+            enumeration: CompilerEnumType {
+                name: "Function".into(),
+                alternatives: Vec::new(),
+            },
+            captures: Vec::new(),
+        },
+        CompilerType::Identity
         | CompilerType::TypeView
         | CompilerType::FunctionView
         | CompilerType::LanguageContext
@@ -13237,6 +13255,47 @@ mod tests {
         ));
         assert!(llvm.contains("call ptr @topal.runtime.optional.some(ptr"));
         assert!(llvm.contains("call ptr @topal.runtime.optional.none()"));
+        assert_eq!(
+            llvm.matches("call void @topal.runtime.pattern.identity.fail()")
+                .count(),
+            4
+        );
+        for name in [
+            "candidate",
+            "operation",
+            "offset",
+            "@ context-offset",
+            "root live-offset",
+        ] {
+            assert!(llvm.contains(&format!("!DILocalVariable(name: \"{name}\"")));
+        }
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.environment"));
+    }
+
+    #[test]
+    fn emits_sum_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-SUM-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/sum-function-environments.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "sum-function-environments.t").emit();
+
+        assert_eq!(
+            llvm.matches(
+                "define internal fastcc { { i32, i32 }, ptr, ptr, ptr } @topal.fn.make_2doperation."
+            )
+            .count(),
+            5
+        );
+        assert!(llvm.contains(
+            "define internal fastcc { { i32, i32, ptr }, ptr, ptr, ptr } @topal.fn.make_2dchoice."
+        ));
         assert_eq!(
             llvm.matches("call void @topal.runtime.pattern.identity.fail()")
                 .count(),

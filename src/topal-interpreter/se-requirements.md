@@ -2413,3 +2413,18 @@ shall compare Optional presence, callable identity, and captures without using
 allocation identity. The shared regression and reversible debugger history
 shall cover named, symbolic, anonymous, and nested payloads, absence, forwarding,
 selection, repeated match/mismatch, and exact results.
+
+## TOPAL-INTP-SUBSET-276 — Nominal Sum Function environments
+
+All source modes shall preserve exact Function identity and lexical environment
+when a Function is carried by the selected payload of a labeled Union or
+positional Variant, bound, displayed, passed through ordinary private source
+parameters/results or package fields, selected by a complete Sum decision, and
+eventually applied. Payload-free and non-Function alternatives shall retain
+ordinary nominal Sum behavior. Distinct captured factory invocations shall
+remain independent. Existing repeated anonymous-pattern exact identity shall
+compare nominal alternative, active payload, callable identity, and captures
+without observing inactive payloads or using allocation identity. The shared
+regression and reversible debugger history shall cover named, symbolic,
+anonymous, and nested payloads, Union/Variant construction, forwarding,
+selection, repeated match/mismatch, display, and exact results.

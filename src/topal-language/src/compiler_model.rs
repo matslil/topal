@@ -1194,6 +1194,7 @@ pub enum CompilerAggregatePathElement {
     Tuple(usize),
     Record(String),
     OptionalPayload,
+    SumPayload(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1341,6 +1342,7 @@ struct BindingFacts {
     tuple_fields: Vec<StaticValueFacts>,
     record_fields: BTreeMap<String, StaticValueFacts>,
     optional: Option<CompilerOptionalFacts>,
+    sum: Option<CompilerSumFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
     static_capability: Option<CompilerCapability>,
@@ -1449,12 +1451,20 @@ struct StaticValueFacts {
     tuple_fields: Vec<Self>,
     record_fields: BTreeMap<String, Self>,
     optional: Option<CompilerOptionalFacts>,
+    sum: Option<CompilerSumFacts>,
 }
 
 #[derive(Clone)]
 enum CompilerOptionalFacts {
     None,
     Some(Box<StaticValueFacts>),
+}
+
+#[derive(Clone)]
+struct CompilerSumFacts {
+    alternative: u32,
+    alternative_name: String,
+    payload: Option<Box<StaticValueFacts>>,
 }
 
 fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFacts) {
@@ -1465,6 +1475,7 @@ fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFact
     binding.tuple_fields.clone_from(&value.tuple_fields);
     binding.record_fields.clone_from(&value.record_fields);
     binding.optional.clone_from(&value.optional);
+    binding.sum.clone_from(&value.sum);
 }
 
 fn present_optional_payload(facts: StaticValueFacts) -> Option<StaticValueFacts> {
@@ -2704,10 +2715,9 @@ fn collect_sums(
                         .ok_or_else(|| unsupported(source, classifier, "sum payload classifier"))
                 })
                 .transpose()?;
-            if payload
-                .as_ref()
-                .is_some_and(|payload| !compiler_function_result_supported(payload))
-            {
+            if payload.as_ref().is_some_and(|payload| {
+                payload != &CompilerType::Function && !compiler_function_result_supported(payload)
+            }) {
                 return Err(unsupported(
                     source,
                     classifier.expect("unsupported payload has a classifier"),
@@ -8428,8 +8438,13 @@ impl Analyzer {
                 base: Box::new(constraint.base_type.clone()),
             });
         }
-        parse_compact_classifier(&classifier)
-            .ok_or_else(|| unsupported(&self.source, span, "classifier"))
+        parse_compact_classifier_with(&classifier, &|name| {
+            self.sums
+                .get(name)
+                .filter(|(_, declaration)| declaration.end <= span.start)
+                .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+        })
+        .ok_or_else(|| unsupported(&self.source, span, "classifier"))
     }
 
     fn is_declaration(&self, statement: &Statement) -> bool {
@@ -8600,6 +8615,7 @@ impl Analyzer {
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
+                sum: None,
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
                     name: name_text.clone(),
@@ -8895,6 +8911,7 @@ impl Analyzer {
                     let tuple_fields = aggregate_facts.tuple_fields;
                     let record_fields = aggregate_facts.record_fields;
                     let optional = aggregate_facts.optional;
+                    let sum = aggregate_facts.sum;
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable = aggregate_facts.callable;
@@ -8955,6 +8972,7 @@ impl Analyzer {
                         tuple_fields,
                         record_fields,
                         optional,
+                        sum,
                         namespace,
                         callable,
                         static_capability,
@@ -9080,6 +9098,7 @@ impl Analyzer {
                             tuple_fields: Vec::new(),
                             record_fields: BTreeMap::new(),
                             optional: None,
+                            sum: None,
                             namespace: None,
                             callable: None,
                             static_capability: None,
@@ -9825,6 +9844,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -9881,6 +9901,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -10483,6 +10504,7 @@ impl Analyzer {
                 tuple_fields: Vec::new(),
                 record_fields: BTreeMap::new(),
                 optional: None,
+                sum: None,
                 namespace: None,
                 callable: None,
                 static_capability: None,
@@ -15802,7 +15824,57 @@ impl Analyzer {
                     )),
                 }
             }
+            CompilerType::Sum(sum) => self.forward_function_sum_captures(
+                sum,
+                facts,
+                boundary_name,
+                span,
+                environment,
+                forwarded,
+            ),
             _ => Ok(()),
+        }
+    }
+
+    fn forward_function_sum_captures(
+        &self,
+        sum: &CompilerSumType,
+        facts: &mut StaticValueFacts,
+        boundary_name: &str,
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+        forwarded: &mut Vec<CompilerContextCapture>,
+    ) -> Result<(), Diagnostic> {
+        let Some(sum_facts) = facts.sum.as_mut() else {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "Function Sum boundary without exact active-alternative facts",
+            ));
+        };
+        let index = usize::try_from(sum_facts.alternative).expect("u32 sum tag fits usize");
+        let alternative = sum.alternatives.get(index).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                span,
+                "Function Sum boundary with invalid active-alternative facts",
+            )
+        })?;
+        match (&alternative.payload, sum_facts.payload.as_mut()) {
+            (Some(payload), Some(payload_facts)) => self.forward_function_aggregate_captures(
+                payload,
+                payload_facts,
+                &format!("{boundary_name} alternative {}", alternative.name),
+                span,
+                environment,
+                forwarded,
+            ),
+            (None, None) => Ok(()),
+            _ => Err(unsupported(
+                &self.source,
+                span,
+                "Function Sum boundary without exact active-payload facts",
+            )),
         }
     }
 
@@ -16020,6 +16092,7 @@ impl Analyzer {
             tuple_fields: Vec::new(),
             record_fields: Self::known_record_fields(value, environment),
             optional: None,
+            sum: None,
         }
     }
 
@@ -16053,6 +16126,20 @@ impl Analyzer {
             CompilerExpressionKind::OptionalNone => {
                 facts.optional = Some(CompilerOptionalFacts::None);
             }
+            CompilerExpressionKind::Sum {
+                value: alternative,
+                payload,
+            } => {
+                let CompilerType::Sum(sum) = &value.value_type else {
+                    unreachable!("checked Sum expression retains its nominal classifier")
+                };
+                facts.sum = Some(self.known_sum_value_facts(
+                    sum,
+                    *alternative,
+                    payload.as_deref(),
+                    environment,
+                )?);
+            }
             CompilerExpressionKind::RecordReconstruct { base, replacements } => {
                 facts = self.known_structural_value_facts(base, environment)?;
                 for (name, replacement) in replacements {
@@ -16068,6 +16155,7 @@ impl Analyzer {
                     facts.tuple_fields.clone_from(&binding.tuple_fields);
                     facts.record_fields.clone_from(&binding.record_fields);
                     facts.optional.clone_from(&binding.optional);
+                    facts.sum.clone_from(&binding.sum);
                 }
             }
             CompilerExpressionKind::TupleField { tuple, index } => {
@@ -16111,6 +16199,16 @@ impl Analyzer {
             }
             _ => {}
         }
+        self.complete_structural_callable_facts(value, environment, &mut facts)?;
+        Ok(facts)
+    }
+
+    fn complete_structural_callable_facts(
+        &self,
+        value: &CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        facts: &mut StaticValueFacts,
+    ) -> Result<(), Diagnostic> {
         if value.value_type == CompilerType::Function
             && facts.callable.is_none()
             && !matches!(
@@ -16121,7 +16219,25 @@ impl Analyzer {
         {
             facts.callable = self.known_callable(value, environment, value.span.start)?;
         }
-        Ok(facts)
+        Ok(())
+    }
+
+    fn known_sum_value_facts(
+        &self,
+        sum: &CompilerSumType,
+        alternative: u32,
+        payload: Option<&CompilerExpression>,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerSumFacts, Diagnostic> {
+        let index = usize::try_from(alternative).expect("u32 sum tag fits usize");
+        Ok(CompilerSumFacts {
+            alternative,
+            alternative_name: sum.alternatives[index].name.clone(),
+            payload: payload
+                .map(|payload| self.known_structural_value_facts(payload, environment))
+                .transpose()?
+                .map(Box::new),
+        })
     }
 
     fn function_aggregate_result_captures(
@@ -16230,7 +16346,64 @@ impl Analyzer {
                     )),
                 }
             }
+            CompilerType::Sum(sum) => self.collect_function_sum_result_captures(
+                sum,
+                facts,
+                environment,
+                span,
+                path,
+                result,
+            ),
             _ => Ok(()),
+        }
+    }
+
+    fn collect_function_sum_result_captures(
+        &self,
+        sum: &CompilerSumType,
+        facts: &StaticValueFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+        path: &mut Vec<CompilerAggregatePathElement>,
+        result: &mut Vec<CompilerFunctionResultCapture>,
+    ) -> Result<(), Diagnostic> {
+        let Some(sum_facts) = facts.sum.as_ref() else {
+            return Err(unsupported(
+                &self.source,
+                span,
+                "Function Sum result without exact active-alternative facts",
+            ));
+        };
+        let index = usize::try_from(sum_facts.alternative).expect("u32 sum tag fits usize");
+        let alternative = sum.alternatives.get(index).ok_or_else(|| {
+            unsupported(
+                &self.source,
+                span,
+                "Function Sum result with invalid active-alternative facts",
+            )
+        })?;
+        match (&alternative.payload, sum_facts.payload.as_deref()) {
+            (Some(payload), Some(payload_facts)) => {
+                path.push(CompilerAggregatePathElement::SumPayload(
+                    alternative.name.clone(),
+                ));
+                let collected = self.collect_function_aggregate_result_captures(
+                    payload,
+                    payload_facts,
+                    environment,
+                    span,
+                    path,
+                    result,
+                );
+                path.pop();
+                collected
+            }
+            (None, None) => Ok(()),
+            _ => Err(unsupported(
+                &self.source,
+                span,
+                "Function Sum result without exact active-payload facts",
+            )),
         }
     }
 
@@ -17242,6 +17415,9 @@ impl Analyzer {
                         optional: structural_facts
                             .as_ref()
                             .and_then(|facts| facts.optional.clone()),
+                        sum: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.sum.clone()),
                         namespace: None,
                         callable,
                         static_capability: None,
@@ -17281,6 +17457,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -18849,6 +19026,7 @@ impl Analyzer {
                         tuple_fields: Vec::new(),
                         record_fields: BTreeMap::new(),
                         optional: None,
+                        sum: None,
                         namespace: Some(namespace),
                         callable: None,
                         static_capability: None,
@@ -18888,6 +19066,7 @@ impl Analyzer {
                     tuple_fields: facts.tuple_fields,
                     record_fields: facts.record_fields,
                     optional: facts.optional,
+                    sum: facts.sum,
                     namespace: None,
                     callable: facts.callable,
                     static_capability: None,
@@ -20050,6 +20229,7 @@ impl Analyzer {
                         tuple_fields: aggregate_arguments[parameter_index].tuple_fields.clone(),
                         record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
                         optional: aggregate_arguments[parameter_index].optional.clone(),
+                        sum: aggregate_arguments[parameter_index].sum.clone(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                         static_capability: None,
@@ -20099,6 +20279,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20140,6 +20321,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20180,6 +20362,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20221,6 +20404,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20261,6 +20445,7 @@ impl Analyzer {
                     tuple_fields: Vec::new(),
                     record_fields: BTreeMap::new(),
                     optional: None,
+                    sum: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -21513,6 +21698,9 @@ impl Analyzer {
         let mut lowered = Vec::new();
         let mut seen = BTreeSet::new();
         let mut otherwise = None;
+        let subject_facts = compiler_type_is_function_aggregate(&subject.value_type)
+            .then(|| self.known_structural_value_facts(&subject, environment))
+            .transpose()?;
         for rule in rules {
             if otherwise.is_some() {
                 return Err(source_diagnostic(
@@ -21621,7 +21809,7 @@ impl Analyzer {
                 continue;
             }
             let binding = binding.map(|binding| (self.source.slice(binding).to_owned(), binding));
-            let branch = if let Some((name, binding_span)) = &binding {
+            let mut branch = if let Some((name, binding_span)) = &binding {
                 decision_binding_environment(
                     environment,
                     name,
@@ -21634,6 +21822,16 @@ impl Analyzer {
             } else {
                 environment.clone()
             };
+            if let (Some((name, _)), Some(subject_facts)) = (&binding, &subject_facts)
+                && let Some(sum_facts) = &subject_facts.sum
+                && sum_facts.alternative == value
+                && let Some(payload_facts) = sum_facts.payload.as_deref()
+            {
+                let binding = branch
+                    .get_mut(name)
+                    .expect("payload decision binding was inserted");
+                retain_static_value_facts(binding, payload_facts);
+            }
             lowered.push(CompilerSumRule {
                 value,
                 binding,
@@ -22727,6 +22925,13 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
+    parse_compact_classifier_with(classifier, &|_| None)
+}
+
+fn parse_compact_classifier_with(
+    classifier: &str,
+    resolve_nominal: &impl Fn(&str) -> Option<CompilerType>,
+) -> Option<CompilerType> {
     if let Some(fields) = classifier
         .strip_prefix("Array(")
         .and_then(|value| value.strip_suffix(')'))
@@ -22734,7 +22939,7 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         let (count, element) = split_classifier_once(fields)?;
         return Some(CompilerType::Array {
             count: count.parse().ok()?,
-            element: Box::new(parse_compact_classifier(element)?),
+            element: Box::new(parse_compact_classifier_with(element, resolve_nominal)?),
         });
     }
     if let Some(fields) = classifier
@@ -22743,31 +22948,33 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     {
         let (key, value) = split_classifier_once(fields)?;
         return Some(CompilerType::Map {
-            key: Box::new(parse_compact_classifier(key)?),
-            value: Box::new(parse_compact_classifier(value)?),
+            key: Box::new(parse_compact_classifier_with(key, resolve_nominal)?),
+            value: Box::new(parse_compact_classifier_with(value, resolve_nominal)?),
         });
     }
     if let Some(element) = classifier.strip_prefix("Set") {
-        return Some(CompilerType::Set(Box::new(parse_compact_classifier(
+        return Some(CompilerType::Set(Box::new(parse_compact_classifier_with(
             element,
+            resolve_nominal,
         )?)));
     }
     if let Some(element) = classifier.strip_prefix("Bag") {
-        return Some(CompilerType::Bag(Box::new(parse_compact_classifier(
+        return Some(CompilerType::Bag(Box::new(parse_compact_classifier_with(
             element,
+            resolve_nominal,
         )?)));
     }
     if let Some(element) = classifier.strip_prefix("List") {
-        let element = parse_compact_classifier(element)?;
+        let element = parse_compact_classifier_with(element, resolve_nominal)?;
         if compiler_list_node_element_supported(&element) {
             return Some(CompilerType::List(Box::new(element)));
         }
         return None;
     }
     if let Some(payload) = classifier.strip_prefix("Optional") {
-        return Some(CompilerType::Optional(Box::new(parse_compact_classifier(
-            payload,
-        )?)));
+        return Some(CompilerType::Optional(Box::new(
+            parse_compact_classifier_with(payload, resolve_nominal)?,
+        )));
     }
     if let Some(success_and_codes) = classifier
         .strip_prefix("Result(")
@@ -22777,9 +22984,9 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         if codes != "langarithmeticArithmeticErrorCode" {
             return None;
         }
-        return Some(CompilerType::Result(Box::new(parse_compact_classifier(
-            success,
-        )?)));
+        return Some(CompilerType::Result(Box::new(
+            parse_compact_classifier_with(success, resolve_nominal)?,
+        )));
     }
     if let Some(fields) = classifier
         .strip_prefix("Record(")
@@ -22789,7 +22996,10 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
             .into_iter()
             .map(|field| {
                 let (label, classifier) = split_record_classifier_field(field)?;
-                Some((label.to_owned(), parse_compact_classifier(classifier)?))
+                Some((
+                    label.to_owned(),
+                    parse_compact_classifier_with(classifier, resolve_nominal)?,
+                ))
             })
             .collect::<Option<Vec<_>>>()?;
         parsed.sort_by(|left, right| left.0.cmp(&right.0));
@@ -22809,11 +23019,11 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
         return Some(CompilerType::Tuple(
             fields
                 .into_iter()
-                .map(parse_compact_classifier)
+                .map(|field| parse_compact_classifier_with(field, resolve_nominal))
                 .collect::<Option<Vec<_>>>()?,
         ));
     }
-    parse_compact_scalar_classifier(classifier)
+    parse_compact_scalar_classifier(classifier).or_else(|| resolve_nominal(classifier))
 }
 
 fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
@@ -23541,7 +23751,10 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
             if sum.alternatives.iter().all(|alternative| alternative
                 .payload
                 .as_ref()
-                .is_none_or(compiler_function_result_supported))
+                .is_none_or(|payload| {
+                    payload == &CompilerType::Function
+                        || compiler_function_result_supported(payload)
+                }))
     )
 }
 
@@ -23606,6 +23819,11 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
             field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
         }),
         CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative.payload.as_ref().is_some_and(|payload| {
+                payload == &CompilerType::Function || compiler_type_is_function_aggregate(payload)
+            })
+        }),
         _ => false,
     }
 }
@@ -23638,6 +23856,24 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
                 None => false,
             }
         }
+        CompilerType::Sum(sum) => facts.sum.as_ref().is_some_and(|sum_facts| {
+            let Some(alternative) = usize::try_from(sum_facts.alternative)
+                .ok()
+                .and_then(|index| sum.alternatives.get(index))
+            else {
+                return false;
+            };
+            if alternative.name != sum_facts.alternative_name {
+                return false;
+            }
+            match (&alternative.payload, sum_facts.payload.as_deref()) {
+                (Some(payload), Some(payload_facts)) => {
+                    function_aggregate_facts_exact(payload, payload_facts)
+                }
+                (None, None) => true,
+                _ => false,
+            }
+        }),
         _ => true,
     }
 }
@@ -23723,6 +23959,33 @@ fn function_aggregate_facts_same_callable_identity(
                 _ => false,
             }
         }
+        CompilerType::Sum(sum) => match (left.sum.as_ref(), right.sum.as_ref()) {
+            (Some(left), Some(right)) if left.alternative == right.alternative => {
+                let Some(alternative) = usize::try_from(left.alternative)
+                    .ok()
+                    .and_then(|index| sum.alternatives.get(index))
+                else {
+                    return false;
+                };
+                if alternative.name != left.alternative_name
+                    || alternative.name != right.alternative_name
+                {
+                    return false;
+                }
+                match (
+                    &alternative.payload,
+                    left.payload.as_deref(),
+                    right.payload.as_deref(),
+                ) {
+                    (Some(payload), Some(left), Some(right)) => {
+                        function_aggregate_facts_same_callable_identity(payload, left, right)
+                    }
+                    (None, None, None) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        },
         _ => true,
     }
 }
@@ -23754,6 +24017,24 @@ fn function_aggregate_binding_facts_exact(value_type: &CompilerType, facts: &Bin
                 None => false,
             }
         }
+        CompilerType::Sum(sum) => facts.sum.as_ref().is_some_and(|sum_facts| {
+            let Some(alternative) = usize::try_from(sum_facts.alternative)
+                .ok()
+                .and_then(|index| sum.alternatives.get(index))
+            else {
+                return false;
+            };
+            if alternative.name != sum_facts.alternative_name {
+                return false;
+            }
+            match (&alternative.payload, sum_facts.payload.as_deref()) {
+                (Some(payload), Some(payload_facts)) => {
+                    function_aggregate_facts_exact(payload, payload_facts)
+                }
+                (None, None) => true,
+                _ => false,
+            }
+        }),
         _ => false,
     }
 }
@@ -23797,6 +24078,33 @@ fn function_aggregate_binding_facts_same_callable_identity(
                 _ => false,
             }
         }
+        CompilerType::Sum(sum) => match (left.sum.as_ref(), right.sum.as_ref()) {
+            (Some(left), Some(right)) if left.alternative == right.alternative => {
+                let Some(alternative) = usize::try_from(left.alternative)
+                    .ok()
+                    .and_then(|index| sum.alternatives.get(index))
+                else {
+                    return false;
+                };
+                if alternative.name != left.alternative_name
+                    || alternative.name != right.alternative_name
+                {
+                    return false;
+                }
+                match (
+                    &alternative.payload,
+                    left.payload.as_deref(),
+                    right.payload.as_deref(),
+                ) {
+                    (Some(payload), Some(left), Some(right)) => {
+                        function_aggregate_facts_same_callable_identity(payload, left, right)
+                    }
+                    (None, None, None) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        },
         _ => false,
     }
 }
@@ -23822,6 +24130,7 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         tuple_fields: Vec::new(),
         record_fields: BTreeMap::new(),
         optional: None,
+        sum: None,
         namespace: None,
         callable: None,
         static_capability: None,
@@ -23853,6 +24162,13 @@ fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFa
     if let Some(CompilerOptionalFacts::Some(payload)) = &facts.optional {
         returned.extend(returned_function_capture_bindings(payload));
     }
+    if let Some(CompilerSumFacts {
+        payload: Some(payload),
+        ..
+    }) = &facts.sum
+    {
+        returned.extend(returned_function_capture_bindings(payload));
+    }
     returned
 }
 
@@ -23875,6 +24191,13 @@ fn aggregate_callable_at_path_mut<'a>(
                 return None;
             };
             aggregate_callable_at_path_mut(payload, rest)
+        }
+        CompilerAggregatePathElement::SumPayload(name) => {
+            let sum = facts.sum.as_mut()?;
+            if &sum.alternative_name != name {
+                return None;
+            }
+            aggregate_callable_at_path_mut(sum.payload.as_mut()?, rest)
         }
     }
 }
@@ -24036,6 +24359,12 @@ fn compiler_repeated_function_aggregate_identity_supported(value_type: &Compiler
         CompilerType::Optional(payload) => {
             compiler_repeated_function_aggregate_identity_supported(payload)
         }
+        CompilerType::Sum(sum) => sum.alternatives.iter().all(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_none_or(compiler_repeated_function_aggregate_identity_supported)
+        }),
         _ => compiler_equality_supported(value_type),
     }
 }
@@ -24172,6 +24501,7 @@ fn decision_binding_environment(
             tuple_fields: Vec::new(),
             record_fields: BTreeMap::new(),
             optional: None,
+            sum: None,
             namespace: None,
             callable: None,
             static_capability: None,
@@ -34932,6 +35262,93 @@ mod tests {
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nchoose is fn (flag : Boolean) -> Optional Function\n  flag\n    true then Some increment\n    false then Some decrement\nchoose true\n",
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Optional Function\n  nested is fn (value : Int) -> Int\n    operation value\n  Some nested\napply is fn (candidate : Optional Function) -> Int\n  candidate\n    Some operation then operation 41\n    None then 0\napply (wrap increment)\n",
             "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (candidate : Optional Function) -> Optional Function\n  nested is fn (value : Int) -> Int\n    candidate\n      Some operation then operation value\n      None then 0\n  Some nested\nwrap (Some increment)\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        }
+    }
+
+    #[test]
+    fn models_sum_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-SUM-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-TYPE-MATCH-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/sum-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Sum Function environment results")
+        };
+        assert_eq!(results.len(), 13);
+        for index in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10] {
+            assert_eq!(results[index].value_type, CompilerType::Int);
+        }
+        for index in [5, 11, 12] {
+            assert!(matches!(results[index].value_type, CompilerType::Sum(_)));
+        }
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-operation")
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 5);
+        assert!(factories.iter().all(|function| {
+            function.result_captures.len() == 3
+                && function.result_captures.iter().all(|capture| {
+                    capture.path == [CompilerAggregatePathElement::SumPayload("Apply".into())]
+                })
+        }));
+        let choice_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-choice")
+            .unwrap();
+        let CompilerType::Sum(choice) = &choice_factory.result_type else {
+            panic!("expected a Choice result")
+        };
+        let choice_payload = choice.alternatives[0].name.clone();
+        assert!(choice_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [CompilerAggregatePathElement::SumPayload(
+                    choice_payload.clone(),
+                )]
+        }));
+        let repeated = program
+            .functions
+            .iter()
+            .find(|function| {
+                function.source_name == "<anonymous fn/2>" && function.pattern_identities.len() == 4
+            })
+            .unwrap();
+        assert_eq!(
+            repeated.parameters[0].value_type,
+            repeated.parameters[1].value_type
+        );
+
+        let record = analyze_for_compiler(
+            "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\ncontext-offset is 40\nmake is fn (offset : Int) -> Record (candidate : Operation, value : Int)\n  increase is fn (operand : Int) -> Int\n    operand + offset + @ context-offset + (root live-offset)\n  (candidate is Apply increase, value is 1)\napply is fn (package : Record (candidate : Operation, value : Int)) -> Int\n  package candidate\n    Apply operation then operation (package value)\n    Missing then 0\nlive-offset is 1\napply (make 1)\n",
+        )
+        .unwrap();
+        let record_factory = record
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make")
+            .unwrap();
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Record("candidate".into()),
+                    CompilerAggregatePathElement::SumPayload("Apply".into()),
+                ]
+        }));
+
+        for rejected in [
+            "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nchoose is fn (flag : Boolean) -> Operation\n  flag\n    true then Apply increment\n    false then Apply decrement\nchoose true\n",
+            "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Operation\n  nested is fn (value : Int) -> Int\n    operation value\n  Apply nested\napply is fn (candidate : Operation) -> Int\n  candidate\n    Apply operation then operation 41\n    Missing then 0\napply (wrap increment)\n",
+            "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (candidate : Operation) -> Operation\n  nested is fn (value : Int) -> Int\n    candidate\n      Apply operation then operation value\n      Missing then 0\n  Apply nested\nwrap (Apply increment)\n",
         ] {
             let diagnostic = analyze_for_compiler(rejected).unwrap_err();
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");

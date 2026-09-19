@@ -3362,9 +3362,9 @@ result to carry a recursively nested Tuple or Record when every Function leaf
 is exact at the call site. Specialization shall propagate those recursive facts
 into the callee or back to the caller. Capture-bearing aggregate boundaries are
 governed by `TOPAL-COMP-FUNCTION-AGGREGATE-CAPTURE-001`. Missing, opaque, or
-branch-selected facts and Function containment outside Tuple, Record, or the
-exact Optional path of `TOPAL-COMP-OPTIONAL-FUNCTION-001` shall fail before LLVM
-lowering.
+branch-selected facts and Function containment outside Tuple, Record, the exact
+Optional path of `TOPAL-COMP-OPTIONAL-FUNCTION-001`, or the exact nominal Sum
+path of `TOPAL-COMP-SUM-FUNCTION-001` shall fail before LLVM lowering.
 
 The backend shall represent each Function leaf with its existing private i32
 observation tag inside the recursively exact aggregate. Definitions and calls
@@ -3404,9 +3404,10 @@ Record parameters whose Function leaves are capturing anonymous Functions or
 nested Functions, and results whose Function leaves are capturing anonymous
 Functions or exact nested Functions under
 `TOPAL-COMP-NESTED-FUNCTION-ESCAPE-001`. Every leaf shall retain its exact
-callable identity, ordered capture facts, and canonical
-zero-based-Tuple-index/Record-label/Optional-payload path. Paths and their
-captures shall be traversed depth-first from left to right.
+callable identity, ordered capture facts, and canonical zero-based-Tuple-index,
+Record-label, Optional-payload, or nominal-Sum-alternative path. Paths and their
+captures shall be traversed depth-first from left to right. Optional and Sum
+edges shall satisfy their respective exact-container requirements.
 
 For each specialized parameter, the frontend shall append every path-ordered
 capture after the source-visible aggregate argument and bind those operands to
@@ -3551,7 +3552,8 @@ dependency, C/C++ runtime, other-language standard library, public ABI, or
 `topal-native/6` revision. Allocation shall remain the existing Topal-owned
 process-lifetime Optional representation. Opaque or dynamically selected
 Optional callables, persistent storage, publication, and Function containment
-in other containers remain deferred. Future library metadata shall retain
+in containers other than exact nominal Sums governed by
+`TOPAL-COMP-SUM-FUNCTION-001` remain deferred. Future library metadata shall retain
 canonical source-session/scope, callable/declaration, Optional payload and
 enclosing aggregate paths, presence/selection proof, ordered capture
 identity/classifier/representation/lifetime, effect, container representation,
@@ -3559,6 +3561,58 @@ and versioned target-adapter facts independently of private observation tags,
 header layout, compiler names, LLVM types/symbols, debug shadows, and physical
 placement. This realizes `TOPAL-COMPILER-OPTIONAL-FUNCTION-001` for increments
 3b2-b5as, 6b2b2j, and 6c2h.
+
+## TOPAL-COMP-SUM-FUNCTION-001 — Exact private nominal Sum Function environments
+
+The checked compiler model shall admit an exact labeled Union or positional
+Variant with a Function-bearing payload as a local value, ordinary private
+parameter or result, package field, or recursively contained Tuple/Record
+field. It shall retain the exact selected alternative and complete active
+payload facts independently of the runtime tag. Every active Function leaf
+shall retain one exact named, symbolic, anonymous, or admitted nested callable
+identity. Opaque or branch-selected alternatives or callables shall remain
+`E-COMPILER-UNSUPPORTED` before artifact publication.
+
+The backend shall preserve the existing exact private tag-plus-payload Sum
+aggregate. A complete decision shall attach retained active payload facts to
+its binding and lower eventual Function application as one direct specialized
+`fastcc` call. It shall add the semantic alternative name to each active
+Function leaf's canonical capture path. Private parameters shall pass the
+source aggregate followed by ordered captures; private results shall return the
+aggregate followed by those captures for one-time caller extraction and
+remapping. The path shall compose with enclosing Tuple/Record values and exact
+nested Function escape.
+
+Repeated anonymous-pattern identity shall compare nominal tags and only the
+active payload, including the Function observation before captures. When both
+operands retain the same selected alternative and callable identity, the
+compiler shall compare corresponding captures using admitted exact equality.
+A different tag or callable shall mismatch without observing inactive slots or
+granting general source Equality to the Function-bearing Sum.
+
+Tests shall cover labeled and positional Sums; named, symbolic, anonymous, and
+nested Function payloads; payload-free and non-Function alternatives; distinct
+factory snapshots; decision application; private parameter/result, package,
+Tuple, and Record passage; repeated match/mismatch; display; all interpreter
+modes and reversible history; exact checked paths and direct IR; artifact-free
+opaque/capture rejection; freestanding ELF/DWARF; full O0 GDB Sum/callable
+frames; the shared corpus; and separate interpreter/compiler resource
+baselines.
+
+This shall add no closure/environment object, environment pointer, function
+pointer, indirect call, callback, dispatch table, caller-frame lookup,
+allocation, foreign dependency, C/C++ runtime, other-language standard library,
+public ABI, or `topal-native/6` revision. Function- or Generator-containing
+capture state, recursive Sums, opaque or dynamically selected Sum callables,
+persistent storage, publication, and Function containment in other containers
+remain deferred. Future library metadata shall retain canonical
+source-session/scope and nominal Sum identity, labeled/positional form, ordered
+alternative/payload schema, active-alternative proof, callable/declaration and
+aggregate paths, ordered capture identity/classifier/representation/lifetime,
+effects, Sum representation, and versioned target-adapter facts independently
+of private tags, inactive layout, compiler names, LLVM types/symbols, debug
+shadows, and physical placement. This realizes
+`TOPAL-COMPILER-SUM-FUNCTION-001` for increments 3b2-b5at, 6b2b2k, and 6c2i.
 
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
@@ -4165,7 +4219,7 @@ leave physical AMD64 placement to LLVM. GDB shall expose the source field name,
 nominal classifier, active alternative/payload value, and ordinary function
 frame. Tests shall cover one-package and mixed two-operand calls, reordered
 once-only calls, a closed Sum default, positional parity, opaque and
-Function-payload rejection, exact Sum IR, all interpreter modes, reversible
+unsupported-Function-payload rejection, exact Sum IR, all interpreter modes, reversible
 debugging, the shared corpus and separate resource baselines, freestanding
 ELF/DWARF properties, and O0 GDB values/frames.
 
@@ -4176,9 +4230,10 @@ standard library, public aggregate ABI, or `topal-native/6` revision. Future
 compiled-library metadata shall preserve canonical nominal identity, complete
 alternatives/payload classifiers, representation identity,
 operand/field/default/effect semantics, and target adapters. Nested package
-declarations, opaque whole-package values, Function-containing Sum payloads,
-dependent defaults, recursive Sum package signatures, public adapters, and
-other unsupported non-scalar fields remain deferred. This realizes
+declarations, opaque whole-package values, Function-containing Sum payloads
+outside `TOPAL-COMP-SUM-FUNCTION-001`, dependent defaults, recursive Sum
+package signatures, public adapters, and other unsupported non-scalar fields
+remain deferred. This realizes
 `TOPAL-COMPILER-SUM-PACKAGED-FIELD-001`,
 `TOPAL-FUNCTION-PACKAGED-OPERAND-001`, and `TOPAL-TYPE-CALL-001` for compiler
 increment 3b2-b5al.
@@ -4273,7 +4328,8 @@ source/declaration identities, overload sets, capture schemas and equality,
 lifetime/effect semantics, operand/field/default semantics, and target adapters
 independently of private binding names, LLVM types, tags, and physical
 placement. Optional Function fields are governed by
-`TOPAL-COMP-OPTIONAL-FUNCTION-001`. Function containment in List, Sum, and other
+`TOPAL-COMP-OPTIONAL-FUNCTION-001`; exact nominal Sum Function fields are
+governed by `TOPAL-COMP-SUM-FUNCTION-001`. Function containment in List and other
 aggregates; dynamic escape/selection; dependent defaults; nested package declarations;
 recursive callable package signatures; persistent storage; publication; and
 public adapters remain deferred. This realizes
