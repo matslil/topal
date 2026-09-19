@@ -5381,6 +5381,29 @@ target adapters independently of private details. This realizes
 `TOPAL-COMPILER-LIST-ERROR-CODE-CORE-001`, List construction, decision,
 equality, count, and empty rules for compiler increment 4b3d-v.
 
+## TOPAL-COMP-LIST-UNIT-CORE-001 — Ordinary immutable Unit Lists
+
+The checked model shall admit contextual construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for `List Unit`.
+Every entry is `()`, operands evaluate once, and unsupported transforms fail
+before artifact publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte zero-i8/pointer nodes.
+A conditional finite fragment shall compare length and count correctly at O0.
+Private Unit results retain void while aggregate fields retain their existing
+i8 carrier; LLVM owns AMD64 placement. DWARF/GDB retain exact Unit/List identity.
+Tests cover all admitted paths, interpreter modes/history, IR, artifact
+rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not turn Unit into completion/effect evidence or add payload state,
+runtime tags, generic/public/foreign/library ABI, foreign allocation, C/C++,
+another-language library, or an ABI revision. Future metadata carries Unit
+identity, representation/ownership, lifetime, effects, and target adapters
+independently of private details. This realizes
+`TOPAL-COMPILER-LIST-UNIT-CORE-001`, List construction, decision, equality,
+count, and empty rules for compiler increment 4b3d-w.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

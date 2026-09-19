@@ -1311,6 +1311,16 @@ not be reused for a future vocabulary by tag coincidence. Library metadata
 therefore carries canonical vocabulary/alternative identities alongside
 representation, ownership, lifetime, effects, and the target adapter.
 
+`List Unit` uses immutable 16-byte private nodes with a validated zero i8
+carrier and remaining pointer at byte eight. Because every entry is `()`, its
+conditional finite equality fragment compares length; counting, decisions, and
+emptiness remain finite at O0. Unit-returning private functions still use their
+existing void result convention, while Unit fields inside aggregates retain an
+i8 carrier and LLVM selects physical AMD64 placement. DWARF/GDB preserve `Unit`
+and `List Unit`; neither carrier supplies `Completed` evidence or publishes a
+node ABI. Future metadata records Unit identity, representation/ownership,
+lifetime, effects, and target adapters independently of private details.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

@@ -512,6 +512,7 @@ enum ListIntRuntimeFragment {
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum ScalarListRuntimeFragment {
+    Unit,
     Effect,
     Boolean,
     Comparison,
@@ -657,6 +658,7 @@ impl<'a> Generator<'a> {
 
     fn emit_scalar_list_runtimes(&self, module: &mut String) {
         for (fragment, runtime) in [
+            (ScalarListRuntimeFragment::Unit, LIST_UNIT_CORE_RUNTIME),
             (ScalarListRuntimeFragment::Effect, LIST_EFFECT_CORE_RUNTIME),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -2230,7 +2232,8 @@ impl<'a> Generator<'a> {
                     unreachable!("checked Entry tail retains its List classifier")
                 };
                 let (allocation_size, next_offset) = match &element {
-                    CompilerType::Effect
+                    CompilerType::Unit
+                    | CompilerType::Effect
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Comparison
@@ -2261,6 +2264,11 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 match (&element, &value) {
+                    (CompilerType::Unit, LlValue::Unit) => body.effect(
+                        &format!("store i8 0, ptr {node}, align 1"),
+                        expression.span,
+                        &mut self.debug,
+                    ),
                     (CompilerType::Effect, LlValue::Effect(value)) => body.effect(
                         &format!("store i8 {value}, ptr {node}, align 1"),
                         expression.span,
@@ -2562,6 +2570,10 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListEntryCount(value) => {
+                let unit = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Unit
+                );
                 let boolean = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Boolean
@@ -2592,7 +2604,10 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
-                if effect {
+                if unit {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Unit);
+                } else if effect {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Effect);
                 } else if boolean {
@@ -2622,7 +2637,9 @@ impl<'a> Generator<'a> {
                 LlValue::Int(body.instruction(
                     &format!(
                         "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
-                        if effect {
+                        if unit {
+                            "unit"
+                        } else if effect {
                             "effect"
                         } else if boolean {
                             "boolean"
@@ -4251,6 +4268,14 @@ impl<'a> Generator<'a> {
         let mut entry_environment = environment.clone();
         if let Some(((first_name, first_span), (rest_name, rest_span))) = entry_bindings {
             let (first_value, rest_function_captures) = match &element {
+                CompilerType::Unit => {
+                    let _ = body.instruction(
+                        &format!("load i8, ptr {list}, align 1"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    (LlValue::Unit, Vec::new())
+                }
                 CompilerType::Effect => (
                     LlValue::Effect(body.instruction(
                         &format!("load i8, ptr {list}, align 1"),
@@ -6578,7 +6603,11 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> String {
         debug_assert_eq!(element, right_element);
-        let runtime = if element == &CompilerType::Effect {
+        let runtime = if element == &CompilerType::Unit {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Unit);
+            "unit"
+        } else if element == &CompilerType::Effect {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Effect);
             "effect"
@@ -8370,6 +8399,14 @@ impl<'a> Generator<'a> {
         body.start_block(&entry);
         self.emit_write_literal("Entry ( ", body, span);
         let (payload, next_offset) = match element {
+            CompilerType::Unit => {
+                let _ = body.instruction(
+                    &format!("load i8, ptr {current}, align 1"),
+                    span,
+                    &mut self.debug,
+                );
+                (LlValue::Unit, 8)
+            }
             CompilerType::Effect => (
                 LlValue::Effect(body.instruction(
                     &format!("load i8, ptr {current}, align 1"),
@@ -11891,6 +11928,7 @@ const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll
 const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
+const LIST_UNIT_CORE_RUNTIME: &str = include_str!("runtime/list_unit_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
 const LIST_INT_REMOVAL_RUNTIME: &str = include_str!("runtime/list_int_removal.ll");
