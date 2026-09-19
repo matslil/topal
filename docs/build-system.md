@@ -211,6 +211,13 @@ dependency. Private function results and aggregate fields therefore keep the
 existing typed i8 carrier, and future library metadata must preserve Completed
 identity even when its current physical node resembles another singleton type.
 
+Ordinary `List Type` values use private i32/pointer nodes whose payload selects
+one of the seven closed fundamental Type identities. Equality, decisions,
+display, DWARF, and GDB preserve the canonical identity rather than exposing a
+host-language descriptor or LLVM type. Future library metadata names the
+fundamental identity set and its target adapter without publishing the private
+numeric mapping, node offsets, or compiler helpers.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

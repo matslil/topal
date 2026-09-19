@@ -5427,6 +5427,32 @@ lifetime, effects, and target adapters independently of private details. This
 realizes `TOPAL-COMPILER-LIST-COMPLETED-CORE-001`, List construction, decision,
 equality, count, and empty rules for compiler increment 4b3d-x.
 
+## TOPAL-COMP-LIST-TYPE-CORE-001 — Ordinary immutable fundamental Type Lists
+
+The checked model shall admit empty/nonempty construction with all seven
+fundamental Type identities, immutable binding, private parameter/result/
+package and Tuple/Record passage, structural equality, complete decisions,
+count, emptiness, display, and debugging for `List Type`. Operands evaluate
+once, exact canonical identity is retained, and unsupported transforms fail
+before artifact publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing closed i32 fundamental-Type carrier and remaining pointer. A
+conditional finite fragment shall compare identities and count correctly at O0.
+Private parameters/results and aggregate fields retain typed i32 carriers while
+LLVM owns AMD64 placement. DWARF/GDB retain exact Type/List identities. Tests
+cover all identities and admitted paths, interpreter modes/history, IR,
+rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not create a host/LLVM descriptor, expand the fundamental identity
+set, or add a List runtime tag, generic/public/foreign/library ABI, foreign
+allocation, C/C++, another-language library, or an ABI revision. Future
+metadata carries canonical identities, representation/ownership/lifetime/
+effects, and target adapters independently of private numbers and details. This
+realizes `TOPAL-COMPILER-LIST-TYPE-CORE-001`, fundamental Type value/identity/
+boundary rules, and List construction, decision, equality, count, and empty
+rules for compiler increment 4b3d-y.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

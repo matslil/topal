@@ -1336,6 +1336,11 @@
       "cpu_time_ns": 16799200,
       "memory_peak_bytes": 18440192,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-type-values.t": {
+      "cpu_time_ns": 17130020,
+      "memory_peak_bytes": 18452480,
+      "samples_per_test": 50
     }
   }
 }

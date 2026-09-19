@@ -1330,6 +1330,16 @@ and List identities. Similar private layouts never make Completed equivalent to
 Unit or Effect, and future metadata carries completion semantics, representation
 and ownership, lifetime, effects, and target adapters independently of offsets.
 
+`List Type` uses immutable private 16-byte nodes with the existing closed i32
+fundamental-Type carrier and remaining pointer at byte eight. Its conditional
+finite fragment compares exact canonical identities and counts nodes; decisions
+recover the existing typed enum value. LLVM owns physical AMD64 placement and
+DWARF/GDB retain both `List Type` and all seven fundamental identities. The i32
+mapping is neither a host/LLVM descriptor nor a public reflection ABI. Future
+metadata carries the canonical identity set, representation/ownership/lifetime/
+effect facts, and a versioned target adapter independently of private numbers,
+offsets, types, and helpers.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

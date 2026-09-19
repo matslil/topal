@@ -23514,6 +23514,7 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
         CompilerType::Unit
             | CompilerType::Completed
             | CompilerType::Effect
+            | CompilerType::Type
             | CompilerType::Boolean
             | CompilerType::Character
             | CompilerType::Comparison
@@ -23531,6 +23532,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         CompilerType::Unit
             | CompilerType::Completed
             | CompilerType::Effect
+            | CompilerType::Type
             | CompilerType::Boolean
             | CompilerType::Character
             | CompilerType::Comparison
@@ -23761,6 +23763,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Unit
                     | CompilerType::Completed
                     | CompilerType::Effect
+                    | CompilerType::Type
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Comparison
@@ -33357,6 +33360,78 @@ mod tests {
         assert_eq!(results[9].value_type, list);
 
         let unsupported = "use language (version is v0.1)\nvalues : List Completed is Entry (Completed, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_type_lists_across_private_boundaries() {
+        // TOPAL-ABSTRACTION-TYPE-VALUE-001, TOPAL-ABSTRACTION-TYPE-IDENTITY-001,
+        // TOPAL-ABSTRACTION-TYPE-BOUNDARY-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-LIST-TYPE-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-type-values.t"
+        ))
+        .unwrap();
+        let list = CompilerType::List(Box::new(CompilerType::Type));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, CompilerType::Type);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list.clone(), CompilerType::Type])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list.clone()),
+                ("fallback".into(), CompilerType::Type),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Type List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 11);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[10].value_type, list);
+
+        let unsupported = "use language (version is v0.1)\nvalues : List Type is Entry (Int, Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
