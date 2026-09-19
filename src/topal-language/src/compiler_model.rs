@@ -8717,7 +8717,7 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
-            && let Some(value) = self.analyze_returning_optional_constructor_argument(
+            && let Some(value) = self.analyze_returning_unary_constructor_argument(
                 expression,
                 environment,
                 function_result,
@@ -8998,7 +8998,7 @@ impl Analyzer {
         }))
     }
 
-    fn analyze_returning_optional_constructor_argument(
+    fn analyze_returning_unary_constructor_argument(
         &mut self,
         expression: &Expression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -9010,9 +9010,22 @@ impl Analyzer {
         let [Expression::Identifier(constructor), argument] = items.as_slice() else {
             return Ok(None);
         };
-        if self.source.slice(*constructor) != "Some"
-            || !direct_expression_returns_from_function(argument)
-        {
+        let constructor_name = self.source.slice(*constructor);
+        let built_in = matches!(
+            constructor_name,
+            "Some" | "String" | "Int" | "Nat" | "Rational"
+        );
+        let declared_union =
+            self.sum_alternatives
+                .get(constructor_name)
+                .is_some_and(|(sum, value, declaration)| {
+                    declaration.end <= constructor.start
+                        && sum.alternatives
+                            [usize::try_from(*value).expect("u32 sum tag fits usize")]
+                        .payload
+                        .is_some()
+                });
+        if (!built_in && !declared_union) || !direct_expression_returns_from_function(argument) {
             return Ok(None);
         }
         let (result, returned) = self.analyze_direct_statement_expression(
@@ -9024,7 +9037,7 @@ impl Analyzer {
         )?;
         assert!(
             returned,
-            "a checked returning Optional constructor argument exits its function"
+            "a checked returning unary constructor argument exits its function"
         );
         Ok(Some(result))
     }
@@ -40062,7 +40075,7 @@ mod tests {
             .unwrap();
         assert_eq!(function.body.result.value_type, CompilerType::Int);
 
-        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  String {\n    return 41\n    }\nanswer ()\n";
+        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  Character {\n    return 41\n    }\nanswer ()\n";
         let error = analyze_for_compiler(embedded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
@@ -40310,6 +40323,40 @@ mod tests {
         let error = analyze_for_compiler(nested).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
+    }
+
+    #[test]
+    fn models_return_bearing_strict_unary_constructor_arguments() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-UNION-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-CONSTRUCTOR-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-unary-constructor.t"
+        ))
+        .unwrap();
+        for name in [
+            "string-exit",
+            "int-exit",
+            "nat-exit",
+            "rational-exit",
+            "union-exit",
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.body.result.value_type, CompilerType::Int);
+            assert!(matches!(
+                function.body.result.kind,
+                CompilerExpressionKind::Block(_)
+            ));
+            assert!(function.body.statements.is_empty());
+        }
+
+        let positional = "use language (version is v0.1)\nChoice is Variant (Int)\nanswer is fn () -> Int\n  Choice at 0 { return 42 }\nanswer ()\n";
+        let error = analyze_for_compiler(positional).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("application"));
     }
 
     #[test]

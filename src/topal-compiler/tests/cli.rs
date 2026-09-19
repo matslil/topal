@@ -1670,6 +1670,158 @@ fn optional_constructor_argument_block_exit_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact IR, DWARF, and five constructor-source stops.
+fn strict_unary_constructor_argument_block_exits_are_freestanding_and_debuggable() {
+    // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-UNION-001,
+    // TOPAL-COMP-LEXICAL-RETURN-CONSTRUCTOR-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-CONSTRUCTOR-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-return-unary-constructor");
+    let source = directory.join("function-return-unary-constructor.t");
+    let executable = directory.join("application");
+    let ir = directory.join("application.ll");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-return-unary-constructor.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(42, 43, 44, 45, 46)\n");
+
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir_text = fs::read_to_string(&ir).unwrap();
+    let body = |symbol: &str| {
+        ir_text
+            .split_once(symbol)
+            .unwrap()
+            .1
+            .split_once("\n}")
+            .unwrap()
+            .0
+    };
+    for symbol in [
+        "define internal fastcc ptr @topal.fn.string_2dexit",
+        "define internal fastcc ptr @topal.fn.int_2dexit",
+        "define internal fastcc ptr @topal.fn.nat_2dexit",
+        "define internal fastcc ptr @topal.fn.rational_2dexit",
+        "define internal fastcc ptr @topal.fn.union_2dexit",
+    ] {
+        let function = body(symbol);
+        assert_eq!(
+            function.matches("call ptr @topal.runtime.int.add").count(),
+            1
+        );
+        assert!(!function.contains("@topal.runtime.optional.some"));
+        assert!(!function.contains("@topal.runtime.rational.construct"));
+    }
+    assert!(ir_text.matches("!DILexicalBlock(").count() >= 5);
+    assert!(!ir_text.contains("@printf"));
+    assert!(!ir_text.contains("@malloc"));
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(
+            dwarf.status.success(),
+            "{}",
+            String::from_utf8_lossy(&dwarf.stderr)
+        );
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-return-unary-constructor.t:10",
+            "-ex",
+            "break function-return-unary-constructor.t:13",
+            "-ex",
+            "break function-return-unary-constructor.t:16",
+            "-ex",
+            "break function-return-unary-constructor.t:19",
+            "-ex",
+            "break function-return-unary-constructor.t:22",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for index in 1..=5 {
+        assert!(text.contains(&format!("${index} = 41")), "{text}");
+    }
+    for symbol in [
+        "topal.fn.string_2dexit",
+        "topal.fn.int_2dexit",
+        "topal.fn.nat_2dexit",
+        "topal.fn.rational_2dexit",
+        "topal.fn.union_2dexit",
+        "topal.main",
+    ] {
+        assert!(text.contains(symbol), "{text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_completed_evidence_by_source_name() {
     // TOPAL-EXEC-COMPLETED-001, TOPAL-COMP-COMPLETED-001,
     // TOPAL-COMPILER-COMPLETED-001, TOPAL-COMPILER-DEBUG-001
