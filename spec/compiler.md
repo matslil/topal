@@ -5245,6 +5245,35 @@ library metadata SHALL encode completion semantics, representation and
 ownership, lifetime, effects, and versioned target adapters independently of
 private offsets, helper names, LLVM types/symbols, debug shadows, and placement.
 
+### TOPAL-COMPILER-LIST-TYPE-CORE-001 — Ordinary immutable fundamental Type Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List Type` containing the seven fundamental Type values, immutable binding,
+ordinary private parameters/results, package and recursively admitted
+Tuple/Record fields, structural equality and inequality, complete decisions,
+entry count, emptiness, canonical display, and debugging. Equality SHALL compare
+canonical type identity in order and stop at the first mismatch without
+mutating either input. Operands SHALL evaluate once in source order.
+
+On Linux x86-64, `Empty` MAY be null and `Entry` MAY use an immutable 16-byte
+node containing the existing closed i32 fundamental-Type carrier and remaining
+pointer. A conditional finite nonrecursive fragment MAY implement exact
+identity equality and counting and SHALL remain correct at O0. Private Type
+parameters, results, and aggregate fields SHALL retain exact typed i32
+prototypes while LLVM selects physical AMD64 placement. DWARF and the bundled
+GDB renderer SHALL preserve `Type`, `List Type`, and all seven canonical
+identities.
+
+This rule SHALL NOT turn the carrier into a host-language or LLVM descriptor,
+admit additional Type identities, or add a List runtime tag, type-erased
+generic/public/foreign/serialized/library node ABI, foreign allocator, C/C++
+runtime, other-language standard library, or native-ABI revision. Other List
+operations, reclamation, and element classifiers remain separately governed.
+Future library metadata SHALL encode the canonical fundamental identity set,
+representation and ownership, lifetime, effects, and versioned target adapters
+independently of private numeric mappings, offsets, helper names, LLVM types/
+symbols, debug shadows, and placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for

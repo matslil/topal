@@ -166,6 +166,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/list-nat-values.t",
     "examples/language/list-rational-values.t",
     "examples/language/list-string-values.t",
+    "examples/language/list-type-values.t",
     "examples/language/list-unit-values.t",
     "examples/language/lists.t",
     "examples/language/local-function-environments.t",

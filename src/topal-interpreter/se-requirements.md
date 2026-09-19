@@ -2570,3 +2570,12 @@ parameters/results, packages, Tuples, Records, structural length equality,
 complete decisions, count, emptiness, and canonical display without conflating
 it with Unit or Effect. Shared native/interpreter regression and reversible
 history shall cover each path.
+
+## TOPAL-INTP-SUBSET-291 — Ordinary fundamental Type List values
+
+All source modes shall preserve the canonical identities of `Boolean`, `Int`,
+`Nat`, `Rational`, `String`, `Unit`, and `Scope` through empty/nonempty
+`List Type` construction, ordinary parameters/results, packages, Tuples,
+Records, structural equality, complete decisions, count, emptiness, and
+canonical display. Shared native/interpreter regression and reversible history
+shall cover every fundamental identity and admitted path.

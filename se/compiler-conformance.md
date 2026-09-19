@@ -124,6 +124,7 @@ evidence.
 | 4b3d-v | ordinary immutable List ErrorCode private parameter/result/package and Tuple/Record passage for the closed arithmetic vocabulary, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-w | ordinary immutable singleton List Unit private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-x | ordinary immutable singleton List Completed private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging while retaining completion evidence | complete |
+| 4b3d-y | ordinary immutable List Type private parameter/result/package and Tuple/Record passage for all seven fundamental identities, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |

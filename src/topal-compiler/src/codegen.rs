@@ -515,6 +515,7 @@ enum ScalarListRuntimeFragment {
     Unit,
     Completed,
     Effect,
+    Type,
     Boolean,
     Comparison,
     ErrorCode,
@@ -665,6 +666,7 @@ impl<'a> Generator<'a> {
                 LIST_COMPLETED_CORE_RUNTIME,
             ),
             (ScalarListRuntimeFragment::Effect, LIST_EFFECT_CORE_RUNTIME),
+            (ScalarListRuntimeFragment::Type, LIST_TYPE_CORE_RUNTIME),
             (
                 ScalarListRuntimeFragment::Boolean,
                 LIST_BOOLEAN_CORE_RUNTIME,
@@ -2240,6 +2242,7 @@ impl<'a> Generator<'a> {
                     CompilerType::Unit
                     | CompilerType::Completed
                     | CompilerType::Effect
+                    | CompilerType::Type
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Comparison
@@ -2288,6 +2291,7 @@ impl<'a> Generator<'a> {
                     ),
                     (CompilerType::Comparison, LlValue::Comparison(value))
                     | (CompilerType::ErrorCode, LlValue::ErrorCode(value))
+                    | (CompilerType::Type, LlValue::Enum { value, .. })
                     | (
                         CompilerType::Function,
                         LlValue::Function { value, .. } | LlValue::Enum { value, .. },
@@ -2593,6 +2597,10 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Effect
                 );
+                let type_value = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Type
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2624,6 +2632,9 @@ impl<'a> Generator<'a> {
                 } else if effect {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Effect);
+                } else if type_value {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Type);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2657,6 +2668,8 @@ impl<'a> Generator<'a> {
                             "completed"
                         } else if effect {
                             "effect"
+                        } else if type_value {
+                            "type"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4306,6 +4319,17 @@ impl<'a> Generator<'a> {
                         *first_span,
                         &mut self.debug,
                     )),
+                    Vec::new(),
+                ),
+                CompilerType::Type => (
+                    LlValue::Enum {
+                        value: body.instruction(
+                            &format!("load i32, ptr {list}, align 4"),
+                            *first_span,
+                            &mut self.debug,
+                        ),
+                        enumeration: fundamental_type_enumeration(),
+                    },
                     Vec::new(),
                 ),
                 CompilerType::Boolean => (
@@ -6639,6 +6663,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Effect);
             "effect"
+        } else if element == &CompilerType::Type {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Type);
+            "type"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -8449,6 +8477,17 @@ impl<'a> Generator<'a> {
                     span,
                     &mut self.debug,
                 )),
+                8,
+            ),
+            CompilerType::Type => (
+                LlValue::Enum {
+                    value: body.instruction(
+                        &format!("load i32, ptr {current}, align 4"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    enumeration: fundamental_type_enumeration(),
+                },
                 8,
             ),
             CompilerType::Boolean => (
@@ -11965,6 +12004,7 @@ const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll
 const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
+const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");
 const LIST_UNIT_CORE_RUNTIME: &str = include_str!("runtime/list_unit_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");
