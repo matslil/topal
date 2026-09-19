@@ -1431,6 +1431,11 @@
       "cpu_time_ns": 3945180,
       "memory_peak_bytes": 18513920,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-character-constructor.t": {
+      "cpu_time_ns": 3602379,
+      "memory_peak_bytes": 18440192,
+      "samples_per_test": 50
     }
   }
 }
