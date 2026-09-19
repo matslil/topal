@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 274);
+    assert_eq!(examples.len(), 275);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5179,6 +5179,31 @@ fn records_string_int_pair_list_values_reversibly() {
         "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] (String, Int)",
         "list.entry.decomposed [TOPAL-DECISION-LIST-001] first=first;rest=rest",
         "equality.list [TOPAL-TYPE-LIST-EQUALITY-001] (String, Int)",
+        "list.entry-count [TOPAL-LIST-ENTRY-COUNT-001] entries=3",
+        "list.empty.tested [TOPAL-LIST-EMPTY-PREDICATE-001] true",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+}
+
+#[test]
+fn records_string_pair_list_values_reversibly() {
+    // TOPAL-INTP-SUBSET-300, TOPAL-COMPILER-LIST-STRING-PAIR-CORE-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-string-pair-values.debug"),
+            &language_example("list-string-pair-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for event in [
+        "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] (String, String)",
+        "list.entry.decomposed [TOPAL-DECISION-LIST-001] first=first;rest=rest",
+        "equality.list [TOPAL-TYPE-LIST-EQUALITY-001] (String, String)",
         "list.entry-count [TOPAL-LIST-ENTRY-COUNT-001] entries=3",
         "list.empty.tested [TOPAL-LIST-EMPTY-PREDICATE-001] true",
     ] {

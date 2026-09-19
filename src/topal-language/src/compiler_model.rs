@@ -23526,6 +23526,14 @@ fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::String]
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -23562,8 +23570,10 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
         value_type,
         CompilerType::Tuple(fields)
             if matches!(fields.as_slice(),
-                [CompilerType::Int, CompilerType::Int | CompilerType::String]
-                    | [CompilerType::String, CompilerType::Int])
+                [
+                    CompilerType::Int | CompilerType::String,
+                    CompilerType::Int | CompilerType::String
+                ])
     ) || matches!(value_type, CompilerType::Optional(payload)
         if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
 }
@@ -23595,6 +23605,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         )
         || compiler_int_string_pair(value_type)
         || compiler_string_int_pair(value_type)
+        || compiler_string_pair(value_type)
         || compiler_string_function_pair(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
@@ -23821,9 +23832,10 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Tuple(fields)
-                    if matches!(fields.as_slice(),
-                        [CompilerType::Int, CompilerType::Int | CompilerType::String]
-                            | [CompilerType::String, CompilerType::Int]))
+                if matches!(fields.as_slice(), [
+                    CompilerType::Int | CompilerType::String,
+                    CompilerType::Int | CompilerType::String
+                ]))
                 || matches!(element.as_ref(), CompilerType::Optional(payload)
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
@@ -33933,6 +33945,43 @@ mod tests {
         ));
         assert_eq!(results[11].value_type, list);
         let unsupported = "use language (version is v0.1)\nvalues : List (String, Int) is Entry ((\"one\", 1), Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_string_pair_lists_across_private_boundaries() {
+        // TOPAL-COMPILER-TUPLE-EQUALITY-001,
+        // TOPAL-COMPILER-LIST-STRING-PAIR-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-string-pair-values.t"
+        ))
+        .unwrap();
+        let pair = CompilerType::Tuple(vec![CompilerType::String, CompilerType::String]);
+        let list = CompilerType::List(Box::new(pair.clone()));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, pair);
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared String-pair List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 12);
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[7].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[11].value_type, list);
+        let unsupported = "use language (version is v0.1)\nvalues : List (String, String) is Entry ((\"one\", \"first\"), Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

@@ -2647,3 +2647,11 @@ Int fields, including empty and non-ASCII Strings and signed large Ints, through
 List construction, private boundaries, nested products, structural equality,
 complete decisions, count, emptiness, and display. Shared native/interpreter
 regression and reversible history shall cover every admitted path.
+
+## TOPAL-INTP-SUBSET-300 — Ordinary String-pair List values
+
+All source modes shall preserve both exact immutable String fields, including
+empty, non-ASCII, and non-Latin Strings, through List construction, private
+boundaries, nested products, structural equality, complete decisions, count,
+emptiness, and display. Shared native/interpreter regression and reversible
+history shall cover every admitted path.

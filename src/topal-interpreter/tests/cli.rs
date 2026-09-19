@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 274);
+    assert_eq!(examples.len(), 275);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -6038,6 +6038,32 @@ fn every_mode_preserves_string_int_pair_list_values() {
     // TOPAL-INTP-SUBSET-299, TOPAL-COMPILER-LIST-STRING-INT-PAIR-CORE-001
     let source = include_str!("../../../examples/language/list-string-int-pair-values.t");
     let expected = "((\"one\", 1), (\"räv\", -4), true, true, true, true, 3, true, (\"seven\", 7), (\"one\", 1), (\"eleven\", 11), Entry ( (\"one\", 1), Entry ( (\"räv\", -4), Entry ( (\"\", 340282366920938463463374607431768211456), Empty ) ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_string_pair_list_values() {
+    // TOPAL-INTP-SUBSET-300, TOPAL-COMPILER-LIST-STRING-PAIR-CORE-001
+    let source = include_str!("../../../examples/language/list-string-pair-values.t");
+    let expected = "((\"one\", \"first\"), (\"räv\", \"andra\"), true, true, true, true, 3, true, (\"seven\", \"seventh\"), (\"one\", \"first\"), (\"eleven\", \"elfte\"), Entry ( (\"one\", \"first\"), Entry ( (\"räv\", \"andra\"), Entry ( (\"\", \"最後\"), Empty ) ) ))";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

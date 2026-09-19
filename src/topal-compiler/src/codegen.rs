@@ -524,6 +524,7 @@ enum ScalarListRuntimeFragment {
     IntPair,
     IntStringPair,
     StringIntPair,
+    StringPair,
     Boolean,
     Comparison,
     ErrorCode,
@@ -710,6 +711,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::StringIntPair,
                 LIST_STRING_INT_PAIR_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::StringPair,
+                LIST_STRING_PAIR_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::Boolean,
@@ -988,10 +993,11 @@ impl<'a> Generator<'a> {
                     && parameter.value_type.machine_scalar()
                     && parameter.value_type != CompilerType::Unit)
                 || matches!(&parameter.value_type, CompilerType::List(element)
-                    if matches!(element.as_ref(), CompilerType::Tuple(fields)
-                        if matches!(fields.as_slice(),
-                            [CompilerType::Int, CompilerType::Int | CompilerType::String]
-                                | [CompilerType::String, CompilerType::Int])))
+                if matches!(element.as_ref(), CompilerType::Tuple(fields)
+                        if matches!(fields.as_slice(), [
+                            CompilerType::Int | CompilerType::String,
+                            CompilerType::Int | CompilerType::String
+                        ])))
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -2319,11 +2325,10 @@ impl<'a> Generator<'a> {
                     CompilerType::Tuple(fields)
                         if matches!(
                             fields.as_slice(),
-                            [CompilerType::Int, CompilerType::Int | CompilerType::String,]
-                                | [
-                                    CompilerType::String,
-                                    CompilerType::Int | CompilerType::Function
-                                ]
+                            [
+                                CompilerType::Int | CompilerType::String,
+                                CompilerType::Int | CompilerType::String
+                            ] | [CompilerType::String, CompilerType::Function]
                         ) =>
                     {
                         (24, 16)
@@ -2409,11 +2414,10 @@ impl<'a> Generator<'a> {
                     (CompilerType::Tuple(field_types), LlValue::Tuple(values))
                         if matches!(
                             field_types.as_slice(),
-                            [CompilerType::Int, CompilerType::Int | CompilerType::String,]
-                                | [
-                                    CompilerType::String,
-                                    CompilerType::Int | CompilerType::Function
-                                ]
+                            [
+                                CompilerType::Int | CompilerType::String,
+                                CompilerType::Int | CompilerType::String
+                            ] | [CompilerType::String, CompilerType::Function]
                         ) =>
                     {
                         let [left, right] = values.as_slice() else {
@@ -2740,6 +2744,11 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_string_int_pair(element.as_ref())
                 );
+                let string_pair = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_string_pair(element.as_ref())
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2798,6 +2807,9 @@ impl<'a> Generator<'a> {
                 } else if string_int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::StringIntPair);
+                } else if string_pair {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::StringPair);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2849,6 +2861,8 @@ impl<'a> Generator<'a> {
                             "int-string"
                         } else if string_int_pair {
                             "string-int"
+                        } else if string_pair {
+                            "string-pair"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4703,14 +4717,39 @@ impl<'a> Generator<'a> {
                         Vec::new(),
                     )
                 }
+                CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::String, CompilerType::String] =>
+                {
+                    let left = body.instruction(
+                        &format!("load ptr, ptr {list}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right_address = body.instruction(
+                        &format!("getelementptr i8, ptr {list}, i64 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    let right = body.instruction(
+                        &format!("load ptr, ptr {right_address}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    );
+                    (
+                        LlValue::Tuple(vec![LlValue::String(left), LlValue::String(right)]),
+                        Vec::new(),
+                    )
+                }
                 _ => unreachable!("checked List decision has an admitted element type"),
             };
             let rest_offset = if matches!(
                 &element,
                 CompilerType::Tuple(fields)
                     if matches!(fields.as_slice(),
-                        [CompilerType::Int, CompilerType::Int | CompilerType::String]
-                            | [CompilerType::String, CompilerType::Int])
+                        [
+                            CompilerType::Int | CompilerType::String,
+                            CompilerType::Int | CompilerType::String
+                        ])
             ) {
                 16
             } else {
@@ -7021,6 +7060,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::StringIntPair);
             "string-int"
+        } else if compiler_string_pair(element) {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::StringPair);
+            "string-pair"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -8965,8 +9008,10 @@ impl<'a> Generator<'a> {
             CompilerType::Tuple(fields)
                 if matches!(
                     fields.as_slice(),
-                    [CompilerType::Int, CompilerType::Int | CompilerType::String,]
-                        | [CompilerType::String, CompilerType::Int]
+                    [
+                        CompilerType::Int | CompilerType::String,
+                        CompilerType::Int | CompilerType::String
+                    ]
                 ) =>
             {
                 let left = body.instruction(
@@ -12160,6 +12205,14 @@ fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_string_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::String, CompilerType::String]
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -12434,6 +12487,7 @@ const LIST_INT_STRING_PAIR_CORE_RUNTIME: &str =
     include_str!("runtime/list_int_string_pair_core.ll");
 const LIST_STRING_INT_PAIR_CORE_RUNTIME: &str =
     include_str!("runtime/list_string_int_pair_core.ll");
+const LIST_STRING_PAIR_CORE_RUNTIME: &str = include_str!("runtime/list_string_pair_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");
