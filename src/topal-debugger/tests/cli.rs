@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 251);
+    assert_eq!(examples.len(), 252);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4561,6 +4561,49 @@ fn records_result_function_environments_reversibly() {
         "binding.bind [TOPAL-SYN-BIND-001] first",
         "binding.bind [TOPAL-SYN-BIND-001] second",
         "function.selected [TOPAL-TYPE-CALL-001] return-result",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-package",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-record",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_list_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-278,
+    // TOPAL-COMPILER-LIST-FUNCTION-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-function-environments.debug"),
+            &language_example("list-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first_factory = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-list")
+        .unwrap();
+    let first_decomposition = stdout
+        .find("list.entry.decomposed [TOPAL-DECISION-LIST-001] first=operation;rest=remaining")
+        .unwrap();
+    let first_nested = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] operation")
+        .unwrap();
+    assert!(first_factory < first_decomposition);
+    assert!(first_decomposition < first_nested);
+    for event in [
+        "list.empty.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] Function",
+        "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] Function",
+        "binding.bind [TOPAL-SYN-BIND-001] first",
+        "binding.bind [TOPAL-SYN-BIND-001] second",
+        "function.selected [TOPAL-TYPE-CALL-001] return-list",
         "function.selected [TOPAL-TYPE-CALL-001] apply-package",
         "function.selected [TOPAL-TYPE-CALL-001] apply-record",
         "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",

@@ -2442,3 +2442,15 @@ invocations shall remain independent. The shared regression and reversible
 debugger history shall cover named, symbolic, anonymous, and nested success
 payloads, original Error propagation, Result construction, forwarding,
 selection, display, and exact results.
+
+## TOPAL-INTP-SUBSET-278 — Finite List Function environments
+
+All source modes shall preserve exact source-ordered Function identities and
+lexical environments in a finite `List Function` constructed from `Entry` and
+`Empty`, passed through ordinary source parameters/results or package and
+Tuple/Record fields, decomposed by a complete List decision, and eventually
+applied. Distinct entries and captured factory invocations shall remain
+independent. The shared regression and reversible debugger history shall cover
+empty, named, symbolic, anonymous, and nested Function entries; multiple entry
+positions; construction, forwarding, decomposition, display, and exact
+results.

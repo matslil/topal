@@ -369,7 +369,9 @@ Exact selected nominal Sum payloads extend it under
 `TOPAL-COMPILER-SUM-FUNCTION-001`, retaining the semantic alternative
 separately from the runtime tag. Exact arithmetic Result success payloads extend
 it under `TOPAL-COMPILER-RESULT-FUNCTION-001`, retaining conditional success
-facts independently of the runtime success/Error tag. Other containers and
+facts independently of the runtime success/Error tag. Exact finite Lists extend
+it under `TOPAL-COMPILER-LIST-FUNCTION-001`, retaining length and one ordered
+fact subtree per entry. Other containers and
 opaque or branch-selected identities still fail before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
@@ -385,7 +387,8 @@ aggregate or its observation tags.
 The capture-bearing extension assigns every Function leaf a canonical path of
 zero-based Tuple indexes, Record labels, admitted `Optional` payload edges,
 admitted nominal Sum alternative-name payload edges, and admitted `Result`
-success edges, visited depth-first from left to right. Parameter specialization carries the
+success edges, plus zero-based finite List-entry edges, visited depth-first from
+left to right. Parameter specialization carries the
 ordinary source aggregate followed by each leaf's ordered capture operands.
 Result lowering returns a private aggregate whose first field is the unchanged
 source aggregate and whose remaining fields are the captures in that same path
@@ -398,7 +401,7 @@ direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
 matching `fastcc` prototype. DWARF exposes only the source
-Tuple/Record/Optional/Sum/Result and the eventual callable's source-named captures,
+Tuple/Record/Optional/Sum/Result/List and the eventual callable's source-named captures,
 never the extended result fields or hidden parameter names. This transport
 remains module-private and creates no closure object, environment pointer,
 allocation, callback, function
@@ -412,7 +415,7 @@ The exact nested-result extension reuses these scalar and aggregate transports
 for one nonrecursive, nonoverloaded nested declaration whose identity remains
 known throughout the private path. A factory result contains the nested
 observation tag followed by its already-evaluated lexical, defining-context,
-and live-root values; a Tuple, Record, Optional, Sum, or Result result associates
+and live-root values; a Tuple, Record, Optional, Sum, Result, or finite List result associates
 the same values with the Function leaf's canonical path. The caller immediately owns those SSA
 snapshots, so the factory frame may return before a later direct application.
 Separate factory calls may share the declaration tag but retain independent
@@ -479,6 +482,22 @@ propagation semantics, callable/capture paths, representation, lifetime,
 effects, and target adapters independently of private headers, zero carriers,
 LLVM symbols, and physical placement.
 
+The exact finite List extension preserves Topal-owned singly linked nodes and
+null `Empty`. Each Function node contains the private i32 observation followed
+by the aligned next pointer; callable facts and immutable captures remain
+compiler-only and do not enlarge the source node. The checked fact vector
+records exact length, entry order, and one callable/capture schema per entry. A
+complete List decision transfers the head facts to its first binding and the
+remaining vector to its rest binding, so eventual application remains a direct
+specialization. Captures use zero-based source entry paths and travel after the
+ordinary List pointer across private parameters/results; a returning caller
+owns and remaps them once. Distinct positions and factory invocations retain
+independent snapshots. Allocation remains limited to existing process-lifetime
+List nodes. Future compiled-library metadata must preserve exact length/order,
+entry paths, callable/capture schemas, List representation/ownership, lifetime,
+effects, and target adapters independently of node offsets, observation tags,
+private names, LLVM types/symbols, and physical placement.
+
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
 the pattern and exact Tuple types depth-first from left to right, representing
@@ -535,7 +554,7 @@ independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result repeated identity, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
 nested callable identity, Function containment outside admitted
-Tuple/Record/Optional/Sum/Result paths, and ordinary named-header repetition remain
+Tuple/Record/Optional/Sum/Result/List paths, and ordinary named-header repetition remain
 deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
@@ -602,7 +621,7 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside admitted Tuple/Record/Optional/Sum/Result paths,
+containment outside admitted Tuple/Record/Optional/Sum/Result/List paths,
 opaque/computed/nested/non-root Scope values, unsupported container or
 collection payloads and other non-scalar fields, nested package declarations,
 opaque whole-package values, context-dependent
