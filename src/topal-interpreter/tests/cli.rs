@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 273);
+    assert_eq!(examples.len(), 274);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -6056,6 +6056,27 @@ fn every_mode_preserves_string_int_pair_list_values() {
         "equality.list",
     ] {
         assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_infinities_across_private_boundaries() {
+    // TOPAL-INTP-SUBSET-251, TOPAL-INTP-SUBSET-252,
+    // TOPAL-NUM-INFINITY-001, TOPAL-NUM-INFINITY-ARITHMETIC-001
+    let source = include_str!("../../../examples/language/infinity-private-boundaries.t");
+    let expected = "(+Infinity, +Infinity, -Infinity, +Infinity, (+Infinity, -Infinity), (integer is +Infinity, ratio is -Infinity), -Infinity, +Infinity, +Infinity)";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
     }
 }
 

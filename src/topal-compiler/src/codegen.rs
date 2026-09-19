@@ -3863,16 +3863,14 @@ impl<'a> Generator<'a> {
                             expression.span,
                             &mut self.debug,
                         )),
-                        CompilerType::Int | CompilerType::Nat => LlValue::Int(body.instruction(
+                        CompilerType::Int
+                        | CompilerType::Nat
+                        | CompilerType::InfiniteInt
+                        | CompilerType::InfiniteNat => LlValue::Int(body.instruction(
                             &format!("call fastcc ptr @{symbol}({arguments})"),
                             expression.span,
                             &mut self.debug,
                         )),
-                        CompilerType::InfiniteInt
-                        | CompilerType::InfiniteNat
-                        | CompilerType::InfiniteRational => {
-                            unreachable!("checked functions do not cross infinity values")
-                        }
                         CompilerType::Modular(ref modular) => LlValue::Modular {
                             value: body.instruction(
                                 &format!("call fastcc ptr @{symbol}({arguments})"),
@@ -3881,11 +3879,13 @@ impl<'a> Generator<'a> {
                             ),
                             modular: modular.clone(),
                         },
-                        CompilerType::Rational => LlValue::Rational(body.instruction(
-                            &format!("call fastcc ptr @{symbol}({arguments})"),
-                            expression.span,
-                            &mut self.debug,
-                        )),
+                        CompilerType::Rational | CompilerType::InfiniteRational => {
+                            LlValue::Rational(body.instruction(
+                                &format!("call fastcc ptr @{symbol}({arguments})"),
+                                expression.span,
+                                &mut self.debug,
+                            ))
+                        }
                         CompilerType::Comparison => LlValue::Comparison(body.instruction(
                             &format!("call fastcc i32 @{symbol}({arguments})"),
                             expression.span,
@@ -12920,6 +12920,44 @@ mod tests {
         assert!(llvm.contains("name: \"Int\""));
         assert!(llvm.contains("name: \"Rational\""));
         assert!(!llvm.contains("try.multiply.infinity"));
+    }
+
+    #[test]
+    fn emits_private_infinity_function_and_aggregate_boundaries() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-NUM-INFINITY-ARITHMETIC-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-private-boundaries.t");
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "/source/infinity-private-boundaries.t").emit();
+
+        for signature in [
+            "define internal fastcc ptr @topal.fn.identity_2dint.0(ptr %arg0)",
+            "define internal fastcc ptr @topal.fn.identity_2dnat.1(ptr %arg0)",
+            "define internal fastcc ptr @topal.fn.identity_2drational.2(ptr %arg0)",
+            "define internal fastcc { ptr, ptr } @topal.fn.return_2dpair.4({ ptr, ptr } %arg0)",
+            "define internal fastcc { ptr, ptr, i32, i32 } @topal.fn.return_2drecord.5({ ptr, ptr, i32, i32 } %arg0)",
+            "define internal fastcc ptr @topal.fn.make_2dnegative.6()",
+            "define internal fastcc ptr @topal.fn.capture_2dpositive.7(ptr %arg0)",
+            "define internal fastcc ptr @topal.fn.identity_2dint.8(ptr %arg0)",
+        ] {
+            assert!(
+                llvm.contains(signature),
+                "missing private signature {signature}"
+            );
+        }
+        assert!(llvm.contains(
+            "call fastcc ptr @topal.fn.identity_2dint.0(ptr @topal.runtime.int.positive.infinity)"
+        ));
+        assert!(llvm.contains("call fastcc { ptr, ptr } @topal.fn.return_2dpair.4"));
+        assert!(llvm.contains(
+            "call fastcc ptr @topal.fn.capture_2dpositive.7(ptr @topal.runtime.int.positive.infinity)"
+        ));
+        assert!(llvm.contains(
+            "call fastcc ptr @topal.fn.identity_2dint.8(ptr @topal.runtime.int.positive.infinity)"
+        ));
+        assert!(llvm.contains("name: \"Int\""));
+        assert!(llvm.contains("name: \"Nat\""));
+        assert!(llvm.contains("name: \"Rational\""));
     }
 
     #[test]

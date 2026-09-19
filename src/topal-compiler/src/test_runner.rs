@@ -139,6 +139,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/inclusive-int-ranges.t",
     "examples/language/increasing-int-recursion.t",
     "examples/language/infinity-arithmetic.t",
+    "examples/language/infinity-private-boundaries.t",
     "examples/language/infinity-values-and-ranges.t",
     "examples/language/int-checked-construction.t",
     "examples/language/int-euclidean-modulo.t",

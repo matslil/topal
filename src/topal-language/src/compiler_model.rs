@@ -19483,15 +19483,17 @@ impl Analyzer {
                 {
                     fact_dependent = true;
                 }
-                let Some(argument) = adapt_call_argument(&expected, argument).or_else(|| {
-                    self.adapt_proven_recursive_nat_argument(
-                        function_name,
-                        declaration,
-                        parameter_index,
-                        &expected,
-                        argument,
-                    )
-                }) else {
+                let Some(argument) =
+                    adapt_function_call_argument(&expected, argument).or_else(|| {
+                        self.adapt_proven_recursive_nat_argument(
+                            function_name,
+                            declaration,
+                            parameter_index,
+                            &expected,
+                            argument,
+                        )
+                    })
+                else {
                     adapted.clear();
                     break;
                 };
@@ -20438,7 +20440,7 @@ impl Analyzer {
             let mut fact_dependent = false;
             for (parameter, argument) in declaration.parameters.iter().zip(candidate_arguments) {
                 let expected = self.parse_classifier(parameter.classifier).ok()?;
-                if adapt_call_argument(&expected, argument).is_none() {
+                if adapt_function_call_argument(&expected, argument).is_none() {
                     if capture_argument_adaptation_may_depend_on_facts(&expected, argument) {
                         fact_dependent = true;
                     } else {
@@ -20713,6 +20715,13 @@ impl Analyzer {
         for (parameter_index, (parameter, argument)) in
             declaration.parameters.iter().zip(arguments).enumerate()
         {
+            if generalize_parameters && compiler_type_contains_infinity(&argument.value_type) {
+                return Err(unsupported(
+                    &self.source,
+                    argument.span,
+                    "recursive infinity function boundary",
+                ));
+            }
             if !parameter.fields.is_empty()
                 || parameter.default.is_some()
                 || parameter.qualifier.is_some()
@@ -20724,13 +20733,20 @@ impl Analyzer {
                 ));
             }
             let expected = self.parse_classifier(parameter.classifier)?;
-            require_same_type(
-                &self.source,
-                parameter.classifier,
-                &expected,
-                &argument.value_type,
-            )?;
-            if !compiler_function_parameter_supported(&expected) {
+            if !compiler_infinity_evidence_compatible(&expected, &argument.value_type) {
+                require_same_type(
+                    &self.source,
+                    parameter.classifier,
+                    &expected,
+                    &argument.value_type,
+                )?;
+            }
+            let parameter_type = if compiler_type_contains_infinity(&argument.value_type) {
+                argument.value_type.clone()
+            } else {
+                expected
+            };
+            if !compiler_function_parameter_supported(&parameter_type) {
                 return Err(unsupported(
                     &self.source,
                     parameter.classifier,
@@ -20746,7 +20762,7 @@ impl Analyzer {
                         storage_name: name.clone(),
                         origin: parameter.name.start,
                         runtime_bound: true,
-                        value_type: expected.clone(),
+                        value_type: parameter_type.clone(),
                         int_range: (!generalize_parameters)
                             .then(|| argument.int_range.clone())
                             .flatten(),
@@ -20784,7 +20800,7 @@ impl Analyzer {
                 name,
                 discarded,
                 source_visible: !discarded,
-                value_type: expected,
+                value_type: parameter_type,
                 int_range: (!generalize_parameters)
                     .then(|| argument.int_range.clone())
                     .flatten(),
@@ -21362,7 +21378,7 @@ impl Analyzer {
                 rational_value: None,
                 span,
             };
-        } else {
+        } else if !compiler_infinity_evidence_compatible(&result_type, &body.result.value_type) {
             require_same_type(
                 &self.source,
                 declaration.result,
@@ -21370,6 +21386,11 @@ impl Analyzer {
                 &body.result.value_type,
             )?;
         }
+        let result_type = if compiler_type_contains_infinity(&body.result.value_type) {
+            body.result.value_type.clone()
+        } else {
+            result_type
+        };
         let returned_generator_value = if returns_generator {
             let [parameter] = parameters.as_slice() else {
                 unreachable!("checked Generator result has one admitted parameter")
@@ -23774,10 +23795,7 @@ fn is_range_construction(operation: CompilerBinary) -> bool {
 
 fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
     match value_type {
-        CompilerType::InfiniteInt
-        | CompilerType::InfiniteNat
-        | CompilerType::InfiniteRational
-        | CompilerType::TraversalControl(_)
+        CompilerType::TraversalControl(_)
         | CompilerType::Generator(_)
         | CompilerType::SerializationStream(_)
         | CompilerType::TaskResponse(_)
@@ -26229,6 +26247,51 @@ fn adapt_call_argument(
             )
         }
         _ => None,
+    }
+}
+
+fn adapt_function_call_argument(
+    expected: &CompilerType,
+    argument: &CompilerExpression,
+) -> Option<CompilerExpression> {
+    if matches!(
+        (expected, &argument.value_type),
+        (CompilerType::Int, CompilerType::InfiniteNat)
+    ) {
+        let mut value = argument.clone();
+        value.value_type = CompilerType::InfiniteInt;
+        return Some(value);
+    }
+    adapt_call_argument(expected, argument).or_else(|| {
+        compiler_infinity_evidence_compatible(expected, &argument.value_type)
+            .then(|| argument.clone())
+    })
+}
+
+fn compiler_infinity_evidence_compatible(expected: &CompilerType, actual: &CompilerType) -> bool {
+    if expected == actual {
+        return true;
+    }
+    match (expected, actual) {
+        (CompilerType::Int, CompilerType::InfiniteInt)
+        | (CompilerType::Nat, CompilerType::InfiniteNat)
+        | (CompilerType::Rational, CompilerType::InfiniteRational) => true,
+        (CompilerType::Tuple(expected), CompilerType::Tuple(actual)) => {
+            expected.len() == actual.len()
+                && expected.iter().zip(actual).all(|(expected, actual)| {
+                    compiler_infinity_evidence_compatible(expected, actual)
+                })
+        }
+        (CompilerType::Record(expected), CompilerType::Record(actual)) => {
+            expected.len() == actual.len()
+                && expected.iter().zip(actual).all(
+                    |((expected_name, expected), (actual_name, actual))| {
+                        expected_name == actual_name
+                            && compiler_infinity_evidence_compatible(expected, actual)
+                    },
+                )
+        }
+        _ => false,
     }
 }
 
@@ -41038,14 +41101,6 @@ mod tests {
                 "E-INFINITY-CLASSIFIER",
             ),
             (
-                "use language (version is v0.1)\nvalue is fn () -> Int\n  +Infinity\nvalue ()",
-                "E-TYPE-MISMATCH",
-            ),
-            (
-                "use language (version is v0.1)\nidentity is fn (value : Int) -> Int\n  value\nupper : Int is +Infinity\nidentity upper",
-                "E-NO-APPLICABLE-OVERLOAD",
-            ),
-            (
                 "use language (version is v0.1)\npub exposed : Int is +Infinity\nexposed",
                 "E-COMPILER-UNSUPPORTED",
             ),
@@ -41112,10 +41167,6 @@ mod tests {
                 "E-COMPILER-UNSUPPORTED",
             ),
             (
-                "use language (version is v0.1)\nidentity is fn (value : Rational) -> Rational\n  return value\nupper : Rational is +Infinity\nidentity upper",
-                "E-NO-APPLICABLE-OVERLOAD",
-            ),
-            (
                 "use language (version is v0.1)\npub exposed : Rational is +Infinity\nexposed",
                 "E-COMPILER-UNSUPPORTED",
             ),
@@ -41180,5 +41231,100 @@ mod tests {
                 "unexpected diagnostic for {invalid:?}"
             );
         }
+    }
+
+    #[test]
+    fn models_private_infinity_function_and_aggregate_boundaries() {
+        // TOPAL-NUM-INFINITY-001, TOPAL-NUM-INFINITY-ARITHMETIC-001,
+        // TOPAL-COMPILER-INFINITY-001
+        let source = include_str!("../../../examples/language/infinity-private-boundaries.t");
+        let program = analyze_for_compiler(source).unwrap();
+        assert_eq!(program.functions.len(), 9);
+
+        let identity_int = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "identity-int")
+            .unwrap();
+        assert_eq!(
+            identity_int.parameters[0].value_type,
+            CompilerType::InfiniteInt
+        );
+        assert_eq!(identity_int.result_type, CompilerType::InfiniteInt);
+
+        let identity_nat = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "identity-nat")
+            .unwrap();
+        assert_eq!(
+            identity_nat.parameters[0].value_type,
+            CompilerType::InfiniteNat
+        );
+        assert_eq!(identity_nat.result_type, CompilerType::InfiniteNat);
+
+        let identity_rational = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "identity-rational")
+            .unwrap();
+        assert_eq!(
+            identity_rational.parameters[0].value_type,
+            CompilerType::InfiniteRational
+        );
+        assert_eq!(
+            identity_rational.result_type,
+            CompilerType::InfiniteRational
+        );
+
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        let pair_type = CompilerType::Tuple(vec![
+            CompilerType::InfiniteInt,
+            CompilerType::InfiniteRational,
+        ]);
+        assert_eq!(return_pair.parameters[0].value_type, pair_type);
+        assert_eq!(
+            return_pair.result_type,
+            return_pair.parameters[0].value_type
+        );
+
+        let capture_positive = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "capture-positive")
+            .unwrap();
+        assert_eq!(
+            capture_positive.parameters[0].value_type,
+            CompilerType::InfiniteInt
+        );
+        assert_eq!(capture_positive.result_type, CompilerType::InfiniteInt);
+
+        let widened_natural = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "identity-int")
+            .nth(1)
+            .unwrap();
+        assert_eq!(
+            widened_natural.parameters[0].value_type,
+            CompilerType::InfiniteInt
+        );
+        assert_eq!(widened_natural.result_type, CompilerType::InfiniteInt);
+
+        assert!(matches!(
+            program.main.result.value_type,
+            CompilerType::Tuple(ref fields)
+                if fields.iter().any(compiler_type_contains_infinity)
+        ));
+
+        let recursive = "use language (version is v0.1)\ncount is fn (value : Int) -> Int\n  value\n    <= 0 then 0\n    otherwise count (value - 1)\nupper : Int is +Infinity\ncount upper";
+        assert_eq!(
+            analyze_for_compiler(recursive).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 }

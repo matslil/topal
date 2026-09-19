@@ -2746,6 +2746,16 @@
       "cpu_time_ns": 349580,
       "memory_peak_bytes": 18587648,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/infinity-private-boundaries.t": {
+      "cpu_time_ns": 136187520,
+      "memory_peak_bytes": 42979328,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/infinity-private-boundaries.t": {
+      "cpu_time_ns": 151454,
+      "memory_peak_bytes": 18587648,
+      "samples_per_test": 500
     }
   }
 }

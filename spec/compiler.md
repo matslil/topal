@@ -207,16 +207,22 @@ Rational multiplication has exactly one admitted infinity operand and the
 finite factor's zero-ness is not statically provable, it SHALL have the
 ordinary arithmetic `Result` classifier: zero SHALL return code
 `indeterminate` with source provenance and nonzero SHALL return the correctly
-signed infinity. A context-free constant, negative Nat infinity, other dynamic
-indeterminate Result path, other infinity arithmetic, implicit cross-domain
-Int/Rational infinity conversion, or function, persistent, serialized,
-public, or compiled-library infinity boundary SHALL be rejected explicitly in
-this increment.
+signed infinity. Specialized executable-private non-recursive functions SHALL
+admit exact Int, Nat, and Rational infinity parameters/results and captured
+environments, including recursively corresponding Tuple and Record fields,
+while preserving domain and direction evidence for checked arithmetic and
+debugging. A context-free constant, negative Nat infinity, other dynamic
+indeterminate Result path,
+other infinity arithmetic, implicit cross-domain Int/Rational infinity
+conversion, recursive infinity entry, or persistent, serialized, public, or
+compiled-library infinity boundary SHALL be rejected explicitly in this
+increment.
 
 Linux x86-64 lowering MAY use immutable executable-private sentinel Int
-objects with reserved non-finite tags because the checker prevents those
-objects from crossing a machine signature. Existing finite Int objects and
-their `topal-native/6` function representation SHALL remain unchanged. Exact
+objects with reserved non-finite tags. Those objects and validated Rational
+wrappers MAY cross LLVM-internal specialized function signatures but SHALL NOT
+cross public or foreign signatures. Existing finite Int objects and their
+`topal-native/6` function representation SHALL remain unchanged. Exact
 comparison and output SHALL recognize the sentinels before finite limb logic;
 negation, absolute value, addition, subtraction, and multiplication SHALL
 recognize them before finite zero, sign, length, or limb logic. Dynamic

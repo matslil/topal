@@ -6940,8 +6940,15 @@ same closed root scope shall admit either infinity classified as `Rational`,
 the corresponding comparisons and `Range Rational` operations, plus the
 canonical embedding of a finite Int comparison value or endpoint. Bare
 constants, negative Nat infinity, implicit cross-domain Int/Rational infinity
-conversion, and all function, persistent, serialized, public, and
-compiled-library infinity boundaries shall remain explicitly unsupported.
+conversion, and persistent, serialized, public, and compiled-library infinity
+boundaries shall remain explicitly unsupported. Specialized executable-private
+non-recursive functions shall admit exact Int, Nat, and Rational infinity
+parameters/results and captured environments, including recursively
+corresponding Tuple and Record fields. Checked specialization shall retain the
+domain and direction evidence through each admitted boundary so arithmetic
+remains subject to static indeterminate rejection. Recursive infinity entry
+shall remain explicitly unsupported until its generalized dynamic arithmetic
+contract is implemented.
 Closed root-scope negation, absolute value, addition, subtraction, and
 multiplication shall admit the statically proved total cases of
 `TOPAL-NUM-INFINITY-ARITHMETIC-001`; statically evident indeterminate cases
@@ -6952,10 +6959,11 @@ infinity for nonzero. Other dynamic indeterminate Results, division,
 remainder, power, and directional-zero arithmetic remain explicitly
 unsupported.
 
-The Linux x86-64 backend may lower these closed root-local values to immutable
+The Linux x86-64 backend may lower these values to immutable
 executable-private Int sentinels carrying reserved positive- and negative-
-infinity tags with zero limbs. The checker shall prevent either sentinel from
-crossing a private machine signature, so the finite Int representation and
+infinity tags with zero limbs. A sentinel or validated Rational wrapper may
+cross only an LLVM-internal specialized function signature; public and foreign
+signatures remain forbidden, so the finite Int representation and
 `topal-native/6` function ABI remain unchanged. Runtime unary arithmetic,
 addition, subtraction, multiplication, comparison, zero testing, and output
 shall branch on the sentinel before finite sign, length, or limb handling.
@@ -6990,7 +6998,7 @@ provenance, and native adapters independently of LLVM types, tags, headers, and
 symbols. This realizes `TOPAL-COMPILER-INFINITY-001`,
 `TOPAL-NUM-INFINITY-001`, `TOPAL-NUM-INFINITY-ARITHMETIC-001`, the infinity cases of `TOPAL-NUM-NAT-001`,
 `TOPAL-NUM-COMPARE-001`, `TOPAL-NUM-THREE-WAY-COMPARE-001`, and the applicable
-`TOPAL-RANGE-*` rules for compiler increments 2c-c1 through 2c-c4, 2d-b1, and
+`TOPAL-RANGE-*` rules for compiler increments 2c-c1 through 2c-c5, 2d-b1, and
 2d-b2.
 
 ## TOPAL-COMP-DECISION-001 — Comparison decisions
