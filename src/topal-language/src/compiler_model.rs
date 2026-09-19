@@ -9363,11 +9363,14 @@ impl Analyzer {
                 {
                     explicit_return = true;
                     returns_from_function = true;
-                    result = Some(self.analyze_expression_with_expected(
+                    let (value, _) = self.analyze_direct_statement_expression(
                         value,
                         environment,
                         function_result,
-                    )?);
+                        function_result,
+                        true,
+                    )?;
+                    result = Some(value);
                     break;
                 }
                 Statement::Return { .. } if kind == BlockKind::TopLevel || !self.in_function => {
@@ -39768,6 +39771,45 @@ mod tests {
         let error = analyze_for_compiler(embedded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
         assert!(error.message.contains("direct statement position"));
+    }
+
+    #[test]
+    fn models_return_bearing_block_as_an_explicit_return_operand() {
+        // TOPAL-FUNCTION-RETURN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-block-operand.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        let CompilerExpressionKind::Block(block) = &function.body.result.kind else {
+            panic!("expected the explicit return operand to retain its lexical block")
+        };
+        assert!(block.statements.is_empty());
+        assert!(matches!(
+            block.result.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Add,
+                ..
+            }
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let normal = "use language (version is v0.1)\nanswer is fn (value : Int) -> Int\n  return { value + 1 }\nanswer 41\n";
+        let program = analyze_for_compiler(normal).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
     }
 
     #[test]
