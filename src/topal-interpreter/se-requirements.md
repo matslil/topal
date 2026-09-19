@@ -2589,3 +2589,14 @@ decisions, count, emptiness, and canonical display. Distinct nominal Enums shall
 not become interchangeable through List containment. Shared native/interpreter
 regression and reversible history shall cover every alternative and admitted
 path.
+
+## TOPAL-INTP-SUBSET-293 — Ordinary nominal modular List values
+
+All source modes shall preserve each admitted modular declaration's exact
+identity, signedness, bounds, and canonical representatives through empty/
+nonempty List construction, ordinary parameters/results, Tuple packages,
+structural equality, complete decisions, count, emptiness, and canonical
+display. Distinct modular types shall not become interchangeable through List
+containment, and representatives shall not be narrowed or re-reduced. Shared
+native/interpreter regression and reversible history shall cover boundary and
+interior representatives plus every admitted path.

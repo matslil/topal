@@ -8486,6 +8486,12 @@ impl Analyzer {
                 .filter(|(_, declaration)| declaration.end <= span.start)
                 .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
                 .or_else(|| {
+                    self.modulars
+                        .get(name)
+                        .filter(|(_, declaration)| declaration.end <= span.start)
+                        .map(|(modular, _)| CompilerType::Modular(modular.clone()))
+                })
+                .or_else(|| {
                     self.sums
                         .get(name)
                         .filter(|(_, declaration)| declaration.end <= span.start)
@@ -23526,6 +23532,7 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
             | CompilerType::Comparison
             | CompilerType::ErrorCode
             | CompilerType::Enum(_)
+            | CompilerType::Modular(_)
             | CompilerType::Int
             | CompilerType::Nat
             | CompilerType::Rational
@@ -23545,6 +23552,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
             | CompilerType::Comparison
             | CompilerType::ErrorCode
             | CompilerType::Enum(_)
+            | CompilerType::Modular(_)
             | CompilerType::Int
             | CompilerType::Nat
             | CompilerType::Rational
@@ -23777,6 +23785,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
                     | CompilerType::Enum(_)
+                    | CompilerType::Modular(_)
                     | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
@@ -33526,6 +33535,103 @@ mod tests {
             "E-TYPE-MISMATCH"
         );
         let unsupported_container = "use language (version is v0.1)\nColor is Enum (Red, Green)\nvalue : Optional Color is Some Red\nvalue\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_container)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_nominal_modular_lists_across_private_boundaries() {
+        // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001,
+        // TOPAL-COMPILER-MODULAR-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-LIST-MODULAR-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-modular-values.t"
+        ))
+        .unwrap();
+        let byte_counter = CompilerType::Modular(CompilerModularType {
+            name: "ByteCounter".into(),
+            signed: false,
+            lower: BigInt::from(0),
+            upper: BigInt::from(255),
+        });
+        let list = CompilerType::List(Box::new(byte_counter.clone()));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, byte_counter);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list.clone(), byte_counter.clone()])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared nominal modular List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 11);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[10].value_type, list);
+
+        let records = analyze_for_compiler(
+            "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nretain-record is fn (package : Record (values : List ByteCounter, fallback : ByteCounter)) -> Record (values : List ByteCounter, fallback : ByteCounter)\n  package\nvalues : List ByteCounter is Entry (ByteCounter 1, Empty)\nretained is retain-record (values is values, fallback is ByteCounter 7)\nretained values\n",
+        )
+        .unwrap();
+        let retain_record = records
+            .functions
+            .iter()
+            .find(|function| function.source_name == "retain-record")
+            .unwrap();
+        assert!(matches!(
+            &retain_record.result_type,
+            CompilerType::Record(fields)
+                if fields.as_slice()
+                    == [
+                        ("fallback".into(), byte_counter.clone()),
+                        ("values".into(), list.clone()),
+                    ]
+        ));
+
+        let unsupported = "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nvalues : List ByteCounter is Entry (ByteCounter 1, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let wrong_nominal = "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nSignedByte is ModInt ((-128) ..= 127)\nvalues : List ByteCounter is Entry (SignedByte 1, Empty)\nvalues\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_nominal).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let unsupported_container = "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nvalue : Optional ByteCounter is Some (ByteCounter 1)\nvalue\n";
         assert_eq!(
             analyze_for_compiler(unsupported_container)
                 .unwrap_err()

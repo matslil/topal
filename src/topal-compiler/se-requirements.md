@@ -5480,6 +5480,36 @@ details. This realizes `TOPAL-COMPILER-LIST-ENUM-CORE-001`, nominal Enum rules,
 and List construction, decision, equality, count, and empty rules for compiler
 increment 4b3d-z.
 
+## TOPAL-COMP-LIST-MODULAR-CORE-001 — Ordinary nominal modular Lists
+
+The checked model shall admit empty/nonempty construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for Lists of every
+admitted root nominal modular type. Exact declaration identity, signedness,
+bounds, and canonical representatives remain checked; operands evaluate once,
+cross-type interchange is rejected, and unsupported transforms fail before
+artifact publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing canonical arbitrary-precision Int pointer and remaining pointer. A
+conditional common finite fragment shall use exact Int comparison only after
+same-modular-type checking and count correctly at O0. Private parameters,
+results, and Tuple/Record fields retain pointer carriers while LLVM owns AMD64
+placement. DWARF/GDB retain exact modular declaration, value, and List
+identities. Tests cover bounds, same/different content and length, nominal
+mismatch, all admitted paths, compiler-only Record passage, interpreter modes/
+history, IR, rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not narrow, copy, truncate, wrap, or re-reduce representatives,
+exchange values across declarations, create a portable machine number, or add
+a List runtime tag, generic/public/foreign/library ABI, foreign allocation,
+C/C++, another-language library, or an ABI revision. Future metadata carries
+canonical declaration, signedness, bounds, representation/ownership/lifetime/
+effects, and target adapters independently of private details. This realizes
+`TOPAL-COMPILER-LIST-MODULAR-CORE-001`, modular type/construction rules, and
+List construction, decision, equality, count, and empty rules for compiler
+increment 4b3d-aa.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

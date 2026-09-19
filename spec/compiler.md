@@ -5305,6 +5305,40 @@ identities, representation and ownership, lifetime, effects, and versioned
 target adapters independently of private numeric mappings, offsets, helper
 names, LLVM types/symbols, debug shadows, and placement.
 
+### TOPAL-COMPILER-LIST-MODULAR-CORE-001 — Ordinary nominal modular Lists
+
+For every admitted root nominal modular type, the compiler SHALL admit
+contextual `Empty` and `Entry` construction, immutable binding, ordinary private
+parameters/results, packages, and recursively admitted Tuple/Record fields,
+structural equality and inequality, complete decisions, entry count, emptiness,
+canonical display, and debugging for its List type. Every entry SHALL retain the
+exact modular declaration and canonical representative. Equality SHALL apply
+only to Lists with the same nominal element type, compare exact representatives
+in order, and stop at the first mismatch without mutation. Operands SHALL
+evaluate once in source order.
+
+On Linux x86-64, `Empty` MAY be null and `Entry` MAY use an immutable 16-byte
+node containing the existing canonical arbitrary-precision Int pointer and
+remaining pointer. A conditional finite nonrecursive fragment MAY compare
+representatives with exact Int comparison and count nodes and SHALL remain
+correct at O0; checking SHALL establish equal nominal element identity before
+that common fragment is selected. Private modular parameters, results, and
+Tuple/Record fields SHALL retain exact pointer prototypes while LLVM selects
+physical AMD64 placement. DWARF and the bundled GDB renderer SHALL preserve the
+modular declaration, bounds-derived identity, canonical value, and List shape.
+
+This rule SHALL NOT narrow, copy, truncate, wrap, or re-reduce an already
+canonical representative, exchange values between modular declarations, or
+expose the carrier as a machine integer or portable foreign number. It SHALL
+add no List runtime tag, type-erased generic/public/foreign/serialized/library
+node ABI, foreign allocator, C/C++ runtime, other-language standard library, or
+native-ABI revision. Other List operations, reclamation, and other element
+classifiers remain separately governed. Future library metadata SHALL encode
+canonical declaration identity, signedness and exact bounds, representation and
+ownership, lifetime, effects, and versioned target adapters independently of
+private Int/List layouts, offsets, helper names, LLVM types/symbols, debug
+shadows, and placement.
+
 ### TOPAL-COMPILER-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The compiler SHALL admit contextual `Empty` and `Entry` construction for
