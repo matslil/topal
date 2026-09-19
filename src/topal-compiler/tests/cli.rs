@@ -13556,7 +13556,7 @@ fn function_root_data_forwarding_is_private_freestanding_and_debuggable() {
     let rejected_executable = directory.join("overloaded");
     fs::write(
         &rejected_path,
-        "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
+        "use language (version is v0.1)\nread is fn (value : Nat) -> Int\n  root answer\nread is fn (value : Int) -> Int\n  0\nwrapper is fn (value : Int) -> Int\n  read value\nanswer is 42\nwrapper 0\n",
     )
     .unwrap();
     let rejected = run(topalc().args([
@@ -13766,7 +13766,7 @@ fn defining_context_forwarding_is_private_freestanding_and_debuggable() {
     let rejected_executable = directory.join("overloaded");
     fs::write(
         &rejected_path,
-        "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
+        "use language (version is v0.1)\noffset is 40\nread is fn (value : Nat) -> Int\n  @ offset\nread is fn (value : Int) -> Int\n  0\nwrapper is fn (value : Int) -> Int\n  read value\nwrapper 0\n",
     )
     .unwrap();
     let rejected = run(topalc().args([
@@ -14283,6 +14283,334 @@ fn aggregate_environments_are_private_freestanding_and_debuggable() {
         "{text}"
     );
     assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers overload selection, recursion, rejection, artifacts, and GDB frames.
+fn overload_environments_are_exact_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-overload-environments");
+    let source = directory.join("overload-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/overload-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(40, \"context\", (2, \"context-pair\"), (7, \"root-pair\"), 7, \"root\", 47, 40, \"root\")\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for (name, signature) in [
+        ("choose_2dcontext", "(ptr %arg0, ptr %arg1)"),
+        ("choose_2droot", "(ptr %arg0, ptr %arg1)"),
+        ("forward_2dcontext_2dnumber", "(ptr %arg0)"),
+        ("forward_2dcontext_2dlabel", "(ptr %arg0)"),
+        ("forward_2droot_2dnumber", "(ptr %arg0)"),
+        ("forward_2droot_2dlabel", "(ptr %arg0)"),
+        ("cross", "(ptr %arg0, ptr %arg1, ptr %arg2)"),
+        ("forward_2dcross", "(ptr %arg0, ptr %arg1)"),
+        ("forward_2dproduct_2dtuple", "(ptr %arg0)"),
+        ("forward_2dproduct_2drecord", "(ptr %arg0)"),
+    ] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!("define internal fastcc ptr @topal.fn.{name}."))
+                    && line.contains(signature)
+            }),
+            "{name}: {ir}"
+        );
+    }
+    for name in [
+        "choose_2dpair",
+        "forward_2dcontext_2dpair",
+        "forward_2droot_2dpair",
+    ] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!(
+                    "define internal fastcc {{ ptr, ptr }} @topal.fn.{name}."
+                )) && line.contains("{ ptr, ptr }")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    assert_eq!(
+        ir.lines()
+            .filter(|line| line.contains("define internal fastcc ptr @topal.fn.choose_2dcontext."))
+            .count(),
+        2,
+        "{ir}"
+    );
+    assert_eq!(
+        ir.lines()
+            .filter(|line| line.contains("define internal fastcc ptr @topal.fn.cross."))
+            .count(),
+        2,
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc ptr @topal.fn.choose_2dproduct.")
+                && line.contains("({ ptr, ptr } %arg0, ptr %arg1)")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc ptr @topal.fn.choose_2dproduct.")
+                && line.contains("({ ptr, ptr, i32, i32 } %arg0, ptr %arg1)")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("call fastcc ptr @topal.fn.cross.")
+                && line.contains("(ptr @.topal.int.")
+                && line.matches("ptr %arg").count() == 2
+        }),
+        "{ir}"
+    );
+    for capture in [
+        "@ context-number",
+        "@ context-label",
+        "@ context-pair",
+        "root live-pair",
+        "root live-number",
+        "root live-label",
+    ] {
+        assert!(
+            ir.contains(&format!("!DILocalVariable(name: \"{capture}\"")),
+            "{capture}: {ir}"
+        );
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.context",
+        "topal.root",
+        "context.runtime",
+        "namespace.runtime",
+        "lookup.context",
+        "lookup.root",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, source_text, diagnostic) in [
+        (
+            "ambiguous-context",
+            "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  select value\nforward 0\n",
+            "overload-dependent defining-context capture forwarding",
+        ),
+        (
+            "ambiguous-root",
+            "use language (version is v0.1)\nselect is fn (value : Nat) -> Int\n  root answer\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  select value\nanswer is 40\nforward 0\n",
+            "overload-dependent root-data capture forwarding",
+        ),
+    ] {
+        let rejected_source = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_source, source_text).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_source.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        assert!(
+            String::from_utf8_lossy(&rejected.stderr).contains(diagnostic),
+            "{}",
+            String::from_utf8_lossy(&rejected.stderr)
+        );
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let aggregate_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break overload-environments.t:26",
+            "-ex",
+            "break overload-environments.t:29",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        aggregate_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&aggregate_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&aggregate_debugged.stdout);
+    assert_eq!(
+        text.matches("@ context-pair = {_0 = 2, _1 = \"context-pair\"}")
+            .count(),
+        2,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("root live-pair = {_0 = 7, _1 = \"root-pair\"}")
+            .count(),
+        2,
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.choose_2dpair.4"), "{text}");
+    assert!(
+        text.contains("topal.fn.forward_2dcontext_2dpair.5"),
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.choose_2dpair.6"), "{text}");
+    assert!(text.contains("topal.fn.forward_2droot_2dpair.7"), "{text}");
+
+    let recursive_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break overload-environments.t:13",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 3",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        recursive_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&recursive_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&recursive_debugged.stdout);
+    assert_eq!(text.matches("@ context-number = 40").count(), 4, "{text}");
+    for value in 0..=2 {
+        assert!(text.contains(&format!("value = {value}")), "{text}");
+    }
+    assert!(text.contains("topal.fn.choose_2dcontext.0"), "{text}");
+    assert!(
+        text.contains("topal.fn.forward_2dcontext_2dnumber.1"),
+        "{text}"
+    );
+
+    let cross_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break overload-environments.t:52",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        cross_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&cross_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&cross_debugged.stdout);
+    assert_eq!(text.matches("@ context-number = 40").count(), 3, "{text}");
+    assert_eq!(text.matches("root live-number = 7").count(), 3, "{text}");
+    assert!(text.contains("topal.fn.cross.12"), "{text}");
+    assert!(text.contains("topal.fn.cross.13"), "{text}");
+    assert!(text.contains("topal.fn.forward_2dcross.14"), "{text}");
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

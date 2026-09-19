@@ -168,13 +168,15 @@ evidence.
 | 6b2b2c | exact scalar live-root data forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
 | 6b2b2d | exact scalar live-root data forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |
 | 6b2b2e | exact Tuple, labeled Record, and nominal Sum live-root values through direct, finite acyclic, and independently proof-backed recursive private environments with LLVM-owned placement and GDB observation | complete |
-| 6b2b2 | overload-dependent, function-value, nested, and anonymous root-data forwarding; recursive environments beyond 6b2b2e; aggregate forms beyond represented Tuple/Record/Sum values; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
+| 6b2b2f | classifier/literal-determined source-ordered overload selection with exact per-overload live-root capture sets, cross-overload calls, proof-backed recursion, value-fact-dependent rejection, and GDB observation | complete |
+| 6b2b2 | overload selection beyond 6b2b2f; function-value, nested, and anonymous root-data forwarding; recursive environments beyond 6b2b2f; aggregate forms beyond represented Tuple/Record/Sum values; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
 | 6c2b | exact scalar defining-context forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |
 | 6c2c | exact Tuple, labeled Record, and nominal Sum defining-context values through direct, finite acyclic, and independently proof-backed recursive private environments with LLVM-owned placement and GDB observation | complete |
-| 6c2 | overload-dependent, function-value, nested, and anonymous defining-context forwarding; recursive environments beyond 6c2c; aggregate forms beyond represented Tuple/Record/Sum values; callable environments; escaping closures; qualified root access beyond 6b2b2e; and public/library context ABI | planned |
+| 6c2d | classifier/literal-determined source-ordered overload selection with exact per-overload defining-context capture sets, cross-overload calls, proof-backed recursion, value-fact-dependent rejection, and GDB observation | complete |
+| 6c2 | overload selection beyond 6c2d; function-value, nested, and anonymous defining-context forwarding; recursive environments beyond 6c2d; aggregate forms beyond represented Tuple/Record/Sum values; callable environments; escaping closures; qualified root access beyond 6b2b2f; and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
@@ -880,8 +882,11 @@ function chains with direct private calls and preserved caller-frame debugging;
 proof-backed direct, mutual, and explicit-measure recursion without a recursive
 closure runtime; 6b2b2e/6c2c extends those direct, acyclic, and proof-backed
 private environments to represented Tuple, labeled Record, and nominal Sum
-values while LLVM retains target placement; and 6b2b2/6c2 retain unsupported root/context forwarding graphs and members,
-Scope escape, nested Scope and generator shapes or boundaries not otherwise admitted,
+values while LLVM retains target placement; 6b2b2f/6c2d selects exact
+classifier/literal-determined overload declarations before propagating their
+distinct capture sets and rejects value-fact-dependent choices; and 6b2b2/6c2
+retain unsupported root/context forwarding graphs and members, Scope escape,
+nested Scope and generator shapes or boundaries not otherwise admitted,
 external path resolution, package construction, published interfaces, and
 source/compiled-library work.
 Increment 7a admits the inert
