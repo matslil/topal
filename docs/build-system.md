@@ -144,7 +144,9 @@ the Error path retains the original structured Error. An exact finite
 `List Function` may carry source-ordered identities and capture snapshots
 through the same private boundary. An exact fixed-size `Array Function`
 collected from such a List may carry the same identities and snapshots through
-private parameters and results. The result carries the
+private parameters and results. An exact nonempty `Map (String, Function)` may
+likewise retain one callable per exact String key across its collision policy,
+private parameters, and results. The result carries the
 same observation value and immutable capture snapshot, and later application
 remains a direct specialized call. An
 `Optional Function` stores only the ordinary `Some`/`None` representation and
@@ -153,11 +155,13 @@ tag and declaration-ordered payload slots. A `Result Function` uses the
 existing success/Error pointer representation and boxes only the Function
 observation on success. In all cases capture snapshots stay in the same hidden
 private boundary transport used by other exact Function results, with semantic
-Optional-payload, Sum-alternative, Result-success, zero-based List-entry, or
-zero-based Array-entry paths. A `List Function` node stores the ordinary
-Function observation and next pointer; an Array adds only its ordinary count
-and entries pointer. Capture snapshots are not embedded in either source
-value. Separate factory invocations retain separate snapshots. Recursive,
+Optional-payload, Sum-alternative, Result-success, zero-based List-entry,
+zero-based Array-entry, or exact String-keyed Map-value paths. A `List Function`
+node stores the ordinary Function observation and next pointer; an Array adds
+only its ordinary count and entries pointer. A Map retains its ordinary count,
+String key, Function observation, and next-pointer representation. Capture
+snapshots are not embedded in any source value. Separate factory invocations
+retain separate snapshots. Recursive,
 overloaded, opaque,
 dynamically selected, persistently stored, and published nested callables remain
 outside this private boundary; no public callable ABI is defined.

@@ -16270,6 +16270,183 @@ fn array_function_environments_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact Map paths, rejection, IR, and GDB frames.
+fn map_function_environments_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-MAP-FUNCTION-001,
+    // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+    // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-map-function-environments");
+    let source = directory.join("map-function-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/map-function-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(2, 43, 44, 45, 5, 42, 3, 46, 47, 48, 2, 8, 2, 0, false, Map ((\"increment\", <fn increment>), (\"increase\", <fn increase>)))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert_eq!(
+        ir.matches("define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.make_2dmap.")
+            .count(),
+        6,
+        "{ir}"
+    );
+    assert!(ir.contains("define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.return_2dmap."));
+    assert!(ir.contains(
+        "define internal fastcc { { ptr, ptr }, ptr, ptr, ptr } @topal.fn.return_2dtuple."
+    ));
+    assert!(ir.contains(
+        "define internal fastcc { { ptr, ptr, i32, i32 }, ptr, ptr, ptr } @topal.fn.make_2drecord."
+    ));
+    assert!(ir.contains("call ptr @topal.runtime.container.map.string-function.collect(ptr"));
+    assert!(ir.contains("call ptr @topal.runtime.container.map.string-function.lookup(ptr"));
+    assert!(ir.contains("%topal.ContainerSequenceHeader = type { i64, ptr }"));
+    assert!(ir.contains("%topal.ContainerMapNode = type { ptr, ptr, ptr }"));
+    assert!(ir.contains("call ptr @topal.platform.allocate(i64 24)"));
+    assert!(ir.contains("call ptr @topal.platform.allocate(i64 16)"));
+    assert!(ir.contains("call ptr @topal.platform.allocate(i64 4)"));
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "closure.runtime",
+        "environment.runtime",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, rejected_source) in [
+        (
+            "dynamic-map",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nleft is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nright is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", decrement), Empty)\n  collect-map pairs resolving reject\nchoose is fn (flag : Boolean) -> Map (String, Function)\n  flag\n    true then left ()\n    false then right ()\nchoose true\n",
+        ),
+        (
+            "function-capture",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Map (String, Function)\n  nested is fn (value : Int) -> Int\n    operation value\n  pairs : List (String, Function) is Entry ((\"operation\", nested), Empty)\n  collect-map pairs resolving reject\nwrap increment\n",
+        ),
+        (
+            "map-function-capture",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nwrap is fn (candidate : Map (String, Function)) -> Map (String, Function)\n  nested is fn (value : Int) -> Int\n    map-lookup (candidate, \"operation\")\n      Some operation then operation value\n      None then 0\n  pairs : List (String, Function) is Entry ((\"nested\", nested), Empty)\n  collect-map pairs resolving reject\nwrap (source ())\n",
+        ),
+        (
+            "repeated-identity",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Map (String, Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  pairs : List (String, Function) is Entry ((\"operation\", increase), Empty)\n  collect-map pairs resolving reject\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
+        ),
+        (
+            "dynamic-key",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Entry ((\"operation\", increment), Empty)\n  collect-map pairs resolving reject\nselect is fn (flag : Boolean) -> String\n  flag\n    true then \"operation\"\n    false then \"missing\"\nlookup is fn (candidate : Map (String, Function), key : String) -> Int\n  map-lookup (candidate, key)\n    Some operation then operation 1\n    None then 0\nlookup (source (), select true)\n",
+        ),
+        (
+            "empty",
+            "use language (version is v0.1)\nempty is fn () -> Map (String, Function)\n  pairs : List (String, Function) is Empty\n  collect-map pairs resolving reject\nempty ()\n",
+        ),
+    ] {
+        let rejected_path = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_path, rejected_source).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_path.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+        assert!(
+            diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+            "{diagnostic}"
+        );
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break map-function-environments.t:24",
+            "-ex",
+            "break map-function-environments.t:58",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "candidate=Map ((\"increment\", <fn increment>), (\"increase\", <fn increase>))",
+        "candidate = Map ((\"increment\", <fn increment>), (\"increase\", <fn increase>))",
+        "value = 1",
+        "offset = 1",
+        "@ context-offset = 40",
+        "root live-offset = 1",
+        "topal.fn.apply_2dincrease.",
+        "topal.fn.increase.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn modular_values_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-TYPE-001,
     // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001,

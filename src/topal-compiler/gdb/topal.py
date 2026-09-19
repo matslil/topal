@@ -892,10 +892,11 @@ class _TopalBagPrinter:
 
 
 class _TopalMapPrinter:
-    """Render an immutable compiler-private Map from String to Int."""
+    """Render an immutable compiler-private Map from String."""
 
-    def __init__(self, value):
+    def __init__(self, value, value_type="Int"):
         self._value = value
+        self._value_type = value_type
 
     def to_string(self):
         address = int(self._value)
@@ -923,12 +924,27 @@ class _TopalMapPrinter:
             except gdb.MemoryError:
                 return "<unreadable Map entry>"
             key = int.from_bytes(node[0:8], "little")
-            value = int.from_bytes(node[8:16], "little")
-            if not key or not value:
+            if not key:
                 return "<invalid null Map entry field>"
             key = _TopalStringPrinter(key).to_string()
-            value = _TopalIntPrinter(value).to_string()
-            if key.startswith("<") or value.startswith("<"):
+            if self._value_type == "Function":
+                payload = int.from_bytes(node[8:12], "little")
+                try:
+                    value = str(
+                        gdb.Value(payload).cast(gdb.lookup_type("enum Function"))
+                    )
+                except gdb.error:
+                    return "<unreadable Map Function entry>"
+                if value.startswith("<unknown:"):
+                    return f"<invalid Map Function entry {payload}>"
+            else:
+                payload = int.from_bytes(node[8:16], "little")
+                if not payload:
+                    return "<invalid null Map entry field>"
+                value = _TopalIntPrinter(payload).to_string()
+            if key.startswith("<") or (
+                self._value_type != "Function" and value.startswith("<")
+            ):
                 return f"<invalid Map entry: ({key}, {value})>"
             entries.append(f"({key}, {value})")
             current = int.from_bytes(node[16:24], "little")
@@ -1050,7 +1066,10 @@ def _lookup_topal_value(value):
         if value_type.startswith("Bag "):
             return _TopalBagPrinter(value)
         if value_type.startswith("Map ") or value_type.startswith("Map("):
-            return _TopalMapPrinter(value)
+            map_value_type = (
+                "Function" if value_type.endswith(", Function)") else "Int"
+            )
+            return _TopalMapPrinter(value, map_value_type)
     prefix = "Result ("
     task_suffix = ", ())"
     if value_type.startswith(prefix) and value_type.endswith(task_suffix):

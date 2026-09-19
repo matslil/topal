@@ -3016,7 +3016,8 @@ and Function containment outside Tuple, Record, the exact Optional path of
 `TOPAL-COMPILER-SUM-FUNCTION-001`, or the exact Result-success path of
 `TOPAL-COMPILER-RESULT-FUNCTION-001`, or the exact finite List-entry paths of
 `TOPAL-COMPILER-LIST-FUNCTION-001`, or the exact fixed-size Array-entry paths of
-`TOPAL-COMPILER-ARRAY-FUNCTION-001` SHALL be rejected before LLVM lowering.
+`TOPAL-COMPILER-ARRAY-FUNCTION-001`, or the exact String-keyed Map-value paths
+of `TOPAL-COMPILER-MAP-FUNCTION-001` SHALL be rejected before LLVM lowering.
 
 Each represented Function leaf SHALL occupy its existing private i32
 observation field. Exact private `fastcc` prototypes SHALL use the corresponding
@@ -3053,9 +3054,12 @@ callable identity, its complete ordered capture facts, and its canonical
 aggregate path.
 Canonical paths SHALL consist of zero-based Tuple indexes, Record labels,
 admitted Optional payload edges, admitted nominal Sum alternative-name payload
-edges, and admitted Result-success edges and SHALL be ordered by a depth-first,
-left-to-right traversal of the source aggregate. Optional, Sum, and Result
-edges SHALL satisfy their respective exact-container rules.
+edges, admitted Result-success edges, zero-based List and Array entry edges,
+and semantic exact String-keyed Map-value edges. They SHALL be ordered by a
+depth-first, left-to-right traversal of the source aggregate; Map edges SHALL
+use first-key occurrence order after collision resolution. Optional, Sum,
+Result, List, Array, and Map edges SHALL satisfy their respective exact-container
+rules.
 
 The checked frontend SHALL append one hidden capture operand for every capture
 at every Function path after the source-visible aggregate operand. A result
@@ -3105,7 +3109,9 @@ path governed by `TOPAL-COMPILER-SUM-FUNCTION-001`, or under the success path
 of an exact arithmetic Result governed by
 `TOPAL-COMPILER-RESULT-FUNCTION-001`, or under exact finite List-entry paths
 governed by `TOPAL-COMPILER-LIST-FUNCTION-001`, or under exact fixed-size
-Array-entry paths governed by `TOPAL-COMPILER-ARRAY-FUNCTION-001`. The nested
+Array-entry paths governed by `TOPAL-COMPILER-ARRAY-FUNCTION-001`, or under
+exact String-keyed Map-value paths governed by
+`TOPAL-COMPILER-MAP-FUNCTION-001`. The nested
 declaration SHALL be one
 nonrecursive, nonoverloaded ordinary declaration whose identity remains known
 at every private boundary.
@@ -3459,6 +3465,75 @@ and ownership, and versioned target adapters independently of headers, node
 offsets, private observation tags, compiler names, LLVM types/symbols, debug
 shadows, and physical placement.
 
+### TOPAL-COMPILER-MAP-FUNCTION-001 — Exact private String-keyed Map Function environments
+
+Within one compilation unit, an exact nonempty `List (String, Function)` MAY be
+collected as `Map (String, Function)` under `reject`, `keep-first`, or
+`keep-last`. The Map MAY be bound, displayed, queried for count or emptiness,
+passed through an ordinary private parameter or result, used as a package
+field, recursively contained in an admitted Tuple or labeled Record, and
+queried by `map-lookup` with an exact String key. The checked frontend SHALL
+retain every exact source key and named, symbolic, anonymous, or admitted
+nested callable identity, resolve the collision policy, and retain one value
+fact subtree per surviving key in first-key occurrence order. An empty source,
+opaque or computed key, branch-selected or otherwise inexact Map/callable, or
+lookup without an exact key SHALL reject before LLVM lowering.
+
+The source Map SHALL retain the existing Topal-owned 16-byte sequence header:
+an i64 entry count followed by a pointer to 24-byte linked nodes. Each node
+SHALL retain the existing String key pointer, the private i32 Function
+observation in the value slot, and the next pointer. Collection SHALL NOT embed
+captures in the header or nodes. `reject` SHALL diagnose a duplicate exact key;
+`keep-first` SHALL retain the first callable and capture facts; `keep-last`
+SHALL retain the last callable and capture facts while preserving the first
+key's node position. A present exact-key lookup SHALL construct the ordinary
+`Some Function` representation and attach only the retained facts for that key;
+a missing exact key SHALL construct `None Function`. Eventual application SHALL
+remain one direct specialized private `fastcc` call; neither Map traversal nor
+the Function observation SHALL dispatch it. Display and DWARF/GDB SHALL expose
+the source Map, String keys, and Function observations without compiler facts.
+
+Each surviving Function value SHALL add its exact String key as a semantic
+Map-value edge to the path of
+`TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001`, composed with enclosing Tuple
+and Record edges. Private parameters SHALL pass the source Map pointer followed
+by captures in resolved entry and existing per-callable capture order. Private
+results SHALL return the unchanged pointer followed by those captures for
+one-time caller extraction and remapping. An exact nested Function MAY therefore
+escape through a Map value under
+`TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001`. Distinct keys and factory
+invocations SHALL retain independent snapshots. Function- or
+Generator-containing capture state SHALL remain unsupported.
+
+Tests SHALL cover nonempty named, symbolic, anonymous, and nested Function
+values; all three collision policies; present and missing exact-key lookup with
+complete Optional decisions; count, emptiness, private parameter/result,
+package, Tuple, and Record passage; independent factory snapshots; exact
+display; interpreter parity and reversible history; direct LLVM IR;
+artifact-free empty/opaque-key/opaque-map/capture/repeated-identity rejection;
+freestanding ELF/DWARF; full O0 GDB Map/callable values and active frames; the
+shared corpus; and separate interpreter/compiler resource baselines.
+
+This rule SHALL add no closure/environment object, environment pointer,
+function pointer, indirect call, callback, dispatch table, caller-frame lookup,
+foreign dependency, C/C++ runtime, other-language standard library, public
+callable/Map ABI, or native-ABI revision. Allocation SHALL remain the existing
+process-lifetime source List nodes, Map nodes and header, and the ordinary
+present Optional Function observation box. Empty Map Function collection
+remains deferred until shared typed-empty Map semantics are implemented.
+General Map Function equality or repeated identity, dynamic lookup, operations
+that lose exact key/value facts, Function keys, other key classifiers, opaque
+or dynamically selected values, persistent storage, publication, recursive
+contained classifiers, and Function containment in other unordered collection
+representations remain deferred. Future compiled-library metadata SHALL encode
+canonical source-session/scope, collision policy, exact key set and resolved
+order, source collection relationship, callable/declaration and semantic
+key-based aggregate paths, ordered capture
+identity/classifier/representation/lifetime, effects, Map/List representation
+and ownership, and versioned target adapters independently of headers, node
+offsets, private observation tags, compiler names, LLVM types/symbols, debug
+shadows, and physical placement.
+
 ### TOPAL-COMPILER-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
 An inferred anonymous function MAY contain a flat positional product parameter
@@ -3630,7 +3705,7 @@ rule SHALL introduce no closure or environment object, allocation, generic
 matcher, pattern table, function pointer, indirect call, callback, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths,
+selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array/Map paths,
 ordinary named-function header repetition, publication, and library adapters
 remain deferred. Future
 compiled-library metadata SHALL encode canonical aggregate paths and stable
@@ -3748,7 +3823,7 @@ execution, and full O0 GDB values/frames. This rule SHALL introduce no closure
 or environment object, allocation, pattern table, function pointer, indirect call, dispatch
 table, foreign dependency, C/C++ runtime, other-language standard library,
 public aggregate/callable ABI, or native-ABI revision. Dynamic aggregate
-selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths,
+selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array/Map paths,
 unsupported capture classifiers, ordinary named-function header repetition,
 publication, and library adapters remain deferred. Future compiled-library
 metadata SHALL encode canonical aggregate paths, stable callable identities, ordered capture schemas
@@ -4150,7 +4225,8 @@ governed by `TOPAL-COMPILER-SUM-FUNCTION-001`; exact arithmetic Result Function
 fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`; exact finite List
 Function fields are governed by `TOPAL-COMPILER-LIST-FUNCTION-001`; exact
 fixed-size Array Function fields are governed by
-`TOPAL-COMPILER-ARRAY-FUNCTION-001`. Function containment in other aggregates;
+`TOPAL-COMPILER-ARRAY-FUNCTION-001`; exact nonempty String-keyed Map Function
+fields are governed by `TOPAL-COMPILER-MAP-FUNCTION-001`. Function containment in other aggregates;
 dynamic escape/selection; dependent defaults; nested package
 declarations; recursive callable package signatures; persistent storage;
 publication; and public adapters remain deferred.
@@ -4168,7 +4244,9 @@ governed by `TOPAL-COMPILER-OPTIONAL-FUNCTION-001`; exact arithmetic
 `Result Function` fields are governed by `TOPAL-COMPILER-RESULT-FUNCTION-001`;
 exact finite `List Function` fields are governed by
 `TOPAL-COMPILER-LIST-FUNCTION-001`; exact fixed-size `Array Function` fields are
-governed by `TOPAL-COMPILER-ARRAY-FUNCTION-001`.
+governed by `TOPAL-COMPILER-ARRAY-FUNCTION-001`; exact nonempty
+`Map (String, Function)` fields are governed by
+`TOPAL-COMPILER-MAP-FUNCTION-001`.
 Unsupported contained classifiers and mismatched container classifiers SHALL reject before LLVM
 lowering or artifact publication.
 
@@ -4207,7 +4285,8 @@ classifier, representation/lifetime/default/effect semantics, stable
 operand/field identities and order, and target adapters independently of
 compiler-private binding names, LLVM pointer types, and physical placement.
 Function-containing containers outside exact `Optional Function`, arithmetic
-`Result Function`, finite `List Function`, and fixed-size `Array Function`,
+`Result Function`, finite `List Function`, fixed-size `Array Function`, and
+nonempty exact `Map (String, Function)`,
 unsupported List elements and container payloads, context-dependent defaults, nested
 package declarations, opaque whole-package values, recursive package
 signatures, persistent container storage, publication, and public adapters
@@ -4223,7 +4302,9 @@ extent. Other element, key, or value classifiers and mismatched collection
 classifiers SHALL reject before LLVM lowering or artifact publication rather
 than being accepted because they share a pointer carrier. Exact
 `Array (N, Function)` fields are instead governed by
-`TOPAL-COMPILER-ARRAY-FUNCTION-001`.
+`TOPAL-COMPILER-ARRAY-FUNCTION-001`; exact nonempty
+`Map (String, Function)` fields are governed by
+`TOPAL-COMPILER-MAP-FUNCTION-001`.
 
 Each explicit collection-producing expression SHALL execute once in package
 source order and retain its exact constructor, extent where applicable, and
@@ -4259,7 +4340,8 @@ extent; element or key/value classifiers; ordering, uniqueness, multiplicity,
 and collision semantics; representation/lifetime/default/effect semantics;
 stable operand/field identities and order; and target adapters independently
 of compiler-private binding names, LLVM pointer types, and physical placement.
-Function-containing collections outside exact `Array (N, Function)`, other generic specializations,
+Function-containing collections outside exact `Array (N, Function)` and
+nonempty exact `Map (String, Function)`, other generic specializations,
 context-dependent or otherwise unanalyzable defaults, nested package
 declarations, opaque whole-package values, recursive package signatures,
 persistent collection storage, publication, and public adapters remain

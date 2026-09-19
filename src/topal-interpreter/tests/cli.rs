@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 253);
+    assert_eq!(examples.len(), 254);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5502,6 +5502,33 @@ fn every_mode_preserves_array_function_environments() {
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     assert!(trace.contains("array.collected"));
     assert!(trace.contains("array.checked-access"));
+    assert!(trace.contains(
+        "\"event\":\"function.value.called\",\"rule\":\"TOPAL-FUNCTION-VALUE-001\",\"detail\":\"increase\""
+    ));
+}
+
+#[test]
+fn every_mode_preserves_map_function_environments() {
+    // TOPAL-INTP-SUBSET-280,
+    // TOPAL-COMPILER-MAP-FUNCTION-001
+    let source = include_str!("../../../examples/language/map-function-environments.t");
+    let expected = "(2, 43, 44, 45, 5, 42, 3, 46, 47, 48, 2, 8, 2, 0, false, Map ((\"increment\", <fn increment>), (\"increase\", <fn increase>)))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("map.collected"));
+    assert!(trace.contains("map.lookup"));
     assert!(trace.contains(
         "\"event\":\"function.value.called\",\"rule\":\"TOPAL-FUNCTION-VALUE-001\",\"detail\":\"increase\""
     ));

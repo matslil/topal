@@ -374,8 +374,11 @@ it under `TOPAL-COMPILER-LIST-FUNCTION-001`, retaining length and one ordered
 fact subtree per entry. Exact fixed-size Arrays collected from those Lists
 extend it under
 `TOPAL-COMPILER-ARRAY-FUNCTION-001`, retaining the declared extent and the same
-ordered entry subtrees. Other containers and opaque or branch-selected
-identities still fail before LLVM.
+ordered entry subtrees. Exact nonempty String-keyed Maps extend it under
+`TOPAL-COMPILER-MAP-FUNCTION-001`, resolving duplicate keys according to the
+source collision policy and retaining one value subtree per surviving exact
+key. Other containers and opaque or branch-selected identities still fail
+before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -391,9 +394,10 @@ The capture-bearing extension assigns every Function leaf a canonical path of
 zero-based Tuple indexes, Record labels, admitted `Optional` payload edges,
 admitted nominal Sum alternative-name payload edges, and admitted `Result`
 success edges, plus zero-based finite List-entry edges, visited depth-first from
-left to right. Exact Arrays add zero-based Array-entry edges. Parameter
-specialization carries the ordinary source aggregate followed by each leaf's
-ordered capture operands.
+left to right. Exact Arrays add zero-based Array-entry edges, and exact Maps add
+semantic String-keyed Map-value edges in first-key occurrence order after
+collision resolution. Parameter specialization carries the ordinary source
+aggregate followed by each leaf's ordered capture operands.
 Result lowering returns a private aggregate whose first field is the unchanged
 source aggregate and whose remaining fields are the captures in that same path
 order. The caller extracts the source value once, attaches each capture to its
@@ -405,7 +409,7 @@ direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
 matching `fastcc` prototype. DWARF exposes only the source
-Tuple/Record/Optional/Sum/Result/List/Array and the eventual callable's
+Tuple/Record/Optional/Sum/Result/List/Array/Map and the eventual callable's
 source-named captures, never the extended result fields or hidden parameter
 names. This transport
 remains module-private and creates no closure object, environment pointer,
@@ -420,10 +424,11 @@ The exact nested-result extension reuses these scalar and aggregate transports
 for one nonrecursive, nonoverloaded nested declaration whose identity remains
 known throughout the private path. A factory result contains the nested
 observation tag followed by its already-evaluated lexical, defining-context,
-and live-root values; a Tuple, Record, Optional, Sum, Result, finite List, or
-fixed-size Array result associates the same values with the Function leaf's
-canonical path. The caller immediately owns those SSA snapshots, so the factory
-frame may return before a later direct application.
+and live-root values; a Tuple, Record, Optional, Sum, Result, finite List,
+fixed-size Array, or exact nonempty String-keyed Map result associates the same
+values with the Function leaf's canonical path. The caller immediately owns
+those SSA snapshots, so the factory frame may return before a later direct
+application.
 Separate factory calls may share the declaration tag but retain independent
 capture values. Private forwarding remaps storage identities without replaying
 the factory or consulting a dead frame. O0 DWARF exposes the factory result as
@@ -521,6 +526,29 @@ Array and List representation/ownership, entry paths, callable/capture schemas,
 lifetime, effects, and target adapters independently of headers, node offsets,
 observation tags, private names, LLVM types/symbols, and physical placement.
 
+The exact Map extension collects an exact nonempty
+`List (String, Function)` with the existing 16-byte Topal-owned Map header and
+24-byte linked nodes. Each node retains a String pointer, the ordinary i32
+Function observation in its value slot, and a next pointer; captures do not
+enlarge the header or nodes. The checked fact vector requires exact String keys,
+resolves `reject`, `keep-first`, or `keep-last` before LLVM, and retains one
+callable/capture schema per surviving key in first-key occurrence order. An
+exact-key lookup produces the ordinary `Optional Function` representation and
+transfers only that key's facts on `Some`; a missing exact key produces `None`.
+Captures use semantic String-keyed Map-value paths and travel after the ordinary
+Map pointer across private parameters/results. Distinct keys and factory
+invocations retain independent snapshots, and eventual application remains a
+direct specialization. Allocation is limited to existing source List nodes,
+Map nodes and header, and the ordinary successful Optional Function observation
+box. Until the interpreter has a typed empty generic Map construction, empty
+Map Function collection remains rejected to preserve shared source parity.
+Future compiled-library metadata must preserve collision policy, exact key set,
+first-occurrence/collision-resolution relationship, Map/List
+representation/ownership, semantic key paths, callable/capture schemas,
+lifetime, effects, and target adapters independently of headers, node offsets,
+observation tags, private names, LLVM types/symbols, debug shadows, and physical
+placement.
+
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
 the pattern and exact Tuple types depth-first from left to right, representing
@@ -577,7 +605,7 @@ independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result repeated identity, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
 nested callable identity, Function containment outside admitted
-Tuple/Record/Optional/Sum/Result/List/Array paths, and ordinary named-header repetition remain
+Tuple/Record/Optional/Sum/Result/List/Array/Map paths, and ordinary named-header repetition remain
 deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
@@ -644,7 +672,7 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths,
+containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array/Map paths,
 opaque/computed/nested/non-root Scope values, unsupported container or
 collection payloads and other non-scalar fields, nested package declarations,
 opaque whole-package values, context-dependent
