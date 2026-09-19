@@ -117,6 +117,7 @@ evidence.
 | 4b3d-m | ordinary immutable List Boolean construction, private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-n | ordinary immutable List String private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-q | ordinary immutable List Character private parameter/result/package and Tuple/Record passage, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
+| 4b3d-r | ordinary immutable List Nat private parameter/result/package and Tuple/Record passage, finite and positive-infinity entries, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |
 | 5b | lazy `Generator Int Unit Unit` construction from `iterate` and direct `take-while`, with checked dormant bodies, one-consumption local linearity, canonical observation, and debugging but no traversal | complete |

@@ -699,13 +699,13 @@ class _TopalListPrinter:
                 if payload > 1:
                     return f"<invalid List Boolean entry {payload}>"
                 entries.append("true" if payload else "false")
-            elif self._element_type == "Int":
+            elif self._element_type in ("Int", "Nat"):
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:
-                    return "<invalid null List Int entry>"
+                    return f"<invalid null List {self._element_type} entry>"
                 rendered = _TopalIntPrinter(payload).to_string()
                 if rendered.startswith("<"):
-                    return f"<invalid List Int entry: {rendered}>"
+                    return f"<invalid List {self._element_type} entry: {rendered}>"
                 entries.append(rendered)
             elif self._element_type in ("Character", "String"):
                 payload = int.from_bytes(node[0:8], "little")

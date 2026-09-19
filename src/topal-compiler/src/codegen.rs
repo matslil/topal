@@ -2205,6 +2205,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::String
                     | CompilerType::Function => (16, 8),
                     CompilerType::Tuple(fields)
@@ -2238,7 +2239,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    (CompilerType::Int, LlValue::Int(value))
+                    (CompilerType::Int | CompilerType::Nat, LlValue::Int(value))
                     | (CompilerType::Character | CompilerType::String, LlValue::String(value)) => {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
@@ -4193,7 +4194,7 @@ impl<'a> Generator<'a> {
                     )),
                     Vec::new(),
                 ),
-                CompilerType::Int => (
+                CompilerType::Int | CompilerType::Nat => (
                     LlValue::Int(body.instruction(
                         &format!("load ptr, ptr {list}, align 8"),
                         *first_span,
@@ -6483,7 +6484,7 @@ impl<'a> Generator<'a> {
                 .insert(ListIntRuntimeFragment::NestedIntStringCore);
             "nested.int-string"
         } else {
-            debug_assert_eq!(element, &CompilerType::Int);
+            debug_assert!(matches!(element, CompilerType::Int | CompilerType::Nat));
             self.list_int_runtime_fragments
                 .insert(ListIntRuntimeFragment::Core);
             "int"
@@ -8262,7 +8263,7 @@ impl<'a> Generator<'a> {
                 )),
                 8,
             ),
-            CompilerType::Int => (
+            CompilerType::Int | CompilerType::Nat => (
                 LlValue::Int(body.instruction(
                     &format!("load ptr, ptr {current}, align 8"),
                     span,

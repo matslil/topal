@@ -8384,7 +8384,7 @@ impl Analyzer {
                     environment,
                     Some(element),
                 )?;
-                require_same_type(&self.source, value.span, element, &value.value_type)?;
+                let value = self.finish_list_entry_value(value, element)?;
                 let list_type = CompilerType::List(element.clone());
                 let remaining = self.analyze_expression_with_expected(
                     &remaining.value,
@@ -8419,6 +8419,24 @@ impl Analyzer {
             }
             _ => Ok(value),
         }
+    }
+
+    fn finish_list_entry_value(
+        &mut self,
+        mut value: CompilerExpression,
+        element: &CompilerType,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if element == &CompilerType::Nat && value.value_type == CompilerType::Int {
+            let span = value.span;
+            value = self.finish_nat_conversion(value, span, span)?;
+        }
+        if !matches!(
+            (element, &value.value_type),
+            (CompilerType::Nat, CompilerType::InfiniteNat)
+        ) {
+            require_same_type(&self.source, value.span, element, &value.value_type)?;
+        }
+        Ok(value)
     }
 
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
@@ -14870,6 +14888,7 @@ impl Analyzer {
                 CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::String
             ) && !compiler_nested_int_string_list_element(element.as_ref())
             {
@@ -17175,6 +17194,7 @@ impl Analyzer {
                 CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::String
             ) {
                 return Err(unsupported(
@@ -21902,6 +21922,7 @@ impl Analyzer {
                     CompilerType::Boolean
                         | CompilerType::Character
                         | CompilerType::Int
+                        | CompilerType::Nat
                         | CompilerType::String
                         | CompilerType::Function
                 ) =>
@@ -23513,6 +23534,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
             | CompilerType::Boolean
             | CompilerType::Character
             | CompilerType::Int
+            | CompilerType::Nat
             | CompilerType::String
             | CompilerType::Function
     ) || matches!(
@@ -23737,6 +23759,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::String
                     | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
@@ -25591,6 +25614,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
                 CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::String
             ) || compiler_nested_int_string_list_element(element.as_ref())
         }
@@ -32842,6 +32866,84 @@ mod tests {
         assert_eq!(results[9].value_type, list_character);
 
         let unsupported_transform = "use language (version is v0.1)\nvalues : List Character is Entry (\"A\", Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_transform)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_nat_lists_across_private_boundaries() {
+        // TOPAL-NUM-NAT-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-LIST-NAT-CORE-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/list-nat-values.t"))
+                .unwrap();
+        let list_nat = CompilerType::List(Box::new(CompilerType::Nat));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list_nat);
+        assert_eq!(head.result_type, CompilerType::Nat);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_list = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-list")
+            .unwrap();
+        assert_eq!(return_list.result_type, list_nat);
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list_nat.clone(), CompilerType::Nat])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list_nat.clone()),
+                ("fallback".into(), CompilerType::Nat),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Nat List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list_nat);
+
+        let unsupported_transform = "use language (version is v0.1)\nvalues : List Nat is Entry (1, Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported_transform)
                 .unwrap_err()

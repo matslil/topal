@@ -2510,3 +2510,13 @@ them through complete List decisions, observe entry count and emptiness, and
 render their canonical source form with delimiters. The shared regression and
 reversible debugger history shall cover each path with the same source used by
 the native compiler.
+
+## TOPAL-INTP-SUBSET-284 — Ordinary Nat List values
+
+All source modes shall construct empty and nonempty `List Nat` values, preserve
+zero, arbitrary-precision finite nonnegative entries, `+Infinity`, and Nat
+evidence across ordinary parameters/results, packages, Tuples, and Records,
+compare them structurally through exact numeric equality, decompose them through
+complete List decisions, observe entry count and emptiness, and render their
+canonical source form. The shared regression and reversible debugger history
+shall cover each path with the same source used by the native compiler.

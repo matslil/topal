@@ -1301,6 +1301,11 @@
       "cpu_time_ns": 20573059,
       "memory_peak_bytes": 18456576,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-nat-values.t": {
+      "cpu_time_ns": 16126999,
+      "memory_peak_bytes": 18374656,
+      "samples_per_test": 50
     }
   }
 }

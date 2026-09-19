@@ -190,6 +190,14 @@ future library metadata must preserve the Character classifier, constraint
 evidence, ownership, lifetime, and target adapter independently of this private
 layout reuse.
 
+Ordinary `List Nat` values likewise retain a distinct refined source type while
+reusing the exact arbitrary-precision Int pointer node and finite equality/count
+runtime. Construction validates nonnegativity, and the representation also
+retains `+Infinity` exactly; it never introduces machine-unsigned width,
+overflow, truncation, or wrapping. Debug information and future library
+metadata preserve Nat evidence independently of the private Int-compatible
+layout.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux
