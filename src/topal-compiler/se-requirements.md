@@ -5404,6 +5404,29 @@ independently of private details. This realizes
 `TOPAL-COMPILER-LIST-UNIT-CORE-001`, List construction, decision, equality,
 count, and empty rules for compiler increment 4b3d-w.
 
+## TOPAL-COMP-LIST-COMPLETED-CORE-001 — Ordinary immutable Completed Lists
+
+The checked model shall admit contextual construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for
+`List Completed`. Each entry remains explicit completion evidence, operands
+evaluate once, and unsupported transforms fail before artifact publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte validated-zero
+i8/pointer nodes. A conditional finite fragment shall compare length and count
+correctly at O0. Private parameters/results and aggregate fields retain typed
+i8 carriers while LLVM owns AMD64 placement. DWARF/GDB retain exact Completed
+and List identities. Tests cover all admitted paths, interpreter modes/history,
+IR, rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not conflate Completed with Unit or Effect, discard completion
+evidence, or add payload state, runtime tags, generic/public/foreign/library
+ABI, foreign allocation, C/C++, another-language library, or an ABI revision.
+Future metadata carries completion semantics, representation/ownership,
+lifetime, effects, and target adapters independently of private details. This
+realizes `TOPAL-COMPILER-LIST-COMPLETED-CORE-001`, List construction, decision,
+equality, count, and empty rules for compiler increment 4b3d-x.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`

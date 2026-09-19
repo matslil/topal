@@ -710,6 +710,11 @@ class _TopalListPrinter:
                 if payload:
                     return f"<invalid Unit value {payload}>"
                 entries.append("()")
+            elif self._element_type == "Completed":
+                payload = node[0]
+                if payload:
+                    return f"<invalid Completed value {payload}>"
+                entries.append("Completed")
             elif self._element_type == "Boolean":
                 payload = node[0]
                 if payload > 1:
