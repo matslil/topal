@@ -626,6 +626,98 @@ fn infinity_arithmetic_runtime_matches_interpreter_and_is_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn infinity_private_boundaries_match_the_interpreter_and_are_debuggable() {
+    // TOPAL-NUM-INFINITY-001, TOPAL-NUM-INFINITY-ARITHMETIC-001,
+    // TOPAL-COMPILER-INFINITY-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("infinity-private-boundaries");
+    let executable = directory.join("application");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../examples/language/infinity-private-boundaries.t");
+    let source_text = fs::read_to_string(&source).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(&source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled = run(topalc().args([
+        "-O0",
+        "-g",
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break infinity-private-boundaries.t:8",
+            "-ex",
+            "break infinity-private-boundaries.t:11",
+            "-ex",
+            "break infinity-private-boundaries.t:14",
+            "-ex",
+            "break infinity-private-boundaries.t:20",
+            "-ex",
+            "break infinity-private-boundaries.t:23",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let debugged = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "$1 = +Infinity",
+        "$2 = +Infinity",
+        "$3 = -Infinity",
+        "$4 = {_0 = +Infinity, _1 = -Infinity}",
+        "$5 = {integer = +Infinity, ratio = -Infinity}",
+    ] {
+        assert!(debugged.contains(expected), "{debugged}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn dynamic_infinity_results_match_the_interpreter_and_are_debuggable() {
     // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001,
     // TOPAL-COMPILER-INFINITY-001, TOPAL-COMPILER-DEBUG-001

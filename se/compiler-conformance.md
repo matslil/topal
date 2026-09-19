@@ -23,6 +23,7 @@ evidence.
 | 2c-c2 | contextual exact Rational infinity construction, same-domain and finite-Int mixed comparison, canonical display, debugging, and closed root-scope retention | complete |
 | 2c-c3 | closed exact Int/Nat/Rational infinity negation, absolute value, addition, subtraction, and multiplication with static indeterminate rejection | complete |
 | 2c-c4 | dynamic Int/Rational zero-times-infinity multiplication through the arithmetic Result ABI with indeterminate provenance | complete |
+| 2c-c5 | exact Int/Nat/Rational infinity passage through specialized executable-private non-recursive function parameters/results, captured environments, and Tuple/Record aggregates | complete |
 | 2c-c | normatively completed infinity construction and arithmetic | planned |
 | 2d-a | explicitly bounded finite numeric range construction, classification, membership, intersection, emptiness, and bound observation | complete |
 | 2d-b1 | explicit Int infinity endpoints with construction, membership, emptiness, bound observation, display, and debugging | complete |
@@ -282,10 +283,16 @@ multiplication paths plus source rejection of proven indeterminate forms.
 Increment 2c-c4 routes multiplication through the existing arithmetic Result
 ABI when a finite factor's zero-ness is dynamic: zero produces the
 `indeterminate` code with source provenance and nonzero preserves the signed
-infinity. Increment 2c-c retains general boundaries, division,
+infinity. Increment 2c-c5 permits the existing private sentinel and Rational
+wrapper representations to cross specialized non-recursive function
+parameters/results and captured environments, including recursively matched
+Tuple/Record fields, while retaining direction/domain evidence for checked
+arithmetic and truthful DWARF. It does not create a public native ABI:
+recursive, public, persistent, serialized, and compiled-library boundaries
+remain rejected. Increment 2c-c retains those general boundaries, division,
 directional-zero arithmetic, cross-domain infinity conversion, and the other
-dynamic indeterminate-result paths. Increment
-2d-a adds the fully normative explicitly bounded finite range subset; 2d-b1
+dynamic indeterminate-result paths. Increment 2d-a adds the fully normative
+explicitly bounded finite range subset; 2d-b1
 adds explicit Int infinity endpoints and 2d-b2 adds explicit Rational infinity
 endpoints, while 2d-b retains unbounded ranges and general boundary closure.
 Range-based collection selection remains grouped with containers. Increment 2e

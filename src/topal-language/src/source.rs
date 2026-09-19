@@ -21833,6 +21833,19 @@ fn exact_infinity_arithmetic_preserves_direction_and_rejects_indeterminate_forms
 }
 
 #[test]
+fn exact_infinities_cross_private_function_and_aggregate_boundaries() {
+    // TOPAL-NUM-INFINITY-001, TOPAL-NUM-INFINITY-ARITHMETIC-001
+    let source = include_str!("../../../examples/language/infinity-private-boundaries.t");
+    assert_eq!(
+        Session::new()
+            .evaluate_source_file(source, &mut std::io::sink())
+            .unwrap()
+            .to_string(),
+        "(+Infinity, +Infinity, -Infinity, +Infinity, (+Infinity, -Infinity), (integer is +Infinity, ratio is -Infinity), -Infinity, +Infinity, +Infinity)"
+    );
+}
+
+#[test]
 fn dynamic_infinity_multiplication_returns_indeterminate_results() {
     // TOPAL-NUM-INFINITY-ARITHMETIC-001, TOPAL-TYPE-RESULT-001
     let source = include_str!("../../../examples/language/dynamic-infinity-results.t");

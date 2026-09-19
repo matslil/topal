@@ -2121,9 +2121,11 @@ canonical display, equality, and total order under `TOPAL-NUM-INFINITY-001`.
 Explicit `Range Int` construction, membership, intersection, emptiness, and
 bound observation shall accept those values as endpoints without treating them
 as absent bounds.
-Unsupported infinity arithmetic and unsupported classifier or function
-boundaries shall fail explicitly. LSP validation and reversible scripted-
-debugger history shall cover the shared commented example.
+Unsupported infinity arithmetic and unsupported classifiers shall fail
+explicitly. Ordinary non-recursive functions shall preserve Int/Nat infinity
+values through parameters, results, captured environments, Tuples, and Records.
+LSP validation and reversible scripted-debugger history shall cover the shared
+commented examples.
 
 ## TOPAL-INTP-SUBSET-252 — Contextual Rational infinities and range endpoints
 
@@ -2135,10 +2137,11 @@ intersection, emptiness, and bound observation shall accept either Rational
 infinity as an endpoint while retaining absent bounds as a distinct future
 form. Infinity arithmetic and cross-domain Int/Rational infinity conversion
 shall fail explicitly where no separately applicable rule defines them.
-Ordinary interpreter function passage retains the Rational classifier; this
-does not admit the compiler's still-unsupported machine or library boundary.
-LSP validation and reversible scripted-debugger history shall cover the
-unchanged shared interpreter/compiler example.
+Ordinary non-recursive function passage shall retain the Rational classifier
+through parameters, results, captured environments, Tuples, and Records. This
+does not admit a public, serialized, persistent, or compiled-library boundary.
+LSP validation and reversible scripted-debugger history shall cover the shared
+interpreter/compiler examples.
 
 ## TOPAL-INTP-SUBSET-253 — Total exact infinity arithmetic
 
