@@ -225,6 +225,13 @@ after checking has established the same nominal element type. Future library
 metadata records the declaration identity and alternatives, never the numeric
 tags, node offsets, or runtime helper as a portable enum or container ABI.
 
+Ordinary Lists of admitted nominal modular values use private pointer/pointer
+nodes and keep each canonical arbitrary-precision Int object intact. Equality
+compares canonical representatives only after checking proves the same modular
+declaration; it never narrows, wraps, or treats the pointer as a machine integer.
+Future library metadata retains the declaration, signedness, exact bounds, and
+target adapter without publishing Int/List layouts or compiler helpers.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

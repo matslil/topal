@@ -855,6 +855,21 @@ class _TopalListPrinter:
                         ).strip_typedefs()
                     except gdb.error:
                         return f"<unsupported List element type {self._element_type}>"
+                storage_type = str(enum_type)
+                if storage_type.startswith("struct TopalModular."):
+                    payload = int.from_bytes(node[0:8], "little")
+                    if not payload:
+                        return f"<invalid null List {self._element_type} entry>"
+                    rendered = _TopalModularPrinter(
+                        payload, self._element_type
+                    ).to_string()
+                    if rendered.startswith(f"{self._element_type} <"):
+                        return f"<invalid List {self._element_type} entry: {rendered}>"
+                    entries.append(rendered)
+                    address = int.from_bytes(
+                        node[node_size - 8 : node_size], "little"
+                    )
+                    continue
                 if enum_type.code != gdb.TYPE_CODE_ENUM:
                     return f"<unsupported List element type {self._element_type}>"
                 alternatives = {

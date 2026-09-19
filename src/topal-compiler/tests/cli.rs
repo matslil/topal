@@ -8070,6 +8070,154 @@ fn nominal_enum_lists_are_complete_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, rejection, and source-level GDB values.
+fn nominal_modular_lists_are_complete_private_freestanding_and_debuggable() {
+    // TOPAL-NUM-MODULAR-TYPE-001, TOPAL-NUM-MODULAR-CONSTRUCT-001,
+    // TOPAL-COMPILER-MODULAR-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+    // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+    // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+    // TOPAL-COMPILER-LIST-MODULAR-CORE-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-list-modular-values");
+    let source = directory.join("list-modular-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/list-modular-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(ByteCounter 0, ByteCounter 255, true, true, true, 3, true, ByteCounter 7, ByteCounter 0, ByteCounter 8, Entry ( ByteCounter 0, Entry ( ByteCounter 255, Entry ( ByteCounter 42, Empty ) ) ))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let record_source = directory.join("record-values.t");
+    let record_executable = directory.join("record-values");
+    fs::write(
+        &record_source,
+        "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nretain-record is fn (package : Record (values : List ByteCounter, fallback : ByteCounter)) -> Record (values : List ByteCounter, fallback : ByteCounter)\n  package\nvalues : List ByteCounter is Entry (ByteCounter 1, Empty)\nretained is retain-record (values is values, fallback is ByteCounter 7)\nretained values\n",
+    )
+    .unwrap();
+    let record_compiled = run(topalc().args([
+        "-o",
+        record_executable.to_str().unwrap(),
+        record_source.to_str().unwrap(),
+    ]));
+    assert!(
+        record_compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&record_compiled.stderr)
+    );
+    let record_executed = run(&mut Command::new(&record_executable));
+    assert!(record_executed.status.success());
+    assert_eq!(record_executed.stdout, b"Entry ( ByteCounter 1, Empty )\n");
+    assert_freestanding_elf_and_valid_dwarf(&record_executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for expected in [
+        "%topal.ListModularStorage = type { ptr, ptr }",
+        "define internal i1 @topal.runtime.list.modular.equal(ptr",
+        "define internal ptr @topal.runtime.list.modular.entry.count(ptr",
+        "call i32 @topal.runtime.int.compare(ptr",
+        "define internal fastcc ptr @topal.fn.return_2dlist.",
+        "define internal fastcc { ptr, ptr } @topal.fn.return_2dpair.",
+        "store ptr",
+        "load ptr",
+    ] {
+        assert!(ir.contains(expected), "{expected}: {ir}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.runtime.list.rational.equal",
+        "topal.runtime.list.string.equal",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("unsupported-transform.t");
+    let rejected_executable = directory.join("unsupported-transform");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nByteCounter is ModNat (0 ..= 255)\nvalues : List ByteCounter is Entry (ByteCounter 1, Empty)\nvalues reverse\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("E-COMPILER-UNSUPPORTED"));
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-modular-values.t:11",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis candidate",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List ByteCounter",
+        "candidate = Entry ( ByteCounter 0, Entry ( ByteCounter 255, Entry ( ByteCounter 42, Empty ) ) )",
+        "fallback = ByteCounter 7",
+        "topal.fn.head_2dor.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
     // TOPAL-LIST-CONTAINS-ENTRY-001, TOPAL-LIST-CONTAINS-SEQUENCE-001,
     // TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,

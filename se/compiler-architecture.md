@@ -1350,6 +1350,17 @@ interchangeable with another enum. Future metadata carries canonical declaration
 and alternative identities, representation/ownership/lifetime/effects, and a
 versioned target adapter independently of private tags, offsets, and helpers.
 
+Lists of nominal modular values use immutable private 16-byte nodes containing
+the existing canonical Int pointer and remaining pointer. A conditional common
+finite fragment compares representatives with exact Int comparison only after
+same-modular-declaration checking and counts nodes at O0; decisions recover the
+exact modular type and pointer. LLVM owns physical AMD64 placement, and
+private Tuple/Record passage keeps exact pointer fields. DWARF/GDB retain the
+declaration name and value. No List operation narrows or re-reduces a
+representative. Future metadata carries the canonical declaration, signedness,
+bounds, representation/ownership/lifetime/effects, and a versioned target
+adapter independently of private Int/List layouts, offsets, and helpers.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

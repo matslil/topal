@@ -517,6 +517,7 @@ enum ScalarListRuntimeFragment {
     Effect,
     Type,
     Enum,
+    Modular,
     Boolean,
     Comparison,
     ErrorCode,
@@ -669,6 +670,10 @@ impl<'a> Generator<'a> {
             (ScalarListRuntimeFragment::Effect, LIST_EFFECT_CORE_RUNTIME),
             (ScalarListRuntimeFragment::Type, LIST_TYPE_CORE_RUNTIME),
             (ScalarListRuntimeFragment::Enum, LIST_ENUM_CORE_RUNTIME),
+            (
+                ScalarListRuntimeFragment::Modular,
+                LIST_MODULAR_CORE_RUNTIME,
+            ),
             (
                 ScalarListRuntimeFragment::Boolean,
                 LIST_BOOLEAN_CORE_RUNTIME,
@@ -2250,6 +2255,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
                     | CompilerType::Enum(_)
+                    | CompilerType::Modular(_)
                     | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
@@ -2307,6 +2313,19 @@ impl<'a> Generator<'a> {
                     (CompilerType::Int | CompilerType::Nat, LlValue::Int(value))
                     | (CompilerType::Rational, LlValue::Rational(value))
                     | (CompilerType::Character | CompilerType::String, LlValue::String(value)) => {
+                        body.effect(
+                            &format!("store ptr {value}, ptr {node}, align 8"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
+                    (
+                        CompilerType::Modular(modular),
+                        LlValue::Modular {
+                            value,
+                            modular: value_modular,
+                        },
+                    ) if modular == value_modular => {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
                             expression.span,
@@ -2609,6 +2628,10 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element) if matches!(element.as_ref(), CompilerType::Enum(_))
                 );
+                let modular = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if matches!(element.as_ref(), CompilerType::Modular(_))
+                );
                 let comparison = matches!(
                     &value.value_type,
                     CompilerType::List(element) if element.as_ref() == &CompilerType::Comparison
@@ -2646,6 +2669,9 @@ impl<'a> Generator<'a> {
                 } else if enumeration {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Enum);
+                } else if modular {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::Modular);
                 } else if boolean {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Boolean);
@@ -2683,6 +2709,8 @@ impl<'a> Generator<'a> {
                             "type"
                         } else if enumeration {
                             "enum"
+                        } else if modular {
+                            "modular"
                         } else if boolean {
                             "boolean"
                         } else if comparison {
@@ -4353,6 +4381,17 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         enumeration: enumeration.clone(),
+                    },
+                    Vec::new(),
+                ),
+                CompilerType::Modular(modular) => (
+                    LlValue::Modular {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {list}, align 8"),
+                            *first_span,
+                            &mut self.debug,
+                        ),
+                        modular: modular.clone(),
                     },
                     Vec::new(),
                 ),
@@ -6695,6 +6734,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Enum);
             "enum"
+        } else if matches!(element, CompilerType::Modular(_)) {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::Modular);
+            "modular"
         } else if element == &CompilerType::Boolean {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::Boolean);
@@ -8526,6 +8569,17 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     enumeration: enumeration.clone(),
+                },
+                8,
+            ),
+            CompilerType::Modular(modular) => (
+                LlValue::Modular {
+                    value: body.instruction(
+                        &format!("load ptr, ptr {current}, align 8"),
+                        span,
+                        &mut self.debug,
+                    ),
+                    modular: modular.clone(),
                 },
                 8,
             ),
@@ -12042,6 +12096,7 @@ const LIST_COMPARISON_CORE_RUNTIME: &str = include_str!("runtime/list_comparison
 const LIST_EFFECT_CORE_RUNTIME: &str = include_str!("runtime/list_effect_core.ll");
 const LIST_ENUM_CORE_RUNTIME: &str = include_str!("runtime/list_enum_core.ll");
 const LIST_ERROR_CODE_CORE_RUNTIME: &str = include_str!("runtime/list_error_code_core.ll");
+const LIST_MODULAR_CORE_RUNTIME: &str = include_str!("runtime/list_modular_core.ll");
 const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_TYPE_CORE_RUNTIME: &str = include_str!("runtime/list_type_core.ll");
