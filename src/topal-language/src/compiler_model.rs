@@ -9022,7 +9022,7 @@ impl Analyzer {
         let constructor_name = self.source.slice(*constructor);
         let built_in = matches!(
             constructor_name,
-            "Some" | "String" | "Int" | "Nat" | "Rational"
+            "Some" | "String" | "Character" | "Int" | "Nat" | "Rational"
         );
         let declared_union =
             self.sum_alternatives
@@ -40130,10 +40130,9 @@ mod tests {
             .unwrap();
         assert_eq!(function.body.result.value_type, CompilerType::Int);
 
-        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  Character {\n    return 41\n    }\nanswer ()\n";
+        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  Character (String {\n    return 41\n    })\nanswer ()\n";
         let error = analyze_for_compiler(embedded).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
-        assert!(error.message.contains("direct statement position"));
     }
 
     #[test]
@@ -40437,6 +40436,33 @@ mod tests {
         let invalid = "use language (version is v0.1)\nChoice is Variant (Int)\n\nanswer is fn () -> Int\n  Choice at 1 { return 42 }\nanswer ()\n";
         let error = analyze_for_compiler(invalid).unwrap_err();
         assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_return_bearing_character_constructor_argument() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-STRING-CHARACTER-CLASSIFIER-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-character-constructor.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  abandoned : Character is Character (String { return 42 })\n  1000\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]

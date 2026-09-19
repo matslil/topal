@@ -5047,10 +5047,12 @@ direct `Some` payload admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, and the strict unary constructor
 payload admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CONSTRUCTOR-001`, and the
 positional Variant payload admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001`, a return-bearing block embedded in
-another expression, conditional or callback, and any exit whose scope owns
-generator close, resource, destructor, or other cleanup obligations SHALL
-remain rejected until explicit exit-edge and cleanup lowering is implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001`, and the direct `Character` operand
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001`, a return-bearing block
+embedded in another expression, conditional or callback, and any exit whose
+scope owns generator close, resource, destructor, or other cleanup obligations
+SHALL remain rejected until explicit exit-edge and cleanup lowering is
+implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5072,8 +5074,9 @@ direct `Some` payload admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, and the strict unary constructor
 payload admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CONSTRUCTOR-001`, and the
 positional Variant payload admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001`, this rule admits no other
-compound-expression, conditional, callback, generator, or cleanup-bearing
+`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001`, and the direct `Character` operand
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001`, this rule admits no
+other compound-expression, conditional, callback, generator, or cleanup-bearing
 propagation and SHALL introduce no runtime control-flow object, unwind edge,
 allocation, foreign dependency, C/C++ standard library, public ABI, or
 native-ABI revision.
@@ -5185,7 +5188,8 @@ binding classifier. The checked compiler model SHALL retain the returning block
 as the function result, and the backend SHALL preserve its nested DWARF scope
 before using the enclosing function's existing single machine return.
 Except for the positional Variant form admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001`, `Character`, constraint, modular,
+`TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001` and the direct `Character` form
+admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001`, constraint, modular,
 collection, qualified, and any other constructor forms; products or other
 expressions nested in the operand; decisions; callbacks; generators; and exits
 with cleanup obligations SHALL remain rejected. This rule SHALL introduce no
@@ -5215,6 +5219,27 @@ cleanup-bearing forms SHALL remain fail-closed under their existing diagnostic
 contracts. This rule SHALL introduce no runtime control-flow object,
 Variant-specific allocation, indirect call, unwind edge, foreign dependency,
 C/C++ standard library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001 — Character-constraint operand lexical exit
+
+An admitted cleanup-free lexical block used as the direct operand of the
+built-in `Character` constructor MAY execute an explicit `return`. Selection of
+the built-in constructor identity SHALL precede the operand. The operand return
+SHALL then complete the nearest enclosing ordinary function before pinned-Unicode
+Character constraint validation. No Character evidence or abandoned binding
+SHALL be emitted, and remaining operand statements and the enclosing function
+tail SHALL be excluded from generated IR at `-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than `Character` or an abandoned binding classifier. The
+checked compiler model SHALL retain the returning block as the function result,
+and the backend SHALL preserve its nested DWARF scope before using the enclosing
+function's existing single machine return. Qualified, nested-operand, decision,
+callback, generator, and cleanup-bearing forms SHALL remain fail-closed under
+their existing diagnostic contracts. This rule SHALL introduce no runtime
+control-flow object, Character-validation routine, allocation, indirect call,
+unwind edge, foreign dependency, C/C++ standard library, public ABI, or
+native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

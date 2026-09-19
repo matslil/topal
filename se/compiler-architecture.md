@@ -1960,8 +1960,9 @@ callable as a constructor. Conversion, payload classification, Union tag
 selection, and abandoned binding generation are all omitted. The returned
 block remains the private result with nested `DILexicalBlock` and the existing
 single machine return. This changes no runtime representation or ABI;
-`Character`, positional Variant, constraint, modular, collection, qualified,
-nested-payload, conditional, and cleanup-bearing forms remain deferred.
+`Character` forms outside 3b2-b5e8i, positional Variant forms outside
+3b2-b5e8h, constraint, modular, collection, qualified, nested-payload,
+conditional, and cleanup-bearing forms remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -1971,6 +1972,14 @@ and tails. The block remains the private result with nested `DILexicalBlock` and
 the existing single machine return. This changes no runtime representation or
 ABI; invalid, undeclared, qualified, nested-payload, conditional, and
 cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8i admits a direct return-bearing block as the operand of the
+built-in `Character` constructor. Constructor identity is selected before the
+operand; the exit then precedes pinned-Unicode constraint validation and omits
+Character evidence, the abandoned binding, and tails. The block remains the
+private result with nested `DILexicalBlock` and the existing single machine
+return. This changes no runtime representation or ABI; qualified,
+nested-operand, conditional, and cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:

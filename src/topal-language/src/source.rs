@@ -3170,7 +3170,7 @@ impl Session {
         let constructor_name = source.slice(*constructor);
         let built_in = matches!(
             constructor_name,
-            "Some" | "String" | "Int" | "Nat" | "Rational"
+            "Some" | "String" | "Character" | "Int" | "Nat" | "Rational"
         );
         let declared_union = self.union_constructor(constructor_name).is_some();
         if (!built_in && !declared_union) || !direct_expression_returns_from_function(argument) {
@@ -19743,6 +19743,32 @@ fn positional_variant_argument_block_propagates_return_after_index_validation() 
         .evaluate(invalid, &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn character_constructor_argument_block_propagates_return_before_validation() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-character-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("constraint.validated"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
 }
 
 #[test]
