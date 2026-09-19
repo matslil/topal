@@ -1393,6 +1393,7 @@ struct CompilerFunctionCallReference {
     span: Span,
     arguments: Vec<Expression>,
     is_ordinary_unqualified: bool,
+    is_retained_value: bool,
 }
 
 #[derive(Clone)]
@@ -9941,7 +9942,7 @@ impl Analyzer {
                     .iter()
                     .filter(|(name, _)| {
                         !parameter_names.contains(name.as_str())
-                            && expression_mentions_name(&self.source, body, name)
+                            && expression_mentions_environment_binding(&self.source, body, name)
                     })
                     .map(|(name, facts)| (name.clone(), facts.clone()))
                     .collect();
@@ -10290,9 +10291,13 @@ impl Analyzer {
                 })?;
                 if !facts.runtime_bound {
                     if facts.value_type == CompilerType::Function
-                        && let Some(callable @ CompilerCallableFacts::Named { .. }) =
+                        && let Some(mut callable @ CompilerCallableFacts::Named { .. }) =
                             facts.callable.clone()
                     {
+                        self.extend_named_callable_environment_captures(
+                            &mut callable,
+                            environment,
+                        )?;
                         self.function_values_used = true;
                         let tag = if let Some(tag) = self
                             .nested_function_value_tags
@@ -12278,6 +12283,7 @@ impl Analyzer {
                     &member_name,
                     declarations,
                     &[],
+                    false,
                 );
             }
             if let Some(declarations) = namespace.generators.get(&member_name) {
@@ -15581,6 +15587,89 @@ impl Analyzer {
         Ok((facts, forwarded))
     }
 
+    fn named_callable_is_root(&self, name: &str, declarations: &[FunctionSource]) -> bool {
+        self.functions.get(name).is_some_and(|root_declarations| {
+            declarations.iter().all(|declaration| {
+                root_declarations
+                    .iter()
+                    .any(|root| root.span == declaration.span)
+            })
+        })
+    }
+
+    fn named_callable_environment_captures(
+        &self,
+        declarations: &[FunctionSource],
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Vec<CompilerContextCapture>, Diagnostic> {
+        let mut captures = Vec::new();
+        let mut retained_names = BTreeSet::new();
+        for declaration in declarations {
+            for capture in self.defining_context_captures(declaration, environment)? {
+                if retained_names.insert(capture.parameter_name.clone()) {
+                    captures.push(capture);
+                }
+            }
+        }
+        captures.sort_by_key(|capture| {
+            let (group, member_name) =
+                if let Some(member_name) = capture.parameter_name.strip_prefix("@ ") {
+                    (0_u8, member_name)
+                } else if let Some(member_name) = capture.parameter_name.strip_prefix("root ") {
+                    (1_u8, member_name)
+                } else {
+                    (2_u8, capture.parameter_name.as_str())
+                };
+            let declaration_end = self
+                .root_bindings
+                .get(member_name)
+                .map_or(usize::MAX, |facts| facts.declaration_end);
+            (group, declaration_end, capture.parameter_name.clone())
+        });
+        Ok(captures)
+    }
+
+    fn extend_named_callable_environment_captures(
+        &self,
+        callable: &mut CompilerCallableFacts,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<(), Diagnostic> {
+        let CompilerCallableFacts::Named {
+            declarations,
+            captures,
+            ..
+        } = callable
+        else {
+            return Ok(());
+        };
+        let mut capture_environment = environment.clone();
+        for capture in captures.iter().filter(|capture| {
+            capture.parameter_name.starts_with("@ ") || capture.parameter_name.starts_with("root ")
+        }) {
+            let (CompilerExpressionKind::Local(storage_name)
+            | CompilerExpressionKind::InfinityLocal { storage_name, .. }) = &capture.argument.kind
+            else {
+                continue;
+            };
+            if let Some(facts) = binding_facts_by_storage(environment, storage_name)
+                .cloned()
+                .or_else(|| named_callable_capture_binding(capture))
+            {
+                capture_environment.insert(capture.parameter_name.clone(), facts);
+            }
+        }
+        let retained_names = captures
+            .iter()
+            .map(|capture| capture.parameter_name.clone())
+            .collect::<BTreeSet<_>>();
+        captures.extend(
+            self.named_callable_environment_captures(declarations, &capture_environment)?
+                .into_iter()
+                .filter(|capture| !retained_names.contains(&capture.parameter_name)),
+        );
+        Ok(())
+    }
+
     fn forward_function_aggregate_captures(
         &self,
         value_type: &CompilerType,
@@ -15668,6 +15757,7 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
         forwarded: &mut Vec<CompilerContextCapture>,
     ) -> Result<(), Diagnostic> {
+        self.extend_named_callable_environment_captures(callable, environment)?;
         match callable {
             CompilerCallableFacts::Anonymous { captures, .. } => {
                 for (capture_name, capture) in captures {
@@ -15722,6 +15812,8 @@ impl Analyzer {
                         ));
                     };
                     let current = binding_facts_by_storage(environment, storage_name)
+                        .cloned()
+                        .or_else(|| named_callable_capture_binding(capture))
                         .filter(|current| {
                             current.runtime_bound
                                 && current.value_type == capture.value_type
@@ -15745,7 +15837,7 @@ impl Analyzer {
                         value_type: current.value_type.clone(),
                         int_range: current.int_range.clone(),
                         rational_value: current.rational_value.clone(),
-                        argument: binding_expression(current, span),
+                        argument: binding_expression(&current, span),
                         span,
                     });
                     capture.argument = CompilerExpression {
@@ -15802,10 +15894,12 @@ impl Analyzer {
                     .filter(|declaration| declaration.span.end <= capture_position)
                     .cloned()
                     .collect::<Vec<_>>();
+                let captures =
+                    self.named_callable_environment_captures(&declarations, environment)?;
                 Ok(Some(CompilerCallableFacts::Named {
                     name,
                     declarations,
-                    captures: Vec::new(),
+                    captures,
                 }))
             }
             CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
@@ -16099,14 +16193,75 @@ impl Analyzer {
                     });
                 }
             }
-            CompilerCallableFacts::Named { captures, .. } if !captures.is_empty() => {
+            CompilerCallableFacts::Named {
+                name,
+                declarations,
+                captures,
+            } => {
+                if !self.named_callable_is_root(name, declarations) {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "escaping nested Function aggregate result",
+                    ));
+                }
+                self.collect_named_callable_result_captures(
+                    captures,
+                    environment,
+                    span,
+                    path,
+                    result,
+                )?;
+            }
+            CompilerCallableFacts::Symbolic(_) => {}
+        }
+        Ok(())
+    }
+
+    fn collect_named_callable_result_captures(
+        &self,
+        captures: &[CompilerContextCapture],
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+        path: &[CompilerAggregatePathElement],
+        result: &mut Vec<CompilerFunctionResultCapture>,
+    ) -> Result<(), Diagnostic> {
+        for capture in captures {
+            let (CompilerExpressionKind::Local(storage_name)
+            | CompilerExpressionKind::InfinityLocal { storage_name, .. }) = &capture.argument.kind
+            else {
                 return Err(unsupported(
                     &self.source,
                     span,
-                    "escaping nested Function aggregate result",
+                    "named Function result without a retained private environment value",
                 ));
-            }
-            CompilerCallableFacts::Named { .. } | CompilerCallableFacts::Symbolic(_) => {}
+            };
+            let current = binding_facts_by_storage(environment, storage_name)
+                .cloned()
+                .or_else(|| named_callable_capture_binding(capture))
+                .filter(|current| {
+                    current.runtime_bound
+                        && current.value_type == capture.value_type
+                        && compiler_function_result_supported(&current.value_type)
+                        && !compiler_type_contains_generator(&current.value_type)
+                        && !compiler_type_is_function_aggregate(&current.value_type)
+                })
+                .ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        &format!(
+                            "named Function result outside environment `{}` lifetime or private representation",
+                            capture.parameter_name
+                        ),
+                    )
+                })?;
+            result.push(CompilerFunctionResultCapture {
+                name: capture.parameter_name.clone(),
+                path: path.to_vec(),
+                value_type: current.value_type.clone(),
+                value: binding_expression(&current, span),
+            });
         }
         Ok(())
     }
@@ -16579,15 +16734,51 @@ impl Analyzer {
                 name,
                 declarations,
                 captures,
-            } => self.analyze_resolved_call_from(
-                items,
-                span,
-                environment,
-                0,
-                &name,
-                &declarations,
-                &captures,
-            ),
+            } => {
+                let mut call_environment = environment.clone();
+                let mut lexical_captures = Vec::new();
+                let mut carries_environment = false;
+                for capture in captures {
+                    if capture.parameter_name.starts_with("@ ")
+                        || capture.parameter_name.starts_with("root ")
+                    {
+                        carries_environment = true;
+                        let (CompilerExpressionKind::Local(storage_name)
+                        | CompilerExpressionKind::InfinityLocal { storage_name, .. }) =
+                            &capture.argument.kind
+                        else {
+                            return Err(unsupported(
+                                &self.source,
+                                capture.span,
+                                "named Function environment without retained private storage",
+                            ));
+                        };
+                        let facts = binding_facts_by_storage(environment, storage_name)
+                            .cloned()
+                            .or_else(|| named_callable_capture_binding(&capture))
+                            .ok_or_else(|| {
+                                unsupported(
+                                    &self.source,
+                                    capture.span,
+                                    "named Function environment outside its retained lifetime",
+                                )
+                            })?;
+                        call_environment.insert(capture.parameter_name, facts);
+                    } else {
+                        lexical_captures.push(capture);
+                    }
+                }
+                self.analyze_resolved_call_from(
+                    items,
+                    span,
+                    &call_environment,
+                    0,
+                    &name,
+                    &declarations,
+                    &lexical_captures,
+                    carries_environment,
+                )
+            }
             CompilerCallableFacts::Symbolic(kind) => {
                 self.analyze_bound_symbolic_callable(kind, items, span, environment)
             }
@@ -18413,6 +18604,7 @@ impl Analyzer {
             function_name,
             &declarations,
             &[],
+            false,
         )
     }
 
@@ -18426,6 +18618,7 @@ impl Analyzer {
         function_name: &str,
         declarations: &[FunctionSource],
         lexical_captures: &[CompilerContextCapture],
+        named_environment: bool,
     ) -> Result<CompilerExpression, Diagnostic> {
         let argument_sources = items
             .iter()
@@ -18475,6 +18668,7 @@ impl Analyzer {
                 continue;
             }
             let mut adapted = Vec::with_capacity(candidate_arguments.len());
+            let mut fact_dependent = false;
             for (parameter_index, (parameter, argument)) in declaration
                 .parameters
                 .iter()
@@ -18492,6 +18686,11 @@ impl Analyzer {
                     ));
                 }
                 let expected = self.parse_classifier(parameter.classifier)?;
+                if expected != argument.value_type
+                    && capture_argument_adaptation_may_depend_on_facts(&expected, argument)
+                {
+                    fact_dependent = true;
+                }
                 let Some(argument) = adapt_call_argument(&expected, argument).or_else(|| {
                     self.adapt_proven_recursive_nat_argument(
                         function_name,
@@ -18507,6 +18706,13 @@ impl Analyzer {
                 adapted.push(argument);
             }
             if adapted.len() == declaration.parameters.len() {
+                if named_environment && declarations.len() != 1 && fact_dependent {
+                    return Err(unsupported(
+                        &self.source,
+                        span,
+                        "value-fact-dependent named Function environment selection",
+                    ));
+                }
                 selected = Some((declaration.clone(), adapted, Vec::new()));
                 break;
             }
@@ -19222,6 +19428,27 @@ impl Analyzer {
             function_body_called_function_references(&self.source, &self.functions, declaration);
         for reference in references {
             let declarations = &reference.declarations;
+            if reference.is_retained_value {
+                let mut carries_member = false;
+                for called in declarations {
+                    if self
+                        .transitive_context_member_span(
+                            called,
+                            member_name,
+                            member_declaration_end,
+                            visiting,
+                        )?
+                        .is_some()
+                    {
+                        carries_member = true;
+                    }
+                }
+                if carries_member {
+                    visiting.remove(&identity);
+                    return Ok(Some(reference.span));
+                }
+                continue;
+            }
             if declarations.len() != 1
                 && let Some(called) =
                     self.capture_forwarding_overload(declaration, &reference, declarations)
@@ -19298,6 +19525,22 @@ impl Analyzer {
             function_body_called_function_references(&self.source, &self.functions, declaration);
         for reference in references {
             let declarations = &reference.declarations;
+            if reference.is_retained_value {
+                let mut carries_member = false;
+                for called in declarations {
+                    if self
+                        .transitive_root_member_span(called, member_name, visiting)?
+                        .is_some()
+                    {
+                        carries_member = true;
+                    }
+                }
+                if carries_member {
+                    visiting.remove(&identity);
+                    return Ok(Some(reference.span));
+                }
+                continue;
+            }
             if declarations.len() != 1
                 && let Some(called) =
                     self.capture_forwarding_overload(declaration, &reference, declarations)
@@ -20463,22 +20706,22 @@ impl Analyzer {
                     declarations,
                     captures,
                 } => {
-                    let supported = captures.is_empty()
-                        && self.functions.get(name).is_some_and(|root_declarations| {
-                            declarations.iter().all(|declaration| {
-                                root_declarations
-                                    .iter()
-                                    .any(|root| root.span == declaration.span)
-                            })
-                        });
-                    if !supported {
+                    if !self.named_callable_is_root(name, declarations) {
                         return Err(unsupported(
                             &self.source,
                             body.result.span,
                             "nested or dynamically computed Function result",
                         ));
                     }
-                    Vec::new()
+                    let mut result = Vec::new();
+                    self.collect_named_callable_result_captures(
+                        captures,
+                        &environment,
+                        body.result.span,
+                        &[],
+                        &mut result,
+                    )?;
+                    result
                 }
                 CompilerCallableFacts::Symbolic(_) => Vec::new(),
                 CompilerCallableFacts::Anonymous { captures, .. } => captures
@@ -21797,8 +22040,10 @@ fn expression_context_member_span(
         Expression::Application { items, .. } => items
             .iter()
             .find_map(|item| expression_context_member_span(source, item, member_name)),
-        Expression::AnonymousFunction { .. }
-        | Expression::Unit(_)
+        Expression::AnonymousFunction { body, .. } => {
+            expression_context_member_span(source, body, member_name)
+        }
+        Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
         | Expression::Infinity(_)
@@ -21877,8 +22122,10 @@ fn expression_root_member_span(
                 .iter()
                 .find_map(|item| expression_root_member_span(source, item, member_name))
         }
-        Expression::AnonymousFunction { .. }
-        | Expression::Unit(_)
+        Expression::AnonymousFunction { body, .. } => {
+            expression_root_member_span(source, body, member_name)
+        }
+        Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
         | Expression::Infinity(_)
@@ -22012,13 +22259,15 @@ fn collect_statement_function_calls(
                 }
             }
             Statement::Binding { name, value, .. } => {
-                collect_expression_function_calls(
-                    source,
-                    functions,
-                    value,
-                    local_functions,
-                    references,
-                );
+                if !matches!(value, Expression::Identifier(_)) {
+                    collect_expression_function_calls(
+                        source,
+                        functions,
+                        value,
+                        local_functions,
+                        references,
+                    );
+                }
                 let target = retained_named_call_target(source, functions, local_functions, value);
                 local_functions.insert(source.slice(*name).to_owned(), target);
             }
@@ -22155,6 +22404,7 @@ fn collect_expression_function_calls(
             }
         }
         Expression::Application { items, .. } => {
+            let mut callable_indexes = BTreeSet::new();
             if let [
                 Expression::Identifier(root),
                 Expression::Identifier(member),
@@ -22172,7 +22422,9 @@ fn collect_expression_function_calls(
                     span: *member,
                     arguments: items[2..].to_vec(),
                     is_ordinary_unqualified: false,
+                    is_retained_value: false,
                 });
+                callable_indexes.extend([0, 1]);
             } else if let Some(Expression::Identifier(alias)) = items.first()
                 && let Some(Some(target)) = local_functions.get(source.slice(*alias))
             {
@@ -22181,7 +22433,9 @@ fn collect_expression_function_calls(
                     span: *alias,
                     arguments: items[1..].to_vec(),
                     is_ordinary_unqualified: true,
+                    is_retained_value: false,
                 });
+                callable_indexes.insert(0);
             } else if let Some((function_index, span, declarations)) =
                 items.iter().enumerate().find_map(|(index, item)| {
                     let Expression::Identifier(name) = item else {
@@ -22194,6 +22448,7 @@ fn collect_expression_function_calls(
                         .map(|declarations| (index, *name, declarations.clone()))
                 })
             {
+                callable_indexes.insert(function_index);
                 references.push(CompilerFunctionCallReference {
                     declarations,
                     span,
@@ -22205,9 +22460,13 @@ fn collect_expression_function_calls(
                         })
                         .collect(),
                     is_ordinary_unqualified: true,
+                    is_retained_value: false,
                 });
             }
-            for item in items {
+            for (index, item) in items.iter().enumerate() {
+                if callable_indexes.contains(&index) {
+                    continue;
+                }
                 collect_expression_function_calls(
                     source,
                     functions,
@@ -22217,15 +22476,45 @@ fn collect_expression_function_calls(
                 );
             }
         }
-        Expression::AnonymousFunction { .. }
-        | Expression::Unit(_)
+        Expression::AnonymousFunction {
+            parameters, body, ..
+        } => {
+            let mut anonymous_local_functions = local_functions.clone();
+            let mut parameter_names = BTreeSet::new();
+            for parameter in parameters {
+                collect_anonymous_pattern_names(source, parameter, &mut parameter_names);
+            }
+            for parameter_name in parameter_names {
+                anonymous_local_functions.insert(parameter_name.to_owned(), None);
+            }
+            collect_expression_function_calls(
+                source,
+                functions,
+                body,
+                &anonymous_local_functions,
+                references,
+            );
+        }
+        Expression::Identifier(name) => {
+            if let Some(target) =
+                retained_named_call_target(source, functions, local_functions, expression)
+            {
+                references.push(CompilerFunctionCallReference {
+                    declarations: target.declarations,
+                    span: *name,
+                    arguments: Vec::new(),
+                    is_ordinary_unqualified: true,
+                    is_retained_value: true,
+                });
+            }
+        }
+        Expression::Unit(_)
         | Expression::Boolean(_)
         | Expression::Integer(_)
         | Expression::Infinity(_)
         | Expression::Measured { .. }
         | Expression::Rational(_)
         | Expression::String(_)
-        | Expression::Identifier(_)
         | Expression::ContextIdentifier(_)
         | Expression::Discard(_)
         | Expression::Callable { .. } => {}
@@ -22974,9 +23263,24 @@ fn anonymous_body_capture(
     environment
         .keys()
         .find(|name| {
-            !parameter_names.contains(name.as_str()) && expression_mentions_name(source, body, name)
+            !parameter_names.contains(name.as_str())
+                && expression_mentions_environment_binding(source, body, name)
         })
         .cloned()
+}
+
+fn expression_mentions_environment_binding(
+    source: &SourceText,
+    expression: &Expression,
+    name: &str,
+) -> bool {
+    if let Some(member_name) = name.strip_prefix("@ ") {
+        expression_context_member_span(source, expression, member_name).is_some()
+    } else if let Some(member_name) = name.strip_prefix("root ") {
+        expression_root_member_span(source, expression, member_name).is_some()
+    } else {
+        expression_mentions_name(source, expression, name)
+    }
 }
 
 fn collect_anonymous_pattern_names<'a>(
@@ -23366,15 +23670,47 @@ fn function_aggregate_binding_facts_same_callable_identity(
     }
 }
 
+fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<BindingFacts> {
+    let (CompilerExpressionKind::Local(storage_name)
+    | CompilerExpressionKind::InfinityLocal { storage_name, .. }) = &capture.argument.kind
+    else {
+        return None;
+    };
+    is_function_result_capture_storage(storage_name).then(|| BindingFacts {
+        storage_name: storage_name.clone(),
+        origin: capture.span.start,
+        runtime_bound: true,
+        value_type: capture.value_type.clone(),
+        int_range: capture.int_range.clone(),
+        rational_value: capture.rational_value.clone(),
+        infinity_negative: None,
+        string_value: None,
+        closed_int_range: None,
+        list_count: None,
+        list_string_keys: None,
+        tuple_fields: Vec::new(),
+        record_fields: BTreeMap::new(),
+        namespace: None,
+        callable: None,
+        static_capability: None,
+    })
+}
+
 fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFacts> {
     let mut returned = Vec::new();
-    if let Some(CompilerCallableFacts::Anonymous { captures, .. }) = &facts.callable {
-        returned.extend(
-            captures
-                .values()
-                .filter(|capture| is_function_result_capture_storage(&capture.storage_name))
-                .cloned(),
-        );
+    match &facts.callable {
+        Some(CompilerCallableFacts::Anonymous { captures, .. }) => {
+            returned.extend(
+                captures
+                    .values()
+                    .filter(|capture| is_function_result_capture_storage(&capture.storage_name))
+                    .cloned(),
+            );
+        }
+        Some(CompilerCallableFacts::Named { captures, .. }) => {
+            returned.extend(captures.iter().filter_map(named_callable_capture_binding));
+        }
+        Some(CompilerCallableFacts::Symbolic(_)) | None => {}
     }
     for field in &facts.tuple_fields {
         returned.extend(returned_function_capture_bindings(field));
@@ -32817,6 +33153,137 @@ mod tests {
             ambiguous
                 .message
                 .contains("overload-dependent defining-context capture forwarding")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::too_many_lines)] // One model test compares scalar, aggregate, anonymous, nested, and rejection boundaries.
+    fn models_function_environment_boundaries() {
+        // TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001,
+        // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-environment-boundaries.t"
+        ))
+        .unwrap();
+
+        let boundary_vectors = [
+            vec![
+                "operation",
+                "operation capture @ context-number",
+                "operation capture @ context-label",
+            ],
+            vec![
+                "operation",
+                "operation capture root live-number",
+                "operation capture root live-label",
+            ],
+            vec![
+                "operation",
+                "operation capture @ context-pair",
+                "operation capture root live-pair",
+            ],
+            vec![
+                "operation",
+                "operation capture @ context-number",
+                "operation capture root live-number",
+            ],
+        ];
+        let return_operations = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "return-operation")
+            .collect::<Vec<_>>();
+        assert_eq!(return_operations.len(), boundary_vectors.len());
+        for expected in boundary_vectors {
+            let function = return_operations
+                .iter()
+                .find(|function| {
+                    function
+                        .parameters
+                        .iter()
+                        .map(|parameter| parameter.name.as_str())
+                        .eq(expected.iter().copied())
+                })
+                .unwrap_or_else(|| panic!("missing Function boundary vector {expected:?}"));
+            assert_eq!(
+                function
+                    .result_captures
+                    .iter()
+                    .map(|capture| capture.name.as_str())
+                    .collect::<Vec<_>>(),
+                expected[1..]
+                    .iter()
+                    .map(|name| name.strip_prefix("operation capture ").unwrap())
+                    .collect::<Vec<_>>()
+            );
+            assert!(
+                function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path.is_empty())
+            );
+        }
+
+        let apply_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "apply-record")
+            .unwrap();
+        assert_eq!(
+            apply_record
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "package",
+                "package field context-operation capture @ context-number",
+                "package field context-operation capture @ context-label",
+                "package field pair-operation capture @ context-pair",
+                "package field pair-operation capture root live-pair",
+                "package field root-operation capture root live-number",
+                "package field root-operation capture root live-label",
+            ]
+        );
+
+        for name in ["make-anonymous", "make-anonymous-record", "use-nested"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(
+                function
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.name.as_str())
+                    .collect::<Vec<_>>(),
+                ["@ context-number", "root live-number"]
+            );
+        }
+        let nested = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "increase")
+            .unwrap();
+        assert_eq!(
+            nested
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            ["value", "@ context-number", "root live-number"]
+        );
+
+        let ambiguous = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\napply is fn (operation : Function, value : Int) -> Int\n  operation value\napply (select, 0)\n",
+        )
+        .unwrap_err();
+        assert!(
+            ambiguous
+                .message
+                .contains("value-fact-dependent named Function environment selection")
         );
     }
 

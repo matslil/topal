@@ -4190,8 +4190,13 @@ admitted classifier/literal evidence—including `Int` to `Nat`, `String` to
 qualified, locally inferred, higher-order, anonymous, nested, dynamic, or
 otherwise unresolved call, the compiler SHALL reject the program before
 artifact publication whenever any candidate carries an environment. It SHALL
-not union candidate capture sets or assign a provisional overload-environment
-ABI. An exact retained named alias admitted by
+not union candidate capture sets or assign a provisional overload-call ABI. A
+first-class retained overload set admitted by
+`TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001` SHALL instead transport the
+complete deduplicated semantic environment required by that exact value while
+retaining the declaration-specific schemas separately; after selection, its
+direct call SHALL still receive only the selected declaration's capture vector.
+An exact retained named alias admitted by
 `TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001` SHALL use the same admitted
 selection evidence and is not otherwise unresolved for this requirement.
 
@@ -4243,12 +4248,12 @@ capture in active and suspended frames.
 The lowering SHALL add no closure or environment object, runtime Function
 dispatch, function pointer, indirect call, global context/root state, lookup,
 initializer replay, allocation, foreign dependency, C/C++ runtime,
-other-language standard library, public ABI, or native-ABI revision. Anonymous
-Function environments; Function parameters, results, or aggregate fields
-carrying these root/context environments; escaping local Functions; recursive
-or overloaded nested Functions; opaque or dynamically selected aliases; and
-public/library local-Function environments remain deferred and SHALL fail
-before artifact publication.
+other-language standard library, public ABI, or native-ABI revision. Exact
+private Function boundaries carrying these environments are admitted by
+`TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001`. Escaping nested Functions;
+recursive or overloaded nested Functions; opaque or dynamically selected
+aliases; and public/library local-Function environments remain deferred and
+SHALL fail before artifact publication.
 
 Future compiled-library metadata SHALL preserve the canonical source session
 and context/root identities, lexical invocation scope, alias binding stable
@@ -4258,6 +4263,68 @@ selection evidence/conversions, recursion proof identity, ordered capture
 schema/classifiers/representations/lifetimes/effects, and a versioned target
 adapter. Those facts SHALL remain independent of observation tags, private
 capture names, LLVM types or symbols, debug shadows, and physical placement.
+
+### TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001 — Exact private Function-environment boundaries
+
+Within one compilation unit, the checked frontend SHALL preserve an exact
+Function value's defining-context, live-root, and ordinary lexical environment
+when the value crosses a compiler-private scalar Function parameter or result,
+or a represented Tuple or labeled Record parameter or result containing
+Function fields. This admission covers exact named root Function values and
+their retained visible overload sets, anonymous Functions constructed within
+an ordinary root-function invocation, and already-admitted non-escaping nested
+Functions. Every Function leaf SHALL retain one exact callable identity and a
+complete semantic capture schema; opaque or dynamically selected values SHALL
+remain unsupported.
+
+A retained named root overload set SHALL carry the complete deduplicated
+defining-context and live-root environment required by its retained declarations
+in root declaration order, with defining-context members before live-root
+members. That transport environment is a property of the first-class value,
+not a provisional overload-call ABI. Declaration identity, selection evidence,
+and each declaration's capture schema SHALL remain distinct from the runtime
+Function tag and from one another. Once an admitted ordinary application
+selects a declaration, the direct target call SHALL receive exactly that
+declaration's capture vector and no unselected capture. Selection that depends
+on retained value facts, including narrowing from `Int` to `Nat`, SHALL be
+rejected before artifact publication.
+
+An anonymous or nested Function SHALL carry each referenced lexical,
+defining-context, and live-root value exactly once. Forwarding through multiple
+scalar or aggregate boundaries SHALL preserve the original immutable value and
+callable identity without replaying an initializer or consulting a caller
+frame. A private Function result SHALL return the Function representation and
+its ordered captures together; a Function-containing aggregate result SHALL
+associate each capture with its canonical Tuple-index or Record-label path.
+Named root Function results MAY cross further private boundaries. Anonymous and
+nested Functions SHALL remain non-escaping from the ordinary invocation that
+owns their captured values.
+
+Every specialized boundary, result, and selected target SHALL use matching
+compiler-private `fastcc` definitions and direct calls. LLVM SHALL own AMD64
+aggregate classification and physical argument/result placement. Correctness
+SHALL require no optimization. Full O0 DWARF/GDB information SHALL expose
+source-visible Function parameters and fields, source-named captures, and the
+selected, anonymous, or nested direct frame while active or suspended.
+
+The lowering SHALL add no global context/root state, closure or environment
+object, overload/environment table, runtime dispatcher, function pointer,
+indirect call, lookup, initializer replay, allocation, foreign dependency,
+C/C++ runtime, other-language standard library, public ABI, or native-ABI
+revision. Sum or other unsupported Function-containing representations;
+escaping anonymous or nested Function results; recursive or overloaded nested
+Functions; fact-dependent, opaque, or dynamic selection; and public/library
+Function environments remain deferred and SHALL fail before artifact
+publication.
+
+Future compiled-library metadata SHALL preserve canonical source-session,
+context/root, lexical-scope, callable, declaration, overload-snapshot, aggregate
+path, and member stable identities; selection evidence and conversions;
+recursion proof identity; complete semantic classifiers and representations;
+ordered per-declaration and transported capture schemas, lifetimes, and effects;
+and a versioned target adapter. Those facts SHALL remain independent of runtime
+tags, compiler-private names, LLVM types or symbols, debug shadows, and physical
+placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
 

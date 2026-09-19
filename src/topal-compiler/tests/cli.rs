@@ -10101,10 +10101,6 @@ fn captured_function_parameters_are_private_freestanding_and_debuggable() {
             "-ex",
             "continue",
             "-ex",
-            "nexti",
-            "-ex",
-            "nexti",
-            "-ex",
             "print pair",
             "-ex",
             "continue",
@@ -10226,10 +10222,6 @@ fn captured_function_results_are_private_freestanding_and_debuggable() {
             "-ex",
             "continue",
             "-ex",
-            "nexti",
-            "-ex",
-            "nexti",
-            "-ex",
             "print pair",
             "-ex",
             "disable 2",
@@ -10262,10 +10254,6 @@ fn captured_function_results_are_private_freestanding_and_debuggable() {
             "-ex",
             "continue",
             "-ex",
-            "nexti",
-            "-ex",
-            "nexti",
-            "-ex",
             "print pair",
             "-ex",
             "disable 5",
@@ -10290,8 +10278,8 @@ fn captured_function_results_are_private_freestanding_and_debuggable() {
     assert!(text.contains("$1 = 1"), "{text}");
     assert!(text.contains("$2 = 2"), "{text}");
     assert!(text.contains("$3 = {_0 = 7, _1 = \"seven\"}"), "{text}");
-    assert!(text.contains("$4 = <fn make-forwarded>"), "{text}");
-    assert!(text.contains("operation = <fn make-forwarded>"), "{text}");
+    assert!(text.contains("$4 = <anonymous fn/1>"), "{text}");
+    assert!(text.contains("operation = <anonymous fn/1>"), "{text}");
     assert!(text.contains("$5 = 39"), "{text}");
     assert!(text.contains("$6 = 1"), "{text}");
     assert!(text.contains("$7 = 2"), "{text}");
@@ -14916,6 +14904,278 @@ fn local_function_environments_are_exact_private_freestanding_and_debuggable() {
         "topal.main",
     ] {
         assert!(text.contains(value), "{value}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers scalar/aggregate/results, rejection, artifacts, and GDB frames.
+fn function_environment_boundaries_are_exact_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001,
+    // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+    // TOPAL-COMPILER-NESTED-FUNCTION-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-function-environment-boundaries");
+    let source = directory.join("function-environment-boundaries.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-environment-boundaries.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\"), (42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\")), 48, 49, (49, 50))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains(
+                    "define internal fastcc { i32, ptr, ptr } @topal.fn.return_2doperation.",
+                ) && line.contains("(i32 %arg0, ptr %arg1, ptr %arg2)")
+            })
+            .count(),
+        3,
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains(
+                "define internal fastcc { i32, { ptr, ptr }, { ptr, ptr } } @topal.fn.return_2doperation.",
+            ) && line.contains("(i32 %arg0, { ptr, ptr } %arg1, { ptr, ptr } %arg2)")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc { i32, ptr, ptr } @topal.fn.make_2danonymous.")
+                && line.contains("(ptr %arg0, ptr %arg1)")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc { ptr, ptr, ptr, ptr, { ptr, ptr }, { ptr, ptr } } @topal.fn.apply_2drecord.")
+                && line.contains("%arg0, ptr %arg1, ptr %arg2, { ptr, ptr } %arg3, { ptr, ptr } %arg4, ptr %arg5, ptr %arg6")
+        }),
+        "{ir}"
+    );
+    for name in ["read_2dcontext", "read_2droot"] {
+        assert_eq!(
+            ir.lines()
+                .filter(|line| {
+                    line.contains(&format!("define internal fastcc ptr @topal.fn.{name}."))
+                        && line.contains("(ptr %arg0, ptr %arg1)")
+                        && !line.contains("ptr %arg2")
+                })
+                .count(),
+            4,
+            "{name}: {ir}"
+        );
+    }
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains("define internal fastcc { ptr, ptr } @topal.fn.read_2dpair.")
+                    && line.contains("(ptr %arg0, { ptr, ptr } %arg1)")
+            })
+            .count(),
+        4,
+        "{ir}"
+    );
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains("define internal fastcc ptr @topal.fn.anonymous.")
+                    && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+            })
+            .count(),
+        2,
+        "{ir}"
+    );
+    for name in [
+        "return_2doperation",
+        "make_2danonymous",
+        "make_2danonymous_2drecord",
+        "apply_2drecord",
+        "forward_2drecord",
+        "apply_2dint",
+        "forward_2dint",
+        "anonymous",
+        "increase",
+    ] {
+        assert!(
+            ir.lines().any(|line| line.contains("call fastcc ")
+                && line.contains(&format!("@topal.fn.{name}."))),
+            "{name}: {ir}"
+        );
+    }
+    for variable in [
+        "operation",
+        "package",
+        "@ context-number",
+        "@ context-label",
+        "@ context-pair",
+        "root live-number",
+        "root live-label",
+        "root live-pair",
+    ] {
+        assert!(
+            ir.contains(&format!("!DILocalVariable(name: \"{variable}\"")),
+            "{variable}: {ir}"
+        );
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.context",
+        "topal.root",
+        "context.runtime",
+        "namespace.runtime",
+        "lookup.context",
+        "lookup.root",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("fact-dependent-boundary.t");
+    let rejected_executable = directory.join("fact-dependent-boundary");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\napply is fn (operation : Function, value : Int) -> Int\n  operation value\napply (select, 0)\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("value-fact-dependent named Function environment selection"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let named_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-environment-boundaries.t:36",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        named_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&named_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&named_debugged.stdout);
+    assert!(text.contains("operation = <fn read-context>"), "{text}");
+    assert!(text.contains("topal.fn.return_2doperation."), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+
+    let captured_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-environment-boundaries.t:55",
+            "-ex",
+            "break function-environment-boundaries.t:64",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 3",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        captured_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&captured_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&captured_debugged.stdout);
+    assert_eq!(text.matches("@ context-number = 40").count(), 3, "{text}");
+    assert_eq!(text.matches("root live-number = 7").count(), 3, "{text}");
+    assert!(text.contains("operation = <fn increase>"), "{text}");
+    assert!(text.matches("value = 2").count() >= 3, "{text}");
+    for frame in [
+        "topal.fn.anonymous.",
+        "topal.fn.increase.",
+        "topal.fn.apply_2dint.",
+        "topal.fn.forward_2dint.",
+        "topal.fn.use_2dnested.",
+        "topal.main",
+    ] {
+        assert!(text.contains(frame), "{frame}: {text}");
     }
 }
 

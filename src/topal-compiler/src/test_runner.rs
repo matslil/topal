@@ -120,6 +120,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-classifier.t",
     "examples/language/function-call-chains.t",
     "examples/language/function-effect-bound.t",
+    "examples/language/function-environment-boundaries.t",
     "examples/language/function-interface.t",
     "examples/language/function-local-shadowing.t",
     "examples/language/function-overloads.t",
