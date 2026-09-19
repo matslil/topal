@@ -237,6 +237,11 @@ in a private pointer/pointer node. List equality delegates element comparison to
 canonical Optional-Int equality; future metadata retains both constructors and
 the Int payload contract without publishing either private layout.
 
+Ordinary `List Optional Rational` values likewise retain the existing Optional
+header and canonical Rational payload. Their private nodes, equality delegation,
+and metadata keep the List, Optional, and Rational contracts distinct without
+publishing target offsets or helper identities.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

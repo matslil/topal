@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 268);
+    assert_eq!(examples.len(), 269);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5054,6 +5054,31 @@ fn records_optional_int_list_values_reversibly() {
         "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] Optional Int",
         "list.entry.decomposed [TOPAL-DECISION-LIST-001] first=first;rest=rest",
         "equality.list [TOPAL-TYPE-LIST-EQUALITY-001] Optional Int",
+        "list.entry-count [TOPAL-LIST-ENTRY-COUNT-001] entries=3",
+        "list.empty.tested [TOPAL-LIST-EMPTY-PREDICATE-001] true",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+}
+
+#[test]
+fn records_optional_rational_list_values_reversibly() {
+    // TOPAL-INTP-SUBSET-295, TOPAL-COMPILER-LIST-OPTIONAL-RATIONAL-CORE-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}list-optional-rational-values.debug"),
+            &language_example("list-optional-rational-values.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for event in [
+        "list.entry.constructed [TOPAL-TYPE-LIST-CONSTRUCT-001] Optional Rational",
+        "list.entry.decomposed [TOPAL-DECISION-LIST-001] first=first;rest=rest",
+        "equality.list [TOPAL-TYPE-LIST-EQUALITY-001] Optional Rational",
         "list.entry-count [TOPAL-LIST-ENTRY-COUNT-001] entries=3",
         "list.empty.tested [TOPAL-LIST-EMPTY-PREDICATE-001] true",
     ] {

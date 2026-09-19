@@ -796,6 +796,14 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid List Optional Int entry: {rendered}>"
                 entries.append(rendered)
+            elif self._element_type == "Optional Rational":
+                payload = int.from_bytes(node[0:8], "little")
+                if not payload:
+                    return "<invalid null List Optional Rational entry>"
+                rendered = _TopalOptionalPrinter(payload, "Rational").to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid List Optional Rational entry: {rendered}>"
+                entries.append(rendered)
             elif self._element_type == "(Int, Int)":
                 left = int.from_bytes(node[0:8], "little")
                 right = int.from_bytes(node[8:16], "little")
