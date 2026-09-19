@@ -2292,3 +2292,14 @@ shall retain the source Scope field, its concrete namespace identity and
 snapshot members, and every ordinary sibling field. The shared regression
 shall cover labeled reordering, positional parity, a closed Scope default,
 qualified data observation, and exact results.
+
+## TOPAL-INTP-SUBSET-266 — Live root data inside functions
+
+All source modes shall resolve exact `root member` data selection inside an
+ordinary function against the live root namespace of the current source
+session. A member whose declaration follows the function shall be visible when
+its initializer completed before invocation, while a same-named parameter or
+captured lexical binding shall remain isolated from root qualification. Each
+root initializer shall execute once. The shared regression and reversible
+debugger history shall cover later declaration, initializer-before-call order,
+parameter shadow isolation, multiple root classifiers, and the exact result.

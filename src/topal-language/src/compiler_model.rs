@@ -12218,7 +12218,6 @@ impl Analyzer {
                 }
             }
             if remaining.len() == 1
-                && !self.in_function
                 && let Some(facts) = self.root_bindings.get(&member_name)
             {
                 if compiler_type_contains_generator(&facts.value_type) {
@@ -12227,6 +12226,23 @@ impl Analyzer {
                         span,
                         "qualified generator access",
                     ));
+                }
+                if self.in_function {
+                    let parameter_name = format!("root {member_name}");
+                    let facts = environment.get(&parameter_name).ok_or_else(|| {
+                        unsupported(
+                            &self.source,
+                            *member,
+                            "uncaptured function-body root data member",
+                        )
+                    })?;
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::Local(facts.storage_name.clone()),
+                        value_type: facts.value_type.clone(),
+                        int_range: facts.int_range.clone(),
+                        rational_value: facts.rational_value.clone(),
+                        span,
+                    });
                 }
                 return Ok(data_member_expression(facts, span));
             }
@@ -18607,7 +18623,7 @@ impl Analyzer {
             return Err(unsupported(
                 &self.source,
                 span,
-                "cross-function defining-context capture forwarding",
+                "cross-function root/context capture forwarding",
             ));
         }
         let metadata = CompilerCallMetadata {
@@ -19090,7 +19106,7 @@ impl Analyzer {
             })
             .collect::<Vec<_>>();
         captures.sort_by_key(|(_, facts, _)| facts.declaration_end);
-        captures
+        let mut captures = captures
             .into_iter()
             .map(|(member_name, facts, span)| {
                 if !facts.value_type.machine_scalar()
@@ -19111,7 +19127,41 @@ impl Analyzer {
                     span,
                 })
             })
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut root_captures = self
+            .root_bindings
+            .iter()
+            .filter_map(|(member_name, facts)| {
+                function_body_root_member_span(&self.source, &declaration.body, member_name)
+                    .map(|span| (member_name, facts, span))
+            })
+            .collect::<Vec<_>>();
+        root_captures.sort_by_key(|(_, facts, _)| facts.declaration_end);
+        captures.extend(
+            root_captures
+                .into_iter()
+                .map(|(member_name, facts, span)| {
+                    if !facts.value_type.machine_scalar()
+                        || !compiler_function_result_supported(&facts.value_type)
+                    {
+                        return Err(unsupported(
+                            &self.source,
+                            span,
+                            "non-scalar function-body root data capture",
+                        ));
+                    }
+                    Ok(CompilerContextCapture {
+                        parameter_name: format!("root {member_name}"),
+                        value_type: facts.value_type.clone(),
+                        int_range: facts.int_range.clone(),
+                        rational_value: facts.rational_value.clone(),
+                        argument: data_member_expression(facts, span),
+                        span,
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+        Ok(captures)
     }
 
     fn finish_selected_call(
@@ -21337,6 +21387,86 @@ fn expression_context_member_span(
         Expression::Application { items, .. } => items
             .iter()
             .find_map(|item| expression_context_member_span(source, item, member_name)),
+        Expression::AnonymousFunction { .. }
+        | Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Infinity(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Identifier(_)
+        | Expression::ContextIdentifier(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => None,
+    }
+}
+
+fn function_body_root_member_span(
+    source: &SourceText,
+    statements: &[Statement],
+    member_name: &str,
+) -> Option<Span> {
+    statements
+        .iter()
+        .find_map(|statement| statement_root_member_span(source, statement, member_name))
+}
+
+fn statement_root_member_span(
+    source: &SourceText,
+    statement: &Statement,
+    member_name: &str,
+) -> Option<Span> {
+    match statement {
+        Statement::Published { declaration, .. } => {
+            statement_root_member_span(source, declaration, member_name)
+        }
+        Statement::Binding { value, .. }
+        | Statement::ContextAssignment { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Return { value, .. }
+        | Statement::Expression(value) => expression_root_member_span(source, value, member_name),
+        _ => None,
+    }
+}
+
+fn expression_root_member_span(
+    source: &SourceText,
+    expression: &Expression,
+    member_name: &str,
+) -> Option<Span> {
+    match expression {
+        Expression::Block { statements, .. } => {
+            function_body_root_member_span(source, statements, member_name)
+        }
+        Expression::Product { fields, .. } => fields
+            .iter()
+            .find_map(|field| expression_root_member_span(source, &field.value, member_name)),
+        Expression::DecisionTable { subject, rules, .. } => {
+            expression_root_member_span(source, subject, member_name).or_else(|| {
+                rules.iter().find_map(|rule| {
+                    let matcher = match &rule.matcher {
+                        DecisionMatcher::Comparison { operand, .. } => {
+                            expression_root_member_span(source, operand, member_name)
+                        }
+                        _ => None,
+                    };
+                    matcher
+                        .or_else(|| expression_root_member_span(source, &rule.action, member_name))
+                })
+            })
+        }
+        Expression::Application { items, .. } => {
+            if let [Expression::Identifier(root), Expression::Identifier(member)] = items.as_slice()
+                && source.slice(*root) == "root"
+                && source.slice(*member) == member_name
+            {
+                return Some(*member);
+            }
+            items
+                .iter()
+                .find_map(|item| expression_root_member_span(source, item, member_name))
+        }
         Expression::AnonymousFunction { .. }
         | Expression::Unit(_)
         | Expression::Boolean(_)
@@ -31138,7 +31268,7 @@ mod tests {
         assert_ne!(root_storage, local_storage);
 
         let rejected = analyze_for_compiler(
-            "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nread ()\n",
+            "use language (version is v0.1)\nanswer is 42\napi is root\nread is fn () -> Int\n  api answer\nread ()\n",
         )
         .unwrap_err();
         assert_eq!(rejected.code, "E-COMPILER-UNSUPPORTED");
@@ -31245,6 +31375,80 @@ mod tests {
             analyze_for_compiler("use language (version is v0.1)\noffset is 40\n@ offset\n")
                 .unwrap_err();
         assert_eq!(outside.code, "E-CONTEXT-SELECTION");
+    }
+
+    #[test]
+    fn models_private_live_root_data_capture() {
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-001, TOPAL-NAMESPACE-ROOT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-root-data.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "read")
+            .expect("read is instantiated");
+        assert_eq!(function.parameters.len(), 3);
+        assert_eq!(function.parameters[0].name, "answer");
+        assert_eq!(function.parameters[1].name, "root label");
+        assert_eq!(function.parameters[2].name, "root answer");
+        assert!(
+            function
+                .parameters
+                .iter()
+                .all(|parameter| parameter.source_visible)
+        );
+        let CompilerExpressionKind::Tuple(fields) = &function.body.result.kind else {
+            panic!("read returns its three selected values")
+        };
+        assert!(matches!(
+            &fields[0].kind,
+            CompilerExpressionKind::Local(name) if name == "root answer"
+        ));
+        assert!(matches!(
+            &fields[1].kind,
+            CompilerExpressionKind::Local(name) if name == "answer"
+        ));
+        assert!(matches!(
+            &fields[2].kind,
+            CompilerExpressionKind::Local(name) if name == "root label"
+        ));
+        let CompilerExpressionKind::Call { arguments, .. } = &program.main.result.kind else {
+            panic!("expected direct root-data-capturing call")
+        };
+        assert_eq!(arguments.len(), 3);
+        assert_eq!(exact_int(&arguments[0]), Some(BigInt::from(0)));
+        let root_bindings = program
+            .main
+            .statements
+            .iter()
+            .filter_map(|statement| match statement {
+                CompilerStatement::Binding(binding) => Some(binding),
+                CompilerStatement::Discard(_) => None,
+            })
+            .map(|binding| (binding.name.as_str(), binding.storage_name.as_str()))
+            .collect::<BTreeMap<_, _>>();
+        assert!(matches!(
+            &arguments[1].kind,
+            CompilerExpressionKind::Local(storage) if storage == root_bindings["label"]
+        ));
+        assert!(matches!(
+            &arguments[2].kind,
+            CompilerExpressionKind::Local(storage) if storage == root_bindings["answer"]
+        ));
+
+        let forwarded = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is 42\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  read ()\nwrapper ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(forwarded.code, "E-COMPILER-UNSUPPORTED");
+
+        let aggregate = analyze_for_compiler(
+            "use language (version is v0.1)\nanswer is (40, 2)\nread is fn () -> (Int, Int)\n  root answer\nread ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(aggregate.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

@@ -164,10 +164,11 @@ evidence.
 | 6b2a | stable source-root and alias data members, alias-chain declaration snapshots, typed Scope lookup, and published root bindings within one application | complete |
 | 6b2b1 | root/root-alias Scope parameters specialized with captured overload metadata and typed private data-environment forwarding | complete |
 | 6b2b2a | root/root-alias generator declaration snapshots and qualified application of every otherwise-admitted custom-generator graph through its existing affine O0 lowering | complete |
-| 6b2b2 | direct function-body root data, Scope results/escape, nested qualified Scope members, generator shapes not otherwise admitted and generator-bearing boundaries, non-root aliases, multi-component/external `use`, published module/package/application interfaces, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
+| 6b2b2b | direct-entry exact private live-root data capture with call-position visibility, declaration-order hidden parameters, lexical-shadow isolation, and GDB observation | complete |
+| 6b2b2 | cross-function root-data forwarding, aggregate/callable/Scope/Generator root members, other root-selection forms, Scope results/escape, nested qualified Scope members, generator shapes not otherwise admitted and generator-bearing boundaries, non-root aliases, multi-component/external `use`, published module/package/application interfaces, source and compiled libraries, GEIR instantiation, incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
-| 6c2 | cross-function capture forwarding, aggregate/callable environments, anonymous and escaping closures, qualified root access, and public/library context ABI | planned |
+| 6c2 | cross-function capture forwarding, aggregate/callable environments, anonymous and escaping closures, qualified root access beyond 6b2b2b, and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
@@ -859,11 +860,14 @@ overload facts plus a typed private data environment that can be forwarded
 without caller-frame lookup; 6b2b2a retains source-positioned generator
 declarations in those snapshots and resolves qualified applications of every
 otherwise-admitted custom-generator graph before reusing its existing affine
-O0 lowering; 6b3a makes the live root or a retained root alias
+O0 lowering; 6b2b2b converts direct-entry exact function-body live-root data
+selections into declaration-ordered private capture parameters; 6b3a makes the
+live root or a retained root alias
 available without flattening by returning the same static snapshot and erasing
 `use` before LLVM; 6c1 closure-converts direct-entry scalar `@ member`
-selections to explicit private capture parameters; and 6b2b2/6c2 retain direct
-cross-function root storage, Scope escape, nested Scope and generator shapes or
+selections to explicit private capture parameters; and 6b2b2/6c2 retain
+cross-function root-data forwarding, unsupported root members, Scope escape,
+nested Scope and generator shapes or
 boundaries not otherwise admitted,
 external path resolution, package construction, published interfaces, and
 source/compiled-library work.
