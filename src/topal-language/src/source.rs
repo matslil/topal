@@ -776,6 +776,7 @@ pub struct Session {
     functions: Box<BTreeMap<String, Vec<UserFunction>>>,
     generators: Box<BTreeMap<String, Vec<UserGenerator>>>,
     root_namespace: Option<Rc<NamespaceValue>>,
+    defining_context: Option<BTreeMap<String, Value>>,
     declared_names: BTreeSet<String>,
     published_names: BTreeSet<String>,
     documentation: Box<BTreeMap<String, String>>,
@@ -806,8 +807,13 @@ struct UserFunction {
     metadata: Box<UserFunctionMetadata>,
     body: Box<Vec<Statement>>,
     bindings: BTreeMap<String, Value>,
+    context_bindings: BTreeMap<String, Value>,
     termination_rule: Option<&'static str>,
     recursion_target: Option<String>,
+}
+
+fn function_defining_context(function: &UserFunction) -> Option<BTreeMap<String, Value>> {
+    (!function.context_bindings.is_empty()).then(|| function.context_bindings.clone())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1055,6 +1061,151 @@ fn statement_mentions_name(source: &SourceText, statement: &Statement, name: &st
 fn body_mentions_name(source: &SourceText, body: &[Statement], name: &str) -> bool {
     body.iter()
         .any(|statement| statement_mentions_name(source, statement, name))
+}
+
+fn body_context_names(source: &SourceText, body: &[Statement]) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for statement in body {
+        collect_statement_context_names(source, statement, &mut names);
+    }
+    names
+}
+
+fn collect_statement_context_names(
+    source: &SourceText,
+    statement: &Statement,
+    names: &mut BTreeSet<String>,
+) {
+    match statement {
+        Statement::Published { declaration, .. } => {
+            collect_statement_context_names(source, declaration, names);
+        }
+        Statement::Binding { value, .. }
+        | Statement::ContextAssignment { value, .. }
+        | Statement::Discard { value, .. }
+        | Statement::Return { value, .. }
+        | Statement::Expression(value) => collect_expression_context_names(source, value, names),
+        Statement::Implementation {
+            classifier,
+            declarations,
+            ..
+        } => {
+            collect_expression_context_names(source, classifier, names);
+            for declaration in declarations {
+                collect_statement_context_names(source, declaration, names);
+            }
+        }
+        Statement::Function {
+            parameters,
+            clauses,
+            body,
+            ..
+        } => {
+            for default in parameters
+                .iter()
+                .filter_map(|parameter| parameter.default.as_ref())
+            {
+                collect_expression_context_names(source, default, names);
+            }
+            for expression in [
+                clauses.requires.as_deref(),
+                clauses.effects.as_deref(),
+                clauses.guarantees.as_deref(),
+                clauses.ensures.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                collect_expression_context_names(source, expression, names);
+            }
+            for statement in body {
+                collect_statement_context_names(source, statement, names);
+            }
+        }
+        Statement::Generator {
+            parameters, body, ..
+        } => {
+            for default in parameters
+                .iter()
+                .filter_map(|parameter| parameter.default.as_ref())
+            {
+                collect_expression_context_names(source, default, names);
+            }
+            for statement in body {
+                collect_statement_context_names(source, statement, names);
+            }
+        }
+        Statement::InterfaceImplementation { declarations, .. } => {
+            for declaration in declarations {
+                collect_statement_context_names(source, declaration, names);
+            }
+        }
+        Statement::Foreach {
+            source: input,
+            body,
+            ..
+        } => {
+            collect_expression_context_names(source, input, names);
+            for statement in body {
+                collect_statement_context_names(source, statement, names);
+            }
+        }
+        Statement::LanguageSelection { .. }
+        | Statement::LibrarySelection { .. }
+        | Statement::DiagnosticControl { .. }
+        | Statement::StateField { .. }
+        | Statement::Union { .. }
+        | Statement::Interface { .. } => {}
+    }
+}
+
+fn collect_expression_context_names(
+    source: &SourceText,
+    expression: &Expression,
+    names: &mut BTreeSet<String>,
+) {
+    match expression {
+        Expression::ContextIdentifier(span) => {
+            names.insert(source.slice(*span).to_owned());
+        }
+        Expression::Block { statements, .. } => {
+            for statement in statements {
+                collect_statement_context_names(source, statement, names);
+            }
+        }
+        Expression::Product { fields, .. } => {
+            for field in fields {
+                collect_expression_context_names(source, &field.value, names);
+            }
+        }
+        Expression::DecisionTable { subject, rules, .. } => {
+            collect_expression_context_names(source, subject, names);
+            for rule in rules {
+                if let DecisionMatcher::Comparison { operand, .. } = &rule.matcher {
+                    collect_expression_context_names(source, operand, names);
+                }
+                collect_expression_context_names(source, &rule.action, names);
+            }
+        }
+        Expression::AnonymousFunction { body, .. } => {
+            collect_expression_context_names(source, body, names);
+        }
+        Expression::Application { items, .. } => {
+            for item in items {
+                collect_expression_context_names(source, item, names);
+            }
+        }
+        Expression::Unit(_)
+        | Expression::Boolean(_)
+        | Expression::Integer(_)
+        | Expression::Infinity(_)
+        | Expression::Measured { .. }
+        | Expression::Rational(_)
+        | Expression::String(_)
+        | Expression::Identifier(_)
+        | Expression::Discard(_)
+        | Expression::Callable { .. } => {}
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1739,6 +1890,7 @@ impl Session {
             functions: Box::new(snapshot.definition.handlers.clone()),
             generators: Box::new(snapshot.definition.streams.clone()),
             root_namespace: Some(self.effective_root_namespace()),
+            defining_context: self.defining_context.clone(),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -1816,6 +1968,7 @@ impl Session {
             functions: Box::new(definition.handlers.clone()),
             generators: self.generators.clone(),
             root_namespace: Some(self.effective_root_namespace()),
+            defining_context: function_defining_context(function),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -2702,6 +2855,7 @@ impl Session {
             functions: Box::new(BTreeMap::new()),
             generators: Box::new(BTreeMap::new()),
             root_namespace: None,
+            defining_context: None,
             declared_names: bindings.keys().cloned().collect(),
             published_names: BTreeSet::new(),
             documentation: Box::new(BTreeMap::new()),
@@ -3056,6 +3210,7 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         root_namespace: Some(self.effective_root_namespace()),
+                        defining_context: self.defining_context.clone(),
                         declared_names: self.declared_names.clone(),
                         published_names: self.published_names.clone(),
                         documentation: self.documentation.clone(),
@@ -3160,7 +3315,10 @@ impl Session {
             Expression::String(span) => evaluate_string_literal(source, *span, trace),
             Expression::Identifier(span) => self.resolve_identifier(source, *span, trace),
             Expression::ContextIdentifier(span) => {
-                if self.call_stack.is_empty() && self.task_state.is_none() {
+                if self.call_stack.is_empty()
+                    && self.task_state.is_none()
+                    && self.defining_context.is_none()
+                {
                     return Err(diagnostic(
                         source,
                         "E-CONTEXT-SELECTION",
@@ -3172,8 +3330,20 @@ impl Session {
                     .task_state
                     .as_ref()
                     .and_then(|state| state.get(source.slice(*span)))
+                    .or_else(|| {
+                        self.defining_context
+                            .as_ref()
+                            .and_then(|context| context.get(source.slice(*span)))
+                    })
                     .cloned()
-                    .map_or_else(|| self.resolve_identifier(source, *span, trace), Ok)?;
+                    .ok_or_else(|| {
+                        diagnostic(
+                            source,
+                            "E-CONTEXT-SELECTION",
+                            *span,
+                            format!("defining context has no member `{}`", source.slice(*span)),
+                        )
+                    })?;
                 trace.record(TraceEvent {
                     event: "context.member.selected",
                     rule: "TOPAL-CONTEXT-SELECT-001",
@@ -3897,6 +4067,7 @@ impl Session {
                         functions: self.functions.clone(),
                         generators: self.generators.clone(),
                         root_namespace: Some(self.effective_root_namespace()),
+                        defining_context: self.defining_context.clone(),
                         declared_names: BTreeSet::new(),
                         published_names: BTreeSet::new(),
                         documentation: self.documentation.clone(),
@@ -5564,6 +5735,7 @@ impl Session {
             functions: self.functions.clone(),
             generators: self.generators.clone(),
             root_namespace: Some(self.effective_root_namespace()),
+            defining_context: function_defining_context(&function),
             declared_names: BTreeSet::new(),
             published_names: BTreeSet::new(),
             documentation: self.documentation.clone(),
@@ -8301,6 +8473,19 @@ impl Execution {
                 }))
             });
         }
+        let context_source = session
+            .defining_context
+            .as_ref()
+            .unwrap_or(&session.bindings);
+        let context_bindings = body_context_names(&self.source, body)
+            .into_iter()
+            .filter_map(|captured_name| {
+                context_source
+                    .get(&captured_name)
+                    .cloned()
+                    .map(|value| (captured_name, value))
+            })
+            .collect();
         let function = UserFunction {
             source: self.source.clone(),
             is_static,
@@ -8325,6 +8510,7 @@ impl Execution {
             }),
             body: Box::new(body.to_vec()),
             bindings,
+            context_bindings,
             termination_rule,
             recursion_target: recursion_target.clone(),
         };
