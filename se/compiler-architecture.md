@@ -1538,7 +1538,10 @@ generic List runtime, type tag, callback, indirect call, or foreign dependency.
 The later ordinary core increment admits private pair-List function and
 aggregate boundaries, total decomposition, equality, count, and emptiness
 while keeping the same layout executable-local; it does not create a
-compiled-library ABI or revise `topal-native/6`.
+compiled-library ABI or revise `topal-native/6`. The corresponding ordinary
+`List (Int, String)` increment reuses the same inline product design and its
+exact Int/String equality loop for both direct inner values and outer recursive
+List equality.
 
 The first recursive List specialization composes that inline product approach
 without declaring a generic node. An inner `List (Int, String)` uses three
@@ -1553,9 +1556,10 @@ String comparators. Generated display nests its ordinary iterative List
 control-flow regions, and target-derived DWARF plus the bounded GDB renderer
 recover both semantic levels. These exact paths require no host recursion,
 callback, indirect call, runtime type tag, C/C++ support, or generic List ABI at
-O0. Inner pair-List boundaries and general recursive representation metadata
-remain closed until a versioned compiled-library schema and target adapters can
-describe them safely.
+O0. The later ordinary inner-List increment admits private boundaries, total
+decomposition, equality, count, and emptiness without publishing this layout.
+General recursive representation metadata remains closed until a versioned
+compiled-library schema and target adapters can describe it safely.
 
 Range-selected `List Int` values use a separately conditional private LLVM
 fragment. It visits each immutable node once, asks the exact Range runtime about

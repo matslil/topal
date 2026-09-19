@@ -6040,9 +6040,10 @@ one direct specialization. Its admitted observations shall be `first` with
 `Optional (List (Int, String))`, exact `entry-count`, and structural equality
 that preserves outer and inner order and compares every exact Int and String.
 Construction and observations shall evaluate each source operand once in
-source order; `Some Empty` shall remain distinct from `None`. Direct inner pair-
-List boundaries/equality, outer `rest`/`uncons`, deeper nesting, other shapes,
-and all unlisted List operations shall receive stable checked diagnostics.
+source order; `Some Empty` shall remain distinct from `None`. Except for the
+later ordinary inner pair-List increment, outer `rest`/`uncons`, deeper nesting,
+other shapes, and all unlisted List operations shall receive stable checked
+diagnostics.
 
 The Linux x86-64 backend shall use a private 24-byte inner node containing Int,
 String, and remaining pointers, and a private 16-byte outer node containing
@@ -6066,6 +6067,25 @@ private layout, and make no `topal-native/6` revision. It realizes
 `TOPAL-TYPE-LIST-RECURSIVE-001`, `TOPAL-TYPE-LIST-EQUALITY-001`,
 `TOPAL-LIST-FIRST-001`, and `TOPAL-LIST-ENTRY-COUNT-001` for compiler increment
 4b3d-j.
+
+## TOPAL-COMP-LIST-INT-STRING-PAIR-CORE-001 — Ordinary Int/String-pair Lists
+
+The checked model shall admit construction, private parameter/result/package
+and nested Tuple/Record passage, derived equality, complete decisions, count,
+emptiness, display, and debugging for `List (Int, String)`. Linux x86-64 shall
+retain the existing immutable 24-byte Int-pointer/String-pointer/remaining-
+pointer nodes. One conditional finite fragment shall compare both exact fields
+in order and count correctly at O0, and recursive outer-List equality shall
+reuse its inner equality helper. LLVM owns physical placement, while DWARF/GDB
+retain the recursive List and positional Tuple classifiers.
+
+Tests cover arbitrary-precision signed Ints, empty and non-ASCII Strings,
+same/different fields and length, all private boundaries, rejection, IR,
+ELF/DWARF, GDB, corpus, history, and separate baselines. This adds no Tuple
+allocation, generic/public/foreign ABI, foreign allocation, C/C++, other-
+language library, or ABI revision. Future metadata remains independent of
+private nodes and offsets. This realizes
+`TOPAL-COMPILER-LIST-INT-STRING-PAIR-CORE-001` for increment 4b3d-af.
 
 ## TOPAL-COMP-LIST-SEQUENCE-001 — Closed ordered List sequence operations
 

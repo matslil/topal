@@ -127,6 +127,7 @@ evidence.
 | 4b3d-y | ordinary immutable List Type private parameter/result/package and Tuple/Record passage for all seven fundamental identities, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-z | ordinary immutable payload-free nominal Enum List private parameter/result/package and Tuple/Record passage, exact nominal equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-aa | ordinary immutable nominal modular List private parameter/result/package and Tuple/Record passage, exact canonical equality, complete decomposition, count, emptiness, display, and debugging without narrowing | complete |
+| 4b3d-af | ordinary immutable List (Int, String) private parameter/result/package and nested Tuple/Record passage, exact fieldwise equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-ae | ordinary immutable List (Int, Int) private parameter/result/package and nested Tuple/Record passage, exact fieldwise equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-ad | ordinary immutable List Optional String private parameter/result/package and Tuple/Record passage, exact derived equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-ac | ordinary immutable List Optional Rational private parameter/result/package and Tuple/Record passage, exact derived equality, complete decomposition, count, emptiness, display, and debugging | complete |

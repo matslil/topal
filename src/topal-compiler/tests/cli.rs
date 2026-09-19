@@ -8636,6 +8636,112 @@ fn int_pair_lists_are_complete_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, rejection, and GDB values.
+fn int_string_pair_lists_are_complete_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-TUPLE-EQUALITY-001,
+    // TOPAL-COMPILER-LIST-INT-STRING-PAIR-CORE-001
+    let directory = temporary("gdb-list-int-string-pair-values");
+    let source = directory.join("list-int-string-pair-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/list-int-string-pair-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, "((1, \"one\"), (-4, \"räv\"), true, true, true, true, 3, true, (7, \"seven\"), (1, \"one\"), (11, \"eleven\"), Entry ( (1, \"one\"), Entry ( (-4, \"räv\"), Entry ( (340282366920938463463374607431768211456, \"\"), Empty ) ) ))\n".as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for expected in [
+        "%topal.ListIntStringPairStorage = type { ptr, ptr, ptr }",
+        "define internal i1 @topal.runtime.list.int-string.equal(ptr",
+        "define internal ptr @topal.runtime.list.int-string.entry.count(ptr",
+        "call i32 @topal.runtime.int.compare(ptr",
+        "call i1 @topal.runtime.string.equal(ptr",
+        "define internal fastcc { ptr, { ptr, ptr } } @topal.fn.return_2dpair.",
+    ] {
+        assert!(ir.contains(expected), "{expected}: {ir}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        "topal.runtime.list.nested.int-string.equal",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+    let rejected_source = directory.join("unsupported.t");
+    let rejected_executable = directory.join("unsupported");
+    fs::write(&rejected_source, "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nvalues reverse\n").unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-int-string-pair-values.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis candidate",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List(Int, String)",
+        "candidate = Entry ( (1, \"one\"), Entry ( (-4, \"räv\"), Entry ( (340282366920938463463374607431768211456, \"\"), Empty ) ) )",
+        "fallback = {_0 = 7, _1 = \"seven\"}",
+        "topal.fn.head_2dor.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
     // TOPAL-LIST-CONTAINS-ENTRY-001, TOPAL-LIST-CONTAINS-SEQUENCE-001,
     // TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,

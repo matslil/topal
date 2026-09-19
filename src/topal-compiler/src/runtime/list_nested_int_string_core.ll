@@ -1,5 +1,5 @@
 ; Exact core operations for List (List (Int, String)). The outer node is two
-; pointers; each inner pair node contains Int, String, and remaining pointers.
+; pointers. Inner pair operations come from list_int_string_pair_core.ll.
 
 define internal i64 @topal.runtime.list.nested.int-string.count.raw(ptr %list) nounwind noinline {
 entry:
@@ -36,42 +36,6 @@ some:
 none:
   %absent = call ptr @topal.runtime.optional.none()
   ret ptr %absent
-}
-
-define internal i1 @topal.runtime.list.int-string.equal(ptr %left, ptr %right) nounwind noinline {
-entry:
-  br label %loop
-loop:
-  %left.current = phi ptr [%left, %entry], [%left.next, %advance]
-  %right.current = phi ptr [%right, %entry], [%right.next, %advance]
-  %left.empty = icmp eq ptr %left.current, null
-  %right.empty = icmp eq ptr %right.current, null
-  %either.empty = or i1 %left.empty, %right.empty
-  br i1 %either.empty, label %finish, label %compare
-compare:
-  %left.int = load ptr, ptr %left.current, align 8
-  %right.int = load ptr, ptr %right.current, align 8
-  %int.ordering = call i32 @topal.runtime.int.compare(ptr %left.int, ptr %right.int)
-  %int.equal = icmp eq i32 %int.ordering, 0
-  br i1 %int.equal, label %compare.string, label %different
-compare.string:
-  %left.string.pointer = getelementptr i8, ptr %left.current, i64 8
-  %right.string.pointer = getelementptr i8, ptr %right.current, i64 8
-  %left.string = load ptr, ptr %left.string.pointer, align 8
-  %right.string = load ptr, ptr %right.string.pointer, align 8
-  %string.equal = call i1 @topal.runtime.string.equal(ptr %left.string, ptr %right.string)
-  br i1 %string.equal, label %advance, label %different
-advance:
-  %left.next.pointer = getelementptr i8, ptr %left.current, i64 16
-  %right.next.pointer = getelementptr i8, ptr %right.current, i64 16
-  %left.next = load ptr, ptr %left.next.pointer, align 8
-  %right.next = load ptr, ptr %right.next.pointer, align 8
-  br label %loop
-finish:
-  %both.empty = and i1 %left.empty, %right.empty
-  ret i1 %both.empty
-different:
-  ret i1 false
 }
 
 define internal i1 @topal.runtime.list.nested.int-string.equal(ptr %left, ptr %right) nounwind noinline {

@@ -2628,3 +2628,11 @@ All source modes shall preserve both exact arbitrary-precision Int fields
 through List construction, private boundaries, nested products, structural
 equality, complete decisions, count, emptiness, and display. Shared native/
 interpreter regression and reversible history shall cover every admitted path.
+
+## TOPAL-INTP-SUBSET-298 — Ordinary Int/String-pair List values
+
+All source modes shall preserve exact arbitrary-precision Int and immutable
+String fields, including empty and non-ASCII Strings, through List construction,
+private boundaries, nested products, structural equality, complete decisions,
+count, emptiness, and display. Shared native/interpreter regression and
+reversible history shall cover every admitted path.
