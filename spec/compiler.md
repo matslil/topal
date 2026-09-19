@@ -5042,8 +5042,8 @@ whole explicit-return operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand
 admitted by `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, and the direct product
 field admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, and the direct
-named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, a
-and the direct `Some` payload admitted by
+named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, and
+the direct `Some` payload admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, a return-bearing block embedded in
 another expression, conditional or callback, and any exit whose scope owns
 generator close, resource, destructor, or other cleanup obligations SHALL
@@ -5064,8 +5064,8 @@ normalizing the exit into the function's existing single machine return.
 Except for the direct symbolic operator operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001` and the direct product field
 admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, and the direct
-named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, this
-and the direct `Some` payload admitted by
+named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, and
+the direct `Some` payload admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, this rule admits no other
 compound-expression, conditional, callback, generator, or cleanup-bearing
 propagation and SHALL introduce no runtime control-flow object, unwind edge,

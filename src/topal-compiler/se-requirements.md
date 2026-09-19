@@ -5214,8 +5214,8 @@ tails at O0. Except for the whole explicit-return operand admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPERAND-001` and the direct symbolic operand admitted
 by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001`, and the direct product field
 admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, and the direct named-call
-argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, a return-bearing
-and the direct `Some` payload admitted by
+argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, and the direct
+`Some` payload admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-001`, a return-bearing block nested in
 another expression, decision, callback, or other compound expression shall
 remain rejected.
@@ -5247,9 +5247,9 @@ lowering the inner value through the function's existing private result and
 single machine return. Except for the direct symbolic operator operand admitted
 by `TOPAL-COMP-LEXICAL-RETURN-OPERATOR-001` and the direct product field
 admitted by `TOPAL-COMP-LEXICAL-RETURN-PRODUCT-001`, and the direct named-call
-argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, the implementation
-and the direct `Some` payload admitted by
-`TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-001`, the implementation shall admit no
+argument admitted by `TOPAL-COMP-LEXICAL-RETURN-CALL-001`, and the direct
+`Some` payload admitted by `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-001`, the
+implementation shall admit no
 other embedded, conditional, callback, generator, or exit with cleanup
 obligations and add no runtime control-flow value, unwind edge, allocation,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
