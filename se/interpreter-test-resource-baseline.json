@@ -1456,6 +1456,11 @@
       "cpu_time_ns": 4125080,
       "memory_peak_bytes": 18337792,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-unordered-collect.t": {
+      "cpu_time_ns": 4628460,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
     }
   }
 }

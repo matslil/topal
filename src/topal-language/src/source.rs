@@ -3005,7 +3005,7 @@ impl Session {
         Ok(Some(step))
     }
 
-    fn evaluate_returning_list_collect_source_step(
+    fn evaluate_returning_collection_source_step(
         &self,
         source: &SourceText,
         expression: &Expression,
@@ -3018,13 +3018,15 @@ impl Session {
         let [Expression::Identifier(operation), collection] = items.as_slice() else {
             return Ok(None);
         };
-        if source.slice(*operation) != "collect"
-            || !direct_expression_returns_from_function(collection)
+        if !matches!(
+            source.slice(*operation),
+            "collect" | "collect-set" | "collect-bag"
+        ) || !direct_expression_returns_from_function(collection)
         {
             return Ok(None);
         }
         let Expression::Block { statements, .. } = collection else {
-            unreachable!("a direct returning List collect source is a lexical block")
+            unreachable!("a direct returning collection source is a lexical block")
         };
         let step = self.evaluate_block_step(
             source,
@@ -3035,7 +3037,7 @@ impl Session {
         )?;
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
-            "a direct returning List collect source exits its function"
+            "a direct returning collection source exits its function"
         );
         Ok(Some(step))
     }
@@ -3055,7 +3057,7 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
-        if let Some(step) = self.evaluate_returning_list_collect_source_step(
+        if let Some(step) = self.evaluate_returning_collection_source_step(
             source,
             expression,
             return_classifier,
@@ -19998,6 +20000,39 @@ fn unary_list_collect_source_block_propagates_return_before_materialization() {
         .evaluate("collect { return 42 }\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn unordered_collect_source_blocks_propagate_return_before_materialization() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-unordered-collect.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert!(!trace.iter().any(|event| event.contains("set.collected")));
+    assert!(!trace.iter().any(|event| event.contains("bag.collected")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    for operation in ["collect-set", "collect-bag"] {
+        let error = Session::new()
+            .evaluate(
+                &format!("{operation} {{ return 42 }}\n"),
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+    }
 }
 
 #[test]
