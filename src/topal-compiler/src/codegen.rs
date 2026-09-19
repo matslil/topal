@@ -792,12 +792,17 @@ impl<'a> Generator<'a> {
         ));
     }
 
+    #[allow(clippy::too_many_lines)] // Keep parameter ABI, retained-value, and DWARF policy together in source order.
     fn bind_function_parameters(
         &mut self,
         function: &CompilerFunction,
         body: &mut FunctionBody,
         environment: &mut BTreeMap<String, LlValue>,
     ) {
+        let carries_function_boundary = function
+            .parameters
+            .iter()
+            .any(|parameter| compiler_type_contains_function(&parameter.value_type));
         for (index, parameter) in function.parameters.iter().enumerate() {
             let argument = format!("%arg{index}");
             if parameter.discarded {
@@ -875,6 +880,9 @@ impl<'a> Generator<'a> {
                 || retained_value_generator_source
                 || retained_unused_enum
                 || retained_context_capture
+                || (carries_function_boundary
+                    && parameter.value_type.machine_scalar()
+                    && parameter.value_type != CompilerType::Unit)
                 || matches!(
                     parameter.value_type,
                     CompilerType::Scope
@@ -885,13 +893,12 @@ impl<'a> Generator<'a> {
                         | CompilerType::Sum(_)
                 )
             {
-                self.emit_aggregate_debug_shadow(
+                Self::emit_parameter_debug_shadow(
                     &argument,
                     &parameter.value_type,
                     variable,
                     location,
                     body,
-                    function_parameter_debug_shadow_span(function, parameter),
                 );
             } else {
                 body.debug_value(&value, variable, location);
@@ -1222,6 +1229,23 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
+        body.debug_declare(&address, variable, location);
+    }
+
+    fn emit_parameter_debug_shadow(
+        aggregate: &str,
+        value_type: &CompilerType,
+        variable: usize,
+        location: usize,
+        body: &mut FunctionBody,
+    ) {
+        let llvm_type = llvm_value_type(value_type);
+        let alignment = target_value_layout(value_type).alignment / 8;
+        let address =
+            body.instruction_without_debug(&format!("alloca {llvm_type}, align {alignment}"));
+        body.effect_without_debug(&format!(
+            "store {llvm_type} {aggregate}, ptr {address}, align {alignment}"
+        ));
         body.debug_declare(&address, variable, location);
     }
 
@@ -9118,6 +9142,12 @@ impl FunctionBody {
         value
     }
 
+    fn instruction_without_debug(&mut self, instruction: &str) -> String {
+        let value = self.reserve_value();
+        self.lines.push(format!("  {value} = {instruction}"));
+        value
+    }
+
     fn reserve_value(&mut self) -> String {
         let value = format!("%v{}", self.next_value);
         self.next_value += 1;
@@ -9140,6 +9170,10 @@ impl FunctionBody {
         let location = debug.location(span, self.subprogram);
         self.lines
             .push(format!("  {instruction}, !dbg !{location}"));
+    }
+
+    fn effect_without_debug(&mut self, instruction: &str) {
+        self.lines.push(format!("  {instruction}"));
     }
 
     fn named_instruction(
@@ -10652,19 +10686,19 @@ fn llvm_type(value_type: &CompilerType) -> String {
     }
 }
 
-fn function_parameter_debug_shadow_span(
-    function: &CompilerFunction,
-    parameter: &CompilerParameter,
-) -> Span {
-    if function_parameter_is_context_capture(parameter) {
-        function.span
-    } else {
-        parameter.span
-    }
-}
-
 fn function_parameter_is_context_capture(parameter: &CompilerParameter) -> bool {
     parameter.name.starts_with("root ") || parameter.name.starts_with("@ ")
+}
+
+fn compiler_type_contains_function(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Function => true,
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_function),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, field)| compiler_type_contains_function(field)),
+        _ => false,
+    }
 }
 
 fn function_llvm_return_type(function: &CompilerFunction) -> String {

@@ -314,6 +314,7 @@ pub struct AnonymousFunction {
     parameters: Vec<CapturedPattern>,
     body: Box<Expression>,
     bindings: BTreeMap<String, Value>,
+    defining_context: Option<BTreeMap<String, Value>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -6809,6 +6810,7 @@ impl Session {
             parameters,
             body,
             bindings,
+            defining_context,
         } = function.as_ref();
         if parameters.len() != arguments.len() {
             return Err(diagnostic(
@@ -6825,6 +6827,7 @@ impl Session {
         let mut invocation = Box::new(self.clone());
         invocation.root_namespace = Some(self.effective_root_namespace());
         invocation.bindings = bindings.clone();
+        invocation.defining_context.clone_from(defining_context);
         let mut matched_bindings = BTreeMap::new();
         for (parameter, argument) in parameters.iter().zip(arguments) {
             bind_anonymous_pattern(
@@ -6874,6 +6877,10 @@ impl Session {
             parameters,
             body: Box::new(body.clone()),
             bindings,
+            defining_context: self
+                .defining_context
+                .clone()
+                .or_else(|| Some(self.bindings.clone())),
         }))
     }
 

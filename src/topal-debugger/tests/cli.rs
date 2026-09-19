@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 246);
+    assert_eq!(examples.len(), 247);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4347,6 +4347,50 @@ fn records_local_named_function_environments_reversibly() {
         assert!(stdout.contains(event), "{event}: {stdout}");
     }
     assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_function_environment_boundaries_reversibly() {
+    // TOPAL-INTP-SUBSET-273,
+    // TOPAL-COMPILER-FUNCTION-ENVIRONMENT-BOUNDARY-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-environment-boundaries.debug"),
+            &language_example("function-environment-boundaries.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let named_result = stdout
+        .find("binding.bind [TOPAL-SYN-BIND-001] context-operation")
+        .unwrap();
+    let aggregate_boundary = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] forward-record")
+        .unwrap();
+    let anonymous_call = stdout
+        .find("function.anonymous.called [TOPAL-FUNCTION-ANONYMOUS-001]")
+        .unwrap();
+    let nested_boundary = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] forward-int")
+        .unwrap();
+    assert!(named_result < aggregate_boundary);
+    assert!(aggregate_boundary < anonymous_call);
+    assert!(anonymous_call < nested_boundary);
+    for event in [
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] context-operation (Int)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] context-operation (String)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] read-root (Int)",
+        "function.overload.selected [TOPAL-FUNCTION-OVERLOAD-001] read-pair (String)",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-number",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-number",
+        "function.value.called [TOPAL-FUNCTION-VALUE-001] increase",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
 }
 
 #[test]

@@ -2374,3 +2374,16 @@ Shadowing with any other value shall terminate the alias relationship. The
 shared regression and reversible debugger history shall cover overloaded alias
 selection, scalar and aggregate context/root values, nested calls, binding and
 call order, exact results, and unchanged once-only source values.
+
+## TOPAL-INTP-SUBSET-273 — Function environments across value boundaries
+
+All source modes shall preserve a Function value's defining context, qualified
+live root, and lexical captures when that value is passed or returned directly
+or within a Tuple or labeled Record. This applies to retained named overload
+sets, anonymous Functions, and non-escaping nested ordinary Functions. Later
+application shall use ordinary source-ordered overload selection and observe the
+same immutable captured values without initializer replay. The shared
+regression and reversible debugger history shall cover scalar and Record
+parameters/results, named, anonymous, and nested Function values, distinct
+scalar and aggregate context/root members, source-ordered binding, selection,
+and call events, exact results, and unchanged once-only source values.
