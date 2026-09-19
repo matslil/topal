@@ -19100,13 +19100,11 @@ impl Analyzer {
         let mut captures = captures
             .into_iter()
             .map(|(member_name, facts, span)| {
-                if !facts.value_type.machine_scalar()
-                    || !compiler_function_result_supported(&facts.value_type)
-                {
+                if !compiler_environment_capture_supported(&facts.value_type) {
                     return Err(unsupported(
                         &self.source,
                         span,
-                        "non-scalar defining-context capture",
+                        "unsupported defining-context capture representation",
                     ));
                 }
                 let parameter_name = format!("@ {member_name}");
@@ -19146,13 +19144,11 @@ impl Analyzer {
             root_captures
                 .into_iter()
                 .map(|(member_name, facts, span)| {
-                    if !facts.value_type.machine_scalar()
-                        || !compiler_function_result_supported(&facts.value_type)
-                    {
+                    if !compiler_environment_capture_supported(&facts.value_type) {
                         return Err(unsupported(
                             &self.source,
                             span,
-                            "non-scalar function-body root data capture",
+                            "unsupported function-body root data capture representation",
                         ));
                     }
                     let parameter_name = format!("root {member_name}");
@@ -22736,6 +22732,58 @@ fn compiler_function_result_supported(value_type: &CompilerType) -> bool {
                 .as_ref()
                 .is_none_or(compiler_function_result_supported))
     )
+}
+
+fn compiler_environment_capture_supported(value_type: &CompilerType) -> bool {
+    compiler_function_result_supported(value_type) && !compiler_type_contains_function(value_type)
+}
+
+fn compiler_type_contains_function(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Function => true,
+        CompilerType::SerializationStream(value)
+        | CompilerType::Range(value)
+        | CompilerType::Result(value)
+        | CompilerType::TaskResponse(value)
+        | CompilerType::Optional(value)
+        | CompilerType::List(value)
+        | CompilerType::Set(value)
+        | CompilerType::Bag(value)
+        | CompilerType::TraversalControl(value)
+        | CompilerType::Refined { base: value, .. } => compiler_type_contains_function(value),
+        CompilerType::Array { element, .. } => compiler_type_contains_function(element),
+        CompilerType::Map { key, value } => {
+            compiler_type_contains_function(key) || compiler_type_contains_function(value)
+        }
+        CompilerType::Generator(generator) => {
+            compiler_type_contains_function(&generator.yield_type)
+                || compiler_type_contains_function(&generator.resume_type)
+                || compiler_type_contains_function(&generator.result_type)
+        }
+        CompilerType::Task(task) => {
+            compiler_type_contains_function(&task.state_type)
+                || task.handlers.iter().any(|handler| {
+                    compiler_type_contains_function(&handler.payload_type)
+                        || compiler_type_contains_function(&handler.response_type)
+                        || handler.stream_type.as_ref().is_some_and(|stream| {
+                            compiler_type_contains_function(&stream.yield_type)
+                                || compiler_type_contains_function(&stream.resume_type)
+                                || compiler_type_contains_function(&stream.result_type)
+                        })
+                })
+        }
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_contains_function),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, field)| compiler_type_contains_function(field)),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_contains_function)
+        }),
+        _ => false,
+    }
 }
 
 fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
@@ -31836,8 +31884,18 @@ mod tests {
         let aggregate = analyze_for_compiler(
             "use language (version is v0.1)\nanswer is (40, 2)\nread is fn () -> (Int, Int)\n  root answer\nread ()\n",
         )
-        .unwrap_err();
-        assert_eq!(aggregate.code, "E-COMPILER-UNSUPPORTED");
+        .unwrap();
+        let function = aggregate
+            .functions
+            .iter()
+            .find(|function| function.source_name == "read")
+            .unwrap();
+        assert_eq!(function.parameters.len(), 1);
+        assert_eq!(function.parameters[0].name, "root answer");
+        assert_eq!(
+            function.parameters[0].value_type,
+            CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int])
+        );
     }
 
     #[test]
@@ -31979,6 +32037,106 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(unproven.code, "E-COMPILER-UNSUPPORTED");
+    }
+
+    #[test]
+    fn models_private_represented_aggregate_environments() {
+        // TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001,
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/aggregate-environments.t"
+        ))
+        .unwrap();
+        let pair_type = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::String]);
+        let record_type = CompilerType::Record(vec![
+            ("amount".into(), CompilerType::Int),
+            ("enabled".into(), CompilerType::Boolean),
+        ]);
+        for (name, capture_name, capture_type) in [
+            ("select-context-pair", "@ context-pair", pair_type.clone()),
+            ("forward-context-pair", "@ context-pair", pair_type.clone()),
+            (
+                "select-context-record",
+                "@ context-record",
+                record_type.clone(),
+            ),
+            (
+                "forward-context-record",
+                "@ context-record",
+                record_type.clone(),
+            ),
+            ("select-root-pair", "root live-pair", pair_type.clone()),
+            ("forward-root-pair", "root live-pair", pair_type.clone()),
+            (
+                "select-root-record",
+                "root live-record",
+                record_type.clone(),
+            ),
+            (
+                "forward-root-record",
+                "root live-record",
+                record_type.clone(),
+            ),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            let capture = function.parameters.last().unwrap();
+            assert_eq!(capture.name, capture_name);
+            assert_eq!(capture.value_type, capture_type);
+        }
+        for (name, capture_name) in [
+            ("select-context-token", "@ context-token"),
+            ("forward-context-token", "@ context-token"),
+            ("select-root-token", "root live-token"),
+            ("forward-root-token", "root live-token"),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            let capture = function.parameters.last().unwrap();
+            assert_eq!(capture.name, capture_name);
+            assert!(matches!(capture.value_type, CompilerType::Sum(_)));
+        }
+
+        let mutual = analyze_for_compiler(
+            "use language (version is v0.1)\ncontext-pair is (40, \"context\")\ncycle-even is fn (value : Int) -> (Int, String)\n  value\n    <= 0 then @ context-pair\n    otherwise cycle-odd (value - 1)\ncycle-odd is fn (value : Int) -> (Int, String)\n  value\n    <= 0 then root live-pair\n    otherwise cycle-even (value - 1)\nlive-pair is (7, \"root\")\ncycle-even 3\n",
+        )
+        .unwrap();
+        for name in ["cycle-even", "cycle-odd"] {
+            let function = mutual
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(
+                function
+                    .parameters
+                    .iter()
+                    .map(|parameter| parameter.name.as_str())
+                    .collect::<Vec<_>>(),
+                ["value", "@ context-pair", "root live-pair"]
+            );
+            assert_eq!(function.parameters[1].value_type, pair_type);
+            assert_eq!(function.parameters[2].value_type, pair_type);
+        }
+
+        let callable = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nbundle is (increment, 40)\nread is fn () -> (Function, Int)\n  @ bundle\nread ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(callable.code, "E-COMPILER-UNSUPPORTED");
+
+        let root_callable = analyze_for_compiler(
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nread is fn () -> (Function, Int)\n  root bundle\nbundle is (increment, 40)\nread ()\n",
+        )
+        .unwrap_err();
+        assert_eq!(root_callable.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

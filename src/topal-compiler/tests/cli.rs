@@ -12427,6 +12427,28 @@ fn structured_packaged_fields_are_exact_private_freestanding_and_debuggable() {
     assert!(!rejected_executable.exists());
     assert!(!metadata_path(&rejected_executable).exists());
 
+    let rejected_root_path = directory.join("root-callable-aggregate.t");
+    let rejected_root_executable = directory.join("root-callable-aggregate");
+    fs::write(
+        &rejected_root_path,
+        "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nread is fn () -> (Function, Int)\n  root bundle\nbundle is (increment, 40)\nread ()\n",
+    )
+    .unwrap();
+    let rejected_root = run(topalc().args([
+        "-o",
+        rejected_root_executable.to_str().unwrap(),
+        rejected_root_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected_root.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected_root.stderr)
+            .contains("unsupported function-body root data capture representation"),
+        "{}",
+        String::from_utf8_lossy(&rejected_root.stderr)
+    );
+    assert!(!rejected_root_executable.exists());
+    assert!(!metadata_path(&rejected_root_executable).exists());
+
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([
@@ -13416,28 +13438,6 @@ fn function_root_data_is_private_freestanding_and_debuggable() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    let rejected_source = directory.join("function-root-data-aggregate.t");
-    let rejected_executable = directory.join("function-root-data-aggregate");
-    fs::write(
-        &rejected_source,
-        "use language (version is v0.1)\nanswer is (40, 2)\nread is fn () -> (Int, Int)\n  root answer\nread ()\n",
-    )
-    .unwrap();
-    let rejected = run(topalc().args([
-        "-o",
-        rejected_executable.to_str().unwrap(),
-        rejected_source.to_str().unwrap(),
-    ]));
-    assert!(!rejected.status.success());
-    assert!(
-        String::from_utf8_lossy(&rejected.stderr)
-            .contains("non-scalar function-body root data capture"),
-        "{}",
-        String::from_utf8_lossy(&rejected.stderr)
-    );
-    assert!(!rejected_executable.exists());
-    assert!(!metadata_path(&rejected_executable).exists());
-
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([
@@ -13981,6 +13981,307 @@ fn recursive_scalar_environments_are_private_freestanding_and_debuggable() {
     }
     assert!(text.contains("topal.fn.cycle_2deven.0"), "{text}");
     assert!(text.contains("topal.fn.cycle_2dodd.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers aggregate classes, recursion, rejection, artifacts, and GDB frames.
+fn aggregate_environments_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001,
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-aggregate-environments");
+    let source = directory.join("aggregate-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/aggregate-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"((40, \"context\"), (amount is 2, enabled is true), (7, \"root\"), (amount is 9, enabled is false), Label \"context-sum\", Number 11)\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for name in [
+        "select_2dcontext_2dpair",
+        "forward_2dcontext_2dpair",
+        "select_2droot_2dpair",
+        "forward_2droot_2dpair",
+    ] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!(
+                    "define internal fastcc {{ ptr, ptr }} @topal.fn.{name}."
+                )) && line.contains("(ptr %arg0, { ptr, ptr } %arg1)")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    for name in [
+        "select_2dcontext_2drecord",
+        "forward_2dcontext_2drecord",
+        "select_2droot_2drecord",
+        "forward_2droot_2drecord",
+    ] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!(
+                    "define internal fastcc {{ ptr, i1, i32, i32 }} @topal.fn.{name}."
+                )) && line.contains("(ptr %arg0, { ptr, i1, i32, i32 } %arg1)")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    for name in [
+        "select_2dcontext_2dtoken",
+        "forward_2dcontext_2dtoken",
+        "select_2droot_2dtoken",
+        "forward_2droot_2dtoken",
+    ] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!(
+                    "define internal fastcc {{ i32, ptr, ptr }} @topal.fn.{name}."
+                )) && line.contains("({ i32, ptr, ptr } %arg0)")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("call fastcc { ptr, ptr } @topal.fn.select_2dcontext_2dpair.")
+                && line.contains("{ ptr, ptr }")
+        }),
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("call fastcc { ptr, i1, i32, i32 } @topal.fn.select_2droot_2drecord.")
+                && line.contains("{ ptr, i1, i32, i32 }")
+        }),
+        "{ir}"
+    );
+    for capture in [
+        "@ context-pair",
+        "@ context-record",
+        "@ context-token",
+        "root live-pair",
+        "root live-record",
+        "root live-token",
+    ] {
+        assert!(
+            ir.contains(&format!("!DILocalVariable(name: \"{capture}\"")),
+            "{capture}: {ir}"
+        );
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.context",
+        "topal.root",
+        "context.runtime",
+        "namespace.runtime",
+        "lookup.context",
+        "lookup.root",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_path = directory.join("callable-aggregate.t");
+    let rejected_executable = directory.join("callable-aggregate");
+    fs::write(
+        &rejected_path,
+        "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nbundle is (increment, 40)\nread is fn () -> (Function, Int)\n  @ bundle\nread ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("unsupported defining-context capture representation"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let tuple_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break aggregate-environments.t:18",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        tuple_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&tuple_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&tuple_debugged.stdout);
+    assert_eq!(
+        text.matches("@ context-pair = {_0 = 40, _1 = \"context\"}")
+            .count(),
+        3,
+        "{text}"
+    );
+    assert!(
+        text.contains("topal.fn.select_2dcontext_2dpair.0"),
+        "{text}"
+    );
+    assert!(
+        text.contains("topal.fn.forward_2dcontext_2dpair.1"),
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+
+    let record_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break aggregate-environments.t:42",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        record_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&record_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&record_debugged.stdout);
+    assert_eq!(
+        text.matches("root live-record = {amount = 9, enabled = false}")
+            .count(),
+        3,
+        "{text}"
+    );
+    assert!(text.contains("topal.fn.select_2droot_2drecord.6"), "{text}");
+    assert!(
+        text.contains("topal.fn.forward_2droot_2drecord.7"),
+        "{text}"
+    );
+    assert!(text.contains("topal.main"), "{text}");
+
+    let sum_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break aggregate-environments.t:51",
+            "-ex",
+            "break aggregate-environments.t:57",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        sum_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&sum_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&sum_debugged.stdout);
+    assert!(
+        text.contains("@ context-token = Label \"context-sum\""),
+        "{text}"
+    );
+    assert!(text.contains("root live-token = Number 11"), "{text}");
+    assert!(
+        text.contains("topal.fn.forward_2droot_2dtoken.11"),
+        "{text}"
+    );
     assert!(text.contains("topal.main"), "{text}");
 }
 
