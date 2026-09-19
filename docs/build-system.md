@@ -247,6 +247,11 @@ canonical String descriptor. Equality delegates through Optional-String and
 exact String comparison, while future metadata describes all classifier layers
 without exposing the two private pointer representations.
 
+Ordinary `List (Int, Int)` values extend the existing inline pair-node
+specialization across private functions and aggregates. Equality compares both
+canonical Int pointers in field order; future metadata describes the recursive
+List and Tuple classifiers without publishing the three-word node.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

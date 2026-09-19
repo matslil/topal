@@ -23537,6 +23537,10 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
             | CompilerType::Nat
             | CompilerType::Rational
             | CompilerType::String
+    ) || matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
     ) || matches!(value_type, CompilerType::Optional(payload)
         if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
 }
@@ -23796,6 +23800,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::String
                     | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
+                || matches!(element.as_ref(), CompilerType::Tuple(fields)
+                    if fields.as_slice() == [CompilerType::Int, CompilerType::Int])
                 || matches!(element.as_ref(), CompilerType::Optional(payload)
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
@@ -33750,6 +33756,42 @@ mod tests {
         ));
         assert_eq!(results[10].value_type, list);
         let unsupported = "use language (version is v0.1)\nvalues : List Optional String is Entry (Some \"value\", Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_int_pair_lists_across_private_boundaries() {
+        // TOPAL-COMPILER-TUPLE-EQUALITY-001, TOPAL-COMPILER-LIST-INT-PAIR-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-int-pair-values.t"
+        ))
+        .unwrap();
+        let pair = CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int]);
+        let list = CompilerType::List(Box::new(pair.clone()));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, pair);
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Int-pair List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 11);
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[10].value_type, list);
+        let unsupported = "use language (version is v0.1)\nvalues : List (Int, Int) is Entry ((1, 2), Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

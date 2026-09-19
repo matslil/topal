@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 270);
+    assert_eq!(examples.len(), 271);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5960,6 +5960,32 @@ fn every_mode_preserves_optional_string_list_values() {
     // TOPAL-INTP-SUBSET-296, TOPAL-COMPILER-LIST-OPTIONAL-STRING-CORE-001
     let source = include_str!("../../../examples/language/list-optional-string-values.t");
     let expected = "(Some \"first\", None, true, true, true, 3, true, Some \"fallback\", Some \"first\", Some \"record\", Entry ( Some \"first\", Entry ( None, Entry ( Some \"世界\", Empty ) ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_int_pair_list_values() {
+    // TOPAL-INTP-SUBSET-297, TOPAL-COMPILER-LIST-INT-PAIR-CORE-001
+    let source = include_str!("../../../examples/language/list-int-pair-values.t");
+    let expected = "((1, 2), (3, -4), true, true, true, 3, true, (7, 8), (1, 2), (11, 12), Entry ( (1, 2), Entry ( (3, -4), Entry ( (340282366920938463463374607431768211456, -170141183460469231731687303715884105728), Empty ) ) ))";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
