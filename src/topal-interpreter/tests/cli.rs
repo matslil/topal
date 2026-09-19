@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 256);
+    assert_eq!(examples.len(), 257);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5564,6 +5564,32 @@ fn every_mode_preserves_string_list_values() {
     // TOPAL-INTP-SUBSET-282, TOPAL-COMPILER-LIST-STRING-CORE-001
     let source = include_str!("../../../examples/language/list-string-values.t");
     let expected = "(\"Top\", \"al\", true, true, 2, true, \"package\", \"Top\", \"record\", Entry ( \"Top\", Entry ( \"al\", Empty ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("list.entry.constructed"));
+    assert!(trace.contains("list.entry.decomposed"));
+    assert!(trace.contains("list.entry-count"));
+    assert!(trace.contains("list.empty.tested"));
+    assert!(trace.contains("equality.list"));
+}
+
+#[test]
+fn every_mode_preserves_character_list_values() {
+    // TOPAL-INTP-SUBSET-283, TOPAL-COMPILER-LIST-CHARACTER-CORE-001
+    let source = include_str!("../../../examples/language/list-character-values.t");
+    let expected = "(\"A\u{30a}\", \"👩‍💻\", true, true, 2, true, \"K\", \"A\u{30a}\", \"R\", Entry ( \"A\u{30a}\", Entry ( \"👩‍💻\", Empty ) ))";
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(

@@ -182,6 +182,14 @@ to canonical preserved-sequence String equality. The node remains an internal
 representation; future library metadata retains the semantic element type and
 target adapter without publishing compiler helper names or physical offsets.
 
+Ordinary `List Character` values retain their distinct constrained source type
+while reusing the private String-descriptor node shape and exact preserved-
+sequence comparison. Multi-scalar user-perceived characters are never reduced
+to code points or copied into a host text representation. Debug information and
+future library metadata must preserve the Character classifier, constraint
+evidence, ownership, lifetime, and target adapter independently of this private
+layout reuse.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux

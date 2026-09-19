@@ -707,13 +707,15 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid List Int entry: {rendered}>"
                 entries.append(rendered)
-            elif self._element_type == "String":
+            elif self._element_type in ("Character", "String"):
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:
-                    return "<invalid null List String entry>"
+                    return f"<invalid null List {self._element_type} entry>"
                 rendered = _TopalStringPrinter(payload).to_string()
                 if rendered.startswith("<"):
-                    return f"<invalid List String entry: {rendered}>"
+                    return (
+                        f"<invalid List {self._element_type} entry: {rendered}>"
+                    )
                 entries.append(rendered)
             elif self._element_type == "Function":
                 payload = int.from_bytes(node[0:4], "little")

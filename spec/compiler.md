@@ -5171,6 +5171,41 @@ encode element classification, String and node representation/ownership,
 lifetime, effects, and versioned target adapters independently of node offsets,
 private helper names, LLVM types/symbols, debug shadows, and physical placement.
 
+### TOPAL-COMPILER-LIST-CHARACTER-CORE-001 — Ordinary immutable Character Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List Character`, immutable binding, ordinary private parameters and results,
+package fields, recursively admitted Tuple/Record fields, structural equality
+and inequality, complete `Empty`/`Entry (first, rest)` decisions, entry count,
+emptiness, canonical display, and debugging. Construction and calls SHALL
+evaluate their operands once in source order. Every stored entry SHALL retain
+valid Character evidence and its complete preserved Unicode scalar sequence.
+Equality SHALL compare length and corresponding entries in order through the
+canonical equality derived from String, stopping at the first mismatch without
+normalizing or mutating either input.
+
+On Linux x86-64, `Empty` MAY remain a null private pointer and each `Entry` MAY
+use an immutable 16-byte node containing the existing constrained String
+descriptor pointer and the remaining-node pointer. Equality and counting MAY
+reuse the private finite String-List runtime fragment. Their nonrecursive
+control flow SHALL remain correct at O0. Private definitions, calls, returns,
+and containing private aggregates SHALL use exact pointer-bearing prototypes
+with physical AMD64 placement selected by LLVM. DWARF and the bundled GDB
+renderer SHALL preserve and safely render the source `List Character` identity,
+complete multi-scalar characters, and String delimiters.
+
+This rule SHALL add no code-point Character representation, copied String,
+implicit normalization, host text API, runtime type tag, type-erased generic
+List, public, foreign, serialized, or compiled-library node ABI, foreign
+allocator, C/C++ runtime, other-language standard library, or native-ABI
+revision. Projections, insertion, concatenation, reversal, removal, range
+selection, traversal, higher-order transforms, reclamation beyond process
+lifetime, and other element classifiers remain governed by separate rules.
+Future compiled-library metadata SHALL encode the Character classifier and
+constraint evidence, representation and ownership, lifetime, effects, and
+versioned target adapters independently of node offsets, private helper names,
+LLVM types/symbols, debug shadows, and physical placement.
+
 ### TOPAL-COMPILER-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The compiler SHALL extend contextual homogeneous construction, immutable

@@ -1312,6 +1312,19 @@ runtime, other-language standard library, public/generic node ABI, or ABI
 revision. Future compiled-library metadata remains independent of private node
 offsets, helper names, LLVM types, and physical placement.
 
+`List Character` is a distinct checked and debug classifier but uses the same
+private immutable descriptor-pointer node shape as `List String`, because a
+Character retains its complete String representation and derives exact String
+equality. Construction proves the one-user-perceived-character constraint
+before storage; decisions reload that unchanged descriptor. Equality and count
+reuse the conditional finite String-List fragment, canonical display preserves
+the complete scalar sequence and delimiters, and GDB selects the Character
+element interpretation from DWARF. No code-point representation, normalization,
+host text API, foreign runtime, public layout, or ABI revision is introduced.
+Published-library metadata must preserve the Character classifier and constraint
+evidence separately from the private physical reuse, along with representation,
+ownership, lifetime, effects, and a versioned target adapter.
+
 `List Int` reuses only that node's private size and next-pointer position: its
 first word is the existing canonical arbitrary-precision Int pointer rather
 than an Effect byte. This is a statically selected node interpretation, not a

@@ -14867,7 +14867,10 @@ impl Analyzer {
         {
             if !matches!(
                 element.as_ref(),
-                CompilerType::Boolean | CompilerType::Int | CompilerType::String
+                CompilerType::Boolean
+                    | CompilerType::Character
+                    | CompilerType::Int
+                    | CompilerType::String
             ) && !compiler_nested_int_string_list_element(element.as_ref())
             {
                 return Err(unsupported(
@@ -17169,7 +17172,10 @@ impl Analyzer {
         {
             if !matches!(
                 element.as_ref(),
-                CompilerType::Boolean | CompilerType::Int | CompilerType::String
+                CompilerType::Boolean
+                    | CompilerType::Character
+                    | CompilerType::Int
+                    | CompilerType::String
             ) {
                 return Err(unsupported(
                     &self.source,
@@ -21894,6 +21900,7 @@ impl Analyzer {
                 if matches!(
                     element.as_ref(),
                     CompilerType::Boolean
+                        | CompilerType::Character
                         | CompilerType::Int
                         | CompilerType::String
                         | CompilerType::Function
@@ -23504,6 +23511,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         value_type,
         CompilerType::Effect
             | CompilerType::Boolean
+            | CompilerType::Character
             | CompilerType::Int
             | CompilerType::String
             | CompilerType::Function
@@ -23727,6 +23735,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 element.as_ref(),
                 CompilerType::Effect
                     | CompilerType::Boolean
+                    | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::String
                     | CompilerType::Function
@@ -25579,7 +25588,10 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::List(element) => {
             matches!(
                 element.as_ref(),
-                CompilerType::Boolean | CompilerType::Int | CompilerType::String
+                CompilerType::Boolean
+                    | CompilerType::Character
+                    | CompilerType::Int
+                    | CompilerType::String
             ) || compiler_nested_int_string_list_element(element.as_ref())
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
@@ -32752,6 +32764,84 @@ mod tests {
         assert_eq!(results[9].value_type, list_string);
 
         let unsupported_transform = "use language (version is v0.1)\nvalues : List String is Entry (\"Top\", Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_transform)
+                .unwrap_err()
+                .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_character_lists_across_private_boundaries() {
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-LIST-EMPTY-PREDICATE-001, TOPAL-COMPILER-LIST-CHARACTER-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-character-values.t"
+        ))
+        .unwrap();
+        let list_character = CompilerType::List(Box::new(CompilerType::Character));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list_character);
+        assert_eq!(head.result_type, CompilerType::Character);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_list = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-list")
+            .unwrap();
+        assert_eq!(return_list.result_type, list_character);
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list_character.clone(), CompilerType::Character])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list_character.clone()),
+                ("fallback".into(), CompilerType::Character),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Character List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list_character);
+
+        let unsupported_transform = "use language (version is v0.1)\nvalues : List Character is Entry (\"A\", Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported_transform)
                 .unwrap_err()
