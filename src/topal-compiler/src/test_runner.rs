@@ -129,6 +129,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-packaged-fields.t",
     "examples/language/function-result-chains.t",
     "examples/language/function-results.t",
+    "examples/language/function-return-from-block.t",
     "examples/language/function-return.t",
     "examples/language/function-root-data.t",
     "examples/language/function-root-data-forwarding.t",

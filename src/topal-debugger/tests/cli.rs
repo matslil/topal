@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 275);
+    assert_eq!(examples.len(), 276);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5209,6 +5209,35 @@ fn records_string_pair_list_values_reversibly() {
     ] {
         assert!(stdout.contains(event), "{event}: {stdout}");
     }
+}
+
+#[test]
+fn records_lexical_block_return_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-COMPILER-LEXICAL-RETURN-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-from-block.debug"),
+            &language_example("function-return-from-block.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for event in [
+        "binding.bind [TOPAL-SYN-BIND-001] adjusted",
+        "function.return.explicit [TOPAL-FUNCTION-RETURN-001] Int",
+        "function.exit [TOPAL-FUNCTION-ORDINARY-001] answer",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
 }
 
 #[test]

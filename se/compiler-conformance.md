@@ -96,7 +96,8 @@ evidence.
 | 3b2-b5av | exact finite List Function entries, private parameters/results/packages and Tuple/Record containment, entry-path capture transport, complete decisions, display, and debugging | complete |
 | 3b2-b5aw | exact fixed-size Array Function entries collected from finite Lists, private parameters/results/packages and Tuple/Record containment, entry-path capture transport, checked access, display, and debugging | complete |
 | 3b2-b5ax | exact nonempty Map (String, Function) values collected from finite pair Lists, collision-policy resolution, private parameters/results/packages and Tuple/Record containment, semantic key-path capture transport, exact lookup, display, and debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional/Sum/Result/List/Array/Map, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as/3b2-b5at/3b2-b5au/3b2-b5av/3b2-b5aw/3b2-b5ax, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5e8a | unconditional cleanup-free lexical blocks that return through a direct function-body statement boundary, with skipped-tail exclusion and nested DWARF | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional/Sum/Result/List/Array/Map, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as/3b2-b5at/3b2-b5au/3b2-b5av/3b2-b5aw/3b2-b5ax, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, indirect/conditional and cleanup-bearing return-through-block lowering, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -417,10 +418,12 @@ entries, source-index capture paths, packages, recursive products, and complete
 List decisions; 3b2-b5aw carries the same ordered identities and captures into
 fixed-size Arrays, private boundaries, packages, recursive products, and exact
 checked access; and
-3b2-b5e8 continues with other escaping, recursive,
-overloaded, and dynamically contained callables, remaining recursive and
-nested-block exit control flow, cleanup-bearing scopes, persistent aggregate
-storage, and the remaining user-defined value representations.
+3b2-b5e8a propagates one unconditional return through a direct cleanup-free
+lexical block by retaining its nested scope and normalizing the exit into the
+ordinary function result; 3b2-b5e8 continues with other escaping, recursive,
+overloaded, and dynamically contained callables, conditional or embedded
+nested-block exits, cleanup-bearing scopes, persistent aggregate storage, and
+the remaining user-defined value representations.
 Increment 4a admits the encoding-observation
 byte count without
 attaching an encoding or importing a foreign String runtime; 4b1 adds exact

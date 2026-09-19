@@ -8034,6 +8034,11 @@ enum BlockKind {
     Lexical,
 }
 
+struct AnalyzedBlock {
+    block: CompilerBlock,
+    returns_from_function: bool,
+}
+
 impl Analyzer {
     fn install_modular_types(&mut self, declarations: &[ModularSource]) -> Result<(), Diagnostic> {
         let environment = BTreeMap::new();
@@ -8687,6 +8692,54 @@ impl Analyzer {
         Ok(())
     }
 
+    fn analyze_direct_statement_expression(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
+        function_result: Option<&CompilerType>,
+        allow_function_return: bool,
+    ) -> Result<(CompilerExpression, bool), Diagnostic> {
+        let Expression::Block { statements, .. } = expression else {
+            return self
+                .analyze_expression_with_expected(expression, environment, expected)
+                .map(|value| (value, false));
+        };
+        let span = expression.span();
+        let mut nested = environment.clone();
+        let mut analyzed = self.analyze_block_control(
+            statements,
+            &mut nested,
+            BlockKind::Lexical,
+            expected,
+            function_result,
+            allow_function_return,
+        )?;
+        if statements.is_empty() {
+            analyzed.block.result = unit_expression(span);
+        }
+        let returns_from_function = analyzed.returns_from_function;
+        let mut value = CompilerExpression {
+            value_type: analyzed.block.result.value_type.clone(),
+            int_range: analyzed.block.result.int_range.clone(),
+            rational_value: analyzed.block.result.rational_value.clone(),
+            kind: CompilerExpressionKind::Block(Box::new(analyzed.block)),
+            span,
+        };
+        if !returns_from_function {
+            value = match expected {
+                Some(CompilerType::Character) if value.value_type == CompilerType::String => {
+                    self.finish_character_conversion(value, span)?
+                }
+                Some(CompilerType::String) if value.value_type == CompilerType::Character => {
+                    forget_character_evidence(value)
+                }
+                _ => value,
+            };
+        }
+        Ok((value, returns_from_function))
+    }
+
     #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
     fn analyze_block(
         &mut self,
@@ -8695,10 +8748,32 @@ impl Analyzer {
         kind: BlockKind,
         enclosing_result: Option<&CompilerType>,
     ) -> Result<CompilerBlock, Diagnostic> {
+        self.analyze_block_control(
+            statements,
+            environment,
+            kind,
+            enclosing_result,
+            enclosing_result,
+            kind == BlockKind::Function,
+        )
+        .map(|analyzed| analyzed.block)
+    }
+
+    #[allow(clippy::too_many_lines)] // Exhaustive statement admission keeps the subset boundary visible.
+    fn analyze_block_control(
+        &mut self,
+        statements: &[Statement],
+        environment: &mut BTreeMap<String, BindingFacts>,
+        kind: BlockKind,
+        block_result: Option<&CompilerType>,
+        function_result: Option<&CompilerType>,
+        allow_function_return: bool,
+    ) -> Result<AnalyzedBlock, Diagnostic> {
         let mut lowered = Vec::new();
         let mut generator_bindings = Vec::new();
         let mut result = None;
         let mut explicit_return = false;
+        let mut returns_from_function = false;
         let mut declared = if kind == BlockKind::Lexical {
             BTreeSet::new()
         } else {
@@ -8807,15 +8882,31 @@ impl Analyzer {
                     let expected = classifier
                         .map(|classifier| self.parse_classifier(classifier))
                         .transpose()?;
-                    let mut value = if constraint_definition(&self.source, initializer).is_some() {
-                        self.analyze_constraint_definition(&name_text, initializer, environment)?
-                    } else {
-                        self.analyze_expression_with_expected(
-                            initializer,
-                            environment,
-                            expected.as_ref(),
-                        )?
-                    };
+                    let (mut value, returned) =
+                        if constraint_definition(&self.source, initializer).is_some() {
+                            (
+                                self.analyze_constraint_definition(
+                                    &name_text,
+                                    initializer,
+                                    environment,
+                                )?,
+                                false,
+                            )
+                        } else {
+                            self.analyze_direct_statement_expression(
+                                initializer,
+                                environment,
+                                expected.as_ref(),
+                                function_result,
+                                allow_function_return,
+                            )?
+                        };
+                    if returned {
+                        explicit_return = true;
+                        returns_from_function = true;
+                        result = Some(value);
+                        break;
+                    }
                     if let (Some(classifier), Some(expected)) = (classifier, expected) {
                         if expected == CompilerType::Int
                             && value.value_type == CompilerType::Rational
@@ -8831,7 +8922,7 @@ impl Analyzer {
                         if let CompilerType::Result(success) = &value.value_type
                             && success.as_ref() == &expected
                         {
-                            if !matches!(enclosing_result, Some(CompilerType::Result(_))) {
+                            if !matches!(function_result, Some(CompilerType::Result(_))) {
                                 return Err(source_diagnostic(
                                     &self.source,
                                     "E-RESULT-PROJECTION-CONTEXT",
@@ -9197,7 +9288,19 @@ impl Analyzer {
                     }
                 }
                 Statement::Discard { value, .. } => {
-                    let value = self.analyze_expression(value, environment)?;
+                    let (value, returned) = self.analyze_direct_statement_expression(
+                        value,
+                        environment,
+                        None,
+                        function_result,
+                        allow_function_return,
+                    )?;
+                    if returned {
+                        explicit_return = true;
+                        returns_from_function = true;
+                        result = Some(value);
+                        break;
+                    }
                     if matches!(value.value_type, CompilerType::Generator(_)) {
                         return Err(unsupported(
                             &self.source,
@@ -9212,14 +9315,31 @@ impl Analyzer {
                     }
                 }
                 Statement::Expression(expression) if last => {
-                    result = Some(self.analyze_expression_with_expected(
+                    let (value, returned) = self.analyze_direct_statement_expression(
                         expression,
                         environment,
-                        enclosing_result,
-                    )?);
+                        block_result,
+                        function_result,
+                        allow_function_return,
+                    )?;
+                    explicit_return |= returned;
+                    returns_from_function |= returned;
+                    result = Some(value);
                 }
                 Statement::Expression(expression) => {
-                    let value = self.analyze_expression(expression, environment)?;
+                    let (value, returned) = self.analyze_direct_statement_expression(
+                        expression,
+                        environment,
+                        None,
+                        function_result,
+                        allow_function_return,
+                    )?;
+                    if returned {
+                        explicit_return = true;
+                        returns_from_function = true;
+                        result = Some(value);
+                        break;
+                    }
                     if value.value_type == CompilerType::Unit
                         && matches!(
                             value.kind,
@@ -9237,16 +9357,20 @@ impl Analyzer {
                         ));
                     }
                 }
-                Statement::Return { value, .. } if kind == BlockKind::Function => {
+                Statement::Return { value, .. }
+                    if kind == BlockKind::Function
+                        || (kind == BlockKind::Lexical && allow_function_return) =>
+                {
                     explicit_return = true;
+                    returns_from_function = true;
                     result = Some(self.analyze_expression_with_expected(
                         value,
                         environment,
-                        enclosing_result,
+                        function_result,
                     )?);
                     break;
                 }
-                Statement::Return { .. } if kind == BlockKind::TopLevel => {
+                Statement::Return { .. } if kind == BlockKind::TopLevel || !self.in_function => {
                     return Err(source_diagnostic(
                         &self.source,
                         "E-RETURN-OUTSIDE-FUNCTION",
@@ -9258,7 +9382,7 @@ impl Analyzer {
                     return Err(unsupported(
                         &self.source,
                         statement_span(statement),
-                        "return through a nested lexical block",
+                        "return through a nested lexical block outside an admitted direct statement position",
                     ));
                 }
                 Statement::LibrarySelection { .. } => {
@@ -9289,7 +9413,7 @@ impl Analyzer {
             };
             let close_context = kind == BlockKind::Function
                 && !self.static_context
-                && enclosing_result == Some(&CompilerType::Unit)
+                && function_result == Some(&CompilerType::Unit)
                 && !explicit_return
                 && result
                     .as_ref()
@@ -9360,9 +9484,12 @@ impl Analyzer {
                 "unbound returned Generator and close delivery",
             ));
         }
-        Ok(CompilerBlock {
-            statements: lowered,
-            result,
+        Ok(AnalyzedBlock {
+            block: CompilerBlock {
+                statements: lowered,
+                result,
+            },
+            returns_from_function,
         })
     }
 
@@ -39603,6 +39730,44 @@ mod tests {
             analyze_for_compiler(outside).unwrap_err().code,
             "E-RETURN-OUTSIDE-FUNCTION"
         );
+    }
+
+    #[test]
+    fn models_unconditional_lexical_block_return_as_the_function_result() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-COMPILER-LEXICAL-RETURN-001
+        let source = "use language (version is v0.1)\nanswer is fn (value : Int) -> Int\n  {\n    adjusted is value + 1\n    return adjusted\n    999\n    }\n  1000\nanswer 41\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        let CompilerExpressionKind::Block(block) = &function.body.result.kind else {
+            panic!("expected the return-bearing lexical block to become the function result")
+        };
+        assert!(matches!(
+            block.statements.as_slice(),
+            [CompilerStatement::Binding(CompilerBinding { name, .. })] if name == "adjusted"
+        ));
+        assert!(matches!(
+            &block.result.kind,
+            CompilerExpressionKind::Local(name) if name == "adjusted"
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let abandoned_classifier = "use language (version is v0.1)\nanswer is fn () -> Int\n  abandoned : String is {\n    return 42\n    }\n  0\nanswer ()\n";
+        let program = analyze_for_compiler(abandoned_classifier).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+
+        let embedded = "use language (version is v0.1)\nanswer is fn () -> Int\n  1 + {\n    return 41\n    }\nanswer ()\n";
+        let error = analyze_for_compiler(embedded).unwrap_err();
+        assert_eq!(error.code, "E-COMPILER-UNSUPPORTED");
+        assert!(error.message.contains("direct statement position"));
     }
 
     #[test]

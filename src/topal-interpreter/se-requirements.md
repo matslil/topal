@@ -2002,9 +2002,12 @@ change program values or semantic decision traces.
 All modes shall evaluate an empty block as Unit and a nonempty block in a fresh
 lexical scope under `TOPAL-SYN-GRAMMAR-001` and `TOPAL-EXEC-BLOCK-001`.
 Statements execute in order, the final value becomes the block value, and local
-bindings do not escape. Test
-traces and debugger history shall retain block evaluation as a distinct source
-decision.
+bindings do not escape. When such a block is evaluated directly by a function
+body statement, discard, or binding initializer, an explicit return shall
+propagate to that function boundary under `TOPAL-FUNCTION-RETURN-001` without
+evaluating either the remaining block statements or the enclosing function
+tail. Test traces and debugger history shall retain block evaluation and the
+explicit return as distinct source decisions.
 
 ## TOPAL-INTP-SUBSET-242 — Discard input patterns
 
