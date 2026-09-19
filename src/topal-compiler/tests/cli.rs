@@ -7116,6 +7116,94 @@ fn nat_lists_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn rational_lists_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-LIST-RATIONAL-CORE-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-list-rational-values");
+    let source = directory.join("list-rational-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/list-rational-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert!(String::from_utf8(executed.stdout).unwrap().contains("Entry ( Rational ( 1, 2 ), Entry ( Rational ( 17636684144620811271604938270, 1 ), Entry ( +Infinity, Empty ) ) )"));
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for expected in [
+        "%topal.ListRationalStorage = type { ptr, ptr }",
+        "define internal i1 @topal.runtime.list.rational.equal(ptr",
+        "define internal ptr @topal.runtime.list.rational.entry.count(ptr",
+        "call i32 @topal.runtime.rational.compare(ptr",
+        "define internal fastcc ptr @topal.fn.return_2dlist.",
+    ] {
+        assert!(ir.contains(expected), "{expected}: {ir}");
+    }
+    for forbidden in [" byval", " sret", " inalloca", "preallocated", "call ptr %"] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-rational-values.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis candidate",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List Rational",
+        "candidate = Entry ( Rational ( 1, 2 )",
+        "fallback = Rational ( 9, 1 )",
+        "topal.fn.head_2dor.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn int_list_containment_is_freestanding_and_gdb_renders_exact_entries() {
     // TOPAL-LIST-CONTAINS-ENTRY-001, TOPAL-LIST-CONTAINS-SEQUENCE-001,
     // TOPAL-LIST-CONTAINS-SUBSEQUENCE-001,

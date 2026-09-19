@@ -1306,6 +1306,11 @@
       "cpu_time_ns": 16126999,
       "memory_peak_bytes": 18374656,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-rational-values.t": {
+      "cpu_time_ns": 18853860,
+      "memory_peak_bytes": 18452480,
+      "samples_per_test": 50
     }
   }
 }
