@@ -8433,6 +8433,7 @@ impl Analyzer {
         if !matches!(
             (element, &value.value_type),
             (CompilerType::Nat, CompilerType::InfiniteNat)
+                | (CompilerType::Rational, CompilerType::InfiniteRational)
         ) {
             require_same_type(&self.source, value.span, element, &value.value_type)?;
         }
@@ -14889,6 +14890,7 @@ impl Analyzer {
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Rational
                     | CompilerType::String
             ) && !compiler_nested_int_string_list_element(element.as_ref())
             {
@@ -17195,6 +17197,7 @@ impl Analyzer {
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Rational
                     | CompilerType::String
             ) {
                 return Err(unsupported(
@@ -21923,6 +21926,7 @@ impl Analyzer {
                         | CompilerType::Character
                         | CompilerType::Int
                         | CompilerType::Nat
+                        | CompilerType::Rational
                         | CompilerType::String
                         | CompilerType::Function
                 ) =>
@@ -23535,6 +23539,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
             | CompilerType::Character
             | CompilerType::Int
             | CompilerType::Nat
+            | CompilerType::Rational
             | CompilerType::String
             | CompilerType::Function
     ) || matches!(
@@ -23760,6 +23765,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Rational
                     | CompilerType::String
                     | CompilerType::Function
             ) || compiler_nested_int_string_list_element(element.as_ref())
@@ -25615,6 +25621,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Rational
                     | CompilerType::String
             ) || compiler_nested_int_string_list_element(element.as_ref())
         }
@@ -32948,6 +32955,61 @@ mod tests {
             analyze_for_compiler(unsupported_transform)
                 .unwrap_err()
                 .code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_rational_lists_across_private_boundaries() {
+        // TOPAL-COMPILER-LIST-RATIONAL-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-rational-values.t"
+        ))
+        .unwrap();
+        let list = CompilerType::List(Box::new(CompilerType::Rational));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, CompilerType::Rational);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list.clone(), CompilerType::Rational])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Rational List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list);
+        let unsupported = "use language (version is v0.1)\nhalf : Rational is Rational (1, 2)\nvalues : List Rational is Entry (half, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }

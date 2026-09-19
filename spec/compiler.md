@@ -5241,6 +5241,31 @@ representation and ownership, lifetime, effects, and versioned target adapters
 independently of node offsets, private helper names, LLVM types/symbols, debug
 shadows, and physical placement.
 
+### TOPAL-COMPILER-LIST-RATIONAL-CORE-001 — Ordinary immutable Rational Lists
+
+The compiler SHALL admit contextual `Empty` and `Entry` construction for
+`List Rational`, immutable binding, ordinary private parameters/results,
+package and recursively admitted Tuple/Record fields, structural equality and
+inequality, complete decisions, entry count, emptiness, canonical display, and
+debugging. Operands SHALL evaluate once in source order. Entries SHALL retain
+exact reduced Rational values, including either infinity. Equality SHALL compare
+length and corresponding values through canonical Rational comparison.
+
+On Linux x86-64, `Entry` MAY use an immutable 16-byte node containing the
+existing Rational descriptor pointer and remaining pointer; `Empty` MAY be
+null. A conditional finite nonrecursive fragment MAY implement equality and
+counting and SHALL remain correct at O0. LLVM SHALL select physical AMD64
+placement for exact private pointer-bearing prototypes. DWARF/GDB SHALL preserve
+the `List Rational` identity, exact fractions, and infinities.
+
+This rule SHALL add no floating-point conversion, host numeric API, runtime
+type tag, generic/public/foreign/library node ABI, foreign allocator, C/C++
+runtime, other-language standard library, or native-ABI revision. Other List
+operations, reclamation, and element classifiers remain separately governed.
+Future library metadata SHALL encode Rational/node representation, ownership,
+lifetime, effects, infinity capability, and versioned target adapters
+independently of private offsets, names, LLVM types/symbols, and placement.
+
 ### TOPAL-COMPILER-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The compiler SHALL extend contextual homogeneous construction, immutable

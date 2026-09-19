@@ -510,6 +510,13 @@ enum ListIntRuntimeFragment {
     NestedIntStringCore,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum PointerListRuntimeFragment {
+    Boolean,
+    Rational,
+    String,
+}
+
 struct Generator<'a> {
     program: &'a CompilerProgram,
     source_name: &'a str,
@@ -517,8 +524,7 @@ struct Generator<'a> {
     functions: Vec<String>,
     next_global: usize,
     needs_infinity_result_runtime: bool,
-    needs_list_boolean_core: bool,
-    needs_list_string_core: bool,
+    pointer_list_runtime_fragments: BTreeSet<PointerListRuntimeFragment>,
     list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
     current_result_captures: Vec<CompilerFunctionResultCapture>,
     current_function_return_type: Option<String>,
@@ -546,8 +552,7 @@ impl<'a> Generator<'a> {
             functions: Vec::new(),
             next_global: 0,
             needs_infinity_result_runtime: false,
-            needs_list_boolean_core: false,
-            needs_list_string_core: false,
+            pointer_list_runtime_fragments: BTreeSet::new(),
             list_int_runtime_fragments: BTreeSet::new(),
             current_result_captures: Vec::new(),
             current_function_return_type: None,
@@ -574,14 +579,7 @@ impl<'a> Generator<'a> {
             module.push_str(INFINITY_RESULT_RUNTIME);
             module.push('\n');
         }
-        if self.needs_list_boolean_core {
-            module.push_str(LIST_BOOLEAN_CORE_RUNTIME);
-            module.push('\n');
-        }
-        if self.needs_list_string_core {
-            module.push_str(LIST_STRING_CORE_RUNTIME);
-            module.push('\n');
-        }
+        self.emit_pointer_list_runtimes(&mut module);
         if self
             .list_int_runtime_fragments
             .iter()
@@ -652,6 +650,25 @@ impl<'a> Generator<'a> {
         );
         module.push_str(&self.debug.finish());
         module
+    }
+
+    fn emit_pointer_list_runtimes(&self, module: &mut String) {
+        for (fragment, runtime) in [
+            (
+                PointerListRuntimeFragment::Boolean,
+                LIST_BOOLEAN_CORE_RUNTIME,
+            ),
+            (
+                PointerListRuntimeFragment::Rational,
+                LIST_RATIONAL_CORE_RUNTIME,
+            ),
+            (PointerListRuntimeFragment::String, LIST_STRING_CORE_RUNTIME),
+        ] {
+            if self.pointer_list_runtime_fragments.contains(&fragment) {
+                module.push_str(runtime);
+                module.push('\n');
+            }
+        }
     }
 
     #[allow(clippy::if_not_else, clippy::too_many_lines)] // Capture returns precede exhaustive ordinary returns.
@@ -2206,6 +2223,7 @@ impl<'a> Generator<'a> {
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
+                    | CompilerType::Rational
                     | CompilerType::String
                     | CompilerType::Function => (16, 8),
                     CompilerType::Tuple(fields)
@@ -2240,6 +2258,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     (CompilerType::Int | CompilerType::Nat, LlValue::Int(value))
+                    | (CompilerType::Rational, LlValue::Rational(value))
                     | (CompilerType::Character | CompilerType::String, LlValue::String(value)) => {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
@@ -2536,15 +2555,24 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if matches!(element.as_ref(), CompilerType::Character | CompilerType::String)
                 );
+                let rational = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if element.as_ref() == &CompilerType::Rational
+                );
                 let nested_int_string = matches!(
                     &value.value_type,
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
                 if boolean {
-                    self.needs_list_boolean_core = true;
+                    self.pointer_list_runtime_fragments
+                        .insert(PointerListRuntimeFragment::Boolean);
+                } else if rational {
+                    self.pointer_list_runtime_fragments
+                        .insert(PointerListRuntimeFragment::Rational);
                 } else if string {
-                    self.needs_list_string_core = true;
+                    self.pointer_list_runtime_fragments
+                        .insert(PointerListRuntimeFragment::String);
                 } else {
                     self.list_int_runtime_fragments
                         .insert(if nested_int_string {
@@ -2559,6 +2587,8 @@ impl<'a> Generator<'a> {
                         "call ptr @topal.runtime.list.{}.entry.count(ptr {})",
                         if boolean {
                             "boolean"
+                        } else if rational {
+                            "rational"
                         } else if string {
                             "string"
                         } else if nested_int_string {
@@ -4196,6 +4226,14 @@ impl<'a> Generator<'a> {
                 ),
                 CompilerType::Int | CompilerType::Nat => (
                     LlValue::Int(body.instruction(
+                        &format!("load ptr, ptr {list}, align 8"),
+                        *first_span,
+                        &mut self.debug,
+                    )),
+                    Vec::new(),
+                ),
+                CompilerType::Rational => (
+                    LlValue::Rational(body.instruction(
                         &format!("load ptr, ptr {list}, align 8"),
                         *first_span,
                         &mut self.debug,
@@ -6474,11 +6512,17 @@ impl<'a> Generator<'a> {
     ) -> String {
         debug_assert_eq!(element, right_element);
         let runtime = if element == &CompilerType::Boolean {
-            self.needs_list_boolean_core = true;
+            self.pointer_list_runtime_fragments
+                .insert(PointerListRuntimeFragment::Boolean);
             "boolean"
         } else if matches!(element, CompilerType::Character | CompilerType::String) {
-            self.needs_list_string_core = true;
+            self.pointer_list_runtime_fragments
+                .insert(PointerListRuntimeFragment::String);
             "string"
+        } else if element == &CompilerType::Rational {
+            self.pointer_list_runtime_fragments
+                .insert(PointerListRuntimeFragment::Rational);
+            "rational"
         } else if compiler_nested_int_string_list_element(element) {
             self.list_int_runtime_fragments
                 .insert(ListIntRuntimeFragment::NestedIntStringCore);
@@ -8265,6 +8309,14 @@ impl<'a> Generator<'a> {
             ),
             CompilerType::Int | CompilerType::Nat => (
                 LlValue::Int(body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                )),
+                8,
+            ),
+            CompilerType::Rational => (
+                LlValue::Rational(body.instruction(
                     &format!("load ptr, ptr {current}, align 8"),
                     span,
                     &mut self.debug,
@@ -11739,6 +11791,7 @@ fn llvm_string(value: &str) -> String {
 const PLATFORM_RUNTIME: &str = include_str!("runtime/linux_x86_64.ll");
 const INFINITY_RESULT_RUNTIME: &str = include_str!("runtime/infinity_result.ll");
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("runtime/list_boolean_core.ll");
+const LIST_RATIONAL_CORE_RUNTIME: &str = include_str!("runtime/list_rational_core.ll");
 const LIST_STRING_CORE_RUNTIME: &str = include_str!("runtime/list_string_core.ll");
 const LIST_INT_LAYOUT: &str = include_str!("runtime/list_int_layout.ll");
 const LIST_INT_CONTAINMENT_RUNTIME: &str = include_str!("runtime/list_int_containment.ll");

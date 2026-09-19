@@ -198,6 +198,11 @@ overflow, truncation, or wrapping. Debug information and future library
 metadata preserve Nat evidence independently of the private Int-compatible
 layout.
 
+Ordinary `List Rational` values use a private descriptor-pointer node and a
+conditionally linked finite equality/count fragment. Equality delegates to the
+canonical exact Rational comparator, including infinities; no floating-point,
+host numeric library, or public layout is introduced.
+
 Topal executables are freestanding with respect to other language runtimes.
 They do not acquire a C or C++ standard library, process-startup object, or
 dynamic loader dependency merely because the compiler uses LLVM. The Linux

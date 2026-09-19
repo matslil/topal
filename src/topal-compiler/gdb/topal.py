@@ -707,6 +707,14 @@ class _TopalListPrinter:
                 if rendered.startswith("<"):
                     return f"<invalid List {self._element_type} entry: {rendered}>"
                 entries.append(rendered)
+            elif self._element_type == "Rational":
+                payload = int.from_bytes(node[0:8], "little")
+                if not payload:
+                    return "<invalid null List Rational entry>"
+                rendered = _TopalRationalPrinter(payload).to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid List Rational entry: {rendered}>"
+                entries.append(rendered)
             elif self._element_type in ("Character", "String"):
                 payload = int.from_bytes(node[0:8], "little")
                 if not payload:

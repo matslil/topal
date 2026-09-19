@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 258);
+    assert_eq!(examples.len(), 259);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5635,6 +5635,32 @@ fn every_mode_preserves_nat_list_values() {
     assert!(trace.contains("list.entry-count"));
     assert!(trace.contains("list.empty.tested"));
     assert!(trace.contains("equality.list"));
+}
+
+#[test]
+fn every_mode_preserves_rational_list_values() {
+    // TOPAL-INTP-SUBSET-285, TOPAL-COMPILER-LIST-RATIONAL-CORE-001
+    let source = include_str!("../../../examples/language/list-rational-values.t");
+    let expected = "(Rational ( 1, 2 ), Rational ( 17636684144620811271604938270, 1 ), true, true, 3, true, Rational ( 5, 1 ), Rational ( 1, 2 ), Rational ( 6, 1 ), Entry ( Rational ( 1, 2 ), Entry ( Rational ( 17636684144620811271604938270, 1 ), Entry ( +Infinity, Empty ) ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
 }
 
 #[test]

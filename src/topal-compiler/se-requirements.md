@@ -5489,6 +5489,27 @@ names, LLVM types/symbols, debug shadows, and physical placement. This realizes
 `TOPAL-TYPE-LIST-EQUALITY-001`, `TOPAL-LIST-ENTRY-COUNT-001`, and
 `TOPAL-LIST-EMPTY-PREDICATE-001` for compiler increment 4b3d-r.
 
+## TOPAL-COMP-LIST-RATIONAL-CORE-001 — Ordinary immutable Rational Lists
+
+The compiler shall admit contextual construction, immutable binding, private
+parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for
+`List Rational`. Exact reduced fractions and infinities shall be retained;
+operands evaluate once and unsupported transforms fail before publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing Rational descriptor and remaining pointer. A conditional finite
+fragment shall compare canonically and count correctly at O0. LLVM owns private
+AMD64 placement; DWARF/GDB retain exact source types and values. Tests cover all
+admitted paths, IR, ELF/DWARF, GDB, history, corpus, rejection, and baselines.
+
+This adds no floating point, host numeric API, runtime tag, public/foreign/
+library ABI, foreign allocator, C/C++ runtime, other-language library, or ABI
+revision. Future metadata carries Rational/node representation, ownership,
+lifetime, effects, infinity capability, and target adapters. This realizes
+`TOPAL-COMPILER-LIST-RATIONAL-CORE-001`, List construction, decision, equality,
+count, and empty rules for compiler increment 4b3d-s.
+
 ## TOPAL-COMP-LIST-INT-CONTAINMENT-001 — Exact Int List containment
 
 The checked compiler model shall extend contextual homogeneous List

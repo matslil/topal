@@ -1337,6 +1337,13 @@ metadata must carry Nat constraint evidence, infinity capability,
 representation, ownership, lifetime, effects, and a versioned target adapter
 independently of this private physical reuse.
 
+`List Rational` uses immutable 16-byte nodes containing the existing exact
+Rational descriptor pointer and remaining pointer. Its conditional finite
+runtime fragment compares entries through canonical Rational comparison and
+counts nodes. Decisions, display, DWARF, and GDB retain exact reduced fractions
+and infinities. LLVM owns private AMD64 placement; no floating-point, foreign
+numeric runtime, public layout, or ABI revision is introduced.
+
 `List Int` reuses only that node's private size and next-pointer position: its
 first word is the existing canonical arbitrary-precision Int pointer rather
 than an Effect byte. This is a statically selected node interpretation, not a

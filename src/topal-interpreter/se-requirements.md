@@ -2520,3 +2520,11 @@ compare them structurally through exact numeric equality, decompose them through
 complete List decisions, observe entry count and emptiness, and render their
 canonical source form. The shared regression and reversible debugger history
 shall cover each path with the same source used by the native compiler.
+
+## TOPAL-INTP-SUBSET-285 — Ordinary Rational List values
+
+All source modes shall preserve exact reduced finite Rational entries and
+infinities through empty/nonempty `List Rational` construction, ordinary
+parameters/results, packages, Tuples, Records, structural equality, complete
+decisions, count, emptiness, and canonical display. Shared native/interpreter
+regression and reversible history shall cover each path.
