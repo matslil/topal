@@ -5053,11 +5053,12 @@ constraint operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001`, and the direct named modular
 operand admitted by `TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-001`, and the direct
 modular-reduction operand admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, a return-bearing block
-embedded in another expression, conditional or callback, and any exit whose
-scope owns generator close, resource, destructor, or other cleanup obligations
-SHALL remain rejected until explicit exit-edge and cleanup lowering is
-implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary List
+collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, a
+return-bearing block embedded in another expression, conditional or callback,
+and any exit whose scope owns generator close, resource, destructor, or other
+cleanup obligations SHALL remain rejected until explicit exit-edge and cleanup
+lowering is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5085,11 +5086,12 @@ constraint operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001`, and the direct named modular
 operand admitted by `TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-001`, and the direct
 modular-reduction operand admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, this rule admits no other
-compound-expression, conditional, callback, generator, or cleanup-bearing
-propagation and SHALL introduce no runtime control-flow object, unwind edge,
-allocation, foreign dependency, C/C++ standard library, public ABI, or
-native-ABI revision.
+`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary List
+collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, this
+rule admits no other compound-expression, conditional, callback, generator, or
+cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
+unwind edge, allocation, foreign dependency, C/C++ standard library, public
+ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
 
@@ -5204,13 +5206,14 @@ Int-constraint form admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001`, and the direct named modular
 form admitted by `TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-001`, and the direct
 modular-reduction operand admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, other constraint or modular
-forms, collection, qualified, and any other constructor forms; products or
-other expressions nested in the operand; decisions; callbacks; generators; and
-exits with cleanup obligations SHALL remain rejected. This rule SHALL introduce
-no runtime control-flow object, constructor-specific allocation, indirect call,
-unwind edge, foreign dependency, C/C++ standard library, public ABI, or
-native-ABI revision.
+`TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary List
+collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, other
+constraint, modular, or collection forms, qualified and any other constructor
+forms; products or other expressions nested in the operand; decisions;
+callbacks; generators; and exits with cleanup obligations SHALL remain
+rejected. This rule SHALL introduce no runtime control-flow object,
+constructor-specific allocation, indirect call, unwind edge, foreign
+dependency, C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-VARIANT-001 — Positional Variant payload lexical exit
 
@@ -5325,6 +5328,29 @@ cleanup-bearing forms SHALL remain fail-closed under their existing diagnostic
 contracts. This rule SHALL introduce no runtime control-flow object, modular
 validation or reduction, allocation, indirect call, unwind edge, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001 — Unary List-collection source lexical exit
+
+An admitted cleanup-free lexical block used as the direct source of the
+built-in unary `collect source` operation MAY execute an explicit `return`.
+Selection of the exact built-in operation SHALL precede the source. The source
+return SHALL then complete the nearest enclosing ordinary function before
+finite-traversal classification, generator consumption, or List
+materialization. No List node, consumption action, or abandoned binding SHALL
+be emitted, and remaining source statements and the enclosing function tail
+SHALL be excluded from generated IR at `-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than a List or abandoned binding classifier. The checked
+compiler model SHALL retain the returning block as the function result, and the
+backend SHALL preserve its nested DWARF scope before using the enclosing
+function's existing single machine return. Infix Array or String collection,
+`collect-set`, `collect-bag`, `collect-map`, qualified, nested-source, decision,
+callback, generator-cleanup, and other cleanup-bearing forms SHALL remain
+fail-closed under their existing diagnostic contracts. This rule SHALL
+introduce no runtime control-flow object, collection materialization,
+allocation, indirect call, unwind edge, foreign dependency, C/C++ standard
+library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

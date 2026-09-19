@@ -1962,8 +1962,8 @@ block remains the private result with nested `DILexicalBlock` and the existing
 single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
-3b2-b5e8k/3b2-b5e8l, collection, qualified, nested-payload, conditional, and
-cleanup-bearing forms remain deferred.
+3b2-b5e8k/3b2-b5e8l, collection forms outside 3b2-b5e8m, qualified,
+nested-payload, conditional, and cleanup-bearing forms remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -2013,6 +2013,16 @@ abandoned binding, and tails. The block remains the private result with nested
 `DILexicalBlock` and the existing single machine return. This changes no runtime
 representation or ABI; forward, unknown, dynamically selected, qualified,
 nested-operand, conditional, and cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8m admits a direct return-bearing block as the source of the
+built-in unary `collect source` operation. Exact operation selection precedes
+the source; the exit then precedes finite-traversal classification, generator
+consumption, and List materialization and omits List nodes, the abandoned
+binding, and tails. The block remains the private result with nested
+`DILexicalBlock` and the existing single machine return. This changes no runtime
+representation or ABI; infix Array/String collection, set/bag/map collectors,
+qualified and nested-source forms, conditional control flow, and
+cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
