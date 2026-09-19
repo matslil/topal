@@ -2553,3 +2553,11 @@ All source modes shall preserve the four qualified
 Records, structural equality, complete decisions, count, emptiness, and
 canonical display. Shared native/interpreter regression and reversible history
 shall cover each path.
+
+## TOPAL-INTP-SUBSET-289 — Ordinary Unit List values
+
+All source modes shall preserve Unit's sole value `()` through empty/nonempty
+`List Unit` construction, ordinary parameters/results, packages, Tuples,
+Records, structural length equality, complete decisions, count, emptiness, and
+canonical display without introducing completion or effect evidence. Shared
+native/interpreter regression and reversible history shall cover each path.

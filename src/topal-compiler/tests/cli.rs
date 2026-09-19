@@ -1468,7 +1468,7 @@ fn bounded_iterate_foreach_is_freestanding_ordered_and_debuggable() {
         "type = Int",
         "$1 = 0",
         "type = Unit",
-        "$2 = 0 '\\000'",
+        "$2 = ()",
         "topal.main",
     ] {
         assert!(text.contains(expected), "missing {expected:?}: {text}");
@@ -4232,8 +4232,8 @@ fn custom_generator_unit_values_are_freestanding_and_debuggable() {
         "type = enum Generator Unit Unit Unit",
         "$1 = <Generator Unit Unit Unit>",
         "type = Unit",
-        "$2 = 0 '\\000'",
-        "$3 = 0 '\\000'",
+        "$2 = ()",
+        "$3 = ()",
         "custom-generator-unit-values.t:12",
         "custom-generator-unit-values.t:17",
         "16\tgenerated foreach { signal }",
@@ -5153,7 +5153,7 @@ fn custom_generator_resume_binding_is_freestanding_and_debuggable() {
         "type = enum Generator Character Unit Unit",
         "$1 = <Generator Character Unit Unit>",
         "type = Unit",
-        "$2 = 0 '\\000'",
+        "$2 = ()",
         "topal.main",
     ] {
         assert!(text.contains(expected), "missing {expected:?}: {text}");
@@ -7563,6 +7563,129 @@ fn error_code_lists_are_complete_private_freestanding_and_debuggable() {
         "type = List lang arithmetic ArithmeticErrorCode",
         "candidate = Entry ( out-of-range, Entry ( not-representable, Entry ( division-by-zero, Entry ( indeterminate, Empty ) ) ) )",
         "fallback = indeterminate",
+        "topal.fn.head_2dor.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, rejection, and source-level GDB values.
+fn unit_lists_are_complete_private_freestanding_and_debuggable() {
+    // TOPAL-TYPE-PRODUCT-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+    // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+    // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+    // TOPAL-COMPILER-LIST-UNIT-CORE-001, TOPAL-COMPILER-PLATFORM-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-list-unit-values");
+    let source = directory.join("list-unit-values.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/list-unit-values.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"((), (), true, true, 3, true, (), (), (), Entry ( (), Entry ( (), Entry ( (), Empty ) ) ))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for expected in [
+        "%topal.ListUnitStorage = type { i8, ptr }",
+        "define internal i1 @topal.runtime.list.unit.equal(ptr",
+        "define internal ptr @topal.runtime.list.unit.entry.count(ptr",
+        "define internal fastcc ptr @topal.fn.return_2dlist.",
+        "define internal fastcc { ptr, i8 } @topal.fn.return_2dpair.",
+        "store i8 0",
+        "load i8",
+    ] {
+        assert!(ir.contains(expected), "{expected}: {ir}");
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.runtime.list.effect.equal",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("unsupported-transform.t");
+    let rejected_executable = directory.join("unsupported-transform");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\nvalues : List Unit is Entry ((), Empty)\nvalues reverse\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("E-COMPILER-UNSUPPORTED"));
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break list-unit-values.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "whatis candidate",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "type = List Unit",
+        "candidate = Entry ( (), Entry ( (), Entry ( (), Empty ) ) )",
+        "fallback = ()",
         "topal.fn.head_2dor.",
         "topal.main",
     ] {

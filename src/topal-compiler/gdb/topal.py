@@ -3,6 +3,17 @@
 import gdb
 
 
+class _TopalUnitPrinter:
+    """Render Unit's sole valid value."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def to_string(self):
+        payload = int(self._value)
+        return "()" if payload == 0 else f"<invalid Unit value {payload}>"
+
+
 def _decimal_from_limbs(raw, length):
     """Convert little-endian u32 limbs without Python's integer-string cap."""
     decimal_chunks = [0]
@@ -694,6 +705,11 @@ class _TopalListPrinter:
                 if payload:
                     return f"<invalid Effect value {payload}>"
                 entries.append("Effects ()")
+            elif self._element_type == "Unit":
+                payload = node[0]
+                if payload:
+                    return f"<invalid Unit value {payload}>"
+                entries.append("()")
             elif self._element_type == "Boolean":
                 payload = node[0]
                 if payload > 1:
@@ -1027,6 +1043,8 @@ class _TopalSumPrinter:
 def _lookup_topal_value(value):
     value_type = str(value.type)
     storage_type = str(value.type.strip_typedefs())
+    if value_type == "Unit":
+        return _TopalUnitPrinter(value)
     if (
         value_type == "SerializationStream"
         or storage_type == "struct TopalSerializationStreamHeader *"

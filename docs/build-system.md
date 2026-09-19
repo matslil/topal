@@ -197,6 +197,13 @@ display, and debugging. The private tags do not identify future vocabularies;
 compiled-library metadata must name the vocabulary and alternatives canonically
 and independently of the selected target representation.
 
+Ordinary `List Unit` values retain Unit's zero-information source identity in
+private i8/pointer nodes. Since `()` is the only entry value, structural
+equality compares List length, while decisions, display, DWARF, and GDB still
+preserve the distinction between an entry carrying Unit and `Empty`. This
+private carrier is not completion evidence and must never be conflated with
+`Completed`, `Effect`, or a public library representation.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates
