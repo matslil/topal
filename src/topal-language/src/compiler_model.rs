@@ -1389,10 +1389,15 @@ struct CompilerArgumentBinding {
 
 #[derive(Clone)]
 struct CompilerFunctionCallReference {
-    name: String,
+    declarations: Vec<FunctionSource>,
     span: Span,
     arguments: Vec<Expression>,
     is_ordinary_unqualified: bool,
+}
+
+#[derive(Clone)]
+struct CompilerNamedCallTarget {
+    declarations: Vec<FunctionSource>,
 }
 
 type NormalizedPackagedCall = (
@@ -8507,6 +8512,7 @@ impl Analyzer {
             .filter(|(candidate, facts)| {
                 facts.runtime_bound
                     && !candidate.starts_with("@ ")
+                    && !candidate.starts_with("root ")
                     && !parameter_names.contains(candidate.as_str())
                     && compiler_function_result_supported(&facts.value_type)
             })
@@ -19199,10 +19205,15 @@ impl Analyzer {
         {
             return Ok(Some(span));
         }
-        let identity = function_overload_identity(
-            &self.source,
-            self.source.slice(declaration.name),
-            declaration,
+        let identity = format!(
+            "{}@{}..{}",
+            function_overload_identity(
+                &self.source,
+                self.source.slice(declaration.name),
+                declaration,
+            ),
+            declaration.span.start,
+            declaration.span.end
         );
         if !visiting.insert(identity.clone()) {
             return Ok(None);
@@ -19210,10 +19221,7 @@ impl Analyzer {
         let references =
             function_body_called_function_references(&self.source, &self.functions, declaration);
         for reference in references {
-            let declarations = self
-                .functions
-                .get(&reference.name)
-                .expect("collected call reference has declarations");
+            let declarations = &reference.declarations;
             if declarations.len() != 1
                 && let Some(called) =
                     self.capture_forwarding_overload(declaration, &reference, declarations)
@@ -19273,10 +19281,15 @@ impl Analyzer {
         {
             return Ok(Some(span));
         }
-        let identity = function_overload_identity(
-            &self.source,
-            self.source.slice(declaration.name),
-            declaration,
+        let identity = format!(
+            "{}@{}..{}",
+            function_overload_identity(
+                &self.source,
+                self.source.slice(declaration.name),
+                declaration,
+            ),
+            declaration.span.start,
+            declaration.span.end
         );
         if !visiting.insert(identity.clone()) {
             return Ok(None);
@@ -19284,10 +19297,7 @@ impl Analyzer {
         let references =
             function_body_called_function_references(&self.source, &self.functions, declaration);
         for reference in references {
-            let declarations = self
-                .functions
-                .get(&reference.name)
-                .expect("collected call reference has declarations");
+            let declarations = &reference.declarations;
             if declarations.len() != 1
                 && let Some(called) =
                     self.capture_forwarding_overload(declaration, &reference, declarations)
@@ -21887,47 +21897,102 @@ fn function_body_called_function_references(
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     declaration: &FunctionSource,
 ) -> Vec<CompilerFunctionCallReference> {
-    let mut locals = BTreeSet::new();
+    let mut local_functions = BTreeMap::new();
     for parameter in &declaration.parameters {
-        collect_parameter_binding_names(source, parameter, &mut locals);
+        collect_parameter_function_bindings(source, parameter, &mut local_functions);
     }
     let mut references = Vec::new();
     collect_statement_function_calls(
         source,
         functions,
         &declaration.body,
-        &mut locals,
+        &mut local_functions,
         &mut references,
     );
     references
 }
 
-fn collect_parameter_binding_names(
+fn collect_parameter_function_bindings(
     source: &SourceText,
     parameter: &FunctionParameter,
-    names: &mut BTreeSet<String>,
+    local_functions: &mut BTreeMap<String, Option<CompilerNamedCallTarget>>,
 ) {
-    names.insert(source.slice(parameter.name).to_owned());
+    local_functions.insert(source.slice(parameter.name).to_owned(), None);
     for field in &parameter.fields {
-        collect_parameter_binding_names(source, field, names);
+        collect_parameter_function_bindings(source, field, local_functions);
     }
+}
+
+fn nested_named_call_target(statement: &Statement) -> Option<CompilerNamedCallTarget> {
+    let Statement::Function {
+        name,
+        is_static,
+        parameters,
+        result,
+        effect_bound,
+        clauses,
+        body,
+        span,
+    } = statement
+    else {
+        return None;
+    };
+    (!is_static && effect_bound.is_none() && **clauses == FunctionClauses::default()).then(|| {
+        CompilerNamedCallTarget {
+            declarations: vec![FunctionSource {
+                name: *name,
+                parameters: parameters.clone(),
+                result: *result,
+                effect_bound: None,
+                declared_effects: None,
+                body: body.clone(),
+                span: *span,
+                is_static: false,
+            }],
+        }
+    })
+}
+
+fn retained_named_call_target(
+    source: &SourceText,
+    functions: &BTreeMap<String, Vec<FunctionSource>>,
+    local_functions: &BTreeMap<String, Option<CompilerNamedCallTarget>>,
+    expression: &Expression,
+) -> Option<CompilerNamedCallTarget> {
+    let Expression::Identifier(name) = expression else {
+        return None;
+    };
+    let name_text = source.slice(*name);
+    if let Some(target) = local_functions.get(name_text) {
+        return target.clone();
+    }
+    let declarations = functions
+        .get(name_text)?
+        .iter()
+        .filter(|declaration| declaration.span.end <= name.start)
+        .cloned()
+        .collect::<Vec<_>>();
+    (!declarations.is_empty()).then_some(CompilerNamedCallTarget { declarations })
 }
 
 fn collect_statement_function_calls(
     source: &SourceText,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     statements: &[Statement],
-    locals: &mut BTreeSet<String>,
+    local_functions: &mut BTreeMap<String, Option<CompilerNamedCallTarget>>,
     references: &mut Vec<CompilerFunctionCallReference>,
 ) {
     for statement in statements {
         match statement {
             Statement::Function { name, .. } => {
-                locals.insert(source.slice(*name).to_owned());
+                local_functions.insert(
+                    source.slice(*name).to_owned(),
+                    nested_named_call_target(statement),
+                );
             }
             Statement::Published { declaration, .. } => {
                 if let Statement::Function { name, .. } = declaration.as_ref() {
-                    locals.insert(source.slice(*name).to_owned());
+                    local_functions.insert(source.slice(*name).to_owned(), None);
                 }
             }
             _ => {}
@@ -21935,22 +22000,39 @@ fn collect_statement_function_calls(
     }
     for statement in statements {
         match statement {
-            Statement::Published { declaration, .. } => collect_statement_function_calls(
-                source,
-                functions,
-                std::slice::from_ref(declaration.as_ref()),
-                locals,
-                references,
-            ),
+            Statement::Published { declaration, .. } => {
+                if !matches!(declaration.as_ref(), Statement::Function { .. }) {
+                    collect_statement_function_calls(
+                        source,
+                        functions,
+                        std::slice::from_ref(declaration.as_ref()),
+                        local_functions,
+                        references,
+                    );
+                }
+            }
             Statement::Binding { name, value, .. } => {
-                collect_expression_function_calls(source, functions, value, locals, references);
-                locals.insert(source.slice(*name).to_owned());
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    value,
+                    local_functions,
+                    references,
+                );
+                let target = retained_named_call_target(source, functions, local_functions, value);
+                local_functions.insert(source.slice(*name).to_owned(), target);
             }
             Statement::ContextAssignment { value, .. }
             | Statement::Discard { value, .. }
             | Statement::Return { value, .. }
             | Statement::Expression(value) => {
-                collect_expression_function_calls(source, functions, value, locals, references);
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    value,
+                    local_functions,
+                    references,
+                );
             }
             Statement::Foreach {
                 result,
@@ -21959,17 +22041,23 @@ fn collect_statement_function_calls(
                 body,
                 ..
             } => {
-                collect_expression_function_calls(source, functions, iterated, locals, references);
-                let mut body_locals = locals.clone();
-                body_locals.insert(source.slice(*binding).to_owned());
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    iterated,
+                    local_functions,
+                    references,
+                );
+                let mut body_local_functions = local_functions.clone();
+                body_local_functions.insert(source.slice(*binding).to_owned(), None);
                 if let Some((name, _)) = result {
-                    body_locals.insert(source.slice(*name).to_owned());
+                    body_local_functions.insert(source.slice(*name).to_owned(), None);
                 }
                 collect_statement_function_calls(
                     source,
                     functions,
                     body,
-                    &mut body_locals,
+                    &mut body_local_functions,
                     references,
                 );
             }
@@ -21992,17 +22080,17 @@ fn collect_expression_function_calls(
     source: &SourceText,
     functions: &BTreeMap<String, Vec<FunctionSource>>,
     expression: &Expression,
-    locals: &BTreeSet<String>,
+    local_functions: &BTreeMap<String, Option<CompilerNamedCallTarget>>,
     references: &mut Vec<CompilerFunctionCallReference>,
 ) {
     match expression {
         Expression::Block { statements, .. } => {
-            let mut block_locals = locals.clone();
+            let mut block_local_functions = local_functions.clone();
             collect_statement_function_calls(
                 source,
                 functions,
                 statements,
-                &mut block_locals,
+                &mut block_local_functions,
                 references,
             );
         }
@@ -22012,15 +22100,21 @@ fn collect_expression_function_calls(
                     source,
                     functions,
                     &field.value,
-                    locals,
+                    local_functions,
                     references,
                 );
             }
         }
         Expression::DecisionTable { subject, rules, .. } => {
-            collect_expression_function_calls(source, functions, subject, locals, references);
+            collect_expression_function_calls(
+                source,
+                functions,
+                subject,
+                local_functions,
+                references,
+            );
             for rule in rules {
-                let mut action_locals = locals.clone();
+                let mut action_local_functions = local_functions.clone();
                 match &rule.matcher {
                     DecisionMatcher::Union { binding, .. }
                     | DecisionMatcher::Variant { binding, .. }
@@ -22029,15 +22123,19 @@ fn collect_expression_function_calls(
                         binding: Some(binding),
                         ..
                     } => {
-                        action_locals.insert(source.slice(*binding).to_owned());
+                        action_local_functions.insert(source.slice(*binding).to_owned(), None);
                     }
                     DecisionMatcher::ListEntry { first, rest, .. } => {
-                        action_locals.insert(source.slice(*first).to_owned());
-                        action_locals.insert(source.slice(*rest).to_owned());
+                        action_local_functions.insert(source.slice(*first).to_owned(), None);
+                        action_local_functions.insert(source.slice(*rest).to_owned(), None);
                     }
                     DecisionMatcher::Comparison { operand, .. } => {
                         collect_expression_function_calls(
-                            source, functions, operand, locals, references,
+                            source,
+                            functions,
+                            operand,
+                            local_functions,
+                            references,
                         );
                     }
                     DecisionMatcher::Boolean { .. }
@@ -22051,7 +22149,7 @@ fn collect_expression_function_calls(
                     source,
                     functions,
                     &rule.action,
-                    &action_locals,
+                    &action_local_functions,
                     references,
                 );
             }
@@ -22065,24 +22163,39 @@ fn collect_expression_function_calls(
                 && source.slice(*root) == "root"
                 && functions.contains_key(source.slice(*member))
             {
+                let declarations = functions
+                    .get(source.slice(*member))
+                    .expect("checked root function exists")
+                    .clone();
                 references.push(CompilerFunctionCallReference {
-                    name: source.slice(*member).to_owned(),
+                    declarations,
                     span: *member,
                     arguments: items[2..].to_vec(),
                     is_ordinary_unqualified: false,
                 });
-            } else if let Some((function_index, name, span)) =
+            } else if let Some(Expression::Identifier(alias)) = items.first()
+                && let Some(Some(target)) = local_functions.get(source.slice(*alias))
+            {
+                references.push(CompilerFunctionCallReference {
+                    declarations: target.declarations.clone(),
+                    span: *alias,
+                    arguments: items[1..].to_vec(),
+                    is_ordinary_unqualified: true,
+                });
+            } else if let Some((function_index, span, declarations)) =
                 items.iter().enumerate().find_map(|(index, item)| {
                     let Expression::Identifier(name) = item else {
                         return None;
                     };
                     let name_text = source.slice(*name);
-                    (!locals.contains(name_text) && functions.contains_key(name_text))
-                        .then(|| (index, name_text.to_owned(), *name))
+                    (!local_functions.contains_key(name_text))
+                        .then(|| functions.get(name_text))
+                        .flatten()
+                        .map(|declarations| (index, *name, declarations.clone()))
                 })
             {
                 references.push(CompilerFunctionCallReference {
-                    name,
+                    declarations,
                     span,
                     arguments: items
                         .iter()
@@ -22095,7 +22208,13 @@ fn collect_expression_function_calls(
                 });
             }
             for item in items {
-                collect_expression_function_calls(source, functions, item, locals, references);
+                collect_expression_function_calls(
+                    source,
+                    functions,
+                    item,
+                    local_functions,
+                    references,
+                );
             }
         }
         Expression::AnonymousFunction { .. }
@@ -32123,8 +32242,14 @@ mod tests {
         let aliased = analyze_for_compiler(
             "use language (version is v0.1)\noffset is 40\nread is fn () -> Int\n  @ offset\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nwrapper ()\n",
         )
-        .unwrap_err();
-        assert_eq!(aliased.code, "E-COMPILER-UNSUPPORTED");
+        .unwrap();
+        let wrapper = aliased
+            .functions
+            .iter()
+            .find(|function| function.source_name == "wrapper")
+            .unwrap();
+        assert_eq!(wrapper.parameters.len(), 1);
+        assert_eq!(wrapper.parameters[0].name, "@ offset");
 
         let shadowed = analyze_for_compiler(
             "use language (version is v0.1)\noffset is 1\nread is fn (value : Int) -> Int\n  value + @ offset\nwrapper is fn () -> Int\n  read is +\n  read (20, 22)\nwrapper ()\n",
@@ -32268,8 +32393,14 @@ mod tests {
         let aliased = analyze_for_compiler(
             "use language (version is v0.1)\nread is fn () -> Int\n  root answer\nwrapper is fn () -> Int\n  operation is read\n  operation ()\nanswer is 42\nwrapper ()\n",
         )
-        .unwrap_err();
-        assert_eq!(aliased.code, "E-COMPILER-UNSUPPORTED");
+        .unwrap();
+        let wrapper = aliased
+            .functions
+            .iter()
+            .find(|function| function.source_name == "wrapper")
+            .unwrap();
+        assert_eq!(wrapper.parameters.len(), 1);
+        assert_eq!(wrapper.parameters[0].name, "root answer");
 
         let shadowed = analyze_for_compiler(
             "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nwrapper is fn () -> Int\n  read is +\n  read (20, 22)\nanswer is 1\nwrapper ()\n",
@@ -32618,6 +32749,72 @@ mod tests {
         .unwrap_err();
         assert!(
             locally_inferred
+                .message
+                .contains("overload-dependent defining-context capture forwarding")
+        );
+    }
+
+    #[test]
+    fn models_local_named_function_environments() {
+        // TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001,
+        // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/local-function-environments.t"
+        ))
+        .unwrap();
+        let alias_values = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "alias-values")
+            .unwrap();
+        assert_eq!(
+            alias_values
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "@ context-number",
+                "@ context-label",
+                "@ context-pair",
+                "root live-number",
+                "root live-label",
+                "root live-pair",
+            ]
+        );
+        let nested_values = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "nested-values")
+            .unwrap();
+        assert_eq!(
+            nested_values
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            ["@ context-number", "root live-number"]
+        );
+        for (name, capture) in [
+            ("nested-context", "@ context-number"),
+            ("nested-root", "root live-number"),
+        ] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.parameters.len(), 2);
+            assert_eq!(function.parameters[1].name, capture);
+        }
+
+        let ambiguous = analyze_for_compiler(
+            "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  operation is select\n  operation value\nforward 0\n",
+        )
+        .unwrap_err();
+        assert!(
+            ambiguous
                 .message
                 .contains("overload-dependent defining-context capture forwarding")
         );

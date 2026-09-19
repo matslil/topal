@@ -14615,6 +14615,312 @@ fn overload_environments_are_exact_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers aliases, nested calls, rejection, IR, artifacts, and GDB frames.
+fn local_function_environments_are_exact_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001,
+    // TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001,
+    // TOPAL-COMPILER-NESTED-FUNCTION-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-local-function-environments");
+    let source = directory.join("local-function-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/local-function-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"((42, \"context\", 9, \"root\", (2, \"context-pair\"), (7, \"root-pair\")), (42, 10))\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    for name in ["read_2dcontext", "read_2droot"] {
+        assert_eq!(
+            ir.lines()
+                .filter(|line| {
+                    line.contains(&format!("define internal fastcc ptr @topal.fn.{name}."))
+                        && line.contains("(ptr %arg0, ptr %arg1)")
+                })
+                .count(),
+            2,
+            "{name}: {ir}"
+        );
+    }
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains("define internal fastcc { ptr, ptr } @topal.fn.read_2dpair.")
+                    && line.contains("(ptr %arg0, { ptr, ptr } %arg1)")
+            })
+            .count(),
+        2,
+        "{ir}"
+    );
+    assert!(
+        ir.lines().any(|line| {
+            line.contains(
+                "define internal fastcc { ptr, ptr, ptr, ptr, { ptr, ptr }, { ptr, ptr } } @topal.fn.alias_2dvalues.",
+            ) && line.contains(
+                "(ptr %arg0, ptr %arg1, { ptr, ptr } %arg2, ptr %arg3, ptr %arg4, { ptr, ptr } %arg5)",
+            )
+        }),
+        "{ir}"
+    );
+    for name in ["nested_2dcontext", "nested_2droot"] {
+        assert!(
+            ir.lines().any(|line| {
+                line.contains(&format!("define internal fastcc ptr @topal.fn.{name}."))
+                    && line.contains("(ptr %arg0, ptr %arg1)")
+                    && !line.contains("ptr %arg2")
+            }),
+            "{name}: {ir}"
+        );
+    }
+    assert!(
+        ir.lines().any(|line| {
+            line.contains("define internal fastcc { ptr, ptr } @topal.fn.nested_2dvalues.")
+                && line.contains("(ptr %arg0, ptr %arg1)")
+        }),
+        "{ir}"
+    );
+    for name in [
+        "read_2dcontext",
+        "read_2droot",
+        "read_2dpair",
+        "nested_2dcontext",
+        "nested_2droot",
+    ] {
+        assert!(
+            ir.lines().any(|line| line.contains("call fastcc ")
+                && line.contains(&format!("@topal.fn.{name}."))),
+            "{name}: {ir}"
+        );
+    }
+    for alias in [
+        "context_2doperation",
+        "context_2dchain",
+        "root_2doperation",
+        "root_2dchain",
+        "pair_2doperation",
+    ] {
+        assert!(
+            !ir.contains(&format!("@topal.fn.{alias}.")),
+            "{alias}: {ir}"
+        );
+    }
+    for local in [
+        "context-operation",
+        "context-chain",
+        "root-operation",
+        "root-chain",
+        "pair-operation",
+        "@ context-number",
+        "@ context-pair",
+        "root live-number",
+        "root live-pair",
+    ] {
+        assert!(
+            ir.contains(&format!("!DILocalVariable(name: \"{local}\"")),
+            "{local}: {ir}"
+        );
+    }
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "topal.context",
+        "topal.root",
+        "context.runtime",
+        "namespace.runtime",
+        "lookup.context",
+        "lookup.root",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_source = directory.join("ambiguous-alias.t");
+    let rejected_executable = directory.join("ambiguous-alias");
+    fs::write(
+        &rejected_source,
+        "use language (version is v0.1)\noffset is 40\nselect is fn (value : Nat) -> Int\n  @ offset\nselect is fn (value : Int) -> Int\n  0\nforward is fn (value : Int) -> Int\n  operation is select\n  operation value\nforward 0\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("overload-dependent defining-context capture forwarding"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let shadow_source = directory.join("shadow.t");
+    let shadow_executable = directory.join("shadow");
+    fs::write(
+        &shadow_source,
+        "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nwrapper is fn () -> Int\n  read is +\n  read (20, 22)\nwrapper ()\n",
+    )
+    .unwrap();
+    let shadowed = run(topalc().args([
+        "-o",
+        shadow_executable.to_str().unwrap(),
+        shadow_source.to_str().unwrap(),
+    ]));
+    assert!(
+        shadowed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&shadowed.stderr)
+    );
+    let shadow_output = run(&mut Command::new(&shadow_executable));
+    assert_eq!(shadow_output.stdout, b"42\n");
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let alias_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break local-function-environments.t:12",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "info locals",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        alias_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&alias_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&alias_debugged.stdout);
+    for value in [
+        "value = 2",
+        "@ context-number = 40",
+        "@ context-label = \"context\"",
+        "@ context-pair = {_0 = 2, _1 = \"context-pair\"}",
+        "root live-number = 7",
+        "root live-label = \"root\"",
+        "root live-pair = {_0 = 7, _1 = \"root-pair\"}",
+        "context-operation = <fn read-context>",
+        "context-chain = <fn read-context>",
+        "root-operation = <fn read-root>",
+        "root-chain = <fn read-root>",
+        "pair-operation = <fn read-pair>",
+        "topal.fn.read_2dcontext.",
+        "topal.fn.alias_2dvalues.",
+        "topal.main",
+    ] {
+        assert!(text.contains(value), "{value}: {text}");
+    }
+
+    let nested_debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break local-function-environments.t:46",
+            "-ex",
+            "break local-function-environments.t:48",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "info locals",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "info locals",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        nested_debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&nested_debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&nested_debugged.stdout);
+    for value in [
+        "value = 2",
+        "value = 3",
+        "@ context-number = 40",
+        "root live-number = 7",
+        "context-operation = <fn nested-context>",
+        "root-operation = <fn nested-root>",
+        "topal.fn.nested_2dcontext.",
+        "topal.fn.nested_2droot.",
+        "topal.fn.nested_2dvalues.",
+        "topal.main",
+    ] {
+        assert!(text.contains(value), "{value}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn modular_values_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-TYPE-001,
     // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001,

@@ -3450,20 +3450,28 @@ source evaluation or identity. DWARF/GDB SHALL expose the nested source frame,
 ordinary parameters, and material capture parameters using their source names,
 classifiers, and values.
 
-The nested function name SHALL remain non-escaping compiler metadata: using it
-as an ordinary Function value, returning it, storing it in an aggregate, or
-passing it through a Function boundary SHALL be rejected. The lowering SHALL
-require no caller-frame reference, environment object, closure allocation or
-runtime, function pointer, indirect call, foreign dependency, C/C++ runtime,
+Exact application through a retained local alias and exact defining-context or
+live-root environment parameters are governed by
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`. Those environment parameters
+SHALL remain distinct from the lexical captures permitted here.
+
+The nested function name SHALL remain non-escaping compiler metadata. Exact
+same-scope retention and application through a local alias are governed by
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`; any parameter or aggregate
+boundary is governed only by its later explicit Function-boundary rule. Other
+return, storage, boundary, or escape forms SHALL be rejected. The lowering
+SHALL require no caller-frame reference, environment object, closure allocation
+or runtime, function pointer, indirect call, foreign dependency, C/C++ runtime,
 other-language standard library, public callable ABI, or native ABI revision.
 
 Declarations inside nested lexical/decision blocks and published, static,
 measured, constrained, or effectful nested functions; nested overload sets,
 recursion, sibling calls, collisions with visible or active named callables,
-anonymous captures, Scope, Function, Constraint, refined-evidence, or
-defining-context captures; escaping closures; and public/library closure
-metadata remain outside this increment and SHALL be rejected rather than
-receiving a provisional closure representation.
+anonymous captures, Scope, Function, Constraint, or refined-evidence captures;
+context/root environments beyond
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`; escaping closures; and
+public/library closure metadata remain outside this increment and SHALL be
+rejected rather than receiving a provisional closure representation.
 
 ### TOPAL-COMPILER-PACKAGED-OPERAND-001 — Closed scalar packaged operand
 
@@ -3960,8 +3968,9 @@ environment table, initializer replay, lookup, allocation, function pointer,
 indirect call, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or native-ABI revision. Overload selection beyond
 `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
-`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
-anonymous or nested functions, aggregate environments beyond
+`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, local named Function
+forwarding beyond `TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`, anonymous
+functions, aggregate environments beyond
 `TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported context
 members, escape, and public/library context environments remain deferred and
 SHALL be rejected before artifact publication rather than assigned a
@@ -4038,8 +4047,9 @@ initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or native-ABI revision. Overload selection beyond
 `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`, recursive forwarding beyond
-`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function aliases,
-anonymous or nested functions, aggregate environments beyond
+`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001`, local named Function
+forwarding beyond `TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`, anonymous
+functions, aggregate environments beyond
 `TOPAL-COMPILER-AGGREGATE-ENVIRONMENT-001`, otherwise unsupported root members,
 context (`@ member`) forwarding beyond
 `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001`, escape, and public/library root
@@ -4091,8 +4101,9 @@ revision.
 
 An unproven, incomplete, or mixed-proof cycle; overload selection beyond
 `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; unsupported captured representation;
-named-function alias;
-anonymous, nested, or escaping recursion; and public/library recursive
+local named Function recursion beyond
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`; anonymous, nested, or escaping
+recursion; and public/library recursive
 environments remain deferred and SHALL fail before artifact publication.
 Future compiled-library metadata SHALL preserve the recursion graph and member
 identities, proof rule and evidence, every ordered call and capture edge,
@@ -4137,9 +4148,10 @@ allocation, dispatcher, function pointer, indirect call, foreign dependency,
 C/C++ runtime, other-language standard library, public ABI, or native-ABI
 revision. Function-bearing aggregates; Scope, Generator, constraint, evidence,
 static-only, opaque, or otherwise unsupported representations; overload
-selection beyond `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; named-function
-aliases; anonymous, nested, or escaping functions; and public/library aggregate
-environments remain deferred and SHALL fail before artifact publication.
+selection beyond `TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; local named Function
+forwarding beyond `TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001`;
+anonymous or escaping functions; and public/library aggregate environments
+remain deferred and SHALL fail before artifact publication.
 
 Future compiled-library metadata for such an environment SHALL preserve its
 canonical context/root instance, source session, selection and call edges,
@@ -4179,7 +4191,9 @@ qualified, locally inferred, higher-order, anonymous, nested, dynamic, or
 otherwise unresolved call, the compiler SHALL reject the program before
 artifact publication whenever any candidate carries an environment. It SHALL
 not union candidate capture sets or assign a provisional overload-environment
-ABI.
+ABI. An exact retained named alias admitted by
+`TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001` SHALL use the same admitted
+selection evidence and is not otherwise unresolved for this requirement.
 
 Full O0 DWARF/GDB information SHALL expose the selected overload's explicit
 parameters and exact source-named captures in active and suspended direct,
@@ -4194,6 +4208,55 @@ selected declaration identity, selection evidence and conversions, recursion
 proof identity, member stable identity/declaration position, complete semantic
 classifier and representation, ordered capture schema/lifetime/effects, and a
 versioned target adapter. Those facts SHALL remain independent of private
+capture names, LLVM types or symbols, debug shadows, and physical placement.
+
+### TOPAL-COMPILER-LOCAL-FUNCTION-ENVIRONMENT-001 — Exact local named Function environments
+
+Within an ordinary root-function invocation, a source-ordered local binding MAY
+retain an already-visible named root Function or another exact local alias of
+that same value and MAY apply the retained declaration snapshot under its local
+name. An already-admitted non-escaping ordinary nested Function MAY likewise be
+called directly or through an exact local alias. Before instantiating the outer
+function, the checked frontend SHALL follow those exact alias and nested-call
+edges when discovering defining-context and live-root selections. Lexical
+shadowing or rebinding to any other value SHALL end that retained edge.
+
+The retained root Function SHALL preserve its original name, staticness,
+source-ordered visible overload snapshot, and declaration identities. An
+overloaded alias call SHALL use the selection evidence admitted by
+`TOPAL-COMPILER-OVERLOAD-ENVIRONMENT-001`; it SHALL propagate only the selected
+declaration's capture set. A nested Function SHALL retain its own declaration
+identity and ordinary lexical captures, but `@ member` and `root member` values
+SHALL appear exactly once in its environment group rather than being duplicated
+as lexical captures. Alias discovery SHALL NOT admit an otherwise unsupported
+nested declaration, recursive edge, overload choice, capture representation,
+or escape.
+
+Every outer, nested, and selected target definition and direct call SHALL use
+matching compiler-private `fastcc` prototypes. Existing represented scalar and
+aggregate environment values SHALL be forwarded unchanged in declaration
+order, LLVM SHALL own AMD64 physical placement, and correctness SHALL require no
+optimization. Full O0 DWARF/GDB information SHALL expose each local Function
+binding, selected source frame, explicit parameter, and exact source-named
+capture in active and suspended frames.
+
+The lowering SHALL add no closure or environment object, runtime Function
+dispatch, function pointer, indirect call, global context/root state, lookup,
+initializer replay, allocation, foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or native-ABI revision. Anonymous
+Function environments; Function parameters, results, or aggregate fields
+carrying these root/context environments; escaping local Functions; recursive
+or overloaded nested Functions; opaque or dynamically selected aliases; and
+public/library local-Function environments remain deferred and SHALL fail
+before artifact publication.
+
+Future compiled-library metadata SHALL preserve the canonical source session
+and context/root identities, lexical invocation scope, alias binding stable
+identity and declaration position, retained root Function and visible overload
+snapshot or nested declaration path, selected declaration and call edge,
+selection evidence/conversions, recursion proof identity, ordered capture
+schema/classifiers/representations/lifetimes/effects, and a versioned target
+adapter. Those facts SHALL remain independent of observation tags, private
 capture names, LLVM types or symbols, debug shadows, and physical placement.
 
 ### TOPAL-COMPILER-RECURSION-INT-001 — Proven direct Int recursion
