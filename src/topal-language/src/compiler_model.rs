@@ -8481,10 +8481,16 @@ impl Analyzer {
             });
         }
         parse_compact_classifier_with(&classifier, &|name| {
-            self.sums
+            self.enums
                 .get(name)
                 .filter(|(_, declaration)| declaration.end <= span.start)
-                .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                .or_else(|| {
+                    self.sums
+                        .get(name)
+                        .filter(|(_, declaration)| declaration.end <= span.start)
+                        .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                })
         })
         .ok_or_else(|| unsupported(&self.source, span, "classifier"))
     }
@@ -23519,6 +23525,7 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
             | CompilerType::Character
             | CompilerType::Comparison
             | CompilerType::ErrorCode
+            | CompilerType::Enum(_)
             | CompilerType::Int
             | CompilerType::Nat
             | CompilerType::Rational
@@ -23537,6 +23544,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
             | CompilerType::Character
             | CompilerType::Comparison
             | CompilerType::ErrorCode
+            | CompilerType::Enum(_)
             | CompilerType::Int
             | CompilerType::Nat
             | CompilerType::Rational
@@ -23768,6 +23776,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Character
                     | CompilerType::Comparison
                     | CompilerType::ErrorCode
+                    | CompilerType::Enum(_)
                     | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
@@ -33434,6 +33443,93 @@ mod tests {
         let unsupported = "use language (version is v0.1)\nvalues : List Type is Entry (Int, Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_nominal_enum_lists_across_private_boundaries() {
+        // TOPAL-TYPE-ENUM-001, TOPAL-TYPE-LIST-CONSTRUCT-001,
+        // TOPAL-DECISION-LIST-001, TOPAL-TYPE-LIST-EQUALITY-001,
+        // TOPAL-LIST-ENTRY-COUNT-001, TOPAL-LIST-EMPTY-PREDICATE-001,
+        // TOPAL-COMPILER-ENUM-001, TOPAL-COMPILER-LIST-ENUM-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-enum-values.t"
+        ))
+        .unwrap();
+        let color = CompilerType::Enum(CompilerEnumType {
+            name: "Color".into(),
+            alternatives: vec!["Red".into(), "Green".into(), "Blue".into()],
+        });
+        let list = CompilerType::List(Box::new(color.clone()));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list);
+        assert_eq!(head.result_type, color);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list.clone(), color.clone()])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list.clone()),
+                ("fallback".into(), color),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared nominal Enum List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 11);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[6].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[10].value_type, list);
+
+        let unsupported = "use language (version is v0.1)\nColor is Enum (Red, Green)\nvalues : List Color is Entry (Red, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let wrong_nominal = "use language (version is v0.1)\nColor is Enum (Red, Green)\nMode is Enum (On, Off)\nvalues : List Color is Entry (On, Empty)\nvalues\n";
+        assert_eq!(
+            analyze_for_compiler(wrong_nominal).unwrap_err().code,
+            "E-TYPE-MISMATCH"
+        );
+        let unsupported_container = "use language (version is v0.1)\nColor is Enum (Red, Green)\nvalue : Optional Color is Some Red\nvalue\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported_container)
+                .unwrap_err()
+                .code,
             "E-COMPILER-UNSUPPORTED"
         );
     }

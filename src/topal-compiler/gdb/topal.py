@@ -845,7 +845,25 @@ class _TopalListPrinter:
                     return f"<invalid List indexed entry: ({index}, {value})>"
                 entries.append(f"(index is {index}, value is {value})")
             else:
-                return f"<unsupported List element type {self._element_type}>"
+                payload = int.from_bytes(node[0:4], "little")
+                try:
+                    enum_type = gdb.lookup_type(self._element_type).strip_typedefs()
+                except gdb.error:
+                    try:
+                        enum_type = gdb.lookup_type(
+                            f"enum {self._element_type}"
+                        ).strip_typedefs()
+                    except gdb.error:
+                        return f"<unsupported List element type {self._element_type}>"
+                if enum_type.code != gdb.TYPE_CODE_ENUM:
+                    return f"<unsupported List element type {self._element_type}>"
+                alternatives = {
+                    int(field.enumval): field.name for field in enum_type.fields()
+                }
+                rendered = alternatives.get(payload)
+                if rendered is None:
+                    return f"<invalid List {self._element_type} entry {payload}>"
+                entries.append(rendered)
             address = int.from_bytes(node[node_size - 8 : node_size], "little")
         rendered = "Empty"
         for entry in reversed(entries):

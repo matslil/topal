@@ -5453,6 +5453,33 @@ realizes `TOPAL-COMPILER-LIST-TYPE-CORE-001`, fundamental Type value/identity/
 boundary rules, and List construction, decision, equality, count, and empty
 rules for compiler increment 4b3d-y.
 
+## TOPAL-COMP-LIST-ENUM-CORE-001 — Ordinary payload-free nominal Enum Lists
+
+The checked model shall admit empty/nonempty construction, immutable binding,
+private parameter/result/package and Tuple/Record passage, structural equality,
+complete decisions, count, emptiness, display, and debugging for Lists of every
+admitted payload-free nominal Enum. Exact declaration identity and ordered
+alternatives remain checked, operands evaluate once, cross-enum interchange is
+rejected, and unsupported transforms fail before artifact publication.
+
+Linux x86-64 shall use null `Empty` and immutable 16-byte nodes containing the
+existing declaration-local i32 enum carrier and remaining pointer. A conditional
+common finite fragment shall compare tags only after same-nominal-type checking
+and count correctly at O0. Private parameters/results and aggregate fields retain
+typed i32 carriers while LLVM owns AMD64 placement. DWARF/GDB retain exact enum,
+alternative, and List identities. Tests cover all alternatives, same/different
+content and length, nominal mismatch, all admitted paths, interpreter modes/
+history, IR, rejection, ELF/DWARF, GDB, corpus, and separate baselines.
+
+This shall not exchange tags across declarations, create a portable foreign
+enum, or add a List runtime tag, generic/public/foreign/library ABI, foreign
+allocation, C/C++, another-language library, or an ABI revision. Future metadata
+carries canonical declaration/alternative identities, representation/ownership/
+lifetime/effects, and target adapters independently of private numbers and
+details. This realizes `TOPAL-COMPILER-LIST-ENUM-CORE-001`, nominal Enum rules,
+and List construction, decision, equality, count, and empty rules for compiler
+increment 4b3d-z.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`
