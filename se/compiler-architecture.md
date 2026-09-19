@@ -1963,6 +1963,15 @@ single machine return. This changes no runtime representation or ABI;
 `Character`, positional Variant, constraint, modular, collection, qualified,
 nested-payload, conditional, and cleanup-bearing forms remain deferred.
 
+Increment 3b2-b5e8h admits the direct payload block of an already-declared
+positional Variant when its literal index selects an existing alternative.
+Checked Variant identity and index validation precede the payload; the exit then
+omits payload classification, tag/aggregate construction, abandoned binding,
+and tails. The block remains the private result with nested `DILexicalBlock` and
+the existing single machine return. This changes no runtime representation or
+ABI; invalid, undeclared, qualified, nested-payload, conditional, and
+cleanup-bearing forms remain fail-closed.
+
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
 its purpose is to keep a typed SSA result and therefore an explicit completion

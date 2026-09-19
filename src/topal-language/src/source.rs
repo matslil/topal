@@ -2992,6 +2992,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_variant_constructor_argument_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         self.evaluate_returning_named_call_argument_step(
             source,
             expression,
@@ -3181,6 +3189,53 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a direct returning unary constructor argument exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_variant_constructor_argument_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [
+            Expression::Identifier(type_name),
+            Expression::Identifier(at),
+            Expression::Integer(index),
+            argument,
+        ] = items.as_slice()
+        else {
+            return Ok(None);
+        };
+        let key = format!("at {}", source.slice(*index));
+        let admitted = source.slice(*at) == "at"
+            && self
+                .union_types
+                .get(source.slice(*type_name))
+                .and_then(|alternatives| alternatives.get(&key))
+                .and_then(Option::as_deref)
+                .is_some();
+        if !admitted || !direct_expression_returns_from_function(argument) {
+            return Ok(None);
+        }
+        let Expression::Block { statements, .. } = argument else {
+            unreachable!("a direct returning Variant constructor argument is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning Variant constructor argument exits its function"
         );
         Ok(Some(step))
     }
@@ -19656,6 +19711,38 @@ fn strict_unary_constructor_argument_blocks_propagate_returns() {
     }
     assert!(!trace.iter().any(|event| event.contains("1000")));
     assert!(!trace.iter().any(|event| event.contains("abandoned")));
+}
+
+#[test]
+fn positional_variant_argument_block_propagates_return_after_index_validation() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-variant-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("variant.constructed"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let invalid = "use language (version is v0.1)\nChoice is Variant (Int)\n\nanswer is fn () -> Int\n  Choice at 1 { return 42 }\nanswer ()\n";
+    let error = Session::new()
+        .evaluate(invalid, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
 }
 
 #[test]
