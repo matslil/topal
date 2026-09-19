@@ -1367,6 +1367,12 @@ delegates entry comparison to Optional-Int equality and counts at O0. Decisions,
 private aggregates, DWARF, and GDB preserve both container layers; metadata must
 describe them independently of headers, node offsets, and helper names.
 
+`List Optional Rational` composes the same private pointer-node strategy with
+the canonical Rational payload already retained by each Optional header. Its
+separate conditional fragment delegates exact entry comparison to
+Optional-Rational equality. LLVM owns placement; DWARF/GDB and future metadata
+retain all three classifier layers without exposing headers, offsets, or helpers.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List

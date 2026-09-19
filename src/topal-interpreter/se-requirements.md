@@ -2607,3 +2607,10 @@ All source modes shall preserve `None` and exact Int-bearing `Some` values
 through List construction, private boundaries, products, structural equality,
 complete decisions, count, emptiness, and display. Shared native/interpreter
 regression and reversible history shall cover every admitted path.
+
+## TOPAL-INTP-SUBSET-295 — Ordinary Optional Rational List values
+
+All source modes shall preserve `None` and exact Rational-bearing `Some` values
+through List construction, private boundaries, products, structural equality,
+complete decisions, count, emptiness, and display. Shared native/interpreter
+regression and reversible history shall cover every admitted path.

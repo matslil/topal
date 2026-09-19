@@ -5291,6 +5291,24 @@ encode both container classifiers, Optional alternatives, representation/
 ownership/lifetime/effects, and target adapters independently of private
 headers, offsets, LLVM types, helpers, and debug shadows.
 
+### TOPAL-COMPILER-LIST-OPTIONAL-RATIONAL-CORE-001 — Ordinary Optional Rational Lists
+
+The compiler SHALL admit empty/nonempty `List Optional Rational` construction,
+immutable binding, private parameter/result/package and Tuple/Record passage,
+derived structural equality, complete decisions, count, emptiness, display, and
+debugging. List equality SHALL preserve `None`/`Some`, delegate `Some` payloads
+to exact Rational equality, stop at the first mismatch, and remain correct at
+O0, including canonical finite and infinite Rational values.
+
+On Linux x86-64, an Entry MAY use an immutable 16-byte node containing the
+existing Optional-header pointer and remaining pointer. LLVM SHALL own physical
+AMD64 placement. This rule SHALL add no flattened tag, copied Rational, type-
+erased container, public/foreign/library ABI, foreign allocator, C/C++ runtime,
+other-language standard library, or native-ABI revision. Future metadata SHALL
+encode all three classifier layers, Optional alternatives, representation/
+ownership/lifetime/effects, and target adapters independently of private
+headers, offsets, LLVM types, helpers, and debug shadows.
+
 ### TOPAL-COMPILER-LIST-ENUM-CORE-001 — Ordinary payload-free nominal Enum Lists
 
 For every admitted payload-free nominal Enum, the compiler SHALL admit

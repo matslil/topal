@@ -127,6 +127,7 @@ evidence.
 | 4b3d-y | ordinary immutable List Type private parameter/result/package and Tuple/Record passage for all seven fundamental identities, structural equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-z | ordinary immutable payload-free nominal Enum List private parameter/result/package and Tuple/Record passage, exact nominal equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-aa | ordinary immutable nominal modular List private parameter/result/package and Tuple/Record passage, exact canonical equality, complete decomposition, count, emptiness, display, and debugging without narrowing | complete |
+| 4b3d-ac | ordinary immutable List Optional Rational private parameter/result/package and Tuple/Record passage, exact derived equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d-ab | ordinary immutable List Optional Int private parameter/result/package and Tuple/Record passage, derived equality, complete decomposition, count, emptiness, display, and debugging | complete |
 | 4b3d | dynamic Character and Unicode operations, remaining strings and container types, remaining List ordering/sequence/index/traversal algorithms and callable forms, traversal-control generalization, and representation-safe reclamation | planned |
 | 5a | qualified `lang generator generator-closed` as a closed nominal value with equality, display, and debugging but no continuation behavior | complete |

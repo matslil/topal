@@ -5527,6 +5527,23 @@ ABI, foreign allocation, C/C++, other-language library, or ABI revision. Future
 metadata remains independent of private headers and nodes. This realizes
 `TOPAL-COMPILER-LIST-OPTIONAL-INT-CORE-001` for increment 4b3d-ab.
 
+## TOPAL-COMP-LIST-OPTIONAL-RATIONAL-CORE-001 — Ordinary Optional Rational Lists
+
+The checked model shall admit construction, private parameter/result/package
+and Tuple/Record passage, derived equality, complete decisions, count,
+emptiness, display, and debugging for `List Optional Rational`. Linux x86-64
+shall use null List Empty and immutable 16-byte Optional-pointer/remaining-
+pointer nodes; a conditional finite fragment shall delegate exact element
+equality to the existing Optional-Rational runtime and count correctly at O0.
+LLVM owns physical placement, while DWARF/GDB retain all classifier layers.
+
+Tests cover `None`, positive/negative `Some`, same/different content and length,
+all boundaries, rejection, IR, ELF/DWARF, GDB, corpus, history, and separate
+baselines. This adds no flattened Optional, copied Rational, generic/public/
+foreign ABI, foreign allocation, C/C++, other-language library, or ABI revision.
+Future metadata remains independent of private headers and nodes. This realizes
+`TOPAL-COMPILER-LIST-OPTIONAL-RATIONAL-CORE-001` for increment 4b3d-ac.
+
 ## TOPAL-COMP-LIST-BOOLEAN-001 — Ordinary immutable Boolean Lists
 
 The checked compiler model shall admit contextual `Empty` and `Entry`
