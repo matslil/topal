@@ -5037,11 +5037,29 @@ dependency, foreign runtime, C/C++ standard library, public ABI, or native-ABI
 revision.
 
 This increment admits only an unconditional block at a direct statement
-boundary for which every exited scope is proven cleanup-free. A return-bearing
-block embedded in another operand, conditional or callback, and any exit whose
-scope owns generator close, resource, destructor, or other cleanup obligations
-SHALL remain rejected until explicit exit-edge and cleanup lowering is
-implemented.
+boundary for which every exited scope is proven cleanup-free. Except for the
+whole explicit-return operand admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001`, a return-bearing block embedded in
+another operand, conditional or callback, and any exit whose scope owns
+generator close, resource, destructor, or other cleanup obligations SHALL
+remain rejected until explicit exit-edge and cleanup lowering is implemented.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
+
+An admitted cleanup-free lexical block used as the whole expression of an
+explicit `return` MAY itself execute an explicit `return`. The inner return
+SHALL complete the nearest enclosing ordinary function immediately. Its value
+SHALL be evaluated and validated once, the outer return SHALL NOT create a
+second semantic return decision, and every remaining statement in the lexical
+block and function SHALL be excluded from generated IR at `-O0`.
+
+The checked compiler model SHALL retain the lexical block as the function
+result expression and the backend SHALL preserve its nested DWARF scope while
+normalizing the exit into the function's existing single machine return. This
+rule admits no other compound-expression, conditional, callback, generator, or
+cleanup-bearing propagation and SHALL introduce no runtime control-flow
+object, unwind edge, allocation, foreign dependency, C/C++ standard library,
+public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

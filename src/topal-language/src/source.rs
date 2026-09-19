@@ -9190,13 +9190,29 @@ impl Execution {
                     ));
                 }
                 let span = cover(*keyword, value.span());
-                let value = evaluate_expression_with_optional_context(
-                    &self.source,
-                    session,
-                    value,
-                    self.return_classifier.as_deref(),
-                    trace,
-                )?;
+                let value = if let Expression::Block { statements, .. } = value {
+                    match session.evaluate_block_step(
+                        &self.source,
+                        statements,
+                        self.return_classifier.as_deref(),
+                        self.return_classifier.as_deref(),
+                        trace,
+                    )? {
+                        ExecutionStep::Complete(value) => value,
+                        returned @ ExecutionStep::Returned { .. } => return Ok(returned),
+                        ExecutionStep::Advanced { .. } => {
+                            unreachable!("a block runs to completion")
+                        }
+                    }
+                } else {
+                    evaluate_expression_with_optional_context(
+                        &self.source,
+                        session,
+                        value,
+                        self.return_classifier.as_deref(),
+                        trace,
+                    )?
+                };
                 let classifier = structural_value_classifier(&value);
                 trace.record(TraceEvent {
                     event: "function.return.explicit",
@@ -19109,6 +19125,42 @@ fn lexical_block_return_completes_the_nearest_function() {
         .evaluate("{\n  return 42\n}\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn return_operand_block_propagates_its_inner_return_once() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-block-operand.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            "answer is fn (value : Int) -> Int\n  return { value + 1 }\nanswer 41\n",
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
 }
 
 #[test]

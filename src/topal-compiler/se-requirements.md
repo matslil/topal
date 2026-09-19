@@ -5210,8 +5210,10 @@ statement, discard initializer, binding initializer, or final expression. It
 shall preserve preceding outer and inner evaluation exactly once, validate the
 returned expression against the function result classifier rather than an
 abandoned binding classifier, and omit both lexical and enclosing unreachable
-tails at O0. A return-bearing block nested in an operand, decision, callback,
-or other compound expression shall remain rejected.
+tails at O0. Except for the whole explicit-return operand admitted by
+`TOPAL-COMP-LEXICAL-RETURN-OPERAND-001`, a return-bearing block nested in an
+operand, decision, callback, or other compound expression shall remain
+rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5225,6 +5227,27 @@ skipped tails, direct LLVM/DWARF/GDB behavior and rejection boundaries, and
 record separate interpreter, compiler-build, and native-run baselines. This
 realizes `TOPAL-FUNCTION-RETURN-001` and
 `TOPAL-COMPILER-LEXICAL-RETURN-001` for increment 3b2-b5e8a.
+
+## TOPAL-COMP-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+inner explicit return from a cleanup-free lexical block used as the whole
+operand of an outer explicit return. It shall evaluate and validate the inner
+returned value once, omit both unreachable tails at O0, and expose one semantic
+explicit-return decision rather than completing the outer return a second
+time. A block that completes normally remains the ordinary outer return value.
+
+The compiler shall retain the lexical expression and nested DWARF scope while
+lowering the inner value through the function's existing private result and
+single machine return. The implementation shall admit no other embedded,
+conditional, callback, generator, or cleanup-bearing exit and add no runtime
+control-flow value, unwind edge, allocation, foreign dependency, C/C++
+runtime, other-language standard library, public ABI, or `topal-native/6`
+revision. Tests shall share the interpreter/compiler source, assert exactly one
+semantic return and skipped tails, inspect LLVM/DWARF/GDB behavior, and record
+separate interpreter, compiler-build, and native-run baselines. This realizes
+`TOPAL-FUNCTION-RETURN-001` and
+`TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` for increment 3b2-b5e8b.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

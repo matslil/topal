@@ -1899,6 +1899,16 @@ conditional return-bearing blocks, nested declarations, and scopes requiring
 cleanup retain their later explicit exit-edge and lifetime lowering in
 increment 3b2-b5e8.
 
+Increment 3b2-b5e8b extends that private checked exit outcome through exactly
+one additional direct boundary: a lexical block that is the whole expression
+of an outer explicit return. If the block returns, its exit completes the
+function before the outer statement can create another return decision; if it
+completes normally, the outer statement retains ordinary return semantics.
+The retained lexical result lets the existing backend emit the same single
+machine return and nested `DILexicalBlock`, so the extension changes neither
+runtime representation nor ABI. Other compound-expression and conditional
+joins remain deferred.
+
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
 its purpose is to keep a typed SSA result and therefore an explicit completion
