@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 250);
+    assert_eq!(examples.len(), 251);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4520,6 +4520,49 @@ fn records_sum_function_environments_reversibly() {
         "function.selected [TOPAL-TYPE-CALL-001] apply-package",
         "function.selected [TOPAL-TYPE-CALL-001] apply-choice",
         "pattern.identity.matched [TOPAL-TYPE-MATCH-001] candidate",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_result_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-277,
+    // TOPAL-COMPILER-RESULT-FUNCTION-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}result-function-environments.debug"),
+            &language_example("result-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first_factory = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-result")
+        .unwrap();
+    let first_selection = stdout
+        .find("result.payload.bound [TOPAL-DECISION-RESULT-001] operation")
+        .unwrap();
+    let first_nested = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] operation")
+        .unwrap();
+    assert!(first_factory < first_selection);
+    assert!(first_selection < first_nested);
+    for event in [
+        "result.success.projected [TOPAL-TYPE-RESULT-PROJECT-001] quotient",
+        "result.error.constructed [TOPAL-TYPE-RESULT-001] root./(Rational,Rational);division-by-zero",
+        "binding.bind [TOPAL-SYN-BIND-001] first",
+        "binding.bind [TOPAL-SYN-BIND-001] second",
+        "function.selected [TOPAL-TYPE-CALL-001] return-result",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-package",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-record",
         "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
         "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
         "evaluation.result [TOPAL-SYN-GRAMMAR-001]",

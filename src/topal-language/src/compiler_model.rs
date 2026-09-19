@@ -1195,6 +1195,7 @@ pub enum CompilerAggregatePathElement {
     Record(String),
     OptionalPayload,
     SumPayload(String),
+    ResultSuccess,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -1343,6 +1344,7 @@ struct BindingFacts {
     record_fields: BTreeMap<String, StaticValueFacts>,
     optional: Option<CompilerOptionalFacts>,
     sum: Option<CompilerSumFacts>,
+    result: Option<CompilerResultFacts>,
     namespace: Option<CompilerNamespaceFacts>,
     callable: Option<CompilerCallableFacts>,
     static_capability: Option<CompilerCapability>,
@@ -1452,6 +1454,7 @@ struct StaticValueFacts {
     record_fields: BTreeMap<String, Self>,
     optional: Option<CompilerOptionalFacts>,
     sum: Option<CompilerSumFacts>,
+    result: Option<CompilerResultFacts>,
 }
 
 #[derive(Clone)]
@@ -1467,6 +1470,11 @@ struct CompilerSumFacts {
     payload: Option<Box<StaticValueFacts>>,
 }
 
+#[derive(Clone)]
+struct CompilerResultFacts {
+    success: Box<StaticValueFacts>,
+}
+
 fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFacts) {
     binding.int_range.clone_from(&value.int_range);
     binding.rational_value.clone_from(&value.rational_value);
@@ -1476,6 +1484,7 @@ fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFact
     binding.record_fields.clone_from(&value.record_fields);
     binding.optional.clone_from(&value.optional);
     binding.sum.clone_from(&value.sum);
+    binding.result.clone_from(&value.result);
 }
 
 fn present_optional_payload(facts: StaticValueFacts) -> Option<StaticValueFacts> {
@@ -8616,6 +8625,7 @@ impl Analyzer {
                 record_fields: BTreeMap::new(),
                 optional: None,
                 sum: None,
+                result: None,
                 namespace: None,
                 callable: Some(CompilerCallableFacts::Named {
                     name: name_text.clone(),
@@ -8912,6 +8922,7 @@ impl Analyzer {
                     let record_fields = aggregate_facts.record_fields;
                     let optional = aggregate_facts.optional;
                     let sum = aggregate_facts.sum;
+                    let result_facts = aggregate_facts.result;
                     let namespace =
                         self.known_namespace(&value, environment, initializer.span().start, kind)?;
                     let callable = aggregate_facts.callable;
@@ -8973,6 +8984,7 @@ impl Analyzer {
                         record_fields,
                         optional,
                         sum,
+                        result: result_facts,
                         namespace,
                         callable,
                         static_capability,
@@ -9099,6 +9111,7 @@ impl Analyzer {
                             record_fields: BTreeMap::new(),
                             optional: None,
                             sum: None,
+                            result: None,
                             namespace: None,
                             callable: None,
                             static_capability: None,
@@ -9845,6 +9858,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -9902,6 +9916,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -10505,6 +10520,7 @@ impl Analyzer {
                 record_fields: BTreeMap::new(),
                 optional: None,
                 sum: None,
+                result: None,
                 namespace: None,
                 callable: None,
                 static_capability: None,
@@ -15730,6 +15746,7 @@ impl Analyzer {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)] // Every admitted aggregate path keeps its capture checks adjacent.
     fn forward_function_aggregate_captures(
         &self,
         value_type: &CompilerType,
@@ -15832,6 +15849,23 @@ impl Analyzer {
                 environment,
                 forwarded,
             ),
+            CompilerType::Result(success) if success.as_ref() == &CompilerType::Function => {
+                let success_facts = facts.result.as_mut().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Result Function boundary without exact success facts",
+                    )
+                })?;
+                self.forward_function_aggregate_captures(
+                    success,
+                    &mut success_facts.success,
+                    &format!("{boundary_name} Result success"),
+                    span,
+                    environment,
+                    forwarded,
+                )
+            }
             _ => Ok(()),
         }
     }
@@ -16093,9 +16127,11 @@ impl Analyzer {
             record_fields: Self::known_record_fields(value, environment),
             optional: None,
             sum: None,
+            result: None,
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Structural fact retention stays exhaustive in one dispatcher.
     fn known_structural_value_facts(
         &self,
         value: &CompilerExpression,
@@ -16140,6 +16176,18 @@ impl Analyzer {
                     environment,
                 )?);
             }
+            CompilerExpressionKind::ResultSuccess(payload) => {
+                facts.result = Some(CompilerResultFacts {
+                    success: Box::new(self.known_structural_value_facts(payload, environment)?),
+                });
+            }
+            CompilerExpressionKind::ResultProject(result) => {
+                facts = self
+                    .known_structural_value_facts(result, environment)?
+                    .result
+                    .map(|result| *result.success)
+                    .unwrap_or_default();
+            }
             CompilerExpressionKind::RecordReconstruct { base, replacements } => {
                 facts = self.known_structural_value_facts(base, environment)?;
                 for (name, replacement) in replacements {
@@ -16156,6 +16204,7 @@ impl Analyzer {
                     facts.record_fields.clone_from(&binding.record_fields);
                     facts.optional.clone_from(&binding.optional);
                     facts.sum.clone_from(&binding.sum);
+                    facts.result.clone_from(&binding.result);
                 }
             }
             CompilerExpressionKind::TupleField { tuple, index } => {
@@ -16259,6 +16308,7 @@ impl Analyzer {
         Ok(captures)
     }
 
+    #[allow(clippy::too_many_lines)] // Every admitted result path keeps its capture checks adjacent.
     fn collect_function_aggregate_result_captures(
         &self,
         value_type: &CompilerType,
@@ -16354,6 +16404,26 @@ impl Analyzer {
                 path,
                 result,
             ),
+            CompilerType::Result(success) if success.as_ref() == &CompilerType::Function => {
+                let success_facts = facts.result.as_ref().ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        span,
+                        "Result Function result without exact success facts",
+                    )
+                })?;
+                path.push(CompilerAggregatePathElement::ResultSuccess);
+                let collected = self.collect_function_aggregate_result_captures(
+                    success,
+                    &success_facts.success,
+                    environment,
+                    span,
+                    path,
+                    result,
+                );
+                path.pop();
+                collected
+            }
             _ => Ok(()),
         }
     }
@@ -17418,6 +17488,9 @@ impl Analyzer {
                         sum: structural_facts
                             .as_ref()
                             .and_then(|facts| facts.sum.clone()),
+                        result: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.result.clone()),
                         namespace: None,
                         callable,
                         static_capability: None,
@@ -17458,6 +17531,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -19027,6 +19101,7 @@ impl Analyzer {
                         record_fields: BTreeMap::new(),
                         optional: None,
                         sum: None,
+                        result: None,
                         namespace: Some(namespace),
                         callable: None,
                         static_capability: None,
@@ -19067,6 +19142,7 @@ impl Analyzer {
                     record_fields: facts.record_fields,
                     optional: facts.optional,
                     sum: facts.sum,
+                    result: facts.result,
                     namespace: None,
                     callable: facts.callable,
                     static_capability: None,
@@ -20230,6 +20306,7 @@ impl Analyzer {
                         record_fields: aggregate_arguments[parameter_index].record_fields.clone(),
                         optional: aggregate_arguments[parameter_index].optional.clone(),
                         sum: aggregate_arguments[parameter_index].sum.clone(),
+                        result: aggregate_arguments[parameter_index].result.clone(),
                         namespace: scope_arguments[parameter_index].clone(),
                         callable: callable_arguments[parameter_index].clone(),
                         static_capability: None,
@@ -20280,6 +20357,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20322,6 +20400,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20363,6 +20442,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20405,6 +20485,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -20446,6 +20527,7 @@ impl Analyzer {
                     record_fields: BTreeMap::new(),
                     optional: None,
                     sum: None,
+                    result: None,
                     namespace: None,
                     callable: None,
                     static_capability: None,
@@ -21874,6 +21956,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        let subject_facts = (success_type == &CompilerType::Function)
+            .then(|| self.known_structural_value_facts(&subject, environment))
+            .transpose()?;
         let mut ok = None;
         let mut error_codes = Vec::new();
         let mut seen_codes = BTreeSet::new();
@@ -21886,12 +21971,21 @@ impl Analyzer {
                     ..
                 } if ok.is_none() => {
                     let name = self.source.slice(binding).to_owned();
-                    let branch = decision_binding_environment(
+                    let mut branch = decision_binding_environment(
                         environment,
                         &name,
                         success_type.clone(),
                         binding.start,
                     );
+                    if let Some(success_facts) = subject_facts
+                        .as_ref()
+                        .and_then(|facts| facts.result.as_ref())
+                    {
+                        let binding = branch
+                            .get_mut(&name)
+                            .expect("Result success decision binding was inserted");
+                        retain_static_value_facts(binding, &success_facts.success);
+                    }
                     ok = Some((
                         name,
                         binding,
@@ -23153,6 +23247,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Rational
                     | CompilerType::String
                     | CompilerType::Modular(_)
+                    | CompilerType::Function
             ) || matches!(
                 success.as_ref(),
                 CompilerType::Tuple(fields)
@@ -23819,11 +23914,32 @@ fn compiler_type_is_function_aggregate(value_type: &CompilerType) -> bool {
             field == &CompilerType::Function || compiler_type_is_function_aggregate(field)
         }),
         CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
+        CompilerType::Result(success) => success.as_ref() == &CompilerType::Function,
         CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
-            alternative.payload.as_ref().is_some_and(|payload| {
-                payload == &CompilerType::Function || compiler_type_is_function_aggregate(payload)
-            })
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_is_sum_function_aggregate)
         }),
+        _ => false,
+    }
+}
+
+fn compiler_type_is_sum_function_aggregate(value_type: &CompilerType) -> bool {
+    match value_type {
+        CompilerType::Function => true,
+        CompilerType::Tuple(fields) => fields.iter().any(compiler_type_is_sum_function_aggregate),
+        CompilerType::Record(fields) => fields
+            .iter()
+            .any(|(_, field)| compiler_type_is_sum_function_aggregate(field)),
+        CompilerType::Optional(payload) => payload.as_ref() == &CompilerType::Function,
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_is_sum_function_aggregate)
+        }),
+        // Result Function is admitted directly, not inside a nominal Sum.
         _ => false,
     }
 }
@@ -23874,6 +23990,10 @@ fn function_aggregate_facts_exact(value_type: &CompilerType, facts: &StaticValue
                 _ => false,
             }
         }),
+        CompilerType::Result(success) if success.as_ref() == &CompilerType::Function => facts
+            .result
+            .as_ref()
+            .is_some_and(|result| function_aggregate_facts_exact(success, &result.success)),
         _ => true,
     }
 }
@@ -24035,6 +24155,10 @@ fn function_aggregate_binding_facts_exact(value_type: &CompilerType, facts: &Bin
                 _ => false,
             }
         }),
+        CompilerType::Result(success) if success.as_ref() == &CompilerType::Function => facts
+            .result
+            .as_ref()
+            .is_some_and(|result| function_aggregate_facts_exact(success, &result.success)),
         _ => false,
     }
 }
@@ -24131,6 +24255,7 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         record_fields: BTreeMap::new(),
         optional: None,
         sum: None,
+        result: None,
         namespace: None,
         callable: None,
         static_capability: None,
@@ -24169,6 +24294,9 @@ fn returned_function_capture_bindings(facts: &StaticValueFacts) -> Vec<BindingFa
     {
         returned.extend(returned_function_capture_bindings(payload));
     }
+    if let Some(result) = &facts.result {
+        returned.extend(returned_function_capture_bindings(&result.success));
+    }
     returned
 }
 
@@ -24198,6 +24326,9 @@ fn aggregate_callable_at_path_mut<'a>(
                 return None;
             }
             aggregate_callable_at_path_mut(sum.payload.as_mut()?, rest)
+        }
+        CompilerAggregatePathElement::ResultSuccess => {
+            aggregate_callable_at_path_mut(&mut facts.result.as_mut()?.success, rest)
         }
     }
 }
@@ -24502,6 +24633,7 @@ fn decision_binding_environment(
             record_fields: BTreeMap::new(),
             optional: None,
             sum: None,
+            result: None,
             namespace: None,
             callable: None,
             static_capability: None,
@@ -35349,6 +35481,106 @@ mod tests {
             "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nchoose is fn (flag : Boolean) -> Operation\n  flag\n    true then Apply increment\n    false then Apply decrement\nchoose true\n",
             "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Operation\n  nested is fn (value : Int) -> Int\n    operation value\n  Apply nested\napply is fn (candidate : Operation) -> Int\n  candidate\n    Apply operation then operation 41\n    Missing then 0\napply (wrap increment)\n",
             "use language (version is v0.1)\nOperation is Union\n  Apply : Function\n  Missing\n\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (candidate : Operation) -> Operation\n  nested is fn (value : Int) -> Int\n    candidate\n      Apply operation then operation value\n      Missing then 0\n  Apply nested\nwrap (Apply increment)\n",
+        ] {
+            let diagnostic = analyze_for_compiler(rejected).unwrap_err();
+            assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");
+        }
+    }
+
+    #[test]
+    fn models_result_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-RESULT-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-FUNCTION-VALUE-001, TOPAL-ARITHMETIC-RESULT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/result-function-environments.t"
+        ))
+        .unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("expected Result Function environment results")
+        };
+        assert_eq!(results.len(), 16);
+        for index in [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13] {
+            assert_eq!(results[index].value_type, CompilerType::Int);
+        }
+        for index in [5, 14, 15] {
+            assert_eq!(
+                results[index].value_type,
+                CompilerType::Result(Box::new(CompilerType::Function))
+            );
+        }
+
+        let factories = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-result")
+            .collect::<Vec<_>>();
+        assert_eq!(factories.len(), 7);
+        assert!(factories.iter().all(|function| {
+            function.result_captures.len() == 3
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path == [CompilerAggregatePathElement::ResultSuccess])
+        }));
+
+        let record_factory = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "make-record")
+            .unwrap();
+        assert!(record_factory.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Record("candidate".into()),
+                    CompilerAggregatePathElement::ResultSuccess,
+                ]
+        }));
+        let tuple_forwarder = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-tuple")
+            .unwrap();
+        assert!(tuple_forwarder.result_captures.iter().all(|capture| {
+            capture.path
+                == [
+                    CompilerAggregatePathElement::Tuple(0),
+                    CompilerAggregatePathElement::ResultSuccess,
+                ]
+        }));
+        let fallible = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "make-fallible")
+            .collect::<Vec<_>>();
+        assert_eq!(fallible.len(), 2);
+        assert!(fallible.iter().all(|function| {
+            function.result_captures.len() == 5
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path == [CompilerAggregatePathElement::ResultSuccess])
+        }));
+        let projected = program
+            .functions
+            .iter()
+            .filter(|function| function.source_name == "project-result")
+            .collect::<Vec<_>>();
+        assert_eq!(projected.len(), 2);
+        assert!(projected.iter().all(|function| {
+            !function.result_captures.is_empty()
+                && function
+                    .result_captures
+                    .iter()
+                    .all(|capture| capture.path == [CompilerAggregatePathElement::ResultSuccess])
+        }));
+
+        for rejected in [
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nleft is fn () -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  increment\nright is fn () -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  decrement\nchoose is fn (flag : Boolean) -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  flag\n    true then left ()\n    false then right ()\nchoose true\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  nested is fn (value : Int) -> Int\n    operation value\n  nested\nwrap increment\n",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  increment\nwrap is fn (candidate : Result (Function, lang arithmetic ArithmeticErrorCode)) -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  nested is fn (value : Int) -> Int\n    candidate\n      Ok operation then operation value\n      Error problem then 0\n  nested\nwrap (source ())\n",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Result (Function, lang arithmetic ArithmeticErrorCode)\n  increase is fn (value : Int) -> Int\n    value + offset\n  increase\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
         ] {
             let diagnostic = analyze_for_compiler(rejected).unwrap_err();
             assert_eq!(diagnostic.code, "E-COMPILER-UNSUPPORTED");

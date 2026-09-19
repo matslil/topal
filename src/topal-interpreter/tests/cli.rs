@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 250);
+    assert_eq!(examples.len(), 251);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5423,6 +5423,34 @@ fn every_mode_preserves_sum_function_environments() {
     assert!(
         String::from_utf8_lossy(&mismatch.stderr).contains("error[E-ANONYMOUS-PATTERN-IDENTITY]")
     );
+}
+
+#[test]
+fn every_mode_preserves_result_function_environments() {
+    // TOPAL-INTP-SUBSET-277,
+    // TOPAL-COMPILER-RESULT-FUNCTION-001
+    let source = include_str!("../../../examples/language/result-function-environments.t");
+    let expected = "(43, 44, 45, 5, 42, +, 46, 47, 48, 49, 49, 0, 0, 0, <fn increase>, Error ( domain is root./(Rational,Rational), code is division-by-zero ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("result.success.projected"));
+    assert!(trace.contains("result.error.constructed"));
+    assert!(trace.contains("result.payload.bound"));
+    assert!(trace.contains(
+        "\"event\":\"function.value.called\",\"rule\":\"TOPAL-FUNCTION-VALUE-001\",\"detail\":\"increase\""
+    ));
 }
 
 #[test]

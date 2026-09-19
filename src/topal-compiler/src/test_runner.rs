@@ -209,6 +209,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/repeated-sum-patterns.t",
     "examples/language/result-division-error.t",
     "examples/language/result-error-propagation.t",
+    "examples/language/result-function-environments.t",
     "examples/language/result-negative-power-error.t",
     "examples/language/result-decisions.t",
     "examples/language/result-success.t",

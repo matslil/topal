@@ -8,12 +8,12 @@ use topal_language::{
     CompilerAggregatePathElement, CompilerBinary, CompilerBlock, CompilerComparisonRule,
     CompilerContainerKind, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
     CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
-    CompilerFunction, CompilerGeneratorCloseHandler, CompilerGeneratorLocal, CompilerGeneratorType,
-    CompilerGeneratorYield, CompilerListIndexOperation, CompilerListZipOperation,
-    CompilerLocationType, CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter,
-    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType,
-    CompilerType, CompilerValidation, compiler_function_result_capture_storage,
-    display_string_literal,
+    CompilerFunction, CompilerFunctionResultCapture, CompilerGeneratorCloseHandler,
+    CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
+    CompilerListIndexOperation, CompilerListZipOperation, CompilerLocationType,
+    CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerProgram,
+    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType, CompilerType,
+    CompilerValidation, compiler_function_result_capture_storage, display_string_literal,
 };
 use topal_source::Span;
 
@@ -517,6 +517,8 @@ struct Generator<'a> {
     next_global: usize,
     needs_infinity_result_runtime: bool,
     list_int_runtime_fragments: BTreeSet<ListIntRuntimeFragment>,
+    current_result_captures: Vec<CompilerFunctionResultCapture>,
+    current_function_return_type: Option<String>,
     debug: DebugInfo,
 }
 
@@ -542,6 +544,8 @@ impl<'a> Generator<'a> {
             next_global: 0,
             needs_infinity_result_runtime: false,
             list_int_runtime_fragments: BTreeSet::new(),
+            current_result_captures: Vec::new(),
+            current_function_return_type: None,
             debug,
         }
     }
@@ -667,7 +671,12 @@ impl<'a> Generator<'a> {
         if !function.pattern_identities.is_empty() {
             self.emit_pattern_identity_guards(function, &mut body);
         }
+        self.current_result_captures
+            .clone_from(&function.result_captures);
+        self.current_function_return_type = Some(return_type.clone());
         let result = self.emit_block(&function.body, &mut body, &mut environment);
+        self.current_result_captures.clear();
+        self.current_function_return_type = None;
         let location = self.debug.location(function.body.result.span, subprogram);
         if !function.result_captures.is_empty() {
             let source_result = self.emit_machine_operand(
@@ -1565,6 +1574,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         ),
                         success: success.as_ref().clone(),
+                        function_captures: Vec::new(),
                     }
                 } else {
                     LlValue::Int(state)
@@ -2071,6 +2081,10 @@ impl<'a> Generator<'a> {
             }
             CompilerExpressionKind::ResultSuccess(value) => {
                 let success = self.emit_expression(value, body, environment);
+                let function_captures = match &success {
+                    LlValue::Function { captures, .. } => captures.clone(),
+                    _ => Vec::new(),
+                };
                 let payload =
                     self.emit_result_payload(&success, &value.value_type, body, value.span);
                 LlValue::Result {
@@ -2080,6 +2094,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     success: value.value_type.clone(),
+                    function_captures,
                 }
             }
             CompilerExpressionKind::ResultProject(value) => {
@@ -2741,6 +2756,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             success: CompilerType::List(Box::new(pair)),
+                            function_captures: Vec::new(),
                         }
                     }
                     CompilerListZipOperation::Shortest => LlValue::List {
@@ -3398,6 +3414,7 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             ),
                             success: success.as_ref().clone(),
+                            function_captures: Vec::new(),
                         },
                         CompilerType::Optional(ref payload) => LlValue::Optional {
                             value: body.instruction(
@@ -3657,7 +3674,12 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let result = self.emit_expression(value, body, environment);
-        let LlValue::Result { value, success } = result else {
+        let LlValue::Result {
+            value,
+            success,
+            function_captures,
+        } = result
+        else {
             unreachable!("checked projection operand is Result")
         };
         let is_error = body.instruction(
@@ -3673,14 +3695,43 @@ impl<'a> Generator<'a> {
             location,
         );
         body.start_block(&failure);
-        body.terminator(&format!("ret ptr {value}"), location);
+        if self.current_result_captures.is_empty() {
+            body.terminator(&format!("ret ptr {value}"), location);
+        } else {
+            let return_type = self
+                .current_function_return_type
+                .clone()
+                .expect("function emission retains its LLVM return type");
+            let mut aggregate = body.instruction(
+                &format!("insertvalue {return_type} poison, ptr {value}, 0"),
+                span,
+                &mut self.debug,
+            );
+            for (index, capture) in self.current_result_captures.clone().iter().enumerate() {
+                let zero = zero_machine_value(&capture.value_type);
+                let operand = self.emit_machine_operand(&zero, &capture.value_type, body, span);
+                aggregate = body.instruction(
+                    &format!(
+                        "insertvalue {return_type} {aggregate}, {operand}, {}",
+                        index + 1
+                    ),
+                    span,
+                    &mut self.debug,
+                );
+            }
+            body.terminator(&format!("ret {return_type} {aggregate}"), location);
+        }
         body.start_block(&success_label);
         let payload = body.instruction(
             &format!("call ptr @topal.runtime.result.payload(ptr {value})"),
             span,
             &mut self.debug,
         );
-        self.result_success_value(&payload, &success, body, span)
+        let mut success_value = self.result_success_value(&payload, &success, body, span);
+        if let LlValue::Function { captures, .. } = &mut success_value {
+            *captures = function_captures;
+        }
+        success_value
     }
 
     #[allow(clippy::too_many_arguments)] // Optional binding and delayed alternatives stay explicit.
@@ -4971,7 +5022,12 @@ impl<'a> Generator<'a> {
         span: Span,
     ) -> LlValue {
         let result = self.emit_expression(subject, body, environment);
-        let LlValue::Result { value, success } = result else {
+        let LlValue::Result {
+            value,
+            success,
+            function_captures,
+        } = result
+        else {
             unreachable!("checked Result decision subject is Result")
         };
         let is_error = body.instruction(
@@ -4995,7 +5051,11 @@ impl<'a> Generator<'a> {
             ok_binding_span,
             &mut self.debug,
         );
-        let success_value = self.result_success_value(&payload, &success, body, ok_binding_span);
+        let mut success_value =
+            self.result_success_value(&payload, &success, body, ok_binding_span);
+        if let LlValue::Function { captures, .. } = &mut success_value {
+            *captures = function_captures;
+        }
         let variable = self
             .debug
             .local(ok_binding, ok_binding_span, &success, body.subprogram);
@@ -5156,6 +5216,7 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             ),
             success,
+            function_captures: Vec::new(),
         }
     }
 
@@ -5224,6 +5285,7 @@ impl<'a> Generator<'a> {
         LlValue::Result {
             value,
             success: constraint.base_type,
+            function_captures: Vec::new(),
         }
     }
 
@@ -5309,6 +5371,7 @@ impl<'a> Generator<'a> {
         LlValue::Result {
             value,
             success: CompilerType::Modular(modular.clone()),
+            function_captures: Vec::new(),
         }
     }
 
@@ -5397,6 +5460,7 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             ),
             success,
+            function_captures: Vec::new(),
         }
     }
 
@@ -5422,6 +5486,22 @@ impl<'a> Generator<'a> {
             (LlValue::Enum { value, enumeration }, CompilerType::Enum(expected_enumeration))
                 if enumeration == expected_enumeration =>
             {
+                let storage = body.instruction(
+                    "call ptr @topal.platform.allocate(i64 4)",
+                    span,
+                    &mut self.debug,
+                );
+                body.effect(
+                    &format!("store i32 {value}, ptr {storage}, align 4"),
+                    span,
+                    &mut self.debug,
+                );
+                storage
+            }
+            (
+                LlValue::Function { value, .. } | LlValue::Enum { value, .. },
+                CompilerType::Function,
+            ) => {
                 let storage = body.instruction(
                     "call ptr @topal.platform.allocate(i64 4)",
                     span,
@@ -5568,6 +5648,7 @@ impl<'a> Generator<'a> {
             CompilerType::Result(nested) => LlValue::Result {
                 value: payload.into(),
                 success: nested.as_ref().clone(),
+                function_captures: Vec::new(),
             },
             CompilerType::List(element) => LlValue::List {
                 value: payload.into(),
@@ -5580,6 +5661,15 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ),
                 enumeration: enumeration.clone(),
+            },
+            CompilerType::Function => LlValue::Function {
+                value: body.instruction(
+                    &format!("load i32, ptr {payload}, align 4"),
+                    span,
+                    &mut self.debug,
+                ),
+                enumeration: function_value_enumeration(self.program),
+                captures: Vec::new(),
             },
             CompilerType::Tuple(types)
                 if types.as_slice() == [CompilerType::Int, CompilerType::String] =>
@@ -5944,10 +6034,12 @@ impl<'a> Generator<'a> {
                 LlValue::Result {
                     value: left,
                     success,
+                    ..
                 },
                 LlValue::Result {
                     value: right,
                     success: right_success,
+                    ..
                 },
             ) => self.emit_result_equal(left, right, success, right_success, body, span),
             (LlValue::Int(_), LlValue::Int(_))
@@ -6871,6 +6963,7 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     success,
+                    function_captures: Vec::new(),
                 }
             }
             LlValue::Optional { payload, .. } => {
@@ -7155,7 +7248,7 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ),
-            LlValue::Result { value, success } => {
+            LlValue::Result { value, success, .. } => {
                 self.emit_print_result(value, success, body, span);
             }
             LlValue::Optional { value, payload, .. } => {
@@ -8619,6 +8712,7 @@ enum LlValue {
     Result {
         value: String,
         success: CompilerType,
+        function_captures: Vec<(String, Self)>,
     },
     Optional {
         value: String,
@@ -8689,6 +8783,14 @@ fn attach_function_capture(
         ) if rest.is_empty() => {
             function_captures.push((storage_name, capture_value));
         }
+        (
+            CompilerAggregatePathElement::ResultSuccess,
+            LlValue::Result {
+                function_captures, ..
+            },
+        ) if rest.is_empty() => {
+            function_captures.push((storage_name, capture_value));
+        }
         (CompilerAggregatePathElement::SumPayload(name), LlValue::Sum { payloads, sum, .. }) => {
             let index = sum
                 .alternatives
@@ -8716,6 +8818,11 @@ fn function_capture_value(value: &LlValue, storage_name: &str) -> Option<LlValue
             .iter()
             .find_map(|(_, field)| function_capture_value(field, storage_name)),
         LlValue::Optional {
+            function_captures, ..
+        } => function_captures
+            .iter()
+            .find_map(|(name, value)| (name == storage_name).then(|| value.clone())),
+        LlValue::Result {
             function_captures, ..
         } => function_captures
             .iter()
@@ -8748,6 +8855,9 @@ fn extend_function_capture_environment(
             }
         }
         LlValue::Optional {
+            function_captures, ..
+        }
+        | LlValue::Result {
             function_captures, ..
         } => {
             environment.extend(function_captures.iter().cloned());
@@ -9057,6 +9167,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::Result(success) | CompilerType::TaskResponse(success) => LlValue::Result {
             value: "null".into(),
             success: success.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::Optional(payload) => LlValue::Optional {
             value: "null".into(),
@@ -10799,6 +10910,13 @@ fn compiler_type_contains_function(value_type: &CompilerType) -> bool {
             .iter()
             .any(|(_, field)| compiler_type_contains_function(field)),
         CompilerType::Optional(payload) => compiler_type_contains_function(payload),
+        CompilerType::Result(success) => compiler_type_contains_function(success),
+        CompilerType::Sum(sum) => sum.alternatives.iter().any(|alternative| {
+            alternative
+                .payload
+                .as_ref()
+                .is_some_and(compiler_type_contains_function)
+        }),
         _ => false,
     }
 }
@@ -11067,6 +11185,7 @@ fn function_parameter_value(value_type: &CompilerType, index: usize) -> LlValue 
     machine_value(value_type, format!("%arg{index}"))
 }
 
+#[allow(clippy::too_many_lines)] // Every admitted machine representation stays explicit.
 fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
     match value_type {
         CompilerType::Unit => LlValue::Unit,
@@ -11142,6 +11261,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::Result(success) | CompilerType::TaskResponse(success) => LlValue::Result {
             value,
             success: success.as_ref().clone(),
+            function_captures: Vec::new(),
         },
         CompilerType::Optional(payload) => LlValue::Optional {
             value,
@@ -13301,6 +13421,63 @@ mod tests {
                 .count(),
             4
         );
+        for name in [
+            "candidate",
+            "operation",
+            "offset",
+            "@ context-offset",
+            "root live-offset",
+        ] {
+            assert!(llvm.contains(&format!("!DILocalVariable(name: \"{name}\"")));
+        }
+        assert!(!llvm.contains("call ptr %"));
+        assert!(!llvm.contains("topal.runtime.closure"));
+        assert!(!llvm.contains("topal.runtime.environment"));
+    }
+
+    #[test]
+    fn emits_result_function_environments_as_exact_private_paths() {
+        // TOPAL-COMPILER-RESULT-FUNCTION-001,
+        // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+        // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+        // TOPAL-COMPILER-DEBUG-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/result-function-environments.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "result-function-environments.t").emit();
+
+        assert_eq!(
+            llvm.matches("define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.make_2dresult.")
+                .count(),
+            7
+        );
+        assert_eq!(
+            llvm.matches(
+                "define internal fastcc { ptr, ptr, ptr, ptr, ptr, ptr } @topal.fn.make_2dfallible."
+            )
+            .count(),
+            2
+        );
+        assert!(
+            llvm.contains(
+                "define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.project_2dresult."
+            )
+        );
+        assert!(llvm.contains(
+            "define internal fastcc { ptr, ptr, ptr, ptr, ptr, ptr } @topal.fn.project_2dresult."
+        ));
+        assert!(llvm.contains(
+            "define internal fastcc { { ptr, ptr, i32, i32 }, ptr, ptr, ptr } @topal.fn.make_2drecord."
+        ));
+        assert!(llvm.contains(
+            "define internal fastcc { { ptr, ptr }, ptr, ptr, ptr } @topal.fn.return_2dtuple."
+        ));
+        assert!(llvm.contains("call ptr @topal.runtime.result.success(ptr"));
+        assert!(llvm.contains("insertvalue { ptr, ptr, ptr, ptr, ptr, ptr } poison, ptr"));
+        assert!(llvm.contains("insertvalue { ptr, ptr, ptr, ptr, ptr, ptr } %"));
+        assert!(llvm.contains(", ptr null, 5"));
+        assert!(llvm.contains("ret { ptr, ptr, ptr, ptr, ptr, ptr }"));
         for name in [
             "candidate",
             "operation",
