@@ -683,7 +683,12 @@ class _TopalListPrinter:
         inferior = gdb.selected_inferior()
         entries = []
         visited = set()
-        pair_types = ("(Int, Int)", "(Int, String)", "(String, Int)")
+        pair_types = (
+            "(Int, Int)",
+            "(Int, String)",
+            "(String, Int)",
+            "(String, String)",
+        )
         indexed_entry_type = "(index : Int, value : Int)"
         node_size = (
             32
@@ -845,6 +850,19 @@ class _TopalListPrinter:
                 if left.startswith("<") or right.startswith("<"):
                     return (
                         "<invalid List (String, Int) entry: "
+                        f"({left}, {right})>"
+                    )
+                entries.append(f"({left}, {right})")
+            elif self._element_type == "(String, String)":
+                left = int.from_bytes(node[0:8], "little")
+                right = int.from_bytes(node[8:16], "little")
+                if not left or not right:
+                    return "<invalid null List (String, String) field>"
+                left = _TopalStringPrinter(left).to_string()
+                right = _TopalStringPrinter(right).to_string()
+                if left.startswith("<") or right.startswith("<"):
+                    return (
+                        "<invalid List (String, String) entry: "
                         f"({left}, {right})>"
                     )
                 entries.append(f"({left}, {right})")

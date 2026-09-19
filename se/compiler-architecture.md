@@ -1544,7 +1544,10 @@ exact Int/String equality loop for both direct inner values and outer recursive
 List equality. The ordinary `List (String, Int)` increment applies the same
 executable-private design to the existing Map-collector input node, adds an
 exact source-order String/Int equality loop, and leaves the Map representation
-and native ABI unchanged.
+and native ABI unchanged. The ordinary `List (String, String)` increment reuses
+that three-pointer inline node with two immutable String descriptors and an
+exact source-order String/String equality loop; LLVM continues to own physical
+placement and no public or foreign ABI is introduced.
 
 The first recursive List specialization composes that inline product approach
 without declaring a generic node. An inner `List (Int, String)` uses three

@@ -264,6 +264,11 @@ decomposition, equality, and observation boundary. Their conditional loop
 compares exact String keys before arbitrary-precision Int values in source
 field order without changing the Map or native ABI.
 
+Ordinary `List (String, String)` values use the same executable-private inline
+pair-node shape with two immutable String descriptors. Their conditional loop
+compares the left and right Strings in source order, preserving exact Unicode
+contents without adding a generic container or foreign string runtime.
+
 Ordinary `List String` values use the same private pointer-payload node shape
 already selected for contextual String Lists, now across private boundaries,
 structural equality, complete decisions, count, and emptiness. Equality delegates

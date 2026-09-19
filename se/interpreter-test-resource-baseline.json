@@ -1386,6 +1386,11 @@
       "cpu_time_ns": 10016039,
       "memory_peak_bytes": 18530304,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/list-string-pair-values.t": {
+      "cpu_time_ns": 24482440,
+      "memory_peak_bytes": 18432000,
+      "samples_per_test": 50
     }
   }
 }
