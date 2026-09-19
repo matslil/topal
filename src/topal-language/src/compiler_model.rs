@@ -1541,6 +1541,7 @@ struct Analyzer {
     returned_aggregate_value_facts: BTreeMap<String, StaticValueFacts>,
     constraints: Vec<CompilerConstraint>,
     constraint_bindings: BTreeMap<String, u32>,
+    constraint_binding_declarations: BTreeMap<String, usize>,
     in_function: bool,
     function_values_used: bool,
     consumed_generators: BTreeSet<String>,
@@ -1590,6 +1591,7 @@ impl Analyzer {
             returned_aggregate_value_facts: BTreeMap::new(),
             constraints: Vec::new(),
             constraint_bindings: BTreeMap::new(),
+            constraint_binding_declarations: BTreeMap::new(),
             in_function: false,
             function_values_used: false,
             consumed_generators: BTreeSet::new(),
@@ -9034,7 +9036,21 @@ impl Analyzer {
                         .payload
                         .is_some()
                 });
-        if (!built_in && !declared_union) || !direct_expression_returns_from_function(argument) {
+        let declared_constraint =
+            self.constraint_bindings
+                .get(constructor_name)
+                .is_some_and(|tag| {
+                    let constraint = &self.constraints
+                        [usize::try_from(*tag).expect("u32 constraint tag fits usize")];
+                    constraint.base_type == CompilerType::Int
+                        && self
+                            .constraint_binding_declarations
+                            .get(constructor_name)
+                            .is_some_and(|end| *end <= constructor.start)
+                });
+        if (!built_in && !declared_union && !declared_constraint)
+            || !direct_expression_returns_from_function(argument)
+        {
             return Ok(None);
         }
         let (result, returned) = self.analyze_direct_statement_expression(
@@ -9504,6 +9520,8 @@ impl Analyzer {
                     }
                     if let Some(tag) = constraint_tag {
                         self.constraint_bindings.insert(name_text.clone(), tag);
+                        self.constraint_binding_declarations
+                            .insert(name_text.clone(), statement_span(statement).end);
                     }
                     if kind == BlockKind::TopLevel && facts.runtime_bound {
                         self.root_bindings.insert(
@@ -12972,10 +12990,10 @@ impl Analyzer {
                 .constraint_bindings
                 .get(self.source.slice(*name))
                 .copied()
-            && self.constraints[usize::try_from(tag).expect("u32 tag fits usize")]
-                .span
-                .end
-                <= name.start
+            && self
+                .constraint_binding_declarations
+                .get(self.source.slice(*name))
+                .is_some_and(|end| *end <= name.start)
         {
             return self.analyze_constraint_application(tag, operand, span, environment);
         }
@@ -40461,6 +40479,38 @@ mod tests {
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  abandoned : Character is Character (String { return 42 })\n  1000\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_named_constraint_argument() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-constraint-constructor.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  Positive { return 42 }\nPositive is Int constraint { candidate } candidate > 0\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(forward).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let non_int = "use language (version is v0.1)\nNonempty is String constraint { candidate } candidate = candidate\nanswer is fn () -> Int\n  Nonempty { return 42 }\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(non_int).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }

@@ -132,6 +132,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-return-block-operand.t",
     "examples/language/function-return-call-argument.t",
     "examples/language/function-return-character-constructor.t",
+    "examples/language/function-return-constraint-constructor.t",
     "examples/language/function-return-from-block.t",
     "examples/language/function-return-optional-constructor.t",
     "examples/language/function-return-operator-operand.t",

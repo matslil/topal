@@ -5220,9 +5220,10 @@ payload admitted by
 payload admitted by `TOPAL-COMP-LEXICAL-RETURN-CONSTRUCTOR-001`, and the
 positional Variant payload admitted by
 `TOPAL-COMP-LEXICAL-RETURN-VARIANT-001`, and the direct `Character` operand
-admitted by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, a return-bearing block
-nested in another expression, decision, callback, or other compound expression
-shall remain rejected.
+admitted by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, and the direct named
+constraint operand admitted by `TOPAL-COMP-LEXICAL-RETURN-CONSTRAINT-001`, a
+return-bearing block nested in another expression, decision, callback, or other
+compound expression shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5257,11 +5258,12 @@ payload admitted by
 payload admitted by `TOPAL-COMP-LEXICAL-RETURN-CONSTRUCTOR-001`, and the
 positional Variant payload admitted by
 `TOPAL-COMP-LEXICAL-RETURN-VARIANT-001`, and the direct `Character` operand
-admitted by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, the implementation shall
-admit no other embedded, conditional, callback, generator, or exit with cleanup
-obligations and add no runtime control-flow value, unwind edge, allocation,
-foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or `topal-native/6` revision. Tests shall share the
+admitted by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, and the direct named
+constraint operand admitted by `TOPAL-COMP-LEXICAL-RETURN-CONSTRAINT-001`, the
+implementation shall admit no other embedded, conditional, callback, generator,
+or exit with cleanup obligations and add no runtime control-flow value, unwind
+edge, allocation, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or `topal-native/6` revision. Tests shall share the
 interpreter/compiler source,
 assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
 behavior, and record separate interpreter, compiler-build, and native-run
@@ -5386,13 +5388,14 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Except for the positional Variant form covered by
 `TOPAL-COMP-LEXICAL-RETURN-VARIANT-001` and the direct `Character` form covered
-by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, constraint, modular, collection,
-qualified, and other constructor forms; products or other expressions nested
-in the operand; decisions; callbacks; generators; and cleanup-bearing scopes
-shall remain fail-closed. The implementation shall add no runtime control-flow
-value, constructor-specific allocation, indirect call, unwind edge, foreign
-dependency, C/C++ runtime, other-language standard library, public ABI, or
-`topal-native/6` revision. Tests shall share the
+by `TOPAL-COMP-LEXICAL-RETURN-CHARACTER-001`, and the direct named Int-constraint
+form covered by `TOPAL-COMP-LEXICAL-RETURN-CONSTRAINT-001`, other constraint,
+modular, collection, qualified, and other constructor forms; products or other
+expressions nested in the operand; decisions; callbacks; generators; and
+cleanup-bearing scopes shall remain fail-closed. The implementation shall add
+no runtime control-flow value, constructor-specific allocation, indirect call,
+unwind edge, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or `topal-native/6` revision. Tests shall share the
 interpreter/compiler source, cover every admitted constructor family, verify
 omitted conversion/construction/binding/tails, inspect LLVM/DWARF/GDB behavior,
 and record separate resource baselines. This realizes
@@ -5445,6 +5448,31 @@ verify omitted validation/evidence/binding/tails, nested-operand rejection,
 LLVM/DWARF/GDB behavior, and separate resource baselines. This realizes
 `TOPAL-FUNCTION-RETURN-001`, `TOPAL-STRING-CHARACTER-CLASSIFIER-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-CHARACTER-001` for increment 3b2-b5e8i.
+
+## TOPAL-COMP-LEXICAL-RETURN-CONSTRAINT-001 — Named-constraint operand lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as the direct operand of
+an already-declared named Int constraint. It shall validate constraint identity,
+Int base, and binding declaration order first, then complete the enclosing
+function before predicate evaluation or refined evidence construction; omit the
+predicate branch, refined evidence, abandoned binding, and lexical and function
+tails at O0; and validate the returned value against the enclosing function
+result classifier.
+
+The compiler shall retain the returned lexical block as the existing private
+function result, preserve its nested DWARF scope, and use the existing single
+machine return. Forward, unknown, non-Int, dynamically selected, qualified,
+nested-operand, decision, callback, generator, and cleanup-bearing forms shall
+remain fail-closed under their existing diagnostics. The implementation shall
+add no runtime control-flow value, constraint validation, allocation, indirect
+call, unwind edge, foreign dependency, C/C++ runtime, other-language standard
+library, public ABI, or `topal-native/6` revision. Tests shall share the
+interpreter/compiler source, verify identity/base/order guards, omitted
+predicate/evidence/binding/tails, rejection boundaries, LLVM/DWARF/GDB behavior,
+and separate resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
+`TOPAL-TYPE-CONSTRAINT-VALIDATE-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001` for increment 3b2-b5e8j.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 
