@@ -3366,7 +3366,8 @@ branch-selected facts and Function containment outside Tuple, Record, the exact
 Optional path of `TOPAL-COMP-OPTIONAL-FUNCTION-001`, or the exact nominal Sum
 path of `TOPAL-COMP-SUM-FUNCTION-001`, or the exact Result-success path of
 `TOPAL-COMP-RESULT-FUNCTION-001`, or the exact finite List-entry paths of
-`TOPAL-COMP-LIST-FUNCTION-001` shall fail before LLVM lowering.
+`TOPAL-COMP-LIST-FUNCTION-001`, or the exact fixed-size Array-entry paths of
+`TOPAL-COMP-ARRAY-FUNCTION-001` shall fail before LLVM lowering.
 
 The backend shall represent each Function leaf with its existing private i32
 observation tag inside the recursively exact aggregate. Definitions and calls
@@ -3464,7 +3465,8 @@ recursively nested Tuple or labeled Record result, or an exact present Optional
 payload under `TOPAL-COMP-OPTIONAL-FUNCTION-001`, an exact selected Sum payload
 under `TOPAL-COMP-SUM-FUNCTION-001`, or an exact arithmetic Result success under
 `TOPAL-COMP-RESULT-FUNCTION-001`, or exact finite List entries under
-`TOPAL-COMP-LIST-FUNCTION-001` within one compilation unit.
+`TOPAL-COMP-LIST-FUNCTION-001`, or exact fixed-size Array entries under
+`TOPAL-COMP-ARRAY-FUNCTION-001` within one compilation unit.
 It shall retain the nested declaration identity separately from its observation
 tag and retain each already-evaluated immutable lexical, defining-context, and
 live-root capture with its exact classifier, storage identity, and source name.
@@ -3729,6 +3731,61 @@ private observation tags, compiler names, LLVM types/symbols, debug shadows,
 and physical placement. This realizes `TOPAL-COMPILER-LIST-FUNCTION-001` for
 increments 3b2-b5av, 6b2b2m, and 6c2k.
 
+## TOPAL-COMP-ARRAY-FUNCTION-001 — Exact private fixed-size Array Function environments
+
+The checked compiler model shall admit an exact finite `List Function`
+collected as `Array N Function`, where `N` is the exact retained count, as a
+local value, ordinary private parameter or result, package field, or recursively
+contained Tuple/Record field. It shall retain the exact extent and one
+source-ordered named, symbolic, anonymous, or admitted nested callable identity
+per entry. Opaque, branch-selected, transformed, or otherwise inexact entry
+sequences or identities shall remain `E-COMPILER-UNSUPPORTED` before artifact
+publication.
+
+The backend shall preserve the existing Topal-owned 16-byte Array header: an
+i64 entry count followed by a pointer to the immutable source List nodes.
+Collection shall not copy or enlarge those nodes, and capture snapshots shall
+not be embedded in the header or entries. Exact checked access shall produce
+the ordinary `Optional Function`: an in-bounds index shall attach the indexed
+callable facts to `Some`, while an out-of-bounds index shall produce `None`.
+Eventual application shall lower as one direct specialized `fastcc` call.
+Display, DWARF, and the GDB printer shall retain exact source Array and Function
+observations without exposing compiler facts.
+
+Every Function entry shall add its zero-based Array index to its canonical
+capture path. Private parameters shall pass the source Array pointer followed
+by entry- and capture-ordered values. Private results shall return the pointer
+followed by those values for one-time caller extraction and remapping. This path
+shall compose with enclosing Tuple/Record values and exact nested Function
+escape. Distinct entries and factory calls shall retain independent snapshots.
+Function- or Generator-containing capture state shall remain unsupported.
+
+Tests shall cover zero and nonzero extents; named, symbolic, anonymous, and
+nested entries; multiple positions and independent factory snapshots;
+in-bounds and out-of-bounds access with complete Optional decisions; count,
+emptiness, private parameter/result, package, Tuple, and Record passage;
+display; all interpreter modes and reversible history; checked Array-entry
+paths and direct IR; artifact-free opaque/capture/repeated-identity rejection;
+freestanding ELF/DWARF; full O0 GDB Array/callable frames; the shared corpus;
+and separate interpreter/compiler resource baselines.
+
+This shall add no closure/environment object, environment pointer, function
+pointer, indirect call, callback, dispatch table, caller-frame lookup, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Allocation shall remain the existing process-lifetime
+List nodes, one Array header, and the ordinary in-bounds Optional Function box.
+General Array Function equality/repeated identity, dynamic indexing, operations
+that lose exact entry facts, opaque or dynamically selected entries, persistent
+storage, publication, recursive element classifiers, and Function containment
+in other collection representations remain deferred. Future library metadata
+shall retain canonical source-session/scope, exact extent and entry order,
+source collection relationship, callable/declaration and aggregate paths,
+ordered capture identity/classifier/representation/lifetime, effects,
+Array/List representation and ownership, and versioned target-adapter facts
+independently of headers, node offsets, private observation tags, compiler
+names, LLVM types/symbols, debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-ARRAY-FUNCTION-001` for increments 3b2-b5aw, 6b2b2n, and 6c2l.
+
 ## TOPAL-COMP-ANONYMOUS-PRODUCT-001 — Private anonymous product patterns
 
 The checked compiler model shall admit a flat positional product parameter
@@ -3924,7 +3981,7 @@ shall add no closure or environment object, allocation, generic matcher,
 pattern table, function pointer, indirect call, callback, dispatch table,
 foreign dependency, C/C++ runtime, other-language standard library, public
 aggregate/callable ABI, or `topal-native/6` revision. Dynamic aggregate
-selection, Function containment in other aggregates, ordinary named-function
+selection, Function containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths, ordinary named-function
 header repetition, publication, and library adapters remain deferred.
 Compiled-library metadata
 shall eventually encode canonical aggregate paths and stable
@@ -4055,8 +4112,8 @@ freestanding ELF/DWARF properties, and full O0 GDB values/frames. This shall add
 no closure or environment object, allocation, pattern table, function pointer,
 indirect call, dispatch table, foreign dependency, C/C++ runtime,
 other-language standard library, public aggregate/callable ABI, or
-`topal-native/6` revision. Dynamic aggregate selection, Function containment in
-other aggregates, unsupported capture classifiers, ordinary named-function
+`topal-native/6` revision. Dynamic aggregate selection, Function containment
+outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths, unsupported capture classifiers, ordinary named-function
 header repetition, publication, and library adapters remain deferred. Future
 compiled-library metadata shall encode canonical aggregate paths, stable
 callable identities, ordered capture schemas and classifiers, semantic equality
@@ -4446,8 +4503,10 @@ placement. Optional Function fields are governed by
 `TOPAL-COMP-OPTIONAL-FUNCTION-001`; exact nominal Sum Function fields are
 governed by `TOPAL-COMP-SUM-FUNCTION-001`; exact arithmetic Result Function
 fields are governed by `TOPAL-COMP-RESULT-FUNCTION-001`; exact finite List
-Function fields are governed by `TOPAL-COMP-LIST-FUNCTION-001`. Function containment
-in other aggregates; dynamic escape/selection; dependent defaults; nested package declarations;
+Function fields are governed by `TOPAL-COMP-LIST-FUNCTION-001`; exact fixed-size
+Array Function fields are governed by `TOPAL-COMP-ARRAY-FUNCTION-001`. Function
+containment in other aggregates; dynamic escape/selection; dependent defaults;
+nested package declarations;
 recursive callable package signatures; persistent storage; publication; and
 public adapters remain deferred. This realizes
 `TOPAL-COMPILER-FUNCTION-AGGREGATE-PACKAGED-FIELD-001`,
@@ -4467,7 +4526,9 @@ value or capture environment under this requirement. Exact `Optional Function`
 fields are instead governed by `TOPAL-COMP-OPTIONAL-FUNCTION-001`; exact
 arithmetic `Result Function` fields are governed by
 `TOPAL-COMP-RESULT-FUNCTION-001`; exact finite `List Function` fields are
-governed by `TOPAL-COMP-LIST-FUNCTION-001`. Unsupported contained classifiers and mismatched container classifiers shall reject before
+governed by `TOPAL-COMP-LIST-FUNCTION-001`; exact fixed-size `Array Function`
+fields are governed by `TOPAL-COMP-ARRAY-FUNCTION-001`. Unsupported contained
+classifiers and mismatched container classifiers shall reject before
 LLVM lowering or artifact publication.
 
 The frontend shall retain every explicit represented-container initializer
@@ -4503,8 +4564,9 @@ contained classifier or Result error domain, Range endpoint classifier,
 representation/lifetime/default/effect semantics, stable operand/field
 identities and order, and target adapters independently of compiler-private
 binding names, LLVM pointer types, and physical placement. Function-containing
-containers outside exact `Optional Function` and arithmetic `Result Function`, unsupported List elements and
-container payloads, context-dependent defaults, nested package declarations,
+containers outside exact `Optional Function`, arithmetic `Result Function`,
+finite `List Function`, and fixed-size `Array Function`, unsupported List
+elements and container payloads, context-dependent defaults, nested package declarations,
 opaque whole-package values, recursive package signatures, persistent storage,
 publication, and public adapters remain deferred. This realizes
 `TOPAL-COMPILER-CONTAINER-PACKAGED-FIELD-001`,
@@ -4519,7 +4581,8 @@ classifiers, with a statically parsed nonnegative Array extent, and admit those
 values as complete fields of one- or two-operand packages. Other element,
 key, or value classifiers and mismatched collection classifiers shall reject
 before LLVM lowering or artifact publication rather than being accepted from
-their pointer carrier alone.
+their pointer carrier alone. Exact `Array (N, Function)` fields are instead
+governed by `TOPAL-COMP-ARRAY-FUNCTION-001`.
 
 The frontend shall retain every explicit collection-producing initializer once
 in package source order with its exact constructor and extent/element/key/value
@@ -4552,7 +4615,7 @@ extent; element or key/value classifiers; ordering, uniqueness, multiplicity,
 and collision semantics; representation/lifetime/default/effect semantics;
 stable operand/field identities and order; and target adapters independently
 of compiler-private binding names, LLVM pointer types, and physical placement.
-Function-containing collections, other generic specializations,
+Function-containing collections outside exact `Array (N, Function)`, other generic specializations,
 context-dependent or otherwise unanalyzable defaults, nested package
 declarations, opaque whole-package values, recursive package signatures,
 persistent collection storage, publication, and public adapters remain

@@ -371,8 +371,11 @@ separately from the runtime tag. Exact arithmetic Result success payloads extend
 it under `TOPAL-COMPILER-RESULT-FUNCTION-001`, retaining conditional success
 facts independently of the runtime success/Error tag. Exact finite Lists extend
 it under `TOPAL-COMPILER-LIST-FUNCTION-001`, retaining length and one ordered
-fact subtree per entry. Other containers and
-opaque or branch-selected identities still fail before LLVM.
+fact subtree per entry. Exact fixed-size Arrays collected from those Lists
+extend it under
+`TOPAL-COMPILER-ARRAY-FUNCTION-001`, retaining the declared extent and the same
+ordered entry subtrees. Other containers and opaque or branch-selected
+identities still fail before LLVM.
 
 Private definitions and calls use recursively exact LLVM aggregates under
 `fastcc`; LLVM owns their target register, stack, and return coercion. DWARF
@@ -388,8 +391,9 @@ The capture-bearing extension assigns every Function leaf a canonical path of
 zero-based Tuple indexes, Record labels, admitted `Optional` payload edges,
 admitted nominal Sum alternative-name payload edges, and admitted `Result`
 success edges, plus zero-based finite List-entry edges, visited depth-first from
-left to right. Parameter specialization carries the
-ordinary source aggregate followed by each leaf's ordered capture operands.
+left to right. Exact Arrays add zero-based Array-entry edges. Parameter
+specialization carries the ordinary source aggregate followed by each leaf's
+ordered capture operands.
 Result lowering returns a private aggregate whose first field is the unchanged
 source aggregate and whose remaining fields are the captures in that same path
 order. The caller extracts the source value once, attaches each capture to its
@@ -401,8 +405,9 @@ direct specializations; Function-containing capture state remains rejected.
 
 LLVM still owns AMD64 register, stack, and aggregate-return placement for every
 matching `fastcc` prototype. DWARF exposes only the source
-Tuple/Record/Optional/Sum/Result/List and the eventual callable's source-named captures,
-never the extended result fields or hidden parameter names. This transport
+Tuple/Record/Optional/Sum/Result/List/Array and the eventual callable's
+source-named captures, never the extended result fields or hidden parameter
+names. This transport
 remains module-private and creates no closure object, environment pointer,
 allocation, callback, function
 pointer, indirect dispatch, foreign dependency, or native ABI change. A future
@@ -415,9 +420,10 @@ The exact nested-result extension reuses these scalar and aggregate transports
 for one nonrecursive, nonoverloaded nested declaration whose identity remains
 known throughout the private path. A factory result contains the nested
 observation tag followed by its already-evaluated lexical, defining-context,
-and live-root values; a Tuple, Record, Optional, Sum, Result, or finite List result associates
-the same values with the Function leaf's canonical path. The caller immediately owns those SSA
-snapshots, so the factory frame may return before a later direct application.
+and live-root values; a Tuple, Record, Optional, Sum, Result, finite List, or
+fixed-size Array result associates the same values with the Function leaf's
+canonical path. The caller immediately owns those SSA snapshots, so the factory
+frame may return before a later direct application.
 Separate factory calls may share the declaration tag but retain independent
 capture values. Private forwarding remaps storage identities without replaying
 the factory or consulting a dead frame. O0 DWARF exposes the factory result as
@@ -498,6 +504,23 @@ entry paths, callable/capture schemas, List representation/ownership, lifetime,
 effects, and target adapters independently of node offsets, observation tags,
 private names, LLVM types/symbols, and physical placement.
 
+The exact fixed-size Array extension materializes an exact finite
+`List Function` with the existing 16-byte Topal-owned Array header: an i64
+entry count followed by a pointer to the immutable List nodes. It does not copy
+or enlarge those nodes. The checked fact vector retains the declared extent,
+entry order, and callable/capture schema. Exact checked indexing produces the
+ordinary `Optional Function` representation and transfers the indexed facts
+only on the `Some` path; an out-of-bounds exact index produces `None`. Captures
+use zero-based Array-entry paths and travel after the ordinary Array pointer
+across private parameters/results. Distinct entries and factory invocations
+retain independent snapshots, and eventual application remains a direct
+specialization. Allocation is limited to the existing Array header and the
+ordinary successful Optional Function observation box. Future compiled-library
+metadata must preserve the exact extent/order, source collection relationship,
+Array and List representation/ownership, entry paths, callable/capture schemas,
+lifetime, effects, and target adapters independently of headers, node offsets,
+observation tags, private names, LLVM types/symbols, and physical placement.
+
 An inferred anonymous Function may recursively destructure positional products.
 The checked frontend materializes the complete call operand once, then walks
 the pattern and exact Tuple types depth-first from left to right, representing
@@ -554,7 +577,7 @@ independently of the module-private tag, hidden-parameter layout, and LLVM
 types. Result repeated identity, Range, Generator, refined, authority-bearing, unsupported
 capture classifiers, recursive/overloaded or otherwise unsupported escaping
 nested callable identity, Function containment outside admitted
-Tuple/Record/Optional/Sum/Result/List paths, and ordinary named-header repetition remain
+Tuple/Record/Optional/Sum/Result/List/Array paths, and ordinary named-header repetition remain
 deferred with their broader representation and overload consequences.
 
 Named nested lexical functions declared directly in an ordinary function body
@@ -621,7 +644,7 @@ interface rather than being inferred from source packaging syntax. The private
 bindings and hidden callable-capture transport are deliberately absent from
 source-level debugging. Material Scope data parameters remain visible under
 qualified names as required by the existing Scope boundary. Function
-containment outside admitted Tuple/Record/Optional/Sum/Result/List paths,
+containment outside admitted Tuple/Record/Optional/Sum/Result/List/Array paths,
 opaque/computed/nested/non-root Scope values, unsupported container or
 collection payloads and other non-scalar fields, nested package declarations,
 opaque whole-package values, context-dependent

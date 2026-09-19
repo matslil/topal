@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 252);
+    assert_eq!(examples.len(), 253);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -4606,6 +4606,50 @@ fn records_list_function_environments_reversibly() {
         "function.selected [TOPAL-TYPE-CALL-001] return-list",
         "function.selected [TOPAL-TYPE-CALL-001] apply-package",
         "function.selected [TOPAL-TYPE-CALL-001] apply-record",
+        "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
+        "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
+        "evaluation.result [TOPAL-SYN-GRAMMAR-001]",
+    ] {
+        assert!(stdout.contains(event), "{event}: {stdout}");
+    }
+    assert!(stdout.contains("function.exit"));
+}
+
+#[test]
+fn records_array_function_environments_reversibly() {
+    // TOPAL-INTP-SUBSET-279,
+    // TOPAL-COMPILER-ARRAY-FUNCTION-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}array-function-environments.debug"),
+            &language_example("array-function-environments.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let first_factory = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] make-array")
+        .unwrap();
+    let first_access = stdout
+        .find("array.checked-access [TOPAL-ARRAY-GET-CHECKED-001] array-at?")
+        .unwrap();
+    let first_nested = stdout
+        .find("function.selected [TOPAL-TYPE-CALL-001] operation")
+        .unwrap();
+    assert!(first_factory < first_access);
+    assert!(first_access < first_nested);
+    for event in [
+        "array.collected [TOPAL-ARRAY-COLLECT-001] count=2",
+        "array.collected [TOPAL-ARRAY-COLLECT-001] count=0",
+        "optional.payload.bound [TOPAL-DECISION-OPTIONAL-001] operation",
+        "function.selected [TOPAL-TYPE-CALL-001] return-array",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-package",
+        "function.selected [TOPAL-TYPE-CALL-001] apply-record",
+        "collection.entry-count [TOPAL-COLLECTION-ENTRY-COUNT-001] entries=2",
+        "collection.empty.tested [TOPAL-COLLECTION-EMPTY-PREDICATE-001] true",
         "context.member.selected [TOPAL-CONTEXT-SELECT-001] context-offset",
         "namespace.member.resolved [TOPAL-NAMESPACE-ROOT-001] live-offset",
         "evaluation.result [TOPAL-SYN-GRAMMAR-001]",

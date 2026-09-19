@@ -787,11 +787,12 @@ class _TopalListPrinter:
 
 
 class _TopalSequenceContainerPrinter:
-    """Render an immutable compiler-private Array or Set of Int."""
+    """Render an immutable compiler-private Array or Set."""
 
-    def __init__(self, value, kind):
+    def __init__(self, value, kind, element_type="Int"):
         self._value = value
         self._kind = kind
+        self._element_type = element_type
 
     def to_string(self):
         address = int(self._value)
@@ -818,12 +819,23 @@ class _TopalSequenceContainerPrinter:
                 node = bytes(inferior.read_memory(current, 16))
             except gdb.MemoryError:
                 return f"<unreadable {self._kind} entry>"
-            payload = int.from_bytes(node[0:8], "little")
-            if not payload:
-                return f"<invalid null {self._kind} Int entry>"
-            rendered = _TopalIntPrinter(payload).to_string()
-            if rendered.startswith("<"):
-                return f"<invalid {self._kind} Int entry: {rendered}>"
+            if self._element_type == "Function":
+                payload = int.from_bytes(node[0:4], "little")
+                try:
+                    rendered = str(
+                        gdb.Value(payload).cast(gdb.lookup_type("enum Function"))
+                    )
+                except gdb.error:
+                    return f"<unreadable {self._kind} Function entry>"
+                if rendered.startswith("<unknown:"):
+                    return f"<invalid {self._kind} Function entry {payload}>"
+            else:
+                payload = int.from_bytes(node[0:8], "little")
+                if not payload:
+                    return f"<invalid null {self._kind} Int entry>"
+                rendered = _TopalIntPrinter(payload).to_string()
+                if rendered.startswith("<"):
+                    return f"<invalid {self._kind} Int entry: {rendered}>"
             entries.append(rendered)
             current = int.from_bytes(node[8:16], "little")
         if current:
@@ -1031,7 +1043,8 @@ def _lookup_topal_value(value):
         return _TopalListPrinter(value, value_type[len("List") :])
     if storage_type.startswith("struct TopalContainer."):
         if value_type.startswith("Array "):
-            return _TopalSequenceContainerPrinter(value, "Array")
+            element_type = "Function" if value_type.endswith(" Function") else "Int"
+            return _TopalSequenceContainerPrinter(value, "Array", element_type)
         if value_type.startswith("Set "):
             return _TopalSequenceContainerPrinter(value, "Set")
         if value_type.startswith("Bag "):

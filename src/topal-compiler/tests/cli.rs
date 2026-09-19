@@ -16103,6 +16103,173 @@ fn list_function_environments_are_private_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact Array paths, rejection, IR, and GDB frames.
+fn array_function_environments_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-ARRAY-FUNCTION-001,
+    // TOPAL-COMPILER-FUNCTION-AGGREGATE-CAPTURE-001,
+    // TOPAL-COMPILER-NESTED-FUNCTION-ESCAPE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-array-function-environments");
+    let source = directory.join("array-function-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/array-function-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(
+        executed.stdout,
+        b"(2, 43, 44, 45, 5, 42, Array (+), 46, 47, 48, 2, 0, true, Array (<fn increment>, <fn increase>), Array ())\n"
+    );
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    assert_eq!(
+        ir.matches("define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.make_2darray.")
+            .count(),
+        6,
+        "{ir}"
+    );
+    assert!(ir.contains("define internal fastcc { ptr, ptr, ptr, ptr } @topal.fn.return_2darray."));
+    assert!(ir.contains(
+        "define internal fastcc { { ptr, ptr }, ptr, ptr, ptr } @topal.fn.return_2dtuple."
+    ));
+    assert!(ir.contains(
+        "define internal fastcc { { ptr, ptr, i32, i32 }, ptr, ptr, ptr } @topal.fn.make_2drecord."
+    ));
+    assert!(ir.contains("call ptr @topal.runtime.container.array.function.collect(ptr"));
+    assert!(ir.contains("call ptr @topal.runtime.container.array.function.at(ptr"));
+    assert!(ir.contains("%topal.ContainerSequenceHeader = type { i64, ptr }"));
+    assert!(ir.contains("call ptr @topal.platform.allocate(i64 16)"));
+    assert!(ir.contains("call ptr @topal.platform.allocate(i64 4)"));
+    for forbidden in [
+        " byval",
+        " sret",
+        " inalloca",
+        "preallocated",
+        "closure.runtime",
+        "environment.runtime",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    for (name, rejected_source) in [
+        (
+            "dynamic",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\ndecrement is fn (value : Int) -> Int\n  value - 1\nleft is fn () -> Array (1, Function)\n  values : List Function is Entry (increment, Empty)\n  values collect Array\nright is fn () -> Array (1, Function)\n  values : List Function is Entry (decrement, Empty)\n  values collect Array\nchoose is fn (flag : Boolean) -> Array (1, Function)\n  flag\n    true then left ()\n    false then right ()\nchoose true\n",
+        ),
+        (
+            "function-capture",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nwrap is fn (operation : Function) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    operation value\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap increment\n",
+        ),
+        (
+            "array-function-capture",
+            "use language (version is v0.1)\nincrement is fn (value : Int) -> Int\n  value + 1\nsource is fn () -> Array (1, Function)\n  values : List Function is Entry (increment, Empty)\n  values collect Array\nwrap is fn (candidate : Array (1, Function)) -> Array (1, Function)\n  nested is fn (value : Int) -> Int\n    array-at? (candidate, 0)\n      Some operation then operation value\n      None then 0\n  values : List Function is Entry (nested, Empty)\n  values collect Array\nwrap (source ())\n",
+        ),
+        (
+            "repeated-identity",
+            "use language (version is v0.1)\nmake is fn (offset : Int) -> Array (1, Function)\n  increase is fn (value : Int) -> Int\n    value + offset\n  values : List Function is Entry (increase, Empty)\n  values collect Array\nsame : Function is { candidate, candidate } 1\nsame (make 1, make 1)\n",
+        ),
+    ] {
+        let rejected_path = directory.join(format!("{name}.t"));
+        let rejected_executable = directory.join(name);
+        fs::write(&rejected_path, rejected_source).unwrap();
+        let rejected = run(topalc().args([
+            "-o",
+            rejected_executable.to_str().unwrap(),
+            rejected_path.to_str().unwrap(),
+        ]));
+        assert!(!rejected.status.success());
+        let diagnostic = String::from_utf8_lossy(&rejected.stderr);
+        assert!(
+            diagnostic.contains("E-COMPILER-UNSUPPORTED"),
+            "{diagnostic}"
+        );
+        assert!(!rejected_executable.exists());
+        assert!(!metadata_path(&rejected_executable).exists());
+    }
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break array-function-environments.t:23",
+            "-ex",
+            "break array-function-environments.t:47",
+            "-ex",
+            "disable 2",
+            "-ex",
+            "run",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "disable 1",
+            "-ex",
+            "enable 2",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in [
+        "candidate=Array (<fn increment>, <fn increase>)",
+        "candidate = Array (<fn increment>, <fn increase>)",
+        "value = 1",
+        "offset = 1",
+        "@ context-offset = 40",
+        "root live-offset = 1",
+        "topal.fn.apply_2dsecond.",
+        "topal.fn.increase.",
+        "topal.main",
+    ] {
+        assert!(text.contains(expected), "{expected}: {text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn modular_values_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-MODULAR-001, TOPAL-NUM-MODULAR-TYPE-001,
     // TOPAL-NUM-MODULAR-REDUCE-001, TOPAL-NUM-MODULAR-ARITHMETIC-001,

@@ -2454,3 +2454,15 @@ independent. The shared regression and reversible debugger history shall cover
 empty, named, symbolic, anonymous, and nested Function entries; multiple entry
 positions; construction, forwarding, decomposition, display, and exact
 results.
+
+## TOPAL-INTP-SUBSET-279 — Fixed-size Array Function environments
+
+All source modes shall preserve exact source-ordered Function identities and
+lexical environments when an exact finite `List Function` is collected as an
+`Array N Function`, passed through ordinary source parameters/results or
+package and Tuple/Record fields, accessed at exact in-bounds and out-of-bounds
+indexes through `Optional Function`, and eventually applied. Distinct entries
+and captured factory invocations shall remain independent. The shared
+regression and reversible debugger history shall cover zero and nonzero
+extents; named, symbolic, anonymous, and nested Function entries; collection,
+forwarding, checked access, count, emptiness, display, and exact results.

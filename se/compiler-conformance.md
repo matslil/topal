@@ -93,7 +93,8 @@ evidence.
 | 3b2-b5at | exact selected nominal Union/Variant Function payloads, private parameters/results/packages and Tuple/Record containment, alternative-path capture transport, decisions, repeated identity, display, and debugging | complete |
 | 3b2-b5au | exact arithmetic Result Function success payloads, dynamic Error propagation, private parameters/results/packages and Tuple/Record containment, success-path capture transport, decisions, display, and debugging | complete |
 | 3b2-b5av | exact finite List Function entries, private parameters/results/packages and Tuple/Record containment, entry-path capture transport, complete decisions, display, and debugging | complete |
-| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional/Sum/Result/List, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as/3b2-b5at/3b2-b5au/3b2-b5av, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
+| 3b2-b5aw | exact fixed-size Array Function entries collected from finite Lists, private parameters/results/packages and Tuple/Record containment, entry-path capture transport, checked access, display, and debugging | complete |
+| 3b2-b5e8 | remaining unadmitted function forms, dynamically selected aggregate Function boundaries, Function containment outside Tuple/Record/Optional/Sum/Result/List/Array, capture-bearing boundaries outside 3b2-b5ab/3b2-b5ar/3b2-b5as/3b2-b5at/3b2-b5au/3b2-b5av/3b2-b5aw, other escaping anonymous Function values, unsupported escaping nested identities, other unsupported aggregate repeated identities, ordinary named-header repetition, nested package declarations, opaque whole-package values, remaining unsupported package fields and context-dependent default construction, return-through-block cleanup, remaining recursion/totality evidence, recursive/overloaded nested functions and Function containment plus Scope/evidence captures, persistent aggregate storage, recursive sums, constraints, capabilities, and decisions | planned |
 | 4a | prospective UTF-8 String byte count through the native descriptor and arbitrary-precision Int runtime | complete |
 | 4b1 | exact preserved-sequence String equality and derived `Optional String` equality | complete |
 | 4b2 | empty String construction, adjacent literal composition, exact concatenation, emptiness, dynamic canonical display, and GDB inspection | complete |
@@ -181,7 +182,8 @@ evidence.
 | 6b2b2k | exact selected nominal Union/Variant Function payloads carrying immutable live-root snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
 | 6b2b2l | exact arithmetic Result Function success payloads carrying immutable live-root snapshots through private parameters/results, decisions, packages, Tuple/Record containment, dynamic Error propagation, and GDB observation | complete |
 | 6b2b2m | exact finite List Function entries carrying immutable live-root snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
-| 6b2b2 | recursive/overloaded nested Function environments beyond 6b2b2m; escaping anonymous Functions and nested Functions outside 6b2b2i; unsupported Function-containing representations; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
+| 6b2b2n | exact fixed-size Array Function entries carrying immutable live-root snapshots through private parameters/results, checked access, packages, Tuple/Record containment, and GDB observation | complete |
+| 6b2b2 | recursive/overloaded nested Function environments beyond 6b2b2n; escaping anonymous Functions and nested Functions outside 6b2b2i; unsupported Function-containing representations; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
@@ -195,7 +197,8 @@ evidence.
 | 6c2i | exact selected nominal Union/Variant Function payloads carrying immutable defining-context snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
 | 6c2j | exact arithmetic Result Function success payloads carrying immutable defining-context snapshots through private parameters/results, decisions, packages, Tuple/Record containment, dynamic Error propagation, and GDB observation | complete |
 | 6c2k | exact finite List Function entries carrying immutable defining-context snapshots through private parameters/results, decisions, packages, Tuple/Record containment, and GDB observation | complete |
-| 6c2 | recursive/overloaded nested Function environments beyond 6c2k; escaping anonymous Functions and nested Functions outside 6c2g; unsupported Function-containing representations; other callable environments; qualified root access beyond 6b2b2m; and public/library context ABI | planned |
+| 6c2l | exact fixed-size Array Function entries carrying immutable defining-context snapshots through private parameters/results, checked access, packages, Tuple/Record containment, and GDB observation | complete |
+| 6c2 | recursive/overloaded nested Function environments beyond 6c2l; escaping anonymous Functions and nested Functions outside 6c2g; unsupported Function-containing representations; other callable environments; qualified root access beyond 6b2b2n; and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
@@ -381,7 +384,9 @@ extends them through exact arithmetic Result success payloads, success-path
 capture transport, packages, recursive products, complete decisions, and
 dynamic Error propagation; 3b2-b5av extends them through exact finite List
 entries, source-index capture paths, packages, recursive products, and complete
-List decisions; and
+List decisions; 3b2-b5aw carries the same ordered identities and captures into
+fixed-size Arrays, private boundaries, packages, recursive products, and exact
+checked access; and
 3b2-b5e8 continues with other escaping, recursive,
 overloaded, and dynamically contained callables, remaining recursive and
 nested-block exit control flow, cleanup-bearing scopes, persistent aggregate
@@ -932,7 +937,9 @@ packages, Tuple/Record containment, and complete Sum decisions;
 6b2b2l/6c2j carries them through exact arithmetic Result success paths,
 packages, Tuple/Record containment, complete Result decisions, and dynamic
 Error propagation; 6b2b2m/6c2k carries them through exact finite List entry
-paths, packages, Tuple/Record containment, and complete List decisions; and
+paths, packages, Tuple/Record containment, and complete List decisions;
+6b2b2n/6c2l carries them through fixed-size Array entry paths, packages,
+Tuple/Record containment, and exact checked access; and
 6b2b2/6c2 retain unsupported root/context forwarding graphs and members, Scope
 escape, nested Scope and generator shapes or boundaries not otherwise admitted,
 external path resolution, package construction, published interfaces, and
