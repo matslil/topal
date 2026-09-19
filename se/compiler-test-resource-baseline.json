@@ -2436,6 +2436,16 @@
       "cpu_time_ns": 161694,
       "memory_peak_bytes": 18411520,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/recursive-scalar-environments.t": {
+      "cpu_time_ns": 134403639,
+      "memory_peak_bytes": 41979904,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/recursive-scalar-environments.t": {
+      "cpu_time_ns": 205446,
+      "memory_peak_bytes": 18370560,
+      "samples_per_test": 500
     }
   }
 }

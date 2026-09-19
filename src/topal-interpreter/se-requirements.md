@@ -2326,3 +2326,15 @@ isolated from context qualification. The shared regression and reversible
 debugger history shall cover a three-function call chain, multiple context
 classifiers, parameter-shadow isolation, source-ordered selection events, and
 the exact result.
+
+## TOPAL-INTP-SUBSET-269 — Scalar environments through proven recursion
+
+All source modes shall preserve each function's immutable defining context and
+the live source-session root while executing an independently proven direct or
+mutual recursion graph. A member that selects only `@ member` and another that
+selects only `root member` shall observe their distinct original snapshots no
+matter which cycle member is active or suspended; recursion parameters shall
+not intercept either qualification. The shared regression and reversible
+debugger history shall cover transitive capture requirements in both directions
+of a mutual cycle, ordered recursion events, exact results, and unchanged
+once-only source values.

@@ -13552,35 +13552,27 @@ fn function_root_data_forwarding_is_private_freestanding_and_debuggable() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    for (name, rejected_source, diagnostic) in [
-        (
-            "overloaded",
-            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
-            "overload-dependent root-data capture forwarding",
-        ),
-        (
-            "recursive",
-            "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  value\n    <= 0 then root answer\n    otherwise read (value - 1)\nanswer is 42\nread 1\n",
-            "recursive root-data capture forwarding",
-        ),
-    ] {
-        let rejected_path = directory.join(format!("{name}.t"));
-        let rejected_executable = directory.join(name);
-        fs::write(&rejected_path, rejected_source).unwrap();
-        let rejected = run(topalc().args([
-            "-o",
-            rejected_executable.to_str().unwrap(),
-            rejected_path.to_str().unwrap(),
-        ]));
-        assert!(!rejected.status.success());
-        assert!(
-            String::from_utf8_lossy(&rejected.stderr).contains(diagnostic),
-            "{}",
-            String::from_utf8_lossy(&rejected.stderr)
-        );
-        assert!(!rejected_executable.exists());
-        assert!(!metadata_path(&rejected_executable).exists());
-    }
+    let rejected_path = directory.join("overloaded.t");
+    let rejected_executable = directory.join("overloaded");
+    fs::write(
+        &rejected_path,
+        "use language (version is v0.1)\nread is fn (value : Int) -> Int\n  root answer\nread is fn (value : String) -> Int\n  root answer\nwrapper is fn () -> Int\n  read 0\nanswer is 42\nwrapper ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("overload-dependent root-data capture forwarding"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -13770,35 +13762,27 @@ fn defining_context_forwarding_is_private_freestanding_and_debuggable() {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
 
-    for (name, rejected_source, diagnostic) in [
-        (
-            "overloaded",
-            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
-            "overload-dependent defining-context capture forwarding",
-        ),
-        (
-            "recursive",
-            "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value\n    <= 0 then @ offset\n    otherwise read (value - 1)\nread 1\n",
-            "recursive defining-context capture forwarding",
-        ),
-    ] {
-        let rejected_path = directory.join(format!("{name}.t"));
-        let rejected_executable = directory.join(name);
-        fs::write(&rejected_path, rejected_source).unwrap();
-        let rejected = run(topalc().args([
-            "-o",
-            rejected_executable.to_str().unwrap(),
-            rejected_path.to_str().unwrap(),
-        ]));
-        assert!(!rejected.status.success());
-        assert!(
-            String::from_utf8_lossy(&rejected.stderr).contains(diagnostic),
-            "{}",
-            String::from_utf8_lossy(&rejected.stderr)
-        );
-        assert!(!rejected_executable.exists());
-        assert!(!metadata_path(&rejected_executable).exists());
-    }
+    let rejected_path = directory.join("overloaded.t");
+    let rejected_executable = directory.join("overloaded");
+    fs::write(
+        &rejected_path,
+        "use language (version is v0.1)\noffset is 40\nread is fn (value : Int) -> Int\n  value + @ offset\nread is fn (value : String) -> Int\n  @ offset\nwrapper is fn () -> Int\n  read 2\nwrapper ()\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr)
+            .contains("overload-dependent defining-context capture forwarding"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -13841,6 +13825,162 @@ fn defining_context_forwarding_is_private_freestanding_and_debuggable() {
     assert!(text.contains("topal.fn.read.0"), "{text}");
     assert!(text.contains("topal.fn.relay.1"), "{text}");
     assert!(text.contains("topal.fn.forward.2"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One session covers proof gating, exact cyclic IR, artifacts, and every GDB frame.
+fn recursive_scalar_environments_are_private_freestanding_and_debuggable() {
+    // TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001,
+    // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+    // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-recursive-scalar-environments");
+    let source = directory.join("recursive-scalar-environments.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/recursive-scalar-environments.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"((false, 0, 2), (true, 40, 0))\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let ir_path = directory.join("application.ll");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir_path.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        emitted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&emitted.stderr)
+    );
+    let ir = fs::read_to_string(ir_path).unwrap();
+    let definitions = ir
+        .lines()
+        .filter(|line| {
+            line.contains("define internal fastcc { i1, ptr, ptr } @topal.fn.cycle_2d")
+                && line.contains("(ptr %arg0, ptr %arg1, ptr %arg2)")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(definitions.len(), 4, "{ir}");
+    assert!(definitions.iter().all(|line| line.contains("noinline")));
+    assert!(definitions.iter().all(|line| !line.contains("norecurse")));
+    assert_eq!(
+        ir.lines()
+            .filter(|line| {
+                line.contains("call fastcc { i1, ptr, ptr } @topal.fn.cycle_2d")
+                    && line.contains("ptr %arg1, ptr %arg2)")
+            })
+            .count(),
+        4,
+        "{ir}"
+    );
+    assert_eq!(
+        ir.matches("!DILocalVariable(name: \"@ captured\", arg: 2")
+            .count(),
+        4
+    );
+    assert_eq!(
+        ir.matches("!DILocalVariable(name: \"root live\", arg: 3")
+            .count(),
+        4
+    );
+    for forbidden in [
+        "topal.context",
+        "topal.root",
+        "context.runtime",
+        "namespace.runtime",
+        "lookup.context",
+        "lookup.root",
+        "call ptr %",
+    ] {
+        assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
+    }
+
+    let rejected_path = directory.join("unproven.t");
+    let rejected_executable = directory.join("unproven");
+    fs::write(
+        &rejected_path,
+        "use language (version is v0.1)\ncaptured is 40\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then @ captured\n    otherwise loop value\nloop 1\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "-o",
+        rejected_executable.to_str().unwrap(),
+        rejected_path.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(
+        String::from_utf8_lossy(&rejected.stderr).contains("recursive function call"),
+        "{}",
+        String::from_utf8_lossy(&rejected.stderr)
+    );
+    assert!(!rejected_executable.exists());
+    assert!(!metadata_path(&rejected_executable).exists());
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break recursive-scalar-environments.t:16",
+            "-ex",
+            "run",
+            "-ex",
+            "continue",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 1",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 2",
+            "-ex",
+            "info args",
+            "-ex",
+            "frame 3",
+            "-ex",
+            "info args",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert_eq!(text.matches("@ captured = 40").count(), 4, "{text}");
+    assert_eq!(text.matches("root live = 2").count(), 4, "{text}");
+    for value in 0..=3 {
+        assert!(text.contains(&format!("value = {value}")), "{text}");
+    }
+    assert!(text.contains("topal.fn.cycle_2deven.0"), "{text}");
+    assert!(text.contains("topal.fn.cycle_2dodd.1"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
 

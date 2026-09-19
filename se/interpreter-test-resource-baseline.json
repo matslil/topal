@@ -1226,6 +1226,11 @@
       "cpu_time_ns": 5472760,
       "memory_peak_bytes": 18239488,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/recursive-scalar-environments.t": {
+      "cpu_time_ns": 7300599,
+      "memory_peak_bytes": 18350080,
+      "samples_per_test": 50
     }
   }
 }

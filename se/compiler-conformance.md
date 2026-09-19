@@ -166,11 +166,13 @@ evidence.
 | 6b2b2a | root/root-alias generator declaration snapshots and qualified application of every otherwise-admitted custom-generator graph through its existing affine O0 lowering | complete |
 | 6b2b2b | direct-entry exact private live-root data capture with call-position visibility, declaration-order hidden parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6b2b2c | exact scalar live-root data forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
-| 6b2b2 | overload-dependent, recursive, function-value, nested, and anonymous root-data forwarding; aggregate/callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
+| 6b2b2d | exact scalar live-root data forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |
+| 6b2b2 | overload-dependent, function-value, nested, and anonymous root-data forwarding; recursive environments beyond 6b2b2d; aggregate/callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
-| 6c2 | overload-dependent, recursive, function-value, nested, and anonymous defining-context forwarding; aggregate/callable environments; escaping closures; qualified root access beyond 6b2b2c; and public/library context ABI | planned |
+| 6c2b | exact scalar defining-context forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |
+| 6c2 | overload-dependent, function-value, nested, and anonymous defining-context forwarding; recursive environments beyond 6c2b; aggregate/callable environments; escaping closures; qualified root access beyond 6b2b2d; and public/library context ABI | planned |
 | 7a | canonical empty first-class Effect values, classification, equality, decomposed products, scalar function passage, display, and debugging | complete |
 | 7a1 | explicit empty ordinary-function effect bounds with checked containment, retained static Function-view metadata, and pre-LLVM erasure | complete |
 | 7b1 | closed external-layout policy values as seven nominal families, canonical display, same-family equality, and debugging without layout construction or authority | complete |
@@ -872,7 +874,9 @@ available without flattening by returning the same static snapshot and erasing
 selections to explicit private capture parameters; 6c2a carries those exact
 immutable defining-context values through finite acyclic statically named
 function chains with direct private calls and preserved caller-frame debugging;
-and 6b2b2/6c2 retain unsupported root/context forwarding graphs and members,
+6b2b2d/6c2b carries exact scalar root/context environments through independently
+proof-backed direct, mutual, and explicit-measure recursion without a recursive
+closure runtime; and 6b2b2/6c2 retain unsupported root/context forwarding graphs and members,
 Scope escape, nested Scope and generator shapes or boundaries not otherwise admitted,
 external path resolution, package construction, published interfaces, and
 source/compiled-library work.

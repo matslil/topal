@@ -2948,16 +2948,17 @@ explicit and forwarded parameters accurately in the active function and every
 suspended caller frame. Target-aligned debug-only stack shadows may preserve
 call-clobbered values without adding semantic storage. Tests shall cover a
 three-frame shared regression, interpreter modes, reversible history, checked
-capture order and call arguments, overload-dependent and recursive rejection,
+capture order and call arguments, overload-dependent rejection,
 exact direct IR, artifact-free failure, freestanding ELF/DWARF, every GDB frame,
 the shared corpus, and separate resource baselines.
 
 This shall add no global root storage, namespace/capture/environment table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or `topal-native/6` revision. Overload-dependent or recursive forwarding,
-named-function aliases, anonymous/nested functions, aggregate or otherwise
-unsupported root members, defining-context forwarding beyond
+or `topal-native/6` revision. Overload-dependent forwarding, recursive
+forwarding beyond `TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
+aliases, anonymous/nested functions, aggregate or otherwise unsupported root
+members, defining-context forwarding beyond
 `TOPAL-COMP-CONTEXT-CAPTURE-FORWARD-001`, escape, and
 public/library environments remain deferred. Future compiled-library metadata
 shall preserve canonical source-session namespace identity, every selection and
@@ -4352,17 +4353,18 @@ explicit and forwarded parameters accurately in the active function and every
 suspended caller frame. Target-aligned debug-only stack shadows may preserve
 call-clobbered values without adding semantic storage. Tests shall cover a
 three-frame shared regression, interpreter modes, reversible history, checked
-capture order and call arguments, overload-dependent and recursive rejection,
+capture order and call arguments, overload-dependent rejection,
 exact direct IR, artifact-free failure, freestanding ELF/DWARF, every GDB frame,
 the shared corpus, and separate resource baselines.
 
 This shall add no global context storage, namespace/capture/environment table,
 initializer replay, lookup, allocation, function pointer, indirect call,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or `topal-native/6` revision. Overload-dependent or recursive forwarding,
-named-function aliases, anonymous/nested functions, aggregate or otherwise
-unsupported context members, escape, and public/library environments remain
-deferred. Future compiled-library metadata shall preserve canonical
+or `topal-native/6` revision. Overload-dependent forwarding, recursive
+forwarding beyond `TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001`, named-function
+aliases, anonymous/nested functions, aggregate or otherwise unsupported context
+members, escape, and public/library environments remain deferred. Future
+compiled-library metadata shall preserve canonical
 defining-context instance and source-session identity, every selection and call
 edge, callee identity/overload, member stable identity, captured declaration
 position, visibility/declaration order, classifier/semantic representation,
@@ -4370,6 +4372,44 @@ capture order/lifetime/effects, and a versioned target adapter independently of
 private names, LLVM types/symbols, debug shadows, and physical placement. This
 realizes `TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001` and
 `TOPAL-CONTEXT-SELECT-001` for increment 6c2a.
+
+## TOPAL-COMP-RECURSIVE-SCALAR-ENVIRONMENT-001 — Proof-backed recursive scalar environments
+
+The checked model shall permit exact scalar hidden captures on a direct or
+mutual recursive edge only after an existing explicit-measure, Int, Nat, or
+mutual recursion proof independently admits that edge. Capture discovery shall
+not establish termination. Before closing a cycle, the frontend shall compute
+the transitive union of required `@ member` and `root member` values for every
+graph member, append them in established declaration order, and use the current
+hidden parameters as every recursive call argument. The source entry edge alone
+shall supply the immutable defining-context snapshot and live-root call-position
+snapshot.
+
+Every cycle member and call shall use the same exact private `fastcc` prototype
+and already-reserved symbol, with LLVM owning x86-64 placement. Definitions
+shall remain `noinline` without claiming `norecurse`. Full O0 DWARF/GDB shall
+expose the explicit parameter and each context/root capture in the active frame
+and every suspended direct or mutual frame; aligned debug-only shadows may
+retain call-clobbered values without adding semantic state. Tests shall cover
+direct, mutual, and explicit-measure checked graphs, transitive captures used by
+different cycle members, unproven artifact-free rejection, exact cyclic IR,
+interpreter modes, reversible history, freestanding ELF/DWARF, the shared
+corpus, resource baselines, and every recursive GDB frame.
+
+This shall add no global root/context storage, environment/cycle table, lookup,
+initializer replay, allocation, dispatcher, function pointer, indirect call,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Unproven, incomplete, or mixed-proof cycles;
+overload-dependent capture selection; unsupported representations;
+named-function aliases; anonymous/nested/escaping recursion; and public/library
+recursive environments remain deferred. Future library metadata shall retain
+recursion graph/member identity, proof rule/evidence, every ordered call and
+capture edge, canonical context/root instance, member identity and declaration
+position, classifier/semantic representation, capture order/lifetime/effects,
+and a versioned target adapter independently of private symbols, LLVM types,
+debug shadows, and physical placement. This realizes
+`TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001` for increments 6b2b2d and
+6c2b.
 
 ## TOPAL-COMP-RECURSION-INT-001 — Proven direct decreasing Int recursion
 

@@ -18619,31 +18619,6 @@ impl Analyzer {
         let (scope_arguments, scope_captures) =
             self.scope_parameter_arguments(&declaration, &arguments, &call_environment)?;
         let context_captures = self.defining_context_captures(&declaration, &call_environment)?;
-        let identity = function_overload_identity(&self.source, function_name, &declaration);
-        if self.in_function
-            && self.active_calls.contains(&identity)
-            && context_captures
-                .iter()
-                .any(|capture| capture.parameter_name.starts_with("root "))
-        {
-            return Err(unsupported(
-                &self.source,
-                span,
-                "recursive root-data capture forwarding",
-            ));
-        }
-        if self.in_function
-            && self.active_calls.contains(&identity)
-            && context_captures
-                .iter()
-                .any(|capture| capture.parameter_name.starts_with("@ "))
-        {
-            return Err(unsupported(
-                &self.source,
-                span,
-                "recursive defining-context capture forwarding",
-            ));
-        }
         let metadata = CompilerCallMetadata {
             callable_arguments,
             aggregate_arguments,
@@ -31925,6 +31900,85 @@ mod tests {
             .unwrap();
         assert!(wrapper.parameters.is_empty());
         assert_eq!(exact_int(&shadowed.main.result), Some(BigInt::from(42)));
+    }
+
+    #[test]
+    fn models_proof_backed_recursive_scalar_environments() {
+        // TOPAL-COMPILER-RECURSIVE-SCALAR-ENVIRONMENT-001,
+        // TOPAL-COMPILER-FUNCTION-ROOT-DATA-FORWARD-001,
+        // TOPAL-COMPILER-CONTEXT-CAPTURE-FORWARD-001
+        let source = include_str!("../../../examples/language/recursive-scalar-environments.t")
+            .replace("(cycle-even 3, cycle-odd 3)", "cycle-even 3");
+        let program = analyze_for_compiler(&source).unwrap();
+        assert_eq!(program.functions.len(), 2);
+        let even = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cycle-even")
+            .unwrap();
+        let odd = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "cycle-odd")
+            .unwrap();
+        for (function, target) in [(even, odd), (odd, even)] {
+            assert_eq!(function.parameters.len(), 3);
+            assert_eq!(function.parameters[0].name, "value");
+            assert_eq!(function.parameters[1].name, "@ captured");
+            assert_eq!(function.parameters[2].name, "root live");
+            let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+                &function.body.result.kind
+            else {
+                panic!("expected a proven mutual recursion decision")
+            };
+            let CompilerExpressionKind::Call { symbol, arguments } = &otherwise.kind else {
+                panic!("expected a proven recursive edge")
+            };
+            assert_eq!(symbol, &target.symbol);
+            assert_eq!(arguments.len(), 3);
+            assert!(matches!(
+                &arguments[1].kind,
+                CompilerExpressionKind::Local(name) if name == "@ captured"
+            ));
+            assert!(matches!(
+                &arguments[2].kind,
+                CompilerExpressionKind::Local(name) if name == "root live"
+            ));
+        }
+
+        let direct = analyze_for_compiler(
+            "use language (version is v0.1)\ncaptured is 40\nwalk is fn (value : Int) -> (Int, Int)\n  value\n    <= 0 then (@ captured, root live)\n    otherwise walk (value - 1)\nlive is 2\nwalk 2\n",
+        )
+        .unwrap();
+        assert_eq!(direct.functions.len(), 1);
+        assert_eq!(
+            direct.functions[0]
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            ["value", "@ captured", "root live"]
+        );
+
+        let measured = analyze_for_compiler(
+            "use language (version is v0.1)\ncaptured is 40\nrepeat is fn (count : Nat, total : Int) -> (Int, Int, Int) : Decreases count\n  count\n    <= 0 then (total, @ captured, root live)\n    otherwise repeat (count - 1, total + 3)\nlive is 2\nrepeat (4, 0)\n",
+        )
+        .unwrap();
+        assert_eq!(measured.functions.len(), 1);
+        assert_eq!(
+            measured.functions[0]
+                .parameters
+                .iter()
+                .map(|parameter| parameter.name.as_str())
+                .collect::<Vec<_>>(),
+            ["count", "total", "@ captured", "root live"]
+        );
+
+        let unproven = analyze_for_compiler(
+            "use language (version is v0.1)\ncaptured is 40\nloop is fn (value : Int) -> Int\n  value\n    <= 0 then @ captured\n    otherwise loop value\nloop 1\n",
+        )
+        .unwrap_err();
+        assert_eq!(unproven.code, "E-COMPILER-UNSUPPORTED");
     }
 
     #[test]

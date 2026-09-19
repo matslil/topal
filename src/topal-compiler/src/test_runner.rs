@@ -193,6 +193,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/range-selection.t",
     "examples/language/record-function-boundaries.t",
     "examples/language/record-reconstruction.t",
+    "examples/language/recursive-scalar-environments.t",
     "examples/language/repeated-anonymous-aggregate-patterns.t",
     "examples/language/repeated-anonymous-patterns.t",
     "examples/language/repeated-captured-function-aggregate-patterns.t",

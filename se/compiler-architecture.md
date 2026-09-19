@@ -206,8 +206,8 @@ declaration order and forwards its caller parameter at the direct `fastcc` edge.
 No callee reaches into an ancestor frame or global context object. Target-aligned
 debug-only stack shadows keep both active and suspended-frame values observable
 when LLVM uses call-clobbered locations at O0. Overload-dependent, recursive,
-function-value, nested, and anonymous chains remain fail-closed until their
-environment identities and cycle rules are modeled explicitly.
+function-value, nested, and anonymous chains remain fail-closed except for the
+proof-backed scalar recursion case described below.
 
 A future compiled-library context boundary must encode canonical context
 instance and source-session identity, every selection and call edge, stable
@@ -240,13 +240,27 @@ reaches into an ancestor frame or process-global object. Debug-only aligned
 stack shadows preserve the forwarded parameters when LLVM assigns their
 machine values to call-clobbered locations, so GDB can recover both the active
 and suspended frames at O0 without making those shadows semantic storage.
-Overload-dependent or recursive chains and function-value/nested/anonymous
-edges remain rejected until their environment identity and cycle rules are
-modeled explicitly.
+Overload-dependent chains and function-value/nested/anonymous edges remain
+rejected; recursion is admitted only through the proof-backed scalar case below.
+
+Proof-backed recursive scalar environments reuse the existing recursion graph
+and private symbol reservation rather than introducing a recursive-closure
+runtime. The frontend first computes the transitive union of exact root and
+defining-context captures for every required graph member. The entry edge
+supplies the immutable defining-context snapshot and live root call-position
+snapshot; every direct or mutual back-edge then passes its current hidden
+parameters unchanged to the already-reserved symbol. This cannot admit a cycle:
+the independent direct, mutual, or explicit-measure termination proof remains a
+prerequisite. Matching `fastcc` prototypes leave physical AMD64 placement to
+LLVM, retain `noinline` without the false `norecurse` attribute, and use the
+same aligned debug shadows to expose each capture in every suspended recursive
+frame at O0. There is no cycle/environment table, lookup, initializer replay,
+allocation, dispatcher, indirect call, or public ABI.
 
 A future compiled-library boundary must encode source-session namespace
 identity, every selection and call edge, stable callee/member identity,
-visibility/declaration order, canonical classifier and representation, capture
+visibility/declaration order, recursion graph/member identity and proof
+evidence, canonical classifier and representation, capture
 order/lifetime/effects, and a versioned target adapter independently of private
 parameter names, LLVM types or symbols, debug shadows, and physical placement.
 
