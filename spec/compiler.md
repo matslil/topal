@@ -5043,10 +5043,11 @@ whole explicit-return operand admitted by
 admitted by `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001`, and the direct product
 field admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, and the direct
 named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, a
-return-bearing block embedded in another expression, conditional or callback,
-and any exit whose scope owns generator close, resource, destructor, or other
-cleanup obligations SHALL remain rejected until explicit exit-edge and cleanup
-lowering is implemented.
+and the direct `Some` payload admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, a return-bearing block embedded in
+another expression, conditional or callback, and any exit whose scope owns
+generator close, resource, destructor, or other cleanup obligations SHALL
+remain rejected until explicit exit-edge and cleanup lowering is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5064,10 +5065,12 @@ Except for the direct symbolic operator operand admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001` and the direct product field
 admitted by `TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001`, and the direct
 named-call argument admitted by `TOPAL-COMPILER-LEXICAL-RETURN-CALL-001`, this
-rule admits no other compound-expression, conditional, callback, generator, or
-cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
-unwind edge, allocation, foreign dependency, C/C++ standard library, public ABI,
-or native-ABI revision.
+and the direct `Some` payload admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, this rule admits no other
+compound-expression, conditional, callback, generator, or cleanup-bearing
+propagation and SHALL introduce no runtime control-flow object, unwind edge,
+allocation, foreign dependency, C/C++ standard library, public ABI, or
+native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
 
@@ -5085,10 +5088,12 @@ The checked compiler model SHALL retain any evaluated left prefix as a private
 exit sequence followed by the lexical block result. The backend SHALL emit that
 prefix in the enclosing debug scope, retain the block's nested DWARF scope, and
 normalize the exit into the function's existing single machine return. This
-rule admits no constructor, packaged or nested call argument, overloaded or
-indirect call, decision, callback, generator, or cleanup-bearing propagation
-and SHALL introduce no runtime control-flow object, unwind edge, allocation,
-foreign dependency, C/C++ standard library, public ABI, or native-ABI revision.
+rule admits no constructor other than the direct `Some` payload covered by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001`, packaged or nested call argument,
+overloaded or indirect call, decision, callback, generator, or cleanup-bearing
+propagation and SHALL introduce no runtime control-flow object, unwind edge,
+allocation, foreign dependency, C/C++ standard library, public ABI, or
+native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-PRODUCT-001 — Product-field lexical exit
 
@@ -5133,6 +5138,26 @@ products nested in an argument; decisions; callbacks; generators; and exits
 with cleanup obligations SHALL remain rejected. This rule SHALL introduce no
 runtime control-flow object, indirect call, unwind edge, allocation, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-001 — Optional-constructor payload lexical exit
+
+An admitted cleanup-free lexical block used as the direct payload of the
+built-in unary `Some` constructor MAY execute an explicit `return`. The payload
+return SHALL complete the nearest enclosing ordinary function before payload
+classification or Optional construction. No `Some` value SHALL be constructed,
+and the remaining payload statements and enclosing function tail SHALL be
+excluded from generated IR at `-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than the Optional payload or abandoned binding classifier.
+The checked compiler model SHALL retain the returning block as the function
+result, and the backend SHALL preserve its nested DWARF scope before using the
+enclosing function's existing single machine return. Other constructors,
+products or other expressions nested in the payload position, decisions,
+callbacks, generators, and exits with cleanup obligations SHALL remain
+rejected. This rule SHALL introduce no runtime control-flow object, Optional
+allocation, indirect call, unwind edge, foreign dependency, C/C++ standard
+library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

@@ -1940,7 +1940,16 @@ exit sequence; a left or sole-argument exit needs no prefix. In every case the
 named callee is neither selected nor invoked, the returned block keeps its
 `DILexicalBlock`, and the existing single machine return completes the enclosing
 function. This changes no runtime representation or ABI. Overload selection,
-bound or qualified callables, packages, constructors, conditional joins, and
+bound or qualified callables, packages, other constructors, conditional joins,
+and cleanup-bearing exits remain deferred.
+
+Increment 3b2-b5e8f admits a return-bearing block as the direct payload of the
+built-in unary `Some` constructor. The exit is resolved before payload
+classification, so neither an Optional header nor an abandoned classified
+binding is generated. The returned block remains the enclosing function's
+private result with its nested `DILexicalBlock`, and the existing single machine
+return completes the function. This changes no runtime representation or ABI;
+other constructors, nested payload expressions, conditional joins, and
 cleanup-bearing exits remain deferred.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
