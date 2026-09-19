@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 259);
+    assert_eq!(examples.len(), 260);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -5650,6 +5650,36 @@ fn every_mode_preserves_rational_list_values() {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(String::from_utf8_lossy(&output.stdout).contains(expected));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    for event in [
+        "list.entry.constructed",
+        "list.entry.decomposed",
+        "list.entry-count",
+        "list.empty.tested",
+        "equality.list",
+    ] {
+        assert!(trace.contains(event), "{event}: {trace}");
+    }
+}
+
+#[test]
+fn every_mode_preserves_effect_list_values() {
+    // TOPAL-INTP-SUBSET-286, TOPAL-COMPILER-LIST-EFFECT-CORE-001
+    let source = include_str!("../../../examples/language/list-effect-values.t");
+    let expected = "(Effects (), Effects (), true, true, 2, true, Effects (), Effects (), Effects (), Entry ( Effects (), Entry ( Effects (), Empty ) ))";
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).contains(expected),
+            "{arguments:?}: {}",
+            String::from_utf8_lossy(&output.stdout)
+        );
     }
     let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
     for event in [

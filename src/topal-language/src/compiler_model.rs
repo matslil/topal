@@ -14886,7 +14886,8 @@ impl Analyzer {
         {
             if !matches!(
                 element.as_ref(),
-                CompilerType::Boolean
+                CompilerType::Effect
+                    | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
@@ -17193,7 +17194,8 @@ impl Analyzer {
         {
             if !matches!(
                 element.as_ref(),
-                CompilerType::Boolean
+                CompilerType::Effect
+                    | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
@@ -21922,7 +21924,8 @@ impl Analyzer {
             CompilerType::List(element)
                 if matches!(
                     element.as_ref(),
-                    CompilerType::Boolean
+                    CompilerType::Effect
+                        | CompilerType::Boolean
                         | CompilerType::Character
                         | CompilerType::Int
                         | CompilerType::Nat
@@ -25617,7 +25620,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         CompilerType::List(element) => {
             matches!(
                 element.as_ref(),
-                CompilerType::Boolean
+                CompilerType::Effect
+                    | CompilerType::Boolean
                     | CompilerType::Character
                     | CompilerType::Int
                     | CompilerType::Nat
@@ -33008,6 +33012,77 @@ mod tests {
         ));
         assert_eq!(results[9].value_type, list);
         let unsupported = "use language (version is v0.1)\nhalf : Rational is Rational (1, 2)\nvalues : List Rational is Entry (half, Empty)\nvalues reverse\n";
+        assert_eq!(
+            analyze_for_compiler(unsupported).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_effect_lists_across_private_boundaries() {
+        // TOPAL-EFFECT-EMPTY-001, TOPAL-EFFECT-IDENTITY-001,
+        // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
+        // TOPAL-LIST-EMPTY-PREDICATE-001, TOPAL-COMPILER-LIST-EFFECT-CORE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/list-effect-values.t"
+        ))
+        .unwrap();
+        let list_effect = CompilerType::List(Box::new(CompilerType::Effect));
+        let head = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "head-or")
+            .unwrap();
+        assert_eq!(head.parameters[0].value_type, list_effect);
+        assert_eq!(head.result_type, CompilerType::Effect);
+        assert!(matches!(
+            head.body.result.kind,
+            CompilerExpressionKind::ListDecision { .. }
+        ));
+        let return_pair = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-pair")
+            .unwrap();
+        assert_eq!(
+            return_pair.result_type,
+            CompilerType::Tuple(vec![list_effect.clone(), CompilerType::Effect])
+        );
+        let return_record = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "return-record")
+            .unwrap();
+        assert_eq!(
+            return_record.result_type,
+            CompilerType::Record(vec![
+                ("candidate".into(), list_effect.clone()),
+                ("fallback".into(), CompilerType::Effect),
+            ])
+        );
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("shared Effect List regression returns a Tuple")
+        };
+        assert_eq!(results.len(), 10);
+        assert!(matches!(
+            results[2].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Equal,
+                ..
+            }
+        ));
+        assert!(matches!(
+            results[4].kind,
+            CompilerExpressionKind::ListEntryCount(_)
+        ));
+        assert!(matches!(
+            results[5].kind,
+            CompilerExpressionKind::ListEmptyPredicate(_)
+        ));
+        assert_eq!(results[9].value_type, list_effect);
+
+        let unsupported = "use language (version is v0.1)\nvalues : List Effect is Entry (Effects (), Empty)\nvalues reverse\n";
         assert_eq!(
             analyze_for_compiler(unsupported).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

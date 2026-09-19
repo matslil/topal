@@ -1284,6 +1284,14 @@ contract, or layout commitment for other element types. General reachability
 reclamation remains deferred; process-lifetime retention is safe for this
 immutable executable-only slice and does not revise `topal-native/6`.
 
+The completed empty-Effect specialization adds a conditional finite equality/
+count fragment, exact i8 decision loads, direct null emptiness, and private
+Tuple/Record/package passage. Since every currently admitted payload is the
+canonical empty row, equality is exact length equality; this is not a layout or
+identity rule for future nonempty effect rows. DWARF and GDB retain `List Effect`,
+and future library metadata must carry effect-row identity/evidence separately
+from node representation, ownership, lifetime, effects, and target adapters.
+
 `List Boolean` uses a separately selected 16-byte private node with the source
 i1 value at offset zero, target padding that is never source state, and the
 remaining-node pointer at offset eight. Construction and complete List
