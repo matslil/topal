@@ -3173,7 +3173,14 @@ impl Session {
             "Some" | "String" | "Character" | "Int" | "Nat" | "Rational"
         );
         let declared_union = self.union_constructor(constructor_name).is_some();
-        if (!built_in && !declared_union) || !direct_expression_returns_from_function(argument) {
+        let declared_constraint = matches!(
+            self.bindings.get(constructor_name),
+            Some(Value::Constraint(constraint))
+                if constraint.base_classifier == "Int"
+        );
+        if (!built_in && !declared_union && !declared_constraint)
+            || !direct_expression_returns_from_function(argument)
+        {
             return Ok(None);
         }
         let Expression::Block { statements, .. } = argument else {
@@ -19769,6 +19776,38 @@ fn character_constructor_argument_block_propagates_return_before_validation() {
     );
     assert!(!trace.iter().any(|event| event.contains("1000")));
     assert!(!trace.iter().any(|event| event.contains("abandoned")));
+}
+
+#[test]
+fn named_constraint_argument_block_propagates_return_before_validation() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-constraint-constructor.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("constraint.validated"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  Positive { return 42 }\nPositive is Int constraint { candidate } candidate > 0\nanswer ()\n";
+    let error = Session::new()
+        .evaluate(forward, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-UNBOUND-NAME");
 }
 
 #[test]

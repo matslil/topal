@@ -1436,6 +1436,11 @@
       "cpu_time_ns": 3602379,
       "memory_peak_bytes": 18440192,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-constraint-constructor.t": {
+      "cpu_time_ns": 3957239,
+      "memory_peak_bytes": 18378752,
+      "samples_per_test": 50
     }
   }
 }
