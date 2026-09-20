@@ -2961,6 +2961,50 @@ impl Session {
         Ok(Some(step))
     }
 
+    fn evaluate_returning_modular_reduction_operand_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [
+            operand,
+            Expression::Identifier(operation),
+            Expression::Identifier(type_name),
+        ] = items.as_slice()
+        else {
+            return Ok(None);
+        };
+        if source.slice(*operation) != "modulo"
+            || !direct_expression_returns_from_function(operand)
+            || !matches!(
+                self.bindings.get(source.slice(*type_name)),
+                Some(Value::ModularType(_))
+            )
+        {
+            return Ok(None);
+        }
+        let Expression::Block { statements, .. } = operand else {
+            unreachable!("a direct returning modular reduction operand is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning modular reduction operand exits its function"
+        );
+        Ok(Some(step))
+    }
+
     fn evaluate_returning_embedded_expression_step(
         &self,
         source: &SourceText,
@@ -2969,6 +3013,14 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Option<ExecutionStep>, Diagnostic> {
         if let Some(step) = self.evaluate_returning_product_field_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
+        if let Some(step) = self.evaluate_returning_modular_reduction_operand_step(
             source,
             expression,
             return_classifier,
@@ -19844,6 +19896,38 @@ fn named_modular_argument_block_propagates_return_before_validation() {
         .evaluate(forward, &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-UNBOUND-NAME");
+}
+
+#[test]
+fn modular_reduction_operand_block_propagates_return_before_reduction() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-modular-reduction.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(
+        !trace
+            .iter()
+            .any(|event| event.contains("numeric.modular.reduced"))
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } modulo Counter\nCounter is ModNat (0 ..= 255)\nanswer ()\n";
+    let error = Session::new()
+        .evaluate(forward, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }
 
 #[test]

@@ -8713,6 +8713,15 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
+            && let Some(value) = self.analyze_returning_modular_reduction_operand(
+                expression,
+                environment,
+                function_result,
+            )?
+        {
+            return Ok((value, true));
+        }
+        if allow_function_return
             && let Some(value) =
                 self.analyze_returning_operator_operand(expression, environment, function_result)?
         {
@@ -8843,6 +8852,46 @@ impl Analyzer {
             },
             span: expression.span(),
         }))
+    }
+
+    fn analyze_returning_modular_reduction_operand(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [
+            operand,
+            Expression::Identifier(operation),
+            Expression::Identifier(type_name),
+        ] = items.as_slice()
+        else {
+            return Ok(None);
+        };
+        if self.source.slice(*operation) != "modulo"
+            || !direct_expression_returns_from_function(operand)
+            || self
+                .modulars
+                .get(self.source.slice(*type_name))
+                .is_none_or(|(_, declaration)| declaration.end > type_name.start)
+        {
+            return Ok(None);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            operand,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning modular reduction operand exits its function"
+        );
+        Ok(Some(result))
     }
 
     fn analyze_returning_operator_operand(
@@ -40544,12 +40593,44 @@ mod tests {
             analyze_for_compiler(forward).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
-        let reduction = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  { return 42 } modulo Counter\nanswer ()\n";
+        let nested = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  Counter ({ return 42 }, 0)\nanswer ()\n";
         assert_eq!(
-            analyze_for_compiler(reduction).unwrap_err().code,
+            analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
-        let nested = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  Counter ({ return 42 }, 0)\nanswer ()\n";
+    }
+
+    #[test]
+    fn models_return_bearing_modular_reduction_operand() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-NUM-MODULAR-REDUCE-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-MODULAR-REDUCE-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-modular-reduction.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } modulo Counter\nCounter is ModNat (0 ..= 255)\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(forward).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let unknown = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } modulo Missing\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(unknown).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  ({ return 42 }, 0) modulo Counter\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
