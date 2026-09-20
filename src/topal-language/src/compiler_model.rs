@@ -8879,6 +8879,15 @@ impl Analyzer {
                 (source, None)
             }
             [
+                source,
+                Expression::Identifier(operation),
+                Expression::Identifier(target),
+            ] if self.source.slice(*operation) == "collect"
+                && matches!(self.source.slice(*target), "Array" | "String") =>
+            {
+                (source, None)
+            }
+            [
                 Expression::Identifier(operation),
                 source,
                 Expression::Identifier(resolving),
@@ -40728,7 +40737,7 @@ mod tests {
             analyze_for_compiler(other_collector).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
-        let infix = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } collect Array\nanswer ()\n";
+        let infix = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } collect Set\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(infix).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
@@ -40801,6 +40810,41 @@ mod tests {
             "E-MAP-COLLISION-POLICY"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map ({ return 42 }, 0) resolving reject\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_infix_collect_sources() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-ARRAY-COLLECT-001,
+        // TOPAL-COLLECTION-COLLECT-STRING-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-infix-collect.t"
+        ))
+        .unwrap();
+        for name in ["array-exit", "string-exit"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.body.result.value_type, CompilerType::Int);
+            assert!(matches!(
+                function.body.result.kind,
+                CompilerExpressionKind::Block(_)
+            ));
+            assert!(function.body.statements.is_empty());
+        }
+
+        let invalid_target = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } collect Set\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_target).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0) collect Array\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
