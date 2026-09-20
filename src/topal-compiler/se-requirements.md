@@ -5235,6 +5235,8 @@ Boolean-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, a return-bearing
+block, or the ordered comparison-decision subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, a return-bearing
 block nested in another expression, decision action, callback, or other
 compound expression shall remain rejected.
 
@@ -5286,13 +5288,15 @@ Boolean-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, the implementation
-shall admit no other embedded, decision-action, callback, generator, or
-cleanup-bearing exit and add no runtime control-flow value, unwind edge,
-allocation, foreign dependency, C/C++ runtime, other-language standard library,
-public ABI, or `topal-native/6` revision. Tests shall share the
-interpreter/compiler source, assert exactly one semantic return and skipped
-tails, inspect LLVM/DWARF/GDB behavior, and record separate interpreter,
-compiler-build, and native-run baselines. This realizes
+shall admit no other embedded exit except for the ordered comparison-decision
+subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and no
+decision-action, callback, generator, or cleanup-bearing exit. It shall add no
+runtime control-flow value, unwind edge, allocation, foreign dependency, C/C++
+runtime, other-language standard library, public ABI, or `topal-native/6`
+revision. Tests shall share the interpreter/compiler source, assert exactly one
+semantic return and skipped tails, inspect LLVM/DWARF/GDB behavior, and record
+separate interpreter, compiler-build, and native-run baselines. This realizes
 `TOPAL-FUNCTION-RETURN-001` and
 `TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001` for increment 3b2-b5e8b.
 
@@ -5428,6 +5432,8 @@ Boolean-decision subject covered by
 `TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject covered by
 `TOPAL-COMP-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, other constraint,
+or the ordered comparison-decision subject covered by
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, other constraint,
 modular, or collection forms, qualified and other constructor forms; products
 or other expressions nested in the operand; other decision forms; callbacks;
 generators; and cleanup-bearing scopes shall remain fail-closed. The
@@ -5734,6 +5740,35 @@ baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
 `TOPAL-DECISION-BOOLEAN-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001` for increment
 3b2-b5e8r.
+
+## TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001 — Comparison-decision subject lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as the direct subject of
+a complete ordered comparison decision consisting of one or more comparison
+rules followed by a final `otherwise` rule. It shall recognize that exact
+matcher sequence first, then complete the enclosing function before
+exact-number classification, matcher-operand evaluation, comparison, action
+selection, or action evaluation; omit comparison operations, decision branches,
+actions, the abandoned decision value, and lexical and function tails at O0;
+and validate the returned value against the enclosing function result
+classifier.
+
+The compiler shall retain the returned lexical block as the existing private
+function result, preserve its nested DWARF scope, and use the existing single
+machine return. Empty comparison prefixes, mixed or additional matcher kinds,
+a nonfinal or missing `otherwise`, nested subjects, decision-action returns,
+callbacks, cleanup-bearing, and other decision forms shall remain fail-closed
+under their existing diagnostics. The implementation shall add no runtime
+control-flow value, comparison operation, decision branch, allocation,
+indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. Tests shall share
+the interpreter/compiler source, verify single and multiple comparison rules,
+omitted subject/matcher/action/tail work, rejection boundaries,
+LLVM/DWARF/GDB behavior, and separate resource baselines. This realizes
+`TOPAL-FUNCTION-RETURN-001`, `TOPAL-DECISION-COMPARISON-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001` for increment
+3b2-b5e8s.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

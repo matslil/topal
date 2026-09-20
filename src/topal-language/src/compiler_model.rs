@@ -26,9 +26,9 @@ use topal_syntax::{
 
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
-    expression_mentions_name, is_supported_returning_boolean_decision_shape, parse_integer,
-    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
-    prove_mutual_bounded_recursion_edge,
+    expression_mentions_name, is_supported_returning_boolean_decision_shape,
+    is_supported_returning_comparison_decision_shape, parse_integer, parse_rational, parse_string,
+    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -8762,11 +8762,9 @@ impl Analyzer {
         environment: &BTreeMap<String, BindingFacts>,
         function_result: Option<&CompilerType>,
     ) -> Result<Option<CompilerExpression>, Diagnostic> {
-        if let Some(value) = self.analyze_returning_boolean_decision_subject(
-            expression,
-            environment,
-            function_result,
-        )? {
+        if let Some(value) =
+            self.analyze_returning_decision_subject(expression, environment, function_result)?
+        {
             return Ok(Some(value));
         }
         if let Some(value) =
@@ -8808,7 +8806,7 @@ impl Analyzer {
         self.analyze_returning_named_call_argument(expression, environment, function_result)
     }
 
-    fn analyze_returning_boolean_decision_subject(
+    fn analyze_returning_decision_subject(
         &mut self,
         expression: &Expression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -8817,7 +8815,8 @@ impl Analyzer {
         let Expression::DecisionTable { subject, rules, .. } = expression else {
             return Ok(None);
         };
-        if !is_supported_returning_boolean_decision_shape(rules)
+        if !(is_supported_returning_boolean_decision_shape(rules)
+            || is_supported_returning_comparison_decision_shape(rules))
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
@@ -8831,7 +8830,7 @@ impl Analyzer {
         )?;
         assert!(
             returned,
-            "a checked returning Boolean-decision subject exits its function"
+            "a checked returning decision subject exits its function"
         );
         Ok(Some(result))
     }
@@ -40952,6 +40951,40 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    false then 0\n    true then 1\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_comparison_decision_subject() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-COMPARISON-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-comparison-decision-subject.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let single_rule = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    >= 0 then 0\n    otherwise 1\nanswer ()\n";
+        analyze_for_compiler(single_rule).unwrap();
+        let mixed_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    < 0 then 0\n    true then 1\n    otherwise 2\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(mixed_matchers).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0)\n    < 0 then 0\n    otherwise 1\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

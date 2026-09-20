@@ -5065,10 +5065,12 @@ Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, a return-bearing
-block embedded in another expression, decision action or callback, and any exit
-whose scope owns generator close, resource, destructor, or other cleanup
-obligations SHALL remain rejected until explicit exit-edge and cleanup lowering
-is implemented.
+block, or the ordered comparison-decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, a return-bearing
+block embedded in another expression, decision action or callback, and any
+exit whose scope owns generator close, resource, destructor, or other cleanup
+obligations SHALL remain rejected until explicit exit-edge and cleanup
+lowering is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5108,10 +5110,12 @@ Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, this rule admits
-no other compound-expression, decision action, callback, generator, or
-cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
-unwind edge, allocation, foreign dependency, C/C++ standard library, public
-ABI, or native-ABI revision.
+no other compound-expression except for the ordered comparison-decision subject
+admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, decision
+action, callback, generator, or cleanup-bearing propagation and SHALL introduce
+no runtime control-flow object, unwind edge, allocation, foreign dependency,
+C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
 
@@ -5238,9 +5242,11 @@ Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, other constraint,
-modular, or collection forms, qualified and any other constructor forms;
-products or other expressions nested in the operand; other decision forms;
-callbacks; generators; and exits with cleanup obligations SHALL remain
+or the ordered comparison-decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, other
+constraint, modular, or collection forms, qualified and any other constructor
+forms; products or other expressions nested in the operand; other decision
+forms; callbacks; generators; and exits with cleanup obligations SHALL remain
 rejected. This rule SHALL introduce no runtime control-flow object,
 constructor-specific allocation, indirect call, unwind edge, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
@@ -5504,6 +5510,30 @@ generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule SHALL introduce no runtime
 control-flow object, decision branch, allocation, indirect call, unwind edge,
 foreign dependency, C/C++ standard library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001 — Comparison-decision subject lexical exit
+
+An admitted cleanup-free lexical block used as the direct subject of a complete
+ordered comparison decision consisting of one or more comparison rules followed
+by a final `otherwise` rule MAY execute an explicit `return`. Recognition of
+that exact matcher sequence SHALL precede the subject. The subject return SHALL
+then complete the nearest enclosing ordinary function before exact-number
+classification, matcher-operand evaluation, comparison, action selection, or
+action evaluation. No comparison operation, decision branch, selected action,
+abandoned decision value, or following function tail SHALL be emitted at
+`-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than the decision subject or action classifier. The checked
+compiler model SHALL retain the returning block as the function result, and the
+backend SHALL preserve its nested DWARF scope before using the enclosing
+function's existing single machine return. Empty comparison prefixes, mixed or
+additional matcher kinds, a nonfinal or missing `otherwise`, nested subjects,
+returns from decision actions, callbacks, generators, and cleanup-bearing forms
+SHALL remain fail-closed under their existing diagnostic contracts. This rule
+SHALL introduce no runtime control-flow object, comparison, decision branch,
+allocation, indirect call, unwind edge, foreign dependency, C/C++ standard
+library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

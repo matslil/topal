@@ -1964,7 +1964,7 @@ single machine return. This changes no runtime representation or ABI;
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
 3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subjects outside
-3b2-b5e8q/3b2-b5e8r, qualified, nested-payload, conditional, and
+3b2-b5e8q/3b2-b5e8r/3b2-b5e8s, qualified, nested-payload, conditional, and
 cleanup-bearing forms
 remain deferred.
 
@@ -2083,6 +2083,19 @@ and the existing single machine return. This changes no runtime representation
 or ABI; duplicate or additional rules, other matcher sets, nested subjects,
 decision-action returns, conditional control flow, and cleanup-bearing forms
 remain fail-closed.
+
+Increment 3b2-b5e8s admits a direct return-bearing subject followed by one or
+more ordered comparison matchers and a final `otherwise`. A shared frontend
+predicate recognizes the exact matcher sequence before either interpreter
+execution or checked-model analysis enters the subject. The exit therefore
+precedes exact-number classification, matcher-operand evaluation, comparison,
+action selection, and action evaluation and omits comparison calls, decision
+branches, actions, the abandoned decision value, and tails. The block remains
+the private result with nested `DILexicalBlock` and the existing single machine
+return. This changes no runtime representation or ABI; empty comparison
+prefixes, mixed or additional matcher kinds, nonfinal or missing fallbacks,
+nested subjects, decision-action returns, conditional control flow, and
+cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
