@@ -134,6 +134,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-return-character-constructor.t",
     "examples/language/function-return-constraint-constructor.t",
     "examples/language/function-return-list-collect.t",
+    "examples/language/function-return-map-collect.t",
     "examples/language/function-return-modular-constructor.t",
     "examples/language/function-return-modular-reduction.t",
     "examples/language/function-return-from-block.t",

@@ -5227,9 +5227,10 @@ the direct named modular operand admitted by
 admitted by `TOPAL-COMP-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary
 List collection source admitted by `TOPAL-COMP-LEXICAL-RETURN-COLLECT-001`, and
 the direct unordered collection sources admitted by
-`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, a return-bearing block nested
-in another expression, decision, callback, or other compound expression shall
-remain rejected.
+`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
+source admitted by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, a return-bearing
+block nested in another expression, decision, callback, or other compound
+expression shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5271,11 +5272,13 @@ the direct named modular operand admitted by
 admitted by `TOPAL-COMP-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary
 List collection source admitted by `TOPAL-COMP-LEXICAL-RETURN-COLLECT-001`, and
 the direct unordered collection sources admitted by
-`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, the implementation shall
-admit no other embedded, conditional, callback, generator, or exit with cleanup
-obligations and add no runtime control-flow value, unwind edge, allocation,
-foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or `topal-native/6` revision. Tests shall share the
+`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
+source admitted by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, the
+implementation shall admit no other embedded, conditional, callback,
+generator, or exit with cleanup obligations and add no runtime control-flow
+value, unwind edge, allocation, foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or `topal-native/6` revision. Tests
+shall share the
 interpreter/compiler source,
 assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
 behavior, and record separate interpreter, compiler-build, and native-run
@@ -5407,12 +5410,13 @@ modular-reduction operand covered by
 `TOPAL-COMP-LEXICAL-RETURN-MODULAR-REDUCE-001`, and the direct unary List
 collection source covered by `TOPAL-COMP-LEXICAL-RETURN-COLLECT-001`, and the
 direct unordered collection sources covered by
-`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, other constraint, modular, or
-collection forms, qualified and other constructor forms; products or other
-expressions nested in the operand; decisions; callbacks; generators; and
-cleanup-bearing scopes shall remain fail-closed. The implementation shall add
-no runtime control-flow value, constructor-specific allocation, indirect call,
-unwind edge, foreign dependency, C/C++ runtime, other-language standard
+`TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
+source covered by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, other constraint,
+modular, or collection forms, qualified and other constructor forms; products
+or other expressions nested in the operand; decisions; callbacks; generators;
+and cleanup-bearing scopes shall remain fail-closed. The implementation shall
+add no runtime control-flow value, constructor-specific allocation, indirect
+call, unwind edge, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or `topal-native/6` revision. Tests shall share the
 interpreter/compiler source, cover every admitted constructor family, verify
 omitted conversion/construction/binding/tails, inspect LLVM/DWARF/GDB behavior,
@@ -5560,11 +5564,12 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Except for `collect-set` and `collect-bag` covered by
 `TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, infix Array or String
-collection, `collect-map`, qualified, nested-source, decision, callback,
-generator-cleanup, and other cleanup-bearing forms shall remain fail-closed
-under their existing diagnostics. The implementation shall add no runtime
-control-flow value, collection materialization, allocation, indirect call,
-unwind edge, foreign dependency, C/C++ runtime, other-language standard
+collection, and the `collect-map` form covered by
+`TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, qualified, nested-source, decision,
+callback, generator-cleanup, and other cleanup-bearing forms shall remain
+fail-closed under their existing diagnostics. The implementation shall add no
+runtime control-flow value, collection materialization, allocation, indirect
+call, unwind edge, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or `topal-native/6` revision. Tests shall share the
 interpreter/compiler source, verify exact operation selection, omitted
 classification/materialization/binding/tails, rejection boundaries,
@@ -5587,9 +5592,10 @@ against the enclosing function result classifier.
 
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
-machine return. `collect-map`, qualified, nested-source, decision, callback,
-cleanup-bearing, and other collection forms shall remain fail-closed under
-their existing diagnostics. The implementation shall add no runtime
+machine return. Except for `collect-map` covered by
+`TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, qualified, nested-source, decision,
+callback, cleanup-bearing, and other collection forms shall remain fail-closed
+under their existing diagnostics. The implementation shall add no runtime
 control-flow value, collection materialization, comparison, allocation,
 indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
 standard library, public ABI, or `topal-native/6` revision. Tests shall share
@@ -5599,6 +5605,32 @@ boundaries, LLVM/DWARF/GDB behavior, and separate resource baselines. This
 realizes `TOPAL-FUNCTION-RETURN-001`, `TOPAL-SET-COLLECT-001`,
 `TOPAL-BAG-COLLECT-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001` for increment 3b2-b5e8n.
+
+## TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001 — Map-collection source lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as the direct source of
+the exact built-in `collect-map source resolving policy` operation when
+`policy` is `reject`, `keep-first`, or `keep-last`. It shall select the exact
+operation, `resolving` clause, and valid collision policy first, then complete
+the enclosing function before pair classification, key equality, collision
+resolution, or Map materialization; omit Map nodes, comparisons, collision
+actions, the abandoned binding, and lexical and function tails at O0; and
+validate the returned value against the enclosing function result classifier.
+
+The compiler shall retain the returned lexical block as the existing private
+function result, preserve its nested DWARF scope, and use the existing single
+machine return. Invalid policies, qualified, nested-source, decision, callback,
+cleanup-bearing, and other collection forms shall remain fail-closed under
+their existing diagnostics. The implementation shall add no runtime
+control-flow value, collection materialization, comparison, allocation,
+indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. Tests shall share
+the interpreter/compiler source, verify operation/clause/policy selection,
+omitted classification/equality/collision/materialization/binding/tails,
+rejection boundaries, LLVM/DWARF/GDB behavior, and separate resource baselines.
+This realizes `TOPAL-FUNCTION-RETURN-001`, `TOPAL-MAP-COLLECT-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001` for increment 3b2-b5e8o.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

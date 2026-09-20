@@ -8869,15 +8869,42 @@ impl Analyzer {
         let Expression::Application { items, .. } = expression else {
             return Ok(None);
         };
-        let [Expression::Identifier(operation), source] = items.as_slice() else {
-            return Ok(None);
+        let (source, map_policy) = match items.as_slice() {
+            [Expression::Identifier(operation), source]
+                if matches!(
+                    self.source.slice(*operation),
+                    "collect" | "collect-set" | "collect-bag"
+                ) =>
+            {
+                (source, None)
+            }
+            [
+                Expression::Identifier(operation),
+                source,
+                Expression::Identifier(resolving),
+                Expression::Identifier(policy),
+            ] if self.source.slice(*operation) == "collect-map"
+                && self.source.slice(*resolving) == "resolving" =>
+            {
+                (source, Some(*policy))
+            }
+            _ => return Ok(None),
         };
-        if !matches!(
-            self.source.slice(*operation),
-            "collect" | "collect-set" | "collect-bag"
-        ) || !direct_expression_returns_from_function(source)
-        {
+        if !direct_expression_returns_from_function(source) {
             return Ok(None);
+        }
+        if let Some(policy) = map_policy
+            && !matches!(
+                self.source.slice(policy),
+                "reject" | "keep-first" | "keep-last"
+            )
+        {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-MAP-COLLISION-POLICY",
+                policy,
+                "collect-map policy must be reject, keep-first, or keep-last",
+            ));
         }
         let (result, returned) = self.analyze_direct_statement_expression(
             source,
@@ -40696,7 +40723,7 @@ mod tests {
         ));
         assert!(function.body.statements.is_empty());
 
-        let other_collector = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } resolving reject\nanswer ()\n";
+        let other_collector = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } choosing reject\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(other_collector).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
@@ -40736,12 +40763,44 @@ mod tests {
             assert!(function.body.statements.is_empty());
         }
 
-        let map = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } resolving reject\nanswer ()\n";
+        let map = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } choosing reject\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(map).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-set ({ return 42 }, 0)\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_map_collect_source() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-MAP-COLLECT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-map-collect.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let invalid_policy = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } resolving merge\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(invalid_policy).unwrap_err().code,
+            "E-MAP-COLLISION-POLICY"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map ({ return 42 }, 0) resolving reject\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
