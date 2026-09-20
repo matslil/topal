@@ -3015,15 +3015,39 @@ impl Session {
         let Expression::Application { items, .. } = expression else {
             return Ok(None);
         };
-        let [Expression::Identifier(operation), collection] = items.as_slice() else {
-            return Ok(None);
+        let (collection, map_policy) = match items.as_slice() {
+            [Expression::Identifier(operation), collection]
+                if matches!(
+                    source.slice(*operation),
+                    "collect" | "collect-set" | "collect-bag"
+                ) =>
+            {
+                (collection, None)
+            }
+            [
+                Expression::Identifier(operation),
+                collection,
+                Expression::Identifier(resolving),
+                Expression::Identifier(policy),
+            ] if source.slice(*operation) == "collect-map"
+                && source.slice(*resolving) == "resolving" =>
+            {
+                (collection, Some(*policy))
+            }
+            _ => return Ok(None),
         };
-        if !matches!(
-            source.slice(*operation),
-            "collect" | "collect-set" | "collect-bag"
-        ) || !direct_expression_returns_from_function(collection)
-        {
+        if !direct_expression_returns_from_function(collection) {
             return Ok(None);
+        }
+        if let Some(policy) = map_policy
+            && !matches!(source.slice(policy), "reject" | "keep-first" | "keep-last")
+        {
+            return Err(diagnostic(
+                source,
+                "E-MAP-COLLISION-POLICY",
+                policy,
+                "collect-map policy must be reject, keep-first, or keep-last",
+            ));
         }
         let Expression::Block { statements, .. } = collection else {
             unreachable!("a direct returning collection source is a lexical block")
@@ -20033,6 +20057,43 @@ fn unordered_collect_source_blocks_propagate_return_before_materialization() {
             .unwrap_err();
         assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
     }
+}
+
+#[test]
+fn map_collect_source_block_propagates_return_before_materialization() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-map-collect.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("map.collected")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let invalid_policy =
+        "answer is fn () -> Int\n  collect-map { return 42 } resolving merge\nanswer ()\n";
+    let error = Session::new()
+        .evaluate(invalid_policy, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-MAP-COLLISION-POLICY");
+
+    let error = Session::new()
+        .evaluate(
+            "collect-map { return 42 } resolving reject\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }
 
 #[test]
