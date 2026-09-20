@@ -3082,7 +3082,7 @@ impl Session {
         return_classifier: Option<&str>,
         trace: &mut impl TraceSink,
     ) -> Result<Option<ExecutionStep>, Diagnostic> {
-        if let Some(step) = self.evaluate_returning_boolean_decision_subject_step(
+        if let Some(step) = self.evaluate_returning_decision_subject_step(
             source,
             expression,
             return_classifier,
@@ -3146,7 +3146,7 @@ impl Session {
         )
     }
 
-    fn evaluate_returning_boolean_decision_subject_step(
+    fn evaluate_returning_decision_subject_step(
         &self,
         source: &SourceText,
         expression: &Expression,
@@ -3156,13 +3156,14 @@ impl Session {
         let Expression::DecisionTable { subject, rules, .. } = expression else {
             return Ok(None);
         };
-        if !is_supported_returning_boolean_decision_shape(rules)
+        if !(is_supported_returning_boolean_decision_shape(rules)
+            || is_supported_returning_comparison_decision_shape(rules))
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
         }
         let Expression::Block { statements, .. } = subject.as_ref() else {
-            unreachable!("a direct returning Boolean-decision subject is a lexical block")
+            unreachable!("a direct returning decision subject is a lexical block")
         };
         let step = self.evaluate_block_step(
             source,
@@ -3173,7 +3174,7 @@ impl Session {
         )?;
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
-            "a direct returning Boolean-decision subject exits its function"
+            "a direct returning decision subject exits its function"
         );
         Ok(Some(step))
     }
@@ -10264,6 +10265,17 @@ pub(super) fn is_supported_returning_boolean_decision_shape(rules: &[DecisionRul
         ) => first_value != second_value,
         _ => false,
     }
+}
+
+pub(super) fn is_supported_returning_comparison_decision_shape(rules: &[DecisionRule]) -> bool {
+    let Some((last, comparisons)) = rules.split_last() else {
+        return false;
+    };
+    !comparisons.is_empty()
+        && matches!(last.matcher, DecisionMatcher::Otherwise(_))
+        && comparisons
+            .iter()
+            .all(|rule| matches!(rule.matcher, DecisionMatcher::Comparison { .. }))
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -20257,6 +20269,45 @@ fn exhaustive_boolean_decision_subject_block_propagates_return_before_selection(
     let error = Session::new()
         .evaluate(
             "{ return 42 }\n  false then 0\n  true then 1\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn comparison_decision_subject_block_propagates_return_before_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/language/function-return-comparison-decision-subject.t"
+            ),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("decision.rule")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  { return 42 }\n    >= 0 then 0\n    otherwise 1\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate(
+            "{ return 42 }\n  < 0 then 0\n  otherwise 1\n",
             &mut std::io::sink(),
         )
         .unwrap_err();

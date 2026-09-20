@@ -2826,6 +2826,98 @@ fn exhaustive_boolean_decision_subject_block_exit_is_freestanding_and_debuggable
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn comparison_decision_subject_block_exit_is_freestanding_and_debuggable() {
+    // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-COMPARISON-001,
+    // TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-return-comparison-decision-subject");
+    let source = directory.join("function-return-comparison-decision-subject.t");
+    let executable = directory.join("application");
+    let ir = directory.join("application.ll");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-return-comparison-decision-subject.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"42\n");
+
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir_text = fs::read_to_string(&ir).unwrap();
+    let function = ir_text
+        .split_once("define internal fastcc ptr @topal.fn.answer")
+        .unwrap()
+        .1
+        .split_once("\n}")
+        .unwrap()
+        .0;
+    assert_eq!(
+        function.matches("call ptr @topal.runtime.int.add").count(),
+        1
+    );
+    assert_eq!(function.matches("ret ptr").count(), 1);
+    assert!(!function.contains("call i32 @topal.runtime.int.compare"));
+    assert!(!function.contains("icmp"));
+    assert!(!function.contains("br i1"));
+    assert!(!function.contains("select i1"));
+    assert!(!function.contains(" phi "));
+    assert!(!function.contains("@topal.platform.allocate"));
+    assert!(ir_text.contains("!DILexicalBlock("));
+    assert!(!ir_text.contains("@printf"));
+    assert!(!ir_text.contains("@malloc"));
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(dwarf.status.success());
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-return-comparison-decision-subject.t:8",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(debugged.status.success());
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 41"), "{text}");
+    assert!(text.contains("topal.fn.answer"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_completed_evidence_by_source_name() {
     // TOPAL-EXEC-COMPLETED-001, TOPAL-COMP-COMPLETED-001,
     // TOPAL-COMPILER-COMPLETED-001, TOPAL-COMPILER-DEBUG-001
