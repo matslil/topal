@@ -1496,6 +1496,11 @@
       "cpu_time_ns": 6208620,
       "memory_peak_bytes": 18448384,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-boolean-decision-actions.t": {
+      "cpu_time_ns": 4499100,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 50
     }
   }
 }

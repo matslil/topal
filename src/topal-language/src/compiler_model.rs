@@ -26,8 +26,9 @@ use topal_syntax::{
 
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
-    expression_mentions_name, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
+    expression_mentions_name, is_supported_returning_boolean_action_shape, parse_integer,
+    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
+    prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -8766,6 +8767,13 @@ impl Analyzer {
         {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_boolean_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) =
             self.analyze_returning_product_field(expression, environment, function_result)?
         {
@@ -8829,6 +8837,75 @@ impl Analyzer {
             "a checked returning decision subject exits its function"
         );
         Ok(Some(result))
+    }
+
+    fn analyze_returning_boolean_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_boolean_action_shape(rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        if subject.value_type != CompilerType::Boolean {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning decision actions for a non-Boolean subject",
+            ));
+        }
+        let mut when_true = None;
+        let mut when_false = None;
+        let mut otherwise = None;
+        for rule in rules {
+            let (action, returned) = self.analyze_direct_statement_expression(
+                &rule.action,
+                environment,
+                Some(function_result),
+                Some(function_result),
+                true,
+            )?;
+            assert!(
+                returned,
+                "a checked returning decision action exits its function"
+            );
+            match rule.matcher {
+                DecisionMatcher::Boolean { value: true, .. } => when_true = Some(action),
+                DecisionMatcher::Boolean { value: false, .. } => when_false = Some(action),
+                DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                _ => unreachable!("preselected complete Boolean decision shape"),
+            }
+        }
+        let when_true = when_true
+            .or_else(|| otherwise.clone())
+            .expect("complete true action");
+        let when_false = when_false.or(otherwise).expect("complete false action");
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_true, &when_false], *span)?;
+        Ok(Some(CompilerExpression {
+            value_type,
+            kind: CompilerExpressionKind::BooleanDecision {
+                subject: Box::new(subject),
+                when_true: Box::new(when_true),
+                when_false: Box::new(when_false),
+            },
+            int_range,
+            rational_value,
+            span: *span,
+        }))
     }
 
     fn analyze_returning_product_field(
@@ -41024,6 +41101,41 @@ mod tests {
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0)\n    Some payload then payload\n    None then 0\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_boolean_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-boolean-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::BooleanDecision {
+            when_true,
+            when_false,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their Boolean decision")
+        };
+        assert!(matches!(when_true.kind, CompilerExpressionKind::Block(_)));
+        assert!(matches!(when_false.kind, CompilerExpressionKind::Block(_)));
+        assert!(function.body.statements.is_empty());
+
+        let otherwise = "use language (version is v0.1)\nchoose is fn (value : Boolean) -> Int\n  value\n    false then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose true\n";
+        analyze_for_compiler(otherwise).unwrap();
+        let mixed = "use language (version is v0.1)\nchoose is fn (value : Boolean) -> Int\n  value\n    false then { return 40 }\n    true then 41\n  1000\nchoose true\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }

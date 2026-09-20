@@ -5070,11 +5070,13 @@ comparison-decision subject admitted by
 fallback-complete decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, a return-bearing
-block embedded in another expression, decision action or callback, and any
-exit whose scope owns generator close, resource, destructor, or other cleanup
-obligations SHALL remain rejected until explicit exit-edge and cleanup lowering
-is implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete
+Boolean decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, a return-bearing
+block embedded in another expression, any other decision action or callback,
+and any exit whose scope owns generator close, resource, destructor, or other
+cleanup obligations SHALL remain rejected until explicit exit-edge and cleanup
+lowering is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5119,11 +5121,13 @@ comparison-decision subject admitted by
 fallback-complete decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, this rule admits
-no other compound-expression, decision action, callback, generator, or
-cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
-unwind edge, allocation, foreign dependency, C/C++ standard library, public
-ABI, or native-ABI revision.
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete
+Boolean decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, this rule admits no
+other compound-expression, decision action, callback, generator, or
+cleanup-bearing propagation and SHALL introduce no runtime control-flow
+object, unwind edge, allocation, foreign dependency, C/C++ standard library,
+public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
 
@@ -5255,7 +5259,9 @@ comparison-decision subject admitted by
 fallback-complete decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, other constraint,
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete
+Boolean decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, other constraint,
 modular, or collection forms, qualified and any other constructor forms;
 products or other expressions nested in the operand; other decision forms;
 callbacks; generators; and exits with cleanup obligations SHALL remain
@@ -5494,8 +5500,10 @@ classifier rather than the Boolean subject or decision-action classifier. The
 checked compiler model SHALL retain the returning block as the function result,
 and the backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Other matcher sets, nested subjects,
-returns from decision actions, callbacks, generators, and cleanup-bearing forms
-SHALL remain fail-closed under their existing diagnostic contracts. This rule
+returns from decision actions outside
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+generators, and cleanup-bearing forms SHALL remain fail-closed under their
+existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, decision branch, allocation,
 indirect call, unwind edge, foreign dependency, C/C++ standard library, public
 ABI, or native-ABI revision.
@@ -5517,7 +5525,8 @@ classifier rather than the Boolean subject or decision-action classifier. The
 checked compiler model SHALL retain the returning block as the function result,
 and the backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Duplicate or additional rules,
-other matcher sets, nested subjects, returns from decision actions, callbacks,
+other matcher sets, nested subjects, returns from decision actions outside
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule SHALL introduce no runtime
 control-flow object, decision branch, allocation, indirect call, unwind edge,
@@ -5541,8 +5550,10 @@ compiler model SHALL retain the returning block as the function result, and the
 backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Empty comparison prefixes, mixed or
 additional matcher kinds, a nonfinal or missing `otherwise`, nested subjects,
-returns from decision actions, callbacks, generators, and cleanup-bearing forms
-SHALL remain fail-closed under their existing diagnostic contracts. This rule
+returns from decision actions outside
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+generators, and cleanup-bearing forms SHALL remain fail-closed under their
+existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, comparison, decision branch,
 allocation, indirect call, unwind edge, foreign dependency, C/C++ standard
 library, public ABI, or native-ABI revision.
@@ -5565,8 +5576,10 @@ compiler model SHALL retain the returning block as the function result, and the
 backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Decision forms without a final
 fallback except for separately admitted exhaustive forms, nested subjects,
-returns from decision actions, callbacks, generators, and cleanup-bearing forms
-SHALL remain fail-closed under their existing diagnostic contracts. This rule
+returns from decision actions outside
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+generators, and cleanup-bearing forms SHALL remain fail-closed under their
+existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, matcher operation, pattern
 binding, decision branch, allocation, indirect call, unwind edge, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
@@ -5588,12 +5601,35 @@ classifier rather than the decision subject or action classifier. The checked
 compiler model SHALL retain the returning block as the function result, and the
 backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Syntactically incomplete decisions,
-nested subjects, returns from decision actions, callbacks, generators, and
-cleanup-bearing forms SHALL remain fail-closed under their existing diagnostic
-contracts. This rule SHALL introduce no runtime control-flow object, matcher or
+nested subjects, returns from decision actions outside
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+generators, and cleanup-bearing forms SHALL remain fail-closed under their
+existing diagnostic contracts. This rule SHALL introduce no runtime control-flow object, matcher or
 exhaustiveness operation, pattern binding, decision branch, allocation,
 indirect call, unwind edge, foreign dependency, C/C++ standard library, public
 ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001 — Complete Boolean action lexical exits
+
+Every action of an admitted complete Boolean decision MAY be a cleanup-free
+lexical block that directly executes an explicit `return`. The decision SHALL
+first evaluate its Boolean subject once and select exactly one action in source
+order. The selected action return SHALL complete the nearest enclosing ordinary
+function, validate its value against that function's result classifier, and
+exclude the remaining action statements and following function tail from
+generated IR at `-O0`.
+
+When every action returns, the checked compiler model SHALL retain the complete
+Boolean decision as the function result with each returning block normalized to
+its returned value. LLVM lowering SHALL retain the ordinary Boolean branch and
+typed SSA join, preserve each action block's nested DWARF scope, and use the
+enclosing function's existing single machine return. A decision with any
+normally completing action, a non-Boolean decision, a nested action expression,
+callbacks, generators, and cleanup-bearing actions SHALL remain fail-closed
+until general exit-edge and cleanup lowering is admitted. This rule SHALL
+introduce no runtime control-flow object, allocation, indirect call, unwind
+edge, foreign dependency, C/C++ standard library, public ABI, or native-ABI
+revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

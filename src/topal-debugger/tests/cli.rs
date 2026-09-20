@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 296);
+    assert_eq!(examples.len(), 297);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5889,6 +5889,37 @@ fn records_complete_decision_subject_block_exits_reversibly() {
         );
     }
     assert!(!stdout.contains("decision.rule"));
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
+}
+
+#[test]
+fn records_complete_boolean_decision_action_exits_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-BOOLEAN-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-boolean-decision-actions.debug"),
+            &language_example("function-return-boolean-decision-actions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("function.return.explicit").count(), 2);
+    assert_eq!(stdout.matches("decision.rule.selected").count(), 2);
+    assert_eq!(
+        stdout
+            .matches("function.exit [TOPAL-FUNCTION-ORDINARY-001] choose")
+            .count(),
+        2
+    );
     assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
 }
 

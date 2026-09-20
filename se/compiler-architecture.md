@@ -1963,11 +1963,10 @@ single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
-3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subjects outside
-3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t/3b2-b5e8u, qualified,
-nested-payload, conditional, and
-cleanup-bearing forms
-remain deferred.
+3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subject/action forms
+outside 3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t/3b2-b5e8u/3b2-b5e8v,
+qualified, nested-payload, conditional, and cleanup-bearing forms remain
+deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -2069,8 +2068,8 @@ classification, matcher consideration, action selection, and action evaluation
 and omits decision branches, actions, the abandoned decision value, and tails.
 The block remains the private result with nested `DILexicalBlock` and the
 existing single machine return. This changes no runtime representation or ABI;
-other matcher sets, nested subjects, decision-action returns, conditional
-control flow, and cleanup-bearing forms remain fail-closed.
+other matcher sets, nested subjects, decision-action returns outside 3b2-b5e8v,
+conditional control flow, and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8r admits the other complete Boolean matcher shape: a direct
 return-bearing subject followed by exactly one `false` rule and one `true`
@@ -2082,8 +2081,8 @@ evaluation and omits decision branches, actions, the abandoned decision value,
 and tails. The block remains the private result with nested `DILexicalBlock`
 and the existing single machine return. This changes no runtime representation
 or ABI; duplicate or additional rules, other matcher sets, nested subjects,
-decision-action returns, conditional control flow, and cleanup-bearing forms
-remain fail-closed.
+decision-action returns outside 3b2-b5e8v, conditional control flow, and
+cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8s admits a direct return-bearing subject followed by one or
 more ordered comparison matchers and a final `otherwise`. A shared frontend
@@ -2095,8 +2094,8 @@ branches, actions, the abandoned decision value, and tails. The block remains
 the private result with nested `DILexicalBlock` and the existing single machine
 return. This changes no runtime representation or ABI; empty comparison
 prefixes, mixed or additional matcher kinds, nonfinal or missing fallbacks,
-nested subjects, decision-action returns, conditional control flow, and
-cleanup-bearing forms remain fail-closed.
+nested subjects, decision-action returns outside 3b2-b5e8v, conditional control
+flow, and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8t generalizes the pre-subject exit to every parser-accepted
 decision whose final rule is `otherwise`, including an otherwise-only table and
@@ -2109,8 +2108,8 @@ matcher, binding, branch, action, abandoned-value, and tail work. The block
 remains the private result with nested `DILexicalBlock` and the existing single
 machine return. This changes no runtime representation or ABI; decisions
 without a final fallback outside separately admitted exhaustive shapes, nested
-subjects, decision-action returns, conditional control flow, and
-cleanup-bearing forms remain fail-closed.
+subjects, decision-action returns outside 3b2-b5e8v, conditional control flow,
+and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8u uses construction of the parser's complete decision-table
 node as the proof required before entering any direct return-bearing subject.
@@ -2122,8 +2121,22 @@ bindings, comparisons, action selection, and action evaluation and omits all
 matcher, binding, branch, action, abandoned-value, and tail work. The block
 remains the private result with nested `DILexicalBlock` and the existing single
 machine return. This changes no runtime representation or ABI; syntactically
-incomplete decisions, nested subjects, decision-action returns, conditional
-control flow, and cleanup-bearing forms remain fail-closed.
+incomplete decisions, nested subjects, decision-action returns outside
+3b2-b5e8v, conditional control flow, and cleanup-bearing forms remain
+fail-closed.
+
+Increment 3b2-b5e8v admits a complete Boolean decision when every action is a
+direct cleanup-free returning block. One shared frontend predicate selects the
+exact complete shape for both execution paths. The interpreter selects the
+action before entering it through the function-aware resumable block path. The
+checked model normalizes each branch block to its returned value and retains
+the complete decision as the function result, so the backend emits the ordinary
+Boolean branch, a typed SSA phi join, and the existing single machine return.
+Both action blocks retain nested `DILexicalBlock` scopes. No runtime
+control-flow carrier, allocation, unwind edge, foreign dependency, or ABI
+change is needed; mixed returning/normally-completing actions, other decision
+classifiers, nested action expressions, callbacks, and cleanup-bearing actions
+remain fail-closed pending general exit-edge joins.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:

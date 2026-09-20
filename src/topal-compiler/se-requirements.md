@@ -5240,9 +5240,11 @@ comparison-decision subject admitted by
 fallback-complete decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject admitted by
-`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, a return-bearing block
-nested in another expression, decision action, callback, or other compound
-expression shall remain rejected.
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete Boolean
+decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, a return-bearing block
+nested in another expression, any other decision action, callback, or other
+compound expression shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5297,7 +5299,9 @@ comparison-decision subject admitted by
 fallback-complete decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject admitted by
-`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, the implementation
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete Boolean
+decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, the implementation
 shall admit no other embedded, decision-action, callback, generator, or
 cleanup-bearing exit. It shall add no runtime control-flow value, unwind edge,
 allocation, foreign dependency, C/C++ runtime, other-language standard library,
@@ -5445,7 +5449,9 @@ comparison-decision subject covered by
 fallback-complete decision subject covered by
 `TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
 parser-complete decision subject covered by
-`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, other constraint,
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, and complete Boolean
+decisions whose every action returns as covered by
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, other constraint,
 modular, or collection forms, qualified and other constructor forms; products
 or other expressions nested in the operand; other decision forms; callbacks;
 generators; and cleanup-bearing scopes shall remain fail-closed. The
@@ -5713,9 +5719,10 @@ classifier.
 
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
-machine return. Other matcher sets, nested subjects, decision-action returns,
-callbacks, cleanup-bearing, and other decision forms shall remain fail-closed
-under their existing diagnostics. The implementation shall add no runtime
+machine return. Other matcher sets, nested subjects, decision-action returns
+outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+cleanup-bearing, and other decision forms shall remain fail-closed under their
+existing diagnostics. The implementation shall add no runtime
 control-flow value, decision branch, allocation, indirect call, unwind edge,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Tests shall share the interpreter/compiler source,
@@ -5740,8 +5747,10 @@ against the enclosing function result classifier.
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Duplicate or additional rules, other matcher sets, nested
-subjects, decision-action returns, callbacks, cleanup-bearing, and other
-decision forms shall remain fail-closed under their existing diagnostics. The
+subjects, decision-action returns outside
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+cleanup-bearing, and other decision forms shall remain fail-closed under their
+existing diagnostics. The
 implementation shall add no runtime control-flow value, decision branch,
 allocation, indirect call, unwind edge, foreign dependency, C/C++ runtime,
 other-language standard library, public ABI, or `topal-native/6` revision.
@@ -5769,9 +5778,10 @@ classifier.
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Empty comparison prefixes, mixed or additional matcher kinds,
-a nonfinal or missing `otherwise`, nested subjects, decision-action returns,
-callbacks, cleanup-bearing, and other decision forms shall remain fail-closed
-under their existing diagnostics. The implementation shall add no runtime
+a nonfinal or missing `otherwise`, nested subjects, decision-action returns
+outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+cleanup-bearing, and other decision forms shall remain fail-closed under their
+existing diagnostics. The implementation shall add no runtime
 control-flow value, comparison operation, decision branch, allocation,
 indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
 standard library, public ABI, or `topal-native/6` revision. Tests shall share
@@ -5797,7 +5807,8 @@ the returned value against the enclosing function result classifier.
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Decision forms without a final fallback except for separately
-admitted exhaustive forms, nested subjects, decision-action returns, callbacks,
+admitted exhaustive forms, nested subjects, decision-action returns outside
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other conditional forms shall remain fail-closed under
 their existing diagnostics. The implementation shall add no runtime
 control-flow value, matcher operation, pattern binding, decision branch,
@@ -5828,8 +5839,10 @@ result classifier.
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Syntactically incomplete decisions, nested subjects,
-decision-action returns, callbacks, cleanup-bearing, and other conditional
-forms shall remain fail-closed under their existing diagnostics. The
+decision-action returns outside
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+cleanup-bearing, and other conditional forms shall remain fail-closed under
+their existing diagnostics. The
 implementation shall add no runtime control-flow value, matcher or
 exhaustiveness operation, pattern binding, decision branch, allocation,
 indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
@@ -5842,6 +5855,33 @@ LLVM/DWARF/GDB behavior, and separate resource baselines. This realizes
 `TOPAL-DECISION-RESULT-001`, `TOPAL-DECISION-LIST-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001` for increment
 3b2-b5e8u.
+
+## TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001 — Complete Boolean action lexical exits
+
+Inside an admitted ordinary function, the interpreter and checked compiler
+model shall propagate an explicit return from the selected action of a complete
+Boolean decision when every action is a direct cleanup-free returning lexical
+block. They shall evaluate the Boolean subject once, consider matchers in source
+order, evaluate only the selected action, validate its returned value against
+the enclosing function result classifier, and omit the selected block tail and
+following function tail at O0.
+
+The compiler shall retain the Boolean decision as the function result, retain
+each returning lexical block as its branch value, preserve each nested DWARF
+scope, emit the ordinary Boolean branch and typed SSA join, and use the existing
+single machine return. Decisions with any normally completing action,
+non-Boolean decisions, nested action expressions, callbacks, generators, and
+cleanup-bearing actions shall remain fail-closed. The implementation shall add
+no runtime control-flow value, allocation, indirect call, unwind edge, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Tests shall share the interpreter/compiler source,
+exercise both Boolean alternatives and a final-fallback form, verify exact
+selection and skipped tails, retain mixed-path rejection, inspect the LLVM
+branch/phi/single-return shape and DWARF/GDB behavior, and record separate
+resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
+`TOPAL-DECISION-BOOLEAN-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001` for increment
+3b2-b5e8v.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 
