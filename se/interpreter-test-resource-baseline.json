@@ -1501,6 +1501,11 @@
       "cpu_time_ns": 4499100,
       "memory_peak_bytes": 18366464,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-comparison-value-decision-actions.t": {
+      "cpu_time_ns": 4994059,
+      "memory_peak_bytes": 18321408,
+      "samples_per_test": 50
     }
   }
 }

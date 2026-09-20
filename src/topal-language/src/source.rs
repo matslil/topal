@@ -3098,6 +3098,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_comparison_value_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_product_field_step(
             source,
             expression,
@@ -3244,6 +3252,82 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a selected returning Boolean action exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_comparison_value_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_comparison_value_action_shape(source, rules) {
+            return Ok(None);
+        }
+        let subject_span = subject.span();
+        let Value::Enum {
+            type_name,
+            alternative,
+        } = self.evaluate_expression(source, subject, trace)?
+        else {
+            return Err(diagnostic(
+                source,
+                "E-DECISION-SUBJECT-TYPE",
+                subject_span,
+                "Comparison alternative matchers require a Comparison subject",
+            ));
+        };
+        if type_name != "Comparison" {
+            return Err(diagnostic(
+                source,
+                "E-DECISION-SUBJECT-TYPE",
+                subject_span,
+                "Comparison alternative matchers require a Comparison subject",
+            ));
+        }
+        let mut selected = None;
+        for (index, rule) in rules.iter().enumerate() {
+            let matches = match rule.matcher {
+                DecisionMatcher::Identifier(matcher) => source.slice(matcher) == alternative,
+                DecisionMatcher::Otherwise(_) => true,
+                _ => unreachable!("preselected complete Comparison decision shape"),
+            };
+            let detail = format!("rule={index};matched={matches}");
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-ENUM-001",
+                detail: &detail,
+            });
+            if matches {
+                selected = Some((index, rule));
+                break;
+            }
+        }
+        let (index, selected) = selected.expect("a complete Comparison decision selects an action");
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-ENUM-001",
+            detail: &detail,
+        });
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning Comparison action is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning Comparison action exits its function"
         );
         Ok(Some(step))
     }
@@ -10339,6 +10423,28 @@ pub(super) fn is_supported_returning_boolean_action_shape(rules: &[DecisionRule]
         && rules
             .iter()
             .all(|rule| direct_expression_returns_from_function(&rule.action))
+}
+
+pub(super) fn is_supported_returning_comparison_value_action_shape(
+    source: &SourceText,
+    rules: &[DecisionRule],
+) -> bool {
+    let mut alternatives = BTreeSet::new();
+    let mut fallback = false;
+    for (index, rule) in rules.iter().enumerate() {
+        match rule.matcher {
+            DecisionMatcher::Identifier(matcher)
+                if !fallback
+                    && matches!(source.slice(matcher), "Less" | "Equal" | "Greater")
+                    && alternatives.insert(source.slice(matcher)) => {}
+            DecisionMatcher::Otherwise(_) if index + 1 == rules.len() => fallback = true,
+            _ => return false,
+        }
+        if !direct_expression_returns_from_function(&rule.action) {
+            return false;
+        }
+    }
+    fallback || alternatives.len() == 3
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -20474,6 +20580,38 @@ fn complete_boolean_decision_actions_propagate_return_after_selection() {
             .filter(|event| event.contains("decision.rule.selected"))
             .count(),
         2
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+}
+
+#[test]
+fn complete_comparison_value_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/language/function-return-comparison-value-decision-actions.t"
+            ),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(40, 41, 42)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| {
+                event.contains("decision.rule.selected")
+                    && event.contains("TOPAL-DECISION-ENUM-001")
+            })
+            .count(),
+        3
     );
     assert!(!trace.iter().any(|event| event.contains("1000")));
 }

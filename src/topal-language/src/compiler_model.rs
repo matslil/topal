@@ -26,8 +26,9 @@ use topal_syntax::{
 
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
-    expression_mentions_name, is_supported_returning_boolean_action_shape, parse_integer,
-    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
+    expression_mentions_name, is_supported_returning_boolean_action_shape,
+    is_supported_returning_comparison_value_action_shape, parse_integer, parse_rational,
+    parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
     prove_mutual_bounded_recursion_edge,
 };
 
@@ -8774,6 +8775,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) =
             self.analyze_returning_product_field(expression, environment, function_result)?
         {
@@ -8901,6 +8909,84 @@ impl Analyzer {
                 subject: Box::new(subject),
                 when_true: Box::new(when_true),
                 when_false: Box::new(when_false),
+            },
+            int_range,
+            rational_value,
+            span: *span,
+        }))
+    }
+
+    fn analyze_returning_comparison_value_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_comparison_value_action_shape(&self.source, rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        if subject.value_type != CompilerType::Comparison {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning Comparison actions for a non-Comparison subject",
+            ));
+        }
+        let mut when_less = None;
+        let mut when_equal = None;
+        let mut when_greater = None;
+        let mut otherwise = None;
+        for rule in rules {
+            let (action, returned) = self.analyze_direct_statement_expression(
+                &rule.action,
+                environment,
+                Some(function_result),
+                Some(function_result),
+                true,
+            )?;
+            assert!(
+                returned,
+                "a checked returning Comparison action exits its function"
+            );
+            match rule.matcher {
+                DecisionMatcher::Identifier(matcher) => match self.source.slice(matcher) {
+                    "Less" => when_less = Some(action),
+                    "Equal" => when_equal = Some(action),
+                    "Greater" => when_greater = Some(action),
+                    _ => unreachable!("preselected Comparison alternative"),
+                },
+                DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                _ => unreachable!("preselected complete Comparison decision shape"),
+            }
+        }
+        let when_less = when_less
+            .or_else(|| otherwise.clone())
+            .expect("complete Less action");
+        let when_equal = when_equal
+            .or_else(|| otherwise.clone())
+            .expect("complete Equal action");
+        let when_greater = when_greater.or(otherwise).expect("complete Greater action");
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_less, &when_equal, &when_greater], *span)?;
+        Ok(Some(CompilerExpression {
+            value_type,
+            kind: CompilerExpressionKind::ComparisonValueDecision {
+                subject: Box::new(subject),
+                when_less: Box::new(when_less),
+                when_equal: Box::new(when_equal),
+                when_greater: Box::new(when_greater),
             },
             int_range,
             rational_value,
@@ -41134,6 +41220,43 @@ mod tests {
         let otherwise = "use language (version is v0.1)\nchoose is fn (value : Boolean) -> Int\n  value\n    false then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose true\n";
         analyze_for_compiler(otherwise).unwrap();
         let mixed = "use language (version is v0.1)\nchoose is fn (value : Boolean) -> Int\n  value\n    false then { return 40 }\n    true then 41\n  1000\nchoose true\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_comparison_value_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-ENUM-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-comparison-value-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::ComparisonValueDecision {
+            when_less,
+            when_equal,
+            when_greater,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their Comparison decision")
+        };
+        for action in [when_less, when_equal, when_greater] {
+            assert!(matches!(action.kind, CompilerExpressionKind::Block(_)));
+        }
+        assert!(function.body.statements.is_empty());
+
+        let otherwise = "use language (version is v0.1)\nchoose is fn (value : Comparison) -> Int\n  value\n    Less then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose (2 <=> 2)\n";
+        analyze_for_compiler(otherwise).unwrap();
+        let mixed = "use language (version is v0.1)\nchoose is fn (value : Comparison) -> Int\n  value\n    Less then { return 40 }\n    Equal then { return 41 }\n    Greater then 42\n  1000\nchoose (3 <=> 2)\n";
         assert_eq!(
             analyze_for_compiler(mixed).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
