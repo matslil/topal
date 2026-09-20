@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 290);
+    assert_eq!(examples.len(), 291);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1737,6 +1737,31 @@ fn every_mode_returns_from_direct_map_collect_sources() {
             let trace = String::from_utf8(output.stderr).unwrap();
             assert_eq!(trace.matches("function.return.explicit").count(), 1);
             assert!(!trace.contains("map.collected"));
+            assert!(!trace.contains("\"detail\":\"1000\""));
+            assert!(!trace.contains("\"detail\":\"abandoned\""));
+        }
+    }
+}
+
+#[test]
+fn every_mode_returns_from_direct_infix_collect_sources() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-ARRAY-COLLECT-001, TOPAL-COLLECTION-COLLECT-STRING-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001
+    let source = include_str!("../../../examples/language/function-return-infix-collect.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"42\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert_eq!(trace.matches("function.return.explicit").count(), 2);
+            assert!(!trace.contains("array.collected"));
+            assert!(!trace.contains("string.collected"));
             assert!(!trace.contains("\"detail\":\"1000\""));
             assert!(!trace.contains("\"detail\":\"abandoned\""));
         }

@@ -3025,6 +3025,15 @@ impl Session {
                 (collection, None)
             }
             [
+                collection,
+                Expression::Identifier(operation),
+                Expression::Identifier(target),
+            ] if source.slice(*operation) == "collect"
+                && matches!(source.slice(*target), "Array" | "String") =>
+            {
+                (collection, None)
+            }
+            [
                 Expression::Identifier(operation),
                 collection,
                 Expression::Identifier(resolving),
@@ -20094,6 +20103,39 @@ fn map_collect_source_block_propagates_return_before_materialization() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn infix_collect_source_blocks_propagate_return_before_materialization() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-infix-collect.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert!(!trace.iter().any(|event| event.contains("array.collected")));
+    assert!(!trace.iter().any(|event| event.contains("string.collected")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    for target in ["Array", "String"] {
+        let error = Session::new()
+            .evaluate(
+                &format!("{{ return 42 }} collect {target}\n"),
+                &mut std::io::sink(),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+    }
 }
 
 #[test]

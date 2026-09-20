@@ -5058,10 +5058,13 @@ collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, and
 the direct unordered collection sources admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map
 collection source admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, a return-bearing block embedded
-in another expression, conditional or callback, and any exit whose scope owns
-generator close, resource, destructor, or other cleanup obligations SHALL
-remain rejected until explicit exit-edge and cleanup lowering is implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, and the direct infix Array or
+String collection sources admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, a return-bearing block
+embedded in another expression, conditional or callback, and any exit whose
+scope owns generator close, resource, destructor, or other cleanup obligations
+SHALL remain rejected until explicit exit-edge and cleanup lowering is
+implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5094,7 +5097,9 @@ collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, and
 the direct unordered collection sources admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map
 collection source admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, this rule admits no other
+`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, and the direct infix Array or
+String collection sources admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, this rule admits no other
 compound-expression, conditional, callback, generator, or cleanup-bearing
 propagation and SHALL introduce no runtime control-flow object, unwind edge,
 allocation, foreign dependency, C/C++ standard library, public ABI, or
@@ -5218,7 +5223,9 @@ collection source admitted by `TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001`, and
 the direct unordered collection sources admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map
 collection source admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, other constraint, modular, or
+`TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, and the direct infix Array or
+String collection sources admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, other constraint, modular, or
 collection forms, qualified and any other constructor forms; products or other
 expressions nested in the operand; decisions; callbacks; generators; and exits
 with cleanup obligations SHALL remain rejected. This rule SHALL introduce no
@@ -5357,8 +5364,9 @@ compiler model SHALL retain the returning block as the function result, and the
 backend SHALL preserve its nested DWARF scope before using the enclosing
 function's existing single machine return. Except for `collect-set` and
 `collect-bag` covered by
-`TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001`, infix Array or String
-collection, and the `collect-map` form covered by
+`TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001`, the infix Array and String
+forms covered by `TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, and the
+`collect-map` form covered by
 `TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`, qualified, nested-source,
 decision, callback, generator-cleanup, and other cleanup-bearing forms SHALL
 remain fail-closed under their existing diagnostic contracts. This rule SHALL
@@ -5383,11 +5391,13 @@ classifier rather than an unordered collection or abandoned binding
 classifier. The checked compiler model SHALL retain the returning block as the
 function result, and the backend SHALL preserve its nested DWARF scope before
 using the enclosing function's existing single machine return. Except for
-`collect-map` covered by `TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001`,
-qualified, nested-source, decision, callback, cleanup-bearing, and other
-collection forms SHALL remain fail-closed under their existing diagnostic
-contracts. This rule SHALL introduce no runtime control-flow object, collection
-materialization, comparison, allocation, indirect call, unwind edge, foreign
+`collect-map` covered by `TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001` and the
+infix Array and String forms covered by
+`TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, qualified, nested-source,
+decision, callback, cleanup-bearing, and other collection forms SHALL remain
+fail-closed under their existing diagnostic contracts. This rule SHALL
+introduce no runtime control-flow object, collection materialization,
+comparison, allocation, indirect call, unwind edge, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-MAP-COLLECT-001 — Map-collection source lexical exit
@@ -5407,12 +5417,36 @@ The returned value SHALL be validated against the enclosing function result
 classifier rather than a Map or abandoned binding classifier. The checked
 compiler model SHALL retain the returning block as the function result, and the
 backend SHALL preserve its nested DWARF scope before using the enclosing
-function's existing single machine return. Invalid policies, qualified,
-nested-source, decision, callback, cleanup-bearing, and other collection forms
-SHALL remain fail-closed under their existing diagnostic contracts. This rule
-SHALL introduce no runtime control-flow object, collection materialization,
-comparison, allocation, indirect call, unwind edge, foreign dependency, C/C++
-standard library, public ABI, or native-ABI revision.
+function's existing single machine return. Except for the infix Array and String
+forms covered by `TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001`, invalid
+policies, qualified, nested-source, decision, callback, cleanup-bearing, and
+other collection forms SHALL remain fail-closed under their existing diagnostic
+contracts. This rule SHALL introduce no runtime control-flow object, collection
+materialization, comparison, allocation, indirect call, unwind edge, foreign
+dependency, C/C++ standard library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001 — Infix collection-source lexical exit
+
+An admitted cleanup-free lexical block used as the direct left source of the
+exact built-in `source collect Array` or `source collect String` operation MAY
+execute an explicit `return`. Selection of the exact operation and target SHALL
+precede the source. The source return SHALL then complete the nearest enclosing
+ordinary function before finite-List classification, Array extent derivation,
+String-entry validation, or target materialization. No Array or String
+collection result, consumption action, or abandoned binding SHALL be emitted,
+and remaining source statements and the enclosing function tail SHALL be
+excluded from generated IR at `-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than the collection target or abandoned binding classifier.
+The checked compiler model SHALL retain the returning block as the function
+result, and the backend SHALL preserve its nested DWARF scope before using the
+enclosing function's existing single machine return. Unknown or qualified
+targets, nested-source, decision, callback, cleanup-bearing, and other
+collection forms SHALL remain fail-closed under their existing diagnostic
+contracts. This rule SHALL introduce no runtime control-flow object, collection
+materialization, allocation, indirect call, unwind edge, foreign dependency,
+C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

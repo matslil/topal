@@ -1963,8 +1963,8 @@ single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
-3b2-b5e8m/3b2-b5e8n/3b2-b5e8o, qualified, nested-payload, conditional, and
-cleanup-bearing forms remain deferred.
+3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, qualified, nested-payload,
+conditional, and cleanup-bearing forms remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -2022,9 +2022,9 @@ consumption, and List materialization and omits List nodes, the abandoned
 binding, and tails. The block remains the private result with nested
 `DILexicalBlock` and the existing single machine return. This changes no runtime
 representation or ABI; except for the unordered collectors in 3b2-b5e8n,
-and Map collection in 3b2-b5e8o, infix Array/String collection, qualified and
-nested-source forms, conditional control flow, and cleanup-bearing forms remain
-fail-closed.
+Map collection in 3b2-b5e8o, and infix Array/String collection in 3b2-b5e8p,
+qualified and nested-source forms, conditional control flow, and cleanup-bearing
+forms remain fail-closed.
 
 Increment 3b2-b5e8n admits a direct return-bearing block as the source of the
 exact built-in `collect-set source` and `collect-bag source` operations. Exact
@@ -2034,8 +2034,9 @@ accumulation, and Set or Bag materialization and omits collection nodes,
 comparisons, the abandoned binding, and tails. The block remains the private
 result with nested `DILexicalBlock` and the existing single machine return. This
 changes no runtime representation or ABI; except for Map collection in
-3b2-b5e8o, qualified and nested-source forms, conditional control flow, and
-cleanup-bearing forms remain fail-closed.
+3b2-b5e8o and infix Array/String collection in 3b2-b5e8p, qualified and
+nested-source forms, conditional control flow, and cleanup-bearing forms remain
+fail-closed.
 
 Increment 3b2-b5e8o admits a direct return-bearing block as the source of the
 exact built-in `collect-map source resolving policy` operation after validating
@@ -2044,7 +2045,18 @@ exit then precedes pair classification, key equality, collision resolution,
 and Map materialization and omits Map nodes, comparisons, the abandoned
 binding, and tails. The block remains the private result with nested
 `DILexicalBlock` and the existing single machine return. This changes no runtime
-representation or ABI; invalid policies, qualified and nested-source forms,
+representation or ABI; except for infix Array/String collection in 3b2-b5e8p,
+invalid policies, qualified and nested-source forms, conditional control flow,
+and cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8p admits a direct return-bearing block as the left source of
+the exact built-in `source collect Array` and `source collect String`
+operations. Exact operation and target selection precede the source; the exit
+then precedes finite-List classification, Array extent derivation, String-entry
+validation, and target materialization and omits target values, the abandoned
+binding, and tails. The block remains the private result with nested
+`DILexicalBlock` and the existing single machine return. This changes no runtime
+representation or ABI; unknown or qualified targets, nested-source forms,
 conditional control flow, and cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
