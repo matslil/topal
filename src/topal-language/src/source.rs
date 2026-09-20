@@ -18,7 +18,7 @@ use topal_source::{
     scalar_characters, uppercase,
 };
 use topal_syntax::{
-    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
+    AnonymousPattern, CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses,
     FunctionParameter, Statement, extract_documentation, lex, parse,
 };
 
@@ -3156,11 +3156,7 @@ impl Session {
         let Expression::DecisionTable { subject, rules, .. } = expression else {
             return Ok(None);
         };
-        let [literal_rule, otherwise_rule] = rules.as_slice() else {
-            return Ok(None);
-        };
-        if !matches!(literal_rule.matcher, DecisionMatcher::Boolean { .. })
-            || !matches!(otherwise_rule.matcher, DecisionMatcher::Otherwise(_))
+        if !is_supported_returning_boolean_decision_shape(rules)
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
@@ -10249,6 +10245,25 @@ pub(super) fn direct_expression_returns_from_function(expression: &Expression) -
         | Statement::Expression(value) => direct_expression_returns_from_function(value),
         _ => false,
     })
+}
+
+pub(super) fn is_supported_returning_boolean_decision_shape(rules: &[DecisionRule]) -> bool {
+    let [first, second] = rules else {
+        return false;
+    };
+    match (&first.matcher, &second.matcher) {
+        (DecisionMatcher::Boolean { .. }, DecisionMatcher::Otherwise(_)) => true,
+        (
+            DecisionMatcher::Boolean {
+                value: first_value, ..
+            },
+            DecisionMatcher::Boolean {
+                value: second_value,
+                ..
+            },
+        ) => first_value != second_value,
+        _ => false,
+    }
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -20205,6 +20220,43 @@ fn boolean_decision_subject_block_propagates_return_before_selection() {
     let error = Session::new()
         .evaluate(
             "{ return 42 }\n  true then false\n  otherwise true\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn exhaustive_boolean_decision_subject_block_propagates_return_before_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-exhaustive-boolean-subject.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("decision.rule")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  { return 42 }\n    true then 0\n    false then 1\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate(
+            "{ return 42 }\n  false then 0\n  true then 1\n",
             &mut std::io::sink(),
         )
         .unwrap_err();
