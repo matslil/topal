@@ -31,6 +31,33 @@ fn run(command: &mut Command) -> Output {
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+fn assert_direct_return_without_classifier(ir_text: &str, symbol: &str) {
+    let function = ir_text
+        .split_once(symbol)
+        .unwrap()
+        .1
+        .split_once("\n}")
+        .unwrap()
+        .0;
+    assert_eq!(
+        function.matches("call ptr @topal.runtime.int.add").count(),
+        1
+    );
+    assert_eq!(function.matches("ret ptr").count(), 1);
+    for instruction in [
+        "call i32 @topal.runtime.int.compare",
+        "icmp",
+        "br i1",
+        "switch ",
+        "select i1",
+        " phi ",
+        "@topal.platform.allocate",
+    ] {
+        assert!(!function.contains(instruction), "{function}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 fn assert_freestanding_elf_and_valid_dwarf(executable: &Path) {
     let tools = LlvmTools::discover(None).unwrap();
     let undefined = run(Command::new(tools.directory.join("llvm-nm"))
@@ -3007,6 +3034,112 @@ fn fallback_decision_subject_block_exit_is_freestanding_and_debuggable() {
     assert!(text.contains("$1 = 41"), "{text}");
     assert!(text.contains("topal.fn.answer"), "{text}");
     assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn complete_decision_subject_block_exits_are_freestanding_and_debuggable() {
+    // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-OPTIONAL-001,
+    // TOPAL-DECISION-RESULT-001, TOPAL-DECISION-LIST-001,
+    // TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-return-complete-decision-subject");
+    let source = directory.join("function-return-complete-decision-subject.t");
+    let executable = directory.join("application");
+    let ir = directory.join("application.ll");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-return-complete-decision-subject.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(40, 41, 42)\n");
+
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir_text = fs::read_to_string(&ir).unwrap();
+    for symbol in [
+        "define internal fastcc ptr @topal.fn.optional_2dexit",
+        "define internal fastcc ptr @topal.fn.result_2dexit",
+        "define internal fastcc ptr @topal.fn.list_2dexit",
+    ] {
+        assert_direct_return_without_classifier(&ir_text, symbol);
+    }
+    assert!(ir_text.matches("!DILexicalBlock(").count() >= 3);
+    assert!(!ir_text.contains("@printf"));
+    assert!(!ir_text.contains("@malloc"));
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let dwarf_tool = tools.directory.join("llvm-dwarfdump");
+    if dwarf_tool.is_file() {
+        let dwarf = run(Command::new(dwarf_tool).arg("--verify").arg(&executable));
+        assert!(dwarf.status.success());
+    }
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-return-complete-decision-subject.t:8",
+            "-ex",
+            "break function-return-complete-decision-subject.t:14",
+            "-ex",
+            "break function-return-complete-decision-subject.t:20",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(debugged.status.success());
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = 39"), "{text}");
+    assert!(text.contains("$2 = 40"), "{text}");
+    assert!(text.contains("$3 = 41"), "{text}");
+    for symbol in [
+        "topal.fn.optional_2dexit",
+        "topal.fn.result_2dexit",
+        "topal.fn.list_2dexit",
+        "topal.main",
+    ] {
+        assert!(text.contains(symbol), "{text}");
+    }
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

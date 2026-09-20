@@ -5238,7 +5238,9 @@ Boolean-decision subject admitted by
 comparison-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
 fallback-complete decision subject admitted by
-`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, a return-bearing block
+`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
+parser-complete decision subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, a return-bearing block
 nested in another expression, decision action, callback, or other compound
 expression shall remain rejected.
 
@@ -5293,7 +5295,9 @@ Boolean-decision subject admitted by
 comparison-decision subject admitted by
 `TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
 fallback-complete decision subject admitted by
-`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, the implementation
+`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
+parser-complete decision subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, the implementation
 shall admit no other embedded, decision-action, callback, generator, or
 cleanup-bearing exit. It shall add no runtime control-flow value, unwind edge,
 allocation, foreign dependency, C/C++ runtime, other-language standard library,
@@ -5439,7 +5443,9 @@ Boolean-decision subject covered by
 comparison-decision subject covered by
 `TOPAL-COMP-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
 fallback-complete decision subject covered by
-`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, other constraint,
+`TOPAL-COMP-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, and any other
+parser-complete decision subject covered by
+`TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001`, other constraint,
 modular, or collection forms, qualified and other constructor forms; products
 or other expressions nested in the operand; other decision forms; callbacks;
 generators; and cleanup-bearing scopes shall remain fail-closed. The
@@ -5805,6 +5811,37 @@ LLVM/DWARF/GDB behavior, and separate resource baselines. This realizes
 `TOPAL-DECISION-RESULT-001`, `TOPAL-DECISION-LIST-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001` for increment
 3b2-b5e8t.
+
+## TOPAL-COMP-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001 — Parser-complete decision subject lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as the direct subject of
+any decision table already accepted as complete by the syntax rules. It shall
+use construction of the complete decision-table syntax node as prior evidence,
+then complete the enclosing function before subject classification,
+type-specific exhaustiveness or matcher validation, matcher-operand evaluation,
+pattern binding, comparison, action selection, or action evaluation; omit all
+matcher, binding, branch, action, abandoned-value, and lexical and function
+tail work at O0; and validate the returned value against the enclosing function
+result classifier.
+
+The compiler shall retain the returned lexical block as the existing private
+function result, preserve its nested DWARF scope, and use the existing single
+machine return. Syntactically incomplete decisions, nested subjects,
+decision-action returns, callbacks, cleanup-bearing, and other conditional
+forms shall remain fail-closed under their existing diagnostics. The
+implementation shall add no runtime control-flow value, matcher or
+exhaustiveness operation, pattern binding, decision branch, allocation,
+indirect call, unwind edge, foreign dependency, C/C++ runtime, other-language
+standard library, public ABI, or `topal-native/6` revision. Tests shall share
+the interpreter/compiler source, exercise complete no-fallback Optional,
+Result, List, and identifier matcher shapes, verify omitted
+subject/matcher/binding/action/tail work, rejection boundaries,
+LLVM/DWARF/GDB behavior, and separate resource baselines. This realizes
+`TOPAL-FUNCTION-RETURN-001`, `TOPAL-DECISION-OPTIONAL-001`,
+`TOPAL-DECISION-RESULT-001`, `TOPAL-DECISION-LIST-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPLETE-DECISION-SUBJECT-001` for increment
+3b2-b5e8u.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

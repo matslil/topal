@@ -1964,8 +1964,8 @@ single machine return. This changes no runtime representation or ABI;
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
 3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subjects outside
-3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t, qualified, nested-payload,
-conditional, and
+3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t/3b2-b5e8u, qualified,
+nested-payload, conditional, and
 cleanup-bearing forms
 remain deferred.
 
@@ -2111,6 +2111,19 @@ machine return. This changes no runtime representation or ABI; decisions
 without a final fallback outside separately admitted exhaustive shapes, nested
 subjects, decision-action returns, conditional control flow, and
 cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8u uses construction of the parser's complete decision-table
+node as the proof required before entering any direct return-bearing subject.
+This closes the remaining parser-complete no-fallback Optional, Result, List,
+identifier, Sum, and arithmetic-code matcher shapes without reinterpreting
+syntax in either execution path. The exit precedes subject classification,
+type-specific exhaustiveness and matcher validation, matcher operands, pattern
+bindings, comparisons, action selection, and action evaluation and omits all
+matcher, binding, branch, action, abandoned-value, and tail work. The block
+remains the private result with nested `DILexicalBlock` and the existing single
+machine return. This changes no runtime representation or ABI; syntactically
+incomplete decisions, nested subjects, decision-action returns, conditional
+control flow, and cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
