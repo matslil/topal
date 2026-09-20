@@ -5230,9 +5230,11 @@ the direct unordered collection sources admitted by
 `TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
 source admitted by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, and the direct
 infix Array or String collection sources admitted by
-`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, a return-bearing block nested in
-another expression, decision, callback, or other compound expression shall
-remain rejected.
+`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, and the direct complete
+Boolean-decision subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, a return-bearing block nested
+in another expression, decision action, callback, or other compound expression
+shall remain rejected.
 
 The compiler shall retain the block expression and its nested DWARF lexical
 scope, then lower its returned value through the enclosing function's existing
@@ -5277,12 +5279,13 @@ the direct unordered collection sources admitted by
 `TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
 source admitted by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, and the
 direct infix Array or String collection sources admitted by
-`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, the implementation shall admit no
-other embedded, conditional, callback, generator, or exit with cleanup
-obligations and add no runtime control-flow value, unwind edge, allocation,
-foreign dependency, C/C++ runtime, other-language standard library, public ABI,
-or `topal-native/6` revision. Tests shall share the
-interpreter/compiler source,
+`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, and the direct complete
+Boolean-decision subject admitted by
+`TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, the implementation shall admit
+no other embedded, decision-action, callback, generator, or cleanup-bearing
+exit and add no runtime control-flow value, unwind edge, allocation, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Tests shall share the interpreter/compiler source,
 assert exactly one semantic return and skipped tails, inspect LLVM/DWARF/GDB
 behavior, and record separate interpreter, compiler-build, and native-run
 baselines. This realizes
@@ -5416,12 +5419,14 @@ direct unordered collection sources covered by
 `TOPAL-COMP-LEXICAL-RETURN-UNORDERED-COLLECT-001`, and the direct Map collection
 source covered by `TOPAL-COMP-LEXICAL-RETURN-MAP-COLLECT-001`, and the direct
 infix Array or String collection sources covered by
-`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, other constraint, modular, or
+`TOPAL-COMP-LEXICAL-RETURN-INFIX-COLLECT-001`, and the direct complete
+Boolean-decision subject covered by
+`TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001`, other constraint, modular, or
 collection forms, qualified and other constructor forms; products or other
-expressions nested in the operand; decisions; callbacks; generators; and
-cleanup-bearing scopes shall remain fail-closed. The implementation shall add
-no runtime control-flow value, constructor-specific allocation, indirect call,
-unwind edge, foreign dependency, C/C++ runtime, other-language standard
+expressions nested in the operand; other decision forms; callbacks; generators;
+and cleanup-bearing scopes shall remain fail-closed. The implementation shall
+add no runtime control-flow value, constructor-specific allocation, indirect
+call, unwind edge, foreign dependency, C/C++ runtime, other-language standard
 library, public ABI, or `topal-native/6` revision. Tests shall share the
 interpreter/compiler source, cover every admitted constructor family, verify
 omitted conversion/construction/binding/tails, inspect LLVM/DWARF/GDB behavior,
@@ -5668,6 +5673,32 @@ rejection boundaries, LLVM/DWARF/GDB behavior, and separate resource baselines.
 This realizes `TOPAL-FUNCTION-RETURN-001`, `TOPAL-ARRAY-COLLECT-001`,
 `TOPAL-COLLECTION-COLLECT-STRING-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-INFIX-COLLECT-001` for increment 3b2-b5e8p.
+
+## TOPAL-COMP-LEXICAL-RETURN-DECISION-SUBJECT-001 — Boolean-decision subject lexical exit
+
+Inside an admitted ordinary function, the checked model shall propagate an
+explicit return from a cleanup-free lexical block used as the direct subject of
+a complete Boolean decision consisting of one Boolean-literal rule followed by
+an `otherwise` rule. It shall recognize that exact decision shape first, then
+complete the enclosing function before Boolean classification, matcher
+consideration, action selection, or action evaluation; omit decision branches,
+actions, the abandoned decision value, and lexical and function tails at O0;
+and validate the returned value against the enclosing function result
+classifier.
+
+The compiler shall retain the returned lexical block as the existing private
+function result, preserve its nested DWARF scope, and use the existing single
+machine return. Other matcher sets, nested subjects, decision-action returns,
+callbacks, cleanup-bearing, and other decision forms shall remain fail-closed
+under their existing diagnostics. The implementation shall add no runtime
+control-flow value, decision branch, allocation, indirect call, unwind edge,
+foreign dependency, C/C++ runtime, other-language standard library, public ABI,
+or `topal-native/6` revision. Tests shall share the interpreter/compiler source,
+verify exact decision-shape selection, omitted classification/matching/action/
+tail work, rejection boundaries, LLVM/DWARF/GDB behavior, and separate resource
+baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
+`TOPAL-DECISION-BOOLEAN-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001` for increment 3b2-b5e8q.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

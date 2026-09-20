@@ -3082,6 +3082,14 @@ impl Session {
         return_classifier: Option<&str>,
         trace: &mut impl TraceSink,
     ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        if let Some(step) = self.evaluate_returning_boolean_decision_subject_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_product_field_step(
             source,
             expression,
@@ -3136,6 +3144,42 @@ impl Session {
             return_classifier,
             trace,
         )
+    }
+
+    fn evaluate_returning_boolean_decision_subject_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        let [literal_rule, otherwise_rule] = rules.as_slice() else {
+            return Ok(None);
+        };
+        if !matches!(literal_rule.matcher, DecisionMatcher::Boolean { .. })
+            || !matches!(otherwise_rule.matcher, DecisionMatcher::Otherwise(_))
+            || !direct_expression_returns_from_function(subject)
+        {
+            return Ok(None);
+        }
+        let Expression::Block { statements, .. } = subject.as_ref() else {
+            unreachable!("a direct returning Boolean-decision subject is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning Boolean-decision subject exits its function"
+        );
+        Ok(Some(step))
     }
 
     fn evaluate_returning_product_field_step(
@@ -20136,6 +20180,35 @@ fn infix_collect_source_blocks_propagate_return_before_materialization() {
             .unwrap_err();
         assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
     }
+}
+
+#[test]
+fn boolean_decision_subject_block_propagates_return_before_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-decision-subject.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("decision.rule")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let error = Session::new()
+        .evaluate(
+            "{ return 42 }\n  true then false\n  otherwise true\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }
 
 #[test]

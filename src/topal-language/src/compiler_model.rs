@@ -8707,52 +8707,7 @@ impl Analyzer {
         allow_function_return: bool,
     ) -> Result<(CompilerExpression, bool), Diagnostic> {
         if allow_function_return
-            && let Some(value) =
-                self.analyze_returning_product_field(expression, environment, function_result)?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) =
-                self.analyze_returning_collection_source(expression, environment, function_result)?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) = self.analyze_returning_modular_reduction_operand(
-                expression,
-                environment,
-                function_result,
-            )?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) =
-                self.analyze_returning_operator_operand(expression, environment, function_result)?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) = self.analyze_returning_unary_constructor_argument(
-                expression,
-                environment,
-                function_result,
-            )?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) = self.analyze_returning_variant_constructor_argument(
-                expression,
-                environment,
-                function_result,
-            )?
-        {
-            return Ok((value, true));
-        }
-        if allow_function_return
-            && let Some(value) = self.analyze_returning_named_call_argument(
+            && let Some(value) = self.analyze_returning_embedded_expression(
                 expression,
                 environment,
                 function_result,
@@ -8798,6 +8753,90 @@ impl Analyzer {
             };
         }
         Ok((value, returns_from_function))
+    }
+
+    fn analyze_returning_embedded_expression(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        if let Some(value) = self.analyze_returning_boolean_decision_subject(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
+        if let Some(value) =
+            self.analyze_returning_product_field(expression, environment, function_result)?
+        {
+            return Ok(Some(value));
+        }
+        if let Some(value) =
+            self.analyze_returning_collection_source(expression, environment, function_result)?
+        {
+            return Ok(Some(value));
+        }
+        if let Some(value) = self.analyze_returning_modular_reduction_operand(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
+        if let Some(value) =
+            self.analyze_returning_operator_operand(expression, environment, function_result)?
+        {
+            return Ok(Some(value));
+        }
+        if let Some(value) = self.analyze_returning_unary_constructor_argument(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
+        if let Some(value) = self.analyze_returning_variant_constructor_argument(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
+        self.analyze_returning_named_call_argument(expression, environment, function_result)
+    }
+
+    fn analyze_returning_boolean_decision_subject(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        let [literal_rule, otherwise_rule] = rules.as_slice() else {
+            return Ok(None);
+        };
+        if !matches!(literal_rule.matcher, DecisionMatcher::Boolean { .. })
+            || !matches!(otherwise_rule.matcher, DecisionMatcher::Otherwise(_))
+            || !direct_expression_returns_from_function(subject)
+        {
+            return Ok(None);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            subject,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning Boolean-decision subject exits its function"
+        );
+        Ok(Some(result))
     }
 
     fn analyze_returning_product_field(
@@ -40845,6 +40884,38 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0) collect Array\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_boolean_decision_subject() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-decision-subject.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let other_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    Empty then 0\n    otherwise 1\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(other_matchers).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    true then 0\n    otherwise 1\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

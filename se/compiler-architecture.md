@@ -1963,8 +1963,9 @@ single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
-3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, qualified, nested-payload,
-conditional, and cleanup-bearing forms remain deferred.
+3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subjects outside
+3b2-b5e8q, qualified, nested-payload, conditional, and cleanup-bearing forms
+remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
 positional Variant when its literal index selects an existing alternative.
@@ -2058,6 +2059,16 @@ binding, and tails. The block remains the private result with nested
 `DILexicalBlock` and the existing single machine return. This changes no runtime
 representation or ABI; unknown or qualified targets, nested-source forms,
 conditional control flow, and cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8q admits a direct return-bearing block as the subject of a
+complete Boolean decision with one literal rule followed by `otherwise`. Exact
+decision-shape recognition precedes the subject; the exit then precedes Boolean
+classification, matcher consideration, action selection, and action evaluation
+and omits decision branches, actions, the abandoned decision value, and tails.
+The block remains the private result with nested `DILexicalBlock` and the
+existing single machine return. This changes no runtime representation or ABI;
+other matcher sets, nested subjects, decision-action returns, conditional
+control flow, and cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
