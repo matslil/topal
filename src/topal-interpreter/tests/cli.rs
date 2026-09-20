@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 294);
+    assert_eq!(examples.len(), 295);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -1822,6 +1822,29 @@ fn every_mode_returns_from_comparison_decision_subjects() {
     // TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001
     let source =
         include_str!("../../../examples/language/function-return-comparison-decision-subject.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"42\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert_eq!(trace.matches("function.return.explicit").count(), 1);
+            assert!(!trace.contains("decision.rule"));
+            assert!(!trace.contains("\"detail\":\"1000\""));
+        }
+    }
+}
+
+#[test]
+fn every_mode_returns_from_fallback_decision_subjects() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001
+    let source =
+        include_str!("../../../examples/language/function-return-fallback-decision-subject.t");
     for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
         let output = run(arguments, source);
         assert!(
