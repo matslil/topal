@@ -1962,7 +1962,7 @@ block remains the private result with nested `DILexicalBlock` and the existing
 single machine return. This changes no runtime representation or ABI;
 `Character` forms outside 3b2-b5e8i, positional Variant forms outside
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
-3b2-b5e8k/3b2-b5e8l, collection forms outside 3b2-b5e8m, qualified,
+3b2-b5e8k/3b2-b5e8l, collection forms outside 3b2-b5e8m/3b2-b5e8n, qualified,
 nested-payload, conditional, and cleanup-bearing forms remain deferred.
 
 Increment 3b2-b5e8h admits the direct payload block of an already-declared
@@ -2020,9 +2020,20 @@ the source; the exit then precedes finite-traversal classification, generator
 consumption, and List materialization and omits List nodes, the abandoned
 binding, and tails. The block remains the private result with nested
 `DILexicalBlock` and the existing single machine return. This changes no runtime
-representation or ABI; infix Array/String collection, set/bag/map collectors,
-qualified and nested-source forms, conditional control flow, and
-cleanup-bearing forms remain fail-closed.
+representation or ABI; except for the unordered collectors in 3b2-b5e8n,
+infix Array/String collection, `collect-map`, qualified and nested-source forms,
+conditional control flow, and cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8n admits a direct return-bearing block as the source of the
+exact built-in `collect-set source` and `collect-bag source` operations. Exact
+operation selection precedes the source; the exit then precedes finite-List
+classification, equality-dependent duplicate coalescing, multiplicity
+accumulation, and Set or Bag materialization and omits collection nodes,
+comparisons, the abandoned binding, and tails. The block remains the private
+result with nested `DILexicalBlock` and the existing single machine return. This
+changes no runtime representation or ABI; `collect-map`, qualified and
+nested-source forms, conditional control flow, and cleanup-bearing forms remain
+fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:

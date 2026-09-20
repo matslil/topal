@@ -8713,11 +8713,8 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
-            && let Some(value) = self.analyze_returning_list_collect_source(
-                expression,
-                environment,
-                function_result,
-            )?
+            && let Some(value) =
+                self.analyze_returning_collection_source(expression, environment, function_result)?
         {
             return Ok((value, true));
         }
@@ -8863,7 +8860,7 @@ impl Analyzer {
         }))
     }
 
-    fn analyze_returning_list_collect_source(
+    fn analyze_returning_collection_source(
         &mut self,
         expression: &Expression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -8875,8 +8872,10 @@ impl Analyzer {
         let [Expression::Identifier(operation), source] = items.as_slice() else {
             return Ok(None);
         };
-        if self.source.slice(*operation) != "collect"
-            || !direct_expression_returns_from_function(source)
+        if !matches!(
+            self.source.slice(*operation),
+            "collect" | "collect-set" | "collect-bag"
+        ) || !direct_expression_returns_from_function(source)
         {
             return Ok(None);
         }
@@ -8889,7 +8888,7 @@ impl Analyzer {
         )?;
         assert!(
             returned,
-            "a checked returning List collect source exits its function"
+            "a checked returning collection source exits its function"
         );
         Ok(Some(result))
     }
@@ -40697,7 +40696,7 @@ mod tests {
         ));
         assert!(function.body.statements.is_empty());
 
-        let other_collector = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-set { return 42 }\nanswer ()\n";
+        let other_collector = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } resolving reject\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(other_collector).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
@@ -40708,6 +40707,41 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect ({ return 42 }, 0)\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_unordered_collect_sources() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-SET-COLLECT-001,
+        // TOPAL-BAG-COLLECT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-UNORDERED-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-unordered-collect.t"
+        ))
+        .unwrap();
+        for name in ["set-exit", "bag-exit"] {
+            let function = program
+                .functions
+                .iter()
+                .find(|function| function.source_name == name)
+                .unwrap();
+            assert_eq!(function.body.result.value_type, CompilerType::Int);
+            assert!(matches!(
+                function.body.result.kind,
+                CompilerExpressionKind::Block(_)
+            ));
+            assert!(function.body.statements.is_empty());
+        }
+
+        let map = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-map { return 42 } resolving reject\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(map).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-set ({ return 42 }, 0)\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
