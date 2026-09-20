@@ -26,8 +26,9 @@ use topal_syntax::{
 
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
-    expression_mentions_name, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
+    expression_mentions_name, is_supported_returning_boolean_decision_shape, parse_integer,
+    parse_rational, parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
+    prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -8816,11 +8817,7 @@ impl Analyzer {
         let Expression::DecisionTable { subject, rules, .. } = expression else {
             return Ok(None);
         };
-        let [literal_rule, otherwise_rule] = rules.as_slice() else {
-            return Ok(None);
-        };
-        if !matches!(literal_rule.matcher, DecisionMatcher::Boolean { .. })
-            || !matches!(otherwise_rule.matcher, DecisionMatcher::Otherwise(_))
+        if !is_supported_returning_boolean_decision_shape(rules)
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
@@ -40916,6 +40913,45 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    true then 0\n    otherwise 1\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_exhaustive_boolean_decision_subject() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-exhaustive-boolean-subject.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let reverse_order = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    true then 0\n    false then 1\nanswer ()\n";
+        analyze_for_compiler(reverse_order).unwrap();
+        let additional_rule = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    false then 0\n    false then 1\n    true then 2\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(additional_rule).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let other_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    Empty then 0\n    otherwise 1\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(other_matchers).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    false then 0\n    true then 1\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

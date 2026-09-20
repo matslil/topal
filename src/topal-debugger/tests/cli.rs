@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 292);
+    assert_eq!(examples.len(), 293);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5754,6 +5754,35 @@ fn records_boolean_decision_subject_block_exit_reversibly() {
             "--script",
             &format!("{root}function-return-decision-subject.debug"),
             &language_example("function-return-decision-subject.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("function.return.explicit").count(), 1);
+    assert!(
+        stdout.contains("function.exit [TOPAL-FUNCTION-ORDINARY-001] answer"),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("decision.rule"));
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
+}
+
+#[test]
+fn records_exhaustive_boolean_decision_subject_block_exit_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-BOOLEAN-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-exhaustive-boolean-subject.debug"),
+            &language_example("function-return-exhaustive-boolean-subject.t"),
         ])
         .output()
         .unwrap();
