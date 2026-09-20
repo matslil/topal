@@ -18,7 +18,7 @@ use topal_source::{
     scalar_characters, uppercase,
 };
 use topal_syntax::{
-    AnonymousPattern, CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses,
+    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
     FunctionParameter, Statement, extract_documentation, lex, parse,
 };
 
@@ -3153,14 +3153,10 @@ impl Session {
         return_classifier: Option<&str>,
         trace: &mut impl TraceSink,
     ) -> Result<Option<ExecutionStep>, Diagnostic> {
-        let Expression::DecisionTable { subject, rules, .. } = expression else {
+        let Expression::DecisionTable { subject, .. } = expression else {
             return Ok(None);
         };
-        if !(is_supported_returning_boolean_decision_shape(rules)
-            || is_supported_returning_comparison_decision_shape(rules)
-            || is_supported_returning_fallback_decision_shape(rules))
-            || !direct_expression_returns_from_function(subject)
-        {
+        if !direct_expression_returns_from_function(subject) {
             return Ok(None);
         }
         let Expression::Block { statements, .. } = subject.as_ref() else {
@@ -10247,42 +10243,6 @@ pub(super) fn direct_expression_returns_from_function(expression: &Expression) -
         | Statement::Expression(value) => direct_expression_returns_from_function(value),
         _ => false,
     })
-}
-
-pub(super) fn is_supported_returning_boolean_decision_shape(rules: &[DecisionRule]) -> bool {
-    let [first, second] = rules else {
-        return false;
-    };
-    match (&first.matcher, &second.matcher) {
-        (DecisionMatcher::Boolean { .. }, DecisionMatcher::Otherwise(_)) => true,
-        (
-            DecisionMatcher::Boolean {
-                value: first_value, ..
-            },
-            DecisionMatcher::Boolean {
-                value: second_value,
-                ..
-            },
-        ) => first_value != second_value,
-        _ => false,
-    }
-}
-
-pub(super) fn is_supported_returning_fallback_decision_shape(rules: &[DecisionRule]) -> bool {
-    rules
-        .last()
-        .is_some_and(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
-}
-
-pub(super) fn is_supported_returning_comparison_decision_shape(rules: &[DecisionRule]) -> bool {
-    let Some((last, comparisons)) = rules.split_last() else {
-        return false;
-    };
-    !comparisons.is_empty()
-        && matches!(last.matcher, DecisionMatcher::Otherwise(_))
-        && comparisons
-            .iter()
-            .all(|rule| matches!(rule.matcher, DecisionMatcher::Comparison { .. }))
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -20352,6 +20312,43 @@ fn fallback_decision_subject_block_propagates_return_before_selection() {
     let error = Session::new()
         .evaluate(
             "{ return 42 }\n  Some payload then payload\n  otherwise 0\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn complete_decision_subject_blocks_propagate_return_before_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-complete-decision-subject.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(40, 41, 42)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        3
+    );
+    assert!(!trace.iter().any(|event| event.contains("decision.rule")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  { return 42 }\n    Red then 0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate(
+            "{ return 42 }\n  Some payload then payload\n  None then 0\n",
             &mut std::io::sink(),
         )
         .unwrap_err();
