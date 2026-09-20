@@ -3098,6 +3098,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_enum_fallback_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_comparison_value_decision_action_step(
             source,
             expression,
@@ -3336,6 +3344,98 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a selected returning Comparison action exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_enum_fallback_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_enum_fallback_action_shape(source, rules) {
+            return Ok(None);
+        }
+        let subject_span = subject.span();
+        let subject = self.evaluate_expression(source, subject, trace)?;
+        let Value::Enum {
+            type_name,
+            alternative,
+        } = &subject
+        else {
+            return Err(diagnostic(
+                source,
+                "E-DECISION-SUBJECT-TYPE",
+                subject_span,
+                "enum alternative matchers require an Enum subject",
+            ));
+        };
+        let mut selected = None;
+        for (index, rule) in rules.iter().enumerate() {
+            let matches = match rule.matcher {
+                DecisionMatcher::Identifier(matcher) => {
+                    let name = source.slice(matcher);
+                    if type_name == "Comparison" {
+                        if !matches!(name, "Less" | "Equal" | "Greater") {
+                            return Err(diagnostic(
+                                source,
+                                "E-UNBOUND-NAME",
+                                matcher,
+                                format!("enum matcher `{name}` is not declared"),
+                            ));
+                        }
+                        alternative == name
+                    } else {
+                        let Some(candidate) = self.bindings.get(name).cloned() else {
+                            return Err(diagnostic(
+                                source,
+                                "E-UNBOUND-NAME",
+                                matcher,
+                                format!("enum matcher `{name}` is not declared"),
+                            ));
+                        };
+                        values_equal(subject.clone(), candidate, trace).unwrap_or(false)
+                    }
+                }
+                DecisionMatcher::Otherwise(_) => true,
+                _ => unreachable!("preselected final-fallback Enum decision shape"),
+            };
+            let detail = format!("rule={index};matched={matches}");
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-ENUM-001",
+                detail: &detail,
+            });
+            if matches {
+                selected = Some((index, rule));
+                break;
+            }
+        }
+        let (index, selected) = selected.expect("a final-fallback Enum decision selects an action");
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-ENUM-001",
+            detail: &detail,
+        });
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning Enum action is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning Enum action exits its function"
         );
         Ok(Some(step))
     }
@@ -10504,6 +10604,24 @@ pub(super) fn is_supported_returning_boolean_action_shape(rules: &[DecisionRule]
         _ => false,
     };
     complete
+        && rules
+            .iter()
+            .all(|rule| direct_expression_returns_from_function(&rule.action))
+}
+
+pub(super) fn is_supported_returning_enum_fallback_action_shape(
+    source: &SourceText,
+    rules: &[DecisionRule],
+) -> bool {
+    let Some((fallback, enum_rules)) = rules.split_last() else {
+        return false;
+    };
+    let mut alternatives = BTreeSet::new();
+    !enum_rules.is_empty()
+        && matches!(fallback.matcher, DecisionMatcher::Otherwise(_))
+        && enum_rules.iter().all(|rule| {
+            matches!(rule.matcher, DecisionMatcher::Identifier(matcher) if alternatives.insert(source.slice(matcher)))
+        })
         && rules
             .iter()
             .all(|rule| direct_expression_returns_from_function(&rule.action))
@@ -20741,6 +20859,38 @@ fn complete_ordered_comparison_decision_actions_propagate_return_after_selection
             .filter(|event| {
                 event.contains("decision.rule.selected")
                     && event.contains("TOPAL-DECISION-COMPARISON-001")
+            })
+            .count(),
+        3
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+}
+
+#[test]
+fn final_fallback_enum_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/language/function-return-enum-fallback-decision-actions.t"
+            ),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(40, 41, 42)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| {
+                event.contains("decision.rule.selected")
+                    && event.contains("TOPAL-DECISION-ENUM-001")
             })
             .count(),
         3

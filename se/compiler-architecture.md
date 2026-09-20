@@ -1964,7 +1964,7 @@ single machine return. This changes no runtime representation or ABI;
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
 3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subject/action forms
-outside 3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t/3b2-b5e8u/3b2-b5e8v/3b2-b5e8w/3b2-b5e8x,
+outside 3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t/3b2-b5e8u/3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y,
 qualified, nested-payload, conditional, and cleanup-bearing forms remain
 deferred.
 
@@ -2068,7 +2068,7 @@ classification, matcher consideration, action selection, and action evaluation
 and omits decision branches, actions, the abandoned decision value, and tails.
 The block remains the private result with nested `DILexicalBlock` and the
 existing single machine return. This changes no runtime representation or ABI;
-other matcher sets, nested subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x,
+other matcher sets, nested subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y,
 conditional control flow, and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8r admits the other complete Boolean matcher shape: a direct
@@ -2081,7 +2081,7 @@ evaluation and omits decision branches, actions, the abandoned decision value,
 and tails. The block remains the private result with nested `DILexicalBlock`
 and the existing single machine return. This changes no runtime representation
 or ABI; duplicate or additional rules, other matcher sets, nested subjects,
-decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x, conditional control flow, and
+decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y, conditional control flow, and
 cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8s admits a direct return-bearing subject followed by one or
@@ -2094,7 +2094,7 @@ branches, actions, the abandoned decision value, and tails. The block remains
 the private result with nested `DILexicalBlock` and the existing single machine
 return. This changes no runtime representation or ABI; empty comparison
 prefixes, mixed or additional matcher kinds, nonfinal or missing fallbacks,
-nested subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x, conditional control
+nested subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y, conditional control
 flow, and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8t generalizes the pre-subject exit to every parser-accepted
@@ -2108,7 +2108,7 @@ matcher, binding, branch, action, abandoned-value, and tail work. The block
 remains the private result with nested `DILexicalBlock` and the existing single
 machine return. This changes no runtime representation or ABI; decisions
 without a final fallback outside separately admitted exhaustive shapes, nested
-subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x, conditional control flow,
+subjects, decision-action returns outside 3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y, conditional control flow,
 and cleanup-bearing forms remain fail-closed.
 
 Increment 3b2-b5e8u uses construction of the parser's complete decision-table
@@ -2122,7 +2122,7 @@ matcher, binding, branch, action, abandoned-value, and tail work. The block
 remains the private result with nested `DILexicalBlock` and the existing single
 machine return. This changes no runtime representation or ABI; syntactically
 incomplete decisions, nested subjects, decision-action returns outside
-3b2-b5e8v/3b2-b5e8w/3b2-b5e8x, conditional control flow, and cleanup-bearing forms remain
+3b2-b5e8v/3b2-b5e8w/3b2-b5e8x/3b2-b5e8y, conditional control flow, and cleanup-bearing forms remain
 fail-closed.
 
 Increment 3b2-b5e8v admits a complete Boolean decision when every action is a
@@ -2135,8 +2135,9 @@ Boolean branch, a typed SSA phi join, and the existing single machine return.
 Both action blocks retain nested `DILexicalBlock` scopes. No runtime
 control-flow carrier, allocation, unwind edge, foreign dependency, or ABI
 change is needed; mixed returning/normally-completing actions, other decision
-classifiers outside 3b2-b5e8w/3b2-b5e8x, nested action expressions, callbacks, and
-cleanup-bearing actions remain fail-closed pending general exit-edge joins.
+classifiers outside 3b2-b5e8w/3b2-b5e8x/3b2-b5e8y, nested action expressions,
+callbacks, and cleanup-bearing actions remain fail-closed pending general
+exit-edge joins.
 
 Increment 3b2-b5e8w admits the analogous all-returning action form for a
 complete decision over the closed `Comparison` value. A shared frontend
@@ -2148,8 +2149,8 @@ Comparison-value decision, and LLVM emits its ordinary switch, typed SSA phi,
 and single machine return while preserving all nested action debug scopes. No
 runtime control-flow carrier, allocation, unwind edge, foreign dependency, or
 ABI change is needed; mixed actions, other decision classifiers outside
-3b2-b5e8x, nested action expressions, callbacks, and cleanup-bearing actions
-remain fail-closed.
+3b2-b5e8x/3b2-b5e8y, nested action expressions, callbacks, and cleanup-bearing
+actions remain fail-closed.
 
 Increment 3b2-b5e8x admits all-returning actions for an ordered exact-numeric
 comparison decision with a nonempty comparison prefix and final `otherwise`.
@@ -2162,8 +2163,24 @@ LLVM emits its ordinary comparison/branch chain, typed SSA phi, and single
 machine return while preserving all nested action debug scopes. No runtime
 control-flow carrier, allocation, unwind edge, foreign dependency, or ABI
 change is needed; empty comparison prefixes, nonfinal or missing fallbacks,
-mixed actions, other decision classifiers, nested action expressions,
-callbacks, and cleanup-bearing actions remain fail-closed.
+mixed actions, other decision classifiers outside 3b2-b5e8y, nested action
+expressions, callbacks, and cleanup-bearing actions remain fail-closed.
+
+Increment 3b2-b5e8y admits all-returning actions for an already-declared
+non-Comparison Enum decision with a nonempty distinct-identifier prefix and
+final `otherwise`. A shared frontend predicate recognizes the source shape;
+the evaluated subject then selects the checked Enum classifier without
+reserving the built-in Comparison alternative spellings from user-declared
+Enums. The interpreter retains source-order alternative selection before using
+the function-aware block path for the selected action. The checked model
+normalizes each action block into the existing Enum decision, and LLVM emits
+its ordinary tag switch, typed SSA phi, and single machine return while
+preserving all nested action debug scopes. No runtime control-flow carrier,
+allocation, unwind edge, foreign dependency, or ABI change is needed;
+duplicate or unknown alternatives, empty prefixes, nonfinal or missing
+fallbacks, exhaustive no-fallback tables, mixed actions, other decision
+classifiers, nested action expressions, callbacks, and cleanup-bearing actions
+remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
 Unit results remain LLVM `void`. The bit pattern is not a public integer ABI:
