@@ -5244,7 +5244,9 @@ parser-complete decision subject admitted by
 decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, and complete
 Comparison-value decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, a
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and complete
+ordered comparison decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, a
 return-bearing block nested in another expression, any other decision action,
 callback, or other compound expression shall remain rejected.
 
@@ -5305,7 +5307,9 @@ parser-complete decision subject admitted by
 decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, and complete
 Comparison-value decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, the
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and complete
+ordered comparison decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, the
 implementation shall admit no other embedded, decision-action, callback,
 generator, or cleanup-bearing exit. It shall add no runtime control-flow value,
 unwind edge, allocation, foreign dependency, C/C++ runtime, other-language
@@ -5457,7 +5461,9 @@ parser-complete decision subject covered by
 decisions whose every action returns as covered by
 `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, and complete
 Comparison-value decisions whose every action returns as covered by
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, other
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and complete
+ordered comparison decisions whose every action returns as covered by
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, other
 constraint, modular, or collection forms, qualified and other constructor
 forms; products or other expressions nested in the operand; other decision
 forms; callbacks; generators; and cleanup-bearing scopes shall remain
@@ -5727,7 +5733,9 @@ classifier.
 The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Other matcher sets, nested subjects, decision-action returns
-outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`, callbacks,
+outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The implementation shall add no runtime
 control-flow value, decision branch, allocation, indirect call, unwind edge,
@@ -5755,8 +5763,9 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Duplicate or additional rules, other matcher sets, nested
 subjects, decision-action returns outside
-`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001` and
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The
 implementation shall add no runtime control-flow value, decision branch,
@@ -5787,8 +5796,9 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Empty comparison prefixes, mixed or additional matcher kinds,
 a nonfinal or missing `otherwise`, nested subjects, decision-action returns
-outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001` and
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, callbacks,
+outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The implementation shall add no runtime
 control-flow value, comparison operation, decision branch, allocation,
@@ -5817,8 +5827,9 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Decision forms without a final fallback except for separately
 admitted exhaustive forms, nested subjects, decision-action returns outside
-`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001` and
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other conditional forms shall remain fail-closed under
 their existing diagnostics. The implementation shall add no runtime
 control-flow value, matcher operation, pattern binding, decision branch,
@@ -5850,8 +5861,9 @@ The compiler shall retain the returned lexical block as the existing private
 function result, preserve its nested DWARF scope, and use the existing single
 machine return. Syntactically incomplete decisions, nested subjects,
 decision-action returns outside
-`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001` and
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other conditional forms shall remain fail-closed under
 their existing diagnostics. The
 implementation shall add no runtime control-flow value, matcher or
@@ -5882,9 +5894,10 @@ each returning lexical block as its branch value, preserve each nested DWARF
 scope, emit the ordinary Boolean branch and typed SSA join, and use the existing
 single machine return. Decisions with any normally completing action,
 non-Boolean decisions outside
-`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`, nested action
-expressions, callbacks, generators, and cleanup-bearing actions shall remain
-fail-closed. The implementation shall add no runtime control-flow value,
+`TOPAL-COMP-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001` and
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, nested
+action expressions, callbacks, generators, and cleanup-bearing actions shall
+remain fail-closed. The implementation shall add no runtime control-flow value,
 allocation, indirect call, unwind edge, foreign dependency, C/C++ runtime,
 other-language standard library, public ABI, or `topal-native/6` revision.
 Tests shall share the interpreter/compiler source,
@@ -5911,9 +5924,11 @@ The compiler shall retain the Comparison-value decision as the function result,
 retain each returning lexical block as its branch value, preserve each nested
 DWARF scope, emit the ordinary three-way switch and typed SSA join, and use the
 existing single machine return. Decisions with any normally completing action,
-other decision classifiers, nested action expressions, callbacks, generators,
-and cleanup-bearing actions shall remain fail-closed. The implementation shall
-add no runtime control-flow value, allocation, indirect call, unwind edge,
+other decision classifiers outside
+`TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`, nested
+action expressions, callbacks, generators, and cleanup-bearing actions shall
+remain fail-closed. The implementation shall add no runtime control-flow value,
+allocation, indirect call, unwind edge,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Tests shall share the interpreter/compiler source,
 exercise all three Comparison alternatives and a final-fallback form, verify
@@ -5923,6 +5938,35 @@ resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
 `TOPAL-DECISION-ENUM-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001` for
 increment 3b2-b5e8w.
+
+## TOPAL-COMP-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001 — Ordered comparison action lexical exits
+
+Inside an admitted ordinary function, the interpreter and checked compiler
+model shall propagate an explicit return from the selected action of an ordered
+comparison decision with a nonempty comparison-rule prefix and final
+`otherwise` when every action is a direct cleanup-free returning lexical block.
+They shall evaluate the exact numeric subject once, evaluate matcher operands
+and consider rules in source order until selection, evaluate only the selected
+action, validate its returned value against the enclosing function result
+classifier, and omit the selected block tail and following function tail at O0.
+
+The compiler shall retain the ordered comparison decision as the function
+result, retain each returning lexical block as its branch value, preserve each
+nested DWARF scope, emit the ordinary ordered comparison and branch chain with a
+typed SSA join, and use the existing single machine return. Decisions with any
+normally completing action, an empty comparison prefix, a nonfinal or missing
+fallback, a nonnumeric subject, other decision classifiers, nested action
+expressions, callbacks, generators, and cleanup-bearing actions shall remain
+fail-closed. The implementation shall add no runtime control-flow value,
+allocation, indirect call, unwind edge, foreign dependency, C/C++ runtime,
+other-language standard library, public ABI, or `topal-native/6` revision.
+Tests shall share the interpreter/compiler source, exercise multiple comparison
+rules and the final fallback, verify source-order matching and skipped tails,
+retain mixed-path rejection, inspect the LLVM comparison-chain/phi/single-return
+shape and DWARF/GDB behavior, and record separate resource baselines. This
+realizes `TOPAL-FUNCTION-RETURN-001`, `TOPAL-DECISION-COMPARISON-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001` for
+increment 3b2-b5e8x.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 

@@ -148,6 +148,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-return-from-block.t",
     "examples/language/function-return-optional-constructor.t",
     "examples/language/function-return-operator-operand.t",
+    "examples/language/function-return-ordered-comparison-decision-actions.t",
     "examples/language/function-return-product-field.t",
     "examples/language/function-return-unary-constructor.t",
     "examples/language/function-return-unordered-collect.t",
