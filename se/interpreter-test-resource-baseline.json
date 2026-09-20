@@ -1441,6 +1441,11 @@
       "cpu_time_ns": 3957239,
       "memory_peak_bytes": 18378752,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-modular-constructor.t": {
+      "cpu_time_ns": 3781460,
+      "memory_peak_bytes": 18317312,
+      "samples_per_test": 50
     }
   }
 }
