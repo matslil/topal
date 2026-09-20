@@ -27,7 +27,8 @@ use topal_syntax::{
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
     expression_mentions_name, is_supported_returning_boolean_action_shape,
-    is_supported_returning_comparison_value_action_shape, parse_integer, parse_rational,
+    is_supported_returning_comparison_value_action_shape,
+    is_supported_returning_ordered_comparison_action_shape, parse_integer, parse_rational,
     parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
     prove_mutual_bounded_recursion_edge,
 };
@@ -8782,6 +8783,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_ordered_comparison_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) =
             self.analyze_returning_product_field(expression, environment, function_result)?
         {
@@ -8988,6 +8996,128 @@ impl Analyzer {
                 when_equal: Box::new(when_equal),
                 when_greater: Box::new(when_greater),
             },
+            int_range,
+            rational_value,
+            span: *span,
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Matcher typing and return-aware action analysis stay adjacent.
+    fn analyze_returning_ordered_comparison_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_ordered_comparison_action_shape(rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let mut subject = self.analyze_expression(subject, environment)?;
+        match &subject.value_type {
+            CompilerType::Int | CompilerType::Rational => {}
+            CompilerType::Nat if self.active_nat_recursion() => {
+                subject = forget_nat_evidence(subject);
+            }
+            _ => {
+                return Err(unsupported(
+                    &self.source,
+                    subject.span,
+                    "all-returning ordered comparison actions for a non-numeric subject",
+                ));
+            }
+        }
+        require_exact_numeric(&self.source, subject.span, &subject.value_type)?;
+        let mut lowered = Vec::new();
+        let mut otherwise = None;
+        for rule in rules {
+            match &rule.matcher {
+                DecisionMatcher::Comparison {
+                    kind,
+                    operand,
+                    span: matcher_span,
+                } => {
+                    let Some(operation) = comparison_binary(*kind) else {
+                        return Err(unsupported(
+                            &self.source,
+                            *matcher_span,
+                            "comparison decision callable",
+                        ));
+                    };
+                    let mut operand = self.analyze_expression(operand, environment)?;
+                    require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
+                    let subject_to_rational = subject.value_type == CompilerType::Int
+                        && operand.value_type == CompilerType::Rational;
+                    if subject.value_type == CompilerType::Rational
+                        && operand.value_type == CompilerType::Int
+                    {
+                        operand = into_rational(operand);
+                    }
+                    if !subject_to_rational {
+                        require_same_type(
+                            &self.source,
+                            operand.span,
+                            &subject.value_type,
+                            &operand.value_type,
+                        )?;
+                    }
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning comparison action exits its function"
+                    );
+                    lowered.push(CompilerComparisonRule {
+                        operation,
+                        operand,
+                        action,
+                        subject_to_rational,
+                        span: rule.span,
+                    });
+                }
+                DecisionMatcher::Otherwise(_) => {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning comparison fallback exits its function"
+                    );
+                    otherwise = Some(action);
+                }
+                _ => unreachable!("preselected complete ordered comparison decision shape"),
+            }
+        }
+        let otherwise = otherwise.expect("complete ordered comparison fallback");
+        let mut branches = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+        branches.push(&otherwise);
+        let (value_type, int_range, rational_value) = self.decision_facts(&branches, *span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::OrderedComparisonDecision {
+                subject: Box::new(subject),
+                rules: lowered,
+                otherwise: Box::new(otherwise),
+            },
+            value_type,
             int_range,
             rational_value,
             span: *span,
@@ -41224,6 +41354,11 @@ mod tests {
             analyze_for_compiler(mixed).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
+        let nonnumeric = "use language (version is v0.1)\nchoose is fn (value : Boolean) -> Int\n  value\n    = 0 then { return 40 }\n    otherwise { return 41 }\nchoose true\n";
+        assert_eq!(
+            analyze_for_compiler(nonnumeric).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
     }
 
     #[test]
@@ -41257,6 +41392,46 @@ mod tests {
         let otherwise = "use language (version is v0.1)\nchoose is fn (value : Comparison) -> Int\n  value\n    Less then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose (2 <=> 2)\n";
         analyze_for_compiler(otherwise).unwrap();
         let mixed = "use language (version is v0.1)\nchoose is fn (value : Comparison) -> Int\n  value\n    Less then { return 40 }\n    Equal then { return 41 }\n    Greater then 42\n  1000\nchoose (3 <=> 2)\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_ordered_comparison_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-COMPARISON-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-ordered-comparison-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::OrderedComparisonDecision {
+            rules, otherwise, ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their ordered comparison decision")
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(
+            rules
+                .iter()
+                .all(|rule| matches!(rule.action.kind, CompilerExpressionKind::Block(_)))
+        );
+        assert!(matches!(otherwise.kind, CompilerExpressionKind::Block(_)));
+        assert!(function.body.statements.is_empty());
+
+        let single = "use language (version is v0.1)\nchoose is fn (value : Int) -> Int\n  value\n    < 0 then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose 2\n";
+        analyze_for_compiler(single).unwrap();
+        let rational = "use language (version is v0.1)\nchoose is fn (value : Rational) -> Int\n  value\n    < 0 then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose (Rational (1, 2))\n";
+        analyze_for_compiler(rational).unwrap();
+        let mixed = "use language (version is v0.1)\nchoose is fn (value : Int) -> Int\n  value\n    < 0 then { return 40 }\n    = 0 then { return 41 }\n    otherwise 42\n  1000\nchoose 2\n";
         assert_eq!(
             analyze_for_compiler(mixed).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
