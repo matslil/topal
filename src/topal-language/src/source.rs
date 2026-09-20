@@ -3157,7 +3157,8 @@ impl Session {
             return Ok(None);
         };
         if !(is_supported_returning_boolean_decision_shape(rules)
-            || is_supported_returning_comparison_decision_shape(rules))
+            || is_supported_returning_comparison_decision_shape(rules)
+            || is_supported_returning_fallback_decision_shape(rules))
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
@@ -10265,6 +10266,12 @@ pub(super) fn is_supported_returning_boolean_decision_shape(rules: &[DecisionRul
         ) => first_value != second_value,
         _ => false,
     }
+}
+
+pub(super) fn is_supported_returning_fallback_decision_shape(rules: &[DecisionRule]) -> bool {
+    rules
+        .last()
+        .is_some_and(|rule| matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
 }
 
 pub(super) fn is_supported_returning_comparison_decision_shape(rules: &[DecisionRule]) -> bool {
@@ -20308,6 +20315,43 @@ fn comparison_decision_subject_block_propagates_return_before_selection() {
     let error = Session::new()
         .evaluate(
             "{ return 42 }\n  < 0 then 0\n  otherwise 1\n",
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn fallback_decision_subject_block_propagates_return_before_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-fallback-decision-subject.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("decision.rule")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+
+    let value = Session::new()
+        .evaluate(
+            "answer is fn () -> Int\n  { return 42 }\n    otherwise 0\nanswer ()\n",
+            &mut std::io::sink(),
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+
+    let error = Session::new()
+        .evaluate(
+            "{ return 42 }\n  Some payload then payload\n  otherwise 0\n",
             &mut std::io::sink(),
         )
         .unwrap_err();

@@ -5064,13 +5064,15 @@ String collection sources admitted by
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, a return-bearing
-block, or the ordered comparison-decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, a return-bearing
-block embedded in another expression, decision action or callback, and any
-exit whose scope owns generator close, resource, destructor, or other cleanup
-obligations SHALL remain rejected until explicit exit-edge and cleanup
-lowering is implemented.
+`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, the ordered
+comparison-decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
+fallback-complete decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, a return-bearing
+block embedded in another expression, decision action or callback, and any exit
+whose scope owns generator close, resource, destructor, or other cleanup
+obligations SHALL remain rejected until explicit exit-edge and cleanup lowering
+is implemented.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERAND-001 — Return-expression lexical exit
 
@@ -5109,13 +5111,15 @@ String collection sources admitted by
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, this rule admits
-no other compound-expression except for the ordered comparison-decision subject
-admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, decision
-action, callback, generator, or cleanup-bearing propagation and SHALL introduce
-no runtime control-flow object, unwind edge, allocation, foreign dependency,
-C/C++ standard library, public ABI, or native-ABI revision.
+`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, the ordered
+comparison-decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
+fallback-complete decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, this rule admits
+no other compound-expression, decision action, callback, generator, or
+cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
+unwind edge, allocation, foreign dependency, C/C++ standard library, public
+ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-LEXICAL-RETURN-OPERATOR-001 — Symbolic-operand lexical exit
 
@@ -5241,12 +5245,14 @@ String collection sources admitted by
 Boolean-decision subject admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-DECISION-SUBJECT-001`, and the exhaustive
 Boolean-decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, other constraint,
-or the ordered comparison-decision subject admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, other
-constraint, modular, or collection forms, qualified and any other constructor
-forms; products or other expressions nested in the operand; other decision
-forms; callbacks; generators; and exits with cleanup obligations SHALL remain
+`TOPAL-COMPILER-LEXICAL-RETURN-EXHAUSTIVE-BOOLEAN-SUBJECT-001`, the ordered
+comparison-decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-DECISION-SUBJECT-001`, and the
+fallback-complete decision subject admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001`, other constraint,
+modular, or collection forms, qualified and any other constructor forms;
+products or other expressions nested in the operand; other decision forms;
+callbacks; generators; and exits with cleanup obligations SHALL remain
 rejected. This rule SHALL introduce no runtime control-flow object,
 constructor-specific allocation, indirect call, unwind edge, foreign
 dependency, C/C++ standard library, public ABI, or native-ABI revision.
@@ -5534,6 +5540,30 @@ SHALL remain fail-closed under their existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, comparison, decision branch,
 allocation, indirect call, unwind edge, foreign dependency, C/C++ standard
 library, public ABI, or native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001 — Fallback-complete decision subject lexical exit
+
+An admitted cleanup-free lexical block used as the direct subject of any
+parser-accepted decision whose final rule is `otherwise` MAY execute an
+explicit `return`. Recognition of the final fallback SHALL precede the subject.
+The subject return SHALL then complete the nearest enclosing ordinary function
+before subject classification, matcher compatibility checking, matcher-operand
+evaluation, pattern binding, comparison, action selection, or action
+evaluation. No matcher work, pattern binding, decision branch, selected action,
+abandoned decision value, or following function tail SHALL be emitted at
+`-O0`.
+
+The returned value SHALL be validated against the enclosing function result
+classifier rather than the decision subject or action classifier. The checked
+compiler model SHALL retain the returning block as the function result, and the
+backend SHALL preserve its nested DWARF scope before using the enclosing
+function's existing single machine return. Decision forms without a final
+fallback except for separately admitted exhaustive forms, nested subjects,
+returns from decision actions, callbacks, generators, and cleanup-bearing forms
+SHALL remain fail-closed under their existing diagnostic contracts. This rule
+SHALL introduce no runtime control-flow object, matcher operation, pattern
+binding, decision branch, allocation, indirect call, unwind edge, foreign
+dependency, C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 

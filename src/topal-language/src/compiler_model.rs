@@ -27,7 +27,8 @@ use topal_syntax::{
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
     expression_mentions_name, is_supported_returning_boolean_decision_shape,
-    is_supported_returning_comparison_decision_shape, parse_integer, parse_rational, parse_string,
+    is_supported_returning_comparison_decision_shape,
+    is_supported_returning_fallback_decision_shape, parse_integer, parse_rational, parse_string,
     prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
@@ -8816,7 +8817,8 @@ impl Analyzer {
             return Ok(None);
         };
         if !(is_supported_returning_boolean_decision_shape(rules)
-            || is_supported_returning_comparison_decision_shape(rules))
+            || is_supported_returning_comparison_decision_shape(rules)
+            || is_supported_returning_fallback_decision_shape(rules))
             || !direct_expression_returns_from_function(subject)
         {
             return Ok(None);
@@ -40906,11 +40908,6 @@ mod tests {
         ));
         assert!(function.body.statements.is_empty());
 
-        let other_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    Empty then 0\n    otherwise 1\nanswer ()\n";
-        assert_eq!(
-            analyze_for_compiler(other_matchers).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
-        );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    true then 0\n    otherwise 1\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
@@ -40945,11 +40942,6 @@ mod tests {
             analyze_for_compiler(additional_rule).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
-        let other_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    Empty then 0\n    otherwise 1\nanswer ()\n";
-        assert_eq!(
-            analyze_for_compiler(other_matchers).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
-        );
         let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, true)\n    false then 0\n    true then 1\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
@@ -40979,12 +40971,41 @@ mod tests {
 
         let single_rule = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    >= 0 then 0\n    otherwise 1\nanswer ()\n";
         analyze_for_compiler(single_rule).unwrap();
-        let mixed_matchers = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    < 0 then 0\n    true then 1\n    otherwise 2\nanswer ()\n";
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0)\n    < 0 then 0\n    otherwise 1\nanswer ()\n";
         assert_eq!(
-            analyze_for_compiler(mixed_matchers).unwrap_err().code,
+            analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
-        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0)\n    < 0 then 0\n    otherwise 1\nanswer ()\n";
+    }
+
+    #[test]
+    fn models_return_bearing_fallback_decision_subject() {
+        // TOPAL-FUNCTION-RETURN-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-FALLBACK-DECISION-SUBJECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-fallback-decision-subject.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let otherwise_only = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    otherwise 0\nanswer ()\n";
+        analyze_for_compiler(otherwise_only).unwrap();
+        let missing_fallback = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 }\n    Red then 0\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(missing_fallback).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  ({ return 42 }, 0)\n    Some payload then payload\n    otherwise 0\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

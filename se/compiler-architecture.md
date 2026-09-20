@@ -1964,7 +1964,8 @@ single machine return. This changes no runtime representation or ABI;
 3b2-b5e8h, constraint forms outside 3b2-b5e8j, modular forms outside
 3b2-b5e8k/3b2-b5e8l, collection forms outside
 3b2-b5e8m/3b2-b5e8n/3b2-b5e8o/3b2-b5e8p, decision subjects outside
-3b2-b5e8q/3b2-b5e8r/3b2-b5e8s, qualified, nested-payload, conditional, and
+3b2-b5e8q/3b2-b5e8r/3b2-b5e8s/3b2-b5e8t, qualified, nested-payload,
+conditional, and
 cleanup-bearing forms
 remain deferred.
 
@@ -2095,6 +2096,20 @@ the private result with nested `DILexicalBlock` and the existing single machine
 return. This changes no runtime representation or ABI; empty comparison
 prefixes, mixed or additional matcher kinds, nonfinal or missing fallbacks,
 nested subjects, decision-action returns, conditional control flow, and
+cleanup-bearing forms remain fail-closed.
+
+Increment 3b2-b5e8t generalizes the pre-subject exit to every parser-accepted
+decision whose final rule is `otherwise`, including an otherwise-only table and
+heterogeneous Optional, Result, and List matcher prefixes. A shared frontend
+predicate recognizes the final fallback before either interpreter execution or
+checked-model analysis enters the subject. The exit therefore precedes subject
+classification, matcher compatibility, matcher-operand evaluation, pattern
+binding, comparison, action selection, and action evaluation and omits all
+matcher, binding, branch, action, abandoned-value, and tail work. The block
+remains the private result with nested `DILexicalBlock` and the existing single
+machine return. This changes no runtime representation or ABI; decisions
+without a final fallback outside separately admitted exhaustive shapes, nested
+subjects, decision-action returns, conditional control flow, and
 cleanup-bearing forms remain fail-closed.
 
 `Completed` uses a private `i8` singleton carrier at function boundaries while
