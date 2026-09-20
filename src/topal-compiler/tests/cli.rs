@@ -3144,6 +3144,96 @@ fn complete_decision_subject_block_exits_are_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn boolean_decision_action_exits_are_joined_freestanding_and_debuggable() {
+    // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-BOOLEAN-001,
+    // TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-return-boolean-decision-actions");
+    let source = directory.join("function-return-boolean-decision-actions.t");
+    let executable = directory.join("application");
+    let ir = directory.join("application.ll");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-return-boolean-decision-actions.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(compiled.status.success());
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(40, 41)\n");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir_text = fs::read_to_string(&ir).unwrap();
+    for symbol in ["@topal.fn.choose.0", "@topal.fn.choose.1"] {
+        let function = ir_text
+            .split_once(symbol)
+            .unwrap()
+            .1
+            .split_once("\n}")
+            .unwrap()
+            .0;
+        assert_eq!(function.matches("br i1").count(), 1);
+        assert_eq!(function.matches("br label").count(), 2);
+        assert_eq!(function.matches("phi ptr").count(), 1);
+        assert_eq!(function.matches("ret ptr").count(), 1);
+        assert!(!function.contains("select i1"));
+        assert!(!function.contains("switch "));
+        assert!(!function.contains("@topal.platform.allocate"));
+    }
+    assert!(ir_text.matches("!DILexicalBlock(").count() >= 4);
+    assert!(!ir_text.contains("@printf"));
+    assert!(!ir_text.contains("@malloc"));
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-return-boolean-decision-actions.t:9",
+            "-ex",
+            "break function-return-boolean-decision-actions.t:10",
+            "-ex",
+            "run",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print value",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(debugged.status.success());
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("$1 = false"), "{text}");
+    assert!(text.contains("$2 = true"), "{text}");
+    assert!(text.contains("topal.fn.choose.0"), "{text}");
+    assert!(text.contains("topal.fn.choose.1"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn gdb_renders_completed_evidence_by_source_name() {
     // TOPAL-EXEC-COMPLETED-001, TOPAL-COMP-COMPLETED-001,
     // TOPAL-COMPILER-COMPLETED-001, TOPAL-COMPILER-DEBUG-001

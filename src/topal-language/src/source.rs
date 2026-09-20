@@ -18,7 +18,7 @@ use topal_source::{
     scalar_characters, uppercase,
 };
 use topal_syntax::{
-    AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
+    AnonymousPattern, CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses,
     FunctionParameter, Statement, extract_documentation, lex, parse,
 };
 
@@ -3090,6 +3090,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_boolean_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_product_field_step(
             source,
             expression,
@@ -3172,6 +3180,70 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a direct returning decision subject exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_boolean_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_boolean_action_shape(rules) {
+            return Ok(None);
+        }
+        let subject_span = subject.span();
+        let Value::Boolean(subject) = self.evaluate_expression(source, subject, trace)? else {
+            return Err(diagnostic(
+                source,
+                "E-DECISION-SUBJECT-TYPE",
+                subject_span,
+                "Boolean literal matchers require a Boolean subject",
+            ));
+        };
+        let mut selected = None;
+        for (index, rule) in rules.iter().enumerate() {
+            let matches = match rule.matcher {
+                DecisionMatcher::Boolean { value, .. } => value == subject,
+                DecisionMatcher::Otherwise(_) => true,
+                _ => unreachable!("preselected complete Boolean decision shape"),
+            };
+            let detail = format!("rule={index};matched={matches}");
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-BOOLEAN-001",
+                detail: &detail,
+            });
+            if matches {
+                selected = Some((index, rule));
+                break;
+            }
+        }
+        let (index, selected) = selected.expect("a complete Boolean decision selects an action");
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-BOOLEAN-001",
+            detail: &detail,
+        });
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning Boolean action is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning Boolean action exits its function"
         );
         Ok(Some(step))
     }
@@ -10243,6 +10315,30 @@ pub(super) fn direct_expression_returns_from_function(expression: &Expression) -
         | Statement::Expression(value) => direct_expression_returns_from_function(value),
         _ => false,
     })
+}
+
+pub(super) fn is_supported_returning_boolean_action_shape(rules: &[DecisionRule]) -> bool {
+    let complete = match rules {
+        [rule] => matches!(rule.matcher, DecisionMatcher::Otherwise(_)),
+        [first, second] => match (&first.matcher, &second.matcher) {
+            (
+                DecisionMatcher::Boolean {
+                    value: first_value, ..
+                },
+                DecisionMatcher::Boolean {
+                    value: second_value,
+                    ..
+                },
+            ) => first_value != second_value,
+            (DecisionMatcher::Boolean { .. }, DecisionMatcher::Otherwise(_)) => true,
+            _ => false,
+        },
+        _ => false,
+    };
+    complete
+        && rules
+            .iter()
+            .all(|rule| direct_expression_returns_from_function(&rule.action))
 }
 
 fn expression_is_closed(expression: &Expression) -> bool {
@@ -20353,6 +20449,33 @@ fn complete_decision_subject_blocks_propagate_return_before_selection() {
         )
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn complete_boolean_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-boolean-decision-actions.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(40, 41)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("decision.rule.selected"))
+            .count(),
+        2
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
 }
 
 #[test]
