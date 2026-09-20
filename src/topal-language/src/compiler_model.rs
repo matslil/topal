@@ -8713,6 +8713,15 @@ impl Analyzer {
             return Ok((value, true));
         }
         if allow_function_return
+            && let Some(value) = self.analyze_returning_list_collect_source(
+                expression,
+                environment,
+                function_result,
+            )?
+        {
+            return Ok((value, true));
+        }
+        if allow_function_return
             && let Some(value) = self.analyze_returning_modular_reduction_operand(
                 expression,
                 environment,
@@ -8852,6 +8861,37 @@ impl Analyzer {
             },
             span: expression.span(),
         }))
+    }
+
+    fn analyze_returning_list_collect_source(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [Expression::Identifier(operation), source] = items.as_slice() else {
+            return Ok(None);
+        };
+        if self.source.slice(*operation) != "collect"
+            || !direct_expression_returns_from_function(source)
+        {
+            return Ok(None);
+        }
+        let (result, returned) = self.analyze_direct_statement_expression(
+            source,
+            environment,
+            function_result,
+            function_result,
+            true,
+        )?;
+        assert!(
+            returned,
+            "a checked returning List collect source exits its function"
+        );
+        Ok(Some(result))
     }
 
     fn analyze_returning_modular_reduction_operand(
@@ -40631,6 +40671,43 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nested = "use language (version is v0.1)\nCounter is ModNat (0 ..= 255)\nanswer is fn () -> Int\n  ({ return 42 }, 0) modulo Counter\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(nested).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_return_bearing_unary_list_collect_source() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-COLLECTION-COLLECT-LIST-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-COLLECT-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-list-collect.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let other_collector = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect-set { return 42 }\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(other_collector).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let infix = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } collect Array\nanswer ()\n";
+        assert_eq!(
+            analyze_for_compiler(infix).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nested = "use language (version is v0.1)\nanswer is fn () -> Int\n  collect ({ return 42 }, 0)\nanswer ()\n";
         assert_eq!(
             analyze_for_compiler(nested).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

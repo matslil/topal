@@ -3005,6 +3005,41 @@ impl Session {
         Ok(Some(step))
     }
 
+    fn evaluate_returning_list_collect_source_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::Application { items, .. } = expression else {
+            return Ok(None);
+        };
+        let [Expression::Identifier(operation), collection] = items.as_slice() else {
+            return Ok(None);
+        };
+        if source.slice(*operation) != "collect"
+            || !direct_expression_returns_from_function(collection)
+        {
+            return Ok(None);
+        }
+        let Expression::Block { statements, .. } = collection else {
+            unreachable!("a direct returning List collect source is a lexical block")
+        };
+        let step = self.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a direct returning List collect source exits its function"
+        );
+        Ok(Some(step))
+    }
+
     fn evaluate_returning_embedded_expression_step(
         &self,
         source: &SourceText,
@@ -3013,6 +3048,14 @@ impl Session {
         trace: &mut impl TraceSink,
     ) -> Result<Option<ExecutionStep>, Diagnostic> {
         if let Some(step) = self.evaluate_returning_product_field_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
+        if let Some(step) = self.evaluate_returning_list_collect_source_step(
             source,
             expression,
             return_classifier,
@@ -19926,6 +19969,33 @@ fn modular_reduction_operand_block_propagates_return_before_reduction() {
     let forward = "use language (version is v0.1)\nanswer is fn () -> Int\n  { return 42 } modulo Counter\nCounter is ModNat (0 ..= 255)\nanswer ()\n";
     let error = Session::new()
         .evaluate(forward, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
+}
+
+#[test]
+fn unary_list_collect_source_block_propagates_return_before_materialization() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-list-collect.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "42");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        1
+    );
+    assert!(!trace.iter().any(|event| event.contains("list.collected")));
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+    assert!(!trace.iter().any(|event| event.contains("abandoned")));
+
+    let error = Session::new()
+        .evaluate("collect { return 42 }\n", &mut std::io::sink())
         .unwrap_err();
     assert_eq!(error.code, "E-RETURN-OUTSIDE-FUNCTION");
 }
