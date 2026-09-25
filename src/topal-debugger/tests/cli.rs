@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 300);
+    assert_eq!(examples.len(), 301);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -5996,6 +5996,37 @@ fn records_final_fallback_enum_decision_action_exits_reversibly() {
             "--script",
             &format!("{root}function-return-enum-fallback-decision-actions.debug"),
             &language_example("function-return-enum-fallback-decision-actions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("function.return.explicit").count(), 3);
+    assert_eq!(stdout.matches("decision.rule.selected").count(), 3);
+    assert_eq!(
+        stdout
+            .matches("function.exit [TOPAL-FUNCTION-ORDINARY-001] choose")
+            .count(),
+        3
+    );
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
+}
+
+#[test]
+fn records_exhaustive_enum_decision_action_exits_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-ENUM-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-exhaustive-enum-decision-actions.debug"),
+            &language_example("function-return-exhaustive-enum-decision-actions.t"),
         ])
         .output()
         .unwrap();

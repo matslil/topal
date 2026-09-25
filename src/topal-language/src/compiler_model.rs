@@ -29,6 +29,7 @@ use crate::source::{
     expression_mentions_name, is_supported_returning_boolean_action_shape,
     is_supported_returning_comparison_value_action_shape,
     is_supported_returning_enum_fallback_action_shape,
+    is_supported_returning_exhaustive_enum_action_shape,
     is_supported_returning_ordered_comparison_action_shape, parse_integer, parse_rational,
     parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
     prove_mutual_bounded_recursion_edge,
@@ -8784,6 +8785,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_exhaustive_enum_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
             expression,
             environment,
@@ -9151,6 +9159,167 @@ impl Analyzer {
                 &self.source,
                 subject.span,
                 "all-returning final-fallback Enum actions for a non-Enum subject",
+            )),
+        }
+    }
+
+    #[allow(clippy::too_many_lines)] // Exhaustiveness and return-aware action analysis stay adjacent.
+    fn analyze_returning_exhaustive_enum_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_exhaustive_enum_action_shape(&self.source, rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        match subject.value_type.clone() {
+            CompilerType::Comparison => {
+                let alternatives = rules
+                    .iter()
+                    .filter_map(|rule| match rule.matcher {
+                        DecisionMatcher::Identifier(matcher) => Some(self.source.slice(matcher)),
+                        _ => None,
+                    })
+                    .collect::<BTreeSet<_>>();
+                if alternatives != BTreeSet::from(["Less", "Equal", "Greater"]) {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-INCOMPLETE-DECISION",
+                        *span,
+                        "decision does not cover every `Comparison` alternative",
+                    ));
+                }
+                let mut when_less = None;
+                let mut when_equal = None;
+                let mut when_greater = None;
+                for rule in rules {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Enum action exits its function"
+                    );
+                    let DecisionMatcher::Identifier(matcher) = rule.matcher else {
+                        unreachable!("preselected exhaustive Enum decision shape")
+                    };
+                    match self.source.slice(matcher) {
+                        "Less" => when_less = Some(action),
+                        "Equal" => when_equal = Some(action),
+                        "Greater" => when_greater = Some(action),
+                        _ => unreachable!("validated exhaustive Comparison alternative"),
+                    }
+                }
+                let when_less = when_less.expect("complete Less action");
+                let when_equal = when_equal.expect("complete Equal action");
+                let when_greater = when_greater.expect("complete Greater action");
+                let (value_type, int_range, rational_value) =
+                    self.decision_facts(&[&when_less, &when_equal, &when_greater], *span)?;
+                Ok(Some(CompilerExpression {
+                    value_type,
+                    kind: CompilerExpressionKind::ComparisonValueDecision {
+                        subject: Box::new(subject),
+                        when_less: Box::new(when_less),
+                        when_equal: Box::new(when_equal),
+                        when_greater: Box::new(when_greater),
+                    },
+                    int_range,
+                    rational_value,
+                    span: *span,
+                }))
+            }
+            CompilerType::Enum(enumeration) => {
+                let positions = rules
+                    .iter()
+                    .map(|rule| {
+                        let DecisionMatcher::Identifier(matcher) = rule.matcher else {
+                            unreachable!("preselected exhaustive Enum decision shape")
+                        };
+                        let label = self.source.slice(matcher);
+                        enumeration
+                            .alternatives
+                            .iter()
+                            .position(|alternative| alternative == label)
+                            .ok_or_else(|| {
+                                source_diagnostic(
+                                    &self.source,
+                                    "E-UNKNOWN-ENUM-ALTERNATIVE",
+                                    matcher,
+                                    format!(
+                                        "`{label}` is not an alternative of `{}`",
+                                        enumeration.name
+                                    ),
+                                )
+                            })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                if positions.len() != enumeration.alternatives.len() {
+                    return Err(source_diagnostic(
+                        &self.source,
+                        "E-INCOMPLETE-DECISION",
+                        *span,
+                        format!(
+                            "decision does not cover every `{}` alternative",
+                            enumeration.name
+                        ),
+                    ));
+                }
+                let mut lowered = Vec::with_capacity(rules.len());
+                for (rule, value) in rules.iter().zip(positions) {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Enum action exits its function"
+                    );
+                    lowered.push(CompilerEnumRule {
+                        value: u32::try_from(value)
+                            .expect("enum declaration already fits the native tag"),
+                        action,
+                        span: rule.span,
+                    });
+                }
+                let actions = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+                let (value_type, int_range, rational_value) =
+                    self.decision_facts(&actions, *span)?;
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::EnumDecision {
+                        subject: Box::new(subject),
+                        rules: lowered,
+                        otherwise: None,
+                    },
+                    value_type,
+                    int_range,
+                    rational_value,
+                    span: *span,
+                }))
+            }
+            _ => Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning exhaustive Enum actions for a non-Enum subject",
             )),
         }
     }
@@ -41634,6 +41803,54 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(unknown).unwrap_err().code,
             "E-UNKNOWN-ENUM-ALTERNATIVE"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_exhaustive_enum_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-ENUM-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-exhaustive-enum-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::EnumDecision {
+            rules, otherwise, ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their exhaustive Enum decision")
+        };
+        assert_eq!(rules.len(), 3);
+        assert!(
+            rules
+                .iter()
+                .all(|rule| matches!(rule.action.kind, CompilerExpressionKind::Block(_)))
+        );
+        assert!(otherwise.is_none());
+        assert!(function.body.statements.is_empty());
+
+        let reserved = "use language (version is v0.1)\nDirection is Enum (Less, Other)\nchoose is fn (value : Direction) -> Int\n  value\n    Other then { return 41 }\n    Less then { return 40 }\n  1000\nchoose Other\n";
+        analyze_for_compiler(reserved).unwrap();
+        let incomplete = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Red then { return 40 }\n  1000\nchoose Red\n";
+        assert_eq!(
+            analyze_for_compiler(incomplete).unwrap_err().code,
+            "E-INCOMPLETE-DECISION"
+        );
+        let unknown = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Red then { return 40 }\n    Blue then { return 41 }\n  1000\nchoose Red\n";
+        assert_eq!(
+            analyze_for_compiler(unknown).unwrap_err().code,
+            "E-UNKNOWN-ENUM-ALTERNATIVE"
+        );
+        let mixed = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Red then { return 40 }\n    Green then 41\n  1000\nchoose Green\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 
