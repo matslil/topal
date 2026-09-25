@@ -3561,6 +3561,132 @@ fn exhaustive_enum_action_exits_are_joined_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // One session covers exact IR, DWARF, and four GDB paths.
+fn optional_action_exits_are_joined_freestanding_and_debuggable() {
+    // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-OPTIONAL-001,
+    // TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001,
+    // TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("gdb-return-optional-decision-actions");
+    let source = directory.join("function-return-optional-decision-actions.t");
+    let executable = directory.join("application");
+    let ir = directory.join("application.ll");
+    fs::write(
+        &source,
+        include_str!("../../../examples/language/function-return-optional-decision-actions.t"),
+    )
+    .unwrap();
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(compiled.status.success());
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"(43, 40, 44, 45)\n");
+    let emitted = run(topalc().args([
+        "--emit",
+        "llvm-ir",
+        "-o",
+        ir.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(emitted.status.success());
+    let ir_text = fs::read_to_string(&ir).unwrap();
+    for symbol in [
+        "@topal.fn.explicit.0",
+        "@topal.fn.explicit.1",
+        "@topal.fn.some_2dfallback.2",
+        "@topal.fn.none_2dfallback.3",
+    ] {
+        let function = ir_text
+            .split_once(symbol)
+            .unwrap()
+            .1
+            .split_once("\n}")
+            .unwrap()
+            .0;
+        assert_eq!(
+            function.matches("@topal.runtime.optional.is.some").count(),
+            1
+        );
+        assert_eq!(function.matches("br i1").count(), 1);
+        assert_eq!(function.matches("br label").count(), 2);
+        assert_eq!(function.matches("phi ptr").count(), 1);
+        assert_eq!(function.matches("ret ptr").count(), 1);
+        assert!(!function.contains("select i1"));
+        assert!(!function.contains("@topal.platform.allocate"));
+    }
+    assert!(ir_text.matches("!DILexicalBlock(").count() >= 8);
+    assert!(!ir_text.contains("@printf"));
+    assert!(!ir_text.contains("@malloc"));
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break function-return-optional-decision-actions.t:9",
+            "-ex",
+            "break function-return-optional-decision-actions.t:10",
+            "-ex",
+            "break function-return-optional-decision-actions.t:16",
+            "-ex",
+            "break function-return-optional-decision-actions.t:21",
+            "-ex",
+            "run",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "nexti",
+            "-ex",
+            "nexti",
+            "-ex",
+            "print payload",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "print candidate",
+            "-ex",
+            "backtrace",
+            "-ex",
+            "continue",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(debugged.status.success());
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    for expected in ["$1 = Some 42", "$2 = 42", "$3 = None", "$4 = None"] {
+        assert!(text.contains(expected), "{text}");
+    }
+    for symbol in [
+        "topal.fn.explicit.0",
+        "topal.fn.explicit.1",
+        "topal.fn.some_2dfallback.2",
+        "topal.fn.none_2dfallback.3",
+        "topal.main",
+    ] {
+        assert!(text.contains(symbol), "{text}");
+    }
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 #[allow(clippy::too_many_lines)] // One session covers exact IR, DWARF, and three GDB paths.
 fn ordered_comparison_action_exits_are_joined_freestanding_and_debuggable() {
     // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-COMPARISON-001,

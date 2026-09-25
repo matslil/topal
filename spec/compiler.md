@@ -5080,7 +5080,9 @@ complete ordered comparison decisions whose every action returns as admitted by
 final-fallback declared-Enum decisions whose every action returns as admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
 exhaustive declared-Enum decisions whose every action returns as admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, a
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, a
 return-bearing block embedded in another expression, any other decision action
 or callback, and any exit whose scope owns generator close, resource,
 destructor, or other cleanup obligations SHALL remain rejected until explicit
@@ -5139,7 +5141,9 @@ complete ordered comparison decisions whose every action returns as admitted by
 final-fallback declared-Enum decisions whose every action returns as admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
 exhaustive declared-Enum decisions whose every action returns as admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, this rule
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, this rule
 admits no other compound-expression, decision action, callback, generator, or
 cleanup-bearing propagation and SHALL introduce no runtime control-flow object,
 unwind edge, allocation, foreign dependency, C/C++ standard library, public
@@ -5285,7 +5289,9 @@ complete ordered comparison decisions whose every action returns as admitted by
 final-fallback declared-Enum decisions whose every action returns as admitted by
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
 exhaustive declared-Enum decisions whose every action returns as admitted by
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, other
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, other
 constraint, modular, or collection forms, qualified and any other constructor
 forms; products or other expressions nested in the operand; other decision
 forms; callbacks; generators; and exits with cleanup obligations SHALL remain
@@ -5529,7 +5535,9 @@ returns from decision actions outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, decision branch, allocation,
@@ -5558,7 +5566,9 @@ other matcher sets, nested subjects, returns from decision actions outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule SHALL introduce no runtime
 control-flow object, decision branch, allocation, indirect call, unwind edge,
@@ -5587,7 +5597,9 @@ returns from decision actions outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, comparison, decision branch,
@@ -5617,7 +5629,9 @@ returns from decision actions outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule
 SHALL introduce no runtime control-flow object, matcher operation, pattern
@@ -5646,7 +5660,9 @@ nested subjects, returns from decision actions outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, callbacks,
 generators, and cleanup-bearing forms SHALL remain fail-closed under their
 existing diagnostic contracts. This rule SHALL introduce no runtime
 control-flow object, matcher or exhaustiveness operation, pattern binding,
@@ -5672,7 +5688,9 @@ normally completing action, a non-Boolean decision outside
 `TOPAL-COMPILER-LEXICAL-RETURN-COMPARISON-VALUE-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, a nested
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, a nested
 action expression, callbacks, generators, and cleanup-bearing actions SHALL
 remain fail-closed until general exit-edge and cleanup lowering is admitted.
 This rule SHALL introduce no runtime control-flow object, allocation, indirect
@@ -5699,7 +5717,9 @@ decision with any normally completing action, another decision classifier
 outside
 `TOPAL-COMPILER-LEXICAL-RETURN-ORDERED-COMPARISON-DECISION-ACTIONS-001`,
 `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001`, and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, a nested
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, a nested
 action expression, callbacks, generators, and cleanup-bearing actions SHALL
 remain fail-closed until general exit-edge and cleanup lowering is admitted.
 This rule SHALL introduce no runtime control-flow object, allocation,
@@ -5726,7 +5746,9 @@ DWARF scope, and use the enclosing function's existing single machine return. A
 decision with any normally completing action, an empty comparison prefix, a
 nonfinal or missing fallback, a nonnumeric subject, another decision classifier
 outside `TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001` and
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, a nested
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, a nested
 action expression, callbacks, generators, and cleanup-bearing actions
 SHALL remain fail-closed until general exit-edge and cleanup lowering is
 admitted. This rule SHALL introduce no runtime control-flow object, allocation,
@@ -5752,7 +5774,9 @@ join, preserve each action block's nested DWARF scope, and use the enclosing
 function's existing single machine return. Duplicate or unknown alternatives,
 an empty prefix, a nonfinal or missing fallback, an exhaustive no-fallback
 table outside
-`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, another
+`TOPAL-COMPILER-LEXICAL-RETURN-ENUM-EXHAUSTIVE-DECISION-ACTIONS-001`, and
+complete Optional decisions whose every action returns as admitted by
+`TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, another
 decision classifier, any normally completing action, a nested action expression,
 callbacks, generators, and cleanup-bearing actions SHALL remain fail-closed
 until their separate exit-edge and cleanup lowering is admitted. This rule SHALL
@@ -5785,6 +5809,32 @@ fail-closed until their separate exit-edge and cleanup lowering is admitted.
 This rule SHALL introduce no runtime control-flow object, allocation, indirect
 call, unwind edge, foreign dependency, C/C++ standard library, public ABI, or
 native-ABI revision.
+
+### TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001 — Complete Optional action lexical exits
+
+Every action of an admitted complete decision over `Optional T` MAY be a
+cleanup-free lexical block that directly executes an explicit `return`. The
+decision SHALL contain distinct `Some name` and `None` matchers in either order,
+one of those matchers followed by final `otherwise`, or only `otherwise`.
+It SHALL evaluate its Optional subject once, consider rules in source order,
+bind a present payload only when an explicit `Some name` action is selected,
+and evaluate only the selected action. The selected action return SHALL complete
+the nearest enclosing ordinary function, validate its value against that
+function's result classifier, and exclude the remaining action statements and
+following function tail from generated IR at `-O0`.
+
+When every action returns, the checked compiler model SHALL retain the complete
+Optional decision as the function result with each action block normalized to
+its returned value. LLVM lowering SHALL retain the ordinary Optional tag query,
+two-way branch, conditional payload extraction, and typed SSA join, preserve
+each action block's nested DWARF scope, and use the enclosing function's existing
+single machine return. Duplicate or incomplete alternatives, mixed or additional
+matcher kinds, a nonfinal fallback, a non-Optional subject, any normally
+completing action, a nested action expression, callbacks, generators, and
+cleanup-bearing actions SHALL remain fail-closed until their separate exit-edge
+and cleanup lowering is admitted. This rule SHALL introduce no runtime
+control-flow object, allocation, indirect call, unwind edge, foreign dependency,
+C/C++ standard library, public ABI, or native-ABI revision.
 
 ### TOPAL-COMPILER-BLOCK-001 — Lexically scoped block lowering
 
