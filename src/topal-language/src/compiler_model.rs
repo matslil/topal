@@ -30,6 +30,7 @@ use crate::source::{
     is_supported_returning_comparison_value_action_shape,
     is_supported_returning_enum_fallback_action_shape,
     is_supported_returning_exhaustive_enum_action_shape,
+    is_supported_returning_optional_action_shape,
     is_supported_returning_ordered_comparison_action_shape, parse_integer, parse_rational,
     parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
     prove_mutual_bounded_recursion_edge,
@@ -8792,6 +8793,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_optional_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
             expression,
             environment,
@@ -8893,6 +8901,11 @@ impl Analyzer {
         };
         let subject = self.analyze_expression(subject, environment)?;
         if subject.value_type != CompilerType::Boolean {
+            if matches!(subject.value_type, CompilerType::Optional(_))
+                && matches!(rules.as_slice(), [rule] if matches!(rule.matcher, DecisionMatcher::Otherwise(_)))
+            {
+                return Ok(None);
+            }
             return Err(unsupported(
                 &self.source,
                 subject.span,
@@ -9322,6 +9335,132 @@ impl Analyzer {
                 "all-returning exhaustive Enum actions for a non-Enum subject",
             )),
         }
+    }
+
+    #[allow(clippy::too_many_lines)] // Pattern facts and return-aware action analysis stay adjacent.
+    fn analyze_returning_optional_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_optional_action_shape(rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        let CompilerType::Optional(payload_type) = subject.value_type.clone() else {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning Optional actions for a non-Optional subject",
+            ));
+        };
+        let subject_facts = self.known_structural_value_facts(&subject, environment)?;
+        let payload_facts = present_optional_payload(subject_facts);
+        let mut some = None;
+        let mut none = None;
+        let mut otherwise = None;
+        for rule in rules {
+            match rule.matcher {
+                DecisionMatcher::Optional {
+                    some: true,
+                    binding: Some(binding),
+                    ..
+                } => {
+                    let name = self.source.slice(binding).to_owned();
+                    let mut branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        payload_type.as_ref().clone(),
+                        binding.start,
+                    );
+                    if let Some(payload_facts) = &payload_facts {
+                        let binding_facts = branch
+                            .get_mut(&name)
+                            .expect("Optional payload binding was inserted");
+                        retain_static_value_facts(binding_facts, payload_facts);
+                    }
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        &branch,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Optional action exits its function"
+                    );
+                    some = Some((name, binding, action));
+                }
+                DecisionMatcher::Optional {
+                    some: false,
+                    binding: None,
+                    ..
+                } => {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Optional action exits its function"
+                    );
+                    none = Some(action);
+                }
+                DecisionMatcher::Otherwise(_) => {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Optional action exits its function"
+                    );
+                    otherwise = Some(action);
+                }
+                _ => unreachable!("preselected complete Optional decision shape"),
+            }
+        }
+        let (some_binding, some_action) = if let Some((name, binding, action)) = some {
+            (Some((name, binding)), action)
+        } else {
+            (None, otherwise.clone().expect("complete Some action"))
+        };
+        let none_action = none
+            .or_else(|| otherwise.clone())
+            .expect("complete None action");
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&some_action, &none_action], *span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::OptionalDecision {
+                subject: Box::new(subject),
+                some_binding,
+                some_action: Box::new(some_action),
+                none_action: Box::new(none_action),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span: *span,
+        }))
     }
 
     #[allow(clippy::too_many_lines)] // Matcher typing and return-aware action analysis stay adjacent.
@@ -41850,6 +41989,51 @@ mod tests {
         let mixed = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Red then { return 40 }\n    Green then 41\n  1000\nchoose Green\n";
         assert_eq!(
             analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_optional_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-OPTIONAL-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-optional-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "explicit")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::OptionalDecision {
+            some_binding,
+            some_action,
+            none_action,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their Optional decision")
+        };
+        assert_eq!(
+            some_binding.as_ref().map(|(name, _)| name.as_str()),
+            Some("payload")
+        );
+        assert!(matches!(some_action.kind, CompilerExpressionKind::Block(_)));
+        assert!(matches!(none_action.kind, CompilerExpressionKind::Block(_)));
+        assert!(function.body.statements.is_empty());
+
+        let otherwise_only = "use language (version is v0.1)\nchoose is fn (value : Optional Int) -> Int\n  value\n    otherwise { return 42 }\n  1000\nchoose (None Int)\n";
+        analyze_for_compiler(otherwise_only).unwrap();
+        let mixed = "use language (version is v0.1)\nchoose is fn (value : Optional Int) -> Int\n  value\n    Some payload then { return payload }\n    None then 41\n  1000\nchoose (Some 40)\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nonoptional = "use language (version is v0.1)\nchoose is fn (value : Int) -> Int\n  value\n    Some payload then { return payload }\n    None then { return 41 }\nchoose 40\n";
+        assert_eq!(
+            analyze_for_compiler(nonoptional).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }
