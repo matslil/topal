@@ -129,7 +129,7 @@ fn collect_selected_source_modules(
             || path.file_name().is_some_and(|name| {
                 matches!(
                     name.to_str(),
-                    Some("application.t" | "package.t" | "library.t" | "module.t")
+                    Some("application.t" | "package.t" | "library.t")
                 )
             })
         {
@@ -149,14 +149,13 @@ fn collect_selected_source_modules(
                 .flat_map(Path::components)
                 .map(|component| component.as_os_str().to_string_lossy().into_owned()),
         );
-        identity.push(
-            path.file_stem()
-                .expect("selected .t module has a stem")
-                .to_string_lossy()
-                .into_owned(),
-        );
-        if !topal_language::references_module(application, &identity) {
-            continue;
+        if path.file_name().is_none_or(|name| name != "module.t") {
+            identity.push(
+                path.file_stem()
+                    .expect("selected .t module has a stem")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
         }
         let module_source = fs::read_to_string(&path).map_err(|error| {
             CompileError::Io(format!(
@@ -164,6 +163,20 @@ fn collect_selected_source_modules(
                 path.display()
             ))
         })?;
+        let selected = if path.file_name().is_some_and(|name| name == "module.t") {
+            topal_language::published_function_names(&module_source)
+                .into_iter()
+                .any(|function| {
+                    let mut qualified = identity.clone();
+                    qualified.push(function);
+                    topal_language::references_module(application, &qualified)
+                })
+        } else {
+            topal_language::references_module(application, &identity)
+        };
+        if !selected {
+            continue;
+        }
         modules.push(topal_language::CompilerSourceModule {
             identity,
             source_name: path.display().to_string(),
@@ -178,4 +191,38 @@ pub fn metadata_path(output: &Path) -> PathBuf {
     let mut name = output.as_os_str().to_owned();
     name.push(".topal.json");
     PathBuf::from(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_discovery_distinguishes_facades_from_nested_modules() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let flat = selected_source_modules(
+            "use language (version is v0.1)\nuse library std (version is v0.1)\nminimum is std min\n()\n",
+            &root,
+        )
+        .unwrap();
+        assert_eq!(
+            flat.iter()
+                .map(|module| module.identity.join("."))
+                .collect::<Vec<_>>(),
+            ["std"]
+        );
+
+        let nested = selected_source_modules(
+            "use language (version is v0.1)\nuse library std (version is v0.1)\nsafe? is std web http safe-method?\n()\n",
+            &root,
+        )
+        .unwrap();
+        assert_eq!(
+            nested
+                .iter()
+                .map(|module| module.identity.join("."))
+                .collect::<Vec<_>>(),
+            ["std.web.http"]
+        );
+    }
 }

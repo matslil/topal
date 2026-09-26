@@ -319,7 +319,10 @@ const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
     "examples/data-transfer/firewall.t",
     "examples/data-transfer/packet-filter.t",
     "examples/data-transfer/rest-controller.t",
+    "tests/standard-library/device-i2c.t",
     "tests/standard-library/harness.t",
+    "tests/standard-library/network-addresses.t",
+    "tests/standard-library/web-http.t",
 ];
 
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {

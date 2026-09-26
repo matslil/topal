@@ -2828,6 +2828,30 @@ freestanding ELF/DWARF, the compiler corpus, and resource baselines. This
 realizes `TOPAL-COMPILER-LIBRARY-SOURCE-001`, `TOPAL-LIB-SOURCE-001`, and
 `TOPAL-NAMESPACE-USE-001` for compiler increment 6b5.
 
+## TOPAL-COMP-LIBRARY-MODULE-SELECTION-001 — Selective source graph
+
+The compiler shall select ordinary source files only for complete qualified
+module paths and shall select a `module.t` facade only for a function that the
+facade publishes. Nested references shall not pull prefix facades into artifact
+dependencies. Unselected declarations may contain compiler-deferred language
+forms; a selected declaration and its reachable same-module helper closure
+shall be checked before any output is published.
+
+Multi-source parsing shall preserve a leading hashbang at every dependency
+boundary while dependency SHA-256 values continue to cover the exact original
+bytes. Closed recursive evidence adaptation shall support independently valid
+Tuple and Record fields at function arguments/results, classified bindings,
+and equality without copying values, losing infinity evidence, or changing the
+native ABI.
+
+Tests shall cover exact facade-versus-nested discovery, source hashbangs,
+deferred unused declarations, dependency identities/digests, the device I2C,
+network-address, and HTTP standard-library conformance programs, exact
+interpreter output, direct LLVM calls, freestanding ELF/DWARF, the compiler
+corpus, and resource baselines. This realizes
+`TOPAL-COMPILER-LIBRARY-MODULE-SELECTION-001`, `TOPAL-LIB-SOURCE-001`, and
+`TOPAL-NAMESPACE-USE-001` for compiler increment 6b6.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

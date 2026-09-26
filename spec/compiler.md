@@ -2630,6 +2630,24 @@ ABI, or native ABI revision. Missing, private, unsupported-version, or otherwise
 unavailable terminals SHALL fail closed rather than receiving compiler-owned
 semantics.
 
+### TOPAL-COMPILER-LIBRARY-MODULE-SELECTION-001 — Selective source graph
+
+The compiler SHALL discover an ordinary source module only when the application
+contains its complete qualified module path. It SHALL discover a directory
+`module.t` facade only when the application names a function published by that
+facade; a longer nested path SHALL NOT make every prefix facade a dependency.
+An unreferenced declaration outside the admitted compiler subset SHALL NOT
+prevent compilation. Every selected declaration and its reachable same-module
+helper closure SHALL still be checked before lowering.
+
+Each selected source file SHALL retain its own leading hashbang semantics while
+participating in the compiler's multi-source parse. Dependency hashing SHALL
+cover the original, unmodified source bytes, including that hashbang. Recursive
+closed evidence adaptation across Tuple and Record fields SHALL be permitted at
+selected function arguments, results, classified bindings, and equality only
+when each field conversion is independently valid. It SHALL preserve once-only
+evaluation, exact values, and infinity evidence.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
