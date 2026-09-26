@@ -8529,6 +8529,58 @@ impl Analyzer {
         })
     }
 
+    fn analyze_contextual_tuple(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Some(CompilerType::Tuple(expected_fields)) = expected else {
+            return Ok(None);
+        };
+        let Expression::Product { fields, span } = expression else {
+            return Ok(None);
+        };
+        if fields.len() != expected_fields.len() || fields.iter().any(|field| field.label.is_some())
+        {
+            return Ok(None);
+        }
+        let values = fields
+            .iter()
+            .zip(expected_fields)
+            .map(|(field, expected)| {
+                self.analyze_expression_with_expected(&field.value, environment, Some(expected))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::Tuple(values),
+            value_type: CompilerType::Tuple(expected_fields.clone()),
+            int_range: None,
+            rational_value: None,
+            span: *span,
+        }))
+    }
+
+    fn finish_contextual_scalar(
+        &mut self,
+        value: CompilerExpression,
+        expected: Option<&CompilerType>,
+        span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        match expected {
+            Some(CompilerType::Nat) if value.value_type == CompilerType::Int => {
+                self.finish_nat_conversion(value, span, span)
+            }
+            Some(CompilerType::Character) if value.value_type == CompilerType::String => {
+                self.finish_character_conversion(value, span)
+            }
+            Some(CompilerType::String) if value.value_type == CompilerType::Character => {
+                Ok(forget_character_evidence(value))
+            }
+            _ => Ok(value),
+        }
+    }
+
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -8571,6 +8623,9 @@ impl Analyzer {
             && let Some(CompilerType::Optional(payload)) = expected
         {
             return self.finish_optional_none(payload.as_ref().clone(), expression.span());
+        }
+        if let Some(value) = self.analyze_contextual_tuple(expression, environment, expected)? {
+            return Ok(value);
         }
         if let Some(CompilerType::List(element)) = expected {
             if let Expression::Identifier(name) = expression
@@ -8625,15 +8680,7 @@ impl Analyzer {
             }
         }
         let value = self.analyze_expression(expression, environment)?;
-        match expected {
-            Some(CompilerType::Character) if value.value_type == CompilerType::String => {
-                self.finish_character_conversion(value, expression.span())
-            }
-            Some(CompilerType::String) if value.value_type == CompilerType::Character => {
-                Ok(forget_character_evidence(value))
-            }
-            _ => Ok(value),
-        }
+        self.finish_contextual_scalar(value, expected, expression.span())
     }
 
     fn finish_list_entry_value(
@@ -15763,7 +15810,14 @@ impl Analyzer {
             && self.source.slice(*operation) == "fold"
         {
             let list = self.analyze_expression(list, environment)?;
-            let initial = self.analyze_expression(initial, environment)?;
+            let mut initial = self.analyze_expression(initial, environment)?;
+            if matches!(&list.value_type, CompilerType::List(element)
+                if compiler_nat_pair(element.as_ref()))
+                && initial.value_type == CompilerType::Int
+            {
+                let initial_span = initial.span;
+                initial = self.finish_nat_conversion(initial, span, initial_span)?;
+            }
             let (state_type, element_type) = match (&list.value_type, &initial.value_type) {
                 (CompilerType::List(element), CompilerType::Int)
                     if element.as_ref() == &CompilerType::Int =>
@@ -15782,6 +15836,11 @@ impl Analyzer {
                         CompilerType::Optional(Box::new(CompilerType::String)),
                         element.as_ref().clone(),
                     )
+                }
+                (CompilerType::List(element), CompilerType::Nat)
+                    if compiler_nat_pair(element.as_ref()) =>
+                {
+                    (CompilerType::Nat, element.as_ref().clone())
                 }
                 (CompilerType::List(_), _) => {
                     return Err(unsupported(
@@ -25968,13 +26027,23 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || matches!(
             value_type,
             CompilerType::Tuple(fields)
-                if fields.as_slice() == [CompilerType::Int, CompilerType::Int]
+                if matches!(fields.as_slice(),
+                    [CompilerType::Int, CompilerType::Int]
+                    | [CompilerType::Nat, CompilerType::Nat])
         )
         || compiler_int_string_pair(value_type)
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
         || compiler_string_function_pair(value_type)
         || compiler_nested_int_string_list_element(value_type)
+}
+
+fn compiler_nat_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Nat, CompilerType::Nat]
+    )
 }
 
 fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
@@ -26345,8 +26414,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
             ) || compiler_nested_int_string_list_element(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Tuple(fields)
                 if matches!(fields.as_slice(), [
-                    CompilerType::Int | CompilerType::String,
-                    CompilerType::Int | CompilerType::String
+                    CompilerType::Int | CompilerType::Nat | CompilerType::String,
+                    CompilerType::Int | CompilerType::Nat | CompilerType::String
                 ]))
                 || matches!(element.as_ref(), CompilerType::Optional(payload)
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))

@@ -13820,6 +13820,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.device.i2c"][..],
         ),
         (
+            "data-spans",
+            include_str!("../../../tests/standard-library/data-spans.t"),
+            &["std.data.spans"][..],
+        ),
+        (
             "network-addresses",
             include_str!("../../../tests/standard-library/network-addresses.t"),
             &["std.network.addresses"][..],

@@ -2915,6 +2915,26 @@ ELF/DWARF, compiler corpus, and resource baselines. This realizes
 `TOPAL-LIST-ENTRY-COUNT-001`, and `TOPAL-NUM-NAT-001` for compiler increment
 6b9.
 
+## TOPAL-COMP-LIBRARY-NAT-PAIR-FOLD-001 — Span gather fold
+
+The checked compiler shall admit contextual `List (Nat, Nat)` construction,
+private Function parameters, and finite source-library folds with exact Nat
+state. Contextual typing shall recursively retain Nat evidence for both pair
+fields and the initial state. The backend shall reuse the arbitrary-precision
+integer pointer carrier and immutable 24-byte private pair/next node, load both
+fields in source order, and execute one direct LLVM loop without Tuple payload
+allocation, a callback ABI, indirect calls, host iteration, or a foreign
+collection runtime.
+
+Tests shall promote the unchanged data-spans conformance program, cover empty
+and nonempty lists, zero and very large Nat spans, projection, bound and overlap
+checks, exact gathered length, selective dependency discovery, exact
+interpreter output, checked Nat evidence, direct loop LLVM, compiler corpus,
+freestanding ELF/DWARF, and resource baselines. This realizes
+`TOPAL-COMPILER-LIBRARY-NAT-PAIR-FOLD-001`, `TOPAL-COLLECTION-FOLD-001`,
+`TOPAL-TYPE-LIST-CONSTRUCT-001`, and `TOPAL-NUM-NAT-001` for compiler increment
+6b10.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

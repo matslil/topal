@@ -2360,8 +2360,8 @@ impl<'a> Generator<'a> {
                         if matches!(
                             fields.as_slice(),
                             [
-                                CompilerType::Int | CompilerType::String,
-                                CompilerType::Int | CompilerType::String
+                                CompilerType::Int | CompilerType::Nat | CompilerType::String,
+                                CompilerType::Int | CompilerType::Nat | CompilerType::String
                             ] | [CompilerType::String, CompilerType::Function]
                         ) =>
                     {
@@ -2449,8 +2449,8 @@ impl<'a> Generator<'a> {
                         if matches!(
                             field_types.as_slice(),
                             [
-                                CompilerType::Int | CompilerType::String,
-                                CompilerType::Int | CompilerType::String
+                                CompilerType::Int | CompilerType::Nat | CompilerType::String,
+                                CompilerType::Int | CompilerType::Nat | CompilerType::String
                             ] | [CompilerType::String, CompilerType::Function]
                         ) =>
                     {
@@ -2766,7 +2766,9 @@ impl<'a> Generator<'a> {
                     &value.value_type,
                     CompilerType::List(element)
                         if matches!(element.as_ref(), CompilerType::Tuple(fields)
-                            if fields.as_slice() == [CompilerType::Int, CompilerType::Int])
+                            if matches!(fields.as_slice(),
+                                [CompilerType::Int, CompilerType::Int]
+                                | [CompilerType::Nat, CompilerType::Nat]))
                 );
                 let int_string_pair = matches!(
                     &value.value_type,
@@ -5756,6 +5758,12 @@ impl<'a> Generator<'a> {
                 == &CompilerType::Tuple(vec![CompilerType::String, CompilerType::String])
                 && payload.as_ref() == &CompilerType::String
         );
+        let nat_pair_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::Nat)
+                if compiler_nat_pair(element.as_ref())
+        );
+        let pair_fold = string_pair_optional_fold || nat_pair_fold;
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
@@ -5804,7 +5812,7 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let second = string_pair_optional_fold.then(|| {
+        let second = pair_fold.then(|| {
             let address = body.instruction(
                 &format!("getelementptr i8, ptr {current}, i64 8"),
                 span,
@@ -5819,7 +5827,7 @@ impl<'a> Generator<'a> {
         let next_address = body.instruction(
             &format!(
                 "getelementptr i8, ptr {current}, i64 {}",
-                if string_pair_optional_fold { 16 } else { 8 }
+                if pair_fold { 16 } else { 8 }
             ),
             span,
             &mut self.debug,
@@ -5840,7 +5848,11 @@ impl<'a> Generator<'a> {
             LlValue::Int(state.clone())
         };
         let entry_value = if let Some(second) = second {
-            LlValue::Tuple(vec![LlValue::String(value), LlValue::String(second)])
+            if string_pair_optional_fold {
+                LlValue::Tuple(vec![LlValue::String(value), LlValue::String(second)])
+            } else {
+                LlValue::Tuple(vec![LlValue::Int(value), LlValue::Int(second)])
+            }
         } else {
             LlValue::Int(value)
         };
@@ -12351,6 +12363,14 @@ fn compiler_string_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_nat_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Nat, CompilerType::Nat]
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -13721,6 +13741,49 @@ mod tests {
         assert!(lookup_body.contains("i64 16"));
         assert!(lookup_body.contains("phi ptr"));
         assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", lookup.symbol)));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn lowers_nat_pair_gather_fold_as_one_finite_private_loop() {
+        // TOPAL-COMPILER-LIBRARY-NAT-PAIR-FOLD-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-NUM-NAT-001
+        let program = analyze_for_compiler_with_modules(
+            include_str!("../../../tests/standard-library/data-spans.t"),
+            &[CompilerSourceModule {
+                identity: vec!["std".into(), "data".into(), "spans".into()],
+                source_name: "library/std/data/spans.t".into(),
+                source: include_str!("../../../library/std/data/spans.t").into(),
+            }],
+        )
+        .unwrap();
+        let gathered_length = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.data.spans.gathered-length")
+            .unwrap();
+        assert_eq!(gathered_length.result_type, CompilerType::Nat);
+        assert_eq!(
+            gathered_length.parameters[0].value_type,
+            CompilerType::List(Box::new(CompilerType::Tuple(vec![
+                CompilerType::Nat,
+                CompilerType::Nat,
+            ])))
+        );
+
+        let llvm = Generator::new(&program, "data-spans.t").emit();
+        let function_body = llvm
+            .split_once(&format!(
+                "define internal fastcc ptr @{}(",
+                gathered_length.symbol
+            ))
+            .unwrap()
+            .1;
+        assert!(function_body.contains("list.fold.loop"));
+        assert!(function_body.contains("getelementptr i8, ptr"));
+        assert!(function_body.contains("i64 16"));
+        assert!(function_body.contains("phi ptr"));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", gathered_length.symbol)));
         assert!(!llvm.contains("call ptr %"));
     }
 
