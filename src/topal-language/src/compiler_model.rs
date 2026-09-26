@@ -29,6 +29,7 @@ use crate::source::{
     expression_mentions_name, is_supported_returning_boolean_action_shape,
     is_supported_returning_comparison_value_action_shape,
     is_supported_returning_enum_fallback_action_shape,
+    is_supported_returning_error_code_action_shape,
     is_supported_returning_exhaustive_enum_action_shape,
     is_supported_returning_optional_action_shape,
     is_supported_returning_ordered_comparison_action_shape,
@@ -8807,6 +8808,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_error_code_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
             expression,
             environment,
@@ -9560,6 +9568,186 @@ impl Analyzer {
                 ok_action: Box::new(ok_action),
                 error_codes: Vec::new(),
                 error_fallback: Some(error_fallback),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span: *span,
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Ordered code rules and both Result payload paths stay adjacent.
+    fn analyze_returning_error_code_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_error_code_action_shape(rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        let CompilerType::Result(success_type) = subject.value_type.clone() else {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning qualified Error-code actions for a non-Result subject",
+            ));
+        };
+        let subject_facts = (success_type.as_ref() == &CompilerType::Function)
+            .then(|| self.known_structural_value_facts(&subject, environment))
+            .transpose()?;
+        let mut ok = None;
+        let mut error_codes = Vec::new();
+        let mut seen_codes = BTreeSet::new();
+        let mut error_fallback = None;
+        for rule in rules {
+            match rule.matcher {
+                DecisionMatcher::Result {
+                    error: false,
+                    binding,
+                    ..
+                } if ok.is_none() => {
+                    let name = self.source.slice(binding).to_owned();
+                    let mut branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        success_type.as_ref().clone(),
+                        binding.start,
+                    );
+                    if let Some(success_facts) = subject_facts
+                        .as_ref()
+                        .and_then(|facts| facts.result.as_ref())
+                    {
+                        let binding_facts = branch
+                            .get_mut(&name)
+                            .expect("Result success decision binding was inserted");
+                        retain_static_value_facts(binding_facts, &success_facts.success);
+                    }
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        &branch,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(returned, "a checked Ok action exits its function");
+                    ok = Some((name, binding, action));
+                }
+                DecisionMatcher::Result {
+                    error: true,
+                    binding,
+                    ..
+                } if error_fallback.is_none() => {
+                    let name = self.source.slice(binding).to_owned();
+                    let branch = decision_binding_environment(
+                        environment,
+                        &name,
+                        CompilerType::Error,
+                        binding.start,
+                    );
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        &branch,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(returned, "a checked Error fallback exits its function");
+                    error_fallback = Some((name, binding, Box::new(action)));
+                }
+                DecisionMatcher::ErrorCode {
+                    namespace,
+                    vocabulary,
+                    code,
+                    ..
+                } => {
+                    if error_fallback.is_some() {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-UNREACHABLE-ERROR-CODE-PATTERN",
+                            rule.span,
+                            "qualified Error-code pattern is unreachable after Error fallback",
+                        ));
+                    }
+                    let code_value = arithmetic_error_code(
+                        self.source.slice(namespace),
+                        self.source.slice(vocabulary),
+                        self.source.slice(code),
+                    )
+                    .ok_or_else(|| {
+                        source_diagnostic(
+                            &self.source,
+                            "E-UNKNOWN-ERROR-CODE",
+                            code,
+                            "the compiler subset requires a qualified arithmetic Error code",
+                        )
+                    })?;
+                    if !seen_codes.insert(code_value) {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-DUPLICATE-ERROR-CODE-PATTERN",
+                            rule.span,
+                            "an arithmetic Error code is matched more than once",
+                        ));
+                    }
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(returned, "a checked Error-code action exits its function");
+                    error_codes.push(CompilerErrorCodeRule {
+                        code: code_value,
+                        action,
+                        span: rule.span,
+                    });
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        rule.span,
+                        "all-returning qualified Error-code decision matcher",
+                    ));
+                }
+            }
+        }
+        let (ok_binding, ok_binding_span, ok_action) = ok.expect("complete Ok action");
+        if error_fallback.is_none() && seen_codes != BTreeSet::from([0, 1, 2, 3]) {
+            return Err(source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-ERROR-CODE-DECISION",
+                *span,
+                "Result decision requires Error fallback or every arithmetic Error code",
+            ));
+        }
+        let mut actions = vec![&ok_action];
+        actions.extend(error_codes.iter().map(|rule| &rule.action));
+        if let Some((_, _, action)) = &error_fallback {
+            actions.push(action);
+        }
+        let (value_type, int_range, rational_value) = self.decision_facts(&actions, *span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::ResultDecision {
+                subject: Box::new(subject),
+                ok_binding,
+                ok_binding_span,
+                ok_action: Box::new(ok_action),
+                error_codes,
+                error_fallback,
             },
             value_type,
             int_range,
@@ -42187,6 +42375,78 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let nonresult = "use language (version is v0.1)\nchoose is fn (candidate : Int) -> Int\n  candidate\n    Ok value then { return 40 }\n    Error problem then { return 41 }\nchoose 1\n";
+        assert_eq!(
+            analyze_for_compiler(nonresult).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_error_code_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-ERROR-CODE-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-error-code-decision-actions.t"
+        ))
+        .unwrap();
+        let recover = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "recover")
+            .unwrap();
+        assert_eq!(recover.body.result.value_type, CompilerType::Boolean);
+        let CompilerExpressionKind::ResultDecision {
+            ok_binding,
+            ok_action,
+            error_codes,
+            error_fallback,
+            ..
+        } = &recover.body.result.kind
+        else {
+            panic!("all-returning actions retain their Error-code decision")
+        };
+        assert_eq!(ok_binding, "quotient");
+        assert!(matches!(ok_action.kind, CompilerExpressionKind::Block(_)));
+        assert_eq!(error_codes.len(), 1);
+        assert!(matches!(
+            error_codes[0].action.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        let (error_binding, _, error_action) = error_fallback.as_ref().unwrap();
+        assert_eq!(error_binding, "problem");
+        assert!(matches!(
+            error_action.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(recover.body.statements.is_empty());
+
+        let classify = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "classify")
+            .unwrap();
+        assert_eq!(classify.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::ResultDecision {
+            error_codes,
+            error_fallback,
+            ..
+        } = &classify.body.result.kind
+        else {
+            panic!("exhaustive Error-code actions retain their Result decision")
+        };
+        assert_eq!(
+            error_codes.iter().map(|rule| rule.code).collect::<Vec<_>>(),
+            vec![0, 1, 2, 3]
+        );
+        assert!(error_fallback.is_none());
+        assert!(classify.body.statements.is_empty());
+
+        let mixed = "use language (version is v0.1)\nratio is fn (numerator : Int, denominator : Int) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  Rational (numerator, denominator)\nchoose is fn (numerator : Int, denominator : Int) -> Int\n  ratio (numerator, denominator)\n    Ok value then { return 0 }\n    Error ( code is lang arithmetic division-by-zero ) then { return 1 }\n    Error problem then 2\n  1000\nchoose (1, 0)\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nonresult = "use language (version is v0.1)\nchoose is fn (candidate : Int) -> Int\n  candidate\n    Ok value then { return 0 }\n    Error ( code is lang arithmetic division-by-zero ) then { return 1 }\n    Error problem then { return 2 }\nchoose 1\n";
         assert_eq!(
             analyze_for_compiler(nonresult).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"

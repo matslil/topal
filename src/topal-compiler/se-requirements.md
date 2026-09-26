@@ -5254,7 +5254,9 @@ declared-Enum decisions whose every action returns as admitted by
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, a return-bearing
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, a return-bearing
 block nested in another expression, any other decision action, callback, or
 other compound expression shall remain rejected.
 
@@ -5325,7 +5327,9 @@ declared-Enum decisions whose every action returns as admitted by
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, the implementation
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, the implementation
 shall admit no other embedded, decision-action, callback, generator, or
 cleanup-bearing exit. It shall add no runtime control-flow value,
 unwind edge, allocation, foreign dependency, C/C++ runtime, other-language
@@ -5487,7 +5491,9 @@ declared-Enum decisions whose every action returns as covered by
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, other
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, other
 constraint, modular, or collection forms, qualified and other constructor
 forms; products or other expressions nested in the operand; other decision
 forms; callbacks; generators; and cleanup-bearing scopes shall remain
@@ -5765,7 +5771,9 @@ outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The implementation shall add no runtime
 control-flow value, decision branch, allocation, indirect call, unwind edge,
@@ -5801,7 +5809,9 @@ subjects, decision-action returns outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The
 implementation shall add no runtime control-flow value, decision branch,
@@ -5840,7 +5850,9 @@ outside `TOPAL-COMP-LEXICAL-RETURN-BOOLEAN-DECISION-ACTIONS-001`,
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other decision forms shall remain fail-closed under their
 existing diagnostics. The implementation shall add no runtime
 control-flow value, comparison operation, decision branch, allocation,
@@ -5877,7 +5889,9 @@ admitted exhaustive forms, nested subjects, decision-action returns outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other conditional forms shall remain fail-closed under
 their existing diagnostics. The implementation shall add no runtime
 control-flow value, matcher operation, pattern binding, decision branch,
@@ -5917,7 +5931,9 @@ decision-action returns outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, callbacks,
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, callbacks,
 cleanup-bearing, and other conditional forms shall remain fail-closed under
 their existing diagnostics. The
 implementation shall add no runtime control-flow value, matcher or
@@ -5955,7 +5971,9 @@ non-Boolean decisions outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, nested action
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, nested action
 expressions, callbacks, generators, and cleanup-bearing actions shall remain
 fail-closed. The implementation shall add no runtime control-flow value,
 allocation, indirect call, unwind edge, foreign dependency, C/C++ runtime,
@@ -5991,7 +6009,9 @@ other decision classifiers outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, nested action
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, nested action
 expressions, callbacks, generators, and cleanup-bearing actions shall remain
 fail-closed. The implementation shall add no runtime control-flow value,
 allocation, indirect call, unwind edge,
@@ -6027,7 +6047,9 @@ fallback, a nonnumeric subject, other decision classifiers outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, nested action
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, nested action
 expressions, callbacks, generators, and cleanup-bearing actions shall remain
 fail-closed. The
 implementation shall add no runtime control-flow value,
@@ -6062,7 +6084,9 @@ or missing fallback, an exhaustive no-fallback table outside
 complete Optional decisions whose every action returns as admitted by
 `TOPAL-COMP-LEXICAL-RETURN-OPTIONAL-DECISION-ACTIONS-001`, and
 complete Result decisions whose every action returns as admitted by
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, other decision
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, and qualified
+Error-code Result decisions whose every action returns as admitted by
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, other decision
 classifiers, any normally completing action, nested action expressions,
 callbacks, generators, and cleanup-bearing actions shall remain fail-closed.
 The implementation shall add no runtime control-flow value, allocation,
@@ -6128,9 +6152,10 @@ two-way branch, conditional payload extraction, and typed SSA join, and use the
 existing single machine return. Duplicate or incomplete alternatives, mixed or
 additional matcher kinds, nonfinal fallbacks, non-Optional subjects, any
 normally completing action, a complete Result decision outside
-`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001`, other decision
-classifiers, nested action expressions, callbacks, generators, and cleanup-bearing
-actions shall remain fail-closed. The implementation shall
+`TOPAL-COMP-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001` or
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, other decision
+classifiers, nested action expressions, callbacks, generators, and
+cleanup-bearing actions shall remain fail-closed. The implementation shall
 add no runtime control-flow value, allocation, indirect call, unwind edge,
 foreign dependency, C/C++ runtime, other-language standard library, public ABI,
 or `topal-native/6` revision. Tests shall share the interpreter/compiler source,
@@ -6158,21 +6183,61 @@ The compiler shall retain the Result decision as the function result, retain
 each returning lexical block as its branch value, preserve each nested DWARF
 scope and both path-local payload bindings, emit the ordinary Result tag query,
 two-way branch, payload extraction, and typed SSA join, and use the existing
-single machine return. Qualified Error-code matcher tables, duplicate, missing,
-mixed, or additional matchers, non-Result subjects, any normally completing
-action, nested action expressions, callbacks, generators, and cleanup-bearing
-actions shall remain fail-closed. The implementation shall add no runtime
-control-flow value, allocation, indirect call, unwind edge, foreign dependency,
-C/C++ runtime, other-language standard library, public ABI, or `topal-native/6`
-revision. Tests shall share the interpreter/compiler source, exercise success
-and structured-Error bindings plus both matcher orders, verify once-only
-source-order selection and skipped tails, retain mixed-path and non-Result
+single machine return. Qualified Error-code matcher tables outside
+`TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001`, duplicate,
+missing, mixed, or additional matchers, non-Result subjects, any normally
+completing action, nested action expressions, callbacks, generators, and
+cleanup-bearing actions shall remain fail-closed. The implementation shall add
+no runtime control-flow value, allocation, indirect call, unwind edge, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Tests shall share the interpreter/compiler source,
+exercise success and structured-Error bindings plus both matcher orders,
+verify once-only source-order selection and skipped tails, retain mixed-path and non-Result
 rejection, inspect exact LLVM branch/phi/single-return behavior and nested
 DWARF/GDB values and frames, run the complete compiler corpus, and record
 separate resource baselines. This realizes `TOPAL-FUNCTION-RETURN-001`,
 `TOPAL-DECISION-RESULT-001`, and
 `TOPAL-COMPILER-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001` for increment
 3b2-b5e8ab.
+
+## TOPAL-COMP-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001 — Qualified Error-code action lexical exits
+
+Inside an admitted ordinary function, the interpreter and checked compiler
+model shall propagate an explicit return from every action of a complete
+decision over `Result (T, lang arithmetic ArithmeticErrorCode)`. The table
+shall contain exactly one `Ok value` rule and at least one distinct qualified
+arithmetic Error-code rule, followed either by a whole-`Error problem` fallback
+or, without a fallback, by exact coverage of all four closed arithmetic codes.
+Every action shall be a direct cleanup-free returning lexical block.
+
+The interpreter and compiler shall evaluate the subject once, preserve
+source-order rule consideration, bind the success value or whole Error only in
+a selected binding matcher, evaluate only the selected action, validate its
+returned value against the enclosing function result classifier, and omit the
+selected block tail and following function tail at O0. Qualified code actions
+shall not bind the whole Error. The checked model shall retain ordered nominal
+codes, the optional fallback, and normalized branch values. LLVM shall emit the
+ordinary Result tag query, path-local payload extraction, one code query and
+switch, a fail-closed unreachable default for exact no-fallback coverage, a
+typed SSA join, nested action DWARF and selected payload bindings, and the
+existing single machine return.
+
+Unknown, duplicate, missing, post-fallback, mixed, or additional matchers;
+non-arithmetic or multi-vocabulary code sets; non-Result subjects; normally
+completing actions; nested action expressions; callbacks; generators; and
+cleanup-bearing forms shall remain fail-closed. The implementation shall add no
+runtime control-flow value, allocation, indirect call, unwind edge, foreign
+dependency, C/C++ runtime, other-language standard library, public ABI, or
+`topal-native/6` revision. Tests shall share one interpreter/compiler source,
+exercise success, selected code, whole-Error fallback, and exact four-code
+coverage, verify skipped tails plus mixed-path and non-Result rejection, inspect
+the exact LLVM switches/joins/single returns and fail-closed default, preserve
+DWARF/GDB success and Error values and frames, run the complete compiler corpus,
+and record separate resource baselines. This realizes
+`TOPAL-FUNCTION-RETURN-001`, `TOPAL-DECISION-RESULT-001`,
+`TOPAL-DECISION-ERROR-CODE-001`, and
+`TOPAL-COMPILER-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001` for increment
+3b2-b5e8ac.
 
 ## TOPAL-COMP-BLOCK-001 — Lexical block values
 
