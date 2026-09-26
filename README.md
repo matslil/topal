@@ -47,16 +47,16 @@ in that tool's directory.
 Build and test the workspace with Rust 1.97 or newer:
 
 ```console
-cargo build --workspace
-cargo test --workspace --all-targets
+scripts/run_bounded.py -- cargo build --workspace
+scripts/run_bounded.py -- cargo test --workspace --all-targets
 ```
 
 The Cargo command tests the Rust tool implementations and bootstrap boundary.
 After building `topal`, run tests owned by Topal separately:
 
 ```console
-target/debug/topal test tests/standard-library examples/data-transfer
-target/debug/topal test tests/advent-of-code/2025
+scripts/run_bounded.py -- target/debug/topal test tests/standard-library examples/data-transfer
+scripts/run_bounded.py -- target/debug/topal test tests/advent-of-code/2025
 ```
 
 Use `topal test --list`, `--exact`, or `--filter` to select individual Topal

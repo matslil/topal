@@ -386,21 +386,42 @@ def parse_size(value: str) -> int:
     return int(normalized)
 
 
-def available_memory() -> int:
+def memory_information() -> tuple[int, int]:
+    values = {}
     for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
-        if line.startswith("MemAvailable:"):
-            return int(line.split()[1]) * 1024
-    raise RuntimeError("/proc/meminfo does not report MemAvailable")
+        name, separator, remainder = line.partition(":")
+        if separator and name in {"MemTotal", "MemAvailable"}:
+            values[name] = int(remainder.split()[0]) * 1024
+    if set(values) != {"MemTotal", "MemAvailable"}:
+        raise RuntimeError("/proc/meminfo does not report MemTotal and MemAvailable")
+    return values["MemTotal"], values["MemAvailable"]
 
 
-def worker_count(requested: int | None, memory_limit: str) -> int:
-    cpus = os.cpu_count() or 1
+def worker_plan(
+    requested: int | None,
+    memory_limit: str,
+    total_memory: int | None = None,
+    available_memory: int | None = None,
+    logical_cpus: int | None = None,
+) -> tuple[int, int]:
+    cpus = logical_cpus if logical_cpus is not None else (os.cpu_count() or 1)
+    if total_memory is None or available_memory is None:
+        total_memory, available_memory = memory_information()
+    reserve = max(1024**3, total_memory // 5)
+    budget = available_memory - reserve
+    if budget < 256 * 1024**2:
+        raise RuntimeError(
+            "insufficient available memory for resource tests after host reserve"
+        )
+    configured_limit = parse_size(memory_limit)
+    if configured_limit < 1:
+        raise ValueError("--memory-limit must be positive")
+    safe_workers = max(1, budget // min(configured_limit, budget))
+    jobs = min(cpus, safe_workers)
     if requested is not None:
-        return requested
-    available = available_memory()
-    reserve = max(1024**3, available // 10)
-    memory_workers = max(1, (available - reserve) // parse_size(memory_limit))
-    return max(1, min(cpus, memory_workers))
+        jobs = min(jobs, requested)
+    effective_limit = min(configured_limit, budget // jobs)
+    return jobs, effective_limit
 
 
 def environment() -> dict[str, Any]:
@@ -419,8 +440,12 @@ def run_measurements(
     tests = discover_domain(arguments.domain, arguments.rust_min_stack)
     if identities is not None:
         tests = [test for test in tests if test.identity in identities]
-    jobs = worker_count(arguments.jobs, arguments.memory_limit)
-    print(f"Measuring {len(tests)} tests with {jobs} workers", flush=True)
+    jobs, memory_limit = worker_plan(arguments.jobs, arguments.memory_limit)
+    print(
+        f"Measuring {len(tests)} tests with {jobs} workers "
+        f"and {memory_limit / 1_048_576:.0f}MiB per worker",
+        flush=True,
+    )
     run_identity = uuid.uuid4().hex[:10]
     measured: dict[str, Measurement] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as executor:
@@ -430,7 +455,7 @@ def run_measurements(
                 test,
                 index,
                 run_identity,
-                arguments.memory_limit,
+                str(memory_limit),
                 arguments.rust_min_stack,
                 arguments.timeout,
                 arguments.samples,

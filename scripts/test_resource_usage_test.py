@@ -121,5 +121,33 @@ class BaselineExtensionTests(unittest.TestCase):
         )
 
 
+class WorkerPlanTests(unittest.TestCase):
+    def test_explicit_jobs_cannot_bypass_aggregate_memory_budget(self) -> None:
+        jobs, limit = RESOURCE_USAGE.worker_plan(
+            8,
+            "4G",
+            total_memory=8 * 1024**3,
+            available_memory=3 * 1024**3,
+            logical_cpus=16,
+        )
+        self.assertEqual(jobs, 1)
+        self.assertEqual(limit, 3 * 1024**3 - (8 * 1024**3 // 5))
+
+    def test_workers_share_budget_without_exceeding_requested_limit(self) -> None:
+        jobs, limit = RESOURCE_USAGE.worker_plan(
+            None,
+            "2G",
+            total_memory=16 * 1024**3,
+            available_memory=12 * 1024**3,
+            logical_cpus=16,
+        )
+        self.assertGreaterEqual(jobs, 4)
+        self.assertEqual(limit, 2 * 1024**3)
+        self.assertLessEqual(
+            jobs * limit,
+            12 * 1024**3 - (16 * 1024**3 // 5),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
