@@ -13578,6 +13578,77 @@ fn constraint_validation_executes_dynamic_success_and_failure() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn fundamental_constraint_bases_are_freestanding_and_match_the_interpreter() {
+    // TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001,
+    // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+    // TOPAL-COMPILER-PLATFORM-001, TOPAL-COMPILER-DEBUG-001
+    let directory = temporary("constraint-fundamental-bases");
+    let source = directory.join("constraint-fundamental-bases.t");
+    let executable = directory.join("application");
+    let source_text = include_str!("../../../examples/language/constraint-fundamental-bases.t");
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
+    let debugged = run(Command::new("gdb")
+        .args([
+            "-q",
+            "--batch",
+            "-ex",
+            "set debuginfod enabled off",
+            "-ex",
+            "set disable-randomization off",
+            "-ex",
+            &format!("source {}", pretty_printers.display()),
+            "-ex",
+            "break topal.fn.validate_2dpass.0",
+            "-ex",
+            "run",
+            "-ex",
+            "up",
+            "-ex",
+            "whatis accepted",
+            "-ex",
+            "print accepted",
+            "-ex",
+            "whatis name",
+            "-ex",
+            "whatis ratio",
+            "-ex",
+            "backtrace",
+        ])
+        .arg(&executable));
+    assert!(
+        debugged.status.success(),
+        "{}",
+        String::from_utf8_lossy(&debugged.stderr)
+    );
+    let text = String::from_utf8_lossy(&debugged.stdout);
+    assert!(text.contains("type = Pass"), "{text}");
+    assert!(text.contains("type = Nonempty"), "{text}");
+    assert!(text.contains("type = PositiveRational"), "{text}");
+    assert!(text.contains("$1 = true"), "{text}");
+    assert!(text.contains("topal.fn.validate_2dpass.0"), "{text}");
+    assert!(text.contains("topal.main"), "{text}");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn nominal_sums_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
     // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001,

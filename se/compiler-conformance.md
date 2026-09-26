@@ -6,6 +6,9 @@ disposable prototypes. A domain is complete only when every applicable stable
 rule has an explicit compiler disposition and shared executable regression
 evidence.
 
+The larger parity gates, executable inventory, and completion criterion are
+tracked in the [compiler parity closure plan](compiler-parity-plan.md).
+
 | Increment | Language and tool closure | Status |
 | ---: | --- | --- |
 | 1 | LLVM 22 pipeline, Linux x86-64 freestanding startup/syscalls, O0, DWARF/GDB, native metadata, Unit/Boolean/bounded exact Int/positional products, immutable bindings, eager Boolean and checked integer operations, ordinary nonrecursive function specialization, Boolean decisions | complete |
@@ -263,6 +266,7 @@ evidence.
 | 8a | closed fundamental Type values, canonical identity equality/display, scalar function passage, and debugging | complete |
 | 8a1 | root named Constraint objects over primitive bases, checked closed Boolean predicates, classified-copy identity, private display tags, and debugging | complete |
 | 8a2 | closed Int-constraint proof/rejection, dynamic predicate evaluation, refined base operations, existing Result/Error integration, and debugging | complete |
+| 8a2a | Boolean, Nat, Rational, and String constraint proof/rejection, dynamic validation through existing Result/Error integration, and debugging | complete |
 | 8a3 | closed fundamental-Type identity/view/relations, exact initial language context, numeric Version value, static erasure, and debugging | complete |
 | 8a4 | closed atomic Capability values, canonical conjunction/alternatives, root static binding chains, literal final observation, and complete runtime/debug erasure | complete |
 | 8a5 | source-root v0.1 function-interface shapes, exact intentional implementation evidence, direct ordinary calls, complete runtime/debug erasure, and truthful implementation debugging | complete |
@@ -1040,7 +1044,9 @@ Increment 8a
 admits the closed fundamental `Type` identities without runtime reflection;
 8a1 adds closed named Constraint-object metadata and private observation tags;
 8a2 applies closed Int constraints, retains static evidence over unchanged base
-storage, and reuses the existing Result/Error path for dynamic validation; and
+storage, and reuses the existing Result/Error path for dynamic validation;
+8a2a extends that model to the other admitted fundamental scalar bases and
+boxes Boolean only at the generic Result payload boundary; and
 8a3 retains closed Type identity/view and initial language-context metadata only
 through checking, folds exact static relations, and materializes the ordinary
 numeric Version without a reflection runtime; and 8a4 retains the six closed
@@ -1055,6 +1061,6 @@ and every byte before returning the retained reconstructed value. It neither
 links another language runtime nor treats LLVM optimization as serialization.
 8b retains
 open-world type and introspection metadata, parameterized capability claims and
-operation evidence, general constraint evidence/application, nested aggregates,
+operation evidence, dependent/capturing constraint evidence, nested aggregates,
 dynamic or externally supplied streams, later context changes, and the remaining
 assurance work.

@@ -7778,6 +7778,32 @@ ABI revision. Other bases, captured or dependent predicates, evidence across
 function or persistent/public aggregate machine boundaries, and dynamically
 selected constraint identities remain outside this increment.
 
+### TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001 — Fundamental constraint validation
+
+The validation model of `TOPAL-COMPILER-CONSTRAINT-VALIDATE-001` SHALL also
+apply to admitted root constraints over Boolean, Nat, Rational, and String.
+A closed operand SHALL be accepted or rejected during frontend analysis when
+the retained predicate can be evaluated exactly. An unknown operand SHALL
+evaluate that predicate exactly once in generated code and return the existing
+`Result (Base, lang arithmetic ArithmeticErrorCode)` representation with the
+unchanged base value on success and `out-of-range` in domain
+`root.Name(Base)` on failure.
+
+Refined values SHALL retain their nominal source classifier in DWARF while
+using the base representation. A dynamic Boolean success payload SHALL be
+boxed only at the Result representation boundary and recovered as the exact
+Boolean value; the refined value itself SHALL remain unboxed. Nat, Rational,
+and String SHALL reuse their existing pointer representations. Validation
+SHALL remain mandatory at O0 and SHALL introduce no constraint dispatcher,
+constraint runtime, foreign dependency, standard library, public evidence ABI,
+or native ABI revision.
+
+This admission covers only predicates already expressible by supported pure
+Boolean, equality, ordering, and arithmetic operations over their base.
+Captured or dependent predicates, evidence across public or persistent
+aggregate machine boundaries, and dynamically selected constraint identities
+remain unsupported.
+
 ### TOPAL-COMPILER-NATIVE-SERIALIZATION-001 — Closed canonical native streams
 
 For a compiler-created, authority-free value that is statically known as

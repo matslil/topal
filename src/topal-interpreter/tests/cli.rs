@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 305);
+    assert_eq!(examples.len(), 306);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -4848,6 +4848,25 @@ fn every_mode_validates_constraints_and_derives_base_capabilities() {
     assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-001"));
     assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
     assert!(trace.contains("constraint->base"));
+}
+
+#[test]
+fn every_mode_validates_constraints_over_fundamental_bases() {
+    // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+    // TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001
+    let source = include_str!("../../../examples/language/constraint-fundamental-bases.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("(true, \"Topal\", Rational ( 3, 2 ), true"));
+        assert!(stdout.contains("domain is root.Pass(Boolean)"));
+        assert!(stdout.contains("domain is root.Nonempty(String)"));
+        assert!(stdout.contains("domain is root.PositiveRational(Rational)"));
+        assert!(stdout.contains("domain is root.Small(Nat)"));
+    }
+    let trace = String::from_utf8(run(&["--test"], source).stderr).unwrap();
+    assert!(trace.contains("TOPAL-TYPE-CONSTRAINT-VALIDATE-001"));
 }
 
 #[test]

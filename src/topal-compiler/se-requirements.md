@@ -8184,6 +8184,35 @@ machine boundaries, and dynamic constraint identities remain rejected. This
 realizes `TOPAL-COMPILER-CONSTRAINT-VALIDATE-001` and
 `TOPAL-TYPE-CONSTRAINT-VALIDATE-001` for compiler increment 8a2.
 
+## TOPAL-COMP-CONSTRAINT-FUNDAMENTAL-BASES-001 — Fundamental constraint validation
+
+The checked compiler shall extend `TOPAL-COMP-CONSTRAINT-VALIDATE-001` to
+Boolean, Nat, Rational, and String root constraints whose pure predicates use
+already-admitted operations. It shall evaluate decidable closed applications
+during analysis and shall evaluate an unknown operand exactly once in generated
+code. Dynamic validation shall return `Result (Base, lang arithmetic
+ArithmeticErrorCode)`, preserving the unchanged operand on success and using
+`out-of-range` with exact domain `root.Name(Base)` and source provenance on
+failure.
+
+LLVM lowering shall preserve each base representation. Boolean shall be boxed
+only for its generic Result payload and loaded back as `i1`; Nat, Rational, and
+String shall reuse their established pointer payloads. Refined locals shall
+retain nominal DWARF typedefs over the corresponding base and require no LLVM
+optimization for correct execution or debugging. Native tests shall cover
+closed Boolean/String/Rational success, dynamic Boolean success and failure,
+exact interpreter output, checked-model and LLVM representation, freestanding
+ELF/DWARF, every interpreter mode, reversible history, the shared corpus, and
+separate resource baselines.
+
+This shall add no predicate dispatcher, constraint runtime, foreign dependency,
+C/C++ runtime, other-language standard library, public evidence ABI, or
+`topal-native/6` revision. Captured or dependent predicates, evidence across
+public or persistent aggregate boundaries, and dynamic constraint identities
+remain rejected. This realizes
+`TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001` and
+`TOPAL-TYPE-CONSTRAINT-VALIDATE-001` for compiler increment 8a2a.
+
 ## TOPAL-COMP-NATIVE-SERIALIZATION-001 — Closed canonical native streams
 
 The checked compiler shall admit both version-selected forms of `lang

@@ -14,6 +14,7 @@ formal specification.
 - [Toolchain architecture](toolchain-architecture.md)
 - [LLVM compiler and native platform architecture](compiler-architecture.md)
 - [Compiler conformance roadmap](compiler-conformance.md)
+- [Compiler parity closure plan](compiler-parity-plan.md)
 - [Design-pattern language-support architecture](design-pattern-language-support.md)
 - [Core-language coverage ledger](core-language-coverage.md)
 - [Source-tool conformance matrix](tool-conformance.md)
