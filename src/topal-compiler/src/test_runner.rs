@@ -144,6 +144,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-return-exhaustive-enum-decision-actions.t",
     "examples/language/function-return-fallback-decision-subject.t",
     "examples/language/function-return-infix-collect.t",
+    "examples/language/function-return-list-decision-actions.t",
     "examples/language/function-return-list-collect.t",
     "examples/language/function-return-map-collect.t",
     "examples/language/function-return-modular-constructor.t",

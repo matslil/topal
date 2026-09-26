@@ -30,7 +30,7 @@ use crate::source::{
     is_supported_returning_comparison_value_action_shape,
     is_supported_returning_enum_fallback_action_shape,
     is_supported_returning_error_code_action_shape,
-    is_supported_returning_exhaustive_enum_action_shape,
+    is_supported_returning_exhaustive_enum_action_shape, is_supported_returning_list_action_shape,
     is_supported_returning_optional_action_shape,
     is_supported_returning_ordered_comparison_action_shape,
     is_supported_returning_result_action_shape, parse_integer, parse_rational, parse_string,
@@ -8762,6 +8762,7 @@ impl Analyzer {
         Ok((value, returns_from_function))
     }
 
+    #[allow(clippy::too_many_lines)] // Admission order stays explicit and fail-closed.
     fn analyze_returning_embedded_expression(
         &mut self,
         expression: &Expression,
@@ -8813,6 +8814,11 @@ impl Analyzer {
             environment,
             function_result,
         )? {
+            return Ok(Some(value));
+        }
+        if let Some(value) =
+            self.analyze_returning_list_decision_actions(expression, environment, function_result)?
+        {
             return Ok(Some(value));
         }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
@@ -9748,6 +9754,130 @@ impl Analyzer {
                 ok_action: Box::new(ok_action),
                 error_codes,
                 error_fallback,
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span: *span,
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Entry bindings and exact structural facts stay adjacent.
+    fn analyze_returning_list_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_list_action_shape(&self.source, rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        let CompilerType::List(element_type) = subject.value_type.clone() else {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning List actions for a non-List subject",
+            ));
+        };
+        if !compiler_list_observation_element_supported(element_type.as_ref())
+            && element_type.as_ref() != &CompilerType::Function
+        {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning decision actions for this List element type",
+            ));
+        }
+        let subject_entries = (element_type.as_ref() == &CompilerType::Function)
+            .then(|| self.known_structural_value_facts(&subject, environment))
+            .transpose()?
+            .and_then(|facts| facts.list_entries);
+        let mut entry = None;
+        let mut empty = None;
+        for rule in rules {
+            match rule.matcher {
+                DecisionMatcher::ListEmpty(_) => {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Empty action exits its function"
+                    );
+                    empty = Some(action);
+                }
+                DecisionMatcher::ListEntry { first, rest, .. } => {
+                    let first_name = self.source.slice(first).to_owned();
+                    let rest_name = self.source.slice(rest).to_owned();
+                    let mut branch = decision_binding_environment(
+                        environment,
+                        &first_name,
+                        element_type.as_ref().clone(),
+                        first.start,
+                    );
+                    branch = decision_binding_environment(
+                        &branch,
+                        &rest_name,
+                        CompilerType::List(element_type.clone()),
+                        rest.start,
+                    );
+                    if let Some((first_facts, remaining_facts)) = subject_entries
+                        .as_ref()
+                        .and_then(|entries| entries.split_first())
+                    {
+                        retain_static_value_facts(
+                            branch
+                                .get_mut(&first_name)
+                                .expect("List entry binding was inserted"),
+                            first_facts,
+                        );
+                        branch
+                            .get_mut(&rest_name)
+                            .expect("remaining List binding was inserted")
+                            .list_entries = Some(remaining_facts.to_vec());
+                    }
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        &branch,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Entry action exits its function"
+                    );
+                    entry = Some((((first_name, first), (rest_name, rest)), action));
+                }
+                _ => unreachable!("preselected complete List decision shape"),
+            }
+        }
+        let (entry_bindings, entry_action) = entry.expect("complete Entry action");
+        let empty_action = empty.expect("complete Empty action");
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&entry_action, &empty_action], *span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::ListDecision {
+                subject: Box::new(subject),
+                entry_bindings: Some(entry_bindings),
+                entry_action: Box::new(entry_action),
+                empty_action: Box::new(empty_action),
             },
             value_type,
             int_range,
@@ -42450,6 +42580,62 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(nonresult).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_list_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-LIST-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-LIST-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-list-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::ListDecision {
+            entry_bindings,
+            entry_action,
+            empty_action,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their List decision")
+        };
+        let ((first_name, _), (rest_name, _)) =
+            entry_bindings.as_ref().expect("complete Entry action");
+        assert_eq!(first_name, "first");
+        assert_eq!(rest_name, "rest");
+        assert!(matches!(
+            entry_action.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(matches!(
+            empty_action.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let reversed = "use language (version is v0.1)\nchoose is fn (candidate : List Int) -> Int\n  candidate\n    Empty then { return 40 }\n    Entry (first, rest) then { return first }\n  1000\nvalues : List Int is Entry (42, Empty)\nchoose values\n";
+        analyze_for_compiler(reversed).unwrap();
+        let mixed = "use language (version is v0.1)\nchoose is fn (candidate : List Int) -> Int\n  candidate\n    Entry (first, rest) then { return first }\n    Empty then 40\n  1000\nvalues : List Int is Entry (42, Empty)\nchoose values\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nonlist = "use language (version is v0.1)\nchoose is fn (candidate : Int) -> Int\n  candidate\n    Entry (first, rest) then { return first }\n    Empty then { return 40 }\nchoose 1\n";
+        assert_eq!(
+            analyze_for_compiler(nonlist).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let duplicate_binding = "use language (version is v0.1)\nchoose is fn (candidate : List Int) -> Int\n  candidate\n    Entry (value, value) then { return value }\n    Empty then { return 40 }\nvalues : List Int is Entry (42, Empty)\nchoose values\n";
+        assert_eq!(
+            analyze_for_compiler(duplicate_binding).unwrap_err().code,
+            "E-DUPLICATE-BINDING"
         );
     }
 

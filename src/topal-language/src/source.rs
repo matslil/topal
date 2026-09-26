@@ -3139,6 +3139,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_list_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_comparison_value_decision_action_step(
             source,
             expression,
@@ -3812,6 +3820,100 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a selected returning Error-code action exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_list_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_list_action_shape(source, rules) {
+            return Ok(None);
+        }
+        let subject_span = subject.span();
+        let Value::List {
+            element_classifier,
+            mut entries,
+        } = self.evaluate_expression(source, subject, trace)?
+        else {
+            return Err(diagnostic(
+                source,
+                "E-DECISION-SUBJECT-TYPE",
+                subject_span,
+                "list matchers require a List subject",
+            ));
+        };
+        let is_empty = entries.is_empty();
+        let (index, selected) = rules
+            .iter()
+            .enumerate()
+            .find(|(_, rule)| {
+                matches!(rule.matcher, DecisionMatcher::ListEmpty(_) if is_empty)
+                    || matches!(rule.matcher, DecisionMatcher::ListEntry { .. } if !is_empty)
+            })
+            .expect("a complete List decision selects an action");
+        for considered in 0..=index {
+            let detail = format!("rule={considered};matched={}", considered == index);
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-LIST-001",
+                detail: &detail,
+            });
+        }
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-LIST-001",
+            detail: &detail,
+        });
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning List action is a lexical block")
+        };
+        let step = if let DecisionMatcher::ListEntry { first, rest, .. } = selected.matcher {
+            let first_value = entries.remove(0);
+            let first = source.slice(first);
+            let rest = source.slice(rest);
+            let mut branch = self.clone();
+            branch.bindings.insert(first.to_owned(), first_value);
+            branch.bindings.insert(
+                rest.to_owned(),
+                Value::List {
+                    element_classifier,
+                    entries,
+                },
+            );
+            let detail = format!("first={first};rest={rest}");
+            trace.record(TraceEvent {
+                event: "list.entry.decomposed",
+                rule: "TOPAL-DECISION-LIST-001",
+                detail: &detail,
+            });
+            branch.evaluate_block_step(
+                source,
+                statements,
+                return_classifier,
+                return_classifier,
+                trace,
+            )?
+        } else {
+            self.evaluate_block_step(
+                source,
+                statements,
+                return_classifier,
+                return_classifier,
+                trace,
+            )?
+        };
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning List action exits its function"
         );
         Ok(Some(step))
     }
@@ -11078,6 +11180,35 @@ pub(super) fn is_supported_returning_error_code_action_shape(rules: &[DecisionRu
         }
     }
     ok == 1 && error_fallback <= 1 && error_codes > 0
+}
+
+pub(super) fn is_supported_returning_list_action_shape(
+    source: &SourceText,
+    rules: &[DecisionRule],
+) -> bool {
+    let [first, second] = rules else {
+        return false;
+    };
+    let complete = matches!(
+        (&first.matcher, &second.matcher),
+        (
+            DecisionMatcher::ListEmpty(_),
+            DecisionMatcher::ListEntry { .. }
+        ) | (
+            DecisionMatcher::ListEntry { .. },
+            DecisionMatcher::ListEmpty(_)
+        )
+    );
+    complete
+        && rules.iter().all(|rule| {
+            let distinct_bindings = match rule.matcher {
+                DecisionMatcher::ListEntry { first, rest, .. } => {
+                    source.slice(first) != source.slice(rest)
+                }
+                _ => true,
+            };
+            distinct_bindings && direct_expression_returns_from_function(&rule.action)
+        })
 }
 
 pub(super) fn is_supported_returning_comparison_value_action_shape(
@@ -21515,6 +21646,43 @@ fn error_code_decision_actions_propagate_return_after_selection() {
             .filter(|event| event.contains("result.payload.bound"))
             .count(),
         3
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+}
+
+#[test]
+fn list_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-list-decision-actions.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(43, 40)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| {
+                event.contains("decision.rule.selected")
+                    && event.contains("TOPAL-DECISION-LIST-001")
+            })
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("list.entry.decomposed"))
+            .count(),
+        1
     );
     assert!(!trace.iter().any(|event| event.contains("1000")));
 }
