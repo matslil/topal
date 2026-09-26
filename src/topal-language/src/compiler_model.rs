@@ -1227,6 +1227,8 @@ pub struct CompilerConstraint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerProgram {
     pub source: SourceText,
+    pub primary_source_end: usize,
+    pub dependencies: Vec<CompilerDependency>,
     pub language_version: LanguageVersion,
     pub language_features: Vec<String>,
     pub main: CompilerBlock,
@@ -1239,6 +1241,20 @@ pub struct CompilerProgram {
     pub functions: Vec<CompilerFunction>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerDependency {
+    pub identity: String,
+    pub source_name: String,
+    pub source_span: Span,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerSourceModule {
+    pub identity: Vec<String>,
+    pub source_name: String,
+    pub source: String,
+}
+
 #[derive(Clone)]
 struct FunctionSource {
     name: Span,
@@ -1249,6 +1265,8 @@ struct FunctionSource {
     body: Vec<Statement>,
     span: Span,
     is_static: bool,
+    published: bool,
+    module_identity: Option<Vec<String>>,
 }
 
 #[derive(Clone)]
@@ -1531,6 +1549,8 @@ struct Analyzer {
     interfaces: InterfaceTypes,
     interface_implementations: Vec<CompilerInterfaceImplementation>,
     functions: BTreeMap<String, Vec<FunctionSource>>,
+    library_modules: BTreeMap<Vec<String>, BTreeMap<String, Vec<FunctionSource>>>,
+    active_library_module: Option<Vec<String>>,
     generators: BTreeMap<String, Vec<GeneratorSource>>,
     task_types: TaskTypes,
     task_definitions: TaskDefinitions,
@@ -1581,6 +1601,8 @@ impl Analyzer {
             interfaces: BTreeMap::new(),
             interface_implementations: Vec::new(),
             functions: BTreeMap::new(),
+            library_modules: BTreeMap::new(),
+            active_library_module: None,
             generators: BTreeMap::new(),
             task_types: BTreeMap::new(),
             task_definitions: BTreeMap::new(),
@@ -1618,7 +1640,52 @@ impl Analyzer {
 /// Returns a shared source diagnostic for invalid or not-yet-supported input.
 #[allow(clippy::too_many_lines)] // Root collection order keeps declaration visibility explicit.
 pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
-    let source = SourceText::new(text).map_err(|error| {
+    analyze_for_compiler_with_modules(text, &[])
+}
+
+/// Analyze one program with the ordinary Topal source modules selected by its
+/// declared library dependencies.
+///
+/// # Errors
+///
+/// Returns a shared diagnostic for invalid application or module source, a
+/// duplicate module identity, or a compiler-subset gap.
+#[allow(clippy::too_many_lines)] // Root collection order keeps declaration visibility explicit.
+pub fn analyze_for_compiler_with_modules(
+    text: &str,
+    modules: &[CompilerSourceModule],
+) -> Result<CompilerProgram, Diagnostic> {
+    let primary_source_end = text.len();
+    let mut combined = text.to_owned();
+    let mut dependencies = Vec::with_capacity(modules.len());
+    let mut module_ranges = Vec::with_capacity(modules.len());
+    let mut identities = BTreeSet::new();
+    let mut modules = modules.iter().collect::<Vec<_>>();
+    modules.sort_by(|left, right| left.identity.cmp(&right.identity));
+    for module in modules {
+        let identity = module.identity.join(".");
+        if module.identity.is_empty() || !identities.insert(identity.clone()) {
+            return Err(Diagnostic::error(
+                "E-COMPILER-MODULE",
+                1,
+                1,
+                format!("compiler module identity `{identity}` is empty or duplicated"),
+            ));
+        }
+        if !combined.ends_with('\n') {
+            combined.push('\n');
+        }
+        let start = combined.len();
+        combined.push_str(&module.source);
+        let end = combined.len();
+        dependencies.push(CompilerDependency {
+            identity,
+            source_name: module.source_name.clone(),
+            source_span: Span::new(start, end),
+        });
+        module_ranges.push((module.identity.clone(), Span::new(start, end)));
+    }
+    let source = SourceText::new(&combined).map_err(|error| {
         Diagnostic::error(error.code, 1, 1, error.message).with_source_span(error.span)
     })?;
     let parsed = parse(&source, &lex(&source));
@@ -1630,17 +1697,23 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
             error.message.clone(),
         ));
     }
+    let root_statements = parsed
+        .statements
+        .iter()
+        .filter(|statement| statement_span(statement).start < primary_source_end)
+        .cloned()
+        .collect::<Vec<_>>();
     let (language_version, language_features) =
-        compiler_language_context(&source, &parsed.statements)?;
-    reject_later_language_selections(&source, &parsed.statements)?;
-    validate_compiler_library_selections(&source, &parsed.statements)?;
+        compiler_language_context(&source, &root_statements)?;
+    reject_later_language_selections(&source, &root_statements)?;
+    validate_compiler_library_selections(&source, &root_statements)?;
 
-    let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
+    let (enums, enum_alternatives) = collect_enums(&source, &root_statements)?;
     let (sums, sum_alternatives) =
-        collect_sums(&source, &parsed.statements, &enums, &enum_alternatives)?;
+        collect_sums(&source, &root_statements, &enums, &enum_alternatives)?;
     let modular_sources = collect_modular_sources(
         &source,
-        &parsed.statements,
+        &root_statements,
         &enums,
         &enum_alternatives,
         &sums,
@@ -1648,7 +1721,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     )?;
     let interface_sources = collect_interface_sources(
         &source,
-        &parsed.statements,
+        &root_statements,
         &enums,
         &enum_alternatives,
         &sums,
@@ -1675,19 +1748,52 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     );
     analyzer.install_modular_types(&modular_sources)?;
     analyzer.install_interfaces(&interface_sources)?;
-    analyzer.validate_interface_implementations(&parsed.statements)?;
-    let (task_types, task_definitions) = collect_compiler_tasks(&source, &parsed.statements)?;
+    analyzer.validate_interface_implementations(&root_statements)?;
+    let (task_types, task_definitions) = collect_compiler_tasks(&source, &root_statements)?;
     analyzer.task_types = task_types;
     analyzer.task_definitions = task_definitions;
     collect_functions(
         &source,
-        &parsed.statements,
+        &root_statements,
         &reserved_names,
         &mut analyzer.functions,
     )?;
+    for (identity, range) in &module_ranges {
+        let statements = parsed
+            .statements
+            .iter()
+            .filter(|statement| {
+                let span = statement_span(statement);
+                span.start >= range.start && span.end <= range.end
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let (module_version, _) = compiler_language_context(&source, &statements)?;
+        reject_later_language_selections(&source, &statements)?;
+        validate_compiler_library_selections(&source, &statements)?;
+        if module_version != language_version {
+            return Err(source_diagnostic(
+                &source,
+                "E-UNSUPPORTED-LIBRARY-VERSION",
+                *range,
+                format!(
+                    "module `{}` uses {module_version}, but the application uses {language_version}",
+                    identity.join(".")
+                ),
+            ));
+        }
+        let mut functions = BTreeMap::new();
+        collect_functions(&source, &statements, &BTreeSet::new(), &mut functions)?;
+        for declarations in functions.values_mut() {
+            for declaration in declarations {
+                declaration.module_identity = Some(identity.clone());
+            }
+        }
+        analyzer.library_modules.insert(identity.clone(), functions);
+    }
     collect_character_generators(
         &source,
-        &parsed.statements,
+        &root_statements,
         &reserved_names,
         &analyzer.enums,
         &analyzer.functions,
@@ -1695,7 +1801,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     )?;
     let mut environment = BTreeMap::new();
     let main = analyzer.analyze_block(
-        &parsed.statements,
+        &root_statements,
         &mut environment,
         BlockKind::TopLevel,
         None,
@@ -1714,6 +1820,8 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
         .collect();
     Ok(CompilerProgram {
         source,
+        primary_source_end,
+        dependencies,
         language_version,
         language_features: analyzer.language_features,
         main,
@@ -2868,6 +2976,7 @@ fn constraint_definition<'a>(
     ))
 }
 
+#[allow(clippy::too_many_lines)] // Published and ordinary declaration validation remains one ordered pass.
 fn collect_functions(
     source: &SourceText,
     statements: &[Statement],
@@ -2898,6 +3007,8 @@ fn collect_functions(
                 body: body.clone(),
                 span: *span,
                 is_static: *is_static,
+                published: false,
+                module_identity: None,
             }),
             Statement::Published { declaration, .. } => {
                 if let Statement::Function {
@@ -2921,6 +3032,8 @@ fn collect_functions(
                         body: body.clone(),
                         span: *span,
                         is_static: *is_static,
+                        published: true,
+                        module_identity: None,
                     })
                 } else if interface_declaration(statement).is_some()
                     || enum_declaration(source, statement).is_some()
@@ -8726,6 +8839,8 @@ impl Analyzer {
             body: body.clone(),
             span: *span,
             is_static: false,
+            published: false,
+            module_identity: None,
         };
         environment.insert(
             name_text.clone(),
@@ -14180,6 +14295,9 @@ impl Analyzer {
         }
         if let Some(view) = self.analyze_function_view(items, span)? {
             return Ok(view);
+        }
+        if let Some(value) = self.analyze_library_application(items, span, environment)? {
+            return Ok(value);
         }
         if let Some(sum) = self.analyze_sum_construction(items, span, environment)? {
             return Ok(sum);
@@ -20568,6 +20686,13 @@ impl Analyzer {
         {
             right = forget_character_evidence(right);
         }
+        if left.value_type != right.value_type {
+            if let Some(adapted) = adapt_function_call_argument(&left.value_type, &right) {
+                right = adapted;
+            } else if let Some(adapted) = adapt_function_call_argument(&right.value_type, &left) {
+                left = adapted;
+            }
+        }
         if left.value_type == right.value_type {
             if compiler_equality_supported(&left.value_type) {
                 let value_type = left.value_type.clone();
@@ -20965,6 +21090,88 @@ impl Analyzer {
         }
     }
 
+    fn analyze_library_application(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let selected = self
+            .library_modules
+            .iter()
+            .filter_map(|(identity, functions)| {
+                if items.len() <= identity.len()
+                    || !identity.iter().zip(items).all(|(component, item)| {
+                        matches!(item, Expression::Identifier(name)
+                            if self.source.slice(*name) == component)
+                    })
+                {
+                    return None;
+                }
+                let Expression::Identifier(member) = &items[identity.len()] else {
+                    return None;
+                };
+                let member_name = self.source.slice(*member);
+                let declarations = functions.get(member_name)?;
+                let published = declarations
+                    .iter()
+                    .filter(|declaration| declaration.published)
+                    .cloned()
+                    .collect::<Vec<_>>();
+                (!published.is_empty()).then(|| {
+                    (
+                        identity.len(),
+                        format!("{}.{}", identity.join("."), member_name),
+                        published,
+                    )
+                })
+            })
+            .max_by_key(|(module_length, _, _)| *module_length);
+        let Some((module_length, function_name, declarations)) = selected else {
+            return Ok(None);
+        };
+        let function_index = module_length;
+        if items.len() == function_index + 1 {
+            self.function_values_used = true;
+            let tag_index = self
+                .functions
+                .len()
+                .checked_add(COMPILER_SYMBOLIC_CALLABLES.len())
+                .and_then(|value| value.checked_add(self.anonymous_function_value_names.len()))
+                .ok_or_else(|| unsupported(&self.source, span, "native Function value tag"))?;
+            let tag = u32::try_from(tag_index)
+                .map_err(|_| unsupported(&self.source, span, "native Function value tag"))?;
+            self.anonymous_function_value_names
+                .push(format!("<fn {function_name}>"));
+            self.anonymous_callables.insert(
+                tag,
+                CompilerCallableFacts::Named {
+                    name: function_name,
+                    declarations,
+                    captures: Vec::new(),
+                },
+            );
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::FunctionValue(tag),
+                value_type: CompilerType::Function,
+                int_range: None,
+                rational_value: None,
+                span,
+            }));
+        }
+        self.analyze_resolved_call_from(
+            items,
+            span,
+            environment,
+            function_index,
+            &function_name,
+            &declarations,
+            &[],
+            false,
+        )
+        .map(Some)
+    }
+
     fn analyze_call(
         &mut self,
         items: &[Expression],
@@ -20987,6 +21194,35 @@ impl Analyzer {
                 generator_index,
                 &generator_name,
             );
+        }
+        if let Some(module_identity) = self.active_library_module.clone()
+            && let Some(functions) = self.library_modules.get(&module_identity)
+        {
+            let selected = items.iter().enumerate().find_map(|(index, item)| {
+                let Expression::Identifier(name) = item else {
+                    return None;
+                };
+                let name = self.source.slice(*name);
+                (!environment.contains_key(name) && functions.contains_key(name))
+                    .then_some((index, name.to_owned()))
+            });
+            if let Some((function_index, function_name)) = selected {
+                let declarations = functions
+                    .get(&function_name)
+                    .expect("selected library function exists")
+                    .clone();
+                let canonical = format!("{}.{}", module_identity.join("."), function_name);
+                return self.analyze_resolved_call_from(
+                    items,
+                    span,
+                    environment,
+                    function_index,
+                    &canonical,
+                    &declarations,
+                    &[],
+                    false,
+                );
+            }
         }
         let function = items.iter().enumerate().find_map(|(index, item)| {
             let Expression::Identifier(name) = item else {
@@ -21348,9 +21584,13 @@ impl Analyzer {
                 .any(|parameter| !parameter.fields.is_empty())
             {
                 let normalized = if declaration.parameters.len() == 1 {
-                    self.normalize_packaged_call(declaration, &arguments)?
+                    self.normalize_packaged_call(declaration, &arguments, environment)?
                 } else {
-                    self.normalize_compound_packaged_call(declaration, &arguments)?
+                    self.normalize_compound_packaged_call(
+                        declaration,
+                        flattened_arguments.as_deref().unwrap_or(&arguments),
+                        environment,
+                    )?
                 };
                 if let Some((normalized, adapted, bindings)) = normalized {
                     selected = Some((normalized, adapted, bindings));
@@ -21625,6 +21865,7 @@ impl Analyzer {
         &mut self,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
+        _environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<Option<NormalizedPackagedCall>, Diagnostic> {
         let [package] = declaration.parameters.as_slice() else {
             return Err(unsupported(
@@ -21821,6 +22062,7 @@ impl Analyzer {
         &mut self,
         declaration: &FunctionSource,
         arguments: &[CompilerExpression],
+        environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<Option<NormalizedPackagedCall>, Diagnostic> {
         if declaration.parameters.len() != 2 {
             return Err(unsupported(
@@ -21944,6 +22186,37 @@ impl Analyzer {
                             Some(retain(value, value_index, &mut argument_bindings))
                         }),
                     ));
+                }
+                CompilerExpressionKind::Local(_)
+                    if matches!(&argument.value_type, CompilerType::Tuple(fields)
+                        if fields.len() == parameter.fields.len()) =>
+                {
+                    let CompilerType::Tuple(field_types) = &argument.value_type else {
+                        unreachable!("guard established tuple type")
+                    };
+                    let facts = self.known_structural_value_facts(argument, environment)?;
+                    flattened.extend(
+                        parameter
+                            .fields
+                            .iter()
+                            .cloned()
+                            .zip(field_types.iter().enumerate().map(
+                                |(value_index, value_type)| {
+                                    let facts = facts.tuple_fields.get(value_index);
+                                    Some(CompilerExpression {
+                                        kind: CompilerExpressionKind::TupleField {
+                                            tuple: Box::new(argument.clone()),
+                                            index: value_index,
+                                        },
+                                        value_type: value_type.clone(),
+                                        int_range: facts.and_then(|facts| facts.int_range.clone()),
+                                        rational_value: facts
+                                            .and_then(|facts| facts.rational_value.clone()),
+                                        span: argument.span,
+                                    })
+                                },
+                            )),
+                    );
                 }
                 _ if matches!(
                     argument.value_type,
@@ -23159,9 +23432,12 @@ impl Analyzer {
             .and_then(|(_, _, provenance)| provenance.clone());
         let previous_static_context = self.static_context;
         let previous_in_function = self.in_function;
+        let previous_library_module = self.active_library_module.clone();
         let consumed_before_body = self.consumed_generators.clone();
         self.static_context = declaration.is_static;
         self.in_function = true;
+        self.active_library_module
+            .clone_from(&declaration.module_identity);
         let body = self.analyze_block(
             &declaration.body,
             &mut environment,
@@ -23170,6 +23446,7 @@ impl Analyzer {
         );
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
+        self.active_library_module = previous_library_module;
         let generator_was_consumed = generator_parameter
             .as_ref()
             .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
@@ -23291,6 +23568,10 @@ impl Analyzer {
                 rational_value: None,
                 span,
             };
+        } else if result_type != body.result.value_type
+            && let Some(adapted) = adapt_function_call_argument(&result_type, &body.result)
+        {
+            body.result = adapted;
         } else if !compiler_infinity_evidence_compatible(&result_type, &body.result.value_type) {
             require_same_type(
                 &self.source,
@@ -25019,6 +25300,8 @@ fn nested_named_call_target(statement: &Statement) -> Option<CompilerNamedCallTa
                 body: body.clone(),
                 span: *span,
                 is_static: false,
+                published: false,
+                module_identity: None,
             }],
         }
     })
@@ -28258,6 +28541,50 @@ fn adapt_function_call_argument(
     expected: &CompilerType,
     argument: &CompilerExpression,
 ) -> Option<CompilerExpression> {
+    if compiler_infinity_evidence_compatible(expected, &argument.value_type) {
+        return Some(argument.clone());
+    }
+    if let (CompilerType::Tuple(expected), CompilerExpressionKind::Tuple(values)) =
+        (expected, &argument.kind)
+        && expected.len() == values.len()
+    {
+        let values = expected
+            .iter()
+            .zip(values)
+            .map(|(expected, value)| adapt_function_call_argument(expected, value))
+            .collect::<Option<Vec<_>>>()?;
+        return Some(CompilerExpression {
+            kind: CompilerExpressionKind::Tuple(values),
+            value_type: CompilerType::Tuple(expected.clone()),
+            int_range: None,
+            rational_value: None,
+            span: argument.span,
+        });
+    }
+    if let (CompilerType::Record(expected), CompilerExpressionKind::Record(values)) =
+        (expected, &argument.kind)
+        && expected.len() == values.len()
+    {
+        let values = expected
+            .iter()
+            .zip(values)
+            .map(|((expected_name, expected), (actual_name, value))| {
+                (expected_name == actual_name)
+                    .then(|| {
+                        adapt_function_call_argument(expected, value)
+                            .map(|value| (actual_name.clone(), value))
+                    })
+                    .flatten()
+            })
+            .collect::<Option<Vec<_>>>()?;
+        return Some(CompilerExpression {
+            kind: CompilerExpressionKind::Record(values),
+            value_type: CompilerType::Record(expected.clone()),
+            int_range: None,
+            rational_value: None,
+            span: argument.span,
+        });
+    }
     if matches!(
         (expected, &argument.value_type),
         (CompilerType::Int, CompilerType::InfiniteNat)
@@ -43198,6 +43525,52 @@ mod tests {
                 .unwrap_err()
                 .code,
             "E-DUPLICATE-LIBRARY"
+        );
+    }
+
+    #[test]
+    fn compiles_published_source_module_functions_and_private_helpers() {
+        // TOPAL-LIB-SOURCE-001, TOPAL-NAMESPACE-USE-001,
+        // TOPAL-COMPILER-LIBRARY-SOURCE-001
+        let source = "use language (version is v0.1)\nuse library std (version is v0.1)\naccepted? is std checks values accepted?\naccepted? 7\n";
+        let module = CompilerSourceModule {
+            identity: vec!["std".into(), "checks".into(), "values".into()],
+            source_name: "library/std/checks/values.t".into(),
+            source: "use language (version is v0.1)\npositive? is fn (value : Nat) -> Boolean\n  value > 0\npub accepted? is fn (value : Nat) -> Boolean\n  positive? value\n"
+                .into(),
+        };
+        let program = analyze_for_compiler_with_modules(source, &[module]).unwrap();
+        assert_eq!(program.primary_source_end, source.len());
+        assert_eq!(program.dependencies.len(), 1);
+        assert_eq!(program.dependencies[0].identity, "std.checks.values");
+        assert_eq!(program.main.result.value_type, CompilerType::Boolean);
+        assert!(
+            program
+                .functions
+                .iter()
+                .any(|function| function.source_name == "std.checks.values.accepted?")
+        );
+        assert!(
+            program
+                .functions
+                .iter()
+                .any(|function| function.source_name == "std.checks.values.positive?")
+        );
+
+        let private = "use language (version is v0.1)\nuse library std (version is v0.1)\nstd checks values positive? 1\n";
+        assert_eq!(
+            analyze_for_compiler_with_modules(
+                private,
+                &[CompilerSourceModule {
+                    identity: vec!["std".into(), "checks".into(), "values".into()],
+                    source_name: "library/std/checks/values.t".into(),
+                    source: "use language (version is v0.1)\npositive? is fn (value : Nat) -> Boolean\n  value > 0\npub accepted? is fn (value : Nat) -> Boolean\n  positive? value\n"
+                        .into(),
+                }],
+            )
+            .unwrap_err()
+            .code,
+            "E-COMPILER-UNSUPPORTED"
         );
     }
 

@@ -32,6 +32,7 @@ fn run() -> Result<(), String> {
         output: arguments.output,
         emit: arguments.emit,
         llvm_tools: arguments.llvm_tools,
+        library_root: arguments.library_root,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, &source_name))?;
     Ok(())
@@ -42,6 +43,7 @@ struct Arguments {
     output: PathBuf,
     emit: Emit,
     llvm_tools: Option<PathBuf>,
+    library_root: PathBuf,
 }
 
 fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
@@ -49,6 +51,8 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut output = None;
     let mut emit = Emit::Executable;
     let mut llvm_tools = None;
+    let mut library_root =
+        env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -82,6 +86,13 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                         .ok_or("--llvm-tools requires a directory")?,
                 ));
             }
+            "--library-root" => {
+                library_root = PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or("--library-root requires a directory")?,
+                );
+            }
             "--version" => {
                 println!(
                     "topalc {} (LLVM 22; {TARGET_TRIPLE})",
@@ -91,7 +102,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0] [-g] [--target {TARGET_TRIPLE}] [--emit llvm-ir|object|executable] [--llvm-tools DIR] -o OUTPUT SOURCE\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\n-O0 and full DWARF debugging are the mandatory semantics of this compiler increment. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
+                    "Usage: topalc [-O0] [-g] [--target {TARGET_TRIPLE}] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\n-O0 and full DWARF debugging are the mandatory semantics of this compiler increment. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
                 );
                 std::process::exit(0);
             }
@@ -107,6 +118,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         output,
         emit,
         llvm_tools,
+        library_root,
     })
 }
 

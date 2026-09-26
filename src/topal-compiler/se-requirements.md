@@ -2803,6 +2803,31 @@ semantics. This realizes `TOPAL-COMPILER-LIBRARY-DEPENDENCY-001`,
 `TOPAL-SYN-LIBRARY-001`, and `TOPAL-LIB-DEPENDENCY-001` for compiler increment
 6b4.
 
+## TOPAL-COMP-LIBRARY-SOURCE-001 — Qualified source-library functions
+
+For selected v0.1 libraries, the compiler shall discover referenced ordinary
+module files below the configured library root, parse them as Topal source, and
+resolve qualified terminals only from published functions. A compiled
+published function may call unpublished helpers in the same module. Qualified
+Function aliases, packaged parameters, source overload ordering, and recursive
+Nat adaptation shall use the shared checked model rather than compiler-owned
+library definitions.
+
+Each contributing module shall produce one sorted native-artifact dependency
+entry containing its canonical path identity and SHA-256 source digest. The
+application source digest shall exclude appended dependency text, while the
+build identity shall include all dependency identities and digests. Lowering
+shall specialize the selected source closure into direct private calls and add
+no runtime namespace, runtime filesystem access, indirect call, foreign
+dependency, public ABI, or `topal-native/6` revision.
+
+Tests shall cover published and private visibility, module-local helper calls,
+qualified aliases, the firewall and REST-controller data-transfer programs,
+exact interpreter output, dependency metadata, direct LLVM calls,
+freestanding ELF/DWARF, the compiler corpus, and resource baselines. This
+realizes `TOPAL-COMPILER-LIBRARY-SOURCE-001`, `TOPAL-LIB-SOURCE-001`, and
+`TOPAL-NAMESPACE-USE-001` for compiler increment 6b5.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

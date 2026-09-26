@@ -12577,7 +12577,9 @@ const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
 
 #[cfg(test)]
 mod tests {
-    use topal_language::analyze_for_compiler;
+    use topal_language::{
+        CompilerSourceModule, analyze_for_compiler, analyze_for_compiler_with_modules,
+    };
 
     use super::*;
 
@@ -13500,6 +13502,39 @@ mod tests {
         assert!(main.contains("ret void"));
         assert!(!llvm.contains("topal.runtime.library"));
         assert!(!llvm.contains("topal.runtime.namespace"));
+    }
+
+    #[test]
+    fn lowers_qualified_source_library_functions_to_direct_private_calls() {
+        // TOPAL-LIB-SOURCE-001, TOPAL-COMPILER-LIBRARY-SOURCE-001
+        let program = analyze_for_compiler_with_modules(
+            include_str!("../../../examples/data-transfer/firewall.t"),
+            &[
+                CompilerSourceModule {
+                    identity: vec!["std".into(), "data".into(), "spans".into()],
+                    source_name: "library/std/data/spans.t".into(),
+                    source: include_str!("../../../library/std/data/spans.t").into(),
+                },
+                CompilerSourceModule {
+                    identity: vec!["std".into(), "network".into(), "addresses".into()],
+                    source_name: "library/std/network/addresses.t".into(),
+                    source: include_str!("../../../library/std/network/addresses.t").into(),
+                },
+            ],
+        )
+        .unwrap();
+        let llvm = Generator::new(&program, "firewall.t").emit();
+        for name in [
+            "std_2edata_2espans_2espan_3f",
+            "std_2edata_2espans_2espans_2doverlap_3f",
+            "std_2enetwork_2eaddresses_2eipv4_3f",
+            "std_2enetwork_2eaddresses_2eoctet_3f",
+        ] {
+            assert!(llvm.contains(name), "{name}: {llvm}");
+        }
+        assert!(!llvm.contains("topal.runtime.library"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("call ptr %"));
     }
 
     #[test]

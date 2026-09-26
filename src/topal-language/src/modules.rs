@@ -7,6 +7,30 @@ use crate::{Session, TraceSink};
 use topal_source::SourceText;
 use topal_syntax::{Statement, lex, parse};
 
+/// Test whether source contains one syntactically contiguous qualified module
+/// path. Trivia may occur between components.
+#[must_use]
+pub fn references_module(source: &str, identity: &[String]) -> bool {
+    if identity.is_empty() {
+        return false;
+    }
+    let Ok(source) = SourceText::new(source) else {
+        return false;
+    };
+    let identifiers = lex(&source)
+        .tokens
+        .into_iter()
+        .filter(|token| !token.kind.is_trivia())
+        .map(|token| source.slice(token.span))
+        .collect::<Vec<_>>();
+    identifiers.windows(identity.len()).any(|window| {
+        window
+            .iter()
+            .copied()
+            .eq(identity.iter().map(String::as_str))
+    })
+}
+
 /// Test whether a source file explicitly declares one library identity.
 #[must_use]
 pub fn declares_library(source: &str, identity: &str) -> bool {
@@ -140,6 +164,23 @@ mod tests {
     use super::*;
     use crate::Value;
     use num_bigint::BigInt;
+
+    #[test]
+    fn source_module_reference_detection_uses_qualified_tokens() {
+        let identity = vec!["std".into(), "web".into(), "http".into()];
+        assert!(references_module(
+            "safe? is std web http safe-method?\n",
+            &identity
+        ));
+        assert!(references_module(
+            "safe? is std # path\n  web http safe-method?\n",
+            &identity
+        ));
+        assert!(!references_module(
+            "safe? is std web other safe-method?\n",
+            &identity
+        ));
+    }
 
     #[test]
     fn string_solver_detection_requires_the_application_entry_shape() {

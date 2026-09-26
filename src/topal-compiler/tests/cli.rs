@@ -4,7 +4,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use topal_compiler::{LlvmTools, NATIVE_ABI, NativeArtifactMetadata, metadata_path};
-use topal_language::Session;
+use topal_language::{Session, load_module_tree};
 
 static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
 
@@ -13703,6 +13703,109 @@ fn dependency_only_standard_library_program_matches_the_interpreter() {
         String::from_utf8_lossy(&executed.stdout)
             .contains("Error ( domain is root.Pass(Boolean), code is out-of-range )")
     );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn qualified_standard_library_functions_compile_from_source_modules() {
+    // TOPAL-LIB-SOURCE-001, TOPAL-NAMESPACE-USE-001,
+    // TOPAL-COMPILER-LIBRARY-SOURCE-001
+    let directory = temporary("qualified-standard-library-source");
+    let library_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+    for (name, source_text, dependency_identities) in [
+        (
+            "firewall",
+            include_str!("../../../examples/data-transfer/firewall.t"),
+            &["std.data.spans", "std.network.addresses"][..],
+        ),
+        (
+            "rest-controller",
+            include_str!("../../../examples/data-transfer/rest-controller.t"),
+            &["std.web.http"][..],
+        ),
+    ] {
+        let source = directory.join(format!("{name}.t"));
+        let executable = directory.join(name);
+        fs::write(&source, source_text).unwrap();
+        let mut session = Session::new();
+        load_module_tree(&mut session, &library_root, &mut std::io::sink()).unwrap();
+        let expected = session
+            .evaluate_source_file(source_text, &mut std::io::sink())
+            .unwrap()
+            .to_string()
+            + "\n";
+        let compiled = run(topalc().args([
+            "--library-root",
+            library_root.to_str().unwrap(),
+            "-o",
+            executable.to_str().unwrap(),
+            source.to_str().unwrap(),
+        ]));
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let executed = run(&mut Command::new(&executable));
+        assert!(executed.status.success());
+        assert_eq!(executed.stdout, expected.as_bytes());
+        assert_freestanding_elf_and_valid_dwarf(&executable);
+
+        let metadata =
+            NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+        assert_eq!(
+            metadata
+                .dependencies
+                .iter()
+                .map(|dependency| dependency.identity.as_str())
+                .collect::<Vec<_>>(),
+            dependency_identities
+        );
+        assert!(
+            metadata
+                .dependencies
+                .iter()
+                .all(|dependency| dependency.sha256.len() == 64)
+        );
+        if name == "firewall" {
+            let changed_root = directory.join("changed-library");
+            fs::create_dir_all(changed_root.join("std/data")).unwrap();
+            fs::create_dir_all(changed_root.join("std/network")).unwrap();
+            fs::write(
+                changed_root.join("std/data/spans.t"),
+                format!(
+                    "{}\n# dependency digest change\n",
+                    include_str!("../../../library/std/data/spans.t")
+                ),
+            )
+            .unwrap();
+            fs::write(
+                changed_root.join("std/network/addresses.t"),
+                include_str!("../../../library/std/network/addresses.t"),
+            )
+            .unwrap();
+            let changed_executable = directory.join("firewall-changed-dependency");
+            let changed = run(topalc().args([
+                "--library-root",
+                changed_root.to_str().unwrap(),
+                "-o",
+                changed_executable.to_str().unwrap(),
+                source.to_str().unwrap(),
+            ]));
+            assert!(
+                changed.status.success(),
+                "{}",
+                String::from_utf8_lossy(&changed.stderr)
+            );
+            let changed_metadata = NativeArtifactMetadata::decode(
+                &fs::read(metadata_path(&changed_executable)).unwrap(),
+            )
+            .unwrap();
+            assert_eq!(changed_metadata.source_sha256, metadata.source_sha256);
+            assert_ne!(changed_metadata.dependencies, metadata.dependencies);
+            assert_ne!(changed_metadata.build_identity, metadata.build_identity);
+        }
+    }
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

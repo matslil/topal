@@ -5,6 +5,7 @@ mod codegen;
 mod toolchain;
 
 use std::fmt;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 pub use artifact::{
@@ -43,6 +44,7 @@ pub struct CompileOptions {
     pub output: PathBuf,
     pub emit: Emit,
     pub llvm_tools: Option<PathBuf>,
+    pub library_root: PathBuf,
 }
 
 #[derive(Debug)]
@@ -73,9 +75,102 @@ pub fn compile_source(
     source: &str,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
-    let program = topal_language::analyze_for_compiler(source).map_err(CompileError::Diagnostic)?;
+    let modules = selected_source_modules(source, &options.library_root)?;
+    let program = topal_language::analyze_for_compiler_with_modules(source, &modules)
+        .map_err(CompileError::Diagnostic)?;
     let llvm = codegen::emit_llvm(&program, &options.source_name);
     toolchain::materialize(&program, llvm.as_bytes(), options)
+}
+
+fn selected_source_modules(
+    source: &str,
+    library_root: &Path,
+) -> Result<Vec<topal_language::CompilerSourceModule>, CompileError> {
+    let mut modules = Vec::new();
+    for library in ["advent-of-code", "std"] {
+        if !topal_language::declares_library(source, library) {
+            continue;
+        }
+        let directory = library_root.join(library);
+        collect_selected_source_modules(source, library, &directory, &directory, &mut modules)?;
+    }
+    modules.sort_by(|left, right| left.identity.cmp(&right.identity));
+    Ok(modules)
+}
+
+fn collect_selected_source_modules(
+    application: &str,
+    library: &str,
+    root: &Path,
+    directory: &Path,
+    modules: &mut Vec<topal_language::CompilerSourceModule>,
+) -> Result<(), CompileError> {
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(CompileError::Io(format!(
+                "cannot read library directory {}: {error}",
+                directory.display()
+            )));
+        }
+    };
+    let mut paths = entries
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| CompileError::Io(error.to_string()))?;
+    paths.sort();
+    for path in paths {
+        if path.is_dir() {
+            collect_selected_source_modules(application, library, root, &path, modules)?;
+            continue;
+        }
+        if path.extension().is_none_or(|extension| extension != "t")
+            || path.file_name().is_some_and(|name| {
+                matches!(
+                    name.to_str(),
+                    Some("application.t" | "package.t" | "library.t" | "module.t")
+                )
+            })
+        {
+            continue;
+        }
+        let relative = path.strip_prefix(root).map_err(|error| {
+            CompileError::Io(format!(
+                "cannot identify library module {}: {error}",
+                path.display()
+            ))
+        })?;
+        let mut identity = vec![library.to_owned()];
+        identity.extend(
+            relative
+                .parent()
+                .into_iter()
+                .flat_map(Path::components)
+                .map(|component| component.as_os_str().to_string_lossy().into_owned()),
+        );
+        identity.push(
+            path.file_stem()
+                .expect("selected .t module has a stem")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        if !topal_language::references_module(application, &identity) {
+            continue;
+        }
+        let module_source = fs::read_to_string(&path).map_err(|error| {
+            CompileError::Io(format!(
+                "cannot read library module {}: {error}",
+                path.display()
+            ))
+        })?;
+        modules.push(topal_language::CompilerSourceModule {
+            identity,
+            source_name: path.display().to_string(),
+            source: module_source,
+        });
+    }
+    Ok(())
 }
 
 #[must_use]

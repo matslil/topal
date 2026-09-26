@@ -12,19 +12,21 @@ pub use compiler_model::{
     CompilerAddressOffset, CompilerAddressOffsetType, CompilerAddressRange,
     CompilerAddressRangeType, CompilerAggregatePathElement, CompilerBinary, CompilerBinding,
     CompilerBlock, CompilerCapability, CompilerComparisonRule, CompilerConstraint,
-    CompilerContainerKind, CompilerEffectRow, CompilerEnumRule, CompilerEnumType,
-    CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
-    CompilerExternalLayout, CompilerExternalLayoutFamily, CompilerExternalMetadata,
-    CompilerFallible, CompilerFunction, CompilerFunctionResultCapture, CompilerFunctionView,
-    CompilerGeneratorCloseHandler, CompilerGeneratorLocal, CompilerGeneratorType,
-    CompilerGeneratorYield, CompilerIdentity, CompilerInterface, CompilerInterfaceImplementation,
-    CompilerInterfaceOperation, CompilerInterfaceOperationEvidence, CompilerLanguageContext,
-    CompilerListIndexOperation, CompilerListZipOperation, CompilerLocation, CompilerLocationType,
-    CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerPatternIdentity,
-    CompilerProgram, CompilerStatement, CompilerSumAlternative, CompilerSumRule, CompilerSumType,
-    CompilerTaskHandler, CompilerTaskHandlerKind, CompilerTaskMessage, CompilerTaskScheduler,
-    CompilerTaskType, CompilerType, CompilerTypeView, CompilerTypeViewForm, CompilerValidation,
-    IntRange, analyze_for_compiler, compiler_function_result_capture_storage,
+    CompilerContainerKind, CompilerDependency, CompilerEffectRow, CompilerEnumRule,
+    CompilerEnumType, CompilerErrorCodeRule, CompilerErrorField, CompilerExpression,
+    CompilerExpressionKind, CompilerExternalLayout, CompilerExternalLayoutFamily,
+    CompilerExternalMetadata, CompilerFallible, CompilerFunction, CompilerFunctionResultCapture,
+    CompilerFunctionView, CompilerGeneratorCloseHandler, CompilerGeneratorLocal,
+    CompilerGeneratorType, CompilerGeneratorYield, CompilerIdentity, CompilerInterface,
+    CompilerInterfaceImplementation, CompilerInterfaceOperation,
+    CompilerInterfaceOperationEvidence, CompilerLanguageContext, CompilerListIndexOperation,
+    CompilerListZipOperation, CompilerLocation, CompilerLocationType, CompilerMapCollisionPolicy,
+    CompilerModularType, CompilerParameter, CompilerPatternIdentity, CompilerProgram,
+    CompilerSourceModule, CompilerStatement, CompilerSumAlternative, CompilerSumRule,
+    CompilerSumType, CompilerTaskHandler, CompilerTaskHandlerKind, CompilerTaskMessage,
+    CompilerTaskScheduler, CompilerTaskType, CompilerType, CompilerTypeView, CompilerTypeViewForm,
+    CompilerValidation, IntRange, analyze_for_compiler, analyze_for_compiler_with_modules,
+    compiler_function_result_capture_storage,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,
@@ -34,7 +36,7 @@ pub use documentation::lang_documentation;
 pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };
-pub use modules::{declares_library, declares_string_solver, load_module_tree};
+pub use modules::{declares_library, declares_string_solver, load_module_tree, references_module};
 pub use source::{Execution, ExecutionStep, Session, Value, display_string_literal};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;

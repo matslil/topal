@@ -2605,6 +2605,31 @@ source or compiled-library metadata and SHALL remain unsupported until that
 composition boundary is implemented; dependency-only admission SHALL NOT
 invent, inline, or substitute library semantics.
 
+### TOPAL-COMPILER-LIBRARY-SOURCE-001 — Qualified source-library functions
+
+For a selected v0.1 library, the compiler SHALL resolve a qualified ordinary
+function from the package-relative source module identified by its namespace
+path. Only `pub` functions SHALL be visible through the qualified path;
+unpublished functions MAY be resolved only as module-local dependencies of a
+published function. The checked body, overload order, parameter packaging, and
+result adaptation SHALL come from the authoritative Topal declaration required
+by `TOPAL-LIB-SOURCE-001`.
+
+Each referenced source module SHALL contribute a canonical identity and SHA-256
+source digest to native artifact dependencies in identity order. The primary
+source digest SHALL continue to cover only the application source, and the
+build identity SHALL cover every dependency identity and digest. Changing a
+referenced module SHALL therefore change the build identity without changing
+the primary-source identity.
+
+Lowering SHALL specialize the selected functions and their module-local helper
+closure as direct private calls. A qualified Function alias SHALL preserve the
+same declarations. This source composition SHALL add no runtime namespace,
+filesystem access during execution, indirect call, foreign dependency, public
+ABI, or native ABI revision. Missing, private, unsupported-version, or otherwise
+unavailable terminals SHALL fail closed rather than receiving compiler-owned
+semantics.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
