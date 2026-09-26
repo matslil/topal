@@ -10371,14 +10371,10 @@ impl Analyzer {
         let declared_constraint =
             self.constraint_bindings
                 .get(constructor_name)
-                .is_some_and(|tag| {
-                    let constraint = &self.constraints
-                        [usize::try_from(*tag).expect("u32 constraint tag fits usize")];
-                    constraint.base_type == CompilerType::Int
-                        && self
-                            .constraint_binding_declarations
-                            .get(constructor_name)
-                            .is_some_and(|end| *end <= constructor.start)
+                .is_some_and(|_| {
+                    self.constraint_binding_declarations
+                        .get(constructor_name)
+                        .is_some_and(|end| *end <= constructor.start)
                 });
         let declared_modular = self
             .modulars
@@ -12714,13 +12710,6 @@ impl Analyzer {
     ) -> Result<CompilerExpression, Diagnostic> {
         let constraint =
             self.constraints[usize::try_from(tag).expect("u32 tag fits usize")].clone();
-        if constraint.base_type != CompilerType::Int {
-            return Err(unsupported(
-                &self.source,
-                operand.span(),
-                "native constraint application base classifier",
-            ));
-        }
         let mut value = self.analyze_expression(operand, environment)?;
         if matches!(value.value_type, CompilerType::Refined { .. }) {
             value = forget_refined_evidence(value);
@@ -25696,7 +25685,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::Result(success) => {
             matches!(
                 success.as_ref(),
-                CompilerType::Int
+                CompilerType::Boolean
+                    | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::String
@@ -27371,11 +27361,49 @@ fn known_constraint_predicate(
 ) -> Option<bool> {
     match &predicate.kind {
         CompilerExpressionKind::Boolean(value) => Some(*value),
+        CompilerExpressionKind::Local(name) if name == parameter_storage => {
+            let CompilerExpressionKind::Boolean(value) = &argument.kind else {
+                return None;
+            };
+            Some(*value)
+        }
         CompilerExpressionKind::Not(value) => Some(!known_constraint_predicate(
             value,
             parameter_storage,
             argument,
         )?),
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual)
+            && left.value_type == CompilerType::String
+            && right.value_type == CompilerType::String =>
+        {
+            let equal = known_constraint_string(left, parameter_storage, argument)?
+                == known_constraint_string(right, parameter_storage, argument)?;
+            Some(if *operation == CompilerBinary::Equal {
+                equal
+            } else {
+                !equal
+            })
+        }
+        CompilerExpressionKind::Binary {
+            operation,
+            left,
+            right,
+        } if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual)
+            && left.value_type == CompilerType::Boolean
+            && right.value_type == CompilerType::Boolean =>
+        {
+            let equal = known_constraint_boolean(left, parameter_storage, argument)?
+                == known_constraint_boolean(right, parameter_storage, argument)?;
+            Some(if *operation == CompilerBinary::Equal {
+                equal
+            } else {
+                !equal
+            })
+        }
         CompilerExpressionKind::Binary {
             operation: CompilerBinary::And,
             left,
@@ -27425,6 +27453,40 @@ fn known_constraint_predicate(
                 CompilerBinary::GreaterEqual => left >= right,
                 _ => unreachable!("guard selected a Boolean comparison"),
             })
+        }
+        _ => None,
+    }
+}
+
+fn known_constraint_boolean(
+    expression: &CompilerExpression,
+    parameter_storage: &str,
+    argument: &CompilerExpression,
+) -> Option<bool> {
+    match &expression.kind {
+        CompilerExpressionKind::Boolean(value) => Some(*value),
+        CompilerExpressionKind::Local(name) if name == parameter_storage => {
+            let CompilerExpressionKind::Boolean(value) = &argument.kind else {
+                return None;
+            };
+            Some(*value)
+        }
+        _ => None,
+    }
+}
+
+fn known_constraint_string<'a>(
+    expression: &'a CompilerExpression,
+    parameter_storage: &str,
+    argument: &'a CompilerExpression,
+) -> Option<&'a str> {
+    match &expression.kind {
+        CompilerExpressionKind::String(value) => Some(value),
+        CompilerExpressionKind::Local(name) if name == parameter_storage => {
+            let CompilerExpressionKind::String(value) = &argument.kind else {
+                return None;
+            };
+            Some(value)
         }
         _ => None,
     }
@@ -36534,6 +36596,25 @@ mod tests {
             analyze_for_compiler(wrong_base).unwrap_err().code,
             "E-TYPE-MISMATCH"
         );
+
+        let boolean =
+            analyze_for_compiler(include_str!("../../../tests/standard-library/harness.t"))
+                .unwrap();
+        assert_eq!(boolean.constraints[0].base_type, CompilerType::Boolean);
+        assert_eq!(
+            boolean.main.result.value_type,
+            CompilerType::Refined {
+                constraint: "Pass".into(),
+                base: Box::new(CompilerType::Boolean),
+            }
+        );
+
+        let string = analyze_for_compiler(
+            "use language (version is v0.1)\nNonempty is String constraint { value } value != \"\"\nname : Nonempty is Nonempty \"Topal\"\nname\n",
+        )
+        .unwrap();
+        assert_eq!(string.constraints[0].base_type, CompilerType::String);
+        assert_eq!(string.main.result.value_type.name(), "Nonempty");
     }
 
     #[test]
@@ -41822,7 +41903,8 @@ mod tests {
     #[test]
     fn models_return_bearing_named_constraint_argument() {
         // TOPAL-FUNCTION-RETURN-001, TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
-        // TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001
+        // TOPAL-COMPILER-LEXICAL-RETURN-CONSTRAINT-001,
+        // TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001
         let program = analyze_for_compiler(include_str!(
             "../../../examples/language/function-return-constraint-constructor.t"
         ))
@@ -41845,10 +41927,17 @@ mod tests {
             "E-COMPILER-UNSUPPORTED"
         );
         let non_int = "use language (version is v0.1)\nNonempty is String constraint { candidate } candidate = candidate\nanswer is fn () -> Int\n  Nonempty { return 42 }\nanswer ()\n";
-        assert_eq!(
-            analyze_for_compiler(non_int).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
-        );
+        let program = analyze_for_compiler(non_int).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "answer")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        assert!(matches!(
+            function.body.result.kind,
+            CompilerExpressionKind::Block(_)
+        ));
     }
 
     #[test]
