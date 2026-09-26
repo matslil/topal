@@ -45,7 +45,7 @@ decision under the repository authority rules.
 ## Current inventory
 
 The compiler executes the complete 306-program canonical language corpus plus
-four standard-library conformance programs and all three data-transfer programs.
+five standard-library conformance programs and all three data-transfer programs.
 Gate 1 includes constraint application over every
 compiler-admitted fundamental scalar base and evidence-sensitive finite Nat
 arithmetic. Gate 2 accepts and erases unused library declarations, resolves
@@ -53,6 +53,6 @@ qualified published functions from selectively discovered authoritative Topal
 modules, specializes their private helper closure, preserves per-file
 hashbangs, records exact source dependency digests, and specializes admitted
 capability-generic facade and packaged-module Functions directly from source.
-Its next blockers are aggregate Optional ABI closure for generic queue
-decomposition, cross-module dependencies, library/application contexts, full
-package graphs, compiled interfaces, and separate compilation.
+Its next blockers are remaining generic Result/Record/container shapes,
+cross-module dependencies, library/application contexts, full package graphs,
+compiled interfaces, and separate compilation.
