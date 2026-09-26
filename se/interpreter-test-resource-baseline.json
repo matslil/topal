@@ -1516,6 +1516,11 @@
       "cpu_time_ns": 4555240,
       "memory_peak_bytes": 18358272,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/function-return-exhaustive-enum-decision-actions.t": {
+      "cpu_time_ns": 4949399,
+      "memory_peak_bytes": 18366464,
+      "samples_per_test": 50
     }
   }
 }
