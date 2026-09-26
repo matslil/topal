@@ -74,9 +74,18 @@ impl NativeArtifactMetadata {
         output: &[u8],
         llvm_version: &str,
     ) -> Self {
-        let source_sha256 = sha256(program.source.as_str().as_bytes());
+        let source_sha256 =
+            sha256(&program.source.as_str().as_bytes()[..program.primary_source_end]);
+        let dependencies = program
+            .dependencies
+            .iter()
+            .map(|dependency| DigestEntry {
+                identity: dependency.identity.clone(),
+                sha256: sha256(program.source.slice(dependency.source_span).as_bytes()),
+            })
+            .collect::<Vec<_>>();
         let interface_sha256 = sha256(b"topal.native-artifact/1:empty-interface");
-        let build_inputs = [
+        let mut build_inputs = vec![
             "topal.native-build/1".to_owned(),
             program.language_version.to_string(),
             source_name.to_owned(),
@@ -89,6 +98,11 @@ impl NativeArtifactMetadata {
             env!("CARGO_PKG_VERSION").to_owned(),
             output_kind.to_owned(),
         ];
+        build_inputs.extend(
+            dependencies
+                .iter()
+                .map(|dependency| format!("{}={}", dependency.identity, dependency.sha256)),
+        );
         let build_identity = sha256(build_inputs.join("\0").as_bytes());
         Self {
             schema: NATIVE_ARTIFACT_SCHEMA.into(),
@@ -111,7 +125,7 @@ impl NativeArtifactMetadata {
             source_sha256,
             interface_sha256,
             build_identity,
-            dependencies: Vec::new(),
+            dependencies,
             exports: Vec::new(),
             platform_requirements: vec!["topal.platform.linux-x86_64/1".into()],
             evidence: Vec::new(),

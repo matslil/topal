@@ -3096,6 +3096,26 @@
       "cpu_time_ns": 134670,
       "memory_peak_bytes": 18649088,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/data-transfer/firewall.t": {
+      "cpu_time_ns": 193208140,
+      "memory_peak_bytes": 44351488,
+      "samples_per_test": 50
+    },
+    "topalc-build::examples/data-transfer/rest-controller.t": {
+      "cpu_time_ns": 373217439,
+      "memory_peak_bytes": 46288896,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/data-transfer/firewall.t": {
+      "cpu_time_ns": 214360,
+      "memory_peak_bytes": 18448384,
+      "samples_per_test": 500
+    },
+    "topalc-run::examples/data-transfer/rest-controller.t": {
+      "cpu_time_ns": 787389,
+      "memory_peak_bytes": 18526208,
+      "samples_per_test": 500
     }
   }
 }

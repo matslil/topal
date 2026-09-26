@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use topal_compiler::{CompileError, CompileOptions, Emit, compile_source};
-use topal_language::Session;
+use topal_language::{Session, declares_library, load_module_tree};
 
 const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/aggregate-environments.t",
@@ -316,7 +316,9 @@ const SHARED_REGRESSIONS: &[&str] = &[
 ];
 
 const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
+    "examples/data-transfer/firewall.t",
     "examples/data-transfer/packet-filter.t",
+    "examples/data-transfer/rest-controller.t",
     "tests/standard-library/harness.t",
 ];
 
@@ -415,7 +417,14 @@ fn execute(
     let path = root.join(identity);
     let source = fs::read_to_string(&path)
         .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
-    let expected = Session::new()
+    let mut session = Session::new();
+    if ["std", "advent-of-code"]
+        .into_iter()
+        .any(|library| declares_library(&source, library))
+    {
+        load_module_tree(&mut session, &root.join("library"), &mut std::io::sink())?;
+    }
+    let expected = session
         .evaluate_source_file(&source, &mut std::io::sink())
         .map_err(|diagnostic| diagnostic.render(identity))?
         .to_string()
@@ -426,6 +435,7 @@ fn execute(
         output: executable.clone(),
         emit: Emit::Executable,
         llvm_tools: llvm_tools.map(Path::to_owned),
+        library_root: root.join("library"),
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)
