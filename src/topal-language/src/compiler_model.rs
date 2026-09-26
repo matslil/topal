@@ -28,6 +28,7 @@ use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
     expression_mentions_name, is_supported_returning_boolean_action_shape,
     is_supported_returning_comparison_value_action_shape,
+    is_supported_returning_enum_fallback_action_shape,
     is_supported_returning_ordered_comparison_action_shape, parse_integer, parse_rational,
     parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
     prove_mutual_bounded_recursion_edge,
@@ -8776,6 +8777,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_enum_fallback_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
             expression,
             environment,
@@ -9000,6 +9008,151 @@ impl Analyzer {
             rational_value,
             span: *span,
         }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Enum validation and return-aware action analysis stay adjacent.
+    fn analyze_returning_enum_fallback_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_enum_fallback_action_shape(&self.source, rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        match subject.value_type.clone() {
+            CompilerType::Comparison => {
+                let mut when_less = None;
+                let mut when_equal = None;
+                let mut when_greater = None;
+                let mut otherwise = None;
+                for rule in rules {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Enum action exits its function"
+                    );
+                    match rule.matcher {
+                        DecisionMatcher::Identifier(matcher) => match self.source.slice(matcher) {
+                            "Less" => when_less = Some(action),
+                            "Equal" => when_equal = Some(action),
+                            "Greater" => when_greater = Some(action),
+                            _ => {
+                                return Err(unsupported(
+                                    &self.source,
+                                    matcher,
+                                    "Comparison alternative",
+                                ));
+                            }
+                        },
+                        DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                        _ => unreachable!("preselected final-fallback Enum decision shape"),
+                    }
+                }
+                let otherwise = otherwise.expect("final Comparison fallback");
+                let when_less = when_less.unwrap_or_else(|| otherwise.clone());
+                let when_equal = when_equal.unwrap_or_else(|| otherwise.clone());
+                let when_greater = when_greater.unwrap_or(otherwise);
+                let (value_type, int_range, rational_value) =
+                    self.decision_facts(&[&when_less, &when_equal, &when_greater], *span)?;
+                Ok(Some(CompilerExpression {
+                    value_type,
+                    kind: CompilerExpressionKind::ComparisonValueDecision {
+                        subject: Box::new(subject),
+                        when_less: Box::new(when_less),
+                        when_equal: Box::new(when_equal),
+                        when_greater: Box::new(when_greater),
+                    },
+                    int_range,
+                    rational_value,
+                    span: *span,
+                }))
+            }
+            CompilerType::Enum(enumeration) => {
+                let mut lowered = Vec::with_capacity(rules.len().saturating_sub(1));
+                let mut otherwise = None;
+                for rule in rules {
+                    let (action, returned) = self.analyze_direct_statement_expression(
+                        &rule.action,
+                        environment,
+                        Some(function_result),
+                        Some(function_result),
+                        true,
+                    )?;
+                    assert!(
+                        returned,
+                        "a checked returning Enum action exits its function"
+                    );
+                    match rule.matcher {
+                        DecisionMatcher::Identifier(matcher) => {
+                            let label = self.source.slice(matcher);
+                            let Some(value) = enumeration
+                                .alternatives
+                                .iter()
+                                .position(|alternative| alternative == label)
+                            else {
+                                return Err(source_diagnostic(
+                                    &self.source,
+                                    "E-UNKNOWN-ENUM-ALTERNATIVE",
+                                    matcher,
+                                    format!(
+                                        "`{label}` is not an alternative of `{}`",
+                                        enumeration.name
+                                    ),
+                                ));
+                            };
+                            lowered.push(CompilerEnumRule {
+                                value: u32::try_from(value)
+                                    .expect("enum declaration already fits the native tag"),
+                                action,
+                                span: rule.span,
+                            });
+                        }
+                        DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                        _ => unreachable!("preselected final-fallback Enum decision shape"),
+                    }
+                }
+                let otherwise = otherwise.expect("complete Enum fallback");
+                let mut actions = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
+                actions.push(&otherwise);
+                let (value_type, int_range, rational_value) =
+                    self.decision_facts(&actions, *span)?;
+                Ok(Some(CompilerExpression {
+                    kind: CompilerExpressionKind::EnumDecision {
+                        subject: Box::new(subject),
+                        rules: lowered,
+                        otherwise: Some(Box::new(otherwise)),
+                    },
+                    value_type,
+                    int_range,
+                    rational_value,
+                    span: *span,
+                }))
+            }
+            _ => Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning final-fallback Enum actions for a non-Enum subject",
+            )),
+        }
     }
 
     #[allow(clippy::too_many_lines)] // Matcher typing and return-aware action analysis stay adjacent.
@@ -41435,6 +41588,52 @@ mod tests {
         assert_eq!(
             analyze_for_compiler(mixed).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_final_fallback_enum_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-ENUM-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-ENUM-FALLBACK-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-enum-fallback-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Int);
+        let CompilerExpressionKind::EnumDecision {
+            rules, otherwise, ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their Enum decision")
+        };
+        assert_eq!(rules.len(), 2);
+        assert!(
+            rules
+                .iter()
+                .all(|rule| matches!(rule.action.kind, CompilerExpressionKind::Block(_)))
+        );
+        assert!(matches!(
+            otherwise.as_deref().map(|action| &action.kind),
+            Some(CompilerExpressionKind::Block(_))
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let reserved = "use language (version is v0.1)\nDirection is Enum (Less, Other)\nchoose is fn (value : Direction) -> Int\n  value\n    Less then { return 40 }\n    otherwise { return 41 }\n  1000\nchoose Other\n";
+        analyze_for_compiler(reserved).unwrap();
+        let mixed = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Red then { return 40 }\n    otherwise 41\n  1000\nchoose Green\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let unknown = "use language (version is v0.1)\nColor is Enum (Red, Green)\nchoose is fn (value : Color) -> Int\n  value\n    Blue then { return 40 }\n    otherwise { return 41 }\nchoose Green\n";
+        assert_eq!(
+            analyze_for_compiler(unknown).unwrap_err().code,
+            "E-UNKNOWN-ENUM-ALTERNATIVE"
         );
     }
 
