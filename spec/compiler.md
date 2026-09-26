@@ -119,6 +119,19 @@ change the Nat identity of a source binding in debug information. An admitted
 same-classifier positional product MAY recursively use this Nat equality as
 field evidence under `TOPAL-COMPILER-TUPLE-EQUALITY-001`.
 
+### TOPAL-COMPILER-NAT-ARITHMETIC-001 — Nat arithmetic evidence
+
+The compiler SHALL implement `TOPAL-NUM-NAT-ARITHMETIC-001` by retaining Nat
+for finite Nat addition and multiplication and for subtraction proven
+nonnegative by operand ranges. Other Nat subtraction and mixed Nat/Int
+arithmetic SHALL explicitly forget evidence to Int. Every operation SHALL reuse
+the exact arbitrary-precision Int runtime and evaluate each operand once.
+
+The original source bindings SHALL retain Nat identity in DWARF. Evidence
+handling SHALL introduce no unsigned representation, copy, validation call,
+Nat-specific runtime operation, allocation beyond that required by the exact
+result, public ABI, or native ABI revision.
+
 ### TOPAL-COMPILER-MODULAR-001 — Nominal modular-number lowering
 
 Each admitted root-scope `ModNat` or `ModInt` declaration SHALL retain its
@@ -2574,6 +2587,23 @@ Multi-component and non-root published paths, nested/non-root namespaces,
 generator members, function-body `use`, packages, source or compiled libraries,
 and public interface metadata remain outside this increment and SHALL be
 rejected rather than resolved from process state or the host filesystem.
+
+### TOPAL-COMPILER-LIBRARY-DEPENDENCY-001 — Dependency-only library selection
+
+The compiler SHALL accept source-root `use library std ( version is v0.1 )`
+and `use library advent-of-code ( version is v0.1 )` declarations in the
+ordered dependency prefix required by `TOPAL-SYN-LIBRARY-001`. It SHALL apply
+the shared unavailable-library, unsupported-version, duplicate-declaration,
+and declaration-order diagnostics.
+
+When a selected library contributes no referenced member to the compiled
+program, its declaration SHALL be erased after checking. It SHALL add no LLVM
+instruction, runtime namespace, linked dependency, artifact dependency digest,
+authority, initializer, or native ABI change. The declaration remains covered
+by the source digest. A qualified member reference still requires resolved
+source or compiled-library metadata and SHALL remain unsupported until that
+composition boundary is implemented; dependency-only admission SHALL NOT
+invent, inline, or substitute library semantics.
 
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 

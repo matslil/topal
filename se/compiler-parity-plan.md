@@ -31,7 +31,7 @@ resource qualification.
 | Gate | Cohesive work | Exit evidence | Status |
 | ---: | --- | --- | --- |
 | 1 | runtime/frontend closure: remaining scalar and function forms, containers, generators, ranges, constraints, and direct execution boundaries | canonical language corpus plus newly promoted external cases execute identically | in progress |
-| 2 | program composition: external `use`, standard library selection, applications, build graph, public interfaces, and separate compilation metadata | data-transfer, standard-library, and application entry points resolve without interpreter-only loading | planned |
+| 2 | program composition: external `use`, standard library selection, applications, build graph, public interfaces, and separate compilation metadata | data-transfer, standard-library, and application entry points resolve without interpreter-only loading | in progress |
 | 3 | effects and platform semantics: nonempty effects, resources, tasks/streams, layouts, locations, scheduling, time, and adapters | authority-compatible platform tests compile and execute; target limitations are explicit | planned |
 | 4 | assurance surfaces: contracts/evidence, open serialization, introspection, contexts, and information flow | remaining standard-library and transfer assurance tests have native evidence | planned |
 | 5 | zero-gap qualification: rule disposition audit, whole inventory comparison, optimized-level disposition, and resource baselines | no unexplained interpreter/compiler acceptance gap remains | planned |
@@ -44,10 +44,12 @@ decision under the repository authority rules.
 
 ## Current inventory
 
-The compiler executes the complete 306-program canonical language corpus.
-Gate 1 now includes constraint application over every compiler-admitted
-fundamental scalar base. The first external blockers are composition-related:
-data-transfer programs require external standard-library selection, and the
-application and standard-library suites require their library/test application
-contexts. These form Gate 2 once the remaining adjacent Gate 1 runtime forms
-have been promoted.
+The compiler executes the complete 306-program canonical language corpus plus
+the standalone standard-library harness and dependency-only packet-filter
+application. Gate 1 includes constraint application over every
+compiler-admitted fundamental scalar base and evidence-sensitive finite Nat
+arithmetic. Gate 2 accepts and erases validated library declarations that
+contribute no members. Its next blocker is qualified standard-library member
+resolution for the remaining two data-transfer programs; application and
+standard-library suites additionally require their library/test application
+contexts.

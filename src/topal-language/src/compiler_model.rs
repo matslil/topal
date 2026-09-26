@@ -1633,6 +1633,7 @@ pub fn analyze_for_compiler(text: &str) -> Result<CompilerProgram, Diagnostic> {
     let (language_version, language_features) =
         compiler_language_context(&source, &parsed.statements)?;
     reject_later_language_selections(&source, &parsed.statements)?;
+    validate_compiler_library_selections(&source, &parsed.statements)?;
 
     let (enums, enum_alternatives) = collect_enums(&source, &parsed.statements)?;
     let (sums, sum_alternatives) =
@@ -2268,6 +2269,62 @@ fn reject_later_language_selections(
         *span,
         "language-context change after the bootstrap selection",
     ))
+}
+
+fn validate_compiler_library_selections(
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<(), Diagnostic> {
+    let mut libraries = BTreeSet::new();
+    let mut declarations_closed = false;
+    for statement in statements.iter().skip(1) {
+        match statement {
+            Statement::LibrarySelection {
+                name,
+                version,
+                span,
+            } if !declarations_closed => {
+                let identity = source.slice(*name);
+                if !libraries.insert(identity.to_owned()) {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-DUPLICATE-LIBRARY",
+                        *span,
+                        format!("library `{identity}` is declared more than once"),
+                    ));
+                }
+                if !matches!(identity, "std" | "advent-of-code") {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-UNSUPPORTED-LIBRARY",
+                        *name,
+                        format!("library `{identity}` is not available"),
+                    ));
+                }
+                let requested = source.slice(*version);
+                if requested != "v0.1" {
+                    return Err(source_diagnostic(
+                        source,
+                        "E-UNSUPPORTED-LIBRARY-VERSION",
+                        *version,
+                        format!(
+                            "library `{identity}` version `{requested}` is not supported; available version is `v0.1`"
+                        ),
+                    ));
+                }
+            }
+            Statement::LibrarySelection { span, .. } => {
+                return Err(source_diagnostic(
+                    source,
+                    "E-LIBRARY-DECLARATION-ORDER",
+                    *span,
+                    "library dependencies immediately follow the initial language selection",
+                ));
+            }
+            _ => declarations_closed = true,
+        }
+    }
+    Ok(())
 }
 
 fn require_runtime_main_result(
@@ -10625,9 +10682,13 @@ impl Analyzer {
                             value = self.finish_nat_conversion(value, span, span)?;
                         }
                         if let CompilerType::Result(success) = &value.value_type
-                            && success.as_ref() == &expected
+                            && (success.as_ref() == &expected
+                                || matches!(&expected, CompilerType::Refined { base, .. }
+                                    if success.as_ref() == base.as_ref()))
                         {
-                            if !matches!(function_result, Some(CompilerType::Result(_))) {
+                            if kind != BlockKind::TopLevel
+                                && !matches!(function_result, Some(CompilerType::Result(_)))
+                            {
                                 return Err(source_diagnostic(
                                     &self.source,
                                     "E-RESULT-PROJECTION-CONTEXT",
@@ -11095,11 +11156,12 @@ impl Analyzer {
                         "return through a nested lexical block outside an admitted direct statement position",
                     ));
                 }
+                Statement::LibrarySelection { .. } if kind == BlockKind::TopLevel => {}
                 Statement::LibrarySelection { .. } => {
                     return Err(unsupported(
                         &self.source,
                         statement_span(statement),
-                        "source library dependency",
+                        "nested source library dependency",
                     ));
                 }
                 _ => {
@@ -20332,6 +20394,25 @@ impl Analyzer {
             left_value = forget_nat_evidence(left_value);
             right_value = forget_nat_evidence(right_value);
         }
+        let both_nat = left_value.value_type == CompilerType::Nat
+            && right_value.value_type == CompilerType::Nat;
+        let nat_arithmetic_result = both_nat
+            && match operation {
+                CompilerBinary::Add | CompilerBinary::Multiply => true,
+                CompilerBinary::Subtract => left_value
+                    .int_range
+                    .as_ref()
+                    .zip(right_value.int_range.as_ref())
+                    .is_some_and(|(left, right)| left.lower >= right.upper),
+                _ => false,
+            };
+        if matches!(
+            operation,
+            CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply
+        ) {
+            left_value = forget_nat_evidence(left_value);
+            right_value = forget_nat_evidence(right_value);
+        }
         let numeric =
             is_exact_numeric(&left_value.value_type) && is_exact_numeric(&right_value.value_type);
         if matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual) && !numeric {
@@ -20415,6 +20496,8 @@ impl Analyzer {
             CompilerBinary::Add | CompilerBinary::Subtract | CompilerBinary::Multiply => {
                 if rational_result {
                     CompilerType::Rational
+                } else if nat_arithmetic_result {
+                    CompilerType::Nat
                 } else {
                     CompilerType::Int
                 }
@@ -20805,19 +20888,19 @@ impl Analyzer {
         span: Span,
     ) -> CompilerExpression {
         let int_range = match (&value_type, operation) {
-            (CompilerType::Int, CompilerBinary::Add) => {
+            (CompilerType::Int | CompilerType::Nat, CompilerBinary::Add) => {
                 combine_ranges(&left, &right, |a, b| IntRange {
                     lower: &a.lower + &b.lower,
                     upper: &a.upper + &b.upper,
                 })
             }
-            (CompilerType::Int, CompilerBinary::Subtract) => {
+            (CompilerType::Int | CompilerType::Nat, CompilerBinary::Subtract) => {
                 combine_ranges(&left, &right, |a, b| IntRange {
                     lower: &a.lower - &b.upper,
                     upper: &a.upper - &b.lower,
                 })
             }
-            (CompilerType::Int, CompilerBinary::Multiply) => {
+            (CompilerType::Int | CompilerType::Nat, CompilerBinary::Multiply) => {
                 combine_ranges(&left, &right, multiply_range)
             }
             (CompilerType::Int, CompilerBinary::Modulo) => modulo_range(&left, &right),
@@ -28879,7 +28962,7 @@ mod tests {
     }
 
     #[test]
-    fn models_nat_comparison_by_forgetting_constraint_evidence() {
+    fn models_nat_comparison_and_retains_closed_arithmetic_evidence() {
         // TOPAL-NUM-NAT-001, TOPAL-TYPE-EQUALITY-001,
         // TOPAL-TYPE-ORDERING-001, TOPAL-NUM-THREE-WAY-COMPARE-001
         let source = include_str!("../../../examples/language/nat-equality-and-ordering.t");
@@ -28924,9 +29007,11 @@ mod tests {
         assert_eq!(right.value_type.name(), "(Nat, Nat)");
 
         let arithmetic = "use language (version is v0.1)\none : Nat is 1\none + one\n";
+        let arithmetic = analyze_for_compiler(arithmetic).unwrap();
+        assert_eq!(arithmetic.main.result.value_type, CompilerType::Nat);
         assert_eq!(
-            analyze_for_compiler(arithmetic).unwrap_err().code,
-            "E-TYPE-MISMATCH"
+            arithmetic.main.result.int_range,
+            Some(IntRange::exact(BigInt::from(2)))
         );
     }
 
@@ -43082,11 +43167,37 @@ mod tests {
     }
 
     #[test]
-    fn rejects_a_library_until_compiled_dependency_loading_exists() {
+    fn admits_dependency_only_library_selection_and_shared_diagnostics() {
+        // TOPAL-SYN-LIBRARY-001, TOPAL-LIB-DEPENDENCY-001,
+        // TOPAL-COMPILER-LIBRARY-DEPENDENCY-001
         let source = "use language (version is v0.1)\nuse library std (version is v0.1)\n()\n";
+        analyze_for_compiler(source).unwrap();
+        analyze_for_compiler(include_str!(
+            "../../../examples/data-transfer/packet-filter.t"
+        ))
+        .unwrap();
+
         assert_eq!(
-            analyze_for_compiler(source).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
+            analyze_for_compiler(
+                "use language (version is v0.1)\nuse library other (version is v0.1)\n()\n"
+            )
+            .unwrap_err()
+            .code,
+            "E-UNSUPPORTED-LIBRARY"
+        );
+        assert_eq!(
+            analyze_for_compiler(
+                "use language (version is v0.1)\nuse library std (version is v0.2)\n()\n"
+            )
+            .unwrap_err()
+            .code,
+            "E-UNSUPPORTED-LIBRARY-VERSION"
+        );
+        assert_eq!(
+            analyze_for_compiler("use language (version is v0.1)\nuse library std (version is v0.1)\nuse library std (version is v0.1)\n()\n")
+                .unwrap_err()
+                .code,
+            "E-DUPLICATE-LIBRARY"
         );
     }
 
@@ -44063,7 +44174,7 @@ mod tests {
                     "stream foreach { value }\n  _ is value + 1\n  ()",
                     1,
                 ),
-                "E-TYPE-MISMATCH",
+                "E-COMPILER-UNSUPPORTED",
             ),
         ] {
             assert_eq!(analyze_for_compiler(&invalid).unwrap_err().code, expected);

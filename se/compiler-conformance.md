@@ -33,6 +33,7 @@ tracked in the [compiler parity closure plan](compiler-parity-plan.md).
 | 2d-b2 | explicit Rational infinity endpoints with finite-Int endpoint conversion, construction, membership, intersection, emptiness, bound observation, display, and debugging | complete |
 | 2d-b | unbounded range construction and infinity endpoints after their prerequisite normative and runtime work | planned |
 | 2e | Nat constraint-evidence forgetting for exact equality, ordering, three-way comparison, mixed Nat/Int/Rational comparison, and derived product equality | complete |
+| 2e1 | evidence-sensitive finite Nat addition, multiplication, and subtraction over the exact Int representation | complete |
 | 2f | root-scope nominal `ModNat`/`ModInt` declarations with direct finite ranges, proven checked construction, explicit reduction, wrapping arithmetic/negation, equality, ordering, comparison, private function passage, canonical display, and debugging | complete |
 | 2f1 | earlier named finite-range operands and dynamic checked modular construction with source-located Result/Error composition and nominal Result debugging | complete |
 | 3a | source-ordered statically decidable scalar overloads, complete-header forward calls, and basic static nullary, unary, and binary functions | complete |
@@ -241,6 +242,7 @@ tracked in the [compiler parity closure plan](compiler-parity-plan.md).
 | 6b2b2o | exact nonempty Map (String, Function) values carrying immutable live-root snapshots through private parameters/results, exact-key lookup, collision policies, packages, Tuple/Record containment, and GDB observation | complete |
 | 6b2b2 | recursive/overloaded nested Function environments beyond 6b2b2o; escaping anonymous Functions and nested Functions outside 6b2b2i; unsupported Function-containing representations; callable/Scope/Generator root members; other root-selection forms; Scope results/escape; nested qualified Scope members; generator shapes not otherwise admitted and generator-bearing boundaries; non-root aliases; multi-component/external `use`; published module/package/application interfaces; source and compiled libraries; GEIR instantiation; incremental and link-time compilation | planned |
 | 6b3a | source-root `use` of the live root or a retained root alias, immutable snapshot preservation, direct qualified members, runtime erasure, and debugging | complete |
+| 6b4 | dependency-only `std` and `advent-of-code` v0.1 selection with shared diagnostics and complete runtime/artifact erasure | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
 | 6c2b | exact scalar defining-context forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |

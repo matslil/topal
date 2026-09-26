@@ -172,6 +172,22 @@ This requirement covers `TOPAL-NUM-NAT-001`, `TOPAL-TYPE-CONSTRAINT-001`,
 `TOPAL-NUM-COMPARE-001`, and `TOPAL-NUM-THREE-WAY-COMPARE-001`; it realizes
 `TOPAL-COMPILER-NAT-COMPARISON-001` for compiler increment 2e.
 
+## TOPAL-COMP-NAT-ARITHMETIC-001 — Nat arithmetic evidence
+
+The checked compiler shall retain Nat for finite Nat addition and
+multiplication. It shall retain Nat for subtraction only when operand range
+evidence proves the result nonnegative; otherwise Nat subtraction and mixed
+Nat/Int arithmetic shall forget evidence to Int. Lowering shall evaluate each
+operand once and reuse the existing exact arbitrary-precision Int operation.
+
+Tests shall cover dynamic Nat parameters, retained and forgotten result
+classifiers, exact interpreter output, direct Int-runtime LLVM calls, Nat
+DWARF identity, the compiler corpus, and resource baselines. This shall add no
+unsigned representation, copy, validation operation, Nat-specific runtime,
+foreign dependency, public ABI, or `topal-native/6` revision. This realizes
+`TOPAL-COMPILER-NAT-ARITHMETIC-001` and
+`TOPAL-NUM-NAT-ARITHMETIC-001` for compiler increment 2e1.
+
 ## TOPAL-COMP-MODULAR-001 — Nominal modular numbers
 
 The compiler shall collect admitted root-scope `ModNat` and `ModInt`
@@ -2767,6 +2783,25 @@ members, function-body `use`, packages, source/compiled libraries, and public
 interface metadata remain rejected. This realizes
 `TOPAL-COMPILER-NAMESPACE-USE-001` and `TOPAL-NAMESPACE-USE-001` for compiler
 increment 6b3a.
+
+## TOPAL-COMP-LIBRARY-DEPENDENCY-001 — Dependency-only library selection
+
+The checked compiler shall accept the `std` and `advent-of-code` v0.1 library
+declarations in the source-root dependency prefix and shall reproduce the
+shared unavailable-library, version, duplicate, and ordering diagnostics.
+When no selected-library member is referenced, lowering shall erase the
+declaration completely while the source digest continues to cover it.
+
+Native tests shall compile the shared standard-library harness and the first
+data-transfer application, compare their exact interpreter output, validate
+freestanding ELF/DWARF, prove absent library/namespace runtime IR, and retain
+empty artifact dependency metadata. This shall add no linked dependency,
+initializer, authority, filesystem lookup during execution, public interface,
+or `topal-native/6` revision. Qualified library members and source/compiled
+library loading remain rejected rather than being replaced by compiler-owned
+semantics. This realizes `TOPAL-COMPILER-LIBRARY-DEPENDENCY-001`,
+`TOPAL-SYN-LIBRARY-001`, and `TOPAL-LIB-DEPENDENCY-001` for compiler increment
+6b4.
 
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 

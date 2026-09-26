@@ -13649,6 +13649,64 @@ fn fundamental_constraint_bases_are_freestanding_and_match_the_interpreter() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn dependency_only_standard_library_program_matches_the_interpreter() {
+    // TOPAL-SYN-LIBRARY-001, TOPAL-LIB-DEPENDENCY-001,
+    // TOPAL-COMPILER-LIBRARY-DEPENDENCY-001,
+    // TOPAL-COMPILER-NAT-ARITHMETIC-001
+    let directory = temporary("dependency-only-standard-library");
+    let source = directory.join("packet-filter.t");
+    let executable = directory.join("application");
+    let source_text = include_str!("../../../examples/data-transfer/packet-filter.t");
+    fs::write(&source, source_text).unwrap();
+    let expected = Session::new()
+        .evaluate_source_file(source_text, &mut std::io::sink())
+        .unwrap()
+        .to_string()
+        + "\n";
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, expected.as_bytes());
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+    assert!(metadata.dependencies.is_empty());
+
+    let failing_source = directory.join("top-level-projection-failure.t");
+    let failing_executable = directory.join("failing-application");
+    let failing_text = "use language (version is v0.1)\nuse library std (version is v0.1)\nPass is Boolean constraint { value } value\nidentity is fn (value : Boolean) -> Boolean\n  value\nrejected : Pass is Pass (identity false)\nrejected\n";
+    fs::write(&failing_source, failing_text).unwrap();
+    let interpreted = Session::new()
+        .evaluate_source_file(failing_text, &mut std::io::sink())
+        .unwrap_err();
+    assert_eq!(interpreted.code, "E-RESULT-PROJECTION-OUTSIDE-FUNCTION");
+    let compiled = run(topalc().args([
+        "-o",
+        failing_executable.to_str().unwrap(),
+        failing_source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&failing_executable));
+    assert_eq!(executed.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&executed.stdout)
+            .contains("Error ( domain is root.Pass(Boolean), code is out-of-range )")
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn nominal_sums_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
     // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001,

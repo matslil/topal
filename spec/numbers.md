@@ -56,6 +56,19 @@ wrapping. A function parameter or result classified as `Nat` accepts zero,
 positive finite `Int` values, and positive infinity, and rejects negative
 values at the applicable validation boundary.
 
+### TOPAL-NUM-NAT-ARITHMETIC-001 — Evidence-sensitive natural arithmetic
+
+For finite `a, b : Nat`, addition and multiplication SHALL return `Nat` because
+their exact mathematical results preserve the nonnegative constraint. Binary
+subtraction SHALL return `Nat` when available static range or ordering evidence
+proves `b <= a`; otherwise it SHALL return `Int`. Mixed Nat/Int arithmetic SHALL
+forget Nat evidence and follow the corresponding exact Int operation.
+
+Evidence preservation or forgetting SHALL NOT copy, narrow, wrap, saturate, or
+reinterpret either operand. These operations use the same unbounded exact
+integer values and arithmetic as `TOPAL-NUM-ADD-001`, `TOPAL-NUM-SUB-001`, and
+`TOPAL-NUM-MUL-001`.
+
 ### TOPAL-NUM-INFINITY-001 — Contextual exact infinity construction
 
 The exact lexemes `+Infinity` and `-Infinity` construct the corresponding
