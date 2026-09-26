@@ -5744,14 +5744,29 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
         span: Span,
     ) -> LlValue {
+        // The private String-pair node layout is two pointer fields followed by
+        // the next-node pointer. Keep this specialization explicit until the
+        // general aggregate-list layout machinery is available.
+        let string_pair_optional_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (
+                CompilerType::List(element),
+                CompilerType::Optional(payload)
+            ) if element.as_ref()
+                == &CompilerType::Tuple(vec![CompilerType::String, CompilerType::String])
+                && payload.as_ref() == &CompilerType::String
+        );
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
             .to_owned();
-        let initial = self
-            .emit_expression(initial, body, environment)
-            .integer()
-            .to_owned();
+        let initial_value = self.emit_expression(initial, body, environment);
+        let initial = if string_pair_optional_fold {
+            initial_value.optional_pointer()
+        } else {
+            initial_value.integer()
+        }
+        .to_owned();
         let preheader = body.current_block.clone();
         let loop_label = body.label("list.fold.loop");
         let visit = body.label("list.fold.visit");
@@ -5789,8 +5804,23 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
+        let second = string_pair_optional_fold.then(|| {
+            let address = body.instruction(
+                &format!("getelementptr i8, ptr {current}, i64 8"),
+                span,
+                &mut self.debug,
+            );
+            body.instruction(
+                &format!("load ptr, ptr {address}, align 8"),
+                span,
+                &mut self.debug,
+            )
+        });
         let next_address = body.instruction(
-            &format!("getelementptr i8, ptr {current}, i64 8"),
+            &format!(
+                "getelementptr i8, ptr {current}, i64 {}",
+                if string_pair_optional_fold { 16 } else { 8 }
+            ),
             span,
             &mut self.debug,
         );
@@ -5800,9 +5830,23 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
+        let state_value = if string_pair_optional_fold {
+            LlValue::Optional {
+                value: state.clone(),
+                payload: CompilerType::String,
+                function_captures: Vec::new(),
+            }
+        } else {
+            LlValue::Int(state.clone())
+        };
+        let entry_value = if let Some(second) = second {
+            LlValue::Tuple(vec![LlValue::String(value), LlValue::String(second)])
+        } else {
+            LlValue::Int(value)
+        };
         let mut action_environment = self.emit_collection_environment(
             parameters,
-            &[LlValue::Int(state.clone()), LlValue::Int(value)],
+            &[state_value, entry_value],
             body,
             environment,
         );
@@ -5849,9 +5893,14 @@ impl<'a> Generator<'a> {
             body.terminator(&format!("br label %{done}"), location);
             Some((payload, finish_label))
         } else {
+            let value = if string_pair_optional_fold {
+                value.optional_pointer()
+            } else {
+                value.integer()
+            };
             body.define_reserved(
                 &next_state,
-                &format!("freeze ptr {}", value.integer()),
+                &format!("freeze ptr {value}"),
                 span,
                 &mut self.debug,
             );
@@ -5868,6 +5917,12 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ))
+        } else if string_pair_optional_fold {
+            LlValue::Optional {
+                value: state,
+                payload: CompilerType::String,
+                function_captures: Vec::new(),
+            }
         } else {
             LlValue::Int(state)
         }
@@ -13617,6 +13672,55 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.optional.some(ptr"));
         assert!(llvm.contains("call ptr @topal.runtime.optional.payload(ptr"));
         assert!(llvm.contains("getelementptr i8, ptr"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn lowers_string_pair_lookup_fold_as_one_finite_private_loop() {
+        // TOPAL-COMPILER-LIBRARY-STRING-PAIR-FOLD-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-LIST-ENTRY-COUNT-001
+        let program = analyze_for_compiler_with_modules(
+            include_str!("../../../tests/standard-library/store-memory.t"),
+            &[
+                CompilerSourceModule {
+                    identity: vec!["std".into()],
+                    source_name: "library/std/module.t".into(),
+                    source: include_str!("../../../library/std/module.t").into(),
+                },
+                CompilerSourceModule {
+                    identity: vec!["std".into(), "store".into(), "memory".into()],
+                    source_name: "library/std/store/memory.t".into(),
+                    source: include_str!("../../../library/std/store/memory.t").into(),
+                },
+            ],
+        )
+        .unwrap();
+        let lookup = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.store.memory.lookup")
+            .unwrap();
+        let object_count = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.store.memory.object-count")
+            .unwrap();
+        assert_eq!(
+            lookup.result_type,
+            CompilerType::Optional(Box::new(CompilerType::String))
+        );
+        assert_eq!(object_count.result_type, CompilerType::Nat);
+
+        let llvm = Generator::new(&program, "store-memory.t").emit();
+        let lookup_body = llvm
+            .split_once(&format!("define internal fastcc ptr @{}(", lookup.symbol))
+            .unwrap()
+            .1;
+        assert!(lookup_body.contains("list.fold.loop"));
+        assert!(lookup_body.contains("getelementptr i8, ptr"));
+        assert!(lookup_body.contains("i64 16"));
+        assert!(lookup_body.contains("phi ptr"));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", lookup.symbol)));
         assert!(!llvm.contains("call ptr %"));
     }
 

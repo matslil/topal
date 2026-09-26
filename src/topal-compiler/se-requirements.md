@@ -2895,6 +2895,26 @@ call, foreign dependency, host collection, or native ABI revision. This realizes
 `TOPAL-COMPILER-LIBRARY-GENERIC-001`, `TOPAL-TYPE-OPTIONAL-001`, and
 `TOPAL-TYPE-PRODUCT-001` for compiler increment 6b8.
 
+## TOPAL-COMP-LIBRARY-STRING-PAIR-FOLD-001 — Store lookup fold
+
+The checked compiler shall admit a finite left fold over the existing private
+`List (String, String)` node layout with `Optional String` state and an admitted
+source Function action. It shall retain exact state/entry classifiers, evaluate
+the action once per source-ordered entry, and return the initial state for an
+empty List. The backend shall lower the fold as one direct LLVM loop loading
+the two String pointers and next pointer at target-derived offsets, with no
+callback ABI, indirect call, host iterator, or foreign collection runtime.
+
+List and finite-container `entry-count` expressions shall retain `Nat` evidence
+through checked bindings and private Function results while reusing the exact
+integer carrier. Tests shall promote the unchanged store-memory conformance
+program, cover absent/known/duplicate lookup, count and guarantee checks, exact
+interpreter output, direct loop LLVM, selective dependencies, freestanding
+ELF/DWARF, compiler corpus, and resource baselines. This realizes
+`TOPAL-COMPILER-LIBRARY-STRING-PAIR-FOLD-001`, `TOPAL-COLLECTION-FOLD-001`,
+`TOPAL-LIST-ENTRY-COUNT-001`, and `TOPAL-NUM-NAT-001` for compiler increment
+6b9.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

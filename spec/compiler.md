@@ -2681,6 +2681,22 @@ This private layout SHALL use target-derived size, alignment, DWARF, and LLVM
 lowering consistently. It SHALL introduce no public aggregate ABI, generic
 runtime descriptor, foreign allocation, host collection, or native ABI revision.
 
+### TOPAL-COMPILER-LIBRARY-STRING-PAIR-FOLD-001 — Store lookup fold
+
+The compiler SHALL admit a finite left fold over `List (String, String)` with
+`Optional String` state when the action is an admitted source Function
+specialization. It SHALL visit entries once in source order, pass the exact
+state and both String fields to the action, and return the final Optional
+without copying String contents or List nodes. Empty input SHALL return the
+initial state. Lowering SHALL use a finite direct LLVM loop over the existing
+immutable two-String List-node layout and SHALL NOT use a callback ABI,
+indirect call, host iterator, or foreign collection runtime.
+
+`entry-count` over every admitted List and fixed or finite compiler container
+SHALL retain `Nat` evidence in the checked model and across a private Function
+result. Lowering MAY reuse the existing arbitrary-precision integer carrier,
+but SHALL NOT silently widen the semantic classifier to `Int`.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted

@@ -14366,6 +14366,15 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let [Expression::Identifier(operation), operand] = items
+            && matches!(
+                self.source.slice(*operation),
+                "character-count" | "entry-count"
+            )
+        {
+            let operation = self.source.slice(*operation).to_owned();
+            return self.analyze_static_character_count(&operation, operand, span, environment);
+        }
         if let Some(value) = self.analyze_external_storage(items, span, environment)? {
             return Ok(value);
         }
@@ -15754,23 +15763,59 @@ impl Analyzer {
             && self.source.slice(*operation) == "fold"
         {
             let list = self.analyze_expression(list, environment)?;
-            require_int_list(&self.source, &list, "fold subject")?;
             let initial = self.analyze_expression(initial, environment)?;
-            require_type(
-                &self.source,
-                initial.span,
-                &CompilerType::Int,
-                &initial.value_type,
-            )?;
+            let (state_type, element_type) = match (&list.value_type, &initial.value_type) {
+                (CompilerType::List(element), CompilerType::Int)
+                    if element.as_ref() == &CompilerType::Int =>
+                {
+                    (CompilerType::Int, CompilerType::Int)
+                }
+                (CompilerType::List(element), CompilerType::Optional(payload))
+                    if element.as_ref()
+                        == &CompilerType::Tuple(vec![
+                            CompilerType::String,
+                            CompilerType::String,
+                        ])
+                        && payload.as_ref() == &CompilerType::String =>
+                {
+                    (
+                        CompilerType::Optional(Box::new(CompilerType::String)),
+                        element.as_ref().clone(),
+                    )
+                }
+                (CompilerType::List(_), _) => {
+                    return Err(unsupported(
+                        &self.source,
+                        list.span,
+                        "fold subject and state classifier combination",
+                    ));
+                }
+                _ => {
+                    return Err(unsupported(
+                        &self.source,
+                        list.span,
+                        "fold subject for this List element type",
+                    ));
+                }
+            };
             let (parameters, body) = self.analyze_collection_function(
                 parameters,
                 body,
-                &[CompilerType::Int, CompilerType::Int],
+                &[state_type.clone(), element_type],
                 environment,
                 self.static_context,
                 *function_span,
             )?;
-            require_int_fold_result(&self.source, &body.result)?;
+            if state_type == CompilerType::Int {
+                require_int_fold_result(&self.source, &body.result)?;
+            } else {
+                require_type(
+                    &self.source,
+                    body.result.span,
+                    &state_type,
+                    &body.result.value_type,
+                )?;
+            }
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListFold {
                     list: Box::new(list),
@@ -15778,7 +15823,7 @@ impl Analyzer {
                     parameters,
                     body: Box::new(body),
                 },
-                value_type: CompilerType::Int,
+                value_type: state_type,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -16210,15 +16255,6 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
-        }
-        if let [Expression::Identifier(operation), operand] = items
-            && matches!(
-                self.source.slice(*operation),
-                "character-count" | "entry-count"
-            )
-        {
-            let operation = self.source.slice(*operation).to_owned();
-            return self.analyze_static_character_count(&operation, operand, span, environment);
         }
         if let [Expression::Identifier(operation), operand] = items
             && matches!(
@@ -17002,7 +17038,7 @@ impl Analyzer {
             }
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListEntryCount(Box::new(operand_value)),
-                value_type: CompilerType::Int,
+                value_type: CompilerType::Nat,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -17023,7 +17059,7 @@ impl Analyzer {
             };
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ContainerEntryCount(Box::new(operand_value)),
-                value_type: CompilerType::Int,
+                value_type: CompilerType::Nat,
                 int_range,
                 rational_value: None,
                 span,
@@ -40270,9 +40306,10 @@ mod tests {
             panic!("expected Array Function environment results")
         };
         assert_eq!(results.len(), 15);
-        for index in [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11] {
+        for index in [0, 1, 2, 3, 4, 5, 7, 8, 9, 11] {
             assert_eq!(results[index].value_type, CompilerType::Int);
         }
+        assert_eq!(results[10].value_type, CompilerType::Nat);
         assert_eq!(results[12].value_type, CompilerType::Boolean);
         assert_eq!(
             results[6].value_type,
@@ -40360,9 +40397,11 @@ mod tests {
             panic!("expected Map Function environment results")
         };
         assert_eq!(results.len(), 16);
-        for result in &results[..14] {
+        for result in &results[..12] {
             assert_eq!(result.value_type, CompilerType::Int);
         }
+        assert_eq!(results[12].value_type, CompilerType::Nat);
+        assert_eq!(results[13].value_type, CompilerType::Int);
         assert_eq!(results[14].value_type, CompilerType::Boolean);
         assert_eq!(
             results[15].value_type,
