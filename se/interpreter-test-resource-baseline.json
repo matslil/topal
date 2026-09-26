@@ -1541,6 +1541,11 @@
       "cpu_time_ns": 5255299,
       "memory_peak_bytes": 18513920,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/constraint-fundamental-bases.t": {
+      "cpu_time_ns": 14774939,
+      "memory_peak_bytes": 18518016,
+      "samples_per_test": 50
     }
   }
 }

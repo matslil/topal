@@ -3066,6 +3066,16 @@
       "cpu_time_ns": 174240,
       "memory_peak_bytes": 18583552,
       "samples_per_test": 500
+    },
+    "topalc-build::examples/language/constraint-fundamental-bases.t": {
+      "cpu_time_ns": 138718280,
+      "memory_peak_bytes": 42926080,
+      "samples_per_test": 50
+    },
+    "topalc-run::examples/language/constraint-fundamental-bases.t": {
+      "cpu_time_ns": 462999,
+      "memory_peak_bytes": 18530304,
+      "samples_per_test": 500
     }
   }
 }

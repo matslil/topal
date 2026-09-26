@@ -1411,18 +1411,42 @@ impl<'a> Generator<'a> {
                             body.subprogram,
                         );
                         let location = self.debug.location(binding.span, body.subprogram);
-                        let machine_value = match base.as_ref() {
-                            CompilerType::Int | CompilerType::Nat => value.integer(),
+                        match base.as_ref() {
+                            CompilerType::Boolean => {
+                                body.debug_value(&value, variable, location);
+                            }
+                            CompilerType::Int | CompilerType::Nat => {
+                                self.emit_aggregate_debug_shadow(
+                                    value.integer(),
+                                    &binding.value.value_type,
+                                    variable,
+                                    location,
+                                    body,
+                                    binding.span,
+                                );
+                            }
+                            CompilerType::Rational => {
+                                self.emit_aggregate_debug_shadow(
+                                    value.rational(),
+                                    &binding.value.value_type,
+                                    variable,
+                                    location,
+                                    body,
+                                    binding.span,
+                                );
+                            }
+                            CompilerType::String => {
+                                self.emit_aggregate_debug_shadow(
+                                    value.string(),
+                                    &binding.value.value_type,
+                                    variable,
+                                    location,
+                                    body,
+                                    binding.span,
+                                );
+                            }
                             _ => unreachable!("checked refined debug base is supported"),
-                        };
-                        self.emit_aggregate_debug_shadow(
-                            machine_value,
-                            &binding.value.value_type,
-                            variable,
-                            location,
-                            body,
-                            binding.span,
-                        );
+                        }
                     } else if matches!(
                         binding.value.value_type,
                         CompilerType::Array { .. }
@@ -6297,6 +6321,9 @@ impl<'a> Generator<'a> {
     ) -> String {
         match (value, value_type) {
             (LlValue::Unit, CompilerType::Unit) => "null".into(),
+            (LlValue::Boolean(value), CompilerType::Boolean) => {
+                self.emit_boxed_boolean(value, body, span)
+            }
             (LlValue::Modular { value, modular }, CompilerType::Modular(modular_type))
                 if modular == modular_type =>
             {
@@ -6386,6 +6413,20 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn emit_boxed_boolean(&mut self, value: &str, body: &mut FunctionBody, span: Span) -> String {
+        let storage = body.instruction(
+            "call ptr @topal.platform.allocate(i64 1)",
+            span,
+            &mut self.debug,
+        );
+        body.effect(
+            &format!("store i1 {value}, ptr {storage}, align 1"),
+            span,
+            &mut self.debug,
+        );
+        storage
+    }
+
     fn emit_optional_payload_pointer(
         &mut self,
         value: &LlValue,
@@ -6458,6 +6499,11 @@ impl<'a> Generator<'a> {
     ) -> LlValue {
         match success {
             CompilerType::Unit => LlValue::Unit,
+            CompilerType::Boolean => LlValue::Boolean(body.instruction(
+                &format!("load i1, ptr {payload}, align 1"),
+                span,
+                &mut self.debug,
+            )),
             CompilerType::Int | CompilerType::Nat => LlValue::Int(payload.into()),
             CompilerType::Modular(modular) => LlValue::Modular {
                 value: payload.into(),
@@ -13390,6 +13436,31 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
         assert!(llvm.contains("phi ptr"));
         assert!(llvm.contains("#dbg_declare(ptr"));
+        assert!(!llvm.contains("topal.runtime.constraint"));
+    }
+
+    #[test]
+    fn emits_fundamental_constraint_bases_and_boxed_boolean_results() {
+        // TOPAL-TYPE-CONSTRAINT-VALIDATE-001,
+        // TOPAL-COMPILER-CONSTRAINT-FUNDAMENTAL-BASES-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/constraint-fundamental-bases.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "constraint-fundamental-bases.t").emit();
+        for name in ["Pass", "Nonempty", "PositiveRational"] {
+            assert!(
+                llvm.contains(&format!(
+                    "DIDerivedType(tag: DW_TAG_typedef, name: \"{name}\""
+                )),
+                "{llvm}"
+            );
+        }
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 1)"));
+        assert!(llvm.contains("store i1 %"));
+        assert!(llvm.contains("load i1, ptr %"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.success"));
+        assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
         assert!(!llvm.contains("topal.runtime.constraint"));
     }
 
