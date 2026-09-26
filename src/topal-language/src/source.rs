@@ -3131,6 +3131,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_error_code_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_comparison_value_decision_action_step(
             source,
             expression,
@@ -3708,6 +3716,102 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a selected returning Result action exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_error_code_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_error_code_action_shape(rules) {
+            return Ok(None);
+        }
+        let subject = self.evaluate_expression(source, subject, trace)?;
+        let is_error = matches!(subject, Value::Error { .. });
+        let mut selected = None;
+        for (index, rule) in rules.iter().enumerate() {
+            let matches = match rule.matcher {
+                DecisionMatcher::Result { error, .. } => error == is_error,
+                DecisionMatcher::ErrorCode {
+                    namespace,
+                    vocabulary,
+                    code,
+                    ..
+                } => {
+                    let namespace = source.slice(namespace);
+                    let vocabulary = source.slice(vocabulary);
+                    let code_span = code;
+                    let code = source.slice(code_span);
+                    let known = namespace == "lang"
+                        && vocabulary == "arithmetic"
+                        && is_arithmetic_error_code(code);
+                    if !known {
+                        return Err(diagnostic(
+                            source,
+                            "E-UNKNOWN-ERROR-CODE",
+                            code_span,
+                            "the Error-code pattern requires a code published by the qualified arithmetic namespace",
+                        ));
+                    }
+                    matches!(&subject, Value::Error { code: subject_code, .. } if subject_code == code)
+                }
+                _ => unreachable!("preselected complete qualified Error-code decision shape"),
+            };
+            let detail = format!("rule={index};matched={matches}");
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-RESULT-001",
+                detail: &detail,
+            });
+            if matches {
+                selected = Some((index, rule));
+                break;
+            }
+        }
+        let (index, selected) = selected.expect("a complete Error-code decision selects an action");
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-RESULT-001",
+            detail: &detail,
+        });
+        if let DecisionMatcher::ErrorCode { code, .. } = selected.matcher {
+            trace.record(TraceEvent {
+                event: "error.code.matched",
+                rule: "TOPAL-DECISION-ERROR-CODE-001",
+                detail: source.slice(code),
+            });
+        }
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning Error-code action is a lexical block")
+        };
+        let mut branch = self.clone();
+        if let DecisionMatcher::Result { binding, .. } = selected.matcher {
+            let name = source.slice(binding);
+            branch.bindings.insert(name.to_owned(), subject);
+            trace.record(TraceEvent {
+                event: "result.payload.bound",
+                rule: "TOPAL-DECISION-RESULT-001",
+                detail: name,
+            });
+        }
+        let step = branch.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning Error-code action exits its function"
         );
         Ok(Some(step))
     }
@@ -10956,6 +11060,24 @@ pub(super) fn is_supported_returning_result_action_shape(rules: &[DecisionRule])
     ) && rules
         .iter()
         .all(|rule| direct_expression_returns_from_function(&rule.action))
+}
+
+pub(super) fn is_supported_returning_error_code_action_shape(rules: &[DecisionRule]) -> bool {
+    let mut ok = 0;
+    let mut error_fallback = 0;
+    let mut error_codes = 0;
+    for rule in rules {
+        match rule.matcher {
+            DecisionMatcher::Result { error: false, .. } => ok += 1,
+            DecisionMatcher::Result { error: true, .. } => error_fallback += 1,
+            DecisionMatcher::ErrorCode { .. } => error_codes += 1,
+            _ => return false,
+        }
+        if !direct_expression_returns_from_function(&rule.action) {
+            return false;
+        }
+    }
+    ok == 1 && error_fallback <= 1 && error_codes > 0
 }
 
 pub(super) fn is_supported_returning_comparison_value_action_shape(
@@ -21347,6 +21469,52 @@ fn result_decision_actions_propagate_return_after_selection() {
             .filter(|event| event.contains("result.payload.bound"))
             .count(),
         2
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
+}
+
+#[test]
+fn error_code_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!(
+                "../../../examples/language/function-return-error-code-decision-actions.t"
+            ),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, false, true, 0, 3, 4)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        6
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| {
+                event.contains("decision.rule.selected")
+                    && event.contains("TOPAL-DECISION-RESULT-001")
+            })
+            .count(),
+        6
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("error.code.matched"))
+            .count(),
+        3
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("result.payload.bound"))
+            .count(),
+        3
     );
     assert!(!trace.iter().any(|event| event.contains("1000")));
 }

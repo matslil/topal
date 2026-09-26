@@ -76,7 +76,7 @@ fn every_language_example_executes_through_the_debugger() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 303);
+    assert_eq!(examples.len(), 304);
     let commands = "use language ( version is v0.1, features is ( debug ) )\ncontinue\nquit\n";
     for example in examples {
         let mut child = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
@@ -6108,6 +6108,45 @@ fn records_result_decision_action_exits_reversibly() {
             .matches("function.exit [TOPAL-FUNCTION-ORDINARY-001] choose")
             .count(),
         2
+    );
+    assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
+}
+
+#[test]
+fn records_error_code_decision_action_exits_reversibly() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-ERROR-CODE-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001
+    let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/debugger/");
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-debug"))
+        .args([
+            "--script",
+            &format!("{root}function-return-error-code-decision-actions.debug"),
+            &language_example("function-return-error-code-decision-actions.t"),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(stdout.matches("function.return.explicit").count(), 6);
+    assert_eq!(stdout.matches("decision.rule.selected").count(), 6);
+    assert_eq!(stdout.matches("error.code.matched").count(), 3);
+    assert_eq!(stdout.matches("result.payload.bound").count(), 3);
+    assert_eq!(
+        stdout
+            .matches("function.exit [TOPAL-FUNCTION-ORDINARY-001] recover")
+            .count(),
+        3
+    );
+    assert_eq!(
+        stdout
+            .matches("function.exit [TOPAL-FUNCTION-ORDINARY-001] classify")
+            .count(),
+        3
     );
     assert!(!stdout.contains("integer.literal [TOPAL-NUM-LITERAL-001] 1000"));
 }

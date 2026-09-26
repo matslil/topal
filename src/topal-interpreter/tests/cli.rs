@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 303);
+    assert_eq!(examples.len(), 304);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2056,6 +2056,32 @@ fn every_mode_returns_from_result_decision_actions() {
             assert_eq!(trace.matches("function.return.explicit").count(), 2);
             assert_eq!(trace.matches("decision.rule.selected").count(), 2);
             assert_eq!(trace.matches("result.payload.bound").count(), 2);
+            assert!(!trace.contains("\"detail\":\"1000\""));
+        }
+    }
+}
+
+#[test]
+fn every_mode_returns_from_error_code_decision_actions() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-ERROR-CODE-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-ERROR-CODE-DECISION-ACTIONS-001
+    let source =
+        include_str!("../../../examples/language/function-return-error-code-decision-actions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(true, false, true, 0, 3, 4)\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert_eq!(trace.matches("function.return.explicit").count(), 6);
+            assert_eq!(trace.matches("decision.rule.selected").count(), 6);
+            assert_eq!(trace.matches("error.code.matched").count(), 3);
+            assert_eq!(trace.matches("result.payload.bound").count(), 3);
             assert!(!trace.contains("\"detail\":\"1000\""));
         }
     }

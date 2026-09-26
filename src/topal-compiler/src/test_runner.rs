@@ -139,6 +139,7 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/function-return-constraint-constructor.t",
     "examples/language/function-return-decision-subject.t",
     "examples/language/function-return-enum-fallback-decision-actions.t",
+    "examples/language/function-return-error-code-decision-actions.t",
     "examples/language/function-return-exhaustive-boolean-subject.t",
     "examples/language/function-return-exhaustive-enum-decision-actions.t",
     "examples/language/function-return-fallback-decision-subject.t",
