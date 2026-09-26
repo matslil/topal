@@ -4273,7 +4273,24 @@ impl<'a> Generator<'a> {
             location,
         );
         body.start_block(&failure);
-        if self.current_result_captures.is_empty() {
+        if self.current_function_return_type.is_none() {
+            self.emit_print(
+                &LlValue::Result {
+                    value: value.clone(),
+                    success: success.clone(),
+                    function_captures: function_captures.clone(),
+                },
+                body,
+                span,
+            );
+            self.emit_write_literal("\n", body, span);
+            body.effect(
+                "call void @topal.platform.exit(i64 1)",
+                span,
+                &mut self.debug,
+            );
+            body.terminator("unreachable", location);
+        } else if self.current_result_captures.is_empty() {
             body.terminator(&format!("ret ptr {value}"), location);
         } else {
             let return_type = self
@@ -13462,6 +13479,27 @@ mod tests {
         assert!(llvm.contains("call ptr @topal.runtime.result.success"));
         assert!(llvm.contains("call ptr @topal.runtime.result.failure(i32 0"));
         assert!(!llvm.contains("topal.runtime.constraint"));
+    }
+
+    #[test]
+    fn erases_dependency_only_library_selection_and_preserves_nat_arithmetic() {
+        // TOPAL-SYN-LIBRARY-001, TOPAL-LIB-DEPENDENCY-001,
+        // TOPAL-COMPILER-LIBRARY-DEPENDENCY-001,
+        // TOPAL-COMPILER-NAT-ARITHMETIC-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/data-transfer/packet-filter.t"
+        ))
+        .unwrap();
+        let llvm = Generator::new(&program, "packet-filter.t").emit();
+        let main = llvm
+            .split_once("define internal void @topal.main")
+            .expect("module defines the source entry point")
+            .1;
+        assert!(llvm.contains("call ptr @topal.runtime.int.add"));
+        assert!(main.contains("result.project.error"));
+        assert!(main.contains("ret void"));
+        assert!(!llvm.contains("topal.runtime.library"));
+        assert!(!llvm.contains("topal.runtime.namespace"));
     }
 
     #[test]

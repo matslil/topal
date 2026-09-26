@@ -315,11 +315,17 @@ const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/use-namespace.t",
 ];
 
+const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
+    "examples/data-transfer/packet-filter.t",
+    "tests/standard-library/harness.t",
+];
+
 pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String> {
     let arguments = Arguments::parse(arguments)?;
     let root = env::current_dir().map_err(|error| error.to_string())?;
     let tests = SHARED_REGRESSIONS
         .iter()
+        .chain(EXTERNAL_PARITY_REGRESSIONS)
         .filter(|identity| {
             arguments
                 .exact
