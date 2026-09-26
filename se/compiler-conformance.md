@@ -249,6 +249,7 @@ tracked in the [compiler parity closure plan](compiler-parity-plan.md).
 | 6b8 | generic queue decomposition through exact private Optional `(Int, List Int)` construction, passage, projection, and observation | complete |
 | 6b9 | finite `List (String, String)` lookup folds with Optional String state and exact Nat count evidence through source-library boundaries | complete |
 | 6b10 | contextual `List (Nat, Nat)` construction and private Nat-state source-library folds for span gather operations | complete |
+| 6b11 | direct `List String` state folds, exact String containment, and immutable append for cyclic build-graph closure | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
 | 6c2b | exact scalar defining-context forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |

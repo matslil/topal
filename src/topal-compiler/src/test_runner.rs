@@ -319,6 +319,7 @@ const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
     "examples/data-transfer/firewall.t",
     "examples/data-transfer/packet-filter.t",
     "examples/data-transfer/rest-controller.t",
+    "tests/standard-library/build-graph.t",
     "tests/standard-library/device-i2c.t",
     "tests/standard-library/data-spans.t",
     "tests/standard-library/harness.t",

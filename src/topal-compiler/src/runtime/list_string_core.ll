@@ -1,5 +1,57 @@
 %topal.ListStringStorage = type { ptr, ptr }
 
+define internal i64 @topal.runtime.list.string.count.raw(ptr %list) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %count = phi i64 [0, %entry], [%count.next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %done, label %advance
+advance:
+  %next.pointer = getelementptr %topal.ListStringStorage, ptr %current, i32 0, i32 1
+  %next = load ptr, ptr %next.pointer, align 8
+  %count.next = add i64 %count, 1
+  br label %loop
+done:
+  ret i64 %count
+}
+
+define internal ptr @topal.runtime.list.string.concat(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %count = call i64 @topal.runtime.list.string.count.raw(ptr %left)
+  %empty = icmp eq i64 %count, 0
+  br i1 %empty, label %share.right, label %allocate
+allocate:
+  %allocation.length = shl i64 %count, 4
+  %copy = call ptr @topal.platform.allocate(i64 %allocation.length)
+  br label %loop
+loop:
+  %source = phi ptr [%left, %allocate], [%source.next, %advance]
+  %index = phi i64 [0, %allocate], [%index.next, %advance]
+  %source.value.pointer = getelementptr %topal.ListStringStorage, ptr %source, i32 0, i32 0
+  %source.value = load ptr, ptr %source.value.pointer, align 8
+  %source.next.pointer = getelementptr %topal.ListStringStorage, ptr %source, i32 0, i32 1
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %destination.offset = shl i64 %index, 4
+  %destination = getelementptr i8, ptr %copy, i64 %destination.offset
+  %destination.value.pointer = getelementptr %topal.ListStringStorage, ptr %destination, i32 0, i32 0
+  store ptr %source.value, ptr %destination.value.pointer, align 8
+  %index.next = add i64 %index, 1
+  %last = icmp eq i64 %index.next, %count
+  %destination.next = getelementptr i8, ptr %destination, i64 16
+  %destination.remaining = select i1 %last, ptr %right, ptr %destination.next
+  %destination.remaining.pointer = getelementptr %topal.ListStringStorage, ptr %destination, i32 0, i32 1
+  store ptr %destination.remaining, ptr %destination.remaining.pointer, align 8
+  br i1 %last, label %done, label %advance
+advance:
+  br label %loop
+share.right:
+  ret ptr %right
+done:
+  ret ptr %copy
+}
+
 define internal i1 @topal.runtime.list.string.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   br label %loop
@@ -27,6 +79,28 @@ finish:
   %both.empty = and i1 %left.empty, %right.empty
   ret i1 %both.empty
 different:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.list.string.contains.entry(ptr %list, ptr %value) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %missing, label %inspect
+inspect:
+  %entry.pointer = getelementptr %topal.ListStringStorage, ptr %current, i32 0, i32 0
+  %entry.value = load ptr, ptr %entry.pointer, align 8
+  %equal = call i1 @topal.runtime.string.equal(ptr %entry.value, ptr %value)
+  br i1 %equal, label %found, label %advance
+advance:
+  %next.pointer = getelementptr %topal.ListStringStorage, ptr %current, i32 0, i32 1
+  %next = load ptr, ptr %next.pointer, align 8
+  br label %loop
+found:
+  ret i1 true
+missing:
   ret i1 false
 }
 

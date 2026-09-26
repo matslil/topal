@@ -15505,7 +15505,9 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
             if let CompilerType::List(element) = &list.value_type {
-                if element.as_ref() != &CompilerType::Int {
+                if element.as_ref() != &CompilerType::Int
+                    && !(element.as_ref() == &CompilerType::String && operation == "append")
+                {
                     return Err(unsupported(
                         &self.source,
                         list.span,
@@ -15842,6 +15844,16 @@ impl Analyzer {
                 {
                     (CompilerType::Nat, element.as_ref().clone())
                 }
+                (CompilerType::List(element), CompilerType::List(state_element))
+                    if state_element.as_ref() == &CompilerType::String
+                        && (element.as_ref() == &CompilerType::String
+                            || compiler_string_pair(element.as_ref())) =>
+                {
+                    (
+                        CompilerType::List(Box::new(CompilerType::String)),
+                        element.as_ref().clone(),
+                    )
+                }
                 (CompilerType::List(_), _) => {
                     return Err(unsupported(
                         &self.source,
@@ -16099,7 +16111,9 @@ impl Analyzer {
             };
             let element = element.as_ref().clone();
             let list_type = list.value_type.clone();
-            if element != CompilerType::Int {
+            if element != CompilerType::Int
+                && !(element == CompilerType::String && operation == "contains-entry")
+            {
                 return Err(unsupported(
                     &self.source,
                     span,
