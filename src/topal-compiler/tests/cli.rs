@@ -13842,6 +13842,50 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn capability_generic_standard_library_facade_is_specialized_from_source() {
+    // TOPAL-COMPILER-LIBRARY-GENERIC-001, TOPAL-LIB-SOURCE-001,
+    // TOPAL-TYPE-CALL-001, TOPAL-CAPABILITY-COMPOSE-001
+    let directory = temporary("generic-standard-library-facade");
+    let library_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+    let source_text = "use language (\n  version is v0.1\n)\nuse library std (\n  version is v0.1\n)\nminimum is std min\nmaximum is std max\nordered is std min-max\npresent? is std present?\nabsent? is std absent?\nvalue-or is std value-or\nlower-bound is std lower-bound\nbounds is std bounds\n((minimum (4, 2)) = 2,\n (maximum (2.0, 4.0)) = (Rational 4),\n (ordered (4, 2)) = (2, 4),\n present? (Some 7), absent? (None Int),\n (value-or ((None Int), 9)) = 9,\n (lower-bound (-2 <..= 5)) = -2,\n (bounds (-2 .. 5)) = (-2, 5))\n";
+    assert_source_library_program(
+        &directory,
+        &library_root,
+        "generic-facade",
+        source_text,
+        &["std"],
+    );
+
+    let packaged_source = "use language (\n  version is v0.1\n)\nuse library std (\n  version is v0.1\n)\nenqueue? is std transfer queues enqueue?\nabsent? is std absent?\nvalue-or is std value-or\nempty : List Int is Empty\none : List Int is Entry (7, Empty)\n(absent? (enqueue? (empty, 7, 0)),\n (value-or ((enqueue? (empty, 7, 1)), empty)) = one)\n";
+    assert_source_library_program(
+        &directory,
+        &library_root,
+        "generic-packaged-module",
+        packaged_source,
+        &["std", "std.transfer.queues"],
+    );
+
+    let invalid_source = directory.join("invalid-generic-capability.t");
+    let invalid_executable = directory.join("invalid-generic-capability");
+    fs::write(
+        &invalid_source,
+        "use language (version is v0.1)\nuse library std (version is v0.1)\nminimum is std min\nminimum (false, true)\n",
+    )
+    .unwrap();
+    let rejected = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        invalid_executable.to_str().unwrap(),
+        invalid_source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("E-NO-APPLICABLE-OVERLOAD"));
+    assert!(!invalid_executable.exists());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn nominal_sums_are_private_freestanding_and_debuggable() {
     // TOPAL-COMPILER-SUM-001, TOPAL-TYPE-UNION-001,
     // TOPAL-TYPE-VARIANT-001, TOPAL-DECISION-UNION-001,

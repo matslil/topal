@@ -51,7 +51,8 @@ compiler-admitted fundamental scalar base and evidence-sensitive finite Nat
 arithmetic. Gate 2 accepts and erases unused library declarations, resolves
 qualified published functions from selectively discovered authoritative Topal
 modules, specializes their private helper closure, preserves per-file
-hashbangs, and records exact source dependency digests. Its next blockers are
-capability-generic flat-facade functions, cross-module dependencies,
-library/application contexts, full package graphs, compiled interfaces, and
-separate compilation.
+hashbangs, records exact source dependency digests, and specializes admitted
+capability-generic facade and packaged-module Functions directly from source.
+Its next blockers are aggregate Optional ABI closure for generic queue
+decomposition, cross-module dependencies, library/application contexts, full
+package graphs, compiled interfaces, and separate compilation.

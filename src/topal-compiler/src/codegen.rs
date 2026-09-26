@@ -10470,6 +10470,11 @@ fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Error => LlValue::Error(value),
         CompilerType::SourceLocation => LlValue::SourceLocation(value),
+        CompilerType::List(element) => LlValue::List {
+            value,
+            element: element.as_ref().clone(),
+            function_captures: Vec::new(),
+        },
         _ => unreachable!("checked Optional payload type is supported"),
     }
 }
@@ -13534,6 +13539,37 @@ mod tests {
         }
         assert!(!llvm.contains("topal.runtime.library"));
         assert!(!llvm.contains("topal.runtime.namespace"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn specializes_capability_generic_source_library_calls_directly() {
+        // TOPAL-COMPILER-LIBRARY-GENERIC-001, TOPAL-LIB-SOURCE-001,
+        // TOPAL-CAPABILITY-COMPOSE-001
+        let program = analyze_for_compiler_with_modules(
+            "use language (version is v0.1)\nuse library std (version is v0.1)\nminimum is std min\nminimum (4, 2)\n",
+            &[CompilerSourceModule {
+                identity: vec!["std".into()],
+                source_name: "library/std/module.t".into(),
+                source: include_str!("../../../library/std/module.t").into(),
+            }],
+        )
+        .unwrap();
+        let [minimum] = program.functions.as_slice() else {
+            panic!("one selected generic function is specialized")
+        };
+        assert_eq!(minimum.parameters[0].value_type, CompilerType::Int);
+        assert_eq!(minimum.parameters[1].value_type, CompilerType::Int);
+        assert_eq!(minimum.result_type, CompilerType::Int);
+
+        let llvm = Generator::new(&program, "generic-facade.t").emit();
+        assert!(llvm.contains(&format!(
+            "define internal fastcc ptr @{}(ptr %arg0, ptr %arg1)",
+            minimum.symbol
+        )));
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", minimum.symbol)));
+        assert!(!llvm.contains("topal.runtime.generic"));
+        assert!(!llvm.contains("topal.runtime.library"));
         assert!(!llvm.contains("call ptr %"));
     }
 

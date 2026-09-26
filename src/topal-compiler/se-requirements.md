@@ -2852,6 +2852,29 @@ corpus, and resource baselines. This realizes
 `TOPAL-COMPILER-LIBRARY-MODULE-SELECTION-001`, `TOPAL-LIB-SOURCE-001`, and
 `TOPAL-NAMESPACE-USE-001` for compiler increment 6b6.
 
+## TOPAL-COMP-LIBRARY-GENERIC-001 — Source-generic specialization
+
+The checked compiler shall infer consistent concrete classifier substitutions
+for selected source-library Function parameters bound by `Type`, `TotalOrder`,
+and their later occurrences inside admitted Optional, List, Range, and Tuple
+classifiers. TotalOrder substitutions shall require independently supported
+ordering evidence. Substitutions shall cover overload selection, parameters,
+the authoritative source body, same-module helper calls, and results; invalid
+or inconsistent substitutions shall reject before LLVM or artifact output.
+
+The backend shall lower each selected concrete instance as an existing private
+direct call without runtime type descriptors, generic dispatch, indirect calls,
+compiler-owned standard-library semantics, foreign dependencies, public ABI, or
+native ABI revision. Optional List payloads shall reuse the admitted private
+pointer carrier. Tests shall cover Int and Rational ordering, tuple results,
+Optional presence and fallback, Range observations, a packaged generic List
+operation through a private generic helper, exact interpreter output, capability
+rejection without an artifact, selective dependency metadata, freestanding
+ELF/DWARF, the compiler corpus, and bounded validation. This realizes
+`TOPAL-COMPILER-LIBRARY-GENERIC-001`, `TOPAL-LIB-SOURCE-001`,
+`TOPAL-TYPE-CALL-001`, and `TOPAL-CAPABILITY-COMPOSE-001` for compiler increment
+6b7.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

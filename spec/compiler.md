@@ -2648,6 +2648,25 @@ selected function arguments, results, classified bindings, and equality only
 when each field conversion is independently valid. It SHALL preserve once-only
 evaluation, exact values, and infinity evidence.
 
+### TOPAL-COMPILER-LIBRARY-GENERIC-001 — Source-generic specialization
+
+For a selected source-library Function, the compiler SHALL infer a consistent
+concrete classifier for each declaration-local classifier variable from the
+once-evaluated call arguments. A `(Name : Type)` binding SHALL accept only an
+admitted runtime classifier, and `(Name : TotalOrder)` SHALL additionally
+require the compiler's independently admitted total-order evidence. Every later
+occurrence of `Name`, including within an Optional, List, Range, or Tuple, SHALL
+denote that same concrete classifier. A missing, inconsistent, or unsatisfied
+binding SHALL make the overload inapplicable before artifact publication.
+
+The concrete substitution SHALL apply to parameter checking, the selected
+source body, same-module helper calls, and the result classifier. Lowering SHALL
+remain a direct private specialization of the authoritative Topal declaration;
+it SHALL NOT replace a library function with compiler-owned semantics, a
+runtime type descriptor, generic dispatch, or an indirect call. Optional List
+values admitted by such a specialization SHALL retain the existing private
+pointer representation and exact List identity.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
