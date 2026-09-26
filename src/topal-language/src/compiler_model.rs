@@ -1245,6 +1245,7 @@ pub struct CompilerProgram {
 pub struct CompilerDependency {
     pub identity: String,
     pub source_name: String,
+    pub source_text: String,
     pub source_span: Span,
 }
 
@@ -1676,11 +1677,18 @@ pub fn analyze_for_compiler_with_modules(
             combined.push('\n');
         }
         let start = combined.len();
-        combined.push_str(&module.source);
+        if module.source.starts_with("#!") {
+            let hashbang_end = module.source.find('\n').unwrap_or(module.source.len());
+            combined.push_str(&" ".repeat(hashbang_end));
+            combined.push_str(&module.source[hashbang_end..]);
+        } else {
+            combined.push_str(&module.source);
+        }
         let end = combined.len();
         dependencies.push(CompilerDependency {
             identity,
             source_name: module.source_name.clone(),
+            source_text: module.source.clone(),
             source_span: Span::new(start, end),
         });
         module_ranges.push((module.identity.clone(), Span::new(start, end)));
@@ -1757,6 +1765,7 @@ pub fn analyze_for_compiler_with_modules(
         &root_statements,
         &reserved_names,
         &mut analyzer.functions,
+        true,
     )?;
     for (identity, range) in &module_ranges {
         let statements = parsed
@@ -1783,7 +1792,13 @@ pub fn analyze_for_compiler_with_modules(
             ));
         }
         let mut functions = BTreeMap::new();
-        collect_functions(&source, &statements, &BTreeSet::new(), &mut functions)?;
+        collect_functions(
+            &source,
+            &statements,
+            &BTreeSet::new(),
+            &mut functions,
+            false,
+        )?;
         for declarations in functions.values_mut() {
             for declaration in declarations {
                 declaration.module_identity = Some(identity.clone());
@@ -2982,10 +2997,17 @@ fn collect_functions(
     statements: &[Statement],
     reserved_names: &BTreeSet<String>,
     functions: &mut BTreeMap<String, Vec<FunctionSource>>,
+    validate_effects: bool,
 ) -> Result<(), Diagnostic> {
     for statement in statements {
         if let Statement::InterfaceImplementation { declarations, .. } = statement {
-            collect_functions(source, declarations, reserved_names, functions)?;
+            collect_functions(
+                source,
+                declarations,
+                reserved_names,
+                functions,
+                validate_effects,
+            )?;
             continue;
         }
         let declaration = match statement {
@@ -3059,8 +3081,10 @@ fn collect_functions(
             _ => None,
         };
         if let Some(mut function) = declaration {
-            function.declared_effects =
-                compiler_declared_effect_row(source, function.effect_bound)?;
+            if validate_effects {
+                function.declared_effects =
+                    compiler_declared_effect_row(source, function.effect_bound)?;
+            }
             let name = source.slice(function.name).to_owned();
             if reserved_names.contains(&name) {
                 return Err(source_diagnostic(
@@ -10795,6 +10819,10 @@ impl Analyzer {
                         {
                             let span = value.span;
                             value = self.finish_nat_conversion(value, span, span)?;
+                        } else if expected != value.value_type
+                            && let Some(adapted) = adapt_function_call_argument(&expected, &value)
+                        {
+                            value = adapted;
                         }
                         if let CompilerType::Result(success) = &value.value_type
                             && (success.as_ref() == &expected
@@ -21664,7 +21692,7 @@ impl Analyzer {
                 break;
             }
         }
-        let Some((declaration, arguments, argument_bindings)) = selected else {
+        let Some((mut declaration, arguments, argument_bindings)) = selected else {
             let actual = arguments
                 .iter()
                 .map(|argument| argument.value_type.name())
@@ -21677,6 +21705,10 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
+        if declaration.module_identity.is_some() {
+            declaration.declared_effects =
+                compiler_declared_effect_row(&self.source, declaration.effect_bound)?;
+        }
         let mut call_environment = environment.clone();
         for binding in &argument_bindings {
             if binding.value.value_type == CompilerType::Scope {
@@ -43536,13 +43568,14 @@ mod tests {
         let module = CompilerSourceModule {
             identity: vec!["std".into(), "checks".into(), "values".into()],
             source_name: "library/std/checks/values.t".into(),
-            source: "use language (version is v0.1)\npositive? is fn (value : Nat) -> Boolean\n  value > 0\npub accepted? is fn (value : Nat) -> Boolean\n  positive? value\n"
+            source: "#!/usr/bin/env topal\nuse language (version is v0.1)\npositive? is fn (value : Nat) -> Boolean\n  value > 0\npub accepted? is fn (value : Nat) -> Boolean\n  positive? value\n"
                 .into(),
         };
         let program = analyze_for_compiler_with_modules(source, &[module]).unwrap();
         assert_eq!(program.primary_source_end, source.len());
         assert_eq!(program.dependencies.len(), 1);
         assert_eq!(program.dependencies[0].identity, "std.checks.values");
+        assert!(program.dependencies[0].source_text.starts_with("#!"));
         assert_eq!(program.main.result.value_type, CompilerType::Boolean);
         assert!(
             program

@@ -31,6 +31,31 @@ pub fn references_module(source: &str, identity: &[String]) -> bool {
     })
 }
 
+/// Return the published ordinary Function names declared by one source module.
+#[must_use]
+pub fn published_function_names(source: &str) -> Vec<String> {
+    let Ok(source) = SourceText::new(source) else {
+        return Vec::new();
+    };
+    let parsed = parse(&source, &lex(&source));
+    if !parsed.diagnostics.is_empty() {
+        return Vec::new();
+    }
+    parsed
+        .statements
+        .iter()
+        .filter_map(|statement| {
+            let Statement::Published { declaration, .. } = statement else {
+                return None;
+            };
+            let Statement::Function { name, .. } = declaration.as_ref() else {
+                return None;
+            };
+            Some(source.slice(*name).to_owned())
+        })
+        .collect()
+}
+
 /// Test whether a source file explicitly declares one library identity.
 #[must_use]
 pub fn declares_library(source: &str, identity: &str) -> bool {
@@ -180,6 +205,12 @@ mod tests {
             "safe? is std web other safe-method?\n",
             &identity
         ));
+        assert_eq!(
+            published_function_names(
+                "use language (version is v0.1)\nprivate is fn () -> Unit\n  ()\npub visible is fn () -> Unit\n  ()\n"
+            ),
+            ["visible"]
+        );
     }
 
     #[test]

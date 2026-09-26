@@ -36,7 +36,10 @@ pub use documentation::lang_documentation;
 pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };
-pub use modules::{declares_library, declares_string_solver, load_module_tree, references_module};
+pub use modules::{
+    declares_library, declares_string_solver, load_module_tree, published_function_names,
+    references_module,
+};
 pub use source::{Execution, ExecutionStep, Session, Value, display_string_literal};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;

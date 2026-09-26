@@ -81,7 +81,7 @@ impl NativeArtifactMetadata {
             .iter()
             .map(|dependency| DigestEntry {
                 identity: dependency.identity.clone(),
-                sha256: sha256(program.source.slice(dependency.source_span).as_bytes()),
+                sha256: sha256(dependency.source_text.as_bytes()),
             })
             .collect::<Vec<_>>();
         let interface_sha256 = sha256(b"topal.native-artifact/1:empty-interface");
