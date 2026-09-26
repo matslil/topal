@@ -31,9 +31,9 @@ use crate::source::{
     is_supported_returning_enum_fallback_action_shape,
     is_supported_returning_exhaustive_enum_action_shape,
     is_supported_returning_optional_action_shape,
-    is_supported_returning_ordered_comparison_action_shape, parse_integer, parse_rational,
-    parse_string, prove_explicit_parameter_recursion, prove_int_recursion,
-    prove_mutual_bounded_recursion_edge,
+    is_supported_returning_ordered_comparison_action_shape,
+    is_supported_returning_result_action_shape, parse_integer, parse_rational, parse_string,
+    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -8800,6 +8800,13 @@ impl Analyzer {
         )? {
             return Ok(Some(value));
         }
+        if let Some(value) = self.analyze_returning_result_decision_actions(
+            expression,
+            environment,
+            function_result,
+        )? {
+            return Ok(Some(value));
+        }
         if let Some(value) = self.analyze_returning_comparison_value_decision_actions(
             expression,
             environment,
@@ -9455,6 +9462,104 @@ impl Analyzer {
                 some_binding,
                 some_action: Box::new(some_action),
                 none_action: Box::new(none_action),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span: *span,
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Both Result payload environments stay adjacent.
+    fn analyze_returning_result_decision_actions(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        function_result: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject,
+            rules,
+            span,
+        } = expression
+        else {
+            return Ok(None);
+        };
+        if !is_supported_returning_result_action_shape(rules) {
+            return Ok(None);
+        }
+        let Some(function_result) = function_result else {
+            return Ok(None);
+        };
+        let subject = self.analyze_expression(subject, environment)?;
+        let CompilerType::Result(success_type) = subject.value_type.clone() else {
+            return Err(unsupported(
+                &self.source,
+                subject.span,
+                "all-returning Result actions for a non-Result subject",
+            ));
+        };
+        let subject_facts = (success_type.as_ref() == &CompilerType::Function)
+            .then(|| self.known_structural_value_facts(&subject, environment))
+            .transpose()?;
+        let mut ok = None;
+        let mut error = None;
+        for rule in rules {
+            let DecisionMatcher::Result {
+                error: is_error,
+                binding,
+                ..
+            } = rule.matcher
+            else {
+                unreachable!("preselected complete Result decision shape")
+            };
+            let name = self.source.slice(binding).to_owned();
+            let binding_type = if is_error {
+                CompilerType::Error
+            } else {
+                success_type.as_ref().clone()
+            };
+            let mut branch =
+                decision_binding_environment(environment, &name, binding_type, binding.start);
+            if !is_error
+                && let Some(success_facts) = subject_facts
+                    .as_ref()
+                    .and_then(|facts| facts.result.as_ref())
+            {
+                let binding_facts = branch
+                    .get_mut(&name)
+                    .expect("Result success decision binding was inserted");
+                retain_static_value_facts(binding_facts, &success_facts.success);
+            }
+            let (action, returned) = self.analyze_direct_statement_expression(
+                &rule.action,
+                &branch,
+                Some(function_result),
+                Some(function_result),
+                true,
+            )?;
+            assert!(
+                returned,
+                "a checked returning Result action exits its function"
+            );
+            if is_error {
+                error = Some((name, binding, Box::new(action)));
+            } else {
+                ok = Some((name, binding, action));
+            }
+        }
+        let (ok_binding, ok_binding_span, ok_action) = ok.expect("complete Ok action");
+        let error_fallback = error.expect("complete Error action");
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&ok_action, error_fallback.2.as_ref()], *span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::ResultDecision {
+                subject: Box::new(subject),
+                ok_binding,
+                ok_binding_span,
+                ok_action: Box::new(ok_action),
+                error_codes: Vec::new(),
+                error_fallback: Some(error_fallback),
             },
             value_type,
             int_range,
@@ -42034,6 +42139,56 @@ mod tests {
         let nonoptional = "use language (version is v0.1)\nchoose is fn (value : Int) -> Int\n  value\n    Some payload then { return payload }\n    None then { return 41 }\nchoose 40\n";
         assert_eq!(
             analyze_for_compiler(nonoptional).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+    }
+
+    #[test]
+    fn models_all_returning_result_decision_actions() {
+        // TOPAL-FUNCTION-RETURN-001, TOPAL-DECISION-RESULT-001,
+        // TOPAL-COMPILER-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001
+        let program = analyze_for_compiler(include_str!(
+            "../../../examples/language/function-return-result-decision-actions.t"
+        ))
+        .unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "choose")
+            .unwrap();
+        assert_eq!(function.body.result.value_type, CompilerType::Boolean);
+        let CompilerExpressionKind::ResultDecision {
+            ok_binding,
+            ok_action,
+            error_codes,
+            error_fallback,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("all-returning actions retain their Result decision")
+        };
+        assert_eq!(ok_binding, "quotient");
+        assert!(matches!(ok_action.kind, CompilerExpressionKind::Block(_)));
+        assert!(error_codes.is_empty());
+        let (error_binding, _, error_action) =
+            error_fallback.as_ref().expect("complete Error action");
+        assert_eq!(error_binding, "problem");
+        assert!(matches!(
+            error_action.kind,
+            CompilerExpressionKind::Block(_)
+        ));
+        assert!(function.body.statements.is_empty());
+
+        let reversed = "use language (version is v0.1)\ndivide is fn (candidate : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  1.0 / candidate\nchoose is fn (candidate : Rational) -> Int\n  divide candidate\n    Error problem then { return 41 }\n    Ok quotient then { return 40 }\n  1000\nchoose 1.0\n";
+        analyze_for_compiler(reversed).unwrap();
+        let mixed = "use language (version is v0.1)\ndivide is fn (candidate : Rational) -> Result (Rational, lang arithmetic ArithmeticErrorCode)\n  1.0 / candidate\nchoose is fn (candidate : Rational) -> Int\n  divide candidate\n    Ok quotient then { return 40 }\n    Error problem then 41\n  1000\nchoose 1.0\n";
+        assert_eq!(
+            analyze_for_compiler(mixed).unwrap_err().code,
+            "E-COMPILER-UNSUPPORTED"
+        );
+        let nonresult = "use language (version is v0.1)\nchoose is fn (candidate : Int) -> Int\n  candidate\n    Ok value then { return 40 }\n    Error problem then { return 41 }\nchoose 1\n";
+        assert_eq!(
+            analyze_for_compiler(nonresult).unwrap_err().code,
             "E-COMPILER-UNSUPPORTED"
         );
     }

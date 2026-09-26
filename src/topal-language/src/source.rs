@@ -3123,6 +3123,14 @@ impl Session {
         )? {
             return Ok(Some(step));
         }
+        if let Some(step) = self.evaluate_returning_result_decision_action_step(
+            source,
+            expression,
+            return_classifier,
+            trace,
+        )? {
+            return Ok(Some(step));
+        }
         if let Some(step) = self.evaluate_returning_comparison_value_decision_action_step(
             source,
             expression,
@@ -3636,6 +3644,70 @@ impl Session {
         assert!(
             matches!(step, ExecutionStep::Returned { .. }),
             "a selected returning Optional action exits its function"
+        );
+        Ok(Some(step))
+    }
+
+    fn evaluate_returning_result_decision_action_step(
+        &self,
+        source: &SourceText,
+        expression: &Expression,
+        return_classifier: Option<&str>,
+        trace: &mut impl TraceSink,
+    ) -> Result<Option<ExecutionStep>, Diagnostic> {
+        let Expression::DecisionTable { subject, rules, .. } = expression else {
+            return Ok(None);
+        };
+        if !is_supported_returning_result_action_shape(rules) {
+            return Ok(None);
+        }
+        let subject = self.evaluate_expression(source, subject, trace)?;
+        let is_error = matches!(subject, Value::Error { .. });
+        let (index, selected) = rules
+            .iter()
+            .enumerate()
+            .find(|(_, rule)| {
+                matches!(rule.matcher, DecisionMatcher::Result { error, .. } if error == is_error)
+            })
+            .expect("a complete Result decision selects an action");
+        for considered in 0..=index {
+            let detail = format!("rule={considered};matched={}", considered == index);
+            trace.record(TraceEvent {
+                event: "decision.rule.considered",
+                rule: "TOPAL-DECISION-RESULT-001",
+                detail: &detail,
+            });
+        }
+        let detail = format!("rule={index}");
+        trace.record(TraceEvent {
+            event: "decision.rule.selected",
+            rule: "TOPAL-DECISION-RESULT-001",
+            detail: &detail,
+        });
+        let DecisionMatcher::Result { binding, .. } = selected.matcher else {
+            unreachable!("preselected complete Result decision shape")
+        };
+        let Expression::Block { statements, .. } = &selected.action else {
+            unreachable!("a direct returning Result action is a lexical block")
+        };
+        let name = source.slice(binding);
+        let mut branch = self.clone();
+        branch.bindings.insert(name.to_owned(), subject);
+        trace.record(TraceEvent {
+            event: "result.payload.bound",
+            rule: "TOPAL-DECISION-RESULT-001",
+            detail: name,
+        });
+        let step = branch.evaluate_block_step(
+            source,
+            statements,
+            return_classifier,
+            return_classifier,
+            trace,
+        )?;
+        assert!(
+            matches!(step, ExecutionStep::Returned { .. }),
+            "a selected returning Result action exits its function"
         );
         Ok(Some(step))
     }
@@ -10863,6 +10935,27 @@ pub(super) fn is_supported_returning_optional_action_shape(rules: &[DecisionRule
         }
     }
     fallback || (some && none)
+}
+
+pub(super) fn is_supported_returning_result_action_shape(rules: &[DecisionRule]) -> bool {
+    let [first, second] = rules else {
+        return false;
+    };
+    matches!(
+        (&first.matcher, &second.matcher),
+        (
+            DecisionMatcher::Result {
+                error: first_error,
+                ..
+            },
+            DecisionMatcher::Result {
+                error: second_error,
+                ..
+            }
+        ) if first_error != second_error
+    ) && rules
+        .iter()
+        .all(|rule| direct_expression_returns_from_function(&rule.action))
 }
 
 pub(super) fn is_supported_returning_comparison_value_action_shape(
@@ -21219,6 +21312,43 @@ fn optional_decision_actions_propagate_return_after_selection() {
     assert!(!trace.iter().any(|event| {
         event.contains("decision.rule.selected") && event.contains("TOPAL-DECISION-BOOLEAN-001")
     }));
+}
+
+#[test]
+fn result_decision_actions_propagate_return_after_selection() {
+    let mut trace = Vec::new();
+    let value = Session::new()
+        .evaluate(
+            include_str!("../../../examples/language/function-return-result-decision-actions.t"),
+            &mut trace,
+        )
+        .unwrap();
+    assert_eq!(value.to_string(), "(true, true)");
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("function.return.explicit"))
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| {
+                event.contains("decision.rule.selected")
+                    && event.contains("TOPAL-DECISION-RESULT-001")
+            })
+            .count(),
+        2
+    );
+    assert_eq!(
+        trace
+            .iter()
+            .filter(|event| event.contains("result.payload.bound"))
+            .count(),
+        2
+    );
+    assert!(!trace.iter().any(|event| event.contains("1000")));
 }
 
 #[test]

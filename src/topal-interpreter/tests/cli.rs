@@ -195,7 +195,7 @@ fn every_interpreter_example_is_an_executable_script() {
         .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
         .collect::<Vec<_>>();
     examples.sort();
-    assert_eq!(examples.len(), 302);
+    assert_eq!(examples.len(), 303);
     for example in examples {
         let output = run_file(&example);
         assert!(
@@ -2032,6 +2032,31 @@ fn every_mode_returns_from_optional_decision_actions() {
             assert_eq!(trace.matches("optional.payload.bound").count(), 1);
             assert!(!trace.contains("\"detail\":\"1000\""));
             assert!(!trace.contains("\"detail\":\"1001\""));
+        }
+    }
+}
+
+#[test]
+fn every_mode_returns_from_result_decision_actions() {
+    // TOPAL-INTP-SUBSET-039, TOPAL-INTP-SUBSET-241,
+    // TOPAL-DECISION-RESULT-001,
+    // TOPAL-COMPILER-LEXICAL-RETURN-RESULT-DECISION-ACTIONS-001
+    let source =
+        include_str!("../../../examples/language/function-return-result-decision-actions.t");
+    for arguments in [&[][..], &["--interactive"][..], &["--test"][..]] {
+        let output = run(arguments, source);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stdout.ends_with(b"(true, true)\n"));
+        if arguments == ["--test"] {
+            let trace = String::from_utf8(output.stderr).unwrap();
+            assert_eq!(trace.matches("function.return.explicit").count(), 2);
+            assert_eq!(trace.matches("decision.rule.selected").count(), 2);
+            assert_eq!(trace.matches("result.payload.bound").count(), 2);
+            assert!(!trace.contains("\"detail\":\"1000\""));
         }
     }
 }
