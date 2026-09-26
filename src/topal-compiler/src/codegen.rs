@@ -6477,9 +6477,11 @@ impl<'a> Generator<'a> {
             return storage;
         }
         if let (LlValue::Tuple(fields), CompilerType::Tuple(types)) = (value, value_type)
-            && matches!(types.as_slice(), [CompilerType::Int, CompilerType::String])
+            && (matches!(types.as_slice(), [CompilerType::Int, CompilerType::String])
+                || matches!(types.as_slice(), [CompilerType::Int, CompilerType::List(element)]
+                    if element.as_ref() == &CompilerType::Int))
         {
-            let [integer, text] = fields.as_slice() else {
+            let [integer, second] = fields.as_slice() else {
                 unreachable!("checked Optional product payload has two fields")
             };
             let storage = body.instruction(
@@ -6492,13 +6494,16 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             );
-            let text_address = body.instruction(
+            let second_address = body.instruction(
                 &format!("getelementptr i8, ptr {storage}, i64 8"),
                 span,
                 &mut self.debug,
             );
+            let (LlValue::String(second) | LlValue::List { value: second, .. }) = second else {
+                unreachable!("checked Optional product payload has pointer fields")
+            };
             body.effect(
-                &format!("store ptr {}, ptr {text_address}, align 8", text.string()),
+                &format!("store ptr {second}, ptr {second_address}, align 8"),
                 span,
                 &mut self.debug,
             );
@@ -13570,6 +13575,48 @@ mod tests {
         assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", minimum.symbol)));
         assert!(!llvm.contains("topal.runtime.generic"));
         assert!(!llvm.contains("topal.runtime.library"));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn lowers_generic_optional_int_list_pair_as_one_private_pointer_payload() {
+        // TOPAL-COMPILER-LIBRARY-OPTIONAL-AGGREGATE-001,
+        // TOPAL-COMPILER-LIBRARY-GENERIC-001, TOPAL-TYPE-OPTIONAL-001
+        let program = analyze_for_compiler_with_modules(
+            include_str!("../../../tests/standard-library/transfer-queues.t"),
+            &[
+                CompilerSourceModule {
+                    identity: vec!["std".into()],
+                    source_name: "library/std/module.t".into(),
+                    source: include_str!("../../../library/std/module.t").into(),
+                },
+                CompilerSourceModule {
+                    identity: vec!["std".into(), "transfer".into(), "queues".into()],
+                    source_name: "library/std/transfer/queues.t".into(),
+                    source: include_str!("../../../library/std/transfer/queues.t").into(),
+                },
+            ],
+        )
+        .unwrap();
+        let dequeue = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.transfer.queues.dequeue")
+            .unwrap();
+        assert_eq!(
+            dequeue.result_type,
+            CompilerType::Optional(Box::new(CompilerType::Tuple(vec![
+                CompilerType::Int,
+                CompilerType::List(Box::new(CompilerType::Int)),
+            ])))
+        );
+
+        let llvm = Generator::new(&program, "transfer-queues.t").emit();
+        assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", dequeue.symbol)));
+        assert!(llvm.contains("call ptr @topal.platform.allocate(i64 16)"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.some(ptr"));
+        assert!(llvm.contains("call ptr @topal.runtime.optional.payload(ptr"));
+        assert!(llvm.contains("getelementptr i8, ptr"));
         assert!(!llvm.contains("call ptr %"));
     }
 

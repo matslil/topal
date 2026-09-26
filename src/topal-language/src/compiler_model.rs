@@ -26327,6 +26327,9 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::SourceLocation
                     | CompilerType::Function
             ) || compiler_int_string_pair(payload)
+                || matches!(payload.as_ref(), CompilerType::Tuple(fields)
+                    if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
+                        if element.as_ref() == &CompilerType::Int))
                 || matches!(payload.as_ref(), CompilerType::List(_))
         }
         CompilerType::Result(success) => {
@@ -28305,7 +28308,9 @@ fn require_optional_payload(
             | CompilerType::Function
             | CompilerType::List(_)
     ) || matches!(value_type, CompilerType::Tuple(fields)
-        if fields.as_slice() == [CompilerType::Int, CompilerType::String])
+        if fields.as_slice() == [CompilerType::Int, CompilerType::String]
+            || matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
+                if element.as_ref() == &CompilerType::Int))
     {
         Ok(())
     } else {

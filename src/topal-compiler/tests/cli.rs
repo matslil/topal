@@ -13825,6 +13825,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.network.addresses"][..],
         ),
         (
+            "transfer-queues",
+            include_str!("../../../tests/standard-library/transfer-queues.t"),
+            &["std", "std.transfer.queues"][..],
+        ),
+        (
             "web-http",
             include_str!("../../../tests/standard-library/web-http.t"),
             &["std.web.http"][..],

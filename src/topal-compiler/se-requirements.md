@@ -2875,6 +2875,26 @@ ELF/DWARF, the compiler corpus, and bounded validation. This realizes
 `TOPAL-TYPE-CALL-001`, and `TOPAL-CAPABILITY-COMPOSE-001` for compiler increment
 6b7.
 
+## TOPAL-COMP-LIBRARY-OPTIONAL-AGGREGATE-001 — Generic queue boundary
+
+The checked compiler shall admit the concrete `(Int, List Int)` Optional
+payload produced by generic queue decomposition and preserve its Tuple and List
+classifiers through construction, private Function passage, decisions,
+bindings, equality, and fallback selection. The backend shall box the payload
+as two source-ordered target pointers, publish it only after initialization,
+and load it only on the present branch. LLVM and DWARF shall agree on the
+private target layout.
+
+Tests shall promote the unchanged transfer-queues standard-library conformance
+program, compare exact interpreter output, inspect direct private calls and the
+two-pointer Optional payload path, verify selective source dependencies,
+freestanding ELF/DWARF, the complete compiler corpus, and resource baselines.
+This shall add no public aggregate ABI, generic descriptor or dispatch, indirect
+call, foreign dependency, host collection, or native ABI revision. This realizes
+`TOPAL-COMPILER-LIBRARY-OPTIONAL-AGGREGATE-001`,
+`TOPAL-COMPILER-LIBRARY-GENERIC-001`, `TOPAL-TYPE-OPTIONAL-001`, and
+`TOPAL-TYPE-PRODUCT-001` for compiler increment 6b8.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

@@ -2667,6 +2667,20 @@ runtime type descriptor, generic dispatch, or an indirect call. Optional List
 values admitted by such a specialization SHALL retain the existing private
 pointer representation and exact List identity.
 
+### TOPAL-COMPILER-LIBRARY-OPTIONAL-AGGREGATE-001 — Generic queue boundary
+
+An admitted source-generic Optional payload of `(Int, List Int)` SHALL preserve
+the ordered Tuple and List identities across construction, private Function
+results, decisions, bindings, equality, and fallback selection. Its private
+payload storage SHALL contain exactly two target pointers in source-field order:
+the arbitrary-precision Int pointer followed by the immutable List head pointer.
+Construction SHALL allocate and initialize that storage before publishing the
+Optional; projection SHALL branch on presence before loading either field.
+
+This private layout SHALL use target-derived size, alignment, DWARF, and LLVM
+lowering consistently. It SHALL introduce no public aggregate ABI, generic
+runtime descriptor, foreign allocation, host collection, or native ABI revision.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted

@@ -322,6 +322,7 @@ const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
     "tests/standard-library/device-i2c.t",
     "tests/standard-library/harness.t",
     "tests/standard-library/network-addresses.t",
+    "tests/standard-library/transfer-queues.t",
     "tests/standard-library/web-http.t",
 ];
 
