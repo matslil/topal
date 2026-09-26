@@ -245,6 +245,7 @@ tracked in the [compiler parity closure plan](compiler-parity-plan.md).
 | 6b4 | dependency-only `std` and `advent-of-code` v0.1 selection with shared diagnostics and complete runtime/artifact erasure | complete |
 | 6b5 | qualified published v0.1 source-library functions, module-local helper closure, direct specialization, and canonical dependency digests | complete |
 | 6b6 | selective ordinary/facade source discovery, per-file hashbang preservation, deferred unreferenced declarations, and recursive aggregate evidence adaptation | complete |
+| 6b7 | call-site specialization of capability-generic source-library Functions across admitted Optional, List, Range, Tuple, and packaged classifiers | complete |
 | 6c1 | direct-entry scalar defining-context capture with declaration filtering, explicit private parameters, lexical-shadow isolation, and GDB observation | complete |
 | 6c2a | exact scalar defining-context forwarding through finite acyclic statically named function chains, declaration-ordered private parameters, direct calls, and active/suspended-frame GDB observation | complete |
 | 6c2b | exact scalar defining-context forwarding through independently proof-backed direct, mutual, and explicit-measure recursion with matching private prototypes and complete recursive-frame GDB observation | complete |

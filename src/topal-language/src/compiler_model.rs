@@ -1450,6 +1450,7 @@ type NormalizedPackagedCall = (
     FunctionSource,
     Vec<CompilerExpression>,
     Vec<CompilerArgumentBinding>,
+    BTreeMap<String, CompilerType>,
 );
 
 #[derive(Clone)]
@@ -1552,6 +1553,7 @@ struct Analyzer {
     functions: BTreeMap<String, Vec<FunctionSource>>,
     library_modules: BTreeMap<Vec<String>, BTreeMap<String, Vec<FunctionSource>>>,
     active_library_module: Option<Vec<String>>,
+    classifier_substitutions: BTreeMap<String, CompilerType>,
     generators: BTreeMap<String, Vec<GeneratorSource>>,
     task_types: TaskTypes,
     task_definitions: TaskDefinitions,
@@ -1604,6 +1606,7 @@ impl Analyzer {
             functions: BTreeMap::new(),
             library_modules: BTreeMap::new(),
             active_library_module: None,
+            classifier_substitutions: BTreeMap::new(),
             generators: BTreeMap::new(),
             task_types: BTreeMap::new(),
             task_definitions: BTreeMap::new(),
@@ -8654,6 +8657,29 @@ impl Analyzer {
 
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
         let classifier = compact_classifier(self.source.slice(span));
+        if !self.classifier_substitutions.is_empty()
+            && let Some(value_type) =
+                parse_substituted_classifier(&classifier, &self.classifier_substitutions, &|name| {
+                    self.enums
+                        .get(name)
+                        .filter(|(_, declaration)| declaration.end <= span.start)
+                        .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                        .or_else(|| {
+                            self.modulars
+                                .get(name)
+                                .filter(|(_, declaration)| declaration.end <= span.start)
+                                .map(|(modular, _)| CompilerType::Modular(modular.clone()))
+                        })
+                        .or_else(|| {
+                            self.sums
+                                .get(name)
+                                .filter(|(_, declaration)| declaration.end <= span.start)
+                                .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                        })
+                })
+        {
+            return Ok(value_type);
+        }
         if let Some((enumeration, declaration)) = self.enums.get(&classifier)
             && declaration.end <= span.start
         {
@@ -8711,6 +8737,37 @@ impl Analyzer {
                 })
         })
         .ok_or_else(|| unsupported(&self.source, span, "classifier"))
+    }
+
+    fn specialize_classifier(
+        &self,
+        span: Span,
+        actual: &CompilerType,
+        substitutions: &mut BTreeMap<String, CompilerType>,
+    ) -> Result<Option<CompilerType>, Diagnostic> {
+        let classifier = compact_classifier(self.source.slice(span));
+        let generic_pattern = classifier_uses_substitution(&classifier, substitutions);
+        if infer_classifier_substitutions(&classifier, actual, substitutions, &|name| {
+            self.enums
+                .get(name)
+                .map(|(enumeration, _)| CompilerType::Enum(enumeration.clone()))
+                .or_else(|| {
+                    self.modulars
+                        .get(name)
+                        .map(|(modular, _)| CompilerType::Modular(modular.clone()))
+                })
+                .or_else(|| {
+                    self.sums
+                        .get(name)
+                        .map(|(sum, _)| CompilerType::Sum(sum.clone()))
+                })
+        }) {
+            Ok(Some(actual.clone()))
+        } else if generic_pattern {
+            Ok(None)
+        } else {
+            self.parse_classifier(span).map(Some)
+        }
     }
 
     fn is_declaration(&self, statement: &Statement) -> bool {
@@ -21620,8 +21677,8 @@ impl Analyzer {
                         environment,
                     )?
                 };
-                if let Some((normalized, adapted, bindings)) = normalized {
-                    selected = Some((normalized, adapted, bindings));
+                if let Some((normalized, adapted, bindings, substitutions)) = normalized {
+                    selected = Some((normalized, adapted, bindings, substitutions));
                     break;
                 }
                 continue;
@@ -21642,6 +21699,7 @@ impl Analyzer {
             }
             let mut adapted = Vec::with_capacity(candidate_arguments.len());
             let mut fact_dependent = false;
+            let mut classifier_substitutions = self.classifier_substitutions.clone();
             for (parameter_index, (parameter, argument)) in declaration
                 .parameters
                 .iter()
@@ -21658,7 +21716,15 @@ impl Analyzer {
                         "packaged, defaulted, or qualified parameter",
                     ));
                 }
-                let expected = self.parse_classifier(parameter.classifier)?;
+                let Some(expected) = self.specialize_classifier(
+                    parameter.classifier,
+                    &argument.value_type,
+                    &mut classifier_substitutions,
+                )?
+                else {
+                    adapted.clear();
+                    break;
+                };
                 if expected != argument.value_type
                     && capture_argument_adaptation_may_depend_on_facts(&expected, argument)
                 {
@@ -21688,11 +21754,18 @@ impl Analyzer {
                         "value-fact-dependent named Function environment selection",
                     ));
                 }
-                selected = Some((declaration.clone(), adapted, Vec::new()));
+                selected = Some((
+                    declaration.clone(),
+                    adapted,
+                    Vec::new(),
+                    classifier_substitutions,
+                ));
                 break;
             }
         }
-        let Some((mut declaration, arguments, argument_bindings)) = selected else {
+        let Some((mut declaration, arguments, argument_bindings, classifier_substitutions)) =
+            selected
+        else {
             let actual = arguments
                 .iter()
                 .map(|argument| argument.value_type.name())
@@ -21709,6 +21782,8 @@ impl Analyzer {
             declaration.declared_effects =
                 compiler_declared_effect_row(&self.source, declaration.effect_bound)?;
         }
+        let previous_classifier_substitutions =
+            std::mem::replace(&mut self.classifier_substitutions, classifier_substitutions);
         let mut call_environment = environment.clone();
         for binding in &argument_bindings {
             if binding.value.value_type == CompilerType::Scope {
@@ -21871,8 +21946,10 @@ impl Analyzer {
                 .iter()
                 .map(|capture| capture.argument.clone()),
         );
-        let mut call =
-            self.finish_selected_call(function_name, &declaration, arguments, &metadata, span)?;
+        let call =
+            self.finish_selected_call(function_name, &declaration, arguments, &metadata, span);
+        self.classifier_substitutions = previous_classifier_substitutions;
+        let mut call = call?;
         for binding in argument_bindings.into_iter().rev() {
             let value_type = call.value_type.clone();
             let int_range = call.int_range.clone();
@@ -22027,20 +22104,13 @@ impl Analyzer {
         };
 
         let mut adapted = Vec::with_capacity(package.fields.len());
+        let mut classifier_substitutions = self.classifier_substitutions.clone();
         for field in &package.fields {
             if field.qualifier.is_some() || !field.fields.is_empty() {
                 return Err(unsupported(
                     &self.source,
                     field.name,
                     "nested or qualified packaged field",
-                ));
-            }
-            let expected = self.parse_classifier(field.classifier)?;
-            if !compiler_packaged_field_supported(&expected) {
-                return Err(unsupported(
-                    &self.source,
-                    field.classifier,
-                    "unsupported packaged field",
                 ));
             }
             let field_name = self.source.slice(field.name);
@@ -22070,6 +22140,21 @@ impl Analyzer {
                 }
                 value
             };
+            let Some(expected) = self.specialize_classifier(
+                field.classifier,
+                &value.value_type,
+                &mut classifier_substitutions,
+            )?
+            else {
+                return Ok(None);
+            };
+            if !compiler_packaged_field_supported(&expected) {
+                return Err(unsupported(
+                    &self.source,
+                    field.classifier,
+                    "unsupported packaged field",
+                ));
+            }
             let Some(value) = adapt_call_argument(&expected, &value) else {
                 return Ok(None);
             };
@@ -22086,7 +22171,12 @@ impl Analyzer {
                 field
             })
             .collect();
-        Ok(Some((normalized, adapted, argument_bindings)))
+        Ok(Some((
+            normalized,
+            adapted,
+            argument_bindings,
+            classifier_substitutions,
+        )))
     }
 
     #[allow(clippy::too_many_lines)] // Two source operands are validated and flattened in explicit semantic order.
@@ -22267,20 +22357,13 @@ impl Analyzer {
 
         let mut normalized_parameters = Vec::with_capacity(flattened.len());
         let mut adapted = Vec::with_capacity(flattened.len());
+        let mut classifier_substitutions = self.classifier_substitutions.clone();
         for (mut parameter, supplied) in flattened {
             if parameter.qualifier.is_some() || !parameter.fields.is_empty() {
                 return Err(unsupported(
                     &self.source,
                     parameter.name,
                     "nested or qualified compound packaged field",
-                ));
-            }
-            let expected = self.parse_classifier(parameter.classifier)?;
-            if !compiler_packaged_field_supported(&expected) {
-                return Err(unsupported(
-                    &self.source,
-                    parameter.classifier,
-                    "unsupported compound packaged operand field",
                 ));
             }
             let value = if let Some(value) = supplied {
@@ -22309,6 +22392,21 @@ impl Analyzer {
                 }
                 value
             };
+            let Some(expected) = self.specialize_classifier(
+                parameter.classifier,
+                &value.value_type,
+                &mut classifier_substitutions,
+            )?
+            else {
+                return Ok(None);
+            };
+            if !compiler_packaged_field_supported(&expected) {
+                return Err(unsupported(
+                    &self.source,
+                    parameter.classifier,
+                    "unsupported compound packaged operand field",
+                ));
+            }
             let Some(value) = adapt_call_argument(&expected, &value) else {
                 return Ok(None);
             };
@@ -22319,7 +22417,12 @@ impl Analyzer {
 
         let mut normalized = declaration.clone();
         normalized.parameters = normalized_parameters;
-        Ok(Some((normalized, adapted, argument_bindings)))
+        Ok(Some((
+            normalized,
+            adapted,
+            argument_bindings,
+            classifier_substitutions,
+        )))
     }
 
     fn defining_context_captures(
@@ -25842,6 +25945,151 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     parse_compact_classifier_with(classifier, &|_| None)
 }
 
+fn split_classifier_constraint(classifier: &str) -> Option<(&str, &str)> {
+    let inner = classifier.strip_prefix('(')?.strip_suffix(')')?;
+    if split_classifier_fields(inner)?.len() != 1 {
+        return None;
+    }
+    let mut depth = 0_u32;
+    for (index, byte) in inner.bytes().enumerate() {
+        match byte {
+            b'(' => depth += 1,
+            b')' => depth = depth.checked_sub(1)?,
+            b':' if depth == 0 => {
+                let name = &inner[..index];
+                let capability = &inner[index + 1..];
+                return (!name.is_empty() && !capability.is_empty()).then_some((name, capability));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn generic_capability_accepts(capability: &str, value_type: &CompilerType) -> bool {
+    match capability {
+        "Type" => !compiler_type_contains_static_only(value_type),
+        "TotalOrder" => compiler_ordering_supported(value_type),
+        "ErrorCode" => value_type == &CompilerType::ErrorCode,
+        _ => false,
+    }
+}
+
+fn classifier_uses_substitution(
+    classifier: &str,
+    substitutions: &BTreeMap<String, CompilerType>,
+) -> bool {
+    if split_classifier_constraint(classifier).is_some() || substitutions.contains_key(classifier) {
+        return true;
+    }
+    for prefix in ["List", "Optional", "Range", "Set", "Bag"] {
+        if let Some(element) = classifier.strip_prefix(prefix) {
+            return classifier_uses_substitution(element, substitutions);
+        }
+    }
+    classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        .is_some_and(|fields| {
+            fields
+                .iter()
+                .any(|field| classifier_uses_substitution(field, substitutions))
+        })
+}
+
+fn infer_classifier_substitutions(
+    classifier: &str,
+    actual: &CompilerType,
+    substitutions: &mut BTreeMap<String, CompilerType>,
+    resolve_nominal: &impl Fn(&str) -> Option<CompilerType>,
+) -> bool {
+    if let Some((name, capability)) = split_classifier_constraint(classifier) {
+        if !generic_capability_accepts(capability, actual) {
+            return false;
+        }
+        return substitutions
+            .get(name)
+            .is_none_or(|existing| existing == actual)
+            && {
+                substitutions.insert(name.to_owned(), actual.clone());
+                true
+            };
+    }
+    if let Some(expected) = substitutions.get(classifier) {
+        return expected == actual;
+    }
+    if let Some(element) = classifier.strip_prefix("List") {
+        return matches!(actual, CompilerType::List(actual) if infer_classifier_substitutions(element, actual, substitutions, resolve_nominal));
+    }
+    if let Some(payload) = classifier.strip_prefix("Optional") {
+        return matches!(actual, CompilerType::Optional(actual) if infer_classifier_substitutions(payload, actual, substitutions, resolve_nominal));
+    }
+    if let Some(element) = classifier.strip_prefix("Range") {
+        return matches!(actual, CompilerType::Range(actual) if infer_classifier_substitutions(element, actual, substitutions, resolve_nominal));
+    }
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        && let Some(patterns) = split_classifier_fields(fields)
+        && patterns.len() > 1
+    {
+        let CompilerType::Tuple(actual_fields) = actual else {
+            return false;
+        };
+        return patterns.len() == actual_fields.len()
+            && patterns.iter().zip(actual_fields).all(|(pattern, actual)| {
+                infer_classifier_substitutions(pattern, actual, substitutions, resolve_nominal)
+            });
+    }
+    parse_compact_classifier_with(classifier, resolve_nominal).as_ref() == Some(actual)
+}
+
+fn parse_substituted_classifier(
+    classifier: &str,
+    substitutions: &BTreeMap<String, CompilerType>,
+    resolve_nominal: &impl Fn(&str) -> Option<CompilerType>,
+) -> Option<CompilerType> {
+    if let Some((name, capability)) = split_classifier_constraint(classifier) {
+        let value_type = substitutions.get(name)?.clone();
+        return generic_capability_accepts(capability, &value_type).then_some(value_type);
+    }
+    if let Some(value_type) = substitutions.get(classifier) {
+        return Some(value_type.clone());
+    }
+    if let Some(element) = classifier.strip_prefix("List") {
+        let element = parse_substituted_classifier(element, substitutions, resolve_nominal)?;
+        return compiler_list_node_element_supported(&element)
+            .then(|| CompilerType::List(Box::new(element)));
+    }
+    if let Some(payload) = classifier.strip_prefix("Optional") {
+        return Some(CompilerType::Optional(Box::new(
+            parse_substituted_classifier(payload, substitutions, resolve_nominal)?,
+        )));
+    }
+    if let Some(element) = classifier.strip_prefix("Range") {
+        return Some(CompilerType::Range(Box::new(parse_substituted_classifier(
+            element,
+            substitutions,
+            resolve_nominal,
+        )?)));
+    }
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        && let Some(fields) = split_classifier_fields(fields)
+        && fields.len() > 1
+    {
+        return Some(CompilerType::Tuple(
+            fields
+                .into_iter()
+                .map(|field| parse_substituted_classifier(field, substitutions, resolve_nominal))
+                .collect::<Option<Vec<_>>>()?,
+        ));
+    }
+    parse_compact_classifier_with(classifier, resolve_nominal)
+}
+
 fn parse_compact_classifier_with(
     classifier: &str,
     resolve_nominal: &impl Fn(&str) -> Option<CompilerType>,
@@ -26079,6 +26327,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::SourceLocation
                     | CompilerType::Function
             ) || compiler_int_string_pair(payload)
+                || matches!(payload.as_ref(), CompilerType::List(_))
         }
         CompilerType::Result(success) => {
             matches!(
@@ -28054,6 +28303,7 @@ fn require_optional_payload(
             | CompilerType::Error
             | CompilerType::SourceLocation
             | CompilerType::Function
+            | CompilerType::List(_)
     ) || matches!(value_type, CompilerType::Tuple(fields)
         if fields.as_slice() == [CompilerType::Int, CompilerType::String])
     {
