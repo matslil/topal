@@ -82,6 +82,16 @@ security properties, and fundamental language semantics as high risk unless a
 concrete assessment justifies otherwise. Record the assessment and review
 approach in the PR.
 
+## Host resource safety
+
+Run memory-intensive repository commands, including Cargo build, test, Clippy,
+and formatting validation, through `scripts/run_bounded.py -- COMMAND`. The
+wrapper serializes bounded validations for the user, places the complete command
+tree in a transient cgroup, disables its swap use, and reduces its requested
+limit when necessary to retain host memory. A validation killed by that cgroup
+is a failed validation to investigate; do not bypass the wrapper or raise its
+limit merely to make the command pass.
+
 ## Pull requests
 
 Every change ends in a PR and requires a human merge decision. Package PRs by

@@ -36,14 +36,25 @@ test, or failed application expectation fails that Topal test and the command.
 Run the implementation tests with:
 
 ```console
-cargo test --workspace --all-targets
+scripts/run_bounded.py -- cargo test --workspace --all-targets
 ```
 
 Run the standard-library Topal corpus with:
 
 ```console
-topal test tests/standard-library examples/data-transfer
+scripts/run_bounded.py -- topal test tests/standard-library examples/data-transfer
 ```
+
+All memory-intensive repository validation, including Cargo build, test,
+Clippy, and formatting checks, runs through `scripts/run_bounded.py`. The
+wrapper places the complete command tree in one transient systemd user cgroup,
+disables swap for that cgroup, and enforces the smaller of its requested limit
+and currently available host memory after retaining the larger of one GiB or
+twenty percent of physical memory. It refuses to start when it cannot preserve
+at least that reserve plus a 256 MiB command budget. An exclusive per-user lock
+serializes bounded validations so concurrent commands cannot independently
+consume the same apparent headroom. A cgroup out-of-memory termination fails
+the validation and requires investigation.
 
 This bootstrap separation does not imply that the Rust implementation is part
 of the Topal language design. An independently implemented Topal toolchain may
@@ -58,7 +69,10 @@ from Linux resource accounting, while systemd enforces the memory and swap
 limits. Independent cgroups preserve per-case accounting even when the runner
 executes several cases concurrently. The default worker count is bounded by
 both the logical CPU count and available memory relative to the per-test memory
-limit. Wall-clock duration is deliberately not a conformance metric.
+limit. An explicit worker count is reduced when necessary and the effective
+per-test limit is capped so all worker cgroups together retain the same host
+reserve as the outer bounded command. Wall-clock duration is deliberately not
+a conformance metric.
 
 `scripts/test_resource_usage.py --domain topal` separately discovers every
 identity reported by `topal test --list` and measures an exact, single-job
@@ -112,28 +126,28 @@ time from unlike systems as directly comparable.
 Create an approved baseline with:
 
 ```console
-scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update
-scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update
-scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update
-scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update
 ```
 
 Replace existing measurements only after explicit human approval:
 
 ```console
-scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update --replace-existing-baseline
-scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update --replace-existing-baseline
-scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update --replace-existing-baseline
-scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update --replace-existing-baseline
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain rust --approve-baseline-update --replace-existing-baseline
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain topal --approve-baseline-update --replace-existing-baseline
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain interpreter --approve-baseline-update --replace-existing-baseline
+scripts/run_bounded.py -- scripts/test_resource_usage.py baseline --domain compiler --approve-baseline-update --replace-existing-baseline
 ```
 
 Compare the current tests with it using:
 
 ```console
-scripts/test_resource_usage.py compare --domain rust
-scripts/test_resource_usage.py compare --domain topal
-scripts/test_resource_usage.py compare --domain interpreter
-scripts/test_resource_usage.py compare --domain compiler
+scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain rust
+scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain topal
+scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain interpreter
+scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain compiler
 ```
 
 Functional and interoperability tests shall cite stable specification IDs.
