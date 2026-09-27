@@ -176,6 +176,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::StringCharactersCollect { text, .. } => {
             expression_uses_extended_debug(text)
         }
+        CompilerExpressionKind::StringRangeCharactersGenerator { text, range, .. }
+        | CompilerExpressionKind::StringRangeCharactersCollect { text, range, .. }
+        | CompilerExpressionKind::StringRangeSelect { text, range, .. } => {
+            expression_uses_extended_debug(text) || expression_uses_extended_debug(range)
+        }
         CompilerExpressionKind::StringCharactersClose(generator)
         | CompilerExpressionKind::GeneratorCollect(generator) => {
             expression_uses_extended_debug(generator)
@@ -1845,6 +1850,18 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::StringRangeSelect {
+                text,
+                characters,
+                range,
+            } => self.emit_string_range_select(
+                text,
+                characters,
+                range,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::StringEmptyPredicate(value) => {
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Boolean(body.instruction(
@@ -1894,6 +1911,31 @@ impl<'a> Generator<'a> {
                     captured_additional_initials: Vec::new(),
                 }
             }
+            CompilerExpressionKind::StringRangeCharactersGenerator { text, range, .. } => {
+                let _ = self.emit_expression(text, body, environment);
+                let _ = self.emit_expression(range, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!("checked range characters construction retains its Generator type")
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                    captured_initial: None,
+                    captured_additional_initials: Vec::new(),
+                }
+            }
+            CompilerExpressionKind::StringRangeCharactersCollect {
+                text,
+                characters,
+                range,
+            } => self.emit_string_range_characters_collect(
+                text,
+                characters,
+                range,
+                body,
+                environment,
+                expression.span,
+            ),
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
                 self.emit_expression(text, body, environment)
             }
@@ -10286,6 +10328,125 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         )
+    }
+
+    fn emit_string_range_select(
+        &mut self,
+        text: &CompilerExpression,
+        characters: &[String],
+        range: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let _ = self.emit_expression(text, body, environment);
+        let range = self.emit_expression(range, body, environment);
+        let range = range.range().0.to_owned();
+        let mut selected = self.emit_string_value("", body, span);
+        for (index, character) in characters.iter().enumerate() {
+            let present = body.label("string.range.present");
+            let absent = body.label("string.range.absent");
+            let merge = body.label("string.range.merge");
+            let index_value = body.instruction(
+                &format!("call ptr @topal.runtime.int.from.u64(i64 {index})"),
+                span,
+                &mut self.debug,
+            );
+            let contains = body.instruction(
+                &format!(
+                    "call i1 @topal.runtime.range.int.contains(ptr {range}, ptr {index_value})"
+                ),
+                span,
+                &mut self.debug,
+            );
+            let location = self.debug.location(span, body.subprogram);
+            body.terminator(
+                &format!("br i1 {contains}, label %{present}, label %{absent}"),
+                location,
+            );
+
+            body.start_block(&present);
+            let character = self.emit_string_value(character, body, span);
+            let appended = body.instruction(
+                &format!("call ptr @topal.runtime.string.concat(ptr {selected}, ptr {character})"),
+                span,
+                &mut self.debug,
+            );
+            body.terminator(&format!("br label %{merge}"), location);
+
+            body.start_block(&absent);
+            body.terminator(&format!("br label %{merge}"), location);
+
+            body.start_block(&merge);
+            selected = body.instruction(
+                &format!("phi ptr [{appended}, %{present}], [{selected}, %{absent}]"),
+                span,
+                &mut self.debug,
+            );
+        }
+        LlValue::String(selected)
+    }
+
+    fn emit_string_range_characters_collect(
+        &mut self,
+        text: &CompilerExpression,
+        characters: &[String],
+        range: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let _ = self.emit_expression(text, body, environment);
+        let range = self.emit_expression(range, body, environment);
+        let range = range.range().0.to_owned();
+        self.scalar_list_runtime_fragments
+            .insert(ScalarListRuntimeFragment::String);
+        let mut selected = "null".to_owned();
+        for (index, character) in characters.iter().enumerate().rev() {
+            let character = self.emit_string_value(character, body, span);
+            let node = body.instruction(
+                "call ptr @topal.platform.allocate(i64 16)",
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {character}, ptr {node}, align 8"),
+                span,
+                &mut self.debug,
+            );
+            let next = body.instruction(
+                &format!("getelementptr i8, ptr {node}, i64 8"),
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {selected}, ptr {next}, align 8"),
+                span,
+                &mut self.debug,
+            );
+            let index_value = body.instruction(
+                &format!("call ptr @topal.runtime.int.from.u64(i64 {index})"),
+                span,
+                &mut self.debug,
+            );
+            let contains = body.instruction(
+                &format!(
+                    "call i1 @topal.runtime.range.int.contains(ptr {range}, ptr {index_value})"
+                ),
+                span,
+                &mut self.debug,
+            );
+            selected = body.instruction(
+                &format!("select i1 {contains}, ptr {node}, ptr {selected}"),
+                span,
+                &mut self.debug,
+            );
+        }
+        LlValue::List {
+            value: selected,
+            element: CompilerType::Character,
+            function_captures: Vec::new(),
+        }
     }
 
     fn emit_string_characters_foreach(

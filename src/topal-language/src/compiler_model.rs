@@ -745,12 +745,27 @@ pub enum CompilerExpressionKind {
         left: Box<CompilerExpression>,
         right: Box<CompilerExpression>,
     },
+    StringRangeSelect {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+        range: Box<CompilerExpression>,
+    },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
     CharacterAsciiDecimalDigit(Box<CompilerExpression>),
     StringCharactersGenerator {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
+    },
+    StringRangeCharactersGenerator {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+        range: Box<CompilerExpression>,
+    },
+    StringRangeCharactersCollect {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+        range: Box<CompilerExpression>,
     },
     StringCharactersCollect {
         text: Box<CompilerExpression>,
@@ -1589,6 +1604,7 @@ struct Analyzer {
     nonnegative_lists: BTreeSet<String>,
     returned_generator_values: BTreeMap<String, CompilerExpression>,
     active_nonzero_bindings: BTreeSet<String>,
+    true_nonzero_parameters: BTreeMap<String, BTreeSet<usize>>,
     static_context: bool,
     next_instance: usize,
     next_task_transaction: u64,
@@ -1645,6 +1661,7 @@ impl Analyzer {
             nonnegative_lists: BTreeSet::new(),
             returned_generator_values: BTreeMap::new(),
             active_nonzero_bindings: BTreeSet::new(),
+            true_nonzero_parameters: BTreeMap::new(),
             static_context: false,
             next_instance: 0,
             next_task_transaction: 1,
@@ -11245,6 +11262,7 @@ impl Analyzer {
                             | CompilerExpressionKind::GeneratorTakeWhile { .. }
                             | CompilerExpressionKind::UnfoldGenerator { .. }
                             | CompilerExpressionKind::StringCharactersGenerator { .. }
+                            | CompilerExpressionKind::StringRangeCharactersGenerator { .. }
                             | CompilerExpressionKind::CustomCharacterGenerator { .. }
                             | CompilerExpressionKind::CustomValueGenerator { .. } => {
                                 Some(value.clone())
@@ -12006,6 +12024,24 @@ impl Analyzer {
             &CompilerType::String,
             &text_value.value_type,
         )?;
+        if let CompilerExpressionKind::StringRangeSelect {
+            text,
+            characters,
+            range,
+        } = &text_value.kind
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringRangeCharactersGenerator {
+                    text: text.clone(),
+                    characters: characters.clone(),
+                    range: range.clone(),
+                },
+                value_type: character_unit_generator_type(),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         let text = Self::known_string_value(&text_value, environment).ok_or_else(|| {
             unsupported(
                 &self.source,
@@ -16076,6 +16112,24 @@ impl Analyzer {
                 }
             }
             let generator = self.analyze_expression(generator, environment)?;
+            if let CompilerExpressionKind::StringRangeCharactersGenerator {
+                text,
+                characters,
+                range,
+            } = generator.kind
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::StringRangeCharactersCollect {
+                        text,
+                        characters,
+                        range,
+                    },
+                    value_type: CompilerType::List(Box::new(CompilerType::Character)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
             if let CompilerExpressionKind::StringCharactersGenerator { characters, .. } =
                 &generator.kind
             {
@@ -16380,6 +16434,11 @@ impl Analyzer {
                 {
                     (CompilerType::Boolean, CompilerType::Nat)
                 }
+                (CompilerType::List(element), CompilerType::Int)
+                    if element.as_ref() == &CompilerType::String =>
+                {
+                    (CompilerType::Int, CompilerType::String)
+                }
                 (CompilerType::List(element), CompilerType::String)
                     if element.as_ref() == &CompilerType::Character =>
                 {
@@ -16675,22 +16734,29 @@ impl Analyzer {
                                 "dynamic String range selection",
                             )
                         })?;
-                    let range =
-                        Self::known_closed_int_range(&selector, environment).ok_or_else(|| {
-                            unsupported(
-                                &self.source,
-                                selector.span,
-                                "dynamic String range selector",
-                            )
-                        })?;
-                    let selected = characters(&text)
-                        .enumerate()
-                        .filter_map(|(index, character)| {
-                            range.contains(&BigInt::from(index)).then_some(character)
-                        })
-                        .collect();
+                    let text_characters = characters(&text).map(str::to_owned).collect::<Vec<_>>();
+                    if let Some(range) = Self::known_closed_int_range(&selector, environment) {
+                        let selected = text_characters
+                            .into_iter()
+                            .enumerate()
+                            .filter_map(|(index, character)| {
+                                range.contains(&BigInt::from(index)).then_some(character)
+                            })
+                            .collect();
+                        return Ok(CompilerExpression {
+                            kind: CompilerExpressionKind::String(selected),
+                            value_type: CompilerType::String,
+                            int_range: None,
+                            rational_value: None,
+                            span,
+                        });
+                    }
                     return Ok(CompilerExpression {
-                        kind: CompilerExpressionKind::String(selected),
+                        kind: CompilerExpressionKind::StringRangeSelect {
+                            text: Box::new(collection),
+                            characters: text_characters,
+                            range: Box::new(selector),
+                        },
                         value_type: CompilerType::String,
                         int_range: None,
                         rational_value: None,
@@ -21471,16 +21537,37 @@ impl Analyzer {
                 };
             }
         }
+        if operation == CompilerBinary::Subtract
+            && left_value.value_type == CompilerType::Nat
+            && matches!(&left_value.kind, CompilerExpressionKind::Local(name)
+                if self.active_nonzero_bindings.contains(name))
+            && right_value.value_type == CompilerType::Int
+            && exact_int(&right_value).is_some_and(|value| value == BigInt::from(1))
+        {
+            let int_range = right_value.int_range.clone();
+            right_value = CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(Box::new(right_value)),
+                value_type: CompilerType::Nat,
+                int_range,
+                rational_value: None,
+                span,
+            };
+        }
         let both_nat = left_value.value_type == CompilerType::Nat
             && right_value.value_type == CompilerType::Nat;
         let nat_arithmetic_result = both_nat
             && match operation {
                 CompilerBinary::Add | CompilerBinary::Multiply => true,
-                CompilerBinary::Subtract => left_value
-                    .int_range
-                    .as_ref()
-                    .zip(right_value.int_range.as_ref())
-                    .is_some_and(|(left, right)| left.lower >= right.upper),
+                CompilerBinary::Subtract => {
+                    left_value
+                        .int_range
+                        .as_ref()
+                        .zip(right_value.int_range.as_ref())
+                        .is_some_and(|(left, right)| left.lower >= right.upper)
+                        || matches!(&left_value.kind, CompilerExpressionKind::Local(name)
+                        if self.active_nonzero_bindings.contains(name))
+                            && exact_int(&right_value).is_some_and(|value| value == BigInt::from(1))
+                }
                 _ => false,
             };
         if matches!(
@@ -25196,6 +25283,11 @@ impl Analyzer {
         );
         let int_range = body.result.int_range.clone();
         let rational_value = body.result.rational_value.clone();
+        let true_nonzero = boolean_true_nonzero_parameters(&body.result, &parameters);
+        if !true_nonzero.is_empty() {
+            self.true_nonzero_parameters
+                .insert(symbol.clone(), true_nonzero);
+        }
         if let Some(generator) = returned_generator_value {
             self.returned_generator_values
                 .insert(symbol.clone(), generator);
@@ -26245,10 +26337,21 @@ impl Analyzer {
         let mut when_false = None;
         let mut otherwise = None;
         let nonzero_when_false = equality_zero_local(&subject).map(ToOwned::to_owned);
+        let nonzero_when_true = greater_nat_local(&subject, environment)
+            .or_else(|| call_true_nonzero_local(&subject, &self.true_nonzero_parameters))
+            .map(ToOwned::to_owned);
         for rule in rules {
             match rule.matcher {
                 DecisionMatcher::Boolean { value: true, .. } if when_true.is_none() => {
-                    when_true = Some(self.analyze_expression(&rule.action, environment)?);
+                    let inserted = nonzero_when_true
+                        .as_ref()
+                        .is_some_and(|name| self.active_nonzero_bindings.insert(name.clone()));
+                    let action = self.analyze_expression(&rule.action, environment);
+                    if inserted {
+                        self.active_nonzero_bindings
+                            .remove(nonzero_when_true.as_ref().expect("inserted binding"));
+                    }
+                    when_true = Some(action?);
                 }
                 DecisionMatcher::Boolean { value: false, .. } if when_false.is_none() => {
                     let inserted = nonzero_when_false
@@ -30045,6 +30148,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::GeneratorTakeWhile { .. }
         | CompilerExpressionKind::UnfoldGenerator { .. }
         | CompilerExpressionKind::StringCharactersGenerator { .. }
+        | CompilerExpressionKind::StringRangeCharactersGenerator { .. }
         | CompilerExpressionKind::StringCharactersForeach { .. }
         | CompilerExpressionKind::CustomCharacterGenerator { .. }
         | CompilerExpressionKind::CustomCharacterForeach { .. }
@@ -30177,6 +30281,11 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::Binary { left, right, .. } => {
             compiler_expression_is_closed_with(left, bound)
                 && compiler_expression_is_closed_with(right, bound)
+        }
+        CompilerExpressionKind::StringRangeSelect { text, range, .. }
+        | CompilerExpressionKind::StringRangeCharactersCollect { text, range, .. } => {
+            compiler_expression_is_closed_with(text, bound)
+                && compiler_expression_is_closed_with(range, bound)
         }
         CompilerExpressionKind::ListZip {
             left,
@@ -31102,6 +31211,84 @@ fn equality_zero_local(expression: &CompilerExpression) -> Option<&str> {
         return Some(name);
     }
     None
+}
+
+fn greater_nat_local<'a>(
+    expression: &'a CompilerExpression,
+    environment: &'a BTreeMap<String, BindingFacts>,
+) -> Option<&'a str> {
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Greater,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return None;
+    };
+    let CompilerExpressionKind::Local(left_name) = &left.kind else {
+        return None;
+    };
+    let CompilerExpressionKind::Local(right_name) = &right.kind else {
+        return None;
+    };
+    let left_nat = binding_facts_by_storage(environment, left_name)
+        .is_some_and(|facts| facts.value_type == CompilerType::Nat);
+    let right_nat = binding_facts_by_storage(environment, right_name)
+        .is_some_and(|facts| facts.value_type == CompilerType::Nat);
+    (left_nat && right_nat).then_some(left_name)
+}
+
+fn call_true_nonzero_local<'a>(
+    expression: &'a CompilerExpression,
+    summaries: &BTreeMap<String, BTreeSet<usize>>,
+) -> Option<&'a str> {
+    let CompilerExpressionKind::Call { symbol, arguments } = &expression.kind else {
+        return None;
+    };
+    summaries.get(symbol)?.iter().find_map(|index| {
+        let argument = arguments.get(*index)?;
+        let CompilerExpressionKind::Local(name) = &argument.kind else {
+            return None;
+        };
+        Some(name.as_str())
+    })
+}
+
+fn boolean_true_nonzero_parameters(
+    expression: &CompilerExpression,
+    parameters: &[CompilerParameter],
+) -> BTreeSet<usize> {
+    let CompilerExpressionKind::BooleanDecision {
+        subject,
+        when_false,
+        ..
+    } = &expression.kind
+    else {
+        return BTreeSet::new();
+    };
+    if !matches!(when_false.kind, CompilerExpressionKind::Boolean(false)) {
+        return BTreeSet::new();
+    }
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Greater,
+        left,
+        right,
+    } = &subject.kind
+    else {
+        return BTreeSet::new();
+    };
+    let (CompilerExpressionKind::Local(left), CompilerExpressionKind::Local(right)) =
+        (&left.kind, &right.kind)
+    else {
+        return BTreeSet::new();
+    };
+    let left_index = parameters
+        .iter()
+        .position(|parameter| parameter.name == *left && parameter.value_type == CompilerType::Nat);
+    let right_is_nat = parameters
+        .iter()
+        .any(|parameter| parameter.name == *right && parameter.value_type == CompilerType::Nat);
+    left_index.filter(|_| right_is_nat).into_iter().collect()
 }
 
 fn is_proven_nonzero_numeric(expression: &CompilerExpression) -> bool {

@@ -12461,7 +12461,7 @@ fn range_selection_is_freestanding_and_debuggable() {
     let executable = directory.join("application");
     fs::write(
         &source,
-        "use language (version is v0.1)\ninspect is fn (values : List Int, text : String) -> Int\n  _ is text = text\n  entry-count values\nvalues : List Int is Entry (9, Entry (2, Entry (4, Entry (7, Entry (3, Entry (340282366920938463463374607431768211456, Empty))))))\nbounds : Range Int is 2 ..= 4\nindexes : Range Int is 1 .. 4\nchosen is values select bounds\npositions is values select-index indexes\nslice is \"Topal\" select-index indexes\nexact is values select (340282366920938463463374607431768211456 ..= 340282366920938463463374607431768211456)\nnone is values select (8 .. 2)\nno-positions is values select-index (4 <..= 4)\nresult is inspect (chosen, slice)\n(chosen, positions, slice, result, exact, none, no-positions)\n",
+        "use language (version is v0.1)\ninspect is fn (values : List Int, text : String) -> Int\n  _ is text = text\n  entry-count values\nselect-character is fn (text : String, index : Int) -> Optional Character\n  first (collect (characters (text select-index (index ..= index))))\nvalues : List Int is Entry (9, Entry (2, Entry (4, Entry (7, Entry (3, Entry (340282366920938463463374607431768211456, Empty))))))\nbounds : Range Int is 2 ..= 4\nindexes : Range Int is 1 .. 4\nchosen is values select bounds\npositions is values select-index indexes\nslice is \"Topal\" select-index indexes\ndynamic-character is select-character (\"á👩‍🔬🇸🇪\", 1)\nexact is values select (340282366920938463463374607431768211456 ..= 340282366920938463463374607431768211456)\nnone is values select (8 .. 2)\nno-positions is values select-index (4 <..= 4)\nresult is inspect (chosen, slice)\n(chosen, positions, slice, dynamic-character, result, exact, none, no-positions)\n",
     )
     .unwrap();
     let compiled =
@@ -12475,7 +12475,7 @@ fn range_selection_is_freestanding_and_debuggable() {
     assert!(executed.status.success());
     assert_eq!(
         executed.stdout,
-        b"(Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) ), Entry ( 2, Entry ( 4, Entry ( 7, Empty ) ) ), \"opa\", 3, Entry ( 340282366920938463463374607431768211456, Empty ), Empty, Empty)\n"
+        b"(Entry ( 2, Entry ( 4, Entry ( 3, Empty ) ) ), Entry ( 2, Entry ( 4, Entry ( 7, Empty ) ) ), \"opa\", Some \"\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x94\xac\", 3, Entry ( 340282366920938463463374607431768211456, Empty ), Empty, Empty)\n"
     );
 
     let tools = LlvmTools::discover(None).unwrap();
@@ -12544,7 +12544,7 @@ fn range_selection_is_freestanding_and_debuggable() {
     );
     assert!(text.contains("$2 = \"opa\""), "{text}");
     assert!(text.contains("$4 = 2 ..= 4"), "{text}");
-    assert!(text.contains("topal.fn.inspect.0"), "{text}");
+    assert!(text.contains("topal.fn.inspect."), "{text}");
     assert!(text.contains("topal.main"), "{text}");
 }
 
