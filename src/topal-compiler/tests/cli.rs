@@ -13835,6 +13835,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std"][..],
         ),
         (
+            "geometry-algorithms",
+            include_str!("../../../tests/standard-library/geometry-algorithms.t"),
+            &["advent-of-code.geometry"][..],
+        ),
+        (
             "firewall",
             include_str!("../../../examples/data-transfer/firewall.t"),
             &["std.data.spans", "std.network.addresses"][..],

@@ -2853,6 +2853,7 @@ impl<'a> Generator<'a> {
                 let int_pair = compiler_integer_pair(element.as_ref());
                 let int_string_pair = compiler_int_string_pair(element.as_ref());
                 let int_int_boolean_pair = compiler_int_int_boolean_pair(element.as_ref());
+                let int_triple = compiler_int_triple(element.as_ref());
                 let nested_int = compiler_nested_int_list_element(element.as_ref());
                 let int_range = matches!(element.as_ref(), CompilerType::Range(endpoint)
                     if endpoint.as_ref() == &CompilerType::Int);
@@ -2865,6 +2866,9 @@ impl<'a> Generator<'a> {
                 } else if int_int_boolean_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntIntBooleanPair);
+                } else if int_triple {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntTriple);
                 } else if string {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::String);
@@ -2877,7 +2881,7 @@ impl<'a> Generator<'a> {
                 let singleton = body.instruction(
                     &format!(
                         "call ptr @topal.platform.allocate(i64 {})",
-                        if int_int_boolean_pair {
+                        if int_int_boolean_pair || int_triple {
                             32
                         } else if int_pair || int_string_pair {
                             24
@@ -2907,6 +2911,30 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         );
                     }
+                    (
+                        first.integer().to_owned(),
+                        Some(second.integer().to_owned()),
+                    )
+                } else if int_triple {
+                    let LlValue::Tuple(fields) = value else {
+                        unreachable!("checked triple append retains its tuple value")
+                    };
+                    let [first, second, third] = fields.as_slice() else {
+                        unreachable!("checked triple append retains three fields")
+                    };
+                    let third_address = body.instruction(
+                        &format!("getelementptr i8, ptr {singleton}, i64 16"),
+                        expression.span,
+                        &mut self.debug,
+                    );
+                    body.effect(
+                        &format!(
+                            "store ptr {}, ptr {third_address}, align 8",
+                            third.integer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    );
                     (
                         first.integer().to_owned(),
                         Some(second.integer().to_owned()),
@@ -2952,7 +2980,7 @@ impl<'a> Generator<'a> {
                 let next = body.instruction(
                     &format!(
                         "getelementptr i8, ptr {singleton}, i64 {}",
-                        if int_int_boolean_pair {
+                        if int_int_boolean_pair || int_triple {
                             24
                         } else if int_pair || int_string_pair {
                             16
@@ -2978,6 +3006,8 @@ impl<'a> Generator<'a> {
                                 "int-string"
                             } else if int_int_boolean_pair {
                                 "int-int-boolean-pair"
+                            } else if int_triple {
+                                "int.triple"
                             } else if string {
                                 "string"
                             } else {
@@ -2997,9 +3027,13 @@ impl<'a> Generator<'a> {
                     unreachable!("checked List concatenation retains its List result")
                 };
                 let int_pair = compiler_integer_pair(element.as_ref());
+                let int_triple = compiler_int_triple(element.as_ref());
                 if int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
+                } else if int_triple {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntTriple);
                 } else {
                     self.list_int_runtime_fragments
                         .insert(ListIntRuntimeFragment::Core);
@@ -3010,7 +3044,13 @@ impl<'a> Generator<'a> {
                     value: body.instruction(
                         &format!(
                             "call ptr @topal.runtime.list.{}.concat(ptr {}, ptr {})",
-                            if int_pair { "int.pair" } else { "int" },
+                            if int_pair {
+                                "int.pair"
+                            } else if int_triple {
+                                "int.triple"
+                            } else {
+                                "int"
+                            },
                             left.list_pointer(),
                             right.list_pointer()
                         ),
@@ -3294,6 +3334,8 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::ListUncons(value) => {
                 let int_pair = matches!(&value.value_type, CompilerType::List(element)
                     if compiler_integer_pair(element.as_ref()));
+                let int_triple = matches!(&value.value_type, CompilerType::List(element)
+                    if compiler_int_triple(element.as_ref()));
                 let nested_int_string = matches!(
                     &value.value_type,
                     CompilerType::List(element)
@@ -3307,6 +3349,9 @@ impl<'a> Generator<'a> {
                 if int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
+                } else if int_triple {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntTriple);
                 } else {
                     self.list_int_runtime_fragments
                         .insert(if nested_int_string {
@@ -3333,6 +3378,8 @@ impl<'a> Generator<'a> {
                             "call ptr @topal.runtime.list.{}.{operation}(ptr {})",
                             if int_pair {
                                 "int.pair"
+                            } else if int_triple {
+                                "int.triple"
                             } else if nested_int_string {
                                 "nested.int-string"
                             } else if nested_int {
@@ -3375,9 +3422,14 @@ impl<'a> Generator<'a> {
             } => {
                 let int_pair = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_integer_pair(element.as_ref()));
+                let int_triple = matches!(&list.value_type, CompilerType::List(element)
+                    if compiler_int_triple(element.as_ref()));
                 if int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
+                } else if int_triple {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntTriple);
                 } else {
                     self.list_int_runtime_fragments
                         .insert(ListIntRuntimeFragment::RangeSelection);
@@ -3392,7 +3444,13 @@ impl<'a> Generator<'a> {
                     value: body.instruction(
                         &format!(
                             "call ptr @topal.runtime.list.{}.select.{operation}.range(ptr {}, ptr {})",
-                            if int_pair { "int.pair" } else { "int" },
+                            if int_pair {
+                                "int.pair"
+                            } else if int_triple {
+                                "int.triple"
+                            } else {
+                                "int"
+                            },
                             list.list_pointer(),
                             range.range().0
                         ),
@@ -4907,23 +4965,12 @@ impl<'a> Generator<'a> {
                 LlValue::Tuple(vec![LlValue::Int(integer), LlValue::String(text)])
             }
             CompilerType::Tuple(fields) if compiler_integer_pair(value_type) => {
-                let first = body.instruction(
-                    &format!("load ptr, ptr {value}, align 8"),
-                    span,
-                    &mut self.debug,
-                );
-                let second_address = body.instruction(
-                    &format!("getelementptr i8, ptr {value}, i64 8"),
-                    span,
-                    &mut self.debug,
-                );
-                let second = body.instruction(
-                    &format!("load ptr, ptr {second_address}, align 8"),
-                    span,
-                    &mut self.debug,
-                );
                 debug_assert_eq!(fields.len(), 2);
-                LlValue::Tuple(vec![LlValue::Int(first), LlValue::Int(second)])
+                self.emit_boxed_int_tuple(&value, 2, body, span)
+            }
+            CompilerType::Tuple(fields) if compiler_int_triple(value_type) => {
+                debug_assert_eq!(fields.len(), 3);
+                self.emit_boxed_int_tuple(&value, 3, body, span)
             }
             CompilerType::Tuple(fields)
                 if matches!(
@@ -4958,6 +5005,35 @@ impl<'a> Generator<'a> {
             }
             _ => optional_payload_value(value, value_type),
         }
+    }
+
+    fn emit_boxed_int_tuple(
+        &mut self,
+        value: &str,
+        field_count: usize,
+        body: &mut FunctionBody,
+        span: Span,
+    ) -> LlValue {
+        let values = (0..field_count)
+            .map(|index| {
+                let offset = index * 8;
+                let address = if offset == 0 {
+                    value.to_owned()
+                } else {
+                    body.instruction(
+                        &format!("getelementptr i8, ptr {value}, i64 {offset}"),
+                        span,
+                        &mut self.debug,
+                    )
+                };
+                LlValue::Int(body.instruction(
+                    &format!("load ptr, ptr {address}, align 8"),
+                    span,
+                    &mut self.debug,
+                ))
+            })
+            .collect();
+        LlValue::Tuple(values)
     }
 
     #[allow(clippy::too_many_arguments, clippy::too_many_lines)] // Keeps typed alternatives and scoped bindings together.
@@ -6273,19 +6349,25 @@ impl<'a> Generator<'a> {
         let character_nat_list_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
-                if element.as_ref() == &CompilerType::Character
+                if matches!(element.as_ref(), CompilerType::Character | CompilerType::Int)
                     && state_element.as_ref() == &CompilerType::Nat
         );
         let int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
-                if element.as_ref() == &CompilerType::Int
-                    && state_element.as_ref() == &CompilerType::Int
+                if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                    && matches!(state_element.as_ref(), CompilerType::Int | CompilerType::Nat)
         );
         let nested_int_source_int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
                 if compiler_nested_int_list_element(element.as_ref())
+                    && state_element.as_ref() == &CompilerType::Int
+        );
+        let int_triple_source_int_list_state_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::List(state_element))
+                if compiler_int_triple(element.as_ref())
                     && state_element.as_ref() == &CompilerType::Int
         );
         let tuple_list_state_fold = matches!(
@@ -6311,10 +6393,13 @@ impl<'a> Generator<'a> {
                 if element.as_ref() == &CompilerType::Character
         );
         let tuple_state_fold = matches!(initial.value_type, CompilerType::Tuple(_));
+        let boolean_state_fold = initial.value_type == CompilerType::Boolean;
         let pair_fold = matches!(&list.value_type, CompilerType::List(element)
             if compiler_integer_pair(element.as_ref())
                 || compiler_int_string_pair(element.as_ref())
                 || compiler_string_pair(element.as_ref()));
+        let int_triple_fold = matches!(&list.value_type, CompilerType::List(element)
+            if compiler_int_triple(element.as_ref()));
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
@@ -6329,6 +6414,8 @@ impl<'a> Generator<'a> {
                 unreachable!("checked tuple fold state retains its classifier")
             };
             self.emit_tuple_aggregate(fields, field_types, body, span)
+        } else if boolean_state_fold {
+            initial_value.boolean().to_owned()
         } else if string_pair_optional_fold
             || integer_pair_optional_nat_fold
             || nested_int_optional_nat_fold
@@ -6341,6 +6428,7 @@ impl<'a> Generator<'a> {
             || character_nat_list_fold
             || int_list_state_fold
             || nested_int_source_int_list_state_fold
+            || int_triple_source_int_list_state_fold
             || tuple_list_state_fold
             || range_list_state_fold
         {
@@ -6364,7 +6452,8 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let state_llvm_type = tuple_state_fold.then(|| llvm_value_type(&initial_type));
+        let state_llvm_type =
+            (tuple_state_fold || boolean_state_fold).then(|| llvm_value_type(&initial_type));
         let state = body.instruction(
             &format!(
                 "phi {} [{initial}, %{preheader}], [{next_state}, %{advance}]",
@@ -6401,10 +6490,30 @@ impl<'a> Generator<'a> {
                 &mut self.debug,
             )
         });
+        let triple_tail = int_triple_fold.then(|| {
+            [8_i64, 16_i64].map(|offset| {
+                let address = body.instruction(
+                    &format!("getelementptr i8, ptr {current}, i64 {offset}"),
+                    span,
+                    &mut self.debug,
+                );
+                body.instruction(
+                    &format!("load ptr, ptr {address}, align 8"),
+                    span,
+                    &mut self.debug,
+                )
+            })
+        });
         let next_address = body.instruction(
             &format!(
                 "getelementptr i8, ptr {current}, i64 {}",
-                if pair_fold { 16 } else { 8 }
+                if int_triple_fold {
+                    24
+                } else if pair_fold {
+                    16
+                } else {
+                    8
+                }
             ),
             span,
             &mut self.debug,
@@ -6420,6 +6529,8 @@ impl<'a> Generator<'a> {
                 unreachable!("checked tuple fold state retains its classifier")
             };
             self.emit_tuple_extract(&state, fields, body, span)
+        } else if boolean_state_fold {
+            LlValue::Boolean(state.clone())
         } else if string_pair_optional_fold
             || integer_pair_optional_nat_fold
             || nested_int_optional_nat_fold
@@ -6451,10 +6562,20 @@ impl<'a> Generator<'a> {
                 element: CompilerType::Nat,
                 function_captures: Vec::new(),
             }
-        } else if int_list_state_fold || nested_int_source_int_list_state_fold {
+        } else if int_list_state_fold
+            || nested_int_source_int_list_state_fold
+            || int_triple_source_int_list_state_fold
+        {
             LlValue::List {
                 value: state.clone(),
-                element: CompilerType::Int,
+                element: if int_list_state_fold {
+                    let CompilerType::List(element) = &initial_type else {
+                        unreachable!("checked numeric-list fold state retains its List classifier")
+                    };
+                    element.as_ref().clone()
+                } else {
+                    CompilerType::Int
+                },
                 function_captures: Vec::new(),
             }
         } else if tuple_list_state_fold {
@@ -6477,7 +6598,13 @@ impl<'a> Generator<'a> {
         } else {
             LlValue::Int(state.clone())
         };
-        let entry_value = if let Some(second) = second {
+        let entry_value = if let Some([second, third]) = triple_tail {
+            LlValue::Tuple(vec![
+                LlValue::Int(value),
+                LlValue::Int(second),
+                LlValue::Int(third),
+            ])
+        } else if let Some(second) = second {
             let CompilerType::List(element) = &list.value_type else {
                 unreachable!("checked fold subject retains its List classifier")
             };
@@ -6575,6 +6702,8 @@ impl<'a> Generator<'a> {
                     self.emit_tuple_aggregate(fields, field_types, body, span),
                     llvm_value_type(&initial_type),
                 )
+            } else if boolean_state_fold {
+                (value.boolean().to_owned(), "i1".to_owned())
             } else if string_pair_optional_fold
                 || integer_pair_optional_nat_fold
                 || nested_int_optional_nat_fold
@@ -6587,6 +6716,7 @@ impl<'a> Generator<'a> {
                 || character_nat_list_fold
                 || int_list_state_fold
                 || nested_int_source_int_list_state_fold
+                || int_triple_source_int_list_state_fold
                 || tuple_list_state_fold
                 || range_list_state_fold
             {
@@ -6618,6 +6748,8 @@ impl<'a> Generator<'a> {
                 unreachable!("checked tuple fold state retains its classifier")
             };
             self.emit_tuple_extract(&state, fields, body, span)
+        } else if boolean_state_fold {
+            LlValue::Boolean(state)
         } else if string_pair_optional_fold
             || integer_pair_optional_nat_fold
             || nested_int_optional_nat_fold
@@ -6649,10 +6781,20 @@ impl<'a> Generator<'a> {
                 element: CompilerType::Nat,
                 function_captures: Vec::new(),
             }
-        } else if int_list_state_fold || nested_int_source_int_list_state_fold {
+        } else if int_list_state_fold
+            || nested_int_source_int_list_state_fold
+            || int_triple_source_int_list_state_fold
+        {
             LlValue::List {
                 value: state,
-                element: CompilerType::Int,
+                element: if int_list_state_fold {
+                    let CompilerType::List(element) = &initial_type else {
+                        unreachable!("checked numeric-list fold state retains its List classifier")
+                    };
+                    element.as_ref().clone()
+                } else {
+                    CompilerType::Int
+                },
                 function_captures: Vec::new(),
             }
         } else if tuple_list_state_fold {
@@ -7314,6 +7456,33 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             );
+            return storage;
+        }
+        if let (LlValue::Tuple(fields), CompilerType::Tuple(_)) = (value, value_type)
+            && compiler_int_triple(value_type)
+        {
+            let storage = body.instruction(
+                "call ptr @topal.platform.allocate(i64 24)",
+                span,
+                &mut self.debug,
+            );
+            for (index, field) in fields.iter().enumerate() {
+                let offset = index * 8;
+                let address = if offset == 0 {
+                    storage.clone()
+                } else {
+                    body.instruction(
+                        &format!("getelementptr i8, ptr {storage}, i64 {offset}"),
+                        span,
+                        &mut self.debug,
+                    )
+                };
+                body.effect(
+                    &format!("store ptr {}, ptr {address}, align 8", field.integer()),
+                    span,
+                    &mut self.debug,
+                );
+            }
             return storage;
         }
         optional_payload_pointer(value).to_owned()

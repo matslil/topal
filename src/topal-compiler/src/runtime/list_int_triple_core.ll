@@ -1,5 +1,132 @@
 %topal.ListIntTripleStorage = type { ptr, ptr, ptr, ptr }
 
+define internal ptr @topal.runtime.list.int.triple.concat(ptr %left, ptr %right) nounwind noinline {
+entry:
+  br label %count.loop
+count.loop:
+  %count.source = phi ptr [%left, %entry], [%count.next, %count.advance]
+  %count = phi i64 [0, %entry], [%count.incremented, %count.advance]
+  %count.empty = icmp eq ptr %count.source, null
+  br i1 %count.empty, label %count.done, label %count.advance
+count.advance:
+  %count.next.pointer = getelementptr %topal.ListIntTripleStorage, ptr %count.source, i32 0, i32 3
+  %count.next = load ptr, ptr %count.next.pointer, align 8
+  %count.incremented = add i64 %count, 1
+  br label %count.loop
+count.done:
+  %empty = icmp eq i64 %count, 0
+  br i1 %empty, label %share.right, label %allocate
+allocate:
+  %allocation.length = mul i64 %count, 32
+  %copy = call ptr @topal.platform.allocate(i64 %allocation.length)
+  br label %loop
+loop:
+  %source = phi ptr [%left, %allocate], [%source.next, %advance]
+  %index = phi i64 [0, %allocate], [%index.next, %advance]
+  %source.first = load ptr, ptr %source, align 8
+  %source.second.pointer = getelementptr %topal.ListIntTripleStorage, ptr %source, i32 0, i32 1
+  %source.second = load ptr, ptr %source.second.pointer, align 8
+  %source.third.pointer = getelementptr %topal.ListIntTripleStorage, ptr %source, i32 0, i32 2
+  %source.third = load ptr, ptr %source.third.pointer, align 8
+  %source.next.pointer = getelementptr %topal.ListIntTripleStorage, ptr %source, i32 0, i32 3
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %destination.offset = mul i64 %index, 32
+  %destination = getelementptr i8, ptr %copy, i64 %destination.offset
+  store ptr %source.first, ptr %destination, align 8
+  %destination.second = getelementptr i8, ptr %destination, i64 8
+  store ptr %source.second, ptr %destination.second, align 8
+  %destination.third = getelementptr i8, ptr %destination, i64 16
+  store ptr %source.third, ptr %destination.third, align 8
+  %index.next = add i64 %index, 1
+  %last = icmp eq i64 %index.next, %count
+  %destination.following = getelementptr i8, ptr %destination, i64 32
+  %destination.remaining = select i1 %last, ptr %right, ptr %destination.following
+  %destination.next = getelementptr i8, ptr %destination, i64 24
+  store ptr %destination.remaining, ptr %destination.next, align 8
+  br i1 %last, label %done, label %advance
+advance:
+  br label %loop
+share.right:
+  ret ptr %right
+done:
+  ret ptr %copy
+}
+
+define internal ptr @topal.runtime.list.int.triple.select.index.range(ptr %source, ptr %range) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%source, %entry], [%next, %advance]
+  %head = phi ptr [null, %entry], [%next.head, %advance]
+  %previous = phi ptr [null, %entry], [%next.previous, %advance]
+  %index = phi i64 [0, %entry], [%next.index, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %done, label %visit
+visit:
+  %first = load ptr, ptr %current, align 8
+  %second.pointer = getelementptr %topal.ListIntTripleStorage, ptr %current, i32 0, i32 1
+  %second = load ptr, ptr %second.pointer, align 8
+  %third.pointer = getelementptr %topal.ListIntTripleStorage, ptr %current, i32 0, i32 2
+  %third = load ptr, ptr %third.pointer, align 8
+  %next.pointer = getelementptr %topal.ListIntTripleStorage, ptr %current, i32 0, i32 3
+  %next = load ptr, ptr %next.pointer, align 8
+  %index.value = call ptr @topal.runtime.int.from.u64(i64 %index)
+  %keep = call i1 @topal.runtime.range.int.contains(ptr %range, ptr %index.value)
+  br i1 %keep, label %selected, label %skipped
+skipped:
+  br label %advance
+selected:
+  %node = call ptr @topal.platform.allocate(i64 32)
+  store ptr %first, ptr %node, align 8
+  %node.second = getelementptr %topal.ListIntTripleStorage, ptr %node, i32 0, i32 1
+  store ptr %second, ptr %node.second, align 8
+  %node.third = getelementptr %topal.ListIntTripleStorage, ptr %node, i32 0, i32 2
+  store ptr %third, ptr %node.third, align 8
+  %node.next = getelementptr %topal.ListIntTripleStorage, ptr %node, i32 0, i32 3
+  store ptr null, ptr %node.next, align 8
+  %has.previous = icmp ne ptr %previous, null
+  br i1 %has.previous, label %link, label %first.node
+first.node:
+  br label %selected.merge
+link:
+  %previous.next = getelementptr %topal.ListIntTripleStorage, ptr %previous, i32 0, i32 3
+  store ptr %node, ptr %previous.next, align 8
+  br label %selected.merge
+selected.merge:
+  %selected.head = phi ptr [%node, %first.node], [%head, %link]
+  br label %advance
+advance:
+  %next.head = phi ptr [%head, %skipped], [%selected.head, %selected.merge]
+  %next.previous = phi ptr [%previous, %skipped], [%node, %selected.merge]
+  %next.index = add i64 %index, 1
+  br label %loop
+done:
+  ret ptr %head
+}
+
+define internal ptr @topal.runtime.list.int.triple.first(ptr %list) nounwind noinline {
+entry:
+  %empty = icmp eq ptr %list, null
+  br i1 %empty, label %none, label %some
+some:
+  %payload = call ptr @topal.platform.allocate(i64 24)
+  %first = load ptr, ptr %list, align 8
+  store ptr %first, ptr %payload, align 8
+  %source.second = getelementptr %topal.ListIntTripleStorage, ptr %list, i32 0, i32 1
+  %second = load ptr, ptr %source.second, align 8
+  %payload.second = getelementptr i8, ptr %payload, i64 8
+  store ptr %second, ptr %payload.second, align 8
+  %source.third = getelementptr %topal.ListIntTripleStorage, ptr %list, i32 0, i32 2
+  %third = load ptr, ptr %source.third, align 8
+  %payload.third = getelementptr i8, ptr %payload, i64 16
+  store ptr %third, ptr %payload.third, align 8
+  %present = call ptr @topal.runtime.optional.some(ptr %payload)
+  ret ptr %present
+none:
+  %absent = call ptr @topal.runtime.optional.none()
+  ret ptr %absent
+}
+
 define internal i1 @topal.runtime.list.int.triple.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   br label %loop
