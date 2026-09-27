@@ -13820,6 +13820,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.parse"][..],
         ),
         (
+            "sequence-algorithms",
+            include_str!("../../../tests/standard-library/sequence-algorithms.t"),
+            &["std.sequence"][..],
+        ),
+        (
             "firewall",
             include_str!("../../../examples/data-transfer/firewall.t"),
             &["std.data.spans", "std.network.addresses"][..],
