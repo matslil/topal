@@ -8,7 +8,17 @@ use topal_compiler::{CompileError, CompileOptions, Emit, TARGET_TRIPLE, compile_
 mod test_runner;
 
 fn main() -> ExitCode {
-    match run() {
+    let result = std::thread::Builder::new()
+        .name("topalc".into())
+        .stack_size(32 * 1024 * 1024)
+        .spawn(run)
+        .map_err(|error| format!("cannot start compiler worker: {error}"))
+        .and_then(|worker| {
+            worker
+                .join()
+                .map_err(|_| "compiler worker panicked".to_owned())?
+        });
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
             eprintln!("{message}");

@@ -950,6 +950,14 @@ pub enum CompilerExpressionKind {
         inserted: Box<CompilerExpression>,
         inserts_list: bool,
     },
+    ListInsertEverywhere {
+        list: Box<CompilerExpression>,
+        value: Box<CompilerExpression>,
+    },
+    ListCartesianStringInt {
+        left: Box<CompilerExpression>,
+        right: Box<CompilerExpression>,
+    },
     ListIndexOperation {
         list: Box<CompilerExpression>,
         index: usize,
@@ -8581,6 +8589,69 @@ impl Analyzer {
         }
     }
 
+    fn analyze_contextual_list(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Some(CompilerType::List(element)) = expected else {
+            return Ok(None);
+        };
+        if let Expression::Identifier(name) = expression
+            && self.source.slice(*name) == "Empty"
+        {
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::ListEmpty,
+                value_type: CompilerType::List(element.clone()),
+                int_range: None,
+                rational_value: None,
+                span: expression.span(),
+            }));
+        }
+        let Expression::Application { items, span } = expression else {
+            return Ok(None);
+        };
+        let [
+            Expression::Identifier(constructor),
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        else {
+            return Ok(None);
+        };
+        if self.source.slice(*constructor) != "Entry" {
+            return Ok(None);
+        }
+        let [value, remaining] = fields.as_slice() else {
+            return Ok(None);
+        };
+        if value.label.is_some() || remaining.label.is_some() {
+            return Ok(None);
+        }
+        let value =
+            self.analyze_expression_with_expected(&value.value, environment, Some(element))?;
+        let value = self.finish_list_entry_value(value, element)?;
+        let list_type = CompilerType::List(element.clone());
+        let remaining =
+            self.analyze_expression_with_expected(&remaining.value, environment, Some(&list_type))?;
+        require_same_type(
+            &self.source,
+            remaining.span,
+            &list_type,
+            &remaining.value_type,
+        )?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::ListEntry {
+                value: Box::new(value),
+                remaining: Box::new(remaining),
+            },
+            value_type: list_type,
+            int_range: None,
+            rational_value: None,
+            span: *span,
+        }))
+    }
+
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -8627,57 +8698,40 @@ impl Analyzer {
         if let Some(value) = self.analyze_contextual_tuple(expression, environment, expected)? {
             return Ok(value);
         }
-        if let Some(CompilerType::List(element)) = expected {
-            if let Expression::Identifier(name) = expression
-                && self.source.slice(*name) == "Empty"
-            {
-                return Ok(CompilerExpression {
-                    kind: CompilerExpressionKind::ListEmpty,
-                    value_type: CompilerType::List(element.clone()),
-                    int_range: None,
-                    rational_value: None,
-                    span: expression.span(),
-                });
-            }
-            if let Expression::Application { items, span } = expression
-                && let [
-                    Expression::Identifier(constructor),
-                    Expression::Product { fields, .. },
-                ] = items.as_slice()
-                && self.source.slice(*constructor) == "Entry"
-                && let [value, remaining] = fields.as_slice()
-                && value.label.is_none()
-                && remaining.label.is_none()
-            {
-                let value = self.analyze_expression_with_expected(
-                    &value.value,
-                    environment,
-                    Some(element),
-                )?;
-                let value = self.finish_list_entry_value(value, element)?;
-                let list_type = CompilerType::List(element.clone());
-                let remaining = self.analyze_expression_with_expected(
-                    &remaining.value,
-                    environment,
-                    Some(&list_type),
-                )?;
-                require_same_type(
-                    &self.source,
-                    remaining.span,
-                    &list_type,
-                    &remaining.value_type,
-                )?;
-                return Ok(CompilerExpression {
-                    kind: CompilerExpressionKind::ListEntry {
-                        value: Box::new(value),
-                        remaining: Box::new(remaining),
-                    },
-                    value_type: list_type,
-                    int_range: None,
-                    rational_value: None,
-                    span: *span,
-                });
-            }
+        if let Some(value) = self.analyze_contextual_list(expression, environment, expected)? {
+            return Ok(value);
+        }
+        if expected == Some(&CompilerType::Nat)
+            && let Expression::DecisionTable {
+                subject,
+                rules,
+                span,
+            } = expression
+        {
+            let subject = self.analyze_expression(subject, environment)?;
+            return match subject.value_type {
+                CompilerType::Int | CompilerType::Rational => self
+                    .analyze_ordered_comparison_decision(
+                        subject,
+                        rules,
+                        *span,
+                        environment,
+                        expected,
+                    ),
+                CompilerType::Nat if self.active_nat_recursion() => self
+                    .analyze_ordered_comparison_decision(
+                        forget_nat_evidence(subject),
+                        rules,
+                        *span,
+                        environment,
+                        expected,
+                    ),
+                _ => self
+                    .analyze_expression(expression, environment)
+                    .and_then(|value| {
+                        self.finish_contextual_scalar(value, expected, expression.span())
+                    }),
+            };
         }
         let value = self.analyze_expression(expression, environment)?;
         self.finish_contextual_scalar(value, expected, expression.span())
@@ -14774,12 +14828,33 @@ impl Analyzer {
                 span,
             });
         }
+        if let [Expression::Identifier(empty), classifier] = items
+            && self.source.slice(*empty) == "Empty"
+        {
+            let element_type = self.parse_classifier(classifier.span())?;
+            if !compiler_list_node_element_supported(&element_type) {
+                return Err(unsupported(
+                    &self.source,
+                    classifier.span(),
+                    "explicit Empty element classifier",
+                ));
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::ListEmpty,
+                value_type: CompilerType::List(Box::new(element_type)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if let [Expression::Identifier(constructor), value] = items
             && self.source.slice(*constructor) == "one"
             && !matches!(value, Expression::Identifier(domain) if matches!(self.source.slice(*domain), "Int" | "Nat" | "Rational"))
         {
             let value = self.analyze_expression(value, environment)?;
-            if !matches!(value.value_type, CompilerType::Int | CompilerType::String) {
+            if !matches!(value.value_type, CompilerType::Int | CompilerType::String)
+                && !compiler_nested_int_list_element(&value.value_type)
+            {
                 return Err(unsupported(
                     &self.source,
                     value.span,
@@ -15395,7 +15470,9 @@ impl Analyzer {
                     "reverse for this value type",
                 ));
             };
-            if element.as_ref() != &CompilerType::Int {
+            if element.as_ref() != &CompilerType::Int
+                && !compiler_nested_int_list_element(element.as_ref())
+            {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
@@ -15435,7 +15512,9 @@ impl Analyzer {
                     "reverse for this value type",
                 ));
             };
-            if element.as_ref() != &CompilerType::Int {
+            if element.as_ref() != &CompilerType::Int
+                && !compiler_nested_int_list_element(element.as_ref())
+            {
                 return Err(unsupported(
                     &self.source,
                     operand.span,
@@ -15510,6 +15589,8 @@ impl Analyzer {
             if let CompilerType::List(element) = &list.value_type {
                 if element.as_ref() != &CompilerType::Int
                     && !(element.as_ref() == &CompilerType::String && operation == "append")
+                    && !(compiler_nested_int_list_element(element.as_ref())
+                        && operation == "concat")
                 {
                     return Err(unsupported(
                         &self.source,
@@ -15572,8 +15653,69 @@ impl Analyzer {
         {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
-            let parameter_type = if operation == "map" {
+            if operation == "map"
+                && let CompilerExpressionKind::Call { symbol, arguments } = &list.kind
+                && self.instances.iter().any(|function| {
+                    function.symbol == *symbol && function.source_name.ends_with(".positions")
+                })
+                && let [
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::ListEntryCount(source),
+                        ..
+                    },
+                ] = arguments.as_slice()
+                && let [AnonymousPattern::Binding(index)] = parameters.as_slice()
+                && let Expression::Application {
+                    items: insertion, ..
+                } = &**body
+                && let [
+                    body_list,
+                    Expression::Identifier(insert_at),
+                    Expression::Identifier(boundary),
+                    inserted,
+                ] = insertion.as_slice()
+                && self.source.slice(*insert_at) == "insert-at"
+                && self.source.slice(*boundary) == self.source.slice(*index)
+            {
+                let body_list = self.analyze_expression(body_list, environment)?;
+                let same_source = matches!(
+                    (&source.kind, &body_list.kind),
+                    (CompilerExpressionKind::Local(left), CompilerExpressionKind::Local(right))
+                        if left == right
+                );
+                if same_source {
+                    require_int_list(&self.source, &body_list, "insert-everywhere source")?;
+                    let inserted = self.analyze_expression(inserted, environment)?;
+                    require_type(
+                        &self.source,
+                        inserted.span,
+                        &CompilerType::Int,
+                        &inserted.value_type,
+                    )?;
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::ListInsertEverywhere {
+                            list: Box::new(body_list),
+                            value: Box::new(inserted),
+                        },
+                        value_type: CompilerType::List(Box::new(int_list_type())),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+            }
+            let nested_int_map = operation == "map"
+                && matches!(&list.value_type, CompilerType::List(element)
+                    if compiler_nested_int_list_element(element.as_ref()));
+            let nested_int_select = operation == "select"
+                && matches!(&list.value_type, CompilerType::List(element)
+                    if compiler_nested_int_list_element(element.as_ref()));
+            let parameter_type = if nested_int_map {
+                int_list_type()
+            } else if operation == "map" {
                 require_int_or_int_pair_list(&self.source, &list, "map subject")?
+            } else if nested_int_select {
+                int_list_type()
             } else {
                 require_int_list(&self.source, &list, "select subject")?;
                 CompilerType::Int
@@ -15586,7 +15728,9 @@ impl Analyzer {
                 self.static_context,
                 *function_span,
             )?;
-            let expected = if operation == "map" {
+            let expected = if nested_int_map {
+                int_list_type()
+            } else if operation == "map" {
                 CompilerType::Int
             } else {
                 CompilerType::Boolean
@@ -15597,6 +15741,11 @@ impl Analyzer {
                 &expected,
                 &body.result.value_type,
             )?;
+            let value_type = if operation == "select" {
+                list.value_type.clone()
+            } else {
+                CompilerType::List(Box::new(expected))
+            };
             let kind = if operation == "map" {
                 CompilerExpressionKind::ListMap {
                     list: Box::new(list),
@@ -15612,7 +15761,7 @@ impl Analyzer {
             };
             return Ok(CompilerExpression {
                 kind,
-                value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                value_type,
                 int_range: None,
                 rational_value: None,
                 span,
@@ -15643,6 +15792,13 @@ impl Analyzer {
                     if let Some(capture) =
                         anonymous_body_capture(&self.source, parameters, body, environment)
                     {
+                        let admitted_nat_predicate_bound = role == "take-while predicate"
+                            && environment.get(&capture).is_some_and(|facts| {
+                                facts.runtime_bound && facts.value_type == CompilerType::Nat
+                            });
+                        if admitted_nat_predicate_bound {
+                            continue;
+                        }
                         return Err(unsupported(
                             &self.source,
                             function_span,
@@ -15817,6 +15973,54 @@ impl Analyzer {
             let list = self.analyze_expression(list, environment)?;
             let mut initial = self.analyze_expression(initial, environment)?;
             if matches!(&list.value_type, CompilerType::List(element)
+                if element.as_ref() == &CompilerType::String)
+                && matches!(&initial.value_type, CompilerType::List(element)
+                    if compiler_string_int_pair(element.as_ref()))
+                && let [
+                    AnonymousPattern::Binding(state),
+                    AnonymousPattern::Binding(candidate),
+                ] = parameters.as_slice()
+                && let Expression::Application { items: concat, .. } = &**body
+                && let [
+                    Expression::Identifier(state_use),
+                    Expression::Identifier(concat_name),
+                    pair_call,
+                ] = concat.as_slice()
+                && self.source.slice(*state_use) == self.source.slice(*state)
+                && self.source.slice(*concat_name) == "concat"
+                && let Expression::Application {
+                    items: pair_items, ..
+                } = pair_call
+                && let [
+                    Expression::Identifier(pair_with),
+                    Expression::Product { fields, .. },
+                ] = pair_items.as_slice()
+                && self.source.slice(*pair_with) == "pair-with"
+                && let [candidate_field, right_field] = fields.as_slice()
+                && candidate_field.label.is_none()
+                && right_field.label.is_none()
+                && matches!(&candidate_field.value, Expression::Identifier(name)
+                    if self.source.slice(*name) == self.source.slice(*candidate))
+            {
+                let right = self.analyze_expression(&right_field.value, environment)?;
+                require_type(
+                    &self.source,
+                    right.span,
+                    &int_list_type(),
+                    &right.value_type,
+                )?;
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ListCartesianStringInt {
+                        left: Box::new(list),
+                        right: Box::new(right),
+                    },
+                    value_type: initial.value_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
+            if matches!(&list.value_type, CompilerType::List(element)
                 if compiler_nat_pair(element.as_ref()))
                 && initial.value_type == CompilerType::Int
             {
@@ -15854,6 +16058,16 @@ impl Analyzer {
                 {
                     (
                         CompilerType::List(Box::new(CompilerType::String)),
+                        element.as_ref().clone(),
+                    )
+                }
+                (CompilerType::List(element), CompilerType::List(state_element))
+                    if compiler_nested_int_list_element(state_element.as_ref())
+                        && (element.as_ref() == &CompilerType::Int
+                            || compiler_nested_int_list_element(element.as_ref())) =>
+                {
+                    (
+                        CompilerType::List(Box::new(state_element.as_ref().clone())),
                         element.as_ref().clone(),
                     )
                 }
@@ -16030,14 +16244,19 @@ impl Analyzer {
                 &selector.value_type,
             )?;
             match collection.value_type.clone() {
-                CompilerType::List(element) if element.as_ref() == &CompilerType::Int => {
+                CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::Int
+                        || (operation == "select-index"
+                            && compiler_nested_int_list_element(element.as_ref())) =>
+                {
+                    let value_type = CompilerType::List(element);
                     return Ok(CompilerExpression {
                         kind: CompilerExpressionKind::ListRangeSelect {
                             list: Box::new(collection),
                             range: Box::new(selector),
                             indexes: operation == "select-index",
                         },
-                        value_type: CompilerType::List(Box::new(CompilerType::Int)),
+                        value_type,
                         int_range: None,
                         rational_value: None,
                         span,
@@ -19254,6 +19473,27 @@ impl Analyzer {
             &CompilerType::Int,
             &value.value_type,
         )?;
+        let proven_nonnegative_power = matches!(
+            &value.kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Power,
+                left,
+                right,
+            } if right.value_type == CompilerType::Nat
+                && left
+                    .int_range
+                    .as_ref()
+                    .is_some_and(|range| range.lower >= BigInt::from(0))
+        );
+        if proven_nonnegative_power {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(Box::new(value)),
+                value_type: CompilerType::Nat,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
         if value
             .int_range
             .as_ref()
@@ -21101,14 +21341,17 @@ impl Analyzer {
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         require_exact_numeric(&self.source, left.span, &left.value_type)?;
-        require_type(
-            &self.source,
-            right.span,
-            &CompilerType::Int,
-            &right.value_type,
-        )?;
+        let exponent_is_nat = right.value_type == CompilerType::Nat;
+        if !exponent_is_nat {
+            require_type(
+                &self.source,
+                right.span,
+                &CompilerType::Int,
+                &right.value_type,
+            )?;
+        }
         let exponent = exact_int(&right);
-        if left.value_type == CompilerType::Int {
+        if left.value_type == CompilerType::Int && !exponent_is_nat {
             let Some(ref exponent) = exponent else {
                 return Err(unsupported(
                     &self.source,
@@ -21127,6 +21370,7 @@ impl Analyzer {
         }
         let can_fail = left.value_type == CompilerType::Rational
             && !is_proven_nonzero_numeric(&left)
+            && !exponent_is_nat
             && exponent
                 .as_ref()
                 .is_none_or(|value| value < &BigInt::from(0));
@@ -23066,12 +23310,13 @@ impl Analyzer {
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         let identity = function_overload_identity(&self.source, function_name, declaration);
-        let recursion_proof = self.recursion_proof(function_name, declaration);
+        let declaration_name = self.source.slice(declaration.name).to_owned();
+        let recursion_proof = self.recursion_proof(&declaration_name, declaration);
         if self.active_calls.contains(&identity) {
             if let Some(active) = self.active_recursive_functions.get(&identity).cloned()
                 && ((self.active_calls.last() == Some(&identity)
                     && active.proof.mutual_target.is_none())
-                    || self.closes_proven_mutual_bounded_cycle(&identity, function_name))
+                    || self.closes_proven_mutual_bounded_cycle(&identity, &declaration_name))
             {
                 return Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Call {
@@ -23092,7 +23337,7 @@ impl Analyzer {
             self.active_recursive_functions.insert(
                 identity.clone(),
                 ActiveRecursiveFunction {
-                    source_name: function_name.to_owned(),
+                    source_name: declaration_name,
                     symbol: symbol.clone(),
                     result_type,
                     proof,
@@ -24311,7 +24556,8 @@ impl Analyzer {
         let active = self.active_recursive_functions.get(active_identity)?;
         let direct_edge =
             active_identity == &target_identity && active.proof.mutual_target.is_none();
-        let mutual_nat_edge = active.proof.mutual_target.as_deref() == Some(function_name)
+        let declaration_name = self.source.slice(declaration.name);
+        let mutual_nat_edge = active.proof.mutual_target.as_deref() == Some(declaration_name)
             && matches!(
                 active.proof.rule,
                 "TOPAL-FUNCTION-RECURSION-NAT-MUTUAL-001"
@@ -24392,7 +24638,7 @@ impl Analyzer {
                 "decision for this List element type",
             )),
             CompilerType::Int | CompilerType::Rational => {
-                self.analyze_ordered_comparison_decision(subject, rules, span, environment)
+                self.analyze_ordered_comparison_decision(subject, rules, span, environment, None)
             }
             CompilerType::Nat if self.active_nat_recursion() => self
                 .analyze_ordered_comparison_decision(
@@ -24400,6 +24646,7 @@ impl Analyzer {
                     rules,
                     span,
                     environment,
+                    None,
                 ),
             _ => Err(unsupported(
                 &self.source,
@@ -25135,6 +25382,7 @@ impl Analyzer {
         rules: &[topal_syntax::DecisionRule],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
     ) -> Result<CompilerExpression, Diagnostic> {
         require_exact_numeric(&self.source, subject.span, &subject.value_type)?;
         let mut lowered = Vec::new();
@@ -25181,13 +25429,21 @@ impl Analyzer {
                     lowered.push(CompilerComparisonRule {
                         operation,
                         operand,
-                        action: self.analyze_expression(&rule.action, environment)?,
+                        action: self.analyze_expression_with_expected(
+                            &rule.action,
+                            environment,
+                            expected,
+                        )?,
                         subject_to_rational,
                         span: rule.span,
                     });
                 }
                 DecisionMatcher::Otherwise(_) if index + 1 == rules.len() => {
-                    otherwise = Some(self.analyze_expression(&rule.action, environment)?);
+                    otherwise = Some(self.analyze_expression_with_expected(
+                        &rule.action,
+                        environment,
+                        expected,
+                    )?);
                 }
                 DecisionMatcher::Otherwise(_) => {
                     return Err(source_diagnostic(
@@ -26150,6 +26406,14 @@ fn infer_classifier_substitutions(
     if let Some(expected) = substitutions.get(classifier) {
         return expected == actual;
     }
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        && let [field] = fields.as_slice()
+    {
+        return infer_classifier_substitutions(field, actual, substitutions, resolve_nominal);
+    }
     if let Some(element) = classifier.strip_prefix("List") {
         return matches!(actual, CompilerType::List(actual) if infer_classifier_substitutions(element, actual, substitutions, resolve_nominal));
     }
@@ -26188,6 +26452,14 @@ fn parse_substituted_classifier(
     if let Some(value_type) = substitutions.get(classifier) {
         return Some(value_type.clone());
     }
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        && let [field] = fields.as_slice()
+    {
+        return parse_substituted_classifier(field, substitutions, resolve_nominal);
+    }
     if let Some(element) = classifier.strip_prefix("List") {
         let element = parse_substituted_classifier(element, substitutions, resolve_nominal)?;
         return compiler_list_node_element_supported(&element)
@@ -26225,6 +26497,14 @@ fn parse_compact_classifier_with(
     classifier: &str,
     resolve_nominal: &impl Fn(&str) -> Option<CompilerType>,
 ) -> Option<CompilerType> {
+    if let Some(fields) = classifier
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        && let [field] = fields.as_slice()
+    {
+        return parse_compact_classifier_with(field, resolve_nominal);
+    }
     if let Some(fields) = classifier
         .strip_prefix("Array(")
         .and_then(|value| value.strip_suffix(')'))
@@ -28365,7 +28645,8 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
             matches!(
                 payload.as_ref(),
                 CompilerType::Int | CompilerType::Rational | CompilerType::String
-            ) || matches!(payload.as_ref(), CompilerType::Tuple(fields)
+            ) || compiler_nested_int_list_element(payload.as_ref())
+                || matches!(payload.as_ref(), CompilerType::Tuple(fields)
             if fields.as_slice() == [CompilerType::Int, CompilerType::String])
         }
         CompilerType::List(element) => {
@@ -28713,6 +28994,11 @@ fn compiler_expression_is_closed_with(
             inserted: right,
             ..
         }
+        | CompilerExpressionKind::ListInsertEverywhere {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListCartesianStringInt { left, right }
         | CompilerExpressionKind::ListRangeSelect {
             list: left,
             range: right,
@@ -29706,6 +29992,26 @@ mod tests {
             values[3].int_range,
             Some(IntRange::exact(BigInt::from(65_536)))
         );
+    }
+
+    #[test]
+    fn models_dynamic_nat_power_exponents() {
+        let source = "use language (version is v0.1)\npower-of-two is fn (exponent : Nat) -> Int\n  2 ^ exponent\npower-of-two 3\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let function = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "power-of-two")
+            .expect("power specialization is emitted");
+        let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Power,
+            right,
+            ..
+        } = &function.body.result.kind
+        else {
+            panic!("expected the power operation")
+        };
+        assert_eq!(right.value_type, CompilerType::Nat);
     }
 
     #[test]
@@ -44006,6 +44312,43 @@ mod tests {
             .code,
             "E-COMPILER-UNSUPPORTED"
         );
+    }
+
+    #[test]
+    fn compiles_proven_nat_recursion_in_source_modules() {
+        // TOPAL-LIB-SOURCE-001, TOPAL-FUNCTION-RECURSION-NAT-001,
+        // TOPAL-COMPILER-LIBRARY-SOURCE-001
+        let source = "use language (version is v0.1)\nuse library std (version is v0.1)\nfactorial is std maths factorial\nfactorial 5\n";
+        let module = CompilerSourceModule {
+            identity: vec!["std".into(), "maths".into()],
+            source_name: "library/std/maths.t".into(),
+            source: "use language (version is v0.1)\npub factorial is fn (count : Nat) -> Nat\n  count\n    <= 1 then 1\n    otherwise count * (factorial (count - 1))\n"
+                .into(),
+        };
+        let program = analyze_for_compiler_with_modules(source, &[module]).unwrap();
+        let factorial = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.maths.factorial")
+            .expect("qualified recursive specialization is emitted");
+        let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+            &factorial.body.result.kind
+        else {
+            panic!("expected the structurally proven Nat decision")
+        };
+        let CompilerExpressionKind::Binary { right, .. } = &otherwise.kind else {
+            panic!("expected the recursive multiplication")
+        };
+        let CompilerExpressionKind::Call { arguments, .. } = &right.kind else {
+            panic!("expected the qualified recursive call")
+        };
+        assert!(matches!(
+            arguments.as_slice(),
+            [CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(_),
+                ..
+            }]
+        ));
     }
 
     #[test]
