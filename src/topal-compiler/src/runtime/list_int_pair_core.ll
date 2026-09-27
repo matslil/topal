@@ -1,5 +1,89 @@
 %topal.ListIntPairStorage = type { ptr, ptr, ptr }
 
+define internal i1 @topal.runtime.list.int.pair.contains.entry(ptr %list, ptr %first, ptr %second) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %missing, label %inspect
+inspect:
+  %entry.first = load ptr, ptr %current, align 8
+  %entry.second.pointer = getelementptr %topal.ListIntPairStorage, ptr %current, i32 0, i32 1
+  %entry.second = load ptr, ptr %entry.second.pointer, align 8
+  %first.ordering = call i32 @topal.runtime.int.compare(ptr %entry.first, ptr %first)
+  %second.ordering = call i32 @topal.runtime.int.compare(ptr %entry.second, ptr %second)
+  %first.equal = icmp eq i32 %first.ordering, 0
+  %second.equal = icmp eq i32 %second.ordering, 0
+  %equal = and i1 %first.equal, %second.equal
+  br i1 %equal, label %found, label %advance
+advance:
+  %next.pointer = getelementptr %topal.ListIntPairStorage, ptr %current, i32 0, i32 2
+  %next = load ptr, ptr %next.pointer, align 8
+  br label %loop
+found:
+  ret i1 true
+missing:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.list.int.pair.starts.with(ptr %source, ptr %pattern) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %source.current = phi ptr [%source, %entry], [%source.next, %advance]
+  %pattern.current = phi ptr [%pattern, %entry], [%pattern.next, %advance]
+  %pattern.empty = icmp eq ptr %pattern.current, null
+  br i1 %pattern.empty, label %matches, label %check.source
+check.source:
+  %source.empty = icmp eq ptr %source.current, null
+  br i1 %source.empty, label %different, label %compare
+compare:
+  %source.first = load ptr, ptr %source.current, align 8
+  %pattern.first = load ptr, ptr %pattern.current, align 8
+  %source.second.pointer = getelementptr %topal.ListIntPairStorage, ptr %source.current, i32 0, i32 1
+  %pattern.second.pointer = getelementptr %topal.ListIntPairStorage, ptr %pattern.current, i32 0, i32 1
+  %source.second = load ptr, ptr %source.second.pointer, align 8
+  %pattern.second = load ptr, ptr %pattern.second.pointer, align 8
+  %first.ordering = call i32 @topal.runtime.int.compare(ptr %source.first, ptr %pattern.first)
+  %second.ordering = call i32 @topal.runtime.int.compare(ptr %source.second, ptr %pattern.second)
+  %first.equal = icmp eq i32 %first.ordering, 0
+  %second.equal = icmp eq i32 %second.ordering, 0
+  %equal = and i1 %first.equal, %second.equal
+  br i1 %equal, label %advance, label %different
+advance:
+  %source.next.pointer = getelementptr %topal.ListIntPairStorage, ptr %source.current, i32 0, i32 2
+  %pattern.next.pointer = getelementptr %topal.ListIntPairStorage, ptr %pattern.current, i32 0, i32 2
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %pattern.next = load ptr, ptr %pattern.next.pointer, align 8
+  br label %loop
+matches:
+  ret i1 true
+different:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.list.int.pair.contains.sequence(ptr %list, ptr %pattern) nounwind noinline {
+entry:
+  %pattern.empty = icmp eq ptr %pattern, null
+  br i1 %pattern.empty, label %found, label %search
+search:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %missing, label %inspect
+inspect:
+  %matches = call i1 @topal.runtime.list.int.pair.starts.with(ptr %current, ptr %pattern)
+  br i1 %matches, label %found, label %advance
+advance:
+  %next.pointer = getelementptr %topal.ListIntPairStorage, ptr %current, i32 0, i32 2
+  %next = load ptr, ptr %next.pointer, align 8
+  br label %search
+found:
+  ret i1 true
+missing:
+  ret i1 false
+}
+
 define internal ptr @topal.runtime.list.int.pair.first(ptr %list) nounwind noinline {
 entry:
   %empty = icmp eq ptr %list, null

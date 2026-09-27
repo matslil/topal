@@ -13800,7 +13800,8 @@ fn assert_source_library_program(
 fn qualified_standard_library_functions_compile_from_source_modules() {
     // TOPAL-LIB-SOURCE-001, TOPAL-NAMESPACE-USE-001,
     // TOPAL-COMPILER-LIBRARY-SOURCE-001,
-    // TOPAL-COMPILER-LIBRARY-MODULE-SELECTION-001
+    // TOPAL-COMPILER-LIBRARY-MODULE-SELECTION-001,
+    // TOPAL-COMPILER-PACKING-LISTS-001
     let directory = temporary("qualified-standard-library-source");
     let library_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
     for (name, source_text, dependency_identities) in [
@@ -13843,6 +13844,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             "machine-algorithms",
             include_str!("../../../tests/standard-library/machine-algorithms.t"),
             &["advent-of-code.machine"][..],
+        ),
+        (
+            "packing-algorithms",
+            include_str!("../../../tests/standard-library/packing-algorithms.t"),
+            &["advent-of-code.packing"][..],
         ),
         (
             "firewall",
