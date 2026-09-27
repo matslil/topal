@@ -2955,6 +2955,24 @@ freestanding ELF/DWARF, compiler corpus, and resource baselines. This realizes
 `TOPAL-LIST-APPEND-001`, and `TOPAL-LIST-CONTAINS-ENTRY-001` for compiler
 increment 6b11.
 
+## TOPAL-COMP-LIST-NESTED-INT-001 — Nested Int Lists
+
+The checked compiler shall admit exact `List List Int` construction, private
+Function passage, entry count, and recursive equality. The backend shall use
+one immutable two-pointer outer node, reuse the existing private `List Int`
+representation and comparator, emit finite outer and inner loops, and retain
+classifier-specific LLVM/DWARF identities. The context-free `one` constructor
+shall also infer `List String` from a String operand and lower through the
+existing String List node layout.
+
+Focused checked-model and LLVM tests shall cover nested construction, direct
+private passage, count, recursive equality, inferred String singleton
+construction, runtime selection, DWARF identity, and absence of indirect calls
+or foreign dependencies. This realizes `TOPAL-COMPILER-LIST-NESTED-INT-001`,
+`TOPAL-TYPE-LIST-CONSTRUCT-001`, `TOPAL-TYPE-LIST-RECURSIVE-001`,
+`TOPAL-TYPE-LIST-EQUALITY-001`, and `TOPAL-LIST-ONE-001` for compiler increment
+6b12.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

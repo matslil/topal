@@ -14779,13 +14779,15 @@ impl Analyzer {
             && !matches!(value, Expression::Identifier(domain) if matches!(self.source.slice(*domain), "Int" | "Nat" | "Rational"))
         {
             let value = self.analyze_expression(value, environment)?;
-            require_type(
-                &self.source,
-                value.span,
-                &CompilerType::Int,
-                &value.value_type,
-            )?;
-            let list_type = CompilerType::List(Box::new(CompilerType::Int));
+            if !matches!(value.value_type, CompilerType::Int | CompilerType::String) {
+                return Err(unsupported(
+                    &self.source,
+                    value.span,
+                    "singleton List element classifier",
+                ));
+            }
+            let element_type = value.value_type.clone();
+            let list_type = CompilerType::List(Box::new(element_type));
             let empty = CompilerExpression {
                 kind: CompilerExpressionKind::ListEmpty,
                 value_type: list_type.clone(),
@@ -15463,7 +15465,8 @@ impl Analyzer {
             };
             if element.as_ref() != &CompilerType::Int
                 && !(operation == "first"
-                    && compiler_nested_int_string_list_element(element.as_ref()))
+                    && (compiler_nested_int_list_element(element.as_ref())
+                        || compiler_nested_int_string_list_element(element.as_ref())))
             {
                 return Err(unsupported(
                     &self.source,
@@ -17101,6 +17104,7 @@ impl Analyzer {
             && let CompilerType::List(element) = &operand_value.value_type
         {
             if !compiler_list_observation_element_supported(element.as_ref())
+                && !compiler_nested_int_list_element(element.as_ref())
                 && !compiler_nested_int_string_list_element(element.as_ref())
             {
                 return Err(unsupported(
@@ -25989,6 +25993,13 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_nested_int_list_element(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::List(element) if element.as_ref() == &CompilerType::Int
+    )
+}
+
 fn compiler_list_observation_element_supported(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -26049,6 +26060,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
         || compiler_string_function_pair(value_type)
+        || compiler_nested_int_list_element(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
 
@@ -26425,7 +26437,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::Rational
                     | CompilerType::String
                     | CompilerType::Function
-            ) || compiler_nested_int_string_list_element(element.as_ref())
+            ) || compiler_nested_int_list_element(element.as_ref())
+                || compiler_nested_int_string_list_element(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Tuple(fields)
                 if matches!(fields.as_slice(), [
                     CompilerType::Int | CompilerType::Nat | CompilerType::String,
@@ -28357,6 +28370,7 @@ fn compiler_equality_supported(value_type: &CompilerType) -> bool {
         }
         CompilerType::List(element) => {
             compiler_list_observation_element_supported(element.as_ref())
+                || compiler_nested_int_list_element(element.as_ref())
                 || compiler_nested_int_string_list_element(element.as_ref())
         }
         CompilerType::Tuple(fields) => fields.iter().all(compiler_equality_supported),
@@ -36860,6 +36874,16 @@ mod tests {
 
         let inner_boundary = "use language (version is v0.1)\npreserve is fn (values : List (Int, String)) -> List (Int, String)\n  values\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\npreserve values\n";
         assert!(analyze_for_compiler(inner_boundary).is_ok());
+
+        let nested_int = "use language (version is v0.1)\npreserve is fn (values : List List Int) -> List List Int\n  values\ninner : List Int is Entry (1, Entry (2, Empty))\nnested : List List Int is Entry (inner, Empty)\ncopy : List List Int is Entry (inner, Empty)\nsingleton : List String is one \"solo\"\nsingleton-copy : List String is Entry (\"solo\", Empty)\n((preserve nested) = copy, entry-count nested, singleton = singleton-copy)\n";
+        let program = analyze_for_compiler(nested_int).unwrap();
+        let CompilerExpressionKind::Tuple(results) = &program.main.result.kind else {
+            panic!("nested Int List regression returns a Tuple")
+        };
+        assert_eq!(results[0].value_type, CompilerType::Boolean);
+        assert_eq!(results[1].value_type, CompilerType::Nat);
+        assert_eq!(results[2].value_type, CompilerType::Boolean);
+
         let unsupported_rest = "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nnested : List List (Int, String) is Entry (values, Empty)\nrest nested\n";
         assert_eq!(
             analyze_for_compiler(unsupported_rest).unwrap_err().code,

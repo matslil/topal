@@ -53,6 +53,6 @@ qualified published functions from selectively discovered authoritative Topal
 modules, specializes their private helper closure, preserves per-file
 hashbangs, records exact source dependency digests, and specializes admitted
 capability-generic facade and packaged-module Functions directly from source.
-Its next blockers are remaining generic Result/Record/container shapes and
-collection algorithms, cross-module dependencies, library/application
+Its next blockers are remaining generic Result/Record and wider container
+shapes, collection algorithms, cross-module dependencies, library/application
 contexts, full package graphs, compiled interfaces, and separate compilation.
