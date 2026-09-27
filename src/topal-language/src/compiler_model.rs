@@ -17,7 +17,8 @@ use topal_serialization::{
 };
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
-    characters, lowercase, normalize_nfc, normalize_nfd, uppercase,
+    characters, is_decimal_digit, is_regex_word, lowercase, normalize_nfc, normalize_nfd,
+    uppercase,
 };
 use topal_syntax::{
     AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
@@ -1779,6 +1780,65 @@ impl Analyzer {
             || matches!(&value.kind, CompilerExpressionKind::Local(storage_name)
                 if self.nonnegative_lists.contains(storage_name))
     }
+
+    fn fold_callback_state_type(
+        &self,
+        parameters: &[AnonymousPattern],
+        body: &Expression,
+    ) -> Option<CompilerType> {
+        let [AnonymousPattern::Binding(state), ..] = parameters else {
+            return None;
+        };
+        let Expression::Application { items, .. } = body else {
+            return None;
+        };
+        let Some(Expression::Identifier(function)) = items.first() else {
+            return None;
+        };
+        if !expression_mentions_name(&self.source, body, self.source.slice(*state)) {
+            return None;
+        }
+        let function_name = self.source.slice(*function);
+        let visible = self
+            .functions
+            .iter()
+            .filter(|(name, _)| {
+                name.as_str() == function_name || name.ends_with(&format!(".{function_name}"))
+            })
+            .flat_map(|(_, declarations)| declarations)
+            .filter(|declaration| declaration.span.end <= function.start)
+            .collect::<Vec<_>>();
+        let module_declarations = self
+            .library_modules
+            .values()
+            .flat_map(|functions| functions.iter())
+            .filter(|(name, _)| {
+                name.as_str() == function_name || name.ends_with(&format!(".{function_name}"))
+            })
+            .flat_map(|(_, declarations)| declarations)
+            .filter(|declaration| declaration.span.end <= function.start)
+            .collect::<Vec<_>>();
+        let declarations = if visible.is_empty() {
+            module_declarations
+        } else {
+            visible
+        };
+        let mut expected = declarations
+            .into_iter()
+            .filter_map(|declaration| {
+                callback_state_classifier(
+                    &declaration.parameters,
+                    &items[1..],
+                    self.source.slice(*state),
+                    &self.source,
+                )
+            })
+            .filter_map(|classifier| self.parse_classifier(classifier).ok());
+        let first = expected.next()?;
+        expected
+            .all(|candidate| candidate == first)
+            .then_some(first)
+    }
 }
 
 /// Analyze the currently implemented native-compiler subset.
@@ -3180,6 +3240,131 @@ fn constraint_definition<'a>(
         body.as_ref(),
         *span,
     ))
+}
+
+fn nonempty_string_constraint_predicate(
+    source: &SourceText,
+    predicate: &Expression,
+    parameter: &str,
+) -> bool {
+    let Expression::Application { items, .. } = predicate else {
+        return false;
+    };
+    let [
+        count,
+        Expression::Callable {
+            kind: CallableKind::Greater,
+            ..
+        },
+        Expression::Integer(zero),
+    ] = items.as_slice()
+    else {
+        return false;
+    };
+    if parse_integer(source.slice(*zero)).as_ref() != Some(&BigInt::from(0)) {
+        return false;
+    }
+    let Expression::Application { items, .. } = count else {
+        return false;
+    };
+    let [Expression::Identifier(entry_count), collected] = items.as_slice() else {
+        return false;
+    };
+    if source.slice(*entry_count) != "entry-count" {
+        return false;
+    }
+    let Expression::Application { items, .. } = collected else {
+        return false;
+    };
+    let [Expression::Identifier(collect), generated] = items.as_slice() else {
+        return false;
+    };
+    if source.slice(*collect) != "collect" {
+        return false;
+    }
+    let Expression::Application { items, .. } = generated else {
+        return false;
+    };
+    matches!(items.as_slice(), [Expression::Identifier(characters), Expression::Identifier(value)]
+        if source.slice(*characters) == "characters" && source.slice(*value) == parameter)
+}
+
+fn unicode_white_space(character: char) -> bool {
+    matches!(
+        character,
+        '\u{0009}'..='\u{000D}'
+            | '\u{0020}'
+            | '\u{0085}'
+            | '\u{00A0}'
+            | '\u{1680}'
+            | '\u{2000}'..='\u{200A}'
+            | '\u{2028}'
+            | '\u{2029}'
+            | '\u{202F}'
+            | '\u{205F}'
+            | '\u{3000}'
+    )
+}
+
+fn unicode_character_predicate(operation: &str, candidate: &str) -> bool {
+    let mut scalars = candidate.chars();
+    let Some(character) = scalars.next() else {
+        return false;
+    };
+    if scalars.next().is_some() {
+        return false;
+    }
+    match operation {
+        "unicode-carriage-return-character" => character == '\r',
+        "unicode-line-feed-character" => character == '\n',
+        "unicode-whitespace-character" => unicode_white_space(character),
+        "unicode-decimal-digit-character" => is_decimal_digit(character),
+        "unicode-word-character" => is_regex_word(character),
+        _ => false,
+    }
+}
+
+fn callback_state_classifier(
+    parameters: &[FunctionParameter],
+    arguments: &[Expression],
+    state: &str,
+    source: &SourceText,
+) -> Option<Span> {
+    let arguments = if let [Expression::Product { fields, .. }] = arguments {
+        fields.iter().map(|field| &field.value).collect::<Vec<_>>()
+    } else {
+        arguments.iter().collect::<Vec<_>>()
+    };
+    let parameters = if let [parameter] = parameters
+        && !parameter.fields.is_empty()
+    {
+        parameter.fields.as_slice()
+    } else {
+        parameters
+    };
+    if parameters.len() != arguments.len() {
+        return None;
+    }
+    parameters
+        .iter()
+        .zip(arguments)
+        .find_map(|(parameter, argument)| {
+            if matches!(argument, Expression::Identifier(name) if source.slice(*name) == state) {
+                return Some(parameter.classifier);
+            }
+            let Expression::Product { fields, .. } = argument else {
+                return None;
+            };
+            callback_state_classifier(
+                &parameter.fields,
+                &fields
+                    .iter()
+                    .map(|field| field.value.clone())
+                    .collect::<Vec<_>>(),
+                state,
+                source,
+            )
+        })
 }
 
 #[allow(clippy::too_many_lines)] // Published and ordinary declaration validation remains one ordered pass.
@@ -13065,6 +13250,7 @@ impl Analyzer {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Predicate lowering and nominal registration remain one checked transaction.
     fn analyze_constraint_definition(
         &mut self,
         name: &str,
@@ -13139,7 +13325,31 @@ impl Analyzer {
         );
         let previous_in_function = self.in_function;
         self.in_function = true;
-        let predicate_result = self.analyze_expression(predicate, &predicate_environment);
+        let predicate_result =
+            if nonempty_string_constraint_predicate(&self.source, predicate, &parameter_name) {
+                let parameter = CompilerExpression {
+                    kind: CompilerExpressionKind::Local(storage_name.clone()),
+                    value_type: CompilerType::String,
+                    int_range: None,
+                    rational_value: None,
+                    span: predicate.span(),
+                };
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Not(Box::new(CompilerExpression {
+                        kind: CompilerExpressionKind::StringEmptyPredicate(Box::new(parameter)),
+                        value_type: CompilerType::Boolean,
+                        int_range: None,
+                        rational_value: None,
+                        span: predicate.span(),
+                    })),
+                    value_type: CompilerType::Boolean,
+                    int_range: None,
+                    rational_value: None,
+                    span: predicate.span(),
+                })
+            } else {
+                self.analyze_expression(predicate, &predicate_environment)
+            };
         self.in_function = previous_in_function;
         let predicate = predicate_result?;
         require_type(
@@ -14966,7 +15176,11 @@ impl Analyzer {
         if let [Expression::Identifier(operation), character] = items
             && matches!(
                 self.source.slice(*operation),
-                "unicode-carriage-return-character" | "unicode-line-feed-character"
+                "unicode-carriage-return-character"
+                    | "unicode-line-feed-character"
+                    | "unicode-whitespace-character"
+                    | "unicode-decimal-digit-character"
+                    | "unicode-word-character"
             )
         {
             let character = self.analyze_expression(character, environment)?;
@@ -14976,25 +15190,80 @@ impl Analyzer {
                 &CompilerType::Character,
                 &character.value_type,
             )?;
-            let expected = if self.source.slice(*operation) == "unicode-carriage-return-character" {
-                "\r"
-            } else {
-                "\n"
+            let operation_name = self.source.slice(*operation);
+            if matches!(
+                operation_name,
+                "unicode-carriage-return-character" | "unicode-line-feed-character"
+            ) {
+                let expected = if operation_name == "unicode-carriage-return-character" {
+                    "\r"
+                } else {
+                    "\n"
+                };
+                return Ok(Self::finish_binary(
+                    CompilerBinary::Equal,
+                    character,
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::String(expected.into()),
+                        value_type: CompilerType::Character,
+                        int_range: None,
+                        rational_value: None,
+                        span: *operation,
+                    },
+                    CompilerType::Boolean,
+                    span,
+                ));
+            }
+            let candidates = self
+                .known_structural_value_facts(&character, environment)?
+                .string_characters
+                .ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        character.span,
+                        "Unicode Character predicate without finite Character provenance",
+                    )
+                })?;
+            let mut matching = candidates
+                .into_iter()
+                .filter(|candidate| unicode_character_predicate(operation_name, candidate))
+                .collect::<BTreeSet<_>>()
+                .into_iter();
+            let Some(first) = matching.next() else {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Boolean(false),
+                    value_type: CompilerType::Boolean,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
             };
-            let expected = CompilerExpression {
-                kind: CompilerExpressionKind::String(expected.into()),
-                value_type: CompilerType::Character,
-                int_range: None,
-                rational_value: None,
-                span: *operation,
+            let comparison = |expected: String| {
+                Self::finish_binary(
+                    CompilerBinary::Equal,
+                    character.clone(),
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::String(expected),
+                        value_type: CompilerType::Character,
+                        int_range: None,
+                        rational_value: None,
+                        span: *operation,
+                    },
+                    CompilerType::Boolean,
+                    span,
+                )
             };
-            return Ok(Self::finish_binary(
-                CompilerBinary::Equal,
-                character,
-                expected,
-                CompilerType::Boolean,
-                span,
-            ));
+            let mut result = comparison(first);
+            for expected in matching {
+                result = Self::finish_binary(
+                    CompilerBinary::Or,
+                    result,
+                    comparison(expected),
+                    CompilerType::Boolean,
+                    span,
+                );
+            }
+            return Ok(result);
         }
         if let Some(value) = self.analyze_library_application(items, span, environment)? {
             return Ok(value);
@@ -16013,8 +16282,10 @@ impl Analyzer {
                     "reverse for this value type",
                 ));
             };
-            if element.as_ref() != &CompilerType::Int
-                && !compiler_nested_int_list_element(element.as_ref())
+            if !matches!(
+                element.as_ref(),
+                CompilerType::Int | CompilerType::Character
+            ) && !compiler_nested_int_list_element(element.as_ref())
             {
                 return Err(unsupported(
                     &self.source,
@@ -16055,8 +16326,10 @@ impl Analyzer {
                     "reverse for this value type",
                 ));
             };
-            if element.as_ref() != &CompilerType::Int
-                && !compiler_nested_int_list_element(element.as_ref())
+            if !matches!(
+                element.as_ref(),
+                CompilerType::Int | CompilerType::Character
+            ) && !compiler_nested_int_list_element(element.as_ref())
             {
                 return Err(unsupported(
                     &self.source,
@@ -16611,6 +16884,11 @@ impl Analyzer {
         {
             let list = self.analyze_expression(list, environment)?;
             let mut initial = self.analyze_expression(initial, environment)?;
+            if let Some(expected) = self.fold_callback_state_type(parameters, body)
+                && let Some(adapted) = adapt_function_call_argument(&expected, &initial)
+            {
+                initial = adapted;
+            }
             if matches!(&list.value_type, CompilerType::List(element)
                 if element.as_ref() == &CompilerType::String)
                 && matches!(&initial.value_type, CompilerType::List(element)
@@ -16713,6 +16991,11 @@ impl Analyzer {
                         || compiler_int_triple(element.as_ref()) =>
                 {
                     (CompilerType::Nat, element.as_ref().clone())
+                }
+                (CompilerType::List(element), CompilerType::Rational)
+                    if element.as_ref() == &CompilerType::Rational =>
+                {
+                    (CompilerType::Rational, CompilerType::Rational)
                 }
                 (CompilerType::List(element), CompilerType::Boolean)
                     if element.as_ref() == &CompilerType::Nat
@@ -17136,7 +17419,6 @@ impl Analyzer {
             let list_type = list.value_type.clone();
             if !(matches!(element, CompilerType::Int | CompilerType::Nat)
                 || matches!(element, CompilerType::Character | CompilerType::String)
-                    && operation == "contains-entry"
                 || compiler_integer_pair(&element)
                     && matches!(operation.as_str(), "contains-entry" | "contains-sequence"))
             {
@@ -20630,7 +20912,10 @@ impl Analyzer {
                 span,
             });
         }
-        let value = self.analyze_expression(argument, environment)?;
+        let mut value = self.analyze_expression(argument, environment)?;
+        if value.value_type == CompilerType::Nat {
+            value.value_type = CompilerType::Int;
+        }
         require_type(
             &self.source,
             value.span,
@@ -30220,6 +30505,9 @@ fn known_constraint_predicate(
             parameter_storage,
             argument,
         )?),
+        CompilerExpressionKind::StringEmptyPredicate(value) => {
+            Some(known_constraint_string(value, parameter_storage, argument)?.is_empty())
+        }
         CompilerExpressionKind::Binary {
             operation,
             left,
@@ -31549,6 +31837,21 @@ fn adapt_function_call_argument(
     if compiler_infinity_evidence_compatible(expected, &argument.value_type) {
         return Some(argument.clone());
     }
+    if let (CompilerType::Tuple(expected_fields), CompilerType::Tuple(actual_fields)) =
+        (expected, &argument.value_type)
+        && expected_fields.len() == actual_fields.len()
+        && expected_fields
+            .iter()
+            .zip(actual_fields)
+            .all(|(expected, actual)| {
+                expected == actual
+                    || matches!((expected, actual), (CompilerType::Int, CompilerType::Nat))
+            })
+    {
+        let mut adapted = argument.clone();
+        adapted.value_type = expected.clone();
+        return Some(adapted);
+    }
     if let (CompilerType::Tuple(expected), CompilerExpressionKind::Tuple(values)) =
         (expected, &argument.kind)
         && expected.len() == values.len()
@@ -31776,22 +32079,41 @@ fn flattened_product_arguments(
     sources: &[&Expression],
     arguments: &[CompilerExpression],
 ) -> Option<Vec<CompilerExpression>> {
-    let [Expression::Product { fields, .. }] = sources else {
+    if let [Expression::Product { fields, .. }] = sources
+        && let [
+            CompilerExpression {
+                kind: CompilerExpressionKind::Tuple(values),
+                ..
+            },
+        ] = arguments
+    {
+        return fields
+            .iter()
+            .all(|field| field.label.is_none())
+            .then(|| values.clone());
+    }
+    let [tuple] = arguments else {
         return None;
     };
-    let [
-        CompilerExpression {
-            kind: CompilerExpressionKind::Tuple(values),
-            ..
-        },
-    ] = arguments
-    else {
+    let CompilerType::Tuple(fields) = &tuple.value_type else {
         return None;
     };
-    fields
-        .iter()
-        .all(|field| field.label.is_none())
-        .then(|| values.clone())
+    Some(
+        fields
+            .iter()
+            .enumerate()
+            .map(|(index, value_type)| CompilerExpression {
+                kind: CompilerExpressionKind::TupleField {
+                    tuple: Box::new(tuple.clone()),
+                    index,
+                },
+                value_type: value_type.clone(),
+                int_range: None,
+                rational_value: None,
+                span: tuple.span,
+            })
+            .collect(),
+    )
 }
 
 fn rational_absolute(value: &BigRational) -> BigRational {
@@ -38443,13 +38765,11 @@ mod tests {
         ));
         assert_eq!(results[9].value_type, list_character);
 
-        let unsupported_transform = "use language (version is v0.1)\nvalues : List Character is Entry (\"A\", Empty)\nvalues reverse\n";
-        assert_eq!(
-            analyze_for_compiler(unsupported_transform)
-                .unwrap_err()
-                .code,
-            "E-COMPILER-UNSUPPORTED"
-        );
+        let transform = "use language (version is v0.1)\nvalues : List Character is Entry (\"A\", Empty)\nvalues reverse\n";
+        assert!(matches!(
+            analyze_for_compiler(transform).unwrap().main.result.kind,
+            CompilerExpressionKind::ListReverse(_)
+        ));
     }
 
     #[test]

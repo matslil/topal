@@ -8031,6 +8031,22 @@ serialized, persistent, or compiled-library ABI and SHALL introduce no C/C++
 runtime, other-language standard library, indirect dispatch, or native-ABI
 revision.
 
+### TOPAL-COMPILER-CONTEXTUAL-AGGREGATE-001 — Contextual aggregate adaptation
+
+For a directly resolved call or finite fold callback, the compiler SHALL use
+the selected declaration's parameter classifiers to adapt nonnegative `Int`
+state to `Nat` and to widen `Nat` fields to `Int` fields recursively. A
+computed positional product supplied to multiple declared parameters SHALL be
+projected once by field in declaration order without changing its private
+representation or evaluation order.
+
+The compiler MAY specialize pinned Unicode Character predicates over retained
+finite Character provenance and SHALL admit Character-list reversal and exact
+sequence containment through the existing private List representation. Such
+specialization SHALL classify every retained candidate with the language's
+pinned Unicode tables and SHALL NOT consult a host locale or runtime Unicode
+service.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate
