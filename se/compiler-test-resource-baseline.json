@@ -3216,6 +3216,16 @@
       "cpu_time_ns": 3869312,
       "memory_peak_bytes": 18595840,
       "samples_per_test": 500
+    },
+    "topalc-build::tests/standard-library/ordered-algorithms.t": {
+      "cpu_time_ns": 798605780,
+      "memory_peak_bytes": 46616576,
+      "samples_per_test": 50
+    },
+    "topalc-run::tests/standard-library/ordered-algorithms.t": {
+      "cpu_time_ns": 1453150,
+      "memory_peak_bytes": 18845696,
+      "samples_per_test": 500
     }
   }
 }
