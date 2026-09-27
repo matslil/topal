@@ -7,6 +7,31 @@
 ; values are not admitted at a native function or library boundary.
 
 %topal.StringStorage = type { ptr, i64, ptr, i64 }
+
+define internal ptr @topal.runtime.character.ascii.decimal.digit(ptr %character) nounwind noinline {
+entry:
+  %length.pointer = getelementptr %topal.StringStorage, ptr %character, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %single.byte = icmp eq i64 %length, 1
+  br i1 %single.byte, label %load, label %none
+load:
+  %data.pointer = getelementptr %topal.StringStorage, ptr %character, i32 0, i32 0
+  %data = load ptr, ptr %data.pointer, align 8
+  %byte = load i8, ptr %data, align 1
+  %at.least.zero = icmp uge i8 %byte, 48
+  %at.most.nine = icmp ule i8 %byte, 57
+  %is.digit = and i1 %at.least.zero, %at.most.nine
+  br i1 %is.digit, label %some, label %none
+some:
+  %digit.byte = sub i8 %byte, 48
+  %digit = zext i8 %digit.byte to i64
+  %value = call ptr @topal.runtime.int.from.u64(i64 %digit)
+  %present = call ptr @topal.runtime.optional.some(ptr %value)
+  ret ptr %present
+none:
+  %absent = call ptr @topal.runtime.optional.none()
+  ret ptr %absent
+}
 %topal.IntStorage = type { i64, i64, [0 x i32] }
 %topal.IntDivmod = type { ptr, ptr }
 %topal.RationalStorage = type { ptr, ptr }

@@ -313,6 +313,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ArrayAt { array: value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -532,6 +533,7 @@ enum ScalarListRuntimeFragment {
     OptionalRational,
     OptionalString,
     IntPair,
+    IntTriple,
     IntStringPair,
     StringIntPair,
     StringPair,
@@ -599,6 +601,8 @@ impl<'a> Generator<'a> {
         {
             self.list_int_runtime_fragments
                 .insert(ListIntRuntimeFragment::Core);
+            self.list_int_runtime_fragments
+                .insert(ListIntRuntimeFragment::Sequence);
         }
     }
 
@@ -731,6 +735,10 @@ impl<'a> Generator<'a> {
             (
                 ScalarListRuntimeFragment::IntPair,
                 LIST_INT_PAIR_CORE_RUNTIME,
+            ),
+            (
+                ScalarListRuntimeFragment::IntTriple,
+                LIST_INT_TRIPLE_CORE_RUNTIME,
             ),
             (
                 ScalarListRuntimeFragment::IntStringPair,
@@ -1849,6 +1857,21 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::CharacterAsciiDecimalDigit(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Optional {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.character.ascii.decimal.digit(ptr {})",
+                            value.string()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    payload: CompilerType::Nat,
+                    function_captures: Vec::new(),
+                }
+            }
             CompilerExpressionKind::StringCharactersGenerator { text, .. } => {
                 let _ = self.emit_expression(text, body, environment);
                 let CompilerType::Generator(generator) = &expression.value_type else {
@@ -2391,6 +2414,12 @@ impl<'a> Generator<'a> {
                     {
                         (24, 16)
                     }
+                    CompilerType::Tuple(fields)
+                        if fields.as_slice()
+                            == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
+                    {
+                        (32, 24)
+                    }
                     CompilerType::List(inner)
                         if inner.as_ref() == &CompilerType::Int
                             || compiler_int_string_pair(inner) =>
@@ -2515,6 +2544,30 @@ impl<'a> Generator<'a> {
                                 expression.span,
                                 &mut self.debug,
                             ),
+                        }
+                    }
+                    (CompilerType::Tuple(field_types), LlValue::Tuple(values))
+                        if field_types.as_slice()
+                            == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
+                    {
+                        let [first, second, third] = values.as_slice() else {
+                            unreachable!("checked List triple value retains three fields")
+                        };
+                        for (offset, field) in [(0, first), (8, second), (16, third)] {
+                            let address = if offset == 0 {
+                                node.clone()
+                            } else {
+                                body.instruction(
+                                    &format!("getelementptr i8, ptr {node}, i64 {offset}"),
+                                    expression.span,
+                                    &mut self.debug,
+                                )
+                            };
+                            body.effect(
+                                &format!("store ptr {}, ptr {address}, align 8", field.integer()),
+                                expression.span,
+                                &mut self.debug,
+                            );
                         }
                     }
                     (
@@ -2657,6 +2710,9 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListPrepend { list, value } => {
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked List prepend retains its List result")
+                };
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 let node = body.instruction(
@@ -2681,11 +2737,14 @@ impl<'a> Generator<'a> {
                 );
                 LlValue::List {
                     value: node,
-                    element: CompilerType::Int,
+                    element: element.as_ref().clone(),
                     function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ListAppend { list, value } => {
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked List append retains its List result")
+                };
                 let string = matches!(&list.value_type, CompilerType::List(element)
                     if element.as_ref() == &CompilerType::String);
                 if string {
@@ -2734,11 +2793,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    element: if string {
-                        CompilerType::String
-                    } else {
-                        CompilerType::Int
-                    },
+                    element: element.as_ref().clone(),
                     function_captures: Vec::new(),
                 }
             }
@@ -2839,6 +2894,10 @@ impl<'a> Generator<'a> {
                                 [CompilerType::Int, CompilerType::Int]
                                 | [CompilerType::Nat, CompilerType::Nat]))
                 );
+                let int_triple = matches!(
+                    &value.value_type,
+                    CompilerType::List(element) if compiler_int_triple(element.as_ref())
+                );
                 let int_string_pair = matches!(
                     &value.value_type,
                     CompilerType::List(element)
@@ -2911,6 +2970,9 @@ impl<'a> Generator<'a> {
                 } else if int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
+                } else if int_triple {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::IntTriple);
                 } else if int_string_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntStringPair);
@@ -2969,6 +3031,8 @@ impl<'a> Generator<'a> {
                             "optional.string"
                         } else if int_pair {
                             "int.pair"
+                        } else if int_triple {
+                            "int.triple"
                         } else if int_string_pair {
                             "int-string"
                         } else if string_int_pair {
@@ -5934,7 +5998,7 @@ impl<'a> Generator<'a> {
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
                 if state_element.as_ref() == &CompilerType::String
-                    && (element.as_ref() == &CompilerType::String
+                    && (matches!(element.as_ref(), CompilerType::Character | CompilerType::String)
                         || compiler_string_pair(element.as_ref()))
         );
         let string_pair_list_fold = string_list_fold
@@ -5947,20 +6011,42 @@ impl<'a> Generator<'a> {
                     && (element.as_ref() == &CompilerType::Int
                         || compiler_nested_int_list_element(element.as_ref()))
         );
+        let character_nat_list_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::List(state_element))
+                if element.as_ref() == &CompilerType::Character
+                    && state_element.as_ref() == &CompilerType::Nat
+        );
+        let character_string_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::String)
+                if element.as_ref() == &CompilerType::Character
+        );
+        let tuple_state_fold = matches!(initial.value_type, CompilerType::Tuple(_));
         let pair_fold = string_pair_optional_fold || nat_pair_fold || string_pair_list_fold;
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
             .to_owned();
+        let initial_type = initial.value_type.clone();
         let initial_value = self.emit_expression(initial, body, environment);
-        let initial = if string_pair_optional_fold {
-            initial_value.optional_pointer()
-        } else if string_list_fold || nested_int_list_state_fold {
-            initial_value.list_pointer()
+        let initial = if tuple_state_fold {
+            let LlValue::Tuple(fields) = &initial_value else {
+                unreachable!("checked tuple fold state retains its aggregate value")
+            };
+            let CompilerType::Tuple(field_types) = &initial.value_type else {
+                unreachable!("checked tuple fold state retains its classifier")
+            };
+            self.emit_tuple_aggregate(fields, field_types, body, span)
+        } else if string_pair_optional_fold {
+            initial_value.optional_pointer().to_owned()
+        } else if character_string_fold {
+            initial_value.string().to_owned()
+        } else if string_list_fold || nested_int_list_state_fold || character_nat_list_fold {
+            initial_value.list_pointer().to_owned()
         } else {
-            initial_value.integer()
-        }
-        .to_owned();
+            initial_value.integer().to_owned()
+        };
         let preheader = body.current_block.clone();
         let loop_label = body.label("list.fold.loop");
         let visit = body.label("list.fold.visit");
@@ -5977,8 +6063,12 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
+        let state_llvm_type = tuple_state_fold.then(|| llvm_value_type(&initial_type));
         let state = body.instruction(
-            &format!("phi ptr [{initial}, %{preheader}], [{next_state}, %{advance}]"),
+            &format!(
+                "phi {} [{initial}, %{preheader}], [{next_state}, %{advance}]",
+                state_llvm_type.as_deref().unwrap_or("ptr")
+            ),
             span,
             &mut self.debug,
         );
@@ -6024,7 +6114,12 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
-        let state_value = if string_pair_optional_fold {
+        let state_value = if tuple_state_fold {
+            let CompilerType::Tuple(fields) = &initial_type else {
+                unreachable!("checked tuple fold state retains its classifier")
+            };
+            self.emit_tuple_extract(&state, fields, body, span)
+        } else if string_pair_optional_fold {
             LlValue::Optional {
                 value: state.clone(),
                 payload: CompilerType::String,
@@ -6042,6 +6137,14 @@ impl<'a> Generator<'a> {
                 element: CompilerType::List(Box::new(CompilerType::Int)),
                 function_captures: Vec::new(),
             }
+        } else if character_nat_list_fold {
+            LlValue::List {
+                value: state.clone(),
+                element: CompilerType::Nat,
+                function_captures: Vec::new(),
+            }
+        } else if character_string_fold {
+            LlValue::String(state.clone())
         } else {
             LlValue::Int(state.clone())
         };
@@ -6051,7 +6154,10 @@ impl<'a> Generator<'a> {
             } else {
                 LlValue::Tuple(vec![LlValue::Int(value), LlValue::Int(second)])
             }
-        } else if string_list_fold {
+        } else if string_list_fold
+            || matches!(&list.value_type, CompilerType::List(element)
+                if matches!(element.as_ref(), CompilerType::Character | CompilerType::String))
+        {
             LlValue::String(value)
         } else if nested_int_list_state_fold
             && matches!(&list.value_type, CompilerType::List(element)
@@ -6114,16 +6220,29 @@ impl<'a> Generator<'a> {
             body.terminator(&format!("br label %{done}"), location);
             Some((payload, finish_label))
         } else {
-            let value = if string_pair_optional_fold {
-                value.optional_pointer()
-            } else if string_list_fold || nested_int_list_state_fold {
-                value.list_pointer()
+            let (value, llvm_type) = if tuple_state_fold {
+                let LlValue::Tuple(fields) = &value else {
+                    unreachable!("checked tuple fold action retains its aggregate result")
+                };
+                let CompilerType::Tuple(field_types) = &initial_type else {
+                    unreachable!("checked tuple fold state retains its classifier")
+                };
+                (
+                    self.emit_tuple_aggregate(fields, field_types, body, span),
+                    llvm_value_type(&initial_type),
+                )
+            } else if string_pair_optional_fold {
+                (value.optional_pointer().to_owned(), "ptr".to_owned())
+            } else if character_string_fold {
+                (value.string().to_owned(), "ptr".to_owned())
+            } else if string_list_fold || nested_int_list_state_fold || character_nat_list_fold {
+                (value.list_pointer().to_owned(), "ptr".to_owned())
             } else {
-                value.integer()
+                (value.integer().to_owned(), "ptr".to_owned())
             };
             body.define_reserved(
                 &next_state,
-                &format!("freeze ptr {value}"),
+                &format!("freeze {llvm_type} {value}"),
                 span,
                 &mut self.debug,
             );
@@ -6140,6 +6259,11 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ))
+        } else if tuple_state_fold {
+            let CompilerType::Tuple(fields) = &initial_type else {
+                unreachable!("checked tuple fold state retains its classifier")
+            };
+            self.emit_tuple_extract(&state, fields, body, span)
         } else if string_pair_optional_fold {
             LlValue::Optional {
                 value: state,
@@ -6158,6 +6282,14 @@ impl<'a> Generator<'a> {
                 element: CompilerType::List(Box::new(CompilerType::Int)),
                 function_captures: Vec::new(),
             }
+        } else if character_nat_list_fold {
+            LlValue::List {
+                value: state,
+                element: CompilerType::Nat,
+                function_captures: Vec::new(),
+            }
+        } else if character_string_fold {
+            LlValue::String(state)
         } else {
             LlValue::Int(state)
         }
@@ -7365,6 +7497,7 @@ impl<'a> Generator<'a> {
         )
     }
 
+    #[allow(clippy::too_many_lines)] // Each admitted private List layout selects one exact runtime.
     fn emit_list_equal(
         &mut self,
         left: &str,
@@ -7420,6 +7553,10 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::IntPair);
             "int.pair"
+        } else if compiler_int_triple(element) {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::IntTriple);
+            "int.triple"
         } else if compiler_int_string_pair(element) {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::IntStringPair);
@@ -10769,7 +10906,7 @@ fn optional_payload_pointer(value: &LlValue) -> &str {
 
 fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
     match value_type {
-        CompilerType::Int => LlValue::Int(value),
+        CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
         CompilerType::Rational => LlValue::Rational(value),
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Error => LlValue::Error(value),
@@ -12611,6 +12748,15 @@ fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_int_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice()
+                == [CompilerType::Int, CompilerType::Int, CompilerType::Int]
+    )
+}
+
 fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -12880,6 +13026,7 @@ const LIST_OPTIONAL_RATIONAL_CORE_RUNTIME: &str =
 const LIST_OPTIONAL_STRING_CORE_RUNTIME: &str =
     include_str!("runtime/list_optional_string_core.ll");
 const LIST_INT_PAIR_CORE_RUNTIME: &str = include_str!("runtime/list_int_pair_core.ll");
+const LIST_INT_TRIPLE_CORE_RUNTIME: &str = include_str!("runtime/list_int_triple_core.ll");
 const LIST_INT_STRING_PAIR_CORE_RUNTIME: &str =
     include_str!("runtime/list_int_string_pair_core.ll");
 const LIST_STRING_INT_PAIR_CORE_RUNTIME: &str =

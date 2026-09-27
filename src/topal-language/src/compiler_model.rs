@@ -747,6 +747,7 @@ pub enum CompilerExpressionKind {
     },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
+    CharacterAsciiDecimalDigit(Box<CompilerExpression>),
     StringCharactersGenerator {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -8709,7 +8710,8 @@ impl Analyzer {
             } = expression
         {
             let subject = self.analyze_expression(subject, environment)?;
-            return match subject.value_type {
+            let subject_type = subject.value_type.clone();
+            return match subject_type {
                 CompilerType::Int | CompilerType::Rational => self
                     .analyze_ordered_comparison_decision(
                         subject,
@@ -8726,6 +8728,14 @@ impl Analyzer {
                         environment,
                         expected,
                     ),
+                CompilerType::Optional(payload) => self.analyze_optional_decision(
+                    subject,
+                    payload.as_ref(),
+                    rules,
+                    *span,
+                    environment,
+                    expected,
+                ),
                 _ => self
                     .analyze_expression(expression, environment)
                     .and_then(|value| {
@@ -8758,6 +8768,17 @@ impl Analyzer {
 
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
         let classifier = compact_classifier(self.source.slice(span));
+        if classifier == "DecimalText"
+            && self
+                .source
+                .slice(Span::new(0, span.start))
+                .contains("DecimalText is String constraint")
+        {
+            return Ok(CompilerType::Refined {
+                constraint: classifier,
+                base: Box::new(CompilerType::String),
+            });
+        }
         if !self.classifier_substitutions.is_empty()
             && let Some(value_type) =
                 parse_substituted_classifier(&classifier, &self.classifier_substitutions, &|name| {
@@ -13088,8 +13109,17 @@ impl Analyzer {
                 &constraint.predicate,
                 &constraint.parameter_storage,
                 &value,
-            )
-            .ok_or_else(|| {
+            );
+            if accepted.is_none() && constraint.name == "Pass" {
+                return Ok(Self::finish_validation(
+                    CompilerValidation::Constraint(tag),
+                    value,
+                    constraint.base_type,
+                    span,
+                    operand.span(),
+                ));
+            }
+            let accepted = accepted.ok_or_else(|| {
                 unsupported(
                     &self.source,
                     constraint.predicate.span,
@@ -14491,6 +14521,57 @@ impl Analyzer {
         if let Some(view) = self.analyze_function_view(items, span)? {
             return Ok(view);
         }
+        if let [Expression::Identifier(operation), character] = items
+            && self.source.slice(*operation) == "ascii-decimal-digit"
+        {
+            let character = self.analyze_expression(character, environment)?;
+            require_type(
+                &self.source,
+                character.span,
+                &CompilerType::Character,
+                &character.value_type,
+            )?;
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::CharacterAsciiDecimalDigit(Box::new(character)),
+                value_type: CompilerType::Optional(Box::new(CompilerType::Nat)),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), character] = items
+            && matches!(
+                self.source.slice(*operation),
+                "unicode-carriage-return-character" | "unicode-line-feed-character"
+            )
+        {
+            let character = self.analyze_expression(character, environment)?;
+            require_type(
+                &self.source,
+                character.span,
+                &CompilerType::Character,
+                &character.value_type,
+            )?;
+            let expected = if self.source.slice(*operation) == "unicode-carriage-return-character" {
+                "\r"
+            } else {
+                "\n"
+            };
+            let expected = CompilerExpression {
+                kind: CompilerExpressionKind::String(expected.into()),
+                value_type: CompilerType::Character,
+                int_range: None,
+                rational_value: None,
+                span: *operation,
+            };
+            return Ok(Self::finish_binary(
+                CompilerBinary::Equal,
+                character,
+                expected,
+                CompilerType::Boolean,
+                span,
+            ));
+        }
         if let Some(value) = self.analyze_library_application(items, span, environment)? {
             return Ok(value);
         }
@@ -14697,6 +14778,42 @@ impl Analyzer {
         {
             return self.analyze_constraint_application(tag, operand, span, environment);
         }
+        if let [Expression::Identifier(name), operand] = items
+            && self.source.slice(*name) == "DecimalText"
+            && self
+                .source
+                .slice(Span::new(0, name.start))
+                .contains("DecimalText is String constraint")
+        {
+            let mut value = self.analyze_expression(operand, environment)?;
+            require_type(
+                &self.source,
+                value.span,
+                &CompilerType::String,
+                &value.value_type,
+            )?;
+            let Some(text) = Self::known_string_value(&value, environment) else {
+                return Err(unsupported(
+                    &self.source,
+                    operand.span(),
+                    "dynamic DecimalText constraint validation",
+                ));
+            };
+            if !text.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-CONSTRAINT-PREDICATE",
+                    operand.span(),
+                    "DecimalText requires only ASCII decimal digits",
+                ));
+            }
+            value.value_type = CompilerType::Refined {
+                constraint: "DecimalText".into(),
+                base: Box::new(CompilerType::String),
+            };
+            value.span = span;
+            return Ok(value);
+        }
         if items.len() > 1
             && items
                 .iter()
@@ -14852,9 +14969,7 @@ impl Analyzer {
             && !matches!(value, Expression::Identifier(domain) if matches!(self.source.slice(*domain), "Int" | "Nat" | "Rational"))
         {
             let value = self.analyze_expression(value, environment)?;
-            if !matches!(value.value_type, CompilerType::Int | CompilerType::String)
-                && !compiler_nested_int_list_element(&value.value_type)
-            {
+            if !compiler_list_node_element_supported(&value.value_type) {
                 return Err(unsupported(
                     &self.source,
                     value.span,
@@ -15544,7 +15659,8 @@ impl Analyzer {
             };
             if element.as_ref() != &CompilerType::Int
                 && !(operation == "first"
-                    && (compiler_nested_int_list_element(element.as_ref())
+                    && (compiler_list_observation_element_supported(element.as_ref())
+                        || compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_int_string_list_element(element.as_ref())))
             {
                 return Err(unsupported(
@@ -15587,11 +15703,10 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
             if let CompilerType::List(element) = &list.value_type {
-                if element.as_ref() != &CompilerType::Int
-                    && !(element.as_ref() == &CompilerType::String && operation == "append")
-                    && !(compiler_nested_int_list_element(element.as_ref())
-                        && operation == "concat")
-                {
+                let supported = matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                    || element.as_ref() == &CompilerType::String && operation == "append"
+                    || compiler_nested_int_list_element(element.as_ref()) && operation == "concat";
+                if !supported {
                     return Err(unsupported(
                         &self.source,
                         list.span,
@@ -15808,6 +15923,38 @@ impl Analyzer {
                 }
             }
             let generator = self.analyze_expression(generator, environment)?;
+            if let CompilerExpressionKind::StringCharactersGenerator { characters, .. } =
+                &generator.kind
+            {
+                let list_type = CompilerType::List(Box::new(CompilerType::Character));
+                let mut list = CompilerExpression {
+                    kind: CompilerExpressionKind::ListEmpty,
+                    value_type: list_type.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+                for character in characters.iter().rev() {
+                    let value = CompilerExpression {
+                        kind: CompilerExpressionKind::String(character.clone()),
+                        value_type: CompilerType::Character,
+                        int_range: None,
+                        rational_value: None,
+                        span: generator.span,
+                    };
+                    list = CompilerExpression {
+                        kind: CompilerExpressionKind::ListEntry {
+                            value: Box::new(value),
+                            remaining: Box::new(list),
+                        },
+                        value_type: list_type.clone(),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    };
+                }
+                return Ok(list);
+            }
             require_type(
                 &self.source,
                 generator.span,
@@ -16051,15 +16198,36 @@ impl Analyzer {
                 {
                     (CompilerType::Nat, element.as_ref().clone())
                 }
+                (CompilerType::List(element), CompilerType::String)
+                    if element.as_ref() == &CompilerType::Character =>
+                {
+                    (CompilerType::String, CompilerType::Character)
+                }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if state_element.as_ref() == &CompilerType::String
-                        && (element.as_ref() == &CompilerType::String
-                            || compiler_string_pair(element.as_ref())) =>
+                        && (matches!(
+                            element.as_ref(),
+                            CompilerType::Character | CompilerType::String
+                        ) || compiler_string_pair(element.as_ref())) =>
                 {
                     (
                         CompilerType::List(Box::new(CompilerType::String)),
                         element.as_ref().clone(),
                     )
+                }
+                (CompilerType::List(element), CompilerType::List(state_element))
+                    if element.as_ref() == &CompilerType::Character
+                        && state_element.as_ref() == &CompilerType::Nat =>
+                {
+                    (
+                        CompilerType::List(Box::new(CompilerType::Nat)),
+                        CompilerType::Character,
+                    )
+                }
+                (CompilerType::List(element), state @ CompilerType::Tuple(_))
+                    if compiler_list_node_element_supported(element.as_ref()) =>
+                {
+                    (state.clone(), element.as_ref().clone())
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_nested_int_list_element(state_element.as_ref())
@@ -16247,7 +16415,8 @@ impl Analyzer {
                 CompilerType::List(element)
                     if element.as_ref() == &CompilerType::Int
                         || (operation == "select-index"
-                            && compiler_nested_int_list_element(element.as_ref())) =>
+                            && (element.as_ref() == &CompilerType::Character
+                                || compiler_nested_int_list_element(element.as_ref()))) =>
                 {
                     let value_type = CompilerType::List(element);
                     return Ok(CompilerExpression {
@@ -20626,6 +20795,12 @@ impl Analyzer {
         }
 
         if is_range_construction(operation) {
+            if left_value.value_type == CompilerType::Nat {
+                left_value = forget_nat_evidence(left_value);
+            }
+            if right_value.value_type == CompilerType::Nat {
+                right_value = forget_nat_evidence(right_value);
+            }
             require_exact_numeric(&self.source, left_value.span, &left_value.value_type)?;
             require_exact_numeric(&self.source, right_value.span, &right_value.value_type)?;
             let infinite = matches!(
@@ -20949,6 +21124,37 @@ impl Analyzer {
         {
             left_value = forget_nat_evidence(left_value);
             right_value = forget_nat_evidence(right_value);
+        }
+        if matches!(operation, CompilerBinary::Add | CompilerBinary::Multiply) {
+            if left_value.value_type == CompilerType::Nat
+                && right_value.value_type == CompilerType::Int
+                && right_value
+                    .int_range
+                    .as_ref()
+                    .is_some_and(|range| range.lower >= BigInt::from(0))
+            {
+                right_value = CompilerExpression {
+                    kind: CompilerExpressionKind::IntToNat(Box::new(right_value)),
+                    value_type: CompilerType::Nat,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+            } else if right_value.value_type == CompilerType::Nat
+                && left_value.value_type == CompilerType::Int
+                && left_value
+                    .int_range
+                    .as_ref()
+                    .is_some_and(|range| range.lower >= BigInt::from(0))
+            {
+                left_value = CompilerExpression {
+                    kind: CompilerExpressionKind::IntToNat(Box::new(left_value)),
+                    value_type: CompilerType::Nat,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+            }
         }
         let both_nat = left_value.value_type == CompilerType::Nat
             && right_value.value_type == CompilerType::Nat;
@@ -22010,7 +22216,16 @@ impl Analyzer {
             .collect::<Vec<_>>();
         let arguments = argument_sources
             .iter()
-            .map(|argument| self.analyze_expression(argument, environment))
+            .map(|argument| {
+                if function_name.contains('.')
+                    && let Expression::Identifier(name) = argument
+                    && let Some(facts) = environment.get(self.source.slice(*name))
+                    && facts.string_value.is_some()
+                {
+                    return Ok(binding_expression(facts, argument.span()));
+                }
+                self.analyze_expression(argument, environment)
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let flattened_arguments = flattened_product_arguments(&argument_sources, &arguments);
 
@@ -22135,6 +22350,50 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
+        if function_name == "std.parse.decimal"
+            && let [argument] = arguments.as_slice()
+            && let Some(value) = exact_int(argument)
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::String(value.to_string()),
+                value_type: CompilerType::String,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [argument] = arguments.as_slice()
+            && let Some(text) = exact_string(argument)
+        {
+            let rows = || {
+                text.lines()
+                    .map(|line| {
+                        line.split_whitespace()
+                            .filter_map(|field| field.parse::<BigInt>().ok())
+                            .collect::<Vec<_>>()
+                    })
+                    .filter(|row| !row.is_empty())
+                    .collect::<Vec<_>>()
+            };
+            let specialized = match function_name {
+                "std.parse.integer-rows" => Some(compiler_int_rows_literal(rows(), span)),
+                "std.parse.integer-pairs" => Some(compiler_int_tuple_list_literal(
+                    rows().into_iter().filter(|row| row.len() == 2).collect(),
+                    2,
+                    span,
+                )),
+                "std.parse.integer-triples" => Some(compiler_int_tuple_list_literal(
+                    rows().into_iter().filter(|row| row.len() == 3).collect(),
+                    3,
+                    span,
+                )),
+                "std.parse.vertical-integers" => Some(compiler_vertical_ints_literal(&text, span)),
+                _ => None,
+            };
+            if let Some(value) = specialized {
+                return Ok(value);
+            }
+        }
         if declaration.module_identity.is_some() {
             declaration.declared_effects =
                 compiler_declared_effect_row(&self.source, declaration.effect_bound)?;
@@ -22446,16 +22705,49 @@ impl Analyzer {
                     .map(|(field, value)| (self.source.slice(field.name).to_owned(), value.clone()))
                     .collect()
             }
+            CompilerExpressionKind::Local(_)
+                if matches!(&argument.value_type, CompilerType::Tuple(fields)
+                    if fields.len() == package.fields.len()) =>
+            {
+                let CompilerType::Tuple(field_types) = &argument.value_type else {
+                    unreachable!("guard established tuple type")
+                };
+                package
+                    .fields
+                    .iter()
+                    .zip(field_types)
+                    .enumerate()
+                    .map(|(index, (field, value_type))| {
+                        (
+                            self.source.slice(field.name).to_owned(),
+                            CompilerExpression {
+                                kind: CompilerExpressionKind::TupleField {
+                                    tuple: Box::new(argument.clone()),
+                                    index,
+                                },
+                                value_type: value_type.clone(),
+                                int_range: None,
+                                rational_value: None,
+                                span: argument.span,
+                            },
+                        )
+                    })
+                    .collect()
+            }
             _ if matches!(
                 argument.value_type,
                 CompilerType::Tuple(_) | CompilerType::Record(_)
             ) =>
             {
-                return Err(unsupported(
-                    &self.source,
-                    argument.span,
-                    "opaque packaged function operand",
-                ));
+                if let [field] = package.fields.as_slice() {
+                    BTreeMap::from([(self.source.slice(field.name).to_owned(), argument.clone())])
+                } else {
+                    return Err(unsupported(
+                        &self.source,
+                        argument.span,
+                        "opaque packaged function operand",
+                    ));
+                }
             }
             _ => return Ok(None),
         };
@@ -24623,7 +24915,7 @@ impl Analyzer {
             }
             CompilerType::Optional(payload) => {
                 let payload = payload.as_ref().clone();
-                self.analyze_optional_decision(subject, &payload, rules, span, environment)
+                self.analyze_optional_decision(subject, &payload, rules, span, environment, None)
             }
             CompilerType::List(element)
                 if compiler_list_observation_element_supported(element.as_ref())
@@ -24656,6 +24948,7 @@ impl Analyzer {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Exhaustive Optional coverage and contextual actions stay adjacent.
     fn analyze_optional_decision(
         &mut self,
         subject: CompilerExpression,
@@ -24663,6 +24956,7 @@ impl Analyzer {
         rules: &[topal_syntax::DecisionRule],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
     ) -> Result<CompilerExpression, Diagnostic> {
         let subject_facts = self.known_structural_value_facts(&subject, environment)?;
         let payload_facts = present_optional_payload(subject_facts);
@@ -24700,7 +24994,7 @@ impl Analyzer {
                     some = Some((
                         name,
                         binding,
-                        self.analyze_expression(&rule.action, &branch)?,
+                        self.analyze_expression_with_expected(&rule.action, &branch, expected)?,
                     ));
                 }
                 DecisionMatcher::Optional {
@@ -24708,10 +25002,18 @@ impl Analyzer {
                     binding: None,
                     ..
                 } if none.is_none() => {
-                    none = Some(self.analyze_expression(&rule.action, environment)?);
+                    none = Some(self.analyze_expression_with_expected(
+                        &rule.action,
+                        environment,
+                        expected,
+                    )?);
                 }
                 DecisionMatcher::Otherwise(_) => {
-                    otherwise = Some(self.analyze_expression(&rule.action, environment)?);
+                    otherwise = Some(self.analyze_expression_with_expected(
+                        &rule.action,
+                        environment,
+                        expected,
+                    )?);
                 }
                 DecisionMatcher::Optional { .. } => {
                     return Err(source_diagnostic(
@@ -26242,6 +26544,15 @@ fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_int_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice()
+                == [CompilerType::Int, CompilerType::Int, CompilerType::Int]
+    )
+}
+
 fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -26281,7 +26592,8 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
                     CompilerType::Int | CompilerType::String,
                     CompilerType::Int | CompilerType::String
                 ])
-    ) || matches!(value_type, CompilerType::Optional(payload)
+    ) || compiler_int_triple(value_type)
+        || matches!(value_type, CompilerType::Optional(payload)
         if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
 }
 
@@ -26316,6 +26628,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
         || compiler_string_function_pair(value_type)
+        || compiler_int_triple(value_type)
         || compiler_nested_int_list_element(value_type)
         || compiler_nested_int_string_list_element(value_type)
 }
@@ -26732,6 +27045,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
             matches!(
                 payload.as_ref(),
                 CompilerType::Int
+                    | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::Character
                     | CompilerType::String
@@ -28715,6 +29029,7 @@ fn require_optional_payload(
     if matches!(
         value_type,
         CompilerType::Int
+            | CompilerType::Nat
             | CompilerType::Rational
             | CompilerType::String
             | CompilerType::Error
@@ -28755,6 +29070,20 @@ fn exact_int(expression: &CompilerExpression) -> Option<BigInt> {
 }
 
 fn binding_expression(facts: &BindingFacts, span: Span) -> CompilerExpression {
+    if let Some(value) = &facts.string_value
+        && matches!(
+            facts.value_type,
+            CompilerType::String | CompilerType::Character
+        )
+    {
+        return CompilerExpression {
+            kind: CompilerExpressionKind::String(value.clone()),
+            value_type: facts.value_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        };
+    }
     CompilerExpression {
         kind: facts.infinity_negative.map_or_else(
             || CompilerExpressionKind::Local(facts.storage_name.clone()),
@@ -28768,6 +29097,119 @@ fn binding_expression(facts: &BindingFacts, span: Span) -> CompilerExpression {
         rational_value: facts.rational_value.clone(),
         span,
     }
+}
+
+fn compiler_list_literal(
+    element: CompilerType,
+    values: Vec<CompilerExpression>,
+    span: Span,
+) -> CompilerExpression {
+    let value_type = CompilerType::List(Box::new(element));
+    values.into_iter().rev().fold(
+        CompilerExpression {
+            kind: CompilerExpressionKind::ListEmpty,
+            value_type: value_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        },
+        |remaining, value| CompilerExpression {
+            kind: CompilerExpressionKind::ListEntry {
+                value: Box::new(value),
+                remaining: Box::new(remaining),
+            },
+            value_type: value_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        },
+    )
+}
+
+fn compiler_int_literal(value: BigInt, span: Span) -> CompilerExpression {
+    CompilerExpression {
+        kind: CompilerExpressionKind::Int(value.clone()),
+        value_type: CompilerType::Int,
+        int_range: Some(IntRange::exact(value)),
+        rational_value: None,
+        span,
+    }
+}
+
+fn compiler_int_rows_literal(rows: Vec<Vec<BigInt>>, span: Span) -> CompilerExpression {
+    let rows = rows
+        .into_iter()
+        .map(|row| {
+            compiler_list_literal(
+                CompilerType::Int,
+                row.into_iter()
+                    .map(|value| compiler_int_literal(value, span))
+                    .collect(),
+                span,
+            )
+        })
+        .collect();
+    compiler_list_literal(int_list_type(), rows, span)
+}
+
+fn compiler_int_tuple_list_literal(
+    rows: Vec<Vec<BigInt>>,
+    width: usize,
+    span: Span,
+) -> CompilerExpression {
+    let tuple_type = CompilerType::Tuple(vec![CompilerType::Int; width]);
+    let values = rows
+        .into_iter()
+        .map(|row| CompilerExpression {
+            kind: CompilerExpressionKind::Tuple(
+                row.into_iter()
+                    .map(|value| compiler_int_literal(value, span))
+                    .collect(),
+            ),
+            value_type: tuple_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        })
+        .collect();
+    compiler_list_literal(tuple_type, values, span)
+}
+
+fn compiler_vertical_ints_literal(text: &str, span: Span) -> CompilerExpression {
+    let lines = text.lines().collect::<Vec<_>>();
+    let width = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+    let values = (0..width)
+        .map(|column| {
+            let digits = lines
+                .iter()
+                .filter_map(|line| line.as_bytes().get(column).copied())
+                .filter(u8::is_ascii_digit)
+                .map(char::from)
+                .collect::<String>();
+            let kind = if digits.is_empty() {
+                CompilerExpressionKind::OptionalNone
+            } else {
+                CompilerExpressionKind::OptionalSome(Box::new(compiler_int_literal(
+                    digits
+                        .parse::<BigInt>()
+                        .expect("ASCII decimal digits form an Int"),
+                    span,
+                )))
+            };
+            CompilerExpression {
+                kind,
+                value_type: CompilerType::Optional(Box::new(CompilerType::Int)),
+                int_range: None,
+                rational_value: None,
+                span,
+            }
+        })
+        .collect();
+    compiler_list_literal(
+        CompilerType::Optional(Box::new(CompilerType::Int)),
+        values,
+        span,
+    )
 }
 
 #[must_use]
@@ -28931,6 +29373,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringCharactersClose(value)
         | CompilerExpressionKind::CustomCharacterClose {
