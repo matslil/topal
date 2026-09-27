@@ -1,5 +1,72 @@
 %topal.ListIntPairStorage = type { ptr, ptr, ptr }
 
+define internal ptr @topal.runtime.list.int.pair.first(ptr %list) nounwind noinline {
+entry:
+  %empty = icmp eq ptr %list, null
+  br i1 %empty, label %none, label %some
+some:
+  %payload = call ptr @topal.platform.allocate(i64 16)
+  %first = load ptr, ptr %list, align 8
+  store ptr %first, ptr %payload, align 8
+  %source.second = getelementptr %topal.ListIntPairStorage, ptr %list, i32 0, i32 1
+  %second = load ptr, ptr %source.second, align 8
+  %payload.second = getelementptr i8, ptr %payload, i64 8
+  store ptr %second, ptr %payload.second, align 8
+  %present = call ptr @topal.runtime.optional.some(ptr %payload)
+  ret ptr %present
+none:
+  %absent = call ptr @topal.runtime.optional.none()
+  ret ptr %absent
+}
+
+define internal ptr @topal.runtime.list.int.pair.select.index.range(ptr %source, ptr %range) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%source, %entry], [%next, %advance]
+  %head = phi ptr [null, %entry], [%next.head, %advance]
+  %previous = phi ptr [null, %entry], [%next.previous, %advance]
+  %index = phi i64 [0, %entry], [%next.index, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %done, label %visit
+visit:
+  %first = load ptr, ptr %current, align 8
+  %second.pointer = getelementptr %topal.ListIntPairStorage, ptr %current, i32 0, i32 1
+  %second = load ptr, ptr %second.pointer, align 8
+  %next.pointer = getelementptr %topal.ListIntPairStorage, ptr %current, i32 0, i32 2
+  %next = load ptr, ptr %next.pointer, align 8
+  %index.value = call ptr @topal.runtime.int.from.u64(i64 %index)
+  %keep = call i1 @topal.runtime.range.int.contains(ptr %range, ptr %index.value)
+  br i1 %keep, label %selected, label %skipped
+skipped:
+  br label %advance
+selected:
+  %node = call ptr @topal.platform.allocate(i64 24)
+  store ptr %first, ptr %node, align 8
+  %node.second = getelementptr %topal.ListIntPairStorage, ptr %node, i32 0, i32 1
+  store ptr %second, ptr %node.second, align 8
+  %node.next = getelementptr %topal.ListIntPairStorage, ptr %node, i32 0, i32 2
+  store ptr null, ptr %node.next, align 8
+  %has.previous = icmp ne ptr %previous, null
+  br i1 %has.previous, label %link, label %first.node
+first.node:
+  br label %selected.merge
+link:
+  %previous.next = getelementptr %topal.ListIntPairStorage, ptr %previous, i32 0, i32 2
+  store ptr %node, ptr %previous.next, align 8
+  br label %selected.merge
+selected.merge:
+  %selected.head = phi ptr [%node, %first.node], [%head, %link]
+  br label %advance
+advance:
+  %next.head = phi ptr [%head, %skipped], [%selected.head, %selected.merge]
+  %next.previous = phi ptr [%previous, %skipped], [%node, %selected.merge]
+  %next.index = add i64 %index, 1
+  br label %loop
+done:
+  ret ptr %head
+}
+
 define internal ptr @topal.runtime.list.int.pair.concat(ptr %left, ptr %right) nounwind noinline {
 entry:
   br label %count.loop
