@@ -8006,6 +8006,31 @@ identify the protocol revision, language identity and revision, canonical type
 identities and schemas, field order, byte-order contract, and authority profile
 independently of private LLVM types, descriptors, and native symbols.
 
+### TOPAL-COMPILER-PACKING-LISTS-001 — Exact private packing aggregates
+
+The compiler SHALL admit the finite nested List and product combinations used
+by the `advent-of-code packing` source module, including `List List (Int, Int)`,
+`List (Int, Int, List Int)`, and `List (Boolean, Int)`. Construction,
+projection, range selection, append, concatenation, fold, entry containment,
+and contiguous-sequence containment SHALL retain the exact source classifiers
+and ordering. Pair containment SHALL compare both Int fields canonically.
+
+A computed product supplied to a packaged function operand SHALL be evaluated
+exactly once before its fields are projected in declaration order. Finite
+String-character provenance MAY cross List reshaping, selection, folds, calls,
+and Optional decisions only as compile-time evidence for the already selected
+pinned grapheme clusters; it SHALL NOT introduce normalization, byte-based
+character semantics, or a runtime type tag.
+
+Linux x86-64 lowering SHALL use compiler-private pointer-node layouts with an
+explicit next pointer and classifier-specific field loads and stores. Boolean
+fields SHALL remain `i1`, Int, String, Rational, and nested List fields SHALL
+retain their existing private carriers, and LLVM SHALL verify every emitted
+module before publication. These layouts SHALL NOT become a public, foreign,
+serialized, persistent, or compiled-library ABI and SHALL introduce no C/C++
+runtime, other-language standard library, indirect dispatch, or native-ABI
+revision.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate
