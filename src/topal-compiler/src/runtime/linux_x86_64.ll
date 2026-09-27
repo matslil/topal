@@ -1980,6 +1980,28 @@ entry:
   ret ptr %value
 }
 
+define internal i1 @topal.runtime.range.int.equal(ptr %left, ptr %right) nounwind noinline {
+entry:
+  %left.lower = call ptr @topal.runtime.range.lower(ptr %left)
+  %right.lower = call ptr @topal.runtime.range.lower(ptr %right)
+  %lower.ordering = call i32 @topal.runtime.int.compare(ptr %left.lower, ptr %right.lower)
+  %lower.equal = icmp eq i32 %lower.ordering, 0
+  %left.upper = call ptr @topal.runtime.range.upper(ptr %left)
+  %right.upper = call ptr @topal.runtime.range.upper(ptr %right)
+  %upper.ordering = call i32 @topal.runtime.int.compare(ptr %left.upper, ptr %right.upper)
+  %upper.equal = icmp eq i32 %upper.ordering, 0
+  %bounds.equal = and i1 %lower.equal, %upper.equal
+  %left.lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %left)
+  %right.lower.inclusive = call i1 @topal.runtime.range.lower.inclusive(ptr %right)
+  %lower.inclusive.equal = icmp eq i1 %left.lower.inclusive, %right.lower.inclusive
+  %left.upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %left)
+  %right.upper.inclusive = call i1 @topal.runtime.range.upper.inclusive(ptr %right)
+  %upper.inclusive.equal = icmp eq i1 %left.upper.inclusive, %right.upper.inclusive
+  %inclusivity.equal = and i1 %lower.inclusive.equal, %upper.inclusive.equal
+  %equal = and i1 %bounds.equal, %inclusivity.equal
+  ret i1 %equal
+}
+
 define internal i1 @topal.runtime.range.lower.inclusive(ptr %range) nounwind noinline {
 entry:
   %pointer = getelementptr %topal.RangeStorage, ptr %range, i32 0, i32 2

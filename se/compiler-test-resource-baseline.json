@@ -3226,6 +3226,16 @@
       "cpu_time_ns": 1453150,
       "memory_peak_bytes": 18845696,
       "samples_per_test": 500
+    },
+    "topalc-build::tests/standard-library/fundamental-boundaries.t": {
+      "cpu_time_ns": 920654880,
+      "memory_peak_bytes": 53051392,
+      "samples_per_test": 50
+    },
+    "topalc-run::tests/standard-library/fundamental-boundaries.t": {
+      "cpu_time_ns": 1192380,
+      "memory_peak_bytes": 18587648,
+      "samples_per_test": 500
     }
   }
 }
