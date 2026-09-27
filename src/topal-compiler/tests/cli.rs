@@ -13815,6 +13815,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.combinatorics"][..],
         ),
         (
+            "parse-algorithms",
+            include_str!("../../../tests/standard-library/parse-algorithms.t"),
+            &["std.parse"][..],
+        ),
+        (
             "firewall",
             include_str!("../../../examples/data-transfer/firewall.t"),
             &["std.data.spans", "std.network.addresses"][..],
