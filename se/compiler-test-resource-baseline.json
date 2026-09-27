@@ -3166,6 +3166,16 @@
       "cpu_time_ns": 340979,
       "memory_peak_bytes": 18653184,
       "samples_per_test": 500
+    },
+    "topalc-build::tests/standard-library/data-spans.t": {
+      "cpu_time_ns": 441640560,
+      "memory_peak_bytes": 45367296,
+      "samples_per_test": 50
+    },
+    "topalc-run::tests/standard-library/data-spans.t": {
+      "cpu_time_ns": 347582,
+      "memory_peak_bytes": 18661376,
+      "samples_per_test": 500
     }
   }
 }

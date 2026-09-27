@@ -45,7 +45,7 @@ decision under the repository authority rules.
 ## Current inventory
 
 The compiler executes the complete 306-program canonical language corpus plus
-six standard-library conformance programs and all three data-transfer programs.
+seven standard-library conformance programs and all three data-transfer programs.
 Gate 1 includes constraint application over every
 compiler-admitted fundamental scalar base and evidence-sensitive finite Nat
 arithmetic. Gate 2 accepts and erases unused library declarations, resolves

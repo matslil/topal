@@ -2697,6 +2697,21 @@ SHALL retain `Nat` evidence in the checked model and across a private Function
 result. Lowering MAY reuse the existing arbitrary-precision integer carrier,
 but SHALL NOT silently widen the semantic classifier to `Int`.
 
+### TOPAL-COMPILER-LIBRARY-NAT-PAIR-FOLD-001 — Span gather fold
+
+The compiler SHALL admit `List (Nat, Nat)` construction, private Function
+passage, and finite left folds with `Nat` state when specializing an admitted
+source-library Function. Contextual Nat evidence SHALL apply recursively to
+both fields of a pair entry and to the initial fold state; the checked result
+SHALL remain `Nat`.
+
+Lowering SHALL use the existing arbitrary-precision integer carrier for each
+Nat and one immutable private node containing the two field pointers followed
+by the next-node pointer. A fold SHALL load both fields once per entry in
+source order and use one finite direct LLVM loop. It SHALL NOT use a Tuple
+payload allocation, callback ABI, indirect call, host iterator, foreign
+collection runtime, or public aggregate ABI.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
