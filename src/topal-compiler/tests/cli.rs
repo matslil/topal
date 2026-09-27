@@ -13797,6 +13797,7 @@ fn assert_source_library_program(
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)] // The source-module matrix keeps each dependency identity beside its corpus.
 fn qualified_standard_library_functions_compile_from_source_modules() {
     // TOPAL-LIB-SOURCE-001, TOPAL-NAMESPACE-USE-001,
     // TOPAL-COMPILER-LIBRARY-SOURCE-001,
@@ -13849,6 +13850,21 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             "packing-algorithms",
             include_str!("../../../tests/standard-library/packing-algorithms.t"),
             &["advent-of-code.packing"][..],
+        ),
+        (
+            "specialized-algorithms",
+            include_str!("../../../tests/standard-library/specialized-algorithms.t"),
+            &[
+                "std.combinatorics",
+                "std.graph",
+                "std.statistics",
+                "std.text",
+            ][..],
+        ),
+        (
+            "statistics-algorithms",
+            include_str!("../../../tests/standard-library/statistics-algorithms.t"),
+            &["std.statistics"][..],
         ),
         (
             "firewall",

@@ -8047,6 +8047,22 @@ specialization SHALL classify every retained candidate with the language's
 pinned Unicode tables and SHALL NOT consult a host locale or runtime Unicode
 service.
 
+### TOPAL-COMPILER-NUMERIC-PROOF-FLOW-001 — Numeric proof flow
+
+The compiler SHALL retain nonzero evidence in the complement of a `Nat <= 0`
+decision and across a directly specialized private call. It SHALL retain
+nonnegative evidence through natural quotient/remainder products and through a
+specialized function whose every reachable result is constructed from
+nonnegative inputs by nonnegative-preserving operations. A checked numeric
+conversion or Rational division MAY be lowered as infallible only when this
+evidence proves its validation condition on every reachable path.
+
+Finite Rational List operations used by exact statistics SHALL use Rational
+comparison and the correct private node stride for scalar entries and
+Rational/Nat or Rational/Rational pairs. Range selection, concatenation,
+containment, folds, zipping, and entry counting SHALL preserve exact Rational
+identity and SHALL NOT reinterpret a Rational pointer as an Int value.
+
 ### TOPAL-COMPILER-PATTERN-001 — Discarded machine inputs
 
 An admitted positional-product prefix application SHALL evaluate and validate

@@ -332,6 +332,8 @@ const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
     "tests/standard-library/packing-algorithms.t",
     "tests/standard-library/parse-algorithms.t",
     "tests/standard-library/sequence-algorithms.t",
+    "tests/standard-library/specialized-algorithms.t",
+    "tests/standard-library/statistics-algorithms.t",
     "tests/standard-library/store-memory.t",
     "tests/standard-library/transfer-queues.t",
     "tests/standard-library/web-http.t",

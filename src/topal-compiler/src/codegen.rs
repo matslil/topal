@@ -2887,6 +2887,8 @@ impl<'a> Generator<'a> {
             CompilerExpressionKind::ListContainsEntry { list, value } => {
                 let string = matches!(&list.value_type, CompilerType::List(element)
                     if matches!(element.as_ref(), CompilerType::Character | CompilerType::String));
+                let rational = matches!(&list.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::Rational);
                 let int_pair = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_integer_pair(element.as_ref()));
                 if string {
@@ -2919,10 +2921,18 @@ impl<'a> Generator<'a> {
                 LlValue::Boolean(body.instruction(
                     &format!(
                         "call i1 @topal.runtime.list.{}.contains.entry(ptr {}, ptr {})",
-                        if string { "string" } else { "int" },
+                        if string {
+                            "string"
+                        } else if rational {
+                            "rational"
+                        } else {
+                            "int"
+                        },
                         list.list_pointer(),
                         if string {
                             value.string()
+                        } else if rational {
+                            value.rational()
                         } else {
                             value.integer()
                         }
@@ -3037,8 +3047,11 @@ impl<'a> Generator<'a> {
                 };
                 let string = matches!(&list.value_type, CompilerType::List(element)
                     if element.as_ref() == &CompilerType::String);
+                let rational = element.as_ref() == &CompilerType::Rational;
+                let rational_nat_pair = compiler_rational_nat_pair(element.as_ref());
                 let list_integer_pair = compiler_list_integer_pair(element.as_ref());
                 let int_pair = compiler_integer_pair(element.as_ref()) || list_integer_pair;
+                let pair_layout = int_pair || rational_nat_pair;
                 let int_string_pair = compiler_int_string_pair(element.as_ref());
                 let int_int_boolean_pair = compiler_int_int_boolean_pair(element.as_ref());
                 let int_triple = compiler_int_triple(element.as_ref());
@@ -3051,7 +3064,7 @@ impl<'a> Generator<'a> {
                             || compiler_integer_pair(inner.as_ref()));
                 let int_range = matches!(element.as_ref(), CompilerType::Range(endpoint)
                     if endpoint.as_ref() == &CompilerType::Int);
-                if int_pair {
+                if pair_layout {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
                 } else if int_string_pair {
@@ -3077,7 +3090,7 @@ impl<'a> Generator<'a> {
                         "call ptr @topal.platform.allocate(i64 {})",
                         if int_int_boolean_pair || three_pointer {
                             32
-                        } else if int_pair || int_string_pair {
+                        } else if pair_layout || int_string_pair {
                             24
                         } else {
                             16
@@ -3157,8 +3170,18 @@ impl<'a> Generator<'a> {
                     }
                     .to_owned();
                     (first, Some(second))
+                } else if rational_nat_pair {
+                    let LlValue::Tuple(fields) = value else {
+                        unreachable!("checked Rational/Nat pair append retains its tuple value")
+                    };
+                    (
+                        fields[0].rational().to_owned(),
+                        Some(fields[1].integer().to_owned()),
+                    )
                 } else if string {
                     (value.string().to_owned(), None)
+                } else if rational {
+                    (value.rational().to_owned(), None)
                 } else if nested_pointer {
                     (value.list_pointer().to_owned(), None)
                 } else if int_range {
@@ -3188,7 +3211,7 @@ impl<'a> Generator<'a> {
                         "getelementptr i8, ptr {singleton}, i64 {}",
                         if int_int_boolean_pair || three_pointer {
                             24
-                        } else if int_pair || int_string_pair {
+                        } else if pair_layout || int_string_pair {
                             16
                         } else {
                             8
@@ -3206,7 +3229,7 @@ impl<'a> Generator<'a> {
                     value: body.instruction(
                         &format!(
                             "call ptr @topal.runtime.list.{}.concat(ptr {}, ptr {singleton})",
-                            if int_pair {
+                            if pair_layout {
                                 "int.pair"
                             } else if int_string_pair {
                                 "int-string"
@@ -3345,6 +3368,8 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_integer_pair(element.as_ref())
                             || compiler_list_integer_pair(element.as_ref())
+                            || compiler_rational_nat_pair(element.as_ref())
+                            || compiler_rational_pair(element.as_ref())
                 );
                 let int_triple = matches!(
                     &value.value_type,
@@ -6605,8 +6630,10 @@ impl<'a> Generator<'a> {
         let int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
-                if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
-                    && matches!(state_element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                if (matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat | CompilerType::Rational)
+                    || compiler_integer_pair(element.as_ref())
+                    || compiler_rational_nat_pair(element.as_ref()))
+                    && matches!(state_element.as_ref(), CompilerType::Int | CompilerType::Nat | CompilerType::Rational)
         );
         let nested_int_source_int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
@@ -6642,6 +6669,9 @@ impl<'a> Generator<'a> {
             (CompilerType::List(element), CompilerType::String)
                 if element.as_ref() == &CompilerType::Character
         );
+        let rational_state_fold = initial.value_type == CompilerType::Rational;
+        let rational_source_fold = matches!(&list.value_type, CompilerType::List(element)
+            if element.as_ref() == &CompilerType::Rational);
         let tuple_state_fold = matches!(initial.value_type, CompilerType::Tuple(_));
         let boolean_state_fold = initial.value_type == CompilerType::Boolean;
         let nested_int_source_boolean_fold = boolean_state_fold
@@ -6653,6 +6683,8 @@ impl<'a> Generator<'a> {
             if compiler_boolean_int_pair(element.as_ref()));
         let pair_fold = matches!(&list.value_type, CompilerType::List(element)
             if compiler_integer_pair(element.as_ref())
+                || compiler_rational_nat_pair(element.as_ref())
+                || compiler_rational_pair(element.as_ref())
                 || compiler_int_string_pair(element.as_ref())
                 || compiler_string_pair(element.as_ref())
                 || compiler_boolean_int_pair(element.as_ref()));
@@ -6684,6 +6716,8 @@ impl<'a> Generator<'a> {
             initial_value.optional_pointer().to_owned()
         } else if character_string_fold {
             initial_value.string().to_owned()
+        } else if rational_state_fold {
+            initial_value.rational().to_owned()
         } else if string_list_fold
             || nested_int_list_state_fold
             || character_nat_list_fold
@@ -6863,6 +6897,8 @@ impl<'a> Generator<'a> {
             }
         } else if character_string_fold {
             LlValue::String(state.clone())
+        } else if rational_state_fold {
+            LlValue::Rational(state.clone())
         } else {
             LlValue::Int(state.clone())
         };
@@ -6890,6 +6926,10 @@ impl<'a> Generator<'a> {
                 LlValue::Tuple(vec![LlValue::Int(value), LlValue::String(second)])
             } else if compiler_boolean_int_pair(element.as_ref()) {
                 LlValue::Tuple(vec![LlValue::Boolean(value), LlValue::Int(second)])
+            } else if compiler_rational_nat_pair(element.as_ref()) {
+                LlValue::Tuple(vec![LlValue::Rational(value), LlValue::Int(second)])
+            } else if compiler_rational_pair(element.as_ref()) {
+                LlValue::Tuple(vec![LlValue::Rational(value), LlValue::Rational(second)])
             } else {
                 LlValue::Tuple(vec![LlValue::Int(value), LlValue::Int(second)])
             }
@@ -6923,6 +6963,8 @@ impl<'a> Generator<'a> {
                 element: entry_element.as_ref().clone(),
                 function_captures: Vec::new(),
             }
+        } else if rational_source_fold {
+            LlValue::Rational(value)
         } else {
             LlValue::Int(value)
         };
@@ -6998,6 +7040,8 @@ impl<'a> Generator<'a> {
                 (value.optional_pointer().to_owned(), "ptr".to_owned())
             } else if character_string_fold {
                 (value.string().to_owned(), "ptr".to_owned())
+            } else if rational_state_fold {
+                (value.rational().to_owned(), "ptr".to_owned())
             } else if string_list_fold
                 || nested_int_list_state_fold
                 || character_nat_list_fold
@@ -7101,6 +7145,8 @@ impl<'a> Generator<'a> {
             }
         } else if character_string_fold {
             LlValue::String(state)
+        } else if rational_state_fold {
+            LlValue::Rational(state)
         } else {
             LlValue::Int(state)
         }
@@ -13995,6 +14041,16 @@ fn compiler_integer_pair(value_type: &CompilerType) -> bool {
                 CompilerType::Int | CompilerType::Nat
             ])
     )
+}
+
+fn compiler_rational_nat_pair(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::Tuple(fields)
+        if fields.as_slice() == [CompilerType::Rational, CompilerType::Nat])
+}
+
+fn compiler_rational_pair(value_type: &CompilerType) -> bool {
+    matches!(value_type, CompilerType::Tuple(fields)
+        if fields.as_slice() == [CompilerType::Rational, CompilerType::Rational])
 }
 
 fn compiler_list_integer_pair(value_type: &CompilerType) -> bool {
