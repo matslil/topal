@@ -13825,6 +13825,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.network.addresses"][..],
         ),
         (
+            "store-memory",
+            include_str!("../../../tests/standard-library/store-memory.t"),
+            &["std", "std.store.memory"][..],
+        ),
+        (
             "transfer-queues",
             include_str!("../../../tests/standard-library/transfer-queues.t"),
             &["std", "std.transfer.queues"][..],
