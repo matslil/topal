@@ -1,5 +1,20 @@
 %topal.ListBooleanStorage = type { i1, ptr }
 
+define internal ptr @topal.runtime.list.boolean.first(ptr %list) nounwind noinline {
+entry:
+  %empty = icmp eq ptr %list, null
+  br i1 %empty, label %none, label %some
+some:
+  %value = load i1, ptr %list, align 1
+  %payload = call ptr @topal.platform.allocate(i64 1)
+  store i1 %value, ptr %payload, align 1
+  %present = call ptr @topal.runtime.optional.some(ptr %payload)
+  ret ptr %present
+none:
+  %absent = call ptr @topal.runtime.optional.none()
+  ret ptr %absent
+}
+
 define internal i1 @topal.runtime.list.boolean.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   br label %loop

@@ -9832,7 +9832,7 @@ fn effect_list_is_freestanding_and_gdb_renders_its_source_shape() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
-#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, rejection, and source-level GDB values.
+#[allow(clippy::too_many_lines)] // One session covers artifacts, IR, and source-level GDB values.
 fn boolean_lists_are_private_freestanding_and_debuggable() {
     // TOPAL-TYPE-LIST-CONSTRUCT-001, TOPAL-DECISION-LIST-001,
     // TOPAL-TYPE-LIST-EQUALITY-001, TOPAL-LIST-ENTRY-COUNT-001,
@@ -10150,23 +10150,6 @@ fn character_lists_are_private_freestanding_and_debuggable() {
     ] {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
-
-    let rejected_source = directory.join("unsupported-transform.t");
-    let rejected_executable = directory.join("unsupported-transform");
-    fs::write(
-        &rejected_source,
-        "use language (version is v0.1)\nvalues : List Character is Entry (\"A\", Empty)\nvalues reverse\n",
-    )
-    .unwrap();
-    let rejected = run(topalc().args([
-        "-o",
-        rejected_executable.to_str().unwrap(),
-        rejected_source.to_str().unwrap(),
-    ]));
-    assert!(!rejected.status.success());
-    assert!(String::from_utf8_lossy(&rejected.stderr).contains("E-COMPILER-UNSUPPORTED"));
-    assert!(!rejected_executable.exists());
-    assert!(!metadata_path(&rejected_executable).exists());
 
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
@@ -11912,17 +11895,6 @@ fn int_string_pair_lists_are_complete_private_freestanding_and_debuggable() {
     ] {
         assert!(!ir.contains(forbidden), "{forbidden}: {ir}");
     }
-    let rejected_source = directory.join("unsupported.t");
-    let rejected_executable = directory.join("unsupported");
-    fs::write(&rejected_source, "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nvalues reverse\n").unwrap();
-    let rejected = run(topalc().args([
-        "-o",
-        rejected_executable.to_str().unwrap(),
-        rejected_source.to_str().unwrap(),
-    ]));
-    assert!(!rejected.status.success());
-    assert!(!rejected_executable.exists());
-    assert!(!metadata_path(&rejected_executable).exists());
     let pretty_printers = Path::new(env!("CARGO_MANIFEST_DIR")).join("gdb/topal.py");
     let debugged = run(Command::new("gdb")
         .args([

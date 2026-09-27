@@ -1,5 +1,83 @@
 %topal.ListStringStorage = type { ptr, ptr }
 
+define internal i1 @topal.runtime.list.string.starts.with(ptr %source, ptr %pattern) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %source.current = phi ptr [%source, %entry], [%source.next, %advance]
+  %pattern.current = phi ptr [%pattern, %entry], [%pattern.next, %advance]
+  %pattern.empty = icmp eq ptr %pattern.current, null
+  br i1 %pattern.empty, label %matches, label %check.source
+check.source:
+  %source.empty = icmp eq ptr %source.current, null
+  br i1 %source.empty, label %different, label %compare
+compare:
+  %source.value = load ptr, ptr %source.current, align 8
+  %pattern.value = load ptr, ptr %pattern.current, align 8
+  %equal = call i1 @topal.runtime.string.equal(ptr %source.value, ptr %pattern.value)
+  br i1 %equal, label %advance, label %different
+advance:
+  %source.next.pointer = getelementptr %topal.ListStringStorage, ptr %source.current, i32 0, i32 1
+  %pattern.next.pointer = getelementptr %topal.ListStringStorage, ptr %pattern.current, i32 0, i32 1
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %pattern.next = load ptr, ptr %pattern.next.pointer, align 8
+  br label %loop
+matches:
+  ret i1 true
+different:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.list.string.contains.sequence(ptr %list, ptr %pattern) nounwind noinline {
+entry:
+  %pattern.empty = icmp eq ptr %pattern, null
+  br i1 %pattern.empty, label %found, label %search
+search:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %missing, label %inspect
+inspect:
+  %matches = call i1 @topal.runtime.list.string.starts.with(ptr %current, ptr %pattern)
+  br i1 %matches, label %found, label %advance
+advance:
+  %next.pointer = getelementptr %topal.ListStringStorage, ptr %current, i32 0, i32 1
+  %next = load ptr, ptr %next.pointer, align 8
+  br label %search
+found:
+  ret i1 true
+missing:
+  ret i1 false
+}
+
+define internal i1 @topal.runtime.list.string.contains.subsequence(ptr %list, ptr %pattern) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %source.current = phi ptr [%list, %entry], [%source.next, %advance]
+  %pattern.current = phi ptr [%pattern, %entry], [%pattern.after, %advance]
+  %pattern.empty = icmp eq ptr %pattern.current, null
+  br i1 %pattern.empty, label %found, label %check.source
+check.source:
+  %source.empty = icmp eq ptr %source.current, null
+  br i1 %source.empty, label %missing, label %compare
+compare:
+  %source.value = load ptr, ptr %source.current, align 8
+  %pattern.value = load ptr, ptr %pattern.current, align 8
+  %equal = call i1 @topal.runtime.string.equal(ptr %source.value, ptr %pattern.value)
+  br label %advance
+advance:
+  %source.next.pointer = getelementptr %topal.ListStringStorage, ptr %source.current, i32 0, i32 1
+  %pattern.next.pointer = getelementptr %topal.ListStringStorage, ptr %pattern.current, i32 0, i32 1
+  %source.next = load ptr, ptr %source.next.pointer, align 8
+  %pattern.next = load ptr, ptr %pattern.next.pointer, align 8
+  %pattern.after = select i1 %equal, ptr %pattern.next, ptr %pattern.current
+  br label %loop
+found:
+  ret i1 true
+missing:
+  ret i1 false
+}
+
 define internal i64 @topal.runtime.list.string.count.raw(ptr %list) nounwind noinline {
 entry:
   br label %loop
