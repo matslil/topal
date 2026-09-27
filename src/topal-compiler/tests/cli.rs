@@ -13820,6 +13820,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.parse"][..],
         ),
         (
+            "ordered-algorithms",
+            include_str!("../../../tests/standard-library/ordered-algorithms.t"),
+            &["std.ordered"][..],
+        ),
+        (
             "sequence-algorithms",
             include_str!("../../../tests/standard-library/sequence-algorithms.t"),
             &["std.sequence"][..],

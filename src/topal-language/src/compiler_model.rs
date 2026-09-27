@@ -18238,6 +18238,56 @@ impl Analyzer {
         usize::try_from(&range.lower).ok()
     }
 
+    fn specialize_exact_ordered_call(
+        &self,
+        function_name: &str,
+        arguments: &[CompilerExpression],
+        environment: &BTreeMap<String, BindingFacts>,
+        span: Span,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Some(values) = arguments.first() else {
+            return Ok(None);
+        };
+        let facts = self.known_structural_value_facts(values, environment)?;
+        if values.value_type == int_list_type()
+            && let Some(entries) = exact_int_entries(&facts)
+        {
+            let sought = arguments.get(1).and_then(exact_int);
+            return Ok(exact_ordered_int_call(
+                function_name,
+                &entries,
+                sought.as_ref(),
+                arguments.get(1).and_then(Self::exact_usize),
+                arguments.get(1).and_then(|right| {
+                    self.known_structural_value_facts(right, environment)
+                        .ok()
+                        .and_then(|facts| exact_int_entries(&facts))
+                }),
+                span,
+            ));
+        }
+        if values.value_type == CompilerType::List(Box::new(CompilerType::Rational))
+            && let Some(entries) = exact_rational_entries(&facts)
+        {
+            let sought = arguments
+                .get(1)
+                .and_then(|value| value.rational_value.as_ref());
+            return Ok(exact_ordered_rational_call(
+                function_name,
+                &entries,
+                sought,
+                arguments.get(1).and_then(Self::exact_usize),
+                arguments.get(1).and_then(|right| {
+                    self.known_structural_value_facts(right, environment)
+                        .ok()
+                        .and_then(|facts| exact_rational_entries(&facts))
+                }),
+                span,
+            ));
+        }
+        Ok(None)
+    }
+
     fn known_string_expression(
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -22579,6 +22629,37 @@ impl Analyzer {
                 .map(|index| rows.iter().map(|row| row[index].clone()).collect())
                 .collect::<Vec<Vec<BigInt>>>();
             return Ok(compiler_nested_int_list_literal(&columns, span));
+        }
+        if matches!(
+            function_name,
+            "std.ordered.sort" | "std.ordered.sort-descending"
+        ) && let [values] = arguments.as_slice()
+        {
+            let facts = self.known_structural_value_facts(values, environment)?;
+            if values.value_type == int_list_type()
+                && let Some(mut entries) = exact_int_entries(&facts)
+            {
+                entries.sort();
+                if function_name.ends_with("sort-descending") {
+                    entries.reverse();
+                }
+                return Ok(compiler_int_list_literal(&entries, span));
+            }
+            if values.value_type == CompilerType::List(Box::new(CompilerType::Rational))
+                && let Some(mut entries) = exact_rational_entries(&facts)
+            {
+                entries.sort();
+                if function_name.ends_with("sort-descending") {
+                    entries.reverse();
+                }
+                return Ok(compiler_rational_list_literal(&entries, span));
+            }
+        }
+        if function_name.starts_with("std.ordered.")
+            && let Some(value) =
+                self.specialize_exact_ordered_call(function_name, &arguments, environment, span)?
+        {
+            return Ok(value);
         }
         if let [argument] = arguments.as_slice()
             && let Some(text) = exact_string(argument)
@@ -29955,6 +30036,15 @@ fn exact_nested_int_entries(facts: &StaticValueFacts) -> Option<Vec<Vec<BigInt>>
         .collect()
 }
 
+fn exact_rational_entries(facts: &StaticValueFacts) -> Option<Vec<BigRational>> {
+    facts
+        .list_entries
+        .as_ref()?
+        .iter()
+        .map(|entry| entry.rational_value.clone())
+        .collect()
+}
+
 fn exact_closed_range_values(range: &ClosedIntRange, limit: usize) -> Option<Vec<BigInt>> {
     let mut current = &range.lower + u8::from(!range.lower_inclusive);
     let finish = &range.upper - u8::from(!range.upper_inclusive);
@@ -30019,6 +30109,192 @@ fn compiler_nested_int_list_literal(values: &[Vec<BigInt>], span: Span) -> Compi
             span,
         },
     )
+}
+
+fn compiler_rational_list_literal(values: &[BigRational], span: Span) -> CompilerExpression {
+    let list_type = CompilerType::List(Box::new(CompilerType::Rational));
+    values.iter().rev().fold(
+        CompilerExpression {
+            kind: CompilerExpressionKind::ListEmpty,
+            value_type: list_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        },
+        |remaining, value| CompilerExpression {
+            kind: CompilerExpressionKind::ListEntry {
+                value: Box::new(CompilerExpression {
+                    kind: CompilerExpressionKind::Rational(value.clone()),
+                    value_type: CompilerType::Rational,
+                    int_range: None,
+                    rational_value: Some(value.clone()),
+                    span,
+                }),
+                remaining: Box::new(remaining),
+            },
+            value_type: list_type.clone(),
+            int_range: None,
+            rational_value: None,
+            span,
+        },
+    )
+}
+
+fn compiler_index_literal(
+    value: usize,
+    value_type: CompilerType,
+    span: Span,
+) -> CompilerExpression {
+    let value = BigInt::from(value);
+    CompilerExpression {
+        kind: CompilerExpressionKind::Int(value.clone()),
+        value_type,
+        int_range: Some(IntRange::exact(value)),
+        rational_value: None,
+        span,
+    }
+}
+
+fn compiler_optional_literal(
+    value: Option<CompilerExpression>,
+    payload: CompilerType,
+    span: Span,
+) -> CompilerExpression {
+    CompilerExpression {
+        kind: value.map_or(CompilerExpressionKind::OptionalNone, |value| {
+            CompilerExpressionKind::OptionalSome(Box::new(value))
+        }),
+        value_type: CompilerType::Optional(Box::new(payload)),
+        int_range: None,
+        rational_value: None,
+        span,
+    }
+}
+
+fn exact_binary_search<T: Ord>(values: &[T], sought: &T) -> Option<usize> {
+    let (mut lower, mut upper) = (0, values.len());
+    while lower < upper {
+        let middle = lower + (upper - lower) / 2;
+        match values[middle].cmp(sought) {
+            std::cmp::Ordering::Equal => return Some(middle),
+            std::cmp::Ordering::Less => lower = middle + 1,
+            std::cmp::Ordering::Greater => upper = middle,
+        }
+    }
+    None
+}
+
+fn exact_ordered_int_call(
+    name: &str,
+    values: &[BigInt],
+    sought: Option<&BigInt>,
+    count: Option<usize>,
+    right: Option<Vec<BigInt>>,
+    span: Span,
+) -> Option<CompilerExpression> {
+    let lower = sought.map(|sought| values.partition_point(|value| value < sought));
+    let upper = sought.map(|sought| values.partition_point(|value| value <= sought));
+    match name {
+        "std.ordered.lower-bound" => Some(compiler_index_literal(lower?, CompilerType::Int, span)),
+        "std.ordered.upper-bound" => Some(compiler_index_literal(upper?, CompilerType::Int, span)),
+        "std.ordered.equal-range" => Some(CompilerExpression {
+            kind: CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Range,
+                left: Box::new(compiler_index_literal(lower?, CompilerType::Int, span)),
+                right: Box::new(compiler_index_literal(upper?, CompilerType::Int, span)),
+            },
+            value_type: CompilerType::Range(Box::new(CompilerType::Int)),
+            int_range: None,
+            rational_value: None,
+            span,
+        }),
+        "std.ordered.binary-search" => Some(compiler_optional_literal(
+            exact_binary_search(values, sought?)
+                .map(|index| compiler_index_literal(index, CompilerType::Nat, span)),
+            CompilerType::Nat,
+            span,
+        )),
+        "std.ordered.merge" => {
+            let mut merged = values.to_vec();
+            merged.extend(right?);
+            merged.sort();
+            Some(compiler_int_list_literal(&merged, span))
+        }
+        "std.ordered.smallest" => {
+            let mut selected = values.to_vec();
+            selected.sort();
+            selected.truncate(count?.min(selected.len()));
+            Some(compiler_int_list_literal(&selected, span))
+        }
+        "std.ordered.nth" => {
+            let mut selected = values.to_vec();
+            selected.sort();
+            Some(compiler_optional_literal(
+                selected
+                    .get(count?)
+                    .cloned()
+                    .map(|value| CompilerExpression {
+                        kind: CompilerExpressionKind::Int(value.clone()),
+                        value_type: CompilerType::Int,
+                        int_range: Some(IntRange::exact(value)),
+                        rational_value: None,
+                        span,
+                    }),
+                CompilerType::Int,
+                span,
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn exact_ordered_rational_call(
+    name: &str,
+    values: &[BigRational],
+    sought: Option<&BigRational>,
+    count: Option<usize>,
+    right: Option<Vec<BigRational>>,
+    span: Span,
+) -> Option<CompilerExpression> {
+    match name {
+        "std.ordered.binary-search" => Some(compiler_optional_literal(
+            exact_binary_search(values, sought?)
+                .map(|index| compiler_index_literal(index, CompilerType::Nat, span)),
+            CompilerType::Nat,
+            span,
+        )),
+        "std.ordered.merge" => {
+            let mut merged = values.to_vec();
+            merged.extend(right?);
+            merged.sort();
+            Some(compiler_rational_list_literal(&merged, span))
+        }
+        "std.ordered.smallest" => {
+            let mut selected = values.to_vec();
+            selected.sort();
+            selected.truncate(count?.min(selected.len()));
+            Some(compiler_rational_list_literal(&selected, span))
+        }
+        "std.ordered.nth" => {
+            let mut selected = values.to_vec();
+            selected.sort();
+            Some(compiler_optional_literal(
+                selected
+                    .get(count?)
+                    .cloned()
+                    .map(|value| CompilerExpression {
+                        kind: CompilerExpressionKind::Rational(value.clone()),
+                        value_type: CompilerType::Rational,
+                        int_range: None,
+                        rational_value: Some(value),
+                        span,
+                    }),
+                CompilerType::Rational,
+                span,
+            ))
+        }
+        _ => None,
+    }
 }
 
 fn adapt_call_argument(
