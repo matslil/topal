@@ -173,7 +173,9 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             expression_uses_extended_debug(seed) || block_uses_extended_debug(step)
         }
         CompilerExpressionKind::StringCharactersGenerator { text, .. }
-        | CompilerExpressionKind::StringCharactersCollect { text, .. } => {
+        | CompilerExpressionKind::StringCharactersCollect { text, .. }
+        | CompilerExpressionKind::StringProvenanceCharactersGenerator { text, .. }
+        | CompilerExpressionKind::StringProvenanceCharactersCollect { text, .. } => {
             expression_uses_extended_debug(text)
         }
         CompilerExpressionKind::StringRangeCharactersGenerator { text, range, .. }
@@ -297,6 +299,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
         | CompilerExpressionKind::IntToNat(value)
+        | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
@@ -1936,6 +1939,28 @@ impl<'a> Generator<'a> {
                 environment,
                 expression.span,
             ),
+            CompilerExpressionKind::StringProvenanceCharactersGenerator { text, .. } => {
+                let _ = self.emit_expression(text, body, environment);
+                let CompilerType::Generator(generator) = &expression.value_type else {
+                    unreachable!(
+                        "checked provenance characters construction retains its Generator type"
+                    )
+                };
+                LlValue::Generator {
+                    value: "0".into(),
+                    generator: generator.clone(),
+                    captured_initial: None,
+                    captured_additional_initials: Vec::new(),
+                }
+            }
+            CompilerExpressionKind::StringProvenanceCharactersCollect { text, characters } => self
+                .emit_string_provenance_characters_collect(
+                    text,
+                    characters,
+                    body,
+                    environment,
+                    expression.span,
+                ),
             CompilerExpressionKind::StringCharactersCollect { text, .. } => {
                 self.emit_expression(text, body, environment)
             }
@@ -2318,6 +2343,9 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::ExternalLayoutCoerce { value, .. } => {
                 self.emit_expression(value, body, environment)
             }
+            CompilerExpressionKind::IntToNatBoundary(value) => {
+                self.emit_required_nat(value, body, environment, expression.span)
+            }
             CompilerExpressionKind::ResultSuccess(value) => {
                 let success = self.emit_expression(value, body, environment);
                 let function_captures = match &success {
@@ -2472,6 +2500,7 @@ impl<'a> Generator<'a> {
                     {
                         (24, 16)
                     }
+                    element if compiler_list_integer_pair(element) => (24, 16),
                     CompilerType::Tuple(fields)
                         if fields.as_slice()
                             == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
@@ -2498,6 +2527,7 @@ impl<'a> Generator<'a> {
                     {
                         (16, 8)
                     }
+                    element if compiler_nested_int_list_element(element) => (16, 8),
                     _ => unreachable!("checked List element has an admitted node layout"),
                 };
                 let node = body.instruction(
@@ -2637,6 +2667,29 @@ impl<'a> Generator<'a> {
                             ),
                         }
                     }
+                    (element, LlValue::Tuple(values)) if compiler_list_integer_pair(element) => {
+                        let [list, integer] = values.as_slice() else {
+                            unreachable!("checked List/list-integer pair retains two fields")
+                        };
+                        body.effect(
+                            &format!("store ptr {}, ptr {node}, align 8", list.list_pointer()),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        let integer_address = body.instruction(
+                            &format!("getelementptr i8, ptr {node}, i64 8"),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                        body.effect(
+                            &format!(
+                                "store ptr {}, ptr {integer_address}, align 8",
+                                integer.integer()
+                            ),
+                            expression.span,
+                            &mut self.debug,
+                        );
+                    }
                     (CompilerType::Tuple(field_types), LlValue::Tuple(values))
                         if field_types.as_slice()
                             == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
@@ -2722,8 +2775,9 @@ impl<'a> Generator<'a> {
                             element: value_element,
                             ..
                         },
-                    ) if (inner.as_ref() == &CompilerType::Int
-                        || compiler_int_string_pair(inner))
+                    ) if (matches!(inner.as_ref(), CompilerType::Int | CompilerType::Nat)
+                        || compiler_int_string_pair(inner)
+                        || compiler_nested_int_list_element(inner))
                         && value_element == inner.as_ref() =>
                     {
                         body.effect(
@@ -2892,7 +2946,8 @@ impl<'a> Generator<'a> {
                 };
                 let string = matches!(&list.value_type, CompilerType::List(element)
                     if element.as_ref() == &CompilerType::String);
-                let int_pair = compiler_integer_pair(element.as_ref());
+                let list_integer_pair = compiler_list_integer_pair(element.as_ref());
+                let int_pair = compiler_integer_pair(element.as_ref()) || list_integer_pair;
                 let int_string_pair = compiler_int_string_pair(element.as_ref());
                 let int_int_boolean_pair = compiler_int_int_boolean_pair(element.as_ref());
                 let int_triple = compiler_int_triple(element.as_ref());
@@ -2980,6 +3035,14 @@ impl<'a> Generator<'a> {
                     (
                         first.integer().to_owned(),
                         Some(second.integer().to_owned()),
+                    )
+                } else if list_integer_pair {
+                    let LlValue::Tuple(fields) = value else {
+                        unreachable!("checked list/integer pair append retains its tuple value")
+                    };
+                    (
+                        fields[0].list_pointer().to_owned(),
+                        Some(fields[1].integer().to_owned()),
                     )
                 } else if int_pair || int_string_pair {
                     let LlValue::Tuple(fields) = value else {
@@ -3172,7 +3235,9 @@ impl<'a> Generator<'a> {
                 );
                 let int_pair = matches!(
                     &value.value_type,
-                    CompilerType::List(element) if compiler_integer_pair(element.as_ref())
+                    CompilerType::List(element)
+                        if compiler_integer_pair(element.as_ref())
+                            || compiler_list_integer_pair(element.as_ref())
                 );
                 let int_triple = matches!(
                     &value.value_type,
@@ -3375,7 +3440,8 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::ListRest(value)
             | CompilerExpressionKind::ListUncons(value) => {
                 let int_pair = matches!(&value.value_type, CompilerType::List(element)
-                    if compiler_integer_pair(element.as_ref()));
+                    if compiler_integer_pair(element.as_ref())
+                        || compiler_list_integer_pair(element.as_ref()));
                 let int_triple = matches!(&value.value_type, CompilerType::List(element)
                     if compiler_int_triple(element.as_ref()));
                 let nested_int_string = matches!(
@@ -3463,7 +3529,8 @@ impl<'a> Generator<'a> {
                 indexes,
             } => {
                 let int_pair = matches!(&list.value_type, CompilerType::List(element)
-                    if compiler_integer_pair(element.as_ref()));
+                    if compiler_integer_pair(element.as_ref())
+                        || compiler_list_integer_pair(element.as_ref()));
                 let int_triple = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_int_triple(element.as_ref()));
                 if int_pair {
@@ -4956,6 +5023,7 @@ impl<'a> Generator<'a> {
         )
     }
 
+    #[allow(clippy::too_many_lines)] // Each admitted Optional payload layout remains explicit.
     fn emit_optional_payload_value(
         &mut self,
         value: String,
@@ -5009,6 +5077,34 @@ impl<'a> Generator<'a> {
             CompilerType::Tuple(fields) if compiler_integer_pair(value_type) => {
                 debug_assert_eq!(fields.len(), 2);
                 self.emit_boxed_int_tuple(&value, 2, body, span)
+            }
+            CompilerType::Tuple(fields) if compiler_list_integer_pair(value_type) => {
+                let [CompilerType::List(element), _] = fields.as_slice() else {
+                    unreachable!("checked list/integer pair retains its classifiers")
+                };
+                let list = body.instruction(
+                    &format!("load ptr, ptr {value}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let integer_address = body.instruction(
+                    &format!("getelementptr i8, ptr {value}, i64 8"),
+                    span,
+                    &mut self.debug,
+                );
+                let integer = body.instruction(
+                    &format!("load ptr, ptr {integer_address}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                LlValue::Tuple(vec![
+                    LlValue::List {
+                        value: list,
+                        element: element.as_ref().clone(),
+                        function_captures: Vec::new(),
+                    },
+                    LlValue::Int(integer),
+                ])
             }
             CompilerType::Tuple(fields) if compiler_int_triple(value_type) => {
                 debug_assert_eq!(fields.len(), 3);
@@ -6404,7 +6500,7 @@ impl<'a> Generator<'a> {
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
                 if compiler_nested_int_list_element(element.as_ref())
-                    && state_element.as_ref() == &CompilerType::Int
+                    && matches!(state_element.as_ref(), CompilerType::Int | CompilerType::Nat)
         );
         let int_triple_source_int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
@@ -6436,6 +6532,9 @@ impl<'a> Generator<'a> {
         );
         let tuple_state_fold = matches!(initial.value_type, CompilerType::Tuple(_));
         let boolean_state_fold = initial.value_type == CompilerType::Boolean;
+        let nested_int_source_boolean_fold = boolean_state_fold
+            && matches!(&list.value_type, CompilerType::List(element)
+                if compiler_nested_int_list_element(element.as_ref()));
         let pair_fold = matches!(&list.value_type, CompilerType::List(element)
             if compiler_integer_pair(element.as_ref())
                 || compiler_int_string_pair(element.as_ref())
@@ -6610,7 +6709,7 @@ impl<'a> Generator<'a> {
         {
             LlValue::List {
                 value: state.clone(),
-                element: if int_list_state_fold {
+                element: if int_list_state_fold || nested_int_source_int_list_state_fold {
                     let CompilerType::List(element) = &initial_type else {
                         unreachable!("checked numeric-list fold state retains its List classifier")
                     };
@@ -6669,13 +6768,20 @@ impl<'a> Generator<'a> {
             LlValue::String(value)
         } else if (nested_int_list_state_fold
             || nested_int_optional_nat_fold
-            || nested_int_source_int_list_state_fold)
+            || nested_int_source_int_list_state_fold
+            || nested_int_source_boolean_fold)
             && matches!(&list.value_type, CompilerType::List(element)
                 if compiler_nested_int_list_element(element.as_ref()))
         {
+            let CompilerType::List(source_element) = &list.value_type else {
+                unreachable!("checked nested-list fold source retains its List classifier")
+            };
+            let CompilerType::List(entry_element) = source_element.as_ref() else {
+                unreachable!("checked nested-list fold entry retains its List classifier")
+            };
             LlValue::List {
                 value,
-                element: CompilerType::Int,
+                element: entry_element.as_ref().clone(),
                 function_captures: Vec::new(),
             }
         } else {
@@ -6829,7 +6935,7 @@ impl<'a> Generator<'a> {
         {
             LlValue::List {
                 value: state,
-                element: if int_list_state_fold {
+                element: if int_list_state_fold || nested_int_source_int_list_state_fold {
                     let CompilerType::List(element) = &initial_type else {
                         unreachable!("checked numeric-list fold state retains its List classifier")
                     };
@@ -7016,6 +7122,67 @@ impl<'a> Generator<'a> {
         let action_location = self.debug.location(action.span, body.subprogram);
         body.terminator(&format!("br label %{merge}"), action_location);
         branches.push((value, predecessor));
+    }
+
+    fn emit_required_nat(
+        &mut self,
+        value: &CompilerExpression,
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let result = self.emit_validation(
+            CompilerValidation::IntToNat,
+            value,
+            value.span,
+            body,
+            environment,
+            span,
+        );
+        let LlValue::Result {
+            value: result_value,
+            success,
+            function_captures,
+        } = result
+        else {
+            unreachable!("Nat boundary validation returns Result")
+        };
+        let is_error = body.instruction(
+            &format!("call i1 @topal.runtime.result.is.error(ptr {result_value})"),
+            span,
+            &mut self.debug,
+        );
+        let failure = body.label("nat.boundary.error");
+        let success_label = body.label("nat.boundary.ok");
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(
+            &format!("br i1 {is_error}, label %{failure}, label %{success_label}"),
+            location,
+        );
+        body.start_block(&failure);
+        self.emit_print(
+            &LlValue::Result {
+                value: result_value.clone(),
+                success: success.clone(),
+                function_captures,
+            },
+            body,
+            span,
+        );
+        self.emit_write_literal("\n", body, span);
+        body.effect(
+            "call void @topal.platform.exit(i64 1)",
+            span,
+            &mut self.debug,
+        );
+        body.terminator("unreachable", location);
+        body.start_block(&success_label);
+        let payload = body.instruction(
+            &format!("call ptr @topal.runtime.result.payload(ptr {result_value})"),
+            span,
+            &mut self.debug,
+        );
+        self.result_success_value(&payload, &success, body, span)
     }
 
     #[allow(clippy::too_many_arguments)] // Validation retains explicit Error provenance at the ABI call.
@@ -10449,6 +10616,208 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[allow(clippy::too_many_lines)] // Candidate matching and list construction share one backwards scan.
+    fn emit_string_provenance_characters_collect(
+        &mut self,
+        text: &CompilerExpression,
+        characters: &[String],
+        body: &mut FunctionBody,
+        environment: &BTreeMap<String, LlValue>,
+        span: Span,
+    ) -> LlValue {
+        let text = self.emit_expression(text, body, environment);
+        self.scalar_list_runtime_fragments
+            .insert(ScalarListRuntimeFragment::String);
+        if characters.is_empty() {
+            return LlValue::List {
+                value: "null".into(),
+                element: CompilerType::Character,
+                function_captures: Vec::new(),
+            };
+        }
+        let data = body.instruction(
+            &format!("load ptr, ptr {}, align 8", text.string()),
+            span,
+            &mut self.debug,
+        );
+        let length_address = body.instruction(
+            &format!("getelementptr i8, ptr {}, i64 8", text.string()),
+            span,
+            &mut self.debug,
+        );
+        let length = body.instruction(
+            &format!("load i64, ptr {length_address}, align 8"),
+            span,
+            &mut self.debug,
+        );
+        let mut candidates = characters.to_vec();
+        candidates.sort_by_key(|character| std::cmp::Reverse(character.len()));
+        candidates.dedup();
+
+        let preheader = body.current_block.clone();
+        let loop_label = body.label("string.characters.collect.loop");
+        let done = body.label("string.characters.collect.done");
+        let invalid = body.label("string.characters.collect.invalid");
+        let checks = candidates
+            .iter()
+            .map(|_| body.label("string.characters.collect.check"))
+            .collect::<Vec<_>>();
+        let tests = candidates
+            .iter()
+            .map(|_| body.label("string.characters.collect.test"))
+            .collect::<Vec<_>>();
+        let matched = candidates
+            .iter()
+            .map(|_| body.label("string.characters.collect.matched"))
+            .collect::<Vec<_>>();
+        let next_offsets = candidates
+            .iter()
+            .map(|_| body.reserve_value())
+            .collect::<Vec<_>>();
+        let nodes = candidates
+            .iter()
+            .map(|_| body.reserve_value())
+            .collect::<Vec<_>>();
+        let location = self.debug.location(span, body.subprogram);
+        body.terminator(&format!("br label %{loop_label}"), location);
+
+        body.start_block(&loop_label);
+        let offset_incoming = matched
+            .iter()
+            .zip(&next_offsets)
+            .map(|(block, value)| format!("[{value}, %{block}]"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let head_incoming = matched
+            .iter()
+            .zip(&nodes)
+            .map(|(block, value)| format!("[{value}, %{block}]"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let offset = body.instruction(
+            &format!("phi i64 [{length}, %{preheader}], {offset_incoming}"),
+            span,
+            &mut self.debug,
+        );
+        let head = body.instruction(
+            &format!("phi ptr [null, %{preheader}], {head_incoming}"),
+            span,
+            &mut self.debug,
+        );
+        let empty = body.instruction(&format!("icmp eq i64 {offset}, 0"), span, &mut self.debug);
+        body.terminator(
+            &format!("br i1 {empty}, label %{done}, label %{}", checks[0]),
+            location,
+        );
+
+        for (index, character) in candidates.iter().enumerate() {
+            let next_check = checks.get(index + 1).unwrap_or(&invalid);
+            body.start_block(&checks[index]);
+            let enough = body.instruction(
+                &format!("icmp uge i64 {offset}, {}", character.len()),
+                span,
+                &mut self.debug,
+            );
+            body.terminator(
+                &format!(
+                    "br i1 {enough}, label %{}, label %{next_check}",
+                    tests[index]
+                ),
+                location,
+            );
+
+            body.start_block(&tests[index]);
+            let start = body.instruction(
+                &format!("sub i64 {offset}, {}", character.len()),
+                span,
+                &mut self.debug,
+            );
+            let mut equal = None;
+            for (byte_index, byte) in character.as_bytes().iter().enumerate() {
+                let address = body.instruction(
+                    &format!("getelementptr i8, ptr {data}, i64 {start}"),
+                    span,
+                    &mut self.debug,
+                );
+                let address = if byte_index == 0 {
+                    address
+                } else {
+                    body.instruction(
+                        &format!("getelementptr i8, ptr {address}, i64 {byte_index}"),
+                        span,
+                        &mut self.debug,
+                    )
+                };
+                let actual = body.instruction(
+                    &format!("load i8, ptr {address}, align 1"),
+                    span,
+                    &mut self.debug,
+                );
+                let byte_equal = body.instruction(
+                    &format!("icmp eq i8 {actual}, {byte}"),
+                    span,
+                    &mut self.debug,
+                );
+                equal = Some(match equal {
+                    None => byte_equal,
+                    Some(previous) => body.instruction(
+                        &format!("and i1 {previous}, {byte_equal}"),
+                        span,
+                        &mut self.debug,
+                    ),
+                });
+            }
+            body.terminator(
+                &format!(
+                    "br i1 {}, label %{}, label %{next_check}",
+                    equal.expect("grapheme candidates are nonempty"),
+                    matched[index]
+                ),
+                location,
+            );
+
+            body.start_block(&matched[index]);
+            let character_value = self.emit_string_value(character, body, span);
+            body.define_reserved(
+                &nodes[index],
+                "call ptr @topal.platform.allocate(i64 16)",
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {character_value}, ptr {}, align 8", nodes[index]),
+                span,
+                &mut self.debug,
+            );
+            let next = body.instruction(
+                &format!("getelementptr i8, ptr {}, i64 8", nodes[index]),
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {head}, ptr {next}, align 8"),
+                span,
+                &mut self.debug,
+            );
+            body.define_reserved(
+                &next_offsets[index],
+                &format!("sub i64 {offset}, {}", character.len()),
+                span,
+                &mut self.debug,
+            );
+            body.terminator(&format!("br label %{loop_label}"), location);
+        }
+
+        body.start_block(&invalid);
+        body.terminator("unreachable", location);
+        body.start_block(&done);
+        LlValue::List {
+            value: head,
+            element: CompilerType::Character,
+            function_captures: Vec::new(),
+        }
+    }
+
     fn emit_string_characters_foreach(
         &mut self,
         traversal: &CompilerExpression,
@@ -13489,6 +13858,16 @@ fn compiler_integer_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_list_integer_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::List(element), CompilerType::Int | CompilerType::Nat]
+                if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                    || compiler_nested_int_list_element(element.as_ref()))
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -13530,7 +13909,9 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
 fn compiler_nested_int_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
-        CompilerType::List(element) if element.as_ref() == &CompilerType::Int
+        CompilerType::List(element)
+            if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                || compiler_nested_int_list_element(element.as_ref())
     )
 }
 
@@ -17000,6 +17381,17 @@ mod tests {
             assert!(llvm.contains("nounwind noinline"));
             assert!(!llvm.contains("norecurse"));
         }
+    }
+
+    #[test]
+    fn emits_required_nat_validation_for_dynamic_list_insertion() {
+        // TOPAL-NUM-NAT-001, TOPAL-COMPILER-NAT-ARITHMETIC-001
+        let source = "use language (version is v0.1)\ndecrement is fn (values : List Nat) -> List Nat\n  values append ((entry-count values) - 1)\nempty : List Nat is Empty\ndecrement empty\n";
+        let program = analyze_for_compiler(source).unwrap();
+        let llvm = Generator::new(&program, "dynamic-list-nat-boundary.t").emit();
+        assert!(llvm.contains("call ptr @topal.runtime.int.try.to.nat"));
+        assert!(llvm.contains("nat.boundary.error"));
+        assert!(llvm.contains("call void @topal.platform.exit(i64 1)"));
     }
 
     #[test]
