@@ -767,6 +767,14 @@ pub enum CompilerExpressionKind {
         characters: Vec<String>,
         range: Box<CompilerExpression>,
     },
+    StringProvenanceCharactersGenerator {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+    },
+    StringProvenanceCharactersCollect {
+        text: Box<CompilerExpression>,
+        characters: Vec<String>,
+    },
     StringCharactersCollect {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -893,6 +901,7 @@ pub enum CompilerExpressionKind {
     },
     RationalToInt(Box<CompilerExpression>),
     IntToNat(Box<CompilerExpression>),
+    IntToNatBoundary(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
     ResultProject(Box<CompilerExpression>),
     OptionalSome(Box<CompilerExpression>),
@@ -1396,9 +1405,11 @@ struct BindingFacts {
     rational_value: Option<BigRational>,
     infinity_negative: Option<bool>,
     string_value: Option<String>,
+    string_characters: Option<Vec<String>>,
     closed_int_range: Option<ClosedIntRange>,
     list_count: Option<usize>,
     list_string_keys: Option<Vec<String>>,
+    list_string_characters: Option<Vec<String>>,
     list_entries: Option<Vec<StaticValueFacts>>,
     array_entries: Option<Vec<StaticValueFacts>>,
     map_entries: Option<Vec<(String, StaticValueFacts)>>,
@@ -1512,10 +1523,12 @@ struct StaticValueFacts {
     int_range: Option<IntRange>,
     rational_value: Option<BigRational>,
     string_value: Option<String>,
+    string_characters: Option<Vec<String>>,
     callable: Option<CompilerCallableFacts>,
     tuple_fields: Vec<Self>,
     record_fields: BTreeMap<String, Self>,
     list_entries: Option<Vec<Self>>,
+    list_string_characters: Option<Vec<String>>,
     array_entries: Option<Vec<Self>>,
     map_entries: Option<Vec<(String, Self)>>,
     optional: Option<CompilerOptionalFacts>,
@@ -1545,10 +1558,16 @@ fn retain_static_value_facts(binding: &mut BindingFacts, value: &StaticValueFact
     binding.int_range.clone_from(&value.int_range);
     binding.rational_value.clone_from(&value.rational_value);
     binding.string_value.clone_from(&value.string_value);
+    binding
+        .string_characters
+        .clone_from(&value.string_characters);
     binding.callable.clone_from(&value.callable);
     binding.tuple_fields.clone_from(&value.tuple_fields);
     binding.record_fields.clone_from(&value.record_fields);
     binding.list_entries.clone_from(&value.list_entries);
+    binding
+        .list_string_characters
+        .clone_from(&value.list_string_characters);
     binding.array_entries.clone_from(&value.array_entries);
     binding.map_entries.clone_from(&value.map_entries);
     binding.optional.clone_from(&value.optional);
@@ -1560,6 +1579,41 @@ fn present_optional_payload(facts: StaticValueFacts) -> Option<StaticValueFacts>
     match facts.optional {
         Some(CompilerOptionalFacts::Some(payload)) => Some(*payload),
         Some(CompilerOptionalFacts::None) | None => None,
+    }
+}
+
+fn merge_string_characters(
+    left: Option<Vec<String>>,
+    right: Option<Vec<String>>,
+) -> Option<Vec<String>> {
+    let mut merged = left?;
+    for character in right? {
+        if !merged.contains(&character) {
+            merged.push(character);
+        }
+    }
+    Some(merged)
+}
+
+fn merge_static_provenance(left: StaticValueFacts, right: StaticValueFacts) -> StaticValueFacts {
+    let string_characters =
+        merge_string_characters(left.string_characters, right.string_characters);
+    let list_string_characters =
+        merge_string_characters(left.list_string_characters, right.list_string_characters);
+    let tuple_fields = if left.tuple_fields.len() == right.tuple_fields.len() {
+        left.tuple_fields
+            .into_iter()
+            .zip(right.tuple_fields)
+            .map(|(left, right)| merge_static_provenance(left, right))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    StaticValueFacts {
+        string_characters,
+        tuple_fields,
+        list_string_characters,
+        ..StaticValueFacts::default()
     }
 }
 
@@ -1605,6 +1659,7 @@ struct Analyzer {
     returned_generator_values: BTreeMap<String, CompilerExpression>,
     active_nonzero_bindings: BTreeSet<String>,
     true_nonzero_parameters: BTreeMap<String, BTreeSet<usize>>,
+    collection_parameter_facts: Vec<StaticValueFacts>,
     static_context: bool,
     next_instance: usize,
     next_task_transaction: u64,
@@ -1662,6 +1717,7 @@ impl Analyzer {
             returned_generator_values: BTreeMap::new(),
             active_nonzero_bindings: BTreeSet::new(),
             true_nonzero_parameters: BTreeMap::new(),
+            collection_parameter_facts: Vec::new(),
             static_context: false,
             next_instance: 0,
             next_task_transaction: 1,
@@ -8834,6 +8890,38 @@ impl Analyzer {
         Ok(value)
     }
 
+    fn finish_required_list_entry_value(
+        &self,
+        value: CompilerExpression,
+        element: &CompilerType,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if element == &CompilerType::Nat && value.value_type == CompilerType::Int {
+            let span = value.span;
+            if value
+                .int_range
+                .as_ref()
+                .is_some_and(|range| range.lower >= BigInt::from(0))
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::IntToNat(Box::new(value)),
+                    value_type: CompilerType::Nat,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::IntToNatBoundary(Box::new(value)),
+                value_type: CompilerType::Nat,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        require_same_type(&self.source, value.span, element, &value.value_type)?;
+        Ok(value)
+    }
+
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
         let classifier = compact_classifier(self.source.slice(span));
         if classifier == "DecimalText"
@@ -9128,9 +9216,11 @@ impl Analyzer {
                 rational_value: None,
                 infinity_negative: None,
                 string_value: None,
+                string_characters: None,
                 closed_int_range: None,
                 list_count: None,
                 list_string_keys: None,
+                list_string_characters: None,
                 list_entries: None,
                 array_entries: None,
                 map_entries: None,
@@ -11223,6 +11313,8 @@ impl Analyzer {
                     let tuple_fields = aggregate_facts.tuple_fields;
                     let record_fields = aggregate_facts.record_fields;
                     let list_entries = aggregate_facts.list_entries;
+                    let string_characters = aggregate_facts.string_characters;
+                    let list_string_characters = aggregate_facts.list_string_characters;
                     let array_entries = aggregate_facts.array_entries;
                     let map_entries = aggregate_facts.map_entries;
                     let optional = aggregate_facts.optional;
@@ -11263,6 +11355,9 @@ impl Analyzer {
                             | CompilerExpressionKind::UnfoldGenerator { .. }
                             | CompilerExpressionKind::StringCharactersGenerator { .. }
                             | CompilerExpressionKind::StringRangeCharactersGenerator { .. }
+                            | CompilerExpressionKind::StringProvenanceCharactersGenerator {
+                                ..
+                            }
                             | CompilerExpressionKind::CustomCharacterGenerator { .. }
                             | CompilerExpressionKind::CustomValueGenerator { .. } => {
                                 Some(value.clone())
@@ -11283,9 +11378,11 @@ impl Analyzer {
                         rational_value: value.rational_value.clone(),
                         infinity_negative,
                         string_value,
+                        string_characters,
                         closed_int_range,
                         list_count,
                         list_string_keys,
+                        list_string_characters,
                         list_entries,
                         array_entries,
                         map_entries,
@@ -11424,9 +11521,11 @@ impl Analyzer {
                             rational_value: value.rational_value.clone(),
                             infinity_negative: compiler_infinity_direction(&value),
                             string_value: None,
+                            string_characters: None,
                             closed_int_range: None,
                             list_count: Self::known_list_count(&value, environment),
                             list_string_keys: Self::known_list_string_keys(&value, environment),
+                            list_string_characters: None,
                             list_entries: None,
                             array_entries: None,
                             map_entries: None,
@@ -11710,7 +11809,11 @@ impl Analyzer {
             let CompilerExpressionKind::StringCharactersGenerator { characters, .. } =
                 &generator.kind
             else {
-                unreachable!("closed characters construction retains its generator")
+                return Err(unsupported(
+                    &self.source,
+                    source.span(),
+                    "direct dynamic String Character foreach",
+                ));
             };
             return self.finish_string_characters_foreach(
                 generator.clone(),
@@ -12042,24 +12145,41 @@ impl Analyzer {
                 span,
             });
         }
-        let text = Self::known_string_value(&text_value, environment).ok_or_else(|| {
-            unsupported(
-                &self.source,
-                text.span(),
-                "dynamic String Character generator",
-            )
-        })?;
-        let characters = characters(&text).map(str::to_owned).collect();
-        Ok(CompilerExpression {
-            kind: CompilerExpressionKind::StringCharactersGenerator {
-                text: Box::new(text_value),
-                characters,
+        if let Some(text) = Self::known_string_value(&text_value, environment) {
+            let characters = characters(&text).map(str::to_owned).collect();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharactersGenerator {
+                    text: Box::new(text_value),
+                    characters,
+                },
+                value_type: character_unit_generator_type(),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        let provenance = self.known_structural_value_facts(&text_value, environment)?;
+        provenance.string_characters.map_or_else(
+            || {
+                Err(unsupported(
+                    &self.source,
+                    text.span(),
+                    "dynamic String Character generator",
+                ))
             },
-            value_type: character_unit_generator_type(),
-            int_range: None,
-            rational_value: None,
-            span,
-        })
+            |characters| {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::StringProvenanceCharactersGenerator {
+                        text: Box::new(text_value),
+                        characters,
+                    },
+                    value_type: character_unit_generator_type(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            },
+        )
     }
 
     fn finish_string_characters_foreach(
@@ -12232,9 +12352,11 @@ impl Analyzer {
                     rational_value: None,
                     infinity_negative: None,
                     string_value: None,
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -12293,9 +12415,11 @@ impl Analyzer {
                     rational_value: None,
                     infinity_negative: None,
                     string_value: None,
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -12900,9 +13024,11 @@ impl Analyzer {
                 rational_value: None,
                 infinity_negative: None,
                 string_value: None,
+                string_characters: None,
                 closed_int_range: None,
                 list_count: None,
                 list_string_keys: None,
+                list_string_characters: None,
                 list_entries: None,
                 array_entries: None,
                 map_entries: None,
@@ -14782,7 +14908,11 @@ impl Analyzer {
             let CompilerExpressionKind::StringCharactersGenerator { text, characters } =
                 generator.kind
             else {
-                unreachable!("closed characters construction retains its generator")
+                return Err(unsupported(
+                    &self.source,
+                    span,
+                    "direct dynamic String Character collection",
+                ));
             };
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::StringCharactersCollect { text, characters },
@@ -15888,6 +16018,7 @@ impl Analyzer {
                     || element.as_ref() == &CompilerType::String && operation == "append"
                     || operation == "append"
                         && (compiler_integer_pair(element.as_ref())
+                            || compiler_list_integer_pair(element.as_ref())
                             || compiler_int_string_pair(element.as_ref())
                             || compiler_int_int_boolean_pair(element.as_ref())
                             || compiler_int_triple(element.as_ref())
@@ -15906,14 +16037,14 @@ impl Analyzer {
                 let right = self.analyze_expression(right, environment)?;
                 let kind = match operation.as_str() {
                     "prepend" => {
-                        require_same_type(&self.source, right.span, element, &right.value_type)?;
+                        let right = self.finish_required_list_entry_value(right, element)?;
                         CompilerExpressionKind::ListPrepend {
                             list: Box::new(list),
                             value: Box::new(right),
                         }
                     }
                     "append" => {
-                        require_same_type(&self.source, right.span, element, &right.value_type)?;
+                        let right = self.finish_required_list_entry_value(right, element)?;
                         CompilerExpressionKind::ListAppend {
                             list: Box::new(list),
                             value: Box::new(right),
@@ -16096,11 +16227,22 @@ impl Analyzer {
                     if let Some(capture) =
                         anonymous_body_capture(&self.source, parameters, body, environment)
                     {
-                        let admitted_nat_predicate_bound = role == "take-while predicate"
+                        let admitted_predicate_bound = role == "take-while predicate"
                             && environment.get(&capture).is_some_and(|facts| {
-                                facts.runtime_bound && facts.value_type == CompilerType::Nat
+                                facts.runtime_bound
+                                    && (facts.value_type == CompilerType::Nat
+                                        || matches!(
+                                            &facts.value_type,
+                                            CompilerType::List(element)
+                                                if matches!(
+                                                    element.as_ref(),
+                                                    CompilerType::Int | CompilerType::Nat
+                                                ) || compiler_nested_int_list_element(
+                                                    element.as_ref()
+                                                )
+                                        ))
                             });
-                        if admitted_nat_predicate_bound {
+                        if admitted_predicate_bound {
                             continue;
                         }
                         return Err(unsupported(
@@ -16123,6 +16265,22 @@ impl Analyzer {
                         text,
                         characters,
                         range,
+                    },
+                    value_type: CompilerType::List(Box::new(CompilerType::Character)),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            }
+            if let CompilerExpressionKind::StringProvenanceCharactersGenerator {
+                text,
+                characters,
+            } = generator.kind
+            {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::StringProvenanceCharactersCollect {
+                        text,
+                        characters,
                     },
                     value_type: CompilerType::List(Box::new(CompilerType::Character)),
                     int_range: None,
@@ -16430,9 +16588,15 @@ impl Analyzer {
                 (CompilerType::List(element), CompilerType::Boolean)
                     if element.as_ref() == &CompilerType::Nat
                         || element.as_ref() == &CompilerType::Int
-                            && self.compiler_proven_nonnegative_list(&list) =>
+                            && self.compiler_proven_nonnegative_list(&list)
+                        || compiler_nested_int_list_element(element.as_ref()) =>
                 {
-                    (CompilerType::Boolean, CompilerType::Nat)
+                    let entry_type = if compiler_nested_int_list_element(element.as_ref()) {
+                        element.as_ref().clone()
+                    } else {
+                        CompilerType::Nat
+                    };
+                    (CompilerType::Boolean, entry_type)
                 }
                 (CompilerType::List(element), CompilerType::Int)
                     if element.as_ref() == &CompilerType::String =>
@@ -16481,9 +16645,15 @@ impl Analyzer {
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_nested_int_list_element(element.as_ref())
-                        && state_element.as_ref() == &CompilerType::Int =>
+                        && matches!(
+                            state_element.as_ref(),
+                            CompilerType::Int | CompilerType::Nat
+                        ) =>
                 {
-                    (int_list_type(), element.as_ref().clone())
+                    (
+                        CompilerType::List(Box::new(state_element.as_ref().clone())),
+                        element.as_ref().clone(),
+                    )
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_list_node_element_supported(element.as_ref())
@@ -16543,6 +16713,23 @@ impl Analyzer {
             };
             if element_type == CompilerType::Int && self.compiler_proven_nonnegative_list(&list) {
                 element_type = CompilerType::Nat;
+            }
+            if parameters
+                .iter()
+                .all(|parameter| matches!(parameter, AnonymousPattern::Binding(_)))
+            {
+                let initial_facts = self
+                    .known_structural_value_facts(&initial, environment)
+                    .unwrap_or_default();
+                let state_facts = merge_static_provenance(initial_facts.clone(), initial_facts);
+                let list_facts = self
+                    .known_structural_value_facts(&list, environment)
+                    .unwrap_or_default();
+                let entry_facts = StaticValueFacts {
+                    string_characters: list_facts.list_string_characters,
+                    ..StaticValueFacts::default()
+                };
+                self.collection_parameter_facts = vec![state_facts, entry_facts];
             }
             let (parameters, body) = self.analyze_collection_function(
                 parameters,
@@ -16710,6 +16897,7 @@ impl Analyzer {
                                 CompilerType::Character | CompilerType::String
                             ) || compiler_nested_int_list_element(element.as_ref())
                                 || compiler_integer_pair(element.as_ref())
+                                || compiler_list_integer_pair(element.as_ref())
                                 || compiler_int_triple(element.as_ref()))) =>
                 {
                     let value_type = CompilerType::List(element);
@@ -16803,8 +16991,8 @@ impl Analyzer {
             };
             let element = element.as_ref().clone();
             let list_type = list.value_type.clone();
-            if element != CompilerType::Int
-                && !(element == CompilerType::String && operation == "contains-entry")
+            if !(matches!(element, CompilerType::Int | CompilerType::Nat)
+                || element == CompilerType::String && operation == "contains-entry")
             {
                 return Err(unsupported(
                     &self.source,
@@ -17945,7 +18133,8 @@ impl Analyzer {
         let mut environment = outer_environment.clone();
         let mut lowered = Vec::with_capacity(flattened.len());
         let mut declared = BTreeSet::new();
-        for (name_span, value_type) in flattened {
+        let parameter_facts = std::mem::take(&mut self.collection_parameter_facts);
+        for (parameter_index, (name_span, value_type)) in flattened.into_iter().enumerate() {
             let name = self.source.slice(name_span).to_owned();
             let discarded = name == "_";
             if !discarded && !declared.insert(name.clone()) {
@@ -17963,6 +18152,11 @@ impl Analyzer {
                     value_type.clone(),
                     name_span.start,
                 );
+                if let Some(facts) = parameter_facts.get(parameter_index)
+                    && let Some(binding) = environment.get_mut(&name)
+                {
+                    retain_static_value_facts(binding, facts);
+                }
             }
             lowered.push(CompilerParameter {
                 name,
@@ -19308,14 +19502,25 @@ impl Analyzer {
         value: &CompilerExpression,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> StaticValueFacts {
+        let string_characters = match &value.kind {
+            CompilerExpressionKind::StringRangeSelect { characters, .. } => {
+                Some(characters.clone())
+            }
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
+                .and_then(|facts| facts.string_characters.clone()),
+            _ => Self::known_string_expression(value, environment)
+                .map(|text| characters(&text).map(str::to_owned).collect()),
+        };
         StaticValueFacts {
             int_range: value.int_range.clone(),
             rational_value: value.rational_value.clone(),
             string_value: Self::known_string_expression(value, environment),
+            string_characters,
             callable: None,
             tuple_fields: Vec::new(),
             record_fields: Self::known_record_fields(value, environment),
             list_entries: None,
+            list_string_characters: None,
             array_entries: None,
             map_entries: None,
             optional: None,
@@ -19351,24 +19556,57 @@ impl Analyzer {
                 if matches!(&value.value_type, CompilerType::List(_)) =>
             {
                 facts.list_entries = Some(Vec::new());
+                if matches!(&value.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String)
+                {
+                    facts.list_string_characters = Some(Vec::new());
+                }
             }
             CompilerExpressionKind::ListEntry {
                 value: entry,
                 remaining,
             } if matches!(&value.value_type, CompilerType::List(_)) => {
-                let mut entries = vec![self.known_structural_value_facts(entry, environment)?];
-                let mut remaining_entries = self
-                    .known_structural_value_facts(remaining, environment)?
-                    .list_entries
-                    .ok_or_else(|| {
-                        unsupported(
-                            &self.source,
-                            remaining.span,
-                            "List Function value without exact finite entry facts",
-                        )
-                    })?;
-                entries.append(&mut remaining_entries);
-                facts.list_entries = Some(entries);
+                let entry_facts = self.known_structural_value_facts(entry, environment)?;
+                let remaining_facts = self.known_structural_value_facts(remaining, environment)?;
+                if let Some(mut remaining_entries) = remaining_facts.list_entries.clone() {
+                    let mut entries = vec![entry_facts.clone()];
+                    entries.append(&mut remaining_entries);
+                    facts.list_entries = Some(entries);
+                }
+                if matches!(&value.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String)
+                {
+                    facts.list_string_characters = merge_string_characters(
+                        entry_facts.string_characters,
+                        remaining_facts.list_string_characters,
+                    );
+                }
+            }
+            CompilerExpressionKind::ListAppend {
+                list, value: entry, ..
+            } if matches!(&value.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String) =>
+            {
+                let list_facts = self.known_structural_value_facts(list, environment)?;
+                let entry_facts = self.known_structural_value_facts(entry, environment)?;
+                facts.list_string_characters = merge_string_characters(
+                    list_facts.list_string_characters,
+                    entry_facts.string_characters,
+                );
+            }
+            CompilerExpressionKind::ListConcat { left, right }
+                if matches!(&value.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String) =>
+            {
+                facts.list_string_characters = merge_string_characters(
+                    self.known_structural_value_facts(left, environment)?
+                        .list_string_characters,
+                    self.known_structural_value_facts(right, environment)?
+                        .list_string_characters,
+                );
+            }
+            CompilerExpressionKind::ListFold { body, .. } => {
+                facts = self.known_structural_value_facts(&body.result, environment)?;
             }
             CompilerExpressionKind::ContainerCollect {
                 source,
@@ -19532,12 +19770,28 @@ impl Analyzer {
                     );
                 }
             }
+            CompilerExpressionKind::BooleanDecision {
+                when_true,
+                when_false,
+                ..
+            } => {
+                facts = merge_static_provenance(
+                    self.known_structural_value_facts(when_true, environment)?,
+                    self.known_structural_value_facts(when_false, environment)?,
+                );
+            }
             CompilerExpressionKind::Local(name) => {
                 if let Some(binding) = binding_facts_by_storage(environment, name) {
                     facts.callable.clone_from(&binding.callable);
+                    facts
+                        .string_characters
+                        .clone_from(&binding.string_characters);
                     facts.tuple_fields.clone_from(&binding.tuple_fields);
                     facts.record_fields.clone_from(&binding.record_fields);
                     facts.list_entries.clone_from(&binding.list_entries);
+                    facts
+                        .list_string_characters
+                        .clone_from(&binding.list_string_characters);
                     facts.array_entries.clone_from(&binding.array_entries);
                     facts.map_entries.clone_from(&binding.map_entries);
                     facts.optional.clone_from(&binding.optional);
@@ -20908,9 +21162,15 @@ impl Analyzer {
                         rational_value: facts.rational_value.clone(),
                         infinity_negative: compiler_infinity_direction(facts),
                         string_value: exact_string(facts),
+                        string_characters: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.string_characters.clone()),
                         closed_int_range: None,
                         list_count: Self::known_list_count(facts, call_environment),
                         list_string_keys: Self::known_list_string_keys(facts, call_environment),
+                        list_string_characters: structural_facts
+                            .as_ref()
+                            .and_then(|facts| facts.list_string_characters.clone()),
                         list_entries: structural_facts
                             .as_ref()
                             .and_then(|facts| facts.list_entries.clone()),
@@ -20967,12 +21227,14 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: compiler_infinity_direction(&capture.argument),
                     string_value: exact_string(&capture.argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: Self::known_list_count(&capture.argument, call_environment),
                     list_string_keys: Self::known_list_string_keys(
                         &capture.argument,
                         call_environment,
                     ),
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -23057,9 +23319,11 @@ impl Analyzer {
                         rational_value: None,
                         infinity_negative: None,
                         string_value: None,
+                        string_characters: None,
                         closed_int_range: None,
                         list_count: None,
                         list_string_keys: None,
+                        list_string_characters: None,
                         list_entries: None,
                         array_entries: None,
                         map_entries: None,
@@ -23101,9 +23365,11 @@ impl Analyzer {
                     rational_value: binding.value.rational_value.clone(),
                     infinity_negative: None,
                     string_value: None,
+                    string_characters: facts.string_characters,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: facts.list_string_characters,
                     list_entries: facts.list_entries,
                     array_entries: facts.array_entries,
                     map_entries: facts.map_entries,
@@ -24395,6 +24661,9 @@ impl Analyzer {
                                 })
                             })
                             .flatten(),
+                        string_characters: aggregate_arguments[parameter_index]
+                            .string_characters
+                            .clone(),
                         closed_int_range: None,
                         list_count: (!generalize_parameters)
                             .then(|| Self::known_list_count(argument, &BTreeMap::new()))
@@ -24408,6 +24677,9 @@ impl Analyzer {
                         list_string_keys: (!generalize_parameters)
                             .then(|| Self::known_list_string_keys(argument, &BTreeMap::new()))
                             .flatten(),
+                        list_string_characters: aggregate_arguments[parameter_index]
+                            .list_string_characters
+                            .clone(),
                         list_entries: aggregate_arguments[parameter_index].list_entries.clone(),
                         array_entries: aggregate_arguments[parameter_index].array_entries.clone(),
                         map_entries: aggregate_arguments[parameter_index].map_entries.clone(),
@@ -24459,9 +24731,11 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: compiler_infinity_direction(argument),
                     string_value: exact_string(argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: Self::known_list_count(argument, &BTreeMap::new()),
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -24505,9 +24779,11 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: compiler_infinity_direction(argument),
                     string_value: exact_string(argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: Self::known_list_count(argument, &BTreeMap::new()),
                     list_string_keys: Self::known_list_string_keys(argument, &BTreeMap::new()),
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -24550,9 +24826,11 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: None,
                     string_value: exact_string(argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -24596,9 +24874,11 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: None,
                     string_value: exact_string(argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -24641,9 +24921,11 @@ impl Analyzer {
                     rational_value: capture.rational_value.clone(),
                     infinity_negative: None,
                     string_value: exact_string(argument),
+                    string_characters: None,
                     closed_int_range: None,
                     list_count: None,
                     list_string_keys: None,
+                    list_string_characters: None,
                     list_entries: None,
                     array_entries: None,
                     map_entries: None,
@@ -25273,7 +25555,10 @@ impl Analyzer {
                 )?;
                 (Some(facts), captures)
             } else {
-                (None, Vec::new())
+                (
+                    Some(self.known_structural_value_facts(&body.result, &environment)?),
+                    Vec::new(),
+                )
             };
         let mut result_captures = result_captures;
         result_captures.extend(aggregate_result_captures);
@@ -25633,7 +25918,17 @@ impl Analyzer {
                 subject.span,
                 "decision for this List element type",
             )),
-            CompilerType::Int | CompilerType::Rational | CompilerType::Tuple(_) => {
+            CompilerType::Character => self.analyze_ordered_comparison_decision(
+                forget_character_evidence(subject),
+                rules,
+                span,
+                environment,
+                None,
+            ),
+            CompilerType::Int
+            | CompilerType::Rational
+            | CompilerType::String
+            | CompilerType::Tuple(_) => {
                 self.analyze_ordered_comparison_decision(subject, rules, span, environment, None)
             }
             CompilerType::Nat => self.analyze_ordered_comparison_decision(
@@ -26370,7 +26665,7 @@ impl Analyzer {
                 _ => return Err(unsupported(&self.source, rule.span, "decision matcher")),
             }
         }
-        let when_true = when_true.or_else(|| otherwise.clone()).ok_or_else(|| {
+        let mut when_true = when_true.or_else(|| otherwise.clone()).ok_or_else(|| {
             source_diagnostic(
                 &self.source,
                 "E-INCOMPLETE-DECISION",
@@ -26378,7 +26673,7 @@ impl Analyzer {
                 "Boolean decision does not cover `true`",
             )
         })?;
-        let when_false = when_false.or(otherwise).ok_or_else(|| {
+        let mut when_false = when_false.or(otherwise).ok_or_else(|| {
             source_diagnostic(
                 &self.source,
                 "E-INCOMPLETE-DECISION",
@@ -26386,6 +26681,7 @@ impl Analyzer {
                 "Boolean decision does not cover `false`",
             )
         })?;
+        adapt_decision_pair(&mut when_true, &mut when_false);
         let (value_type, int_range, rational_value) =
             self.decision_facts(&[&when_true, &when_false], span)?;
         Ok(CompilerExpression {
@@ -27323,7 +27619,9 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
 fn compiler_nested_int_list_element(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
-        CompilerType::List(element) if element.as_ref() == &CompilerType::Int
+        CompilerType::List(element)
+            if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                || compiler_nested_int_list_element(element.as_ref())
     )
 }
 
@@ -27374,6 +27672,7 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
         )
         || compiler_int_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
+        || compiler_list_integer_pair(value_type)
         || matches!(value_type, CompilerType::Optional(payload)
         if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
 }
@@ -27412,6 +27711,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || compiler_int_string_pair(value_type)
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
+        || compiler_list_integer_pair(value_type)
         || compiler_string_function_pair(value_type)
         || compiler_int_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
@@ -27435,6 +27735,16 @@ fn compiler_integer_pair(value_type: &CompilerType) -> bool {
                 CompilerType::Int | CompilerType::Nat,
                 CompilerType::Int | CompilerType::Nat
             ])
+    )
+}
+
+fn compiler_list_integer_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::List(element), CompilerType::Int | CompilerType::Nat]
+                if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                    || compiler_nested_int_list_element(element.as_ref()))
     )
 }
 
@@ -27850,6 +28160,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
                 || compiler_int_int_boolean_pair(element.as_ref())
+                || compiler_list_integer_pair(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Range(endpoint)
                     if endpoint.as_ref() == &CompilerType::Int)
         }
@@ -27865,6 +28176,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::SourceLocation
                     | CompilerType::Function
             ) || compiler_integer_pair(payload)
+                || compiler_list_integer_pair(payload)
                 || compiler_int_triple(payload)
                 || compiler_int_string_pair(payload)
                 || matches!(payload.as_ref(), CompilerType::Tuple(fields)
@@ -28927,9 +29239,11 @@ fn named_callable_capture_binding(capture: &CompilerContextCapture) -> Option<Bi
         rational_value: capture.rational_value.clone(),
         infinity_negative: None,
         string_value: None,
+        string_characters: None,
         closed_int_range: None,
         list_count: None,
         list_string_keys: None,
+        list_string_characters: None,
         list_entries: None,
         array_entries: None,
         map_entries: None,
@@ -29337,9 +29651,11 @@ fn decision_binding_environment(
             rational_value: None,
             infinity_negative: None,
             string_value: None,
+            string_characters: None,
             closed_int_range: None,
             list_count: None,
             list_string_keys: None,
+            list_string_characters: None,
             list_entries: None,
             array_entries: None,
             map_entries: None,
@@ -29704,7 +30020,8 @@ fn known_constraint_numeric(
         )),
         CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
-        | CompilerExpressionKind::IntToNat(value) => {
+        | CompilerExpressionKind::IntToNat(value)
+        | CompilerExpressionKind::IntToNatBoundary(value) => {
             known_constraint_numeric(value, parameter_storage, argument)
         }
         CompilerExpressionKind::Binary {
@@ -30149,6 +30466,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::UnfoldGenerator { .. }
         | CompilerExpressionKind::StringCharactersGenerator { .. }
         | CompilerExpressionKind::StringRangeCharactersGenerator { .. }
+        | CompilerExpressionKind::StringProvenanceCharactersGenerator { .. }
         | CompilerExpressionKind::StringCharactersForeach { .. }
         | CompilerExpressionKind::CustomCharacterGenerator { .. }
         | CompilerExpressionKind::CustomCharacterForeach { .. }
@@ -30169,6 +30487,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::RationalToInt(value)
         | CompilerExpressionKind::IntToNat(value)
+        | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::OptionalSome(value)
@@ -30192,6 +30511,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::StringUtf8ByteCount(value)
         | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
+        | CompilerExpressionKind::StringProvenanceCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringCharactersClose(value)
         | CompilerExpressionKind::CustomCharacterClose {
             generator: value, ..
@@ -30411,6 +30731,89 @@ fn forget_character_evidence(mut expression: CompilerExpression) -> CompilerExpr
     debug_assert_eq!(expression.value_type, CompilerType::Character);
     expression.value_type = CompilerType::String;
     expression
+}
+
+fn adapt_decision_pair(left: &mut CompilerExpression, right: &mut CompilerExpression) {
+    if let (CompilerType::Tuple(left_types), CompilerType::Tuple(right_types)) =
+        (&left.value_type, &right.value_type)
+        && left_types.len() == right_types.len()
+    {
+        let common = left_types
+            .iter()
+            .zip(right_types)
+            .map(|(left, right)| decision_common_type(left, right))
+            .collect::<Option<Vec<_>>>();
+        if let Some(common) = common {
+            if let CompilerExpressionKind::Tuple(fields) = &mut left.kind {
+                for (field, value_type) in fields.iter_mut().zip(&common) {
+                    field.value_type = value_type.clone();
+                }
+            }
+            if let CompilerExpressionKind::Tuple(fields) = &mut right.kind {
+                for (field, value_type) in fields.iter_mut().zip(&common) {
+                    field.value_type = value_type.clone();
+                }
+            }
+            left.value_type = CompilerType::Tuple(common.clone());
+            right.value_type = CompilerType::Tuple(common);
+            return;
+        }
+    }
+    match (&mut left.kind, &mut right.kind) {
+        (
+            CompilerExpressionKind::Tuple(left_fields),
+            CompilerExpressionKind::Tuple(right_fields),
+        ) if left_fields.len() == right_fields.len() => {
+            for (left, right) in left_fields.iter_mut().zip(right_fields.iter_mut()) {
+                adapt_decision_pair(left, right);
+            }
+            left.value_type = CompilerType::Tuple(
+                left_fields
+                    .iter()
+                    .map(|field| field.value_type.clone())
+                    .collect(),
+            );
+            right.value_type = left.value_type.clone();
+        }
+        _ if left.value_type == CompilerType::Nat && right.value_type == CompilerType::Int => {
+            left.value_type = CompilerType::Int;
+        }
+        _ if left.value_type == CompilerType::Int && right.value_type == CompilerType::Nat => {
+            right.value_type = CompilerType::Int;
+        }
+        _ if left.value_type == CompilerType::Character
+            && right.value_type == CompilerType::String =>
+        {
+            left.value_type = CompilerType::String;
+        }
+        _ if left.value_type == CompilerType::String
+            && right.value_type == CompilerType::Character =>
+        {
+            right.value_type = CompilerType::String;
+        }
+        _ => {}
+    }
+}
+
+fn decision_common_type(left: &CompilerType, right: &CompilerType) -> Option<CompilerType> {
+    if left == right {
+        return Some(left.clone());
+    }
+    match (left, right) {
+        (CompilerType::Nat, CompilerType::Int) | (CompilerType::Int, CompilerType::Nat) => {
+            Some(CompilerType::Int)
+        }
+        (CompilerType::Character, CompilerType::String)
+        | (CompilerType::String, CompilerType::Character) => Some(CompilerType::String),
+        (CompilerType::Tuple(left), CompilerType::Tuple(right)) if left.len() == right.len() => {
+            left.iter()
+                .zip(right)
+                .map(|(left, right)| decision_common_type(left, right))
+                .collect::<Option<Vec<_>>>()
+                .map(CompilerType::Tuple)
+        }
+        _ => None,
+    }
 }
 
 fn retain_character_evidence(mut expression: CompilerExpression) -> Option<CompilerExpression> {
@@ -31155,6 +31558,7 @@ fn compiler_infinity_direction(expression: &CompilerExpression) -> Option<bool> 
         }
         CompilerExpressionKind::IntToRational(value)
         | CompilerExpressionKind::IntToNat(value)
+        | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::RationalToInt(value) => compiler_infinity_direction(value),
         CompilerExpressionKind::Binary {
             operation,
@@ -36806,6 +37210,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // Generator result admission and its rejected boundaries stay together.
     fn models_specialized_string_character_generator_result_transfer() {
         // TOPAL-STRING-CHARACTERS-FOREACH-001,
         // TOPAL-STRING-CHARACTERS-GENERATOR-001,
@@ -36893,13 +37298,29 @@ mod tests {
             "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  _ is 1\n  characters text\ngenerated is generate \"a\"\ngenerated foreach { character }\n  _ is String character\n",
             "use language (version is v0.1)\ngenerate is fn (text : String, ignored : Int) -> Generator Character Unit Unit\n  characters text\ngenerated is generate (\"a\", 0)\ngenerated foreach { character }\n  _ is String character\n",
             "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\nouter is fn (text : String) -> Generator Character Unit Unit\n  generate text\ngenerated is outer \"a\"\ngenerated foreach { character }\n  _ is String character\n",
-            "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate (identity \"a\")\ngenerated foreach { character }\n  _ is String character\n",
         ] {
             assert_eq!(
                 analyze_for_compiler(source).unwrap_err().code,
                 "E-COMPILER-UNSUPPORTED"
             );
         }
+        let returned_text = analyze_for_compiler(
+            "use language (version is v0.1)\nidentity is fn (text : String) -> String\n  text\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerated is generate (identity \"a\")\ngenerated foreach { character }\n  _ is String character\n",
+        )
+        .unwrap();
+        assert!(
+            returned_text
+                .main
+                .statements
+                .iter()
+                .any(|statement| matches!(
+                    statement,
+                    CompilerStatement::Discard(CompilerExpression {
+                        kind: CompilerExpressionKind::StringCharactersForeach { characters, .. },
+                        ..
+                    }) if characters == &[String::from("a")]
+                ))
+        );
         let unbound_result = analyze_for_compiler(
             "use language (version is v0.1)\ngenerate is fn (text : String) -> Generator Character Unit Unit\n  characters text\ngenerate \"a\"\n",
         )
