@@ -55,3 +55,54 @@ done:
   %value = call ptr @topal.runtime.int.from.u64(i64 %count)
   ret ptr %value
 }
+
+define internal ptr @topal.runtime.list.string-int.cartesian(ptr %left, ptr %right) nounwind noinline {
+entry:
+  br label %outer.loop
+outer.loop:
+  %left.current = phi ptr [%left, %entry], [%left.next, %outer.advance]
+  %outer.head = phi ptr [null, %entry], [%inner.head.done, %outer.advance]
+  %outer.previous = phi ptr [null, %entry], [%inner.previous.done, %outer.advance]
+  %left.empty = icmp eq ptr %left.current, null
+  br i1 %left.empty, label %done, label %outer.value
+outer.value:
+  %left.value = load ptr, ptr %left.current, align 8
+  br label %inner.loop
+inner.loop:
+  %right.current = phi ptr [%right, %outer.value], [%right.next, %inner.advance]
+  %inner.head = phi ptr [%outer.head, %outer.value], [%next.head, %inner.advance]
+  %inner.previous = phi ptr [%outer.previous, %outer.value], [%node, %inner.advance]
+  %right.empty = icmp eq ptr %right.current, null
+  br i1 %right.empty, label %outer.advance, label %inner.value
+inner.value:
+  %right.value = load ptr, ptr %right.current, align 8
+  %node = call ptr @topal.platform.allocate(i64 24)
+  store ptr %left.value, ptr %node, align 8
+  %node.int.pointer = getelementptr i8, ptr %node, i64 8
+  store ptr %right.value, ptr %node.int.pointer, align 8
+  %node.next.pointer = getelementptr i8, ptr %node, i64 16
+  store ptr null, ptr %node.next.pointer, align 8
+  %has.previous = icmp ne ptr %inner.previous, null
+  br i1 %has.previous, label %link, label %first
+first:
+  br label %linked
+link:
+  %previous.next.pointer = getelementptr i8, ptr %inner.previous, i64 16
+  store ptr %node, ptr %previous.next.pointer, align 8
+  br label %linked
+linked:
+  %next.head = phi ptr [%node, %first], [%inner.head, %link]
+  br label %inner.advance
+inner.advance:
+  %right.next.pointer = getelementptr i8, ptr %right.current, i64 8
+  %right.next = load ptr, ptr %right.next.pointer, align 8
+  br label %inner.loop
+outer.advance:
+  %inner.head.done = phi ptr [%inner.head, %inner.loop]
+  %inner.previous.done = phi ptr [%inner.previous, %inner.loop]
+  %left.next.pointer = getelementptr i8, ptr %left.current, i64 8
+  %left.next = load ptr, ptr %left.next.pointer, align 8
+  br label %outer.loop
+done:
+  ret ptr %outer.head
+}

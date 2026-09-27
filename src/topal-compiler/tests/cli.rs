@@ -13810,6 +13810,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
             &["std.build.graph"][..],
         ),
         (
+            "combinatorics-algorithms",
+            include_str!("../../../tests/standard-library/combinatorics-algorithms.t"),
+            &["std.combinatorics"][..],
+        ),
+        (
             "firewall",
             include_str!("../../../examples/data-transfer/firewall.t"),
             &["std.data.spans", "std.network.addresses"][..],

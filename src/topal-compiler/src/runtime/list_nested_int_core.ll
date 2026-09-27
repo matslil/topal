@@ -65,3 +65,33 @@ finish:
 different:
   ret i1 false
 }
+
+define internal ptr @topal.runtime.list.nested.int.insert.everywhere(ptr %list, ptr %value) nounwind noinline {
+entry:
+  %count = call i64 @topal.runtime.list.int.count.raw(ptr %list)
+  %result.count = add i64 %count, 1
+  %allocation.length = shl i64 %result.count, 4
+  %result = call ptr @topal.platform.allocate(i64 %allocation.length)
+  %singleton = call ptr @topal.platform.allocate(i64 16)
+  store ptr %value, ptr %singleton, align 8
+  %singleton.next = getelementptr i8, ptr %singleton, i64 8
+  store ptr null, ptr %singleton.next, align 8
+  br label %loop
+loop:
+  %boundary = phi i64 [0, %entry], [%boundary.next, %advance]
+  %inserted = call ptr @topal.runtime.list.int.insert.at(ptr %list, i64 %boundary, ptr %singleton)
+  %offset = shl i64 %boundary, 4
+  %node = getelementptr i8, ptr %result, i64 %offset
+  store ptr %inserted, ptr %node, align 8
+  %node.next.pointer = getelementptr i8, ptr %node, i64 8
+  %boundary.next = add i64 %boundary, 1
+  %complete = icmp eq i64 %boundary.next, %result.count
+  %following = getelementptr i8, ptr %node, i64 16
+  %next = select i1 %complete, ptr null, ptr %following
+  store ptr %next, ptr %node.next.pointer, align 8
+  br i1 %complete, label %done, label %advance
+advance:
+  br label %loop
+done:
+  ret ptr %result
+}

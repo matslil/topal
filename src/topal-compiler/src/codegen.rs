@@ -373,6 +373,11 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
             inserted: right,
             ..
         }
+        | CompilerExpressionKind::ListInsertEverywhere {
+            list: left,
+            value: right,
+        }
+        | CompilerExpressionKind::ListCartesianStringInt { left, right }
         | CompilerExpressionKind::ListRangeSelect {
             list: left,
             range: right,
@@ -2742,6 +2747,9 @@ impl<'a> Generator<'a> {
                     .insert(ListIntRuntimeFragment::Core);
                 let left = self.emit_expression(left, body, environment);
                 let right = self.emit_expression(right, body, environment);
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked List concatenation retains its List result")
+                };
                 LlValue::List {
                     value: body.instruction(
                         &format!(
@@ -2752,7 +2760,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    element: CompilerType::Int,
+                    element: element.as_ref().clone(),
                     function_captures: Vec::new(),
                 }
             }
@@ -2760,6 +2768,9 @@ impl<'a> Generator<'a> {
                 self.list_int_runtime_fragments
                     .insert(ListIntRuntimeFragment::Core);
                 let value = self.emit_expression(value, body, environment);
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked List reversal retains its List result")
+                };
                 LlValue::List {
                     value: body.instruction(
                         &format!(
@@ -2769,7 +2780,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    element: CompilerType::Int,
+                    element: element.as_ref().clone(),
                     function_captures: Vec::new(),
                 }
             }
@@ -3075,6 +3086,9 @@ impl<'a> Generator<'a> {
                 let list = self.emit_expression(list, body, environment);
                 let range = self.emit_expression(range, body, environment);
                 let operation = if *indexes { "index" } else { "value" };
+                let CompilerType::List(element) = &expression.value_type else {
+                    unreachable!("checked List range selection retains its List result")
+                };
                 LlValue::List {
                     value: body.instruction(
                         &format!(
@@ -3085,7 +3099,7 @@ impl<'a> Generator<'a> {
                         expression.span,
                         &mut self.debug,
                     ),
-                    element: CompilerType::Int,
+                    element: element.as_ref().clone(),
                     function_captures: Vec::new(),
                 }
             }
@@ -3143,6 +3157,52 @@ impl<'a> Generator<'a> {
                         &mut self.debug,
                     ),
                     element: CompilerType::Int,
+                    function_captures: Vec::new(),
+                }
+            }
+            CompilerExpressionKind::ListInsertEverywhere { list, value } => {
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Sequence);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::NestedIntCore);
+                let list = self.emit_expression(list, body, environment);
+                let value = self.emit_expression(value, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.nested.int.insert.everywhere(ptr {}, ptr {})",
+                            list.list_pointer(),
+                            value.integer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::List(Box::new(CompilerType::Int)),
+                    function_captures: Vec::new(),
+                }
+            }
+            CompilerExpressionKind::ListCartesianStringInt { left, right } => {
+                self.scalar_list_runtime_fragments
+                    .insert(ScalarListRuntimeFragment::String);
+                self.list_int_runtime_fragments
+                    .insert(ListIntRuntimeFragment::Core);
+                self.scalar_list_runtime_fragments
+                    .insert(ScalarListRuntimeFragment::StringIntPair);
+                let left = self.emit_expression(left, body, environment);
+                let right = self.emit_expression(right, body, environment);
+                LlValue::List {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.list.string-int.cartesian(ptr {}, ptr {})",
+                            left.list_pointer(),
+                            right.list_pointer()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    element: CompilerType::Tuple(vec![CompilerType::String, CompilerType::Int]),
                     function_captures: Vec::new(),
                 }
             }
@@ -5538,6 +5598,21 @@ impl<'a> Generator<'a> {
                 );
                 (vec![LlValue::Int(left), LlValue::Int(right)], 16)
             }
+            CompilerType::List(inner) if inner.as_ref() == &CompilerType::Int => {
+                let value = body.instruction(
+                    &format!("load ptr, ptr {current}, align 8"),
+                    span,
+                    &mut self.debug,
+                );
+                (
+                    vec![LlValue::List {
+                        value,
+                        element: CompilerType::Int,
+                        function_captures: Vec::new(),
+                    }],
+                    8,
+                )
+            }
             _ => unreachable!("checked map subject has an admitted List element layout"),
         };
         let next_address = body.instruction(
@@ -5560,8 +5635,14 @@ impl<'a> Generator<'a> {
             span,
             &mut self.debug,
         );
+        let mapped = if action.result.value_type == CompilerType::List(Box::new(CompilerType::Int))
+        {
+            mapped.list_pointer()
+        } else {
+            mapped.integer()
+        };
         body.effect(
-            &format!("store ptr {}, ptr {node}, align 8", mapped.integer()),
+            &format!("store ptr {mapped}, ptr {node}, align 8"),
             span,
             &mut self.debug,
         );
@@ -5611,7 +5692,7 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
         LlValue::List {
             value: head,
-            element: CompilerType::Int,
+            element: action.result.value_type.clone(),
             function_captures: Vec::new(),
         }
     }
@@ -5628,6 +5709,10 @@ impl<'a> Generator<'a> {
         reject: bool,
         indexes: bool,
     ) -> LlValue {
+        let CompilerType::List(element) = &list.value_type else {
+            unreachable!("checked selection retains its List source")
+        };
+        let element = element.as_ref().clone();
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
@@ -5705,6 +5790,12 @@ impl<'a> Generator<'a> {
                 span,
                 &mut self.debug,
             ))
+        } else if compiler_nested_int_list_element(&element) {
+            LlValue::List {
+                value: value.clone(),
+                element: CompilerType::Int,
+                function_captures: Vec::new(),
+            }
         } else {
             LlValue::Int(value.clone())
         };
@@ -5806,7 +5897,7 @@ impl<'a> Generator<'a> {
         body.start_block(&done);
         LlValue::List {
             value: head,
-            element: CompilerType::Int,
+            element,
             function_captures: Vec::new(),
         }
     }
@@ -5849,6 +5940,13 @@ impl<'a> Generator<'a> {
         let string_pair_list_fold = string_list_fold
             && matches!(&list.value_type, CompilerType::List(element)
                 if compiler_string_pair(element.as_ref()));
+        let nested_int_list_state_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::List(state_element))
+                if compiler_nested_int_list_element(state_element.as_ref())
+                    && (element.as_ref() == &CompilerType::Int
+                        || compiler_nested_int_list_element(element.as_ref()))
+        );
         let pair_fold = string_pair_optional_fold || nat_pair_fold || string_pair_list_fold;
         let source = self
             .emit_expression(list, body, environment)
@@ -5857,7 +5955,7 @@ impl<'a> Generator<'a> {
         let initial_value = self.emit_expression(initial, body, environment);
         let initial = if string_pair_optional_fold {
             initial_value.optional_pointer()
-        } else if string_list_fold {
+        } else if string_list_fold || nested_int_list_state_fold {
             initial_value.list_pointer()
         } else {
             initial_value.integer()
@@ -5938,6 +6036,12 @@ impl<'a> Generator<'a> {
                 element: CompilerType::String,
                 function_captures: Vec::new(),
             }
+        } else if nested_int_list_state_fold {
+            LlValue::List {
+                value: state.clone(),
+                element: CompilerType::List(Box::new(CompilerType::Int)),
+                function_captures: Vec::new(),
+            }
         } else {
             LlValue::Int(state.clone())
         };
@@ -5949,6 +6053,15 @@ impl<'a> Generator<'a> {
             }
         } else if string_list_fold {
             LlValue::String(value)
+        } else if nested_int_list_state_fold
+            && matches!(&list.value_type, CompilerType::List(element)
+                if compiler_nested_int_list_element(element.as_ref()))
+        {
+            LlValue::List {
+                value,
+                element: CompilerType::Int,
+                function_captures: Vec::new(),
+            }
         } else {
             LlValue::Int(value)
         };
@@ -6003,7 +6116,7 @@ impl<'a> Generator<'a> {
         } else {
             let value = if string_pair_optional_fold {
                 value.optional_pointer()
-            } else if string_list_fold {
+            } else if string_list_fold || nested_int_list_state_fold {
                 value.list_pointer()
             } else {
                 value.integer()
@@ -6037,6 +6150,12 @@ impl<'a> Generator<'a> {
             LlValue::List {
                 value: state,
                 element: CompilerType::String,
+                function_captures: Vec::new(),
+            }
+        } else if nested_int_list_state_fold {
+            LlValue::List {
+                value: state,
+                element: CompilerType::List(Box::new(CompilerType::Int)),
                 function_captures: Vec::new(),
             }
         } else {
@@ -7437,6 +7556,7 @@ impl<'a> Generator<'a> {
             CompilerType::String => "optional.string.equal",
             payload
                 if matches!(payload, CompilerType::Enum(_) | CompilerType::Function)
+                    || compiler_nested_int_list_element(payload)
                     || matches!(payload, CompilerType::Tuple(fields)
                         if fields.as_slice() == [CompilerType::Int, CompilerType::String]) =>
             {
