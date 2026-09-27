@@ -7,6 +7,7 @@
 ; values are not admitted at a native function or library boundary.
 
 %topal.StringStorage = type { ptr, i64, ptr, i64 }
+%topal.IntStorage = type { i64, i64, [0 x i32] }
 
 define internal ptr @topal.runtime.character.ascii.decimal.digit(ptr %character) nounwind noinline {
 entry:
@@ -32,7 +33,46 @@ none:
   %absent = call ptr @topal.runtime.optional.none()
   ret ptr %absent
 }
-%topal.IntStorage = type { i64, i64, [0 x i32] }
+
+define internal i1 @topal.runtime.character.unicode.whitespace(ptr %character) nounwind noinline {
+entry:
+  %value = call ptr @topal.runtime.string.unicode.scalar.value(ptr %character)
+  %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
+  %length = load i64, ptr %length.pointer, align 8
+  %present = icmp eq i64 %length, 1
+  br i1 %present, label %load, label %not.whitespace
+load:
+  %limb.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 0
+  %scalar = load i32, ptr %limb.pointer, align 4
+  %ascii.lower = icmp uge i32 %scalar, 9
+  %ascii.upper = icmp ule i32 %scalar, 13
+  %ascii.control = and i1 %ascii.lower, %ascii.upper
+  %space = icmp eq i32 %scalar, 32
+  %next.line = icmp eq i32 %scalar, 133
+  %no.break = icmp eq i32 %scalar, 160
+  %ogham = icmp eq i32 %scalar, 5760
+  %quad.lower = icmp uge i32 %scalar, 8192
+  %quad.upper = icmp ule i32 %scalar, 8202
+  %quad = and i1 %quad.lower, %quad.upper
+  %line.separator = icmp eq i32 %scalar, 8232
+  %paragraph.separator = icmp eq i32 %scalar, 8233
+  %narrow.no.break = icmp eq i32 %scalar, 8239
+  %medium.math = icmp eq i32 %scalar, 8287
+  %ideographic = icmp eq i32 %scalar, 12288
+  %match.0 = or i1 %ascii.control, %space
+  %match.1 = or i1 %match.0, %next.line
+  %match.2 = or i1 %match.1, %no.break
+  %match.3 = or i1 %match.2, %ogham
+  %match.4 = or i1 %match.3, %quad
+  %match.5 = or i1 %match.4, %line.separator
+  %match.6 = or i1 %match.5, %paragraph.separator
+  %match.7 = or i1 %match.6, %narrow.no.break
+  %match.8 = or i1 %match.7, %medium.math
+  %match.9 = or i1 %match.8, %ideographic
+  ret i1 %match.9
+not.whitespace:
+  ret i1 false
+}
 %topal.IntDivmod = type { ptr, ptr }
 %topal.RationalStorage = type { ptr, ptr }
 %topal.RangeStorage = type { ptr, ptr, i64, i64 }
@@ -648,6 +688,57 @@ done:
 invalid:
   call void @topal.platform.exit(i64 71)
   unreachable
+}
+
+define internal ptr @topal.runtime.string.select.index.range(ptr %string, ptr %range) nounwind noinline {
+entry:
+  %characters = call ptr @topal.runtime.string.unicode.scalar.characters(ptr %string)
+  %empty.data = call ptr @topal.platform.allocate(i64 1)
+  %empty = call ptr @topal.runtime.string.make(ptr %empty.data, i64 0, ptr null, i64 0)
+  br label %loop
+loop:
+  %current = phi ptr [ %characters, %entry ], [ %next, %advance ]
+  %index = phi i64 [ 0, %entry ], [ %next.index, %advance ]
+  %selected = phi ptr [ %empty, %entry ], [ %next.selected, %advance ]
+  %complete = icmp eq ptr %current, null
+  br i1 %complete, label %done, label %visit
+visit:
+  %index.value = call ptr @topal.runtime.int.from.u64(i64 %index)
+  %present = call i1 @topal.runtime.range.int.contains(ptr %range, ptr %index.value)
+  %character = load ptr, ptr %current, align 8
+  br i1 %present, label %append, label %skip
+append:
+  %appended = call ptr @topal.runtime.string.concat(ptr %selected, ptr %character)
+  br label %advance
+skip:
+  br label %advance
+advance:
+  %next.selected = phi ptr [ %appended, %append ], [ %selected, %skip ]
+  %next.pointer = getelementptr i8, ptr %current, i64 8
+  %next = load ptr, ptr %next.pointer, align 8
+  %next.index = add i64 %index, 1
+  br label %loop
+done:
+  ret ptr %selected
+}
+
+define internal ptr @topal.runtime.string.character.count(ptr %string) nounwind noinline {
+entry:
+  %characters = call ptr @topal.runtime.string.unicode.scalar.characters(ptr %string)
+  br label %loop
+loop:
+  %current = phi ptr [ %characters, %entry ], [ %next, %advance ]
+  %count = phi i64 [ 0, %entry ], [ %next.count, %advance ]
+  %complete = icmp eq ptr %current, null
+  br i1 %complete, label %done, label %advance
+advance:
+  %next.pointer = getelementptr i8, ptr %current, i64 8
+  %next = load ptr, ptr %next.pointer, align 8
+  %next.count = add i64 %count, 1
+  br label %loop
+done:
+  %value = call ptr @topal.runtime.int.from.u64(i64 %count)
+  ret ptr %value
 }
 
 define internal i1 @topal.runtime.string.equal(ptr %left, ptr %right) nounwind noinline {
