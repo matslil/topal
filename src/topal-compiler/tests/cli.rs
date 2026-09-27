@@ -13805,6 +13805,11 @@ fn qualified_standard_library_functions_compile_from_source_modules() {
     let library_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
     for (name, source_text, dependency_identities) in [
         (
+            "build-graph",
+            include_str!("../../../tests/standard-library/build-graph.t"),
+            &["std.build.graph"][..],
+        ),
+        (
             "firewall",
             include_str!("../../../examples/data-transfer/firewall.t"),
             &["std.data.spans", "std.network.addresses"][..],

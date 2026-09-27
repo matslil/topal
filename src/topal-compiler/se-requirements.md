@@ -2935,6 +2935,26 @@ freestanding ELF/DWARF, and resource baselines. This realizes
 `TOPAL-TYPE-LIST-CONSTRUCT-001`, and `TOPAL-NUM-NAT-001` for compiler increment
 6b10.
 
+## TOPAL-COMP-LIBRARY-STRING-LIST-FOLD-001 — Build graph closure
+
+The checked compiler shall admit exact `List String` state through finite
+source-library folds over String entries and String-pair edges. The backend
+shall retain the existing private immutable layouts, pass state and entries to
+direct specialized actions, and lower every fold as a finite source-ordered
+LLVM loop. Exact String `contains-entry` shall be allocation-free. String List
+`append` shall copy the immutable left prefix once and terminate it in a fresh
+entry, without callback ABIs, indirect calls, host collections, or foreign
+runtimes.
+
+Tests shall promote the unchanged build-graph conformance program and cover
+direct and transitive dependents, independent units, changed-unit retention,
+cycles, duplicate suppression, empty inputs, exact interpreter output, direct
+fold IR, runtime containment/append fragments, selective dependencies,
+freestanding ELF/DWARF, compiler corpus, and resource baselines. This realizes
+`TOPAL-COMPILER-LIBRARY-STRING-LIST-FOLD-001`, `TOPAL-COLLECTION-FOLD-001`,
+`TOPAL-LIST-APPEND-001`, and `TOPAL-LIST-CONTAINS-ENTRY-001` for compiler
+increment 6b11.
+
 ## TOPAL-COMP-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 For the admitted source-root subset, the checked compiler model shall retain an

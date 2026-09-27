@@ -2538,15 +2538,27 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListContainsEntry { list, value } => {
-                self.list_int_runtime_fragments
-                    .insert(ListIntRuntimeFragment::Containment);
+                let string = matches!(&list.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String);
+                if string {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::String);
+                } else {
+                    self.list_int_runtime_fragments
+                        .insert(ListIntRuntimeFragment::Containment);
+                }
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Boolean(body.instruction(
                     &format!(
-                        "call i1 @topal.runtime.list.int.contains.entry(ptr {}, ptr {})",
+                        "call i1 @topal.runtime.list.{}.contains.entry(ptr {}, ptr {})",
+                        if string { "string" } else { "int" },
                         list.list_pointer(),
-                        value.integer()
+                        if string {
+                            value.string()
+                        } else {
+                            value.integer()
+                        }
                     ),
                     expression.span,
                     &mut self.debug,
@@ -2642,8 +2654,15 @@ impl<'a> Generator<'a> {
                 }
             }
             CompilerExpressionKind::ListAppend { list, value } => {
-                self.list_int_runtime_fragments
-                    .insert(ListIntRuntimeFragment::Core);
+                let string = matches!(&list.value_type, CompilerType::List(element)
+                    if element.as_ref() == &CompilerType::String);
+                if string {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::String);
+                } else {
+                    self.list_int_runtime_fragments
+                        .insert(ListIntRuntimeFragment::Core);
+                }
                 let list = self.emit_expression(list, body, environment);
                 let value = self.emit_expression(value, body, environment);
                 let singleton = body.instruction(
@@ -2652,7 +2671,14 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 );
                 body.effect(
-                    &format!("store ptr {}, ptr {singleton}, align 8", value.integer()),
+                    &format!(
+                        "store ptr {}, ptr {singleton}, align 8",
+                        if string {
+                            value.string()
+                        } else {
+                            value.integer()
+                        }
+                    ),
                     expression.span,
                     &mut self.debug,
                 );
@@ -2669,13 +2695,18 @@ impl<'a> Generator<'a> {
                 LlValue::List {
                     value: body.instruction(
                         &format!(
-                            "call ptr @topal.runtime.list.int.concat(ptr {}, ptr {singleton})",
+                            "call ptr @topal.runtime.list.{}.concat(ptr {}, ptr {singleton})",
+                            if string { "string" } else { "int" },
                             list.list_pointer()
                         ),
                         expression.span,
                         &mut self.debug,
                     ),
-                    element: CompilerType::Int,
+                    element: if string {
+                        CompilerType::String
+                    } else {
+                        CompilerType::Int
+                    },
                     function_captures: Vec::new(),
                 }
             }
@@ -5763,7 +5794,17 @@ impl<'a> Generator<'a> {
             (CompilerType::List(element), CompilerType::Nat)
                 if compiler_nat_pair(element.as_ref())
         );
-        let pair_fold = string_pair_optional_fold || nat_pair_fold;
+        let string_list_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::List(state_element))
+                if state_element.as_ref() == &CompilerType::String
+                    && (element.as_ref() == &CompilerType::String
+                        || compiler_string_pair(element.as_ref()))
+        );
+        let string_pair_list_fold = string_list_fold
+            && matches!(&list.value_type, CompilerType::List(element)
+                if compiler_string_pair(element.as_ref()));
+        let pair_fold = string_pair_optional_fold || nat_pair_fold || string_pair_list_fold;
         let source = self
             .emit_expression(list, body, environment)
             .list_pointer()
@@ -5771,6 +5812,8 @@ impl<'a> Generator<'a> {
         let initial_value = self.emit_expression(initial, body, environment);
         let initial = if string_pair_optional_fold {
             initial_value.optional_pointer()
+        } else if string_list_fold {
+            initial_value.list_pointer()
         } else {
             initial_value.integer()
         }
@@ -5844,15 +5887,23 @@ impl<'a> Generator<'a> {
                 payload: CompilerType::String,
                 function_captures: Vec::new(),
             }
+        } else if string_list_fold {
+            LlValue::List {
+                value: state.clone(),
+                element: CompilerType::String,
+                function_captures: Vec::new(),
+            }
         } else {
             LlValue::Int(state.clone())
         };
         let entry_value = if let Some(second) = second {
-            if string_pair_optional_fold {
+            if string_pair_optional_fold || string_pair_list_fold {
                 LlValue::Tuple(vec![LlValue::String(value), LlValue::String(second)])
             } else {
                 LlValue::Tuple(vec![LlValue::Int(value), LlValue::Int(second)])
             }
+        } else if string_list_fold {
+            LlValue::String(value)
         } else {
             LlValue::Int(value)
         };
@@ -5907,6 +5958,8 @@ impl<'a> Generator<'a> {
         } else {
             let value = if string_pair_optional_fold {
                 value.optional_pointer()
+            } else if string_list_fold {
+                value.list_pointer()
             } else {
                 value.integer()
             };
@@ -5933,6 +5986,12 @@ impl<'a> Generator<'a> {
             LlValue::Optional {
                 value: state,
                 payload: CompilerType::String,
+                function_captures: Vec::new(),
+            }
+        } else if string_list_fold {
+            LlValue::List {
+                value: state,
+                element: CompilerType::String,
                 function_captures: Vec::new(),
             }
         } else {
@@ -13784,6 +13843,42 @@ mod tests {
         assert!(function_body.contains("i64 16"));
         assert!(function_body.contains("phi ptr"));
         assert!(llvm.contains(&format!("call fastcc ptr @{}(ptr", gathered_length.symbol)));
+        assert!(!llvm.contains("call ptr %"));
+    }
+
+    #[test]
+    fn lowers_build_graph_string_list_folds_and_operations_directly() {
+        // TOPAL-COMPILER-LIBRARY-STRING-LIST-FOLD-001,
+        // TOPAL-COLLECTION-FOLD-001, TOPAL-LIST-APPEND-001,
+        // TOPAL-LIST-CONTAINS-ENTRY-001
+        let program = analyze_for_compiler_with_modules(
+            include_str!("../../../tests/standard-library/build-graph.t"),
+            &[CompilerSourceModule {
+                identity: vec!["std".into(), "build".into(), "graph".into()],
+                source_name: "library/std/build/graph.t".into(),
+                source: include_str!("../../../library/std/build/graph.t").into(),
+            }],
+        )
+        .unwrap();
+        let selected = program
+            .functions
+            .iter()
+            .find(|function| function.source_name == "std.build.graph.selected")
+            .unwrap();
+        assert_eq!(
+            selected.result_type,
+            CompilerType::List(Box::new(CompilerType::String))
+        );
+
+        let llvm = Generator::new(&program, "build-graph.t").emit();
+        let selected_body = llvm
+            .split_once(&format!("define internal fastcc ptr @{}(", selected.symbol))
+            .unwrap()
+            .1;
+        assert!(selected_body.contains("list.fold.loop"));
+        assert!(llvm.contains("@topal.runtime.list.string.contains.entry"));
+        assert!(llvm.contains("@topal.runtime.list.string.concat"));
+        assert!(llvm.contains("call i1 @topal.runtime.string.equal"));
         assert!(!llvm.contains("call ptr %"));
     }
 

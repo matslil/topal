@@ -2712,6 +2712,21 @@ source order and use one finite direct LLVM loop. It SHALL NOT use a Tuple
 payload allocation, callback ABI, indirect call, host iterator, foreign
 collection runtime, or public aggregate ABI.
 
+### TOPAL-COMPILER-LIBRARY-STRING-LIST-FOLD-001 — Build graph closure
+
+The compiler SHALL admit finite left folds with `List String` state over
+`List String` and `List (String, String)` when specializing admitted
+source-library Functions. Each fold SHALL preserve source order, pass the exact
+state and entry classifier to its action, and return the initial List unchanged
+for empty input.
+
+Within this specialization, `contains-entry` on `List String` SHALL compare
+exact String values and `append` SHALL return a fresh immutable prefix ending
+in the appended entry without mutating or reordering the input. Lowering SHALL
+use direct finite LLVM loops and the existing private String/List layouts. It
+SHALL NOT use callbacks, indirect calls, host collections, foreign runtimes, or
+a public collection ABI.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
