@@ -1,5 +1,27 @@
 %topal.ListRationalStorage = type { ptr, ptr }
 
+define internal i1 @topal.runtime.list.rational.contains.entry(ptr %list, ptr %value) nounwind noinline {
+entry:
+  br label %loop
+loop:
+  %current = phi ptr [%list, %entry], [%next, %advance]
+  %empty = icmp eq ptr %current, null
+  br i1 %empty, label %absent, label %compare
+compare:
+  %candidate = load ptr, ptr %current, align 8
+  %ordering = call i32 @topal.runtime.rational.compare(ptr %candidate, ptr %value)
+  %equal = icmp eq i32 %ordering, 0
+  br i1 %equal, label %present, label %advance
+advance:
+  %next.pointer = getelementptr i8, ptr %current, i64 8
+  %next = load ptr, ptr %next.pointer, align 8
+  br label %loop
+present:
+  ret i1 true
+absent:
+  ret i1 false
+}
+
 define internal i1 @topal.runtime.list.rational.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   br label %loop
