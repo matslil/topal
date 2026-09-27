@@ -511,6 +511,7 @@ enum ListIntRuntimeFragment {
     RangeSelection,
     Sequence,
     FundamentalContainers,
+    NestedIntCore,
     NestedIntStringCore,
 }
 
@@ -579,6 +580,23 @@ impl<'a> Generator<'a> {
         }
     }
 
+    fn close_list_runtime_dependencies(&mut self) {
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::NestedIntStringCore)
+        {
+            self.scalar_list_runtime_fragments
+                .insert(ScalarListRuntimeFragment::IntStringPair);
+        }
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::NestedIntCore)
+        {
+            self.list_int_runtime_fragments
+                .insert(ListIntRuntimeFragment::Core);
+        }
+    }
+
     fn emit(mut self) -> String {
         for function in &self.program.functions {
             self.emit_function(function);
@@ -598,13 +616,7 @@ impl<'a> Generator<'a> {
             module.push_str(INFINITY_RESULT_RUNTIME);
             module.push('\n');
         }
-        if self
-            .list_int_runtime_fragments
-            .contains(&ListIntRuntimeFragment::NestedIntStringCore)
-        {
-            self.scalar_list_runtime_fragments
-                .insert(ScalarListRuntimeFragment::IntStringPair);
-        }
+        self.close_list_runtime_dependencies();
         self.emit_scalar_list_runtimes(&mut module);
         if self
             .list_int_runtime_fragments
@@ -654,6 +666,13 @@ impl<'a> Generator<'a> {
             .contains(&ListIntRuntimeFragment::FundamentalContainers)
         {
             module.push_str(FUNDAMENTAL_CONTAINERS_RUNTIME);
+            module.push('\n');
+        }
+        if self
+            .list_int_runtime_fragments
+            .contains(&ListIntRuntimeFragment::NestedIntCore)
+        {
+            module.push_str(LIST_NESTED_INT_CORE_RUNTIME);
             module.push('\n');
         }
         if self
@@ -2367,7 +2386,12 @@ impl<'a> Generator<'a> {
                     {
                         (24, 16)
                     }
-                    CompilerType::List(inner) if compiler_int_string_pair(inner) => (16, 8),
+                    CompilerType::List(inner)
+                        if inner.as_ref() == &CompilerType::Int
+                            || compiler_int_string_pair(inner) =>
+                    {
+                        (16, 8)
+                    }
                     _ => unreachable!("checked List element has an admitted node layout"),
                 };
                 let node = body.instruction(
@@ -2495,7 +2519,10 @@ impl<'a> Generator<'a> {
                             element: value_element,
                             ..
                         },
-                    ) if compiler_int_string_pair(inner) && value_element == inner.as_ref() => {
+                    ) if (inner.as_ref() == &CompilerType::Int
+                        || compiler_int_string_pair(inner))
+                        && value_element == inner.as_ref() =>
+                    {
                         body.effect(
                             &format!("store ptr {value}, ptr {node}, align 8"),
                             expression.span,
@@ -2838,6 +2865,11 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
+                let nested_int = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_nested_int_list_element(element)
+                );
                 if unit {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::Unit);
@@ -2896,6 +2928,8 @@ impl<'a> Generator<'a> {
                     self.list_int_runtime_fragments
                         .insert(if nested_int_string {
                             ListIntRuntimeFragment::NestedIntStringCore
+                        } else if nested_int {
+                            ListIntRuntimeFragment::NestedIntCore
                         } else {
                             ListIntRuntimeFragment::Core
                         });
@@ -2942,6 +2976,8 @@ impl<'a> Generator<'a> {
                             "string"
                         } else if nested_int_string {
                             "nested.int-string"
+                        } else if nested_int {
+                            "nested.int"
                         } else {
                             "int"
                         },
@@ -2967,9 +3003,16 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_nested_int_string_list_element(element)
                 );
+                let nested_int = matches!(
+                    &value.value_type,
+                    CompilerType::List(element)
+                        if compiler_nested_int_list_element(element)
+                );
                 self.list_int_runtime_fragments
                     .insert(if nested_int_string {
                         ListIntRuntimeFragment::NestedIntStringCore
+                    } else if nested_int {
+                        ListIntRuntimeFragment::NestedIntCore
                     } else {
                         ListIntRuntimeFragment::Core
                     });
@@ -2989,6 +3032,8 @@ impl<'a> Generator<'a> {
                             "call ptr @topal.runtime.list.{}.{operation}(ptr {})",
                             if nested_int_string {
                                 "nested.int-string"
+                            } else if nested_int {
+                                "nested.int"
                             } else {
                                 "int"
                             },
@@ -7292,6 +7337,10 @@ impl<'a> Generator<'a> {
             self.list_int_runtime_fragments
                 .insert(ListIntRuntimeFragment::NestedIntStringCore);
             "nested.int-string"
+        } else if compiler_nested_int_list_element(element) {
+            self.list_int_runtime_fragments
+                .insert(ListIntRuntimeFragment::NestedIntCore);
+            "nested.int"
         } else {
             debug_assert!(matches!(element, CompilerType::Int | CompilerType::Nat));
             self.list_int_runtime_fragments
@@ -9249,18 +9298,22 @@ impl<'a> Generator<'a> {
                     16,
                 )
             }
-            CompilerType::List(inner) if compiler_int_string_pair(inner) => (
-                LlValue::List {
-                    value: body.instruction(
-                        &format!("load ptr, ptr {current}, align 8"),
-                        span,
-                        &mut self.debug,
-                    ),
-                    element: inner.as_ref().clone(),
-                    function_captures: Vec::new(),
-                },
-                8,
-            ),
+            CompilerType::List(inner)
+                if inner.as_ref() == &CompilerType::Int || compiler_int_string_pair(inner) =>
+            {
+                (
+                    LlValue::List {
+                        value: body.instruction(
+                            &format!("load ptr, ptr {current}, align 8"),
+                            span,
+                            &mut self.debug,
+                        ),
+                        element: inner.as_ref().clone(),
+                        function_captures: Vec::new(),
+                    },
+                    8,
+                )
+            }
             CompilerType::Record(fields)
                 if fields.as_slice()
                     == [
@@ -12445,6 +12498,13 @@ fn compiler_nested_int_string_list_element(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_nested_int_list_element(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::List(element) if element.as_ref() == &CompilerType::Int
+    )
+}
+
 fn align_bits(value: u64, alignment: u64) -> u64 {
     value.div_ceil(alignment) * alignment
 }
@@ -12716,6 +12776,7 @@ const LIST_INT_CORE_RUNTIME: &str = include_str!("runtime/list_int_core.ll");
 const LIST_INT_RANGE_SELECTION_RUNTIME: &str = include_str!("runtime/list_int_range_selection.ll");
 const LIST_INT_SEQUENCE_RUNTIME: &str = include_str!("runtime/list_int_sequence.ll");
 const FUNDAMENTAL_CONTAINERS_RUNTIME: &str = include_str!("runtime/fundamental_containers.ll");
+const LIST_NESTED_INT_CORE_RUNTIME: &str = include_str!("runtime/list_nested_int_core.ll");
 const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
     include_str!("runtime/list_nested_int_string_core.ll");
 
@@ -13017,6 +13078,15 @@ mod tests {
         assert!(llvm.contains("TopalList.(Int, String)"));
         assert!(llvm.contains("TopalList.List (Int, String)"));
         assert!(!llvm.contains("%topal.ListStorage"));
+        assert!(!llvm.contains("call ptr %"));
+
+        let nested_int = "use language (version is v0.1)\npreserve is fn (values : List List Int) -> List List Int\n  values\ninner : List Int is Entry (1, Entry (2, Empty))\nnested : List List Int is Entry (inner, Empty)\ncopy : List List Int is Entry (inner, Empty)\nsingleton : List String is one \"solo\"\nsingleton-copy : List String is Entry (\"solo\", Empty)\n((preserve nested) = copy, entry-count nested, singleton = singleton-copy)\n";
+        let program = analyze_for_compiler(nested_int).unwrap();
+        let llvm = Generator::new(&program, "nested-int-lists.t").emit();
+        assert!(llvm.contains("@topal.runtime.list.nested.int.equal"));
+        assert!(llvm.contains("@topal.runtime.list.nested.int.entry.count"));
+        assert!(llvm.contains("call i1 @topal.runtime.list.int.equal"));
+        assert!(llvm.contains("DW_TAG_typedef, name: \"List List Int\""));
         assert!(!llvm.contains("call ptr %"));
     }
 

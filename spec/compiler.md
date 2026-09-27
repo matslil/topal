@@ -2727,6 +2727,19 @@ use direct finite LLVM loops and the existing private String/List layouts. It
 SHALL NOT use callbacks, indirect calls, host collections, foreign runtimes, or
 a public collection ABI.
 
+### TOPAL-COMPILER-LIST-NESTED-INT-001 — Nested Int Lists
+
+The compiler SHALL admit `List List Int` construction, private Function
+parameters and results, entry counts, and recursive equality. An outer node
+SHALL contain the inner `List Int` pointer followed by the remaining outer List
+pointer. Recursive equality SHALL compare inner Lists using exact Int equality,
+preserve outer and inner order, and terminate for every finite admitted value.
+
+The context-free `one` constructor SHALL infer `List String` from a String
+operand in addition to its existing Int specialization. Neither extension
+SHALL introduce type erasure, callbacks, indirect calls, host collections,
+foreign runtimes, or a public recursive-List ABI.
+
 ### TOPAL-COMPILER-NAMESPACE-FUNCTION-ALIAS-001 — Static function namespace aliases
 
 At source root, binding the live `root` Scope value or an already admitted
