@@ -1586,6 +1586,7 @@ struct Analyzer {
     function_values_used: bool,
     consumed_generators: BTreeSet<String>,
     generator_values: BTreeMap<String, CompilerExpression>,
+    nonnegative_lists: BTreeSet<String>,
     returned_generator_values: BTreeMap<String, CompilerExpression>,
     active_nonzero_bindings: BTreeSet<String>,
     static_context: bool,
@@ -1641,12 +1642,19 @@ impl Analyzer {
             function_values_used: false,
             consumed_generators: BTreeSet::new(),
             generator_values: BTreeMap::new(),
+            nonnegative_lists: BTreeSet::new(),
             returned_generator_values: BTreeMap::new(),
             active_nonzero_bindings: BTreeSet::new(),
             static_context: false,
             next_instance: 0,
             next_task_transaction: 1,
         }
+    }
+
+    fn compiler_proven_nonnegative_list(&self, value: &CompilerExpression) -> bool {
+        compiler_nonnegative_iterate_collect(value)
+            || matches!(&value.kind, CompilerExpressionKind::Local(storage_name)
+                if self.nonnegative_lists.contains(storage_name))
     }
 }
 
@@ -11279,6 +11287,9 @@ impl Analyzer {
                         }
                         generator_bindings.push((storage_name.clone(), name_text.clone(), *name));
                     }
+                    if compiler_nonnegative_iterate_collect(&value) {
+                        self.nonnegative_lists.insert(storage_name.clone());
+                    }
                     environment.insert(name_text.clone(), facts.clone());
                     if kind == BlockKind::TopLevel
                         && let Some(callable) = facts.callable.clone()
@@ -14603,6 +14614,7 @@ impl Analyzer {
                 };
                 if !matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
                     && !compiler_integer_pair(element.as_ref())
+                    && !compiler_int_triple(element.as_ref())
                 {
                     return Err(unsupported(
                         &self.source,
@@ -15842,6 +15854,7 @@ impl Analyzer {
                         && (compiler_integer_pair(element.as_ref())
                             || compiler_int_string_pair(element.as_ref())
                             || compiler_int_int_boolean_pair(element.as_ref())
+                            || compiler_int_triple(element.as_ref())
                             || compiler_nested_int_list_element(element.as_ref())
                             || matches!(element.as_ref(), CompilerType::Range(endpoint)
                                 if endpoint.as_ref() == &CompilerType::Int))
@@ -16314,11 +16327,13 @@ impl Analyzer {
                 let initial_span = initial.span;
                 initial = self.finish_nat_conversion(initial, span, initial_span)?;
             }
-            let (state_type, element_type) = match (&list.value_type, &initial.value_type) {
+            let (state_type, mut element_type) = match (&list.value_type, &initial.value_type) {
                 (CompilerType::List(element), CompilerType::Int)
-                    if element.as_ref() == &CompilerType::Int =>
+                    if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                        || compiler_integer_pair(element.as_ref())
+                        || compiler_int_triple(element.as_ref()) =>
                 {
-                    (CompilerType::Int, CompilerType::Int)
+                    (CompilerType::Int, element.as_ref().clone())
                 }
                 (CompilerType::List(element), CompilerType::Optional(payload))
                     if element.as_ref()
@@ -16352,9 +16367,18 @@ impl Analyzer {
                     )
                 }
                 (CompilerType::List(element), CompilerType::Nat)
-                    if compiler_integer_pair(element.as_ref()) =>
+                    if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                        || compiler_integer_pair(element.as_ref())
+                        || compiler_int_triple(element.as_ref()) =>
                 {
                     (CompilerType::Nat, element.as_ref().clone())
+                }
+                (CompilerType::List(element), CompilerType::Boolean)
+                    if element.as_ref() == &CompilerType::Nat
+                        || element.as_ref() == &CompilerType::Int
+                            && self.compiler_proven_nonnegative_list(&list) =>
+                {
+                    (CompilerType::Boolean, CompilerType::Nat)
                 }
                 (CompilerType::List(element), CompilerType::String)
                     if element.as_ref() == &CompilerType::Character =>
@@ -16374,19 +16398,27 @@ impl Analyzer {
                     )
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
-                    if element.as_ref() == &CompilerType::Character
-                        && state_element.as_ref() == &CompilerType::Nat =>
+                    if matches!(
+                        element.as_ref(),
+                        CompilerType::Character | CompilerType::Int
+                    ) && state_element.as_ref() == &CompilerType::Nat =>
                 {
                     (
                         CompilerType::List(Box::new(CompilerType::Nat)),
-                        CompilerType::Character,
+                        element.as_ref().clone(),
                     )
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
-                    if element.as_ref() == &CompilerType::Int
-                        && state_element.as_ref() == &CompilerType::Int =>
+                    if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                        && matches!(
+                            state_element.as_ref(),
+                            CompilerType::Int | CompilerType::Nat
+                        ) =>
                 {
-                    (int_list_type(), CompilerType::Int)
+                    (
+                        CompilerType::List(Box::new(state_element.as_ref().clone())),
+                        element.as_ref().clone(),
+                    )
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_nested_int_list_element(element.as_ref())
@@ -16403,6 +16435,12 @@ impl Analyzer {
                         CompilerType::List(Box::new(state_element.as_ref().clone())),
                         element.as_ref().clone(),
                     )
+                }
+                (CompilerType::List(element), CompilerType::List(state_element))
+                    if compiler_int_triple(element.as_ref())
+                        && state_element.as_ref() == &CompilerType::Int =>
+                {
+                    (int_list_type(), element.as_ref().clone())
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_list_node_element_supported(element.as_ref())
@@ -16444,6 +16482,9 @@ impl Analyzer {
                     ));
                 }
             };
+            if element_type == CompilerType::Int && self.compiler_proven_nonnegative_list(&list) {
+                element_type = CompilerType::Nat;
+            }
             let (parameters, body) = self.analyze_collection_function(
                 parameters,
                 body,
@@ -16603,13 +16644,14 @@ impl Analyzer {
             )?;
             match collection.value_type.clone() {
                 CompilerType::List(element)
-                    if element.as_ref() == &CompilerType::Int
+                    if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
                         || (operation == "select-index"
                             && (matches!(
                                 element.as_ref(),
                                 CompilerType::Character | CompilerType::String
                             ) || compiler_nested_int_list_element(element.as_ref())
-                                || compiler_integer_pair(element.as_ref()))) =>
+                                || compiler_integer_pair(element.as_ref())
+                                || compiler_int_triple(element.as_ref()))) =>
                 {
                     let value_type = CompilerType::List(element);
                     return Ok(CompilerExpression {
@@ -17718,10 +17760,12 @@ impl Analyzer {
                     "entry-count for this List element type",
                 ));
             }
+            let int_range = Self::known_list_count(&operand_value, environment)
+                .map(|count| IntRange::exact(BigInt::from(count)));
             return Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListEntryCount(Box::new(operand_value)),
                 value_type: CompilerType::Nat,
-                int_range: None,
+                int_range,
                 rational_value: None,
                 span,
             });
@@ -21263,7 +21307,12 @@ impl Analyzer {
             } else {
                 CompilerType::Tuple(vec![CompilerType::Int, CompilerType::Int])
             };
-            if is_proven_zero_numeric(&right_value) {
+            let active_nonzero = matches!(&right_value.kind, CompilerExpressionKind::Local(name)
+                if self.active_nonzero_bindings.contains(name));
+            if active_nonzero && is_proven_zero_numeric(&right_value) {
+                right_value.int_range = None;
+            }
+            if is_proven_zero_numeric(&right_value) && !active_nonzero {
                 if compiler_expression_is_closed(&right_value) {
                     return Err(division_by_zero(&self.source, right_value.span));
                 }
@@ -21280,10 +21329,7 @@ impl Analyzer {
                     right.span(),
                 ));
             }
-            if !is_proven_nonzero_numeric(&right_value)
-                && !matches!(&right_value.kind, CompilerExpressionKind::Local(name)
-                    if self.active_nonzero_bindings.contains(name))
-            {
+            if !is_proven_nonzero_numeric(&right_value) && !active_nonzero {
                 return Ok(Self::finish_fallible_binary(
                     if operation == CompilerBinary::Modulo {
                         CompilerFallible::IntModulo
@@ -24256,12 +24302,22 @@ impl Analyzer {
                             .then(|| compiler_infinity_direction(argument))
                             .flatten(),
                         string_value: (!generalize_parameters)
-                            .then(|| exact_string(argument))
+                            .then(|| {
+                                exact_string(argument).or_else(|| {
+                                    aggregate_arguments[parameter_index].string_value.clone()
+                                })
+                            })
                             .flatten(),
                         closed_int_range: None,
                         list_count: (!generalize_parameters)
                             .then(|| Self::known_list_count(argument, &BTreeMap::new()))
-                            .flatten(),
+                            .flatten()
+                            .or_else(|| {
+                                aggregate_arguments[parameter_index]
+                                    .list_entries
+                                    .as_ref()
+                                    .map(Vec::len)
+                            }),
                         list_string_keys: (!generalize_parameters)
                             .then(|| Self::known_list_string_keys(argument, &BTreeMap::new()))
                             .flatten(),
@@ -24731,6 +24787,7 @@ impl Analyzer {
         let previous_in_function = self.in_function;
         let previous_library_module = self.active_library_module.clone();
         let consumed_before_body = self.consumed_generators.clone();
+        let nonnegative_lists_before_body = self.nonnegative_lists.clone();
         self.static_context = declaration.is_static;
         self.in_function = true;
         self.active_library_module
@@ -24744,6 +24801,7 @@ impl Analyzer {
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
         self.active_library_module = previous_library_module;
+        self.nonnegative_lists = nonnegative_lists_before_body;
         let generator_was_consumed = generator_parameter
             .as_ref()
             .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
@@ -27166,6 +27224,23 @@ fn compiler_nested_int_list_element(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_nonnegative_iterate_collect(value: &CompilerExpression) -> bool {
+    matches!(
+        &value.kind,
+        CompilerExpressionKind::GeneratorCollect(generator)
+            if matches!(
+                &generator.kind,
+                CompilerExpressionKind::GeneratorTakeWhile { generator, .. }
+                    if matches!(
+                        &generator.kind,
+                        CompilerExpressionKind::IterateGenerator { initial, .. }
+                            if initial.int_range.as_ref().is_some_and(|range|
+                                range.lower >= BigInt::from(0_u8))
+                    )
+            )
+    )
+}
+
 fn compiler_list_observation_element_supported(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -27667,6 +27742,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     CompilerType::Int | CompilerType::Nat | CompilerType::Character | CompilerType::String,
                     CompilerType::Int | CompilerType::Nat | CompilerType::Character | CompilerType::String
                 ]))
+                || compiler_int_triple(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Optional(payload)
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
@@ -27686,6 +27762,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     | CompilerType::SourceLocation
                     | CompilerType::Function
             ) || compiler_integer_pair(payload)
+                || compiler_int_triple(payload)
                 || compiler_int_string_pair(payload)
                 || matches!(payload.as_ref(), CompilerType::Tuple(fields)
                     if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
@@ -29671,6 +29748,7 @@ fn require_optional_payload(
             | CompilerType::Function
             | CompilerType::List(_)
     ) || compiler_integer_pair(value_type)
+        || compiler_int_triple(value_type)
         || matches!(value_type, CompilerType::Tuple(fields)
         if fields.as_slice() == [CompilerType::Int, CompilerType::String]
             || matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
@@ -31028,7 +31106,7 @@ fn equality_zero_local(expression: &CompilerExpression) -> Option<&str> {
 
 fn is_proven_nonzero_numeric(expression: &CompilerExpression) -> bool {
     match expression.value_type {
-        CompilerType::Int => expression
+        CompilerType::Int | CompilerType::Nat => expression
             .int_range
             .as_ref()
             .is_some_and(|range| range.upper < BigInt::from(0) || range.lower > BigInt::from(0)),
