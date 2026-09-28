@@ -514,6 +514,142 @@ entry:
   ret ptr %count
 }
 
+define internal ptr @topal.runtime.string.unicode.scalar.value(ptr %string) nounwind noinline {
+entry:
+  %data.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 0
+  %length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 1
+  %data = load ptr, ptr %data.pointer, align 8
+  %length = load i64, ptr %length.pointer, align 8
+  switch i64 %length, label %invalid [
+    i64 1, label %one
+    i64 2, label %two
+    i64 3, label %three
+    i64 4, label %four
+  ]
+one:
+  %one.byte = load i8, ptr %data, align 1
+  %one.ascii = icmp ult i8 %one.byte, -128
+  br i1 %one.ascii, label %one.valid, label %invalid
+one.valid:
+  %one.value = zext i8 %one.byte to i64
+  br label %complete
+two:
+  %two.byte.0 = load i8, ptr %data, align 1
+  %two.pointer.1 = getelementptr i8, ptr %data, i64 1
+  %two.byte.1 = load i8, ptr %two.pointer.1, align 1
+  %two.lead = and i8 %two.byte.0, -32
+  %two.lead.valid = icmp eq i8 %two.lead, -64
+  %two.continuation = and i8 %two.byte.1, -64
+  %two.continuation.valid = icmp eq i8 %two.continuation, -128
+  %two.valid = and i1 %two.lead.valid, %two.continuation.valid
+  br i1 %two.valid, label %two.decode, label %invalid
+two.decode:
+  %two.head.masked = and i8 %two.byte.0, 31
+  %two.tail.masked = and i8 %two.byte.1, 63
+  %two.head = zext i8 %two.head.masked to i64
+  %two.tail = zext i8 %two.tail.masked to i64
+  %two.shifted = shl i64 %two.head, 6
+  %two.value = or i64 %two.shifted, %two.tail
+  br label %complete
+three:
+  %three.byte.0 = load i8, ptr %data, align 1
+  %three.pointer.1 = getelementptr i8, ptr %data, i64 1
+  %three.pointer.2 = getelementptr i8, ptr %data, i64 2
+  %three.byte.1 = load i8, ptr %three.pointer.1, align 1
+  %three.byte.2 = load i8, ptr %three.pointer.2, align 1
+  %three.head.masked = and i8 %three.byte.0, 15
+  %three.middle.masked = and i8 %three.byte.1, 63
+  %three.tail.masked = and i8 %three.byte.2, 63
+  %three.head = zext i8 %three.head.masked to i64
+  %three.middle = zext i8 %three.middle.masked to i64
+  %three.tail = zext i8 %three.tail.masked to i64
+  %three.head.shifted = shl i64 %three.head, 12
+  %three.middle.shifted = shl i64 %three.middle, 6
+  %three.partial = or i64 %three.head.shifted, %three.middle.shifted
+  %three.value = or i64 %three.partial, %three.tail
+  br label %complete
+four:
+  %four.byte.0 = load i8, ptr %data, align 1
+  %four.pointer.1 = getelementptr i8, ptr %data, i64 1
+  %four.pointer.2 = getelementptr i8, ptr %data, i64 2
+  %four.pointer.3 = getelementptr i8, ptr %data, i64 3
+  %four.byte.1 = load i8, ptr %four.pointer.1, align 1
+  %four.byte.2 = load i8, ptr %four.pointer.2, align 1
+  %four.byte.3 = load i8, ptr %four.pointer.3, align 1
+  %four.head.masked = and i8 %four.byte.0, 7
+  %four.second.masked = and i8 %four.byte.1, 63
+  %four.third.masked = and i8 %four.byte.2, 63
+  %four.tail.masked = and i8 %four.byte.3, 63
+  %four.head = zext i8 %four.head.masked to i64
+  %four.second = zext i8 %four.second.masked to i64
+  %four.third = zext i8 %four.third.masked to i64
+  %four.tail = zext i8 %four.tail.masked to i64
+  %four.head.shifted = shl i64 %four.head, 18
+  %four.second.shifted = shl i64 %four.second, 12
+  %four.third.shifted = shl i64 %four.third, 6
+  %four.partial.0 = or i64 %four.head.shifted, %four.second.shifted
+  %four.partial.1 = or i64 %four.partial.0, %four.third.shifted
+  %four.value = or i64 %four.partial.1, %four.tail
+  br label %complete
+complete:
+  %value = phi i64 [ %one.value, %one.valid ], [ %two.value, %two.decode ], [ %three.value, %three ], [ %four.value, %four ]
+  %result = call ptr @topal.runtime.int.from.u64(i64 %value)
+  ret ptr %result
+invalid:
+  call void @topal.platform.exit(i64 71)
+  unreachable
+}
+
+define internal ptr @topal.runtime.string.unicode.scalar.characters(ptr %string) nounwind noinline {
+entry:
+  %data.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 0
+  %length.pointer = getelementptr %topal.StringStorage, ptr %string, i32 0, i32 1
+  %data = load ptr, ptr %data.pointer, align 8
+  %length = load i64, ptr %length.pointer, align 8
+  br label %loop
+loop:
+  %offset = phi i64 [ 0, %entry ], [ %next.offset, %append ]
+  %head = phi ptr [ null, %entry ], [ %next.head, %append ]
+  %tail = phi ptr [ null, %entry ], [ %node, %append ]
+  %complete = icmp eq i64 %offset, %length
+  br i1 %complete, label %done, label %decode
+decode:
+  %byte.pointer = getelementptr i8, ptr %data, i64 %offset
+  %byte = load i8, ptr %byte.pointer, align 1
+  %ascii = icmp ult i8 %byte, -128
+  %two.mask = and i8 %byte, -32
+  %two = icmp eq i8 %two.mask, -64
+  %three.mask = and i8 %byte, -16
+  %three = icmp eq i8 %three.mask, -32
+  %non.ascii.width = select i1 %two, i64 2, i64 4
+  %multi.width = select i1 %three, i64 3, i64 %non.ascii.width
+  %width = select i1 %ascii, i64 1, i64 %multi.width
+  %next.offset = add i64 %offset, %width
+  %valid = icmp ule i64 %next.offset, %length
+  br i1 %valid, label %make, label %invalid
+make:
+  %character.data = getelementptr i8, ptr %data, i64 %offset
+  %character = call ptr @topal.runtime.string.make(ptr %character.data, i64 %width, ptr null, i64 0)
+  %node = call ptr @topal.platform.allocate(i64 16)
+  store ptr %character, ptr %node, align 8
+  %node.next = getelementptr i8, ptr %node, i64 8
+  store ptr null, ptr %node.next, align 8
+  %empty = icmp eq ptr %head, null
+  br i1 %empty, label %append, label %link
+link:
+  %tail.next = getelementptr i8, ptr %tail, i64 8
+  store ptr %node, ptr %tail.next, align 8
+  br label %append
+append:
+  %next.head = select i1 %empty, ptr %node, ptr %head
+  br label %loop
+done:
+  ret ptr %head
+invalid:
+  call void @topal.platform.exit(i64 71)
+  unreachable
+}
+
 define internal i1 @topal.runtime.string.equal(ptr %left, ptr %right) nounwind noinline {
 entry:
   %left.data.pointer = getelementptr %topal.StringStorage, ptr %left, i32 0, i32 0

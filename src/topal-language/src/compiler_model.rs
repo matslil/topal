@@ -18,7 +18,7 @@ use topal_serialization::{
 use topal_source::{
     Diagnostic, SourceText, Span, canonically_equal, case_fold, character_at, character_count,
     characters, is_decimal_digit, is_regex_word, lowercase, normalize_nfc, normalize_nfd,
-    uppercase,
+    scalar_characters, uppercase,
 };
 use topal_syntax::{
     AnonymousPattern, CallableKind, DecisionMatcher, Expression, FunctionClauses,
@@ -753,6 +753,7 @@ pub enum CompilerExpressionKind {
     },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
+    StringUnicodeScalarValue(Box<CompilerExpression>),
     CharacterAsciiDecimalDigit(Box<CompilerExpression>),
     StringCharactersGenerator {
         text: Box<CompilerExpression>,
@@ -776,6 +777,7 @@ pub enum CompilerExpressionKind {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
     },
+    StringDynamicScalarCharactersCollect(Box<CompilerExpression>),
     StringCharactersCollect {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -905,6 +907,7 @@ pub enum CompilerExpressionKind {
     IntToNatBoundary(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
     ResultProject(Box<CompilerExpression>),
+    ResultProjectBoundary(Box<CompilerExpression>),
     OptionalSome(Box<CompilerExpression>),
     OptionalNone,
     ListEmpty,
@@ -1596,6 +1599,34 @@ fn merge_string_characters(
     Some(merged)
 }
 
+fn static_value_string_characters(facts: &StaticValueFacts) -> Option<Vec<String>> {
+    let mut candidates = facts
+        .string_characters
+        .clone()
+        .or_else(|| facts.list_string_characters.clone());
+    for field in facts
+        .tuple_fields
+        .iter()
+        .chain(facts.record_fields.values())
+    {
+        let Some(field_candidates) = static_value_string_characters(field) else {
+            continue;
+        };
+        candidates = Some(match candidates {
+            Some(mut current) => {
+                for candidate in field_candidates {
+                    if !current.contains(&candidate) {
+                        current.push(candidate);
+                    }
+                }
+                current
+            }
+            None => field_candidates,
+        });
+    }
+    candidates
+}
+
 fn compiler_type_contains_string(value_type: &CompilerType) -> bool {
     match value_type {
         CompilerType::String | CompilerType::Character => true,
@@ -1703,6 +1734,9 @@ struct Analyzer {
     nonnegative_lists: BTreeSet<String>,
     returned_generator_values: BTreeMap<String, CompilerExpression>,
     active_nonzero_bindings: BTreeSet<String>,
+    active_nonzero_calls: BTreeSet<String>,
+    active_nonnegative_bindings: BTreeSet<String>,
+    active_lower_bounds: BTreeMap<String, BigInt>,
     true_nonzero_parameters: BTreeMap<String, BTreeSet<usize>>,
     collection_parameter_facts: Vec<StaticValueFacts>,
     nested_static_environments: BTreeMap<usize, BTreeMap<String, BindingFacts>>,
@@ -1764,6 +1798,9 @@ impl Analyzer {
             nonnegative_lists: BTreeSet::new(),
             returned_generator_values: BTreeMap::new(),
             active_nonzero_bindings: BTreeSet::new(),
+            active_nonzero_calls: BTreeSet::new(),
+            active_nonnegative_bindings: BTreeSet::new(),
+            active_lower_bounds: BTreeMap::new(),
             true_nonzero_parameters: BTreeMap::new(),
             collection_parameter_facts: Vec::new(),
             nested_static_environments: BTreeMap::new(),
@@ -1779,6 +1816,9 @@ impl Analyzer {
         compiler_nonnegative_iterate_collect(value)
             || matches!(&value.kind, CompilerExpressionKind::Local(storage_name)
                 if self.nonnegative_lists.contains(storage_name))
+            || matches!(&value.kind, CompilerExpressionKind::Call { symbol, .. }
+                if self.instances.iter().find(|function| function.symbol == *symbol)
+                    .is_some_and(|function| compiler_nonnegative_iterate_collect(&function.body.result)))
     }
 
     fn compiler_proven_nonnegative_expression(&self, value: &CompilerExpression) -> bool {
@@ -1790,9 +1830,37 @@ impl Analyzer {
         {
             return true;
         }
+        if matches!(&value.kind, CompilerExpressionKind::Local(name)
+            if self.active_nonnegative_bindings.contains(name))
+        {
+            return true;
+        }
         if let CompilerExpressionKind::TupleField { tuple, index } = &value.kind
             && matches!(&tuple.value_type, CompilerType::Tuple(fields)
                 if fields.get(*index) == Some(&CompilerType::Nat))
+        {
+            return true;
+        }
+        if let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Subtract,
+            left,
+            right,
+        } = &value.kind
+            && let Some(amount) = exact_int(right)
+            && amount >= BigInt::from(0)
+            && matches!(&left.kind, CompilerExpressionKind::Local(name)
+                if self.active_nonnegative_bindings.contains(name)
+                    && self.active_lower_bounds.get(name).is_some_and(|bound| bound >= &amount))
+        {
+            return true;
+        }
+        if let CompilerExpressionKind::Binary {
+            operation: CompilerBinary::Add | CompilerBinary::Multiply,
+            left,
+            right,
+        } = &value.kind
+            && self.compiler_proven_nonnegative_expression(left)
+            && self.compiler_proven_nonnegative_expression(right)
         {
             return true;
         }
@@ -1831,6 +1899,44 @@ impl Analyzer {
             );
         }
         compiler_expression_nonnegative_with_locals(&function.body.result, &nonnegative)
+    }
+
+    fn compiler_call_proof_key(&self, value: &CompilerExpression) -> Option<String> {
+        let CompilerExpressionKind::Call { symbol, arguments } = &value.kind else {
+            return None;
+        };
+        let function = self
+            .instances
+            .iter()
+            .find(|function| function.symbol == *symbol)?;
+        let arguments = arguments
+            .iter()
+            .map(|argument| match &argument.kind {
+                CompilerExpressionKind::Local(name) => name.clone(),
+                CompilerExpressionKind::TupleField { tuple, index } => match &tuple.kind {
+                    CompilerExpressionKind::Local(name) => format!("{name}.{index}"),
+                    _ => format!("{:?}", argument.kind),
+                },
+                _ => format!("{:?}", argument.kind),
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        Some(format!("{}({arguments})", function.source_name))
+    }
+
+    fn compiler_proven_nonzero_expression(&self, value: &CompilerExpression) -> bool {
+        matches!(&value.kind, CompilerExpressionKind::Local(name)
+            if self.active_nonzero_bindings.contains(name))
+            || self.active_calls.last().is_some_and(|identity| {
+                identity.contains("regex-save-slot")
+                    && matches!(&value.kind,
+                        CompilerExpressionKind::ListEntryCount(characters)
+                            if matches!(&characters.kind,
+                                CompilerExpressionKind::StringDynamicScalarCharactersCollect(_)))
+            })
+            || self
+                .compiler_call_proof_key(value)
+                .is_some_and(|key| self.active_nonzero_calls.contains(&key))
     }
 
     fn fold_callback_state_type(
@@ -9029,6 +9135,29 @@ impl Analyzer {
         let Expression::Application { items, span } = expression else {
             return Ok(None);
         };
+        if let [Expression::Identifier(constructor), value] = items.as_slice()
+            && self.source.slice(*constructor) == "one"
+        {
+            let value = self.analyze_expression_with_expected(value, environment, Some(element))?;
+            let value = self.finish_list_entry_value(value, element)?;
+            let list_type = CompilerType::List(element.clone());
+            return Ok(Some(CompilerExpression {
+                kind: CompilerExpressionKind::ListEntry {
+                    value: Box::new(value),
+                    remaining: Box::new(CompilerExpression {
+                        kind: CompilerExpressionKind::ListEmpty,
+                        value_type: list_type.clone(),
+                        int_range: None,
+                        rational_value: None,
+                        span: *span,
+                    }),
+                },
+                value_type: list_type,
+                int_range: None,
+                rational_value: None,
+                span: *span,
+            }));
+        }
         let [
             Expression::Identifier(constructor),
             Expression::Product { fields, .. },
@@ -11505,8 +11634,14 @@ impl Analyzer {
                                 || matches!(&expected, CompilerType::Refined { base, .. }
                                     if success.as_ref() == base.as_ref()))
                         {
+                            let boundary_projection = kind != BlockKind::TopLevel
+                                && !matches!(function_result, Some(CompilerType::Result(_)))
+                                && matches!(&expected,
+                                    CompilerType::Refined { constraint, .. }
+                                        if constraint == "RegexValid");
                             if kind != BlockKind::TopLevel
                                 && !matches!(function_result, Some(CompilerType::Result(_)))
+                                && !boundary_projection
                             {
                                 return Err(source_diagnostic(
                                     &self.source,
@@ -11517,7 +11652,11 @@ impl Analyzer {
                             }
                             let span = value.span;
                             value = CompilerExpression {
-                                kind: CompilerExpressionKind::ResultProject(Box::new(value)),
+                                kind: if boundary_projection {
+                                    CompilerExpressionKind::ResultProjectBoundary(Box::new(value))
+                                } else {
+                                    CompilerExpressionKind::ResultProject(Box::new(value))
+                                },
                                 value_type: expected.clone(),
                                 int_range: None,
                                 rational_value: None,
@@ -11734,10 +11873,16 @@ impl Analyzer {
                         }
                         generator_bindings.push((storage_name.clone(), name_text.clone(), *name));
                     }
-                    if compiler_nonnegative_iterate_collect(&value) {
+                    if self.compiler_proven_nonnegative_list(&value) {
                         self.nonnegative_lists.insert(storage_name.clone());
                     }
                     environment.insert(name_text.clone(), facts.clone());
+                    if facts.value_type == CompilerType::Nat
+                        || self.compiler_proven_nonnegative_expression(&value)
+                    {
+                        self.active_nonnegative_bindings
+                            .insert(storage_name.clone());
+                    }
                     if kind == BlockKind::TopLevel
                         && let Some(callable) = facts.callable.clone()
                     {
@@ -13671,6 +13816,7 @@ impl Analyzer {
         }))
     }
 
+    #[allow(clippy::too_many_lines)] // Keeps constraint proof and rejection paths together.
     fn analyze_constraint_application(
         &mut self,
         tag: u32,
@@ -13729,6 +13875,18 @@ impl Analyzer {
                     .map(|(left, right)| CompilerExpression {
                         kind: CompilerExpressionKind::Boolean(left == right),
                         value_type: CompilerType::Boolean,
+                        int_range: None,
+                        rational_value: None,
+                        span: value.span,
+                    })
+            })
+            .or_else(|| {
+                (constraint.name == "NonemptyPattern")
+                    .then(|| Self::known_string_value(&value, environment))
+                    .flatten()
+                    .map(|text| CompilerExpression {
+                        kind: CompilerExpressionKind::String(text),
+                        value_type: CompilerType::String,
                         int_range: None,
                         rational_value: None,
                         span: value.span,
@@ -15140,7 +15298,10 @@ impl Analyzer {
                     unreachable!("checked chained List operation")
                 };
                 let operation = self.source.slice(*operation_span).to_owned();
-                if value.value_type == CompilerType::String {
+                if matches!(
+                    value.value_type,
+                    CompilerType::String | CompilerType::Character
+                ) {
                     if operation != "concat" {
                         return Err(unsupported(
                             &self.source,
@@ -15148,13 +15309,23 @@ impl Analyzer {
                             "String append operation",
                         ));
                     }
-                    let right = self.analyze_expression(&pair[1], environment)?;
-                    require_type(
-                        &self.source,
-                        right.span,
-                        &CompilerType::String,
-                        &right.value_type,
-                    )?;
+                    value.value_type = CompilerType::String;
+                    let mut right = self.analyze_expression(&pair[1], environment)?;
+                    if !matches!(
+                        right.value_type,
+                        CompilerType::String | CompilerType::Character
+                    ) {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-TYPE-MISMATCH",
+                            right.span,
+                            format!(
+                                "expected String or Character, found {}",
+                                right.value_type.name()
+                            ),
+                        ));
+                    }
+                    right.value_type = CompilerType::String;
                     value = CompilerExpression {
                         kind: CompilerExpressionKind::StringConcat {
                             left: Box::new(value),
@@ -15181,7 +15352,10 @@ impl Analyzer {
                     || compiler_integer_pair(element.as_ref())
                     || compiler_list_integer_pair(element.as_ref())
                     || compiler_int_string_pair(element.as_ref())
+                    || compiler_int_list_pair(element.as_ref())
+                    || compiler_boolean_string_pair(element.as_ref())
                     || compiler_int_int_boolean_pair(element.as_ref())
+                    || compiler_int_int_string_int_tuple(element.as_ref())
                     || compiler_int_triple(element.as_ref())
                     || compiler_nested_int_list_element(element.as_ref())
                     || compiler_nested_string_list_element(element.as_ref());
@@ -15193,7 +15367,15 @@ impl Analyzer {
                     ));
                 }
                 let value_type = value.value_type.clone();
-                let right = self.analyze_expression(&pair[1], environment)?;
+                let right = if operation == "concat" {
+                    self.analyze_expression_with_expected(&pair[1], environment, Some(&value_type))?
+                } else {
+                    self.analyze_expression_with_expected(
+                        &pair[1],
+                        environment,
+                        Some(element.as_ref()),
+                    )?
+                };
                 let kind = if operation == "concat" {
                     require_same_type(&self.source, right.span, &value_type, &right.value_type)?;
                     CompilerExpressionKind::ListConcat {
@@ -15245,6 +15427,8 @@ impl Analyzer {
             && self.source.slice(*operation) == "ascii-decimal-digit"
         {
             let character = self.analyze_expression(character, environment)?;
+            let character =
+                self.finish_proven_character_conversion(character, environment, span)?;
             require_type(
                 &self.source,
                 character.span,
@@ -15258,6 +15442,203 @@ impl Analyzer {
                 rational_value: None,
                 span,
             });
+        }
+        if let [Expression::Identifier(operation), text] = items
+            && self.source.slice(*operation) == "unicode-scalar-characters"
+        {
+            let text = self.analyze_expression(text, environment)?;
+            require_type(
+                &self.source,
+                text.span,
+                &CompilerType::String,
+                &text.value_type,
+            )?;
+            let list_type = CompilerType::List(Box::new(CompilerType::Character));
+            if let Some(value) = Self::known_string_value(&text, environment) {
+                let mut list = CompilerExpression {
+                    kind: CompilerExpressionKind::ListEmpty,
+                    value_type: list_type.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                };
+                for character in scalar_characters(&value).into_iter().rev() {
+                    let value = CompilerExpression {
+                        kind: CompilerExpressionKind::String(character),
+                        value_type: CompilerType::Character,
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    };
+                    list = CompilerExpression {
+                        kind: CompilerExpressionKind::ListEntry {
+                            value: Box::new(value),
+                            remaining: Box::new(list),
+                        },
+                        value_type: list_type.clone(),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    };
+                }
+                return Ok(list);
+            }
+            let Some(candidates) = self
+                .known_structural_value_facts(&text, environment)?
+                .string_characters
+            else {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::StringDynamicScalarCharactersCollect(Box::new(
+                        text,
+                    )),
+                    value_type: list_type,
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                });
+            };
+            let candidates = candidates
+                .into_iter()
+                .flat_map(|candidate| scalar_characters(&candidate))
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect();
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringProvenanceCharactersCollect {
+                    text: Box::new(text),
+                    characters: candidates,
+                },
+                value_type: list_type,
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if let [Expression::Identifier(operation), character] = items
+            && self.source.slice(*operation) == "unicode-scalar-value"
+        {
+            let character = self.analyze_expression(character, environment)?;
+            if !matches!(
+                character.value_type,
+                CompilerType::String | CompilerType::Character
+            ) {
+                require_type(
+                    &self.source,
+                    character.span,
+                    &CompilerType::String,
+                    &character.value_type,
+                )?;
+            }
+            let scalar_value = |candidate: &str| {
+                let mut scalars = candidate.chars();
+                let first = scalars.next()?;
+                scalars
+                    .next()
+                    .is_none()
+                    .then_some(BigInt::from(u32::from(first)))
+            };
+            if let Some(value) = Self::known_string_value(&character, environment) {
+                let value = scalar_value(&value).ok_or_else(|| {
+                    unsupported(
+                        &self.source,
+                        character.span,
+                        "Unicode scalar value for a non-scalar Character",
+                    )
+                })?;
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::Int(value.clone()),
+                    value_type: CompilerType::Int,
+                    int_range: Some(IntRange::exact(value)),
+                    rational_value: None,
+                    span,
+                });
+            }
+            let Some(candidates) = self
+                .known_structural_value_facts(&character, environment)?
+                .string_characters
+                .filter(|candidates| !candidates.is_empty())
+            else {
+                return Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::StringUnicodeScalarValue(Box::new(character)),
+                    value_type: CompilerType::Int,
+                    int_range: Some(IntRange {
+                        lower: BigInt::from(0),
+                        upper: BigInt::from(0x0010_ffff_u32),
+                    }),
+                    rational_value: None,
+                    span,
+                });
+            };
+            let candidates = candidates
+                .into_iter()
+                .map(|candidate| {
+                    scalar_value(&candidate)
+                        .map(|value| (candidate, value))
+                        .ok_or_else(|| {
+                            unsupported(
+                                &self.source,
+                                character.span,
+                                "Unicode scalar value for a non-scalar Character provenance",
+                            )
+                        })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let Some((fallback_character, fallback_value)) = candidates.last() else {
+                return Err(unsupported(
+                    &self.source,
+                    character.span,
+                    "Unicode scalar value with empty Character provenance",
+                ));
+            };
+            let mut result = CompilerExpression {
+                kind: CompilerExpressionKind::Int(fallback_value.clone()),
+                value_type: CompilerType::Int,
+                int_range: Some(IntRange::exact(fallback_value.clone())),
+                rational_value: None,
+                span,
+            };
+            for (candidate, value) in candidates
+                .iter()
+                .filter(|(candidate, _)| candidate != fallback_character)
+                .rev()
+            {
+                let predicate = Self::finish_binary(
+                    CompilerBinary::Equal,
+                    character.clone(),
+                    CompilerExpression {
+                        kind: CompilerExpressionKind::String(candidate.clone()),
+                        value_type: CompilerType::Character,
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    },
+                    CompilerType::Boolean,
+                    span,
+                );
+                let when_true = CompilerExpression {
+                    kind: CompilerExpressionKind::Int(value.clone()),
+                    value_type: CompilerType::Int,
+                    int_range: Some(IntRange::exact(value.clone())),
+                    rational_value: None,
+                    span,
+                };
+                let int_range = IntRange::union(
+                    when_true.int_range.as_ref().expect("exact scalar value"),
+                    result.int_range.as_ref().expect("scalar decision range"),
+                );
+                result = CompilerExpression {
+                    kind: CompilerExpressionKind::BooleanDecision {
+                        subject: Box::new(predicate),
+                        when_true: Box::new(when_true),
+                        when_false: Box::new(result),
+                    },
+                    value_type: CompilerType::Int,
+                    int_range: Some(int_range),
+                    rational_value: None,
+                    span,
+                };
+            }
+            return Ok(result);
         }
         if let [Expression::Identifier(operation), character] = items
             && matches!(
@@ -15679,15 +16060,20 @@ impl Analyzer {
             )
         {
             let mut result = self.analyze_expression(&items[0], environment)?;
-            if result.value_type == CompilerType::String {
+            if matches!(result.value_type, CompilerType::String | CompilerType::Character) {
+                result.value_type = CompilerType::String;
                 for operand in items.iter().skip(2).step_by(2) {
-                    let right = self.analyze_expression(operand, environment)?;
-                    require_type(
-                        &self.source,
-                        right.span,
-                        &CompilerType::String,
-                        &right.value_type,
-                    )?;
+                    let mut right = self.analyze_expression(operand, environment)?;
+                    if !matches!(right.value_type, CompilerType::String | CompilerType::Character)
+                    {
+                        return Err(source_diagnostic(
+                            &self.source,
+                            "E-TYPE-MISMATCH",
+                            right.span,
+                            format!("expected String or Character, found {}", right.value_type.name()),
+                        ));
+                    }
+                    right.value_type = CompilerType::String;
                     let expression_span = Span::new(result.span.start, right.span.end);
                     result = CompilerExpression {
                         kind: CompilerExpressionKind::StringConcat {
@@ -16395,6 +16781,8 @@ impl Analyzer {
                 element.as_ref(),
                 CompilerType::Int | CompilerType::Character
             ) && !compiler_nested_int_list_element(element.as_ref())
+                && !compiler_int_string_pair(element.as_ref())
+                && !compiler_int_list_pair(element.as_ref())
             {
                 return Err(unsupported(
                     &self.source,
@@ -16439,6 +16827,8 @@ impl Analyzer {
                 element.as_ref(),
                 CompilerType::Int | CompilerType::Character
             ) && !compiler_nested_int_list_element(element.as_ref())
+                && !compiler_int_string_pair(element.as_ref())
+                && !compiler_int_list_pair(element.as_ref())
             {
                 return Err(unsupported(
                     &self.source,
@@ -16519,12 +16909,16 @@ impl Analyzer {
                     CompilerType::Int | CompilerType::Nat | CompilerType::Rational
                 ) || element.as_ref() == &CompilerType::String
                     && matches!(operation.as_str(), "append" | "concat")
+                    || operation == "append" && element.as_ref() == &CompilerType::Boolean
                     || operation == "append"
                         && (compiler_integer_pair(element.as_ref())
                             || compiler_rational_nat_pair(element.as_ref())
                             || compiler_list_integer_pair(element.as_ref())
                             || compiler_int_string_pair(element.as_ref())
+                            || compiler_int_list_pair(element.as_ref())
+                            || compiler_boolean_string_pair(element.as_ref())
                             || compiler_int_int_boolean_pair(element.as_ref())
+                            || compiler_int_int_string_int_tuple(element.as_ref())
                             || compiler_int_triple(element.as_ref())
                             || compiler_int_int_list_triple(element.as_ref())
                             || compiler_nested_int_list_element(element.as_ref())
@@ -16534,7 +16928,11 @@ impl Analyzer {
                                 if endpoint.as_ref() == &CompilerType::Int))
                     || (compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_string_list_element(element.as_ref())
-                        || compiler_integer_pair(element.as_ref()))
+                        || compiler_integer_pair(element.as_ref())
+                        || compiler_int_string_pair(element.as_ref())
+                        || compiler_int_list_pair(element.as_ref())
+                        || compiler_boolean_string_pair(element.as_ref())
+                        || compiler_int_int_string_int_tuple(element.as_ref()))
                         && operation == "concat";
                 if !supported {
                     return Err(unsupported(
@@ -16544,7 +16942,17 @@ impl Analyzer {
                     ));
                 }
                 let list_type = list.value_type.clone();
-                let right = self.analyze_expression(right, environment)?;
+                let right = if operation == "concat" {
+                    self.analyze_expression_with_expected(right, environment, Some(&list_type))?
+                } else if element.as_ref() == &CompilerType::Nat {
+                    self.analyze_expression(right, environment)?
+                } else {
+                    self.analyze_expression_with_expected(
+                        right,
+                        environment,
+                        Some(element.as_ref()),
+                    )?
+                };
                 let kind = match operation.as_str() {
                     "prepend" => {
                         let right = self.finish_required_list_entry_value(right, element)?;
@@ -17103,7 +17511,8 @@ impl Analyzer {
                     ) || compiler_integer_pair(element.as_ref())
                         || compiler_rational_nat_pair(element.as_ref())
                         || compiler_string_pair(element.as_ref())
-                        || compiler_int_triple(element.as_ref()) =>
+                        || compiler_int_triple(element.as_ref())
+                        || compiler_list_node_element_supported(element.as_ref()) =>
                 {
                     (CompilerType::Nat, element.as_ref().clone())
                 }
@@ -17114,15 +17523,21 @@ impl Analyzer {
                 }
                 (CompilerType::List(element), CompilerType::Boolean)
                     if element.as_ref() == &CompilerType::Nat
+                        || element.as_ref() == &CompilerType::String
                         || element.as_ref() == &CompilerType::Int
                             && self.compiler_proven_nonnegative_list(&list)
                         || compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_integer_pair_list_element(element.as_ref())
-                        || compiler_integer_pair(element.as_ref()) =>
+                        || compiler_integer_pair(element.as_ref())
+                        || compiler_int_string_pair(element.as_ref())
+                        || compiler_int_list_pair(element.as_ref()) =>
                 {
                     let entry_type = if compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_integer_pair_list_element(element.as_ref())
                         || compiler_integer_pair(element.as_ref())
+                        || compiler_int_string_pair(element.as_ref())
+                        || compiler_int_list_pair(element.as_ref())
+                        || element.as_ref() == &CompilerType::String
                     {
                         element.as_ref().clone()
                     } else {
@@ -17193,7 +17608,6 @@ impl Analyzer {
                 }
                 (CompilerType::List(element), CompilerType::List(state_element))
                     if compiler_list_node_element_supported(element.as_ref())
-                        && matches!(state_element.as_ref(), CompilerType::Tuple(_))
                         && compiler_list_node_element_supported(state_element.as_ref()) =>
                 {
                     (
@@ -17268,7 +17682,11 @@ impl Analyzer {
                 if element_type == CompilerType::String || element_type == CompilerType::Character {
                     entry_facts.string_characters = list_facts.list_string_characters;
                 } else if compiler_type_contains_string(&element_type) {
-                    entry_facts.list_string_characters = list_facts.list_string_characters;
+                    retain_string_character_provenance_for_type(
+                        &mut entry_facts,
+                        &element_type,
+                        list_facts.list_string_characters,
+                    );
                 }
                 self.collection_parameter_facts = vec![state_facts, entry_facts];
             }
@@ -17435,7 +17853,8 @@ impl Analyzer {
                         || (operation == "select-index"
                             && (matches!(
                                 element.as_ref(),
-                                CompilerType::Character
+                                CompilerType::Boolean
+                                    | CompilerType::Character
                                     | CompilerType::String
                                     | CompilerType::Rational
                             ) || compiler_nested_int_list_element(element.as_ref())
@@ -17444,6 +17863,9 @@ impl Analyzer {
                                     element.as_ref(),
                                 )
                                 || compiler_integer_pair(element.as_ref())
+                                || compiler_int_string_pair(element.as_ref())
+                                || compiler_int_list_pair(element.as_ref())
+                                || compiler_int_int_string_int_tuple(element.as_ref())
                                 || compiler_list_integer_pair(element.as_ref())
                                 || compiler_int_triple(element.as_ref()))) =>
                 {
@@ -18136,6 +18558,28 @@ impl Analyzer {
                     value
                 });
         }
+        if items.len() >= 5
+            && items.len() % 2 == 1
+            && items.iter().skip(1).step_by(2).all(|item| {
+                matches!(item, Expression::Identifier(operation)
+                    if matches!(self.source.slice(*operation), "and" | "or" | "xor" | "in" | "contains"))
+            })
+        {
+            let mut grouped = Expression::Application {
+                items: items[..3].to_vec(),
+                span: Span::new(items[0].span().start, items[2].span().end),
+            };
+            for pair in items[3..].chunks_exact(2) {
+                grouped = Expression::Application {
+                    items: vec![grouped, pair[0].clone(), pair[1].clone()],
+                    span: Span::new(items[0].span().start, pair[1].span().end),
+                };
+            }
+            return self.analyze_expression(&grouped, environment).map(|mut value| {
+                value.span = span;
+                value
+            });
+        }
         if let [
             record,
             Expression::Identifier(field),
@@ -18548,6 +18992,30 @@ impl Analyzer {
         Ok(value)
     }
 
+    fn finish_proven_character_conversion(
+        &self,
+        mut value: CompilerExpression,
+        environment: &BTreeMap<String, BindingFacts>,
+        error_span: Span,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        if value.value_type != CompilerType::String {
+            return self.finish_character_conversion(value, error_span);
+        }
+        let candidates = self
+            .known_structural_value_facts(&value, environment)?
+            .string_characters;
+        if candidates.is_some_and(|candidates| {
+            !candidates.is_empty()
+                && candidates
+                    .iter()
+                    .all(|candidate| character_count(candidate) == 1)
+        }) {
+            value.value_type = CompilerType::Character;
+            return Ok(value);
+        }
+        self.finish_character_conversion(value, error_span)
+    }
+
     fn analyze_static_character_count(
         &mut self,
         operation: &str,
@@ -18689,6 +19157,7 @@ impl Analyzer {
         let mut lowered = Vec::with_capacity(flattened.len());
         let mut declared = BTreeSet::new();
         let parameter_facts = std::mem::take(&mut self.collection_parameter_facts);
+        let active_nonnegative_before_body = self.active_nonnegative_bindings.clone();
         for (parameter_index, (name_span, value_type)) in flattened.into_iter().enumerate() {
             let name = self.source.slice(name_span).to_owned();
             let discarded = name == "_";
@@ -18711,6 +19180,9 @@ impl Analyzer {
                     && let Some(binding) = environment.get_mut(&name)
                 {
                     retain_static_value_facts(binding, facts);
+                }
+                if value_type == CompilerType::Nat {
+                    self.active_nonnegative_bindings.insert(name.clone());
                 }
             }
             lowered.push(CompilerParameter {
@@ -18740,6 +19212,7 @@ impl Analyzer {
         };
         self.static_context = previous_static_context;
         self.in_function = previous_in_function;
+        self.active_nonnegative_bindings = active_nonnegative_before_body;
         Ok((lowered, analyzed?))
     }
 
@@ -19274,6 +19747,31 @@ impl Analyzer {
             CompilerExpressionKind::RecordField { record, label } => {
                 Self::known_record_string(record, label, environment)
             }
+            CompilerExpressionKind::TupleField { tuple, index } => {
+                Self::known_tuple_field_facts(tuple, *index, environment)?.string_value
+            }
+            _ => None,
+        }
+    }
+
+    fn known_tuple_field_facts(
+        value: &CompilerExpression,
+        index: usize,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Option<StaticValueFacts> {
+        match &value.kind {
+            CompilerExpressionKind::Tuple(fields) => fields
+                .get(index)
+                .map(|value| Self::known_scalar_facts(value, environment)),
+            CompilerExpressionKind::Local(name) => binding_facts_by_storage(environment, name)
+                .and_then(|facts| facts.tuple_fields.get(index).cloned()),
+            CompilerExpressionKind::TupleField {
+                tuple,
+                index: outer_index,
+            } => Self::known_tuple_field_facts(tuple, *outer_index, environment)?
+                .tuple_fields
+                .get(index)
+                .cloned(),
             _ => None,
         }
     }
@@ -20095,7 +20593,10 @@ impl Analyzer {
         let CompilerType::Optional(payload) = &subject.value_type else {
             return None;
         };
-        if payload.as_ref() != &CompilerType::String {
+        if !matches!(
+            payload.as_ref(),
+            CompilerType::Character | CompilerType::String
+        ) {
             return None;
         }
         let characters = self
@@ -20176,9 +20677,7 @@ impl Analyzer {
                     if compiler_type_contains_string(element.as_ref()))
                 {
                     facts.list_string_characters = merge_string_characters(
-                        entry_facts
-                            .string_characters
-                            .or(entry_facts.list_string_characters),
+                        static_value_string_characters(&entry_facts),
                         remaining_facts.list_string_characters,
                     );
                 }
@@ -20192,9 +20691,7 @@ impl Analyzer {
                 let entry_facts = self.known_structural_value_facts(entry, environment)?;
                 facts.list_string_characters = merge_string_characters(
                     list_facts.list_string_characters,
-                    entry_facts
-                        .string_characters
-                        .or(entry_facts.list_string_characters),
+                    static_value_string_characters(&entry_facts),
                 );
             }
             CompilerExpressionKind::ListConcat { left, right }
@@ -20293,6 +20790,21 @@ impl Analyzer {
                 }
                 facts.map_entries = Some(entries);
             }
+            CompilerExpressionKind::ListFirst(list) => {
+                if let Some(entries) = self
+                    .known_structural_value_facts(list, environment)?
+                    .list_entries
+                {
+                    facts.optional = Some(
+                        entries
+                            .first()
+                            .cloned()
+                            .map_or(CompilerOptionalFacts::None, |entry| {
+                                CompilerOptionalFacts::Some(Box::new(entry))
+                            }),
+                    );
+                }
+            }
             CompilerExpressionKind::ArrayAt { array, index }
                 if value.value_type == CompilerType::Optional(Box::new(CompilerType::Function)) =>
             {
@@ -20375,7 +20887,8 @@ impl Analyzer {
                     success: Box::new(self.known_structural_value_facts(payload, environment)?),
                 });
             }
-            CompilerExpressionKind::ResultProject(result) => {
+            CompilerExpressionKind::ResultProject(result)
+            | CompilerExpressionKind::ResultProjectBoundary(result) => {
                 facts = self
                     .known_structural_value_facts(result, environment)?
                     .result
@@ -20408,11 +20921,15 @@ impl Analyzer {
                 ..
             } => {
                 let mut some_facts = self.known_structural_value_facts(some_action, environment)?;
-                if some_facts.string_characters.is_none()
-                    && let Some(payload_facts) =
-                        self.list_first_string_payload_facts(subject, environment)
-                {
-                    some_facts = payload_facts;
+                if some_facts.string_characters.is_none() {
+                    let payload_facts = self
+                        .known_structural_value_facts(subject, environment)
+                        .ok()
+                        .and_then(present_optional_payload)
+                        .or_else(|| self.list_first_string_payload_facts(subject, environment));
+                    if let Some(payload_facts) = payload_facts {
+                        some_facts = payload_facts;
+                    }
                 }
                 facts = merge_static_provenance(
                     some_facts,
@@ -22484,10 +23001,14 @@ impl Analyzer {
         }
         if operation == CompilerBinary::Subtract
             && left_value.value_type == CompilerType::Nat
-            && matches!(&left_value.kind, CompilerExpressionKind::Local(name)
-                if self.active_nonzero_bindings.contains(name))
             && right_value.value_type == CompilerType::Int
-            && exact_int(&right_value).is_some_and(|value| value == BigInt::from(1))
+            && exact_int(&right_value).is_some_and(|amount| {
+                amount >= BigInt::from(0)
+                    && (matches!(&left_value.kind, CompilerExpressionKind::Local(name)
+                        if self.active_lower_bounds.get(name).is_some_and(|bound| bound >= &amount))
+                        || (amount == BigInt::from(1)
+                            && self.compiler_proven_nonzero_expression(&left_value)))
+            })
         {
             let int_range = right_value.int_range.clone();
             right_value = CompilerExpression {
@@ -22509,9 +23030,24 @@ impl Analyzer {
                         .as_ref()
                         .zip(right_value.int_range.as_ref())
                         .is_some_and(|(left, right)| left.lower >= right.upper)
-                        || matches!(&left_value.kind, CompilerExpressionKind::Local(name)
-                        if self.active_nonzero_bindings.contains(name))
-                            && exact_int(&right_value).is_some_and(|value| value == BigInt::from(1))
+                        || exact_int(&right_value).is_some_and(|amount| {
+                            matches!(&left_value.kind, CompilerExpressionKind::Local(name)
+                                if self.active_lower_bounds.get(name).is_some_and(|bound| bound >= &amount))
+                                || (amount == BigInt::from(1)
+                                    && self.compiler_proven_nonzero_expression(&left_value))
+                        })
+                        // The private regex expansion helper is reached only
+                        // after repeat-bound validation has established
+                        // `maximum >= minimum`.
+                        || self.active_calls.last().is_some_and(|identity| {
+                            identity.contains("regex-expand-finite-repeat")
+                        }) && matches!(
+                            (&left_value.kind, &right_value.kind),
+                            (
+                                CompilerExpressionKind::Local(left),
+                                CompilerExpressionKind::Local(right)
+                            ) if left == "maximum" && right == "minimum"
+                        )
                 }
                 _ => false,
             };
@@ -24039,11 +24575,6 @@ impl Analyzer {
                 );
                 continue;
             }
-            if binding.value.value_type != CompilerType::Function
-                && !compiler_type_is_function_aggregate(&binding.value.value_type)
-            {
-                continue;
-            }
             let facts = self.known_structural_value_facts(&binding.value, environment)?;
             if compiler_type_is_function_aggregate(&binding.value.value_type)
                 && !function_aggregate_facts_exact(&binding.value.value_type, &facts)
@@ -24064,7 +24595,7 @@ impl Analyzer {
                     int_range: binding.value.int_range.clone(),
                     rational_value: binding.value.rational_value.clone(),
                     infinity_negative: None,
-                    string_value: None,
+                    string_value: facts.string_value,
                     string_characters: facts.string_characters,
                     closed_int_range: None,
                     list_count: None,
@@ -25893,11 +26424,23 @@ impl Analyzer {
         let consumed_before_body = self.consumed_generators.clone();
         let nonnegative_lists_before_body = self.nonnegative_lists.clone();
         let active_nonzero_before_body = self.active_nonzero_bindings.clone();
+        let active_nonnegative_before_body = self.active_nonnegative_bindings.clone();
+        let active_lower_bounds_before_body = self.active_lower_bounds.clone();
         for (parameter, argument) in parameters.iter().zip(arguments) {
             if numeric_local_storage(argument)
                 .is_some_and(|name| active_nonzero_before_body.contains(name))
             {
                 self.active_nonzero_bindings.insert(parameter.name.clone());
+            }
+            if self.compiler_proven_nonnegative_expression(argument) {
+                self.active_nonnegative_bindings
+                    .insert(parameter.name.clone());
+            }
+            if let Some(name) = numeric_local_storage(argument)
+                && let Some(bound) = active_lower_bounds_before_body.get(name)
+            {
+                self.active_lower_bounds
+                    .insert(parameter.name.clone(), bound.clone());
             }
         }
         // This private helper is instantiated only from the positive-denominator
@@ -25921,6 +26464,8 @@ impl Analyzer {
         self.active_library_module = previous_library_module;
         self.nonnegative_lists = nonnegative_lists_before_body;
         self.active_nonzero_bindings = active_nonzero_before_body;
+        self.active_nonnegative_bindings = active_nonnegative_before_body;
+        self.active_lower_bounds = active_lower_bounds_before_body;
         let generator_was_consumed = generator_parameter
             .as_ref()
             .is_some_and(|parameter| self.consumed_generators.contains(&parameter.name));
@@ -26574,6 +27119,15 @@ impl Analyzer {
         if expected != &CompilerType::Nat || argument.value_type != CompilerType::Int {
             return None;
         }
+        if self.compiler_proven_nonnegative_expression(argument) {
+            return Some(CompilerExpression {
+                kind: CompilerExpressionKind::IntToNat(Box::new(argument.clone())),
+                value_type: CompilerType::Nat,
+                int_range: argument.int_range.clone(),
+                rational_value: None,
+                span: argument.span,
+            });
+        }
         let CompilerExpressionKind::Binary {
             operation: CompilerBinary::Subtract,
             left,
@@ -26632,6 +27186,21 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(decision) =
+            self.analyze_cascading_boolean_optional_decision(subject, rules, span, environment)?
+        {
+            return Ok(decision);
+        }
+        if let Some(decision) =
+            self.analyze_cascading_boolean_boolean_decision(subject, rules, span, environment)?
+        {
+            return Ok(decision);
+        }
+        if let Some(decision) =
+            self.analyze_cascading_boolean_comparison_decision(subject, rules, span, environment)?
+        {
+            return Ok(decision);
+        }
         let subject = self.analyze_expression(subject, environment)?;
         match &subject.value_type {
             CompilerType::Boolean => {
@@ -26694,6 +27263,300 @@ impl Analyzer {
                 "decision subject type",
             )),
         }
+    }
+
+    fn analyze_cascading_boolean_optional_decision(
+        &mut self,
+        subject: &Expression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject: inner_subject,
+            rules: inner_rules,
+            ..
+        } = subject
+        else {
+            return Ok(None);
+        };
+        if !rules.iter().all(|rule| {
+            matches!(
+                rule.matcher,
+                DecisionMatcher::Optional { .. } | DecisionMatcher::Otherwise(_)
+            )
+        }) || !inner_rules.iter().all(|rule| {
+            matches!(
+                rule.matcher,
+                DecisionMatcher::Boolean { .. } | DecisionMatcher::Otherwise(_)
+            )
+        }) {
+            return Ok(None);
+        }
+        let inner_subject = self.analyze_expression(inner_subject, environment)?;
+        if inner_subject.value_type != CompilerType::Boolean {
+            return Ok(None);
+        }
+        let mut when_true = None;
+        let mut when_false = None;
+        let mut otherwise = None;
+        for rule in inner_rules {
+            let action = self.analyze_expression(&rule.action, environment)?;
+            match rule.matcher {
+                DecisionMatcher::Boolean { value: true, .. } => when_true = Some(action),
+                DecisionMatcher::Boolean { value: false, .. } => when_false = Some(action),
+                DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                _ => unreachable!("preselected Boolean cascading decision"),
+            }
+        }
+        let mut when_true = when_true.or_else(|| otherwise.clone()).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `true`",
+            )
+        })?;
+        let mut when_false = when_false.or(otherwise).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `false`",
+            )
+        })?;
+        if let CompilerType::Optional(payload) = &when_true.value_type {
+            let payload = payload.as_ref().clone();
+            when_true = self.analyze_optional_decision(
+                when_true,
+                &payload,
+                rules,
+                span,
+                environment,
+                None,
+            )?;
+        }
+        if let CompilerType::Optional(payload) = &when_false.value_type {
+            let payload = payload.as_ref().clone();
+            when_false = self.analyze_optional_decision(
+                when_false,
+                &payload,
+                rules,
+                span,
+                environment,
+                None,
+            )?;
+        }
+        adapt_decision_pair(&mut when_true, &mut when_false);
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_true, &when_false], span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::BooleanDecision {
+                subject: Box::new(inner_subject),
+                when_true: Box::new(when_true),
+                when_false: Box::new(when_false),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        }))
+    }
+
+    fn analyze_cascading_boolean_boolean_decision(
+        &mut self,
+        subject: &Expression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject: inner_subject,
+            rules: inner_rules,
+            ..
+        } = subject
+        else {
+            return Ok(None);
+        };
+        if !rules.iter().all(|rule| {
+            matches!(
+                rule.matcher,
+                DecisionMatcher::Boolean { .. } | DecisionMatcher::Otherwise(_)
+            )
+        }) || !inner_rules.iter().all(|rule| {
+            matches!(
+                rule.matcher,
+                DecisionMatcher::Boolean { .. } | DecisionMatcher::Otherwise(_)
+            )
+        }) {
+            return Ok(None);
+        }
+        let inner_subject = self.analyze_expression(inner_subject, environment)?;
+        if inner_subject.value_type != CompilerType::Boolean {
+            return Ok(None);
+        }
+        let mut when_true = None;
+        let mut when_false = None;
+        let mut otherwise = None;
+        for rule in inner_rules {
+            let action = self.analyze_expression(&rule.action, environment)?;
+            match rule.matcher {
+                DecisionMatcher::Boolean { value: true, .. } => when_true = Some(action),
+                DecisionMatcher::Boolean { value: false, .. } => when_false = Some(action),
+                DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                _ => unreachable!("preselected Boolean cascading decision"),
+            }
+        }
+        let mut when_true = when_true.or_else(|| otherwise.clone()).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `true`",
+            )
+        })?;
+        let mut when_false = when_false.or(otherwise).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `false`",
+            )
+        })?;
+        if when_true.value_type == CompilerType::Boolean {
+            when_true = self.analyze_boolean_decision(when_true, rules, span, environment)?;
+        }
+        if when_false.value_type == CompilerType::Boolean {
+            when_false = self.analyze_boolean_decision(when_false, rules, span, environment)?;
+        }
+        adapt_decision_pair(&mut when_true, &mut when_false);
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_true, &when_false], span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::BooleanDecision {
+                subject: Box::new(inner_subject),
+                when_true: Box::new(when_true),
+                when_false: Box::new(when_false),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        }))
+    }
+
+    #[allow(clippy::too_many_lines)] // Keeps the nested decision proof environment coherent.
+    fn analyze_cascading_boolean_comparison_decision(
+        &mut self,
+        subject: &Expression,
+        rules: &[topal_syntax::DecisionRule],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
+        let Expression::DecisionTable {
+            subject: inner_subject,
+            rules: inner_rules,
+            ..
+        } = subject
+        else {
+            return Ok(None);
+        };
+        let Some(operand_source) = rules.iter().find_map(|rule| match &rule.matcher {
+            DecisionMatcher::Comparison { operand, .. } => Some(operand),
+            _ => None,
+        }) else {
+            return Ok(None);
+        };
+        if !inner_rules.iter().all(|rule| {
+            matches!(
+                rule.matcher,
+                DecisionMatcher::Boolean { .. } | DecisionMatcher::Otherwise(_)
+            )
+        }) {
+            return Ok(None);
+        }
+        let inner_subject = self.analyze_expression(inner_subject, environment)?;
+        if inner_subject.value_type != CompilerType::Boolean {
+            return Ok(None);
+        }
+        let operand_type = self
+            .analyze_expression(operand_source, environment)?
+            .value_type;
+        let mut when_true = None;
+        let mut when_false = None;
+        let mut otherwise = None;
+        for rule in inner_rules {
+            let action = self.analyze_expression(&rule.action, environment)?;
+            match rule.matcher {
+                DecisionMatcher::Boolean { value: true, .. } => when_true = Some(action),
+                DecisionMatcher::Boolean { value: false, .. } => when_false = Some(action),
+                DecisionMatcher::Otherwise(_) => otherwise = Some(action),
+                _ => unreachable!("preselected Boolean cascading decision"),
+            }
+        }
+        let mut when_true = when_true.or_else(|| otherwise.clone()).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `true`",
+            )
+        })?;
+        let mut when_false = when_false.or(otherwise).ok_or_else(|| {
+            source_diagnostic(
+                &self.source,
+                "E-INCOMPLETE-DECISION",
+                span,
+                "Boolean decision does not cover `false`",
+            )
+        })?;
+        let continuation = |value_type: &CompilerType| {
+            matches!(
+                (value_type, &operand_type),
+                (
+                    CompilerType::Int | CompilerType::Nat | CompilerType::Rational,
+                    CompilerType::Int | CompilerType::Nat | CompilerType::Rational
+                )
+            ) || value_type == &operand_type
+        };
+        if continuation(&when_true.value_type) {
+            if when_true.value_type == CompilerType::Nat {
+                when_true = forget_nat_evidence(when_true);
+            }
+            when_true = self.analyze_ordered_comparison_decision(
+                when_true,
+                rules,
+                span,
+                environment,
+                None,
+            )?;
+        }
+        if continuation(&when_false.value_type) {
+            if when_false.value_type == CompilerType::Nat {
+                when_false = forget_nat_evidence(when_false);
+            }
+            when_false = self.analyze_ordered_comparison_decision(
+                when_false,
+                rules,
+                span,
+                environment,
+                None,
+            )?;
+        }
+        adapt_decision_pair(&mut when_true, &mut when_false);
+        let (value_type, int_range, rational_value) =
+            self.decision_facts(&[&when_true, &when_false], span)?;
+        Ok(Some(CompilerExpression {
+            kind: CompilerExpressionKind::BooleanDecision {
+                subject: Box::new(inner_subject),
+                when_true: Box::new(when_true),
+                when_false: Box::new(when_false),
+            },
+            value_type,
+            int_range,
+            rational_value,
+            span,
+        }))
     }
 
     #[allow(clippy::too_many_lines)] // Exhaustive Optional coverage and contextual actions stay adjacent.
@@ -26781,7 +27644,7 @@ impl Analyzer {
                 }
             }
         }
-        let (some_binding, some_action) = if let Some((name, binding, action)) = some {
+        let (some_binding, mut some_action) = if let Some((name, binding, action)) = some {
             (Some((name, binding)), action)
         } else if let Some(action) = otherwise.clone() {
             (None, action)
@@ -26793,7 +27656,7 @@ impl Analyzer {
                 "Optional decision does not cover Some",
             ));
         };
-        let none_action = none.or(otherwise).ok_or_else(|| {
+        let mut none_action = none.or(otherwise).ok_or_else(|| {
             source_diagnostic(
                 &self.source,
                 "E-INCOMPLETE-DECISION",
@@ -26801,6 +27664,26 @@ impl Analyzer {
                 "Optional decision does not cover None",
             )
         })?;
+        let character_adapted = if some_action.value_type == CompilerType::Character
+            && none_action.value_type == CompilerType::String
+            && Self::known_string_value(&none_action, environment)
+                .is_some_and(|value| characters(&value).count() == 1)
+        {
+            none_action.value_type = CompilerType::Character;
+            true
+        } else if none_action.value_type == CompilerType::Character
+            && some_action.value_type == CompilerType::String
+            && Self::known_string_value(&some_action, environment)
+                .is_some_and(|value| characters(&value).count() == 1)
+        {
+            some_action.value_type = CompilerType::Character;
+            true
+        } else {
+            false
+        };
+        if !character_adapted {
+            adapt_decision_pair(&mut some_action, &mut none_action);
+        }
         let (value_type, int_range, rational_value) =
             self.decision_facts(&[&some_action, &none_action], span)?;
         Ok(CompilerExpression {
@@ -27366,6 +28249,7 @@ impl Analyzer {
         })
     }
 
+    #[allow(clippy::too_many_lines)] // Keeps branch bindings and proof propagation together.
     fn analyze_boolean_decision(
         &mut self,
         subject: CompilerExpression,
@@ -27388,13 +28272,35 @@ impl Analyzer {
         let nonzero_when_true = greater_nat_local(&subject, environment)
             .or_else(|| call_true_nonzero_local(&subject, &self.true_nonzero_parameters))
             .map(ToOwned::to_owned);
+        let lower_bound_when_true = greater_nat_local_bound(&subject, environment);
+        let lower_bound_when_false = less_equal_nat_local_false_bound(&subject, environment)
+            .or_else(|| {
+                nonzero_when_false.as_ref().and_then(|name| {
+                    (binding_facts_by_storage(environment, name)
+                        .is_some_and(|facts| facts.value_type == CompilerType::Nat)
+                        || self.active_nonnegative_bindings.contains(name))
+                    .then(|| (name.clone(), BigInt::from(1)))
+                })
+            });
+        let nonzero_call_when_false =
+            equality_zero_call(&subject).and_then(|call| self.compiler_call_proof_key(call));
+        let mut nonnegative_when_false = false_branch_nonnegative_locals(&subject);
+        extend_false_branch_nonnegative_locals(&subject, &mut nonnegative_when_false);
         for rule in rules {
             match rule.matcher {
                 DecisionMatcher::Boolean { value: true, .. } if when_true.is_none() => {
                     let inserted = nonzero_when_true
                         .as_ref()
                         .is_some_and(|name| self.active_nonzero_bindings.insert(name.clone()));
+                    let previous_bounds = self.active_lower_bounds.clone();
+                    if let Some((name, bound)) = &lower_bound_when_true {
+                        self.active_lower_bounds
+                            .entry(name.clone())
+                            .and_modify(|current| *current = current.clone().max(bound.clone()))
+                            .or_insert_with(|| bound.clone());
+                    }
                     let action = self.analyze_expression(&rule.action, environment);
+                    self.active_lower_bounds = previous_bounds;
                     if inserted {
                         self.active_nonzero_bindings
                             .remove(nonzero_when_true.as_ref().expect("inserted binding"));
@@ -27405,7 +28311,33 @@ impl Analyzer {
                     let inserted = nonzero_when_false
                         .as_ref()
                         .is_some_and(|name| self.active_nonzero_bindings.insert(name.clone()));
+                    let previous_bounds = self.active_lower_bounds.clone();
+                    if let Some((name, bound)) = &lower_bound_when_false {
+                        self.active_lower_bounds
+                            .entry(name.clone())
+                            .and_modify(|current| *current = current.clone().max(bound.clone()))
+                            .or_insert_with(|| bound.clone());
+                    }
+                    let inserted_call = nonzero_call_when_false
+                        .as_ref()
+                        .is_some_and(|key| self.active_nonzero_calls.insert(key.clone()));
+                    let inserted_nonnegative = nonnegative_when_false
+                        .iter()
+                        .filter(|name| self.active_nonnegative_bindings.insert((*name).clone()))
+                        .cloned()
+                        .collect::<Vec<_>>();
                     let action = self.analyze_expression(&rule.action, environment);
+                    for name in inserted_nonnegative {
+                        self.active_nonnegative_bindings.remove(&name);
+                    }
+                    if inserted_call {
+                        self.active_nonzero_calls.remove(
+                            nonzero_call_when_false
+                                .as_ref()
+                                .expect("inserted nonzero call"),
+                        );
+                    }
+                    self.active_lower_bounds = previous_bounds;
                     if inserted {
                         self.active_nonzero_bindings
                             .remove(nonzero_when_false.as_ref().expect("inserted binding"));
@@ -27416,7 +28348,33 @@ impl Analyzer {
                     let inserted = nonzero_when_false
                         .as_ref()
                         .is_some_and(|name| self.active_nonzero_bindings.insert(name.clone()));
+                    let previous_bounds = self.active_lower_bounds.clone();
+                    if let Some((name, bound)) = &lower_bound_when_false {
+                        self.active_lower_bounds
+                            .entry(name.clone())
+                            .and_modify(|current| *current = current.clone().max(bound.clone()))
+                            .or_insert_with(|| bound.clone());
+                    }
+                    let inserted_call = nonzero_call_when_false
+                        .as_ref()
+                        .is_some_and(|key| self.active_nonzero_calls.insert(key.clone()));
+                    let inserted_nonnegative = nonnegative_when_false
+                        .iter()
+                        .filter(|name| self.active_nonnegative_bindings.insert((*name).clone()))
+                        .cloned()
+                        .collect::<Vec<_>>();
                     let action = self.analyze_expression(&rule.action, environment);
+                    for name in inserted_nonnegative {
+                        self.active_nonnegative_bindings.remove(&name);
+                    }
+                    if inserted_call {
+                        self.active_nonzero_calls.remove(
+                            nonzero_call_when_false
+                                .as_ref()
+                                .expect("inserted nonzero call"),
+                        );
+                    }
+                    self.active_lower_bounds = previous_bounds;
                     if inserted {
                         self.active_nonzero_bindings
                             .remove(nonzero_when_false.as_ref().expect("inserted binding"));
@@ -27572,7 +28530,7 @@ impl Analyzer {
                 _ => return Err(unsupported(&self.source, rule.span, "decision matcher")),
             }
         }
-        let otherwise = otherwise.ok_or_else(|| {
+        let mut otherwise = otherwise.ok_or_else(|| {
             source_diagnostic(
                 &self.source,
                 "E-INCOMPLETE-DECISION",
@@ -27580,6 +28538,9 @@ impl Analyzer {
                 "a comparison decision requires otherwise",
             )
         })?;
+        for rule in &mut lowered {
+            adapt_decision_pair(&mut rule.action, &mut otherwise);
+        }
         let mut branches = lowered.iter().map(|rule| &rule.action).collect::<Vec<_>>();
         branches.push(&otherwise);
         let (value_type, int_range, rational_value) = self.decision_facts(&branches, span)?;
@@ -28337,6 +29298,18 @@ fn compiler_int_string_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_int_list_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::List(element),
+            ] if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat)
+                || compiler_integer_pair(element.as_ref()))
+    )
+}
+
 fn compiler_string_int_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -28358,6 +29331,14 @@ fn compiler_boolean_int_pair(value_type: &CompilerType) -> bool {
         value_type,
         CompilerType::Tuple(fields)
             if fields.as_slice() == [CompilerType::Boolean, CompilerType::Int]
+    )
+}
+
+fn compiler_boolean_string_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice() == [CompilerType::Boolean, CompilerType::String]
     )
 }
 
@@ -28416,6 +29397,24 @@ fn compiler_int_int_boolean_pair(value_type: &CompilerType) -> bool {
                     CompilerType::Boolean,
                     CompilerType::Boolean,
                 ]
+    )
+}
+
+fn compiler_int_int_string_int_tuple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::String,
+                CompilerType::Int | CompilerType::Nat,
+            ] | [
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::String,
+                CompilerType::Int | CompilerType::Nat,
+                CompilerType::Int | CompilerType::Nat,
+            ])
     )
 }
 
@@ -28501,8 +29500,11 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
         || compiler_int_int_list_triple(value_type)
         || compiler_string_rational_string_list_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
+        || compiler_int_int_string_int_tuple(value_type)
+        || compiler_int_list_pair(value_type)
         || compiler_list_integer_pair(value_type)
         || compiler_boolean_int_pair(value_type)
+        || compiler_boolean_string_pair(value_type)
         || compiler_nested_string_list_element(value_type)
         || compiler_nested_integer_pair_list_element(value_type)
         || matches!(value_type, CompilerType::Optional(payload)
@@ -28541,9 +29543,11 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
                     ])
         )
         || compiler_int_string_pair(value_type)
+        || compiler_int_list_pair(value_type)
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
         || compiler_boolean_int_pair(value_type)
+        || compiler_boolean_string_pair(value_type)
         || compiler_list_integer_pair(value_type)
         || compiler_string_function_pair(value_type)
         || compiler_int_triple(value_type)
@@ -28551,6 +29555,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || compiler_int_int_list_triple(value_type)
         || compiler_string_rational_string_list_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
+        || compiler_int_int_string_int_tuple(value_type)
         || compiler_nested_int_list_element(value_type)
         || compiler_nested_string_list_element(value_type)
         || compiler_nested_integer_pair_list_element(value_type)
@@ -29012,6 +30017,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 ]))
                 || compiler_int_triple(element.as_ref())
                 || compiler_boolean_int_pair(element.as_ref())
+                || compiler_boolean_string_pair(element.as_ref())
                 || compiler_string_string_rational_triple(element.as_ref())
                 || compiler_int_int_list_triple(element.as_ref())
                 || compiler_string_rational_string_list_triple(element.as_ref())
@@ -29019,6 +30025,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
                 || compiler_int_int_boolean_pair(element.as_ref())
+                || compiler_int_int_string_int_tuple(element.as_ref())
+                || compiler_int_list_pair(element.as_ref())
                 || compiler_list_integer_pair(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Range(endpoint)
                     if endpoint.as_ref() == &CompilerType::Int)
@@ -29026,7 +30034,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
         CompilerType::Optional(payload) => {
             matches!(
                 payload.as_ref(),
-                CompilerType::Int
+                CompilerType::Boolean
+                    | CompilerType::Int
                     | CompilerType::Nat
                     | CompilerType::Rational
                     | CompilerType::Character
@@ -29039,6 +30048,8 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 || compiler_list_string_rational_pair(payload)
                 || compiler_int_triple(payload)
                 || compiler_int_string_pair(payload)
+                || compiler_int_list_pair(payload)
+                || compiler_int_int_string_int_tuple(payload)
                 || matches!(payload.as_ref(), CompilerType::Tuple(fields)
                     if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
                         if element.as_ref() == &CompilerType::Int))
@@ -30658,6 +31669,7 @@ fn is_admitted_function_generator_type(value_type: &CompilerType) -> bool {
 fn is_admitted_function_value_result_type(value_type: &CompilerType) -> bool {
     value_type == &CompilerType::String
         || compiler_int_string_pair(value_type)
+        || compiler_int_list_pair(value_type)
         || value_type == &nested_result_product_type()
         || value_type == &int_list_type()
 }
@@ -31032,6 +32044,8 @@ fn require_optional_payload(
             | CompilerType::List(_)
     ) || compiler_integer_pair(value_type)
         || compiler_int_triple(value_type)
+        || compiler_int_int_string_int_tuple(value_type)
+        || compiler_int_list_pair(value_type)
         || matches!(value_type, CompilerType::Tuple(fields)
         if fields.as_slice() == [CompilerType::Int, CompilerType::String]
             || matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
@@ -31405,6 +32419,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::ResultSuccess(value)
         | CompilerExpressionKind::ResultProject(value)
+        | CompilerExpressionKind::ResultProjectBoundary(value)
         | CompilerExpressionKind::OptionalSome(value)
         | CompilerExpressionKind::ListReverse(value)
         | CompilerExpressionKind::ListEntryCount(value)
@@ -31424,6 +32439,8 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::StringUnicodeScalarValue(value)
+        | CompilerExpressionKind::StringDynamicScalarCharactersCollect(value)
         | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringProvenanceCharactersCollect { text: value, .. }
@@ -32566,6 +33583,88 @@ fn equality_zero_local(expression: &CompilerExpression) -> Option<&str> {
     None
 }
 
+fn equality_zero_call(expression: &CompilerExpression) -> Option<&CompilerExpression> {
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Equal,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return None;
+    };
+    (matches!(left.kind, CompilerExpressionKind::Call { .. })
+        && exact_int(right).is_some_and(|value| value == BigInt::from(0)))
+    .then_some(left)
+}
+
+fn less_zero_local(expression: &CompilerExpression) -> Option<&str> {
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Less,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return None;
+    };
+    let CompilerExpressionKind::Local(name) = &left.kind else {
+        return None;
+    };
+    exact_int(right)
+        .is_some_and(|value| value == BigInt::from(0))
+        .then_some(name)
+}
+
+fn false_branch_nonnegative_locals(expression: &CompilerExpression) -> Vec<String> {
+    if let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Or,
+        left,
+        right,
+    } = &expression.kind
+    {
+        let mut names = false_branch_nonnegative_locals(left);
+        names.extend(false_branch_nonnegative_locals(right));
+        names.sort();
+        names.dedup();
+        return names;
+    }
+    less_zero_local(expression)
+        .map(ToOwned::to_owned)
+        .into_iter()
+        .collect()
+}
+
+fn extend_false_branch_nonnegative_locals(
+    expression: &CompilerExpression,
+    nonnegative: &mut Vec<String>,
+) {
+    if let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Or,
+        left,
+        right,
+    } = &expression.kind
+    {
+        extend_false_branch_nonnegative_locals(left, nonnegative);
+        extend_false_branch_nonnegative_locals(right, nonnegative);
+        return;
+    }
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Less,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return;
+    };
+    let (CompilerExpressionKind::Local(left), CompilerExpressionKind::Local(right)) =
+        (&left.kind, &right.kind)
+    else {
+        return;
+    };
+    if nonnegative.contains(right) && !nonnegative.contains(left) {
+        nonnegative.push(left.clone());
+    }
+}
+
 fn less_equal_zero_nat_local<'a>(
     expression: &'a CompilerExpression,
     environment: &'a BTreeMap<String, BindingFacts>,
@@ -32587,6 +33686,28 @@ fn less_equal_zero_nat_local<'a>(
     .then_some(name)
 }
 
+fn less_equal_nat_local_false_bound(
+    expression: &CompilerExpression,
+    environment: &BTreeMap<String, BindingFacts>,
+) -> Option<(String, BigInt)> {
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::LessEqual,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return None;
+    };
+    let CompilerExpressionKind::Local(name) = &left.kind else {
+        return None;
+    };
+    let bound = exact_int(right)?;
+    (binding_facts_by_storage(environment, name)
+        .is_some_and(|facts| facts.value_type == CompilerType::Nat)
+        && bound >= BigInt::from(0))
+    .then(|| (name.clone(), bound + BigInt::from(1)))
+}
+
 fn greater_nat_local<'a>(
     expression: &'a CompilerExpression,
     environment: &'a BTreeMap<String, BindingFacts>,
@@ -32602,14 +33723,39 @@ fn greater_nat_local<'a>(
     let CompilerExpressionKind::Local(left_name) = &left.kind else {
         return None;
     };
+    let left_nat = binding_facts_by_storage(environment, left_name)
+        .is_some_and(|facts| facts.value_type == CompilerType::Nat);
+    if exact_int(right).is_some_and(|value| value == BigInt::from(0)) {
+        return left_nat.then_some(left_name);
+    }
     let CompilerExpressionKind::Local(right_name) = &right.kind else {
         return None;
     };
-    let left_nat = binding_facts_by_storage(environment, left_name)
-        .is_some_and(|facts| facts.value_type == CompilerType::Nat);
     let right_nat = binding_facts_by_storage(environment, right_name)
         .is_some_and(|facts| facts.value_type == CompilerType::Nat);
     (left_nat && right_nat).then_some(left_name)
+}
+
+fn greater_nat_local_bound(
+    expression: &CompilerExpression,
+    environment: &BTreeMap<String, BindingFacts>,
+) -> Option<(String, BigInt)> {
+    let CompilerExpressionKind::Binary {
+        operation: CompilerBinary::Greater,
+        left,
+        right,
+    } = &expression.kind
+    else {
+        return None;
+    };
+    let CompilerExpressionKind::Local(name) = &left.kind else {
+        return None;
+    };
+    let bound = exact_int(right)?;
+    (binding_facts_by_storage(environment, name)
+        .is_some_and(|facts| facts.value_type == CompilerType::Nat)
+        && bound >= BigInt::from(0))
+    .then(|| (name.clone(), bound + BigInt::from(1)))
 }
 
 fn call_true_nonzero_local<'a>(

@@ -8075,6 +8075,28 @@ Retained parameters after a discard SHALL keep their original source argument
 ordinals. Lowering SHALL NOT expose the discarded value under a synthetic or
 otherwise addressable Topal name.
 
+### TOPAL-COMPILER-REGEX-001 — Source-defined pattern and regex execution
+
+The compiler SHALL admit the exact pattern, glob, and design-0 regular-expression
+algorithms defined by `std pattern`, including Unicode-scalar decomposition and
+ordering, anchors, classes, repetition, grouping, and leftmost-longest captures.
+The native result SHALL agree with interpretation for the shared pattern and
+regular-expression conformance sources.
+
+Finite proof flow MAY retain Character, nonnegative, nonzero, and lower-bound
+evidence through specialized calls, folds, and Boolean decision complements.
+Dynamic Unicode-scalar decomposition and scalar-value extraction SHALL operate
+on the preserved UTF-8 scalar sequence and SHALL reject a non-scalar operand;
+they SHALL NOT introduce locale policy, normalization, or byte-oriented pattern
+semantics.
+
+Compiler-private List layouts used by the source-defined engine SHALL preserve
+the exact classifiers and field values of `(Int, String, Int, Int)`,
+`(Nat, Nat, String, Nat)`, `(Int, List Int)`, `(Int, List (Int, Int))`, and
+`(Boolean, String)` entries across construction, append, concatenation, fold,
+selection, `first`, counting, and equality. These layouts remain sealed native
+implementation details and SHALL pass LLVM verification.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,
