@@ -25,6 +25,7 @@ use topal_syntax::{
     FunctionParameter, InterfaceFunction, ProductField, Statement, lex, parse,
 };
 
+use crate::modules::SourceModule;
 use crate::source::{
     body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
     expression_mentions_name, is_supported_returning_boolean_action_shape,
@@ -1288,12 +1289,8 @@ pub struct CompilerDependency {
     pub source_span: Span,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CompilerSourceModule {
-    pub identity: Vec<String>,
-    pub source_name: String,
-    pub source: String,
-}
+/// Compatibility name for the shared source-module boundary.
+pub type CompilerSourceModule = SourceModule;
 
 #[derive(Clone)]
 struct FunctionSource {
@@ -41222,11 +41219,14 @@ mod tests {
             CompilerExpressionKind::ListEmptyPredicate(_)
         ));
         assert_eq!(results[11].value_type, list);
-        let unsupported = "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nvalues reverse\n";
-        assert_eq!(
-            analyze_for_compiler(unsupported).unwrap_err().code,
-            "E-COMPILER-UNSUPPORTED"
-        );
+        let reversed = analyze_for_compiler(
+            "use language (version is v0.1)\nvalues : List (Int, String) is Entry ((1, \"one\"), Empty)\nvalues reverse\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            reversed.main.result.kind,
+            CompilerExpressionKind::ListReverse(_)
+        ));
     }
 
     #[test]

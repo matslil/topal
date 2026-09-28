@@ -4,6 +4,10 @@ This architecture realizes `TOPAL-GOAL-TOOLCHAIN-001` and
 `TOPAL-REQ-SHARED-001`. It records approved system intent for the interpreter,
 compiler, language server, linter, and static and runtime debuggers.
 
+The [tool implementation architecture](tool-implementation-architecture.md)
+refines this pipeline into concrete dependency and interface boundaries for the
+shared language crate, interpreter, compiler, and their host adapters.
+
 ## Shared pipeline
 
 Tools consume progressively richer reusable layers:
