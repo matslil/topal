@@ -4,9 +4,29 @@ mod compiler_model;
 mod concurrency;
 mod documentation;
 mod execution;
-mod modules;
+pub mod modules;
 mod source;
 mod trace;
+
+/// Checked semantic model consumed by native compiler backends.
+pub mod compiler {
+    pub use crate::compiler_model::*;
+}
+
+/// Deterministic source execution model consumed by interpreters and debuggers.
+pub mod interpreter {
+    pub use crate::execution::{
+        ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
+    };
+    pub use crate::source::{Execution, ExecutionStep, Session, Value, display_string_literal};
+}
+
+/// Stable semantic tracing interface shared by execution adapters.
+pub mod tracing {
+    pub use crate::trace::{
+        DEBUGGING_PROFILE, JsonLines, TEST_TRACE_SCHEMA, TESTING_PROFILE, TraceEvent, TraceSink,
+    };
+}
 
 pub use compiler_model::{
     CompilerAddressOffset, CompilerAddressOffsetType, CompilerAddressRange,
@@ -37,8 +57,8 @@ pub use execution::{
     ExecutionHistory, ExecutionSnapshot, ExecutionState, ExecutionTransition, SourceRange,
 };
 pub use modules::{
-    declares_library, declares_string_solver, load_module_tree, published_function_names,
-    references_module,
+    ModuleSelectionError, SourceModule, declares_library, declares_string_solver, load_module_tree,
+    published_function_names, references_module, select_source_modules,
 };
 pub use source::{Execution, ExecutionStep, Session, Value, display_string_literal};
 pub use topal_semantics::LanguageVersion;

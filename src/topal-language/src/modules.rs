@@ -1,11 +1,172 @@
 //! Shared filesystem module loading for interpreters and compiler frontends.
 
+use std::fmt;
 use std::fs;
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
 
-use crate::{Session, TraceSink};
+use crate::source::Session;
+use crate::trace::TraceSink;
 use topal_source::SourceText;
 use topal_syntax::{Statement, lex, parse};
+
+/// One source module with its stable logical identity and diagnostic filename.
+///
+/// Discovery owns filesystem layout. Semantic consumers receive this value and
+/// do not need to know how package directories map to module identities.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SourceModule {
+    pub identity: Vec<String>,
+    pub source_name: String,
+    pub source: String,
+}
+
+/// Filesystem failure while discovering source modules.
+#[derive(Debug)]
+pub struct ModuleSelectionError {
+    path: PathBuf,
+    source: io::Error,
+}
+
+impl fmt::Display for ModuleSelectionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "cannot read library path {}: {}",
+            self.path.display(),
+            self.source
+        )
+    }
+}
+
+impl std::error::Error for ModuleSelectionError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+/// Discover source modules referenced by an application in deterministic order.
+///
+/// Only explicitly declared libraries are considered. Ordinary files map to
+/// their relative path identity; a `module.t` facade maps to its directory and
+/// is selected when one of its published functions is referenced.
+///
+/// # Errors
+///
+/// Returns the path and originating I/O error when an existing library tree
+/// cannot be read. A named library absent from `library_root` contributes no
+/// modules so semantic analysis can issue the authoritative availability
+/// diagnostic.
+pub fn select_source_modules(
+    application: &str,
+    library_root: &Path,
+    available_libraries: &[&str],
+) -> Result<Vec<SourceModule>, ModuleSelectionError> {
+    let mut modules = Vec::new();
+    for library in available_libraries {
+        if !declares_library(application, library) {
+            continue;
+        }
+        let directory = library_root.join(library);
+        collect_selected_source_modules(
+            application,
+            library,
+            &directory,
+            &directory,
+            &mut modules,
+        )?;
+    }
+    modules.sort_by(|left, right| left.identity.cmp(&right.identity));
+    Ok(modules)
+}
+
+fn collect_selected_source_modules(
+    application: &str,
+    library: &str,
+    root: &Path,
+    directory: &Path,
+    modules: &mut Vec<SourceModule>,
+) -> Result<(), ModuleSelectionError> {
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(source) => {
+            return Err(ModuleSelectionError {
+                path: directory.to_owned(),
+                source,
+            });
+        }
+    };
+    let mut paths = entries
+        .map(|entry| entry.map(|entry| entry.path()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|source| ModuleSelectionError {
+            path: directory.to_owned(),
+            source,
+        })?;
+    paths.sort();
+    for path in paths {
+        if path.is_dir() {
+            collect_selected_source_modules(application, library, root, &path, modules)?;
+            continue;
+        }
+        if !is_selectable_module_source(&path) {
+            continue;
+        }
+        let relative = path
+            .strip_prefix(root)
+            .expect("discovered library path remains below its root");
+        let mut identity = vec![library.to_owned()];
+        identity.extend(
+            relative
+                .parent()
+                .into_iter()
+                .flat_map(Path::components)
+                .map(|component| component.as_os_str().to_string_lossy().into_owned()),
+        );
+        if path.file_name().is_none_or(|name| name != "module.t") {
+            identity.push(
+                path.file_stem()
+                    .expect("selected .t module has a stem")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+        let source = fs::read_to_string(&path).map_err(|source| ModuleSelectionError {
+            path: path.clone(),
+            source,
+        })?;
+        let selected = if path.file_name().is_some_and(|name| name == "module.t") {
+            published_function_names(&source)
+                .into_iter()
+                .any(|function| {
+                    let mut qualified = identity.clone();
+                    qualified.push(function);
+                    references_module(application, &qualified)
+                })
+        } else {
+            references_module(application, &identity)
+        };
+        if selected {
+            modules.push(SourceModule {
+                identity,
+                source_name: path.display().to_string(),
+                source,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn is_selectable_module_source(path: &Path) -> bool {
+    path.extension().is_some_and(|extension| extension == "t")
+        && path.file_name().is_some_and(|name| {
+            !matches!(
+                name.to_str(),
+                Some("application.t" | "package.t" | "library.t")
+            )
+        })
+}
 
 /// Test whether source contains one syntactically contiguous qualified module
 /// path. Trivia may occur between components.
@@ -189,6 +350,37 @@ mod tests {
     use super::*;
     use crate::Value;
     use num_bigint::BigInt;
+
+    #[test]
+    fn selected_source_modules_distinguish_facades_from_nested_modules() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+        let flat = select_source_modules(
+            "use language (version is v0.1)\nuse library std (version is v0.1)\nminimum is std min\n()\n",
+            &root,
+            &["advent-of-code", "std"],
+        )
+        .unwrap();
+        assert_eq!(
+            flat.iter()
+                .map(|module| module.identity.join("."))
+                .collect::<Vec<_>>(),
+            ["std"]
+        );
+
+        let nested = select_source_modules(
+            "use language (version is v0.1)\nuse library std (version is v0.1)\nsafe? is std web http safe-method?\n()\n",
+            &root,
+            &["advent-of-code", "std"],
+        )
+        .unwrap();
+        assert_eq!(
+            nested
+                .iter()
+                .map(|module| module.identity.join("."))
+                .collect::<Vec<_>>(),
+            ["std.web.http"]
+        );
+    }
 
     #[test]
     fn source_module_reference_detection_uses_qualified_tokens() {
