@@ -1,0 +1,121 @@
+#![cfg(all(unix, target_arch = "x86_64"))]
+
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use topal_c_abi::AccessLibrary;
+
+static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
+
+fn temporary(name: &str) -> PathBuf {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/topal-c-bindgen-tests");
+    fs::create_dir_all(&root).unwrap();
+    loop {
+        let sequence = NEXT_TEST.fetch_add(1, Ordering::Relaxed);
+        let path = root.join(format!("{name}-{}-{sequence}", std::process::id()));
+        match fs::create_dir(&path) {
+            Ok(()) => return path,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => panic!("cannot create {}: {error}", path.display()),
+        }
+    }
+}
+
+fn llvm_tools() -> PathBuf {
+    let output = Command::new("rustc")
+        .args(["--print", "target-libdir"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    PathBuf::from(String::from_utf8(output.stdout).unwrap().trim())
+        .parent()
+        .unwrap()
+        .join("bin")
+}
+
+#[test]
+fn generates_a_canonical_access_library_atomically() {
+    let directory = temporary("generate");
+    let tools = llvm_tools();
+    let header = directory.join("arithmetic.h");
+    let ir = directory.join("arithmetic.ll");
+    let bitcode = directory.join("arithmetic.bc");
+    let object = directory.join("arithmetic.o");
+    let archive = directory.join("libarithmetic.a");
+    let clang = directory.join("clang-22");
+    let output = directory.join("arithmetic");
+    fs::write(
+        &header,
+        "int c_add(int left, int right) __attribute__((const));\n",
+    )
+    .unwrap();
+    fs::write(
+        &ir,
+        "target triple = \"x86_64-unknown-linux-gnu\"\ndefine i32 @c_add(i32 %left, i32 %right) {\nentry:\n  %sum = add i32 %left, %right\n  ret i32 %sum\n}\n",
+    )
+    .unwrap();
+    for status in [
+        Command::new(tools.join("llvm-as"))
+            .args([ir.to_str().unwrap(), "-o", bitcode.to_str().unwrap()])
+            .status()
+            .unwrap(),
+        Command::new(tools.join("llc"))
+            .args([
+                "-filetype=obj",
+                "-mtriple=x86_64-unknown-linux-gnu",
+                bitcode.to_str().unwrap(),
+                "-o",
+                object.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap(),
+        Command::new(tools.join("llvm-ar"))
+            .args(["rcs", archive.to_str().unwrap(), object.to_str().unwrap()])
+            .status()
+            .unwrap(),
+    ] {
+        assert!(status.success());
+    }
+    fs::write(
+        &clang,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then\n  echo 'clang version 22.0.0'\nelse\n  printf '%s' '{\"kind\":\"TranslationUnitDecl\",\"inner\":[{\"kind\":\"FunctionDecl\",\"name\":\"c_add\",\"type\":{\"qualType\":\"int (int, int)\"},\"inner\":[{\"kind\":\"ParmVarDecl\",\"name\":\"left\",\"type\":{\"qualType\":\"int\"}},{\"kind\":\"ParmVarDecl\",\"name\":\"right\",\"type\":{\"qualType\":\"int\"}},{\"kind\":\"ConstAttr\"}]}]}'\nfi\n",
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&clang).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&clang, permissions).unwrap();
+
+    let generated = Command::new(env!("CARGO_BIN_EXE_topal-c-bindgen"))
+        .args([
+            "--library",
+            "arithmetic",
+            "--header",
+            header.to_str().unwrap(),
+            "--archive",
+            archive.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+            "--clang",
+            clang.to_str().unwrap(),
+            "--llvm-tools",
+            tools.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let manifest =
+        AccessLibrary::decode(&fs::read(output.join("module.topal-c-abi.json")).unwrap()).unwrap();
+    assert_eq!(
+        fs::read_to_string(output.join("module.t")).unwrap(),
+        manifest.topal_source()
+    );
+    assert_eq!(manifest.functions[0].symbol, "c_add");
+    assert!(output.join("libarithmetic.a").is_file());
+}

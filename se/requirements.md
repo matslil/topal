@@ -250,6 +250,15 @@ target-qualified native slices and reproducible dependency, toolchain,
 provenance, and debug mappings. LLVM IR or bitcode shall not become the stable
 library compatibility boundary.
 
+## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
+
+The first foreign-language boundary shall be a separately selected,
+target-qualified C ABI access library. A generated access library shall bind
+human-readable Topal ABI declarations, canonical machine metadata, the parsed
+C interface, and the exact linked binary by reproducible identity. Checked
+adapters shall prevent the private Topal value or calling representation from
+crossing the boundary, and unsupported declarations shall fail closed.
+
 ## TOPAL-REQ-NATIVE-DEBUG-001 — Source-level native debugging
 
 An unoptimized native artifact shall retain sufficient source, scope, function,

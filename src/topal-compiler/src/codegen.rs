@@ -5,15 +5,16 @@ use std::path::Path;
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
 use topal_language::compiler::{
-    CompilerAggregatePathElement, CompilerBinary, CompilerBlock, CompilerComparisonRule,
-    CompilerContainerKind, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
-    CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
-    CompilerFunction, CompilerFunctionResultCapture, CompilerGeneratorCloseHandler,
-    CompilerGeneratorLocal, CompilerGeneratorType, CompilerGeneratorYield,
-    CompilerListIndexOperation, CompilerListZipOperation, CompilerLocationType,
-    CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter, CompilerProgram,
-    CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType, CompilerType,
-    CompilerValidation, compiler_function_result_capture_storage, display_string_literal,
+    CompilerAggregatePathElement, CompilerBinary, CompilerBlock, CompilerCValue,
+    CompilerComparisonRule, CompilerContainerKind, CompilerEnumRule, CompilerEnumType,
+    CompilerErrorCodeRule, CompilerErrorField, CompilerExpression, CompilerExpressionKind,
+    CompilerFallible, CompilerFunction, CompilerFunctionResultCapture,
+    CompilerGeneratorCloseHandler, CompilerGeneratorLocal, CompilerGeneratorType,
+    CompilerGeneratorYield, CompilerListIndexOperation, CompilerListZipOperation,
+    CompilerLocationType, CompilerMapCollisionPolicy, CompilerModularType, CompilerParameter,
+    CompilerProgram, CompilerStatement, CompilerSumRule, CompilerSumType, CompilerTaskType,
+    CompilerType, CompilerValidation, compiler_function_result_capture_storage,
+    display_string_literal,
 };
 use topal_source::Span;
 
@@ -566,6 +567,7 @@ struct Generator<'a> {
     source_name: &'a str,
     globals: Vec<String>,
     functions: Vec<String>,
+    foreign_declarations: BTreeSet<String>,
     next_global: usize,
     needs_infinity_result_runtime: bool,
     scalar_list_runtime_fragments: BTreeSet<ScalarListRuntimeFragment>,
@@ -594,6 +596,7 @@ impl<'a> Generator<'a> {
             source_name,
             globals: Vec::new(),
             functions: Vec::new(),
+            foreign_declarations: BTreeSet::new(),
             next_global: 0,
             needs_infinity_result_runtime: false,
             scalar_list_runtime_fragments: BTreeSet::new(),
@@ -638,6 +641,7 @@ impl<'a> Generator<'a> {
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
         module.push('\n');
+        self.emit_foreign_declarations(&mut module);
         if self.needs_infinity_result_runtime {
             module.push_str(INFINITY_RESULT_RUNTIME);
             module.push('\n');
@@ -721,6 +725,15 @@ impl<'a> Generator<'a> {
         );
         module.push_str(&self.debug.finish());
         module
+    }
+
+    fn emit_foreign_declarations(&self, module: &mut String) {
+        for declaration in &self.foreign_declarations {
+            let _ = writeln!(module, "{declaration}");
+        }
+        if !self.foreign_declarations.is_empty() {
+            module.push('\n');
+        }
     }
 
     fn emit_scalar_list_runtimes(&self, module: &mut String) {
@@ -812,6 +825,10 @@ impl<'a> Generator<'a> {
 
     #[allow(clippy::if_not_else, clippy::too_many_lines)] // Capture returns precede exhaustive ordinary returns.
     fn emit_function(&mut self, function: &CompilerFunction) {
+        if function.foreign.is_some() {
+            self.emit_foreign_function(function);
+            return;
+        }
         let return_type = function_llvm_return_type(function);
         let parameter_types = function
             .parameters
@@ -961,6 +978,105 @@ impl<'a> Generator<'a> {
                         location,
                     );
                 }
+            }
+        }
+        self.functions.push(format!(
+            "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
+            function.symbol,
+            body.render()
+        ));
+    }
+
+    fn emit_foreign_function(&mut self, function: &CompilerFunction) {
+        let foreign = function
+            .foreign
+            .as_ref()
+            .expect("foreign adapter retains checked C metadata");
+        debug_assert_eq!(foreign.parameters.len(), function.parameters.len());
+        let external_result = match foreign.result {
+            CompilerCValue::Void => "void",
+            CompilerCValue::SignedInt32 => "i32",
+        };
+        let external_parameters = foreign
+            .parameters
+            .iter()
+            .map(|value| match value {
+                CompilerCValue::SignedInt32 => "i32",
+                CompilerCValue::Void => unreachable!("validated C parameters are non-void"),
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.foreign_declarations.insert(format!(
+            "declare {external_result} @{}({external_parameters})",
+            foreign.external_symbol
+        ));
+
+        let return_type = function_llvm_return_type(function);
+        let parameter_types = function
+            .parameters
+            .iter()
+            .map(|parameter| parameter.value_type.clone())
+            .collect::<Vec<_>>();
+        let subprogram = self.debug.subprogram(
+            &function.source_name,
+            &function.symbol,
+            function.span,
+            &function.result_type,
+            &parameter_types,
+        );
+        let parameters = function
+            .parameters
+            .iter()
+            .enumerate()
+            .map(|(index, parameter)| {
+                format!("{} %arg{index}", llvm_value_type(&parameter.value_type))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let mut body = FunctionBody::new(subprogram);
+        let mut c_arguments = Vec::with_capacity(function.parameters.len());
+        for (index, value) in foreign.parameters.iter().enumerate() {
+            match value {
+                CompilerCValue::SignedInt32 => c_arguments.push(body.instruction(
+                    &format!("call i32 @topal.runtime.int.to.c.i32(ptr %arg{index})"),
+                    function.parameters[index].span,
+                    &mut self.debug,
+                )),
+                CompilerCValue::Void => unreachable!("validated C parameters are non-void"),
+            }
+        }
+        let arguments = c_arguments
+            .iter()
+            .map(|argument| format!("i32 {argument}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let location = self.debug.location(function.body.result.span, subprogram);
+        match foreign.result {
+            CompilerCValue::Void => {
+                body.effect(
+                    &format!("call void @{}({arguments})", foreign.external_symbol),
+                    function.body.result.span,
+                    &mut self.debug,
+                );
+                body.terminator("ret void", location);
+            }
+            CompilerCValue::SignedInt32 => {
+                let result = body.instruction(
+                    &format!("call i32 @{}({arguments})", foreign.external_symbol),
+                    function.body.result.span,
+                    &mut self.debug,
+                );
+                let extended = body.instruction(
+                    &format!("sext i32 {result} to i64"),
+                    function.body.result.span,
+                    &mut self.debug,
+                );
+                let adapted = body.instruction(
+                    &format!("call ptr @topal.runtime.int.from.i64(i64 {extended})"),
+                    function.body.result.span,
+                    &mut self.debug,
+                );
+                body.terminator(&format!("ret ptr {adapted}"), location);
             }
         }
         self.functions.push(format!(

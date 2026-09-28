@@ -306,7 +306,26 @@ Linux system-call interface. Future operating-system services belong in
 versioned Topal platform libraries with typed effects and failures, not hidden
 calls into a foreign standard library.
 
-This does not prohibit an explicitly declared foreign interface in a future
-language revision. Such an interface will use checked target adapters and a
-concrete published ABI rather than exposing the compiler's private value
-representation.
+This does not prohibit an explicitly declared foreign interface in a selected
+language feature. The [C access-library feature](foreign-c.md) uses checked
+target adapters and a concrete published ABI rather than exposing the
+compiler's private value representation. Its first increment accepts a
+Clang-checked header and a matching ELF x86-64 static archive:
+
+```console
+topal-c-bindgen \
+  --library arithmetic \
+  --header arithmetic.h \
+  --archive libarithmetic.a \
+  --output library/arithmetic \
+  --clang /opt/llvm-22/bin/clang \
+  --llvm-tools /opt/llvm-22/bin
+topalc --library-root library -o application application.t
+```
+
+The translator emits canonical `module.t` and
+`module.topal-c-abi.json` descriptions plus copied, digested interface and
+archive inputs. The compiler compares both descriptions, rechecks the input
+digests, lowers only used published adapters, and records the C inputs in the
+native artifact. No default C library or startup code is added. Shared-library
+loading is a separately versioned increment.

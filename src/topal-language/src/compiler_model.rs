@@ -1223,6 +1223,7 @@ pub struct CompilerGeneratorCloseHandler {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompilerFunction {
     pub source_name: String,
+    pub module_identity: Option<Vec<String>>,
     pub symbol: String,
     pub parameters: Vec<CompilerParameter>,
     pub pattern_identities: Vec<CompilerPatternIdentity>,
@@ -1232,6 +1233,21 @@ pub struct CompilerFunction {
     pub span: Span,
     pub is_static: bool,
     pub declared_effects: Option<CompilerEffectRow>,
+    pub foreign: Option<CompilerCFunction>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerCValue {
+    Void,
+    SignedInt32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CompilerCFunction {
+    pub library_identity: String,
+    pub external_symbol: String,
+    pub parameters: Vec<CompilerCValue>,
+    pub result: CompilerCValue,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -2027,7 +2043,7 @@ pub fn analyze_for_compiler_with_modules(
     let mut identities = BTreeSet::new();
     let mut modules = modules.iter().collect::<Vec<_>>();
     modules.sort_by(|left, right| left.identity.cmp(&right.identity));
-    for module in modules {
+    for module in &modules {
         let identity = module.identity.join(".");
         if module.identity.is_empty() || !identities.insert(identity.clone()) {
             return Err(Diagnostic::error(
@@ -2082,7 +2098,11 @@ pub fn analyze_for_compiler_with_modules(
     let (language_version, language_features) =
         compiler_language_context(&source, &root_statements)?;
     reject_later_language_selections(&source, &root_statements)?;
-    validate_compiler_library_selections(&source, &root_statements)?;
+    let available_libraries = modules
+        .iter()
+        .filter_map(|module| module.identity.first().cloned())
+        .collect::<BTreeSet<_>>();
+    validate_compiler_library_selections(&source, &root_statements, &available_libraries)?;
 
     let (enums, enum_alternatives) = collect_enums(&source, &root_statements)?;
     let (sums, sum_alternatives) =
@@ -2147,7 +2167,7 @@ pub fn analyze_for_compiler_with_modules(
             .collect::<Vec<_>>();
         let (module_version, _) = compiler_language_context(&source, &statements)?;
         reject_later_language_selections(&source, &statements)?;
-        validate_compiler_library_selections(&source, &statements)?;
+        validate_compiler_library_selections(&source, &statements, &available_libraries)?;
         if module_version != language_version {
             return Err(source_diagnostic(
                 &source,
@@ -2769,7 +2789,7 @@ fn compiler_language_context(
     let mut language_features = BTreeSet::new();
     for feature in features {
         let feature_name = source.slice(*feature);
-        if feature_name != "lint" {
+        if !matches!(feature_name, "lint" | "abi") {
             return Err(source_diagnostic(
                 source,
                 "E-COMPILER-UNSUPPORTED",
@@ -2805,6 +2825,7 @@ fn reject_later_language_selections(
 fn validate_compiler_library_selections(
     source: &SourceText,
     statements: &[Statement],
+    available_libraries: &BTreeSet<String>,
 ) -> Result<(), Diagnostic> {
     let mut libraries = BTreeSet::new();
     let mut declarations_closed = false;
@@ -2824,7 +2845,9 @@ fn validate_compiler_library_selections(
                         format!("library `{identity}` is declared more than once"),
                     ));
                 }
-                if !matches!(identity, "std" | "advent-of-code") {
+                if !matches!(identity, "std" | "advent-of-code")
+                    && !available_libraries.contains(identity)
+                {
                     return Err(source_diagnostic(
                         source,
                         "E-UNSUPPORTED-LIBRARY",
@@ -4032,6 +4055,7 @@ fn exact_character_generator_local_close_handler(
         },
         CompilerFunction {
             source_name: String::from("cleanup"),
+            module_identity: None,
             symbol: String::new(),
             parameters: vec![local_parameter],
             pattern_identities: Vec::new(),
@@ -4044,6 +4068,7 @@ fn exact_character_generator_local_close_handler(
             span: *function_span,
             is_static: false,
             declared_effects: None,
+            foreign: None,
         },
     ))
 }
@@ -4674,6 +4699,7 @@ fn exact_boolean_local_function_generator_body(
     };
     let function = CompilerFunction {
         source_name: String::from("label"),
+        module_identity: None,
         symbol: String::new(),
         parameters: vec![local_parameter.clone()],
         pattern_identities: Vec::new(),
@@ -4713,6 +4739,7 @@ fn exact_boolean_local_function_generator_body(
         span: *function_span,
         is_static: false,
         declared_effects: None,
+        foreign: None,
     };
     let result = CompilerExpression {
         kind: CompilerExpressionKind::Call {
@@ -22605,6 +22632,7 @@ impl Analyzer {
         let rational_value = analyzed_body.result.rational_value.clone();
         self.instances.push(CompilerFunction {
             source_name,
+            module_identity: None,
             symbol: symbol.clone(),
             parameters: lowered_parameters,
             pattern_identities,
@@ -22614,6 +22642,7 @@ impl Analyzer {
             span: declaration_span,
             is_static: static_context,
             declared_effects: None,
+            foreign: None,
         });
         let call = CompilerExpression {
             kind: CompilerExpressionKind::Call { symbol, arguments },
@@ -26936,6 +26965,7 @@ impl Analyzer {
         }
         self.instances.push(CompilerFunction {
             source_name: function_name.to_owned(),
+            module_identity: declaration.module_identity.clone(),
             symbol: symbol.clone(),
             parameters,
             pattern_identities: Vec::new(),
@@ -26945,6 +26975,7 @@ impl Analyzer {
             span: declaration.span,
             is_static: declaration.is_static,
             declared_effects: declaration.declared_effects.clone(),
+            foreign: None,
         });
         Ok((symbol, result_type, int_range, rational_value))
     }

@@ -589,39 +589,44 @@ functional update may overwrite the encoded storage in place when uniqueness,
 lifetime, and alias analysis prove that the previous immutable value is no
 longer observable.
 
-## Future foreign boundary declarations
+## C foreign boundary declarations
 
-A future foreign declaration would belong to a sandbox adapter and associate
-an external symbol or callback entry inside that sandbox with a declared
-boundary protocol. It would explicitly declare:
+An enabled C foreign declaration belongs to a boundary adapter and associates
+an external symbol with a declared boundary protocol. Every profile explicitly
+declares:
 
-- the sandbox, ABI, and external symbol identity;
+- its execution boundary, ABI, and external symbol identity;
 - a layout for every externally represented input and output;
 - copied or serialized ownership and destruction behavior;
 - explicitly granted resource capabilities;
 - fallibility and error translation;
-- whether the sandbox operation may suspend or send replies; and
-- the task protocol through which each sandbox message enters Topal.
+- whether the operation may suspend or send replies; and
+- any task protocol through which a callback or isolated message enters Topal.
 
 Layout decoding, constrained integer construction, text decoding, and protocol
-validation occur at the sandbox boundary and return `Result` when external data
+validation occur at the adapter boundary and return `Result` when external data
 may be invalid. Foreign code receives no borrowed Topal value, raw continuation,
-task internals, unrestricted callback, or ambient process resource.
+task internals, or unrestricted callback. An in-process adapter cannot isolate
+the process from memory corruption or ambient access by the linked native code;
+such code is consequently part of the executable's trusted computing base.
 
-The adapter exposes only copied or serialized values and explicitly granted
+The adapter exposes only copied or serialized values and explicitly declared
 handles. Effects on a granted file, device, endpoint, or other resource retain
 that identity in Topal's dependency graph. Programmer claims can add semantic
-or optimization evidence but cannot bypass the sandbox or validation.
+or optimization evidence but cannot bypass validation or manufacture Topal
+capabilities.
 
-Foreign callbacks become declared sandbox messages delivered to a typed task
-capability. They do not enter as arbitrary calls on an external thread.
-Ordinary task isolation, termination, and effect ordering then apply. Future
-language-specific adapters may establish stronger direct-call promises from
-their own safety and interface systems.
+Profiles that admit foreign callbacks make them declared boundary messages
+delivered to a typed task capability. They do not enter as arbitrary calls on
+an external thread. Ordinary task isolation, termination, and effect ordering
+then apply. A profile may instead admit a direct call only when its complete
+in-process trust and effect contract is explicit.
 
-Foreign integration, its declaration grammar, and its ABI catalogs are not part
-of the current language commitment. ABI families may later belong to selected
-language features rather than the portable bootstrap grammar.
+The first committed catalog is the separately selected [`abi` language
+feature](foreign-c.md). It admits only the target-qualified copied C `int` and
+`void` static-library subset. Other C layouts and every non-C ABI remain
+outside the current commitment until their validation, ownership, failure,
+effect, and callback rules are specified.
 
 ## Revision `v0.2` compositional layouts
 

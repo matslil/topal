@@ -110,6 +110,7 @@ not.whitespace:
 @topal.runtime.error.code.division.by.zero = private constant [16 x i8] c"division-by-zero", align 1
 @topal.runtime.error.code.indeterminate = private constant [13 x i8] c"indeterminate", align 1
 @topal.runtime.pattern.identity.diagnostic = private constant [68 x i8] c"error[E-ANONYMOUS-PATTERN-IDENTITY]: repeated pattern values differ\0A", align 1
+@topal.runtime.c.int32.range.diagnostic = private constant [71 x i8] c"error[E-C-ABI-RANGE]: Topal Int is not representable as a C signed int\0A", align 1
 @topal.runtime.task.next.identity = private global i64 1, align 8
 
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
@@ -130,6 +131,13 @@ entry:
 define internal void @topal.runtime.pattern.identity.fail() noreturn nounwind noinline {
 entry:
   %ignored = call i64 @topal.platform.write(i64 2, ptr @topal.runtime.pattern.identity.diagnostic, i64 68)
+  call void @topal.platform.exit(i64 65)
+  unreachable
+}
+
+define internal void @topal.runtime.c.int32.range.fail() noreturn nounwind noinline {
+entry:
+  %ignored = call i64 @topal.platform.write(i64 2, ptr @topal.runtime.c.int32.range.diagnostic, i64 71)
   call void @topal.platform.exit(i64 65)
   unreachable
 }
@@ -1129,6 +1137,52 @@ store.high:
   br label %done
 done:
   ret ptr %value
+}
+
+define internal ptr @topal.runtime.int.from.i64(i64 %source) nounwind noinline {
+entry:
+  %negative = icmp slt i64 %source, 0
+  %negated = sub i64 0, %source
+  %magnitude = select i1 %negative, i64 %negated, i64 %source
+  %value = call ptr @topal.runtime.int.from.u64(i64 %magnitude)
+  br i1 %negative, label %signed, label %done
+signed:
+  %negative.value = call ptr @topal.runtime.int.copy.with.sign(ptr %value, i64 1)
+  ret ptr %negative.value
+done:
+  ret ptr %value
+}
+
+define internal i32 @topal.runtime.int.to.c.i32(ptr %value) nounwind noinline {
+entry:
+  %sign.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 0
+  %length.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 1
+  %sign = load i64, ptr %sign.pointer, align 8
+  %length = load i64, ptr %length.pointer, align 8
+  %zero = icmp eq i64 %length, 0
+  br i1 %zero, label %return.zero, label %nonzero
+return.zero:
+  ret i32 0
+nonzero:
+  %one.limb = icmp eq i64 %length, 1
+  %finite.sign = icmp ule i64 %sign, 1
+  %shape.valid = and i1 %one.limb, %finite.sign
+  br i1 %shape.valid, label %load, label %failure
+load:
+  %limb.pointer = getelementptr %topal.IntStorage, ptr %value, i32 0, i32 2, i64 0
+  %limb = load i32, ptr %limb.pointer, align 4
+  %negative = icmp eq i64 %sign, 1
+  %positive.valid = icmp ule i32 %limb, 2147483647
+  %negative.valid = icmp ule i32 %limb, 2147483648
+  %range.valid = select i1 %negative, i1 %negative.valid, i1 %positive.valid
+  br i1 %range.valid, label %convert, label %failure
+convert:
+  %negated = sub i32 0, %limb
+  %result = select i1 %negative, i32 %negated, i32 %limb
+  ret i32 %result
+failure:
+  call void @topal.runtime.c.int32.range.fail()
+  unreachable
 }
 
 define internal i64 @topal.runtime.int.limb.or.zero(ptr %value, i64 %index) nounwind noinline {

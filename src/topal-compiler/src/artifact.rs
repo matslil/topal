@@ -69,6 +69,7 @@ impl NativeArtifactMetadata {
     #[must_use]
     pub fn for_program(
         program: &CompilerProgram,
+        foreign_dependencies: &[DigestEntry],
         source_name: &str,
         output_kind: &str,
         output: &[u8],
@@ -76,7 +77,7 @@ impl NativeArtifactMetadata {
     ) -> Self {
         let source_sha256 =
             sha256(&program.source.as_str().as_bytes()[..program.primary_source_end]);
-        let dependencies = program
+        let mut dependencies = program
             .dependencies
             .iter()
             .map(|dependency| DigestEntry {
@@ -84,6 +85,8 @@ impl NativeArtifactMetadata {
                 sha256: sha256(dependency.source_text.as_bytes()),
             })
             .collect::<Vec<_>>();
+        dependencies.extend_from_slice(foreign_dependencies);
+        dependencies.sort_by(|left, right| left.identity.cmp(&right.identity));
         let interface_sha256 = sha256(b"topal.native-artifact/1:empty-interface");
         let mut build_inputs = vec![
             "topal.native-build/1".to_owned(),
@@ -361,6 +364,7 @@ mod tests {
         let program = analyze_for_compiler("use language (version is v0.1)\n()\n").unwrap();
         let metadata = NativeArtifactMetadata::for_program(
             &program,
+            &[],
             "unit.t",
             "llvm-ir",
             b"ir",
@@ -378,6 +382,7 @@ mod tests {
         let program = analyze_for_compiler("use language (version is v0.1)\n()\n").unwrap();
         let mut metadata = NativeArtifactMetadata::for_program(
             &program,
+            &[],
             "unit.t",
             "llvm-ir",
             b"ir",
