@@ -323,8 +323,10 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::ArrayAt { array: value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::StringCharacterCount(value)
         | CompilerExpressionKind::StringUnicodeScalarValue(value)
         | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
+        | CompilerExpressionKind::CharacterUnicodeWhitespace(value)
         | CompilerExpressionKind::RecordField { record: value, .. }
         | CompilerExpressionKind::RangeLower(value)
         | CompilerExpressionKind::RangeUpper(value)
@@ -1900,6 +1902,17 @@ impl<'a> Generator<'a> {
                     &mut self.debug,
                 ))
             }
+            CompilerExpressionKind::StringCharacterCount(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Int(body.instruction(
+                    &format!(
+                        "call ptr @topal.runtime.string.character.count(ptr {})",
+                        value.string()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
+            }
             CompilerExpressionKind::StringUnicodeScalarValue(value) => {
                 let value = self.emit_expression(value, body, environment);
                 LlValue::Int(body.instruction(
@@ -1925,6 +1938,17 @@ impl<'a> Generator<'a> {
                     payload: CompilerType::Nat,
                     function_captures: Vec::new(),
                 }
+            }
+            CompilerExpressionKind::CharacterUnicodeWhitespace(value) => {
+                let value = self.emit_expression(value, body, environment);
+                LlValue::Boolean(body.instruction(
+                    &format!(
+                        "call i1 @topal.runtime.character.unicode.whitespace(ptr {})",
+                        value.string()
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                ))
             }
             CompilerExpressionKind::StringCharactersGenerator { text, .. } => {
                 let _ = self.emit_expression(text, body, environment);
@@ -2544,18 +2568,17 @@ impl<'a> Generator<'a> {
                     {
                         (24, 16)
                     }
-                    element if compiler_list_integer_pair(element) => (24, 16),
+                    element
+                        if compiler_list_integer_pair(element)
+                            || compiler_list_string_rational_pair(element) =>
+                    {
+                        (24, 16)
+                    }
                     element if compiler_int_list_pair(element) => (24, 16),
                     element if compiler_boolean_int_pair(element) => (24, 16),
                     element if compiler_boolean_string_pair(element) => (24, 16),
-                    CompilerType::Tuple(fields)
-                        if fields.as_slice()
-                            == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
-                    {
-                        (32, 24)
-                    }
+                    element if compiler_three_pointer_tuple(element) => (32, 24),
                     element if compiler_int_int_string_int_tuple(element) => (40, 32),
-                    element if compiler_int_int_list_triple(element) => (32, 24),
                     CompilerType::Tuple(fields)
                         if fields.as_slice()
                             == [
@@ -2718,7 +2741,10 @@ impl<'a> Generator<'a> {
                             ),
                         }
                     }
-                    (element, LlValue::Tuple(values)) if compiler_list_integer_pair(element) => {
+                    (element, LlValue::Tuple(values))
+                        if compiler_list_integer_pair(element)
+                            || compiler_list_string_rational_pair(element) =>
+                    {
                         let [list, integer] = values.as_slice() else {
                             unreachable!("checked List/list-integer pair retains two fields")
                         };
@@ -2735,7 +2761,7 @@ impl<'a> Generator<'a> {
                         body.effect(
                             &format!(
                                 "store ptr {}, ptr {integer_address}, align 8",
-                                integer.integer()
+                                integer.aggregate_pointer()
                             ),
                             expression.span,
                             &mut self.debug,
@@ -2810,10 +2836,7 @@ impl<'a> Generator<'a> {
                             &mut self.debug,
                         );
                     }
-                    (CompilerType::Tuple(field_types), LlValue::Tuple(values))
-                        if field_types.as_slice()
-                            == [CompilerType::Int, CompilerType::Int, CompilerType::Int] =>
-                    {
+                    (element, LlValue::Tuple(values)) if compiler_three_pointer_tuple(element) => {
                         let [first, second, third] = values.as_slice() else {
                             unreachable!("checked List triple value retains three fields")
                         };
@@ -2828,7 +2851,10 @@ impl<'a> Generator<'a> {
                                 )
                             };
                             body.effect(
-                                &format!("store ptr {}, ptr {address}, align 8", field.integer()),
+                                &format!(
+                                    "store ptr {}, ptr {address}, align 8",
+                                    field.aggregate_pointer()
+                                ),
                                 expression.span,
                                 &mut self.debug,
                             );
@@ -2860,40 +2886,6 @@ impl<'a> Generator<'a> {
                                 &mut self.debug,
                             );
                         }
-                    }
-                    (element, LlValue::Tuple(values)) if compiler_int_int_list_triple(element) => {
-                        let [first, second, third] = values.as_slice() else {
-                            unreachable!("checked List triple value retains three fields")
-                        };
-                        for (offset, field) in [(0, first), (8, second)] {
-                            let address = if offset == 0 {
-                                node.clone()
-                            } else {
-                                body.instruction(
-                                    &format!("getelementptr i8, ptr {node}, i64 {offset}"),
-                                    expression.span,
-                                    &mut self.debug,
-                                )
-                            };
-                            body.effect(
-                                &format!("store ptr {}, ptr {address}, align 8", field.integer()),
-                                expression.span,
-                                &mut self.debug,
-                            );
-                        }
-                        let third_address = body.instruction(
-                            &format!("getelementptr i8, ptr {node}, i64 16"),
-                            expression.span,
-                            &mut self.debug,
-                        );
-                        body.effect(
-                            &format!(
-                                "store ptr {}, ptr {third_address}, align 8",
-                                third.list_pointer()
-                            ),
-                            expression.span,
-                            &mut self.debug,
-                        );
                     }
                     (CompilerType::Tuple(field_types), LlValue::Tuple(values))
                         if field_types.as_slice()
@@ -3185,12 +3177,11 @@ impl<'a> Generator<'a> {
                 let int_pair = compiler_integer_pair(element.as_ref()) || list_integer_pair;
                 let pair_layout = int_pair || rational_nat_pair;
                 let int_string_pair = compiler_int_string_pair(element.as_ref());
+                let string_pair = compiler_string_pair(element.as_ref());
                 let int_list_pair = compiler_int_list_pair(element.as_ref());
                 let boolean_string_pair = compiler_boolean_string_pair(element.as_ref());
                 let int_int_boolean_pair = compiler_int_int_boolean_pair(element.as_ref());
-                let int_triple = compiler_int_triple(element.as_ref());
-                let int_int_list_triple = compiler_int_int_list_triple(element.as_ref());
-                let three_pointer = int_triple || int_int_list_triple;
+                let three_pointer = compiler_three_pointer_tuple(element.as_ref());
                 let four_pointer = compiler_int_int_string_int_tuple(element.as_ref());
                 let nested_int = compiler_nested_int_list_element(element.as_ref());
                 let nested_pointer = nested_int
@@ -3205,6 +3196,9 @@ impl<'a> Generator<'a> {
                 } else if int_string_pair || int_list_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntStringPair);
+                } else if string_pair {
+                    self.scalar_list_runtime_fragments
+                        .insert(ScalarListRuntimeFragment::StringPair);
                 } else if int_int_boolean_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntIntBooleanPair);
@@ -3235,6 +3229,7 @@ impl<'a> Generator<'a> {
                             32
                         } else if pair_layout
                             || int_string_pair
+                            || string_pair
                             || int_list_pair
                             || boolean_string_pair
                         {
@@ -3310,18 +3305,14 @@ impl<'a> Generator<'a> {
                     body.effect(
                         &format!(
                             "store ptr {}, ptr {third_address}, align 8",
-                            if int_int_list_triple {
-                                third.list_pointer()
-                            } else {
-                                third.integer()
-                            }
+                            third.aggregate_pointer()
                         ),
                         expression.span,
                         &mut self.debug,
                     );
                     (
-                        first.integer().to_owned(),
-                        Some(second.integer().to_owned()),
+                        first.aggregate_pointer().to_owned(),
+                        Some(second.aggregate_pointer().to_owned()),
                     )
                 } else if list_integer_pair {
                     let LlValue::Tuple(fields) = value else {
@@ -3330,6 +3321,14 @@ impl<'a> Generator<'a> {
                     (
                         fields[0].list_pointer().to_owned(),
                         Some(fields[1].integer().to_owned()),
+                    )
+                } else if string_pair {
+                    let LlValue::Tuple(fields) = value else {
+                        unreachable!("checked String pair append retains its tuple value")
+                    };
+                    (
+                        fields[0].string().to_owned(),
+                        Some(fields[1].string().to_owned()),
                     )
                 } else if int_pair || int_string_pair || int_list_pair {
                     let LlValue::Tuple(fields) = value else {
@@ -3404,6 +3403,7 @@ impl<'a> Generator<'a> {
                             24
                         } else if pair_layout
                             || int_string_pair
+                            || string_pair
                             || int_list_pair
                             || boolean_string_pair
                         {
@@ -3430,6 +3430,8 @@ impl<'a> Generator<'a> {
                                 "int.pair"
                             } else if int_string_pair || int_list_pair {
                                 "int-string"
+                            } else if string_pair {
+                                "string-pair"
                             } else if int_int_boolean_pair {
                                 "int-int-boolean-pair"
                             } else if boolean_string_pair {
@@ -3455,7 +3457,7 @@ impl<'a> Generator<'a> {
                     unreachable!("checked List concatenation retains its List result")
                 };
                 let int_pair = compiler_integer_pair(element.as_ref());
-                let int_triple = compiler_int_triple(element.as_ref());
+                let three_pointer = compiler_three_pointer_tuple(element.as_ref());
                 let int_string_pair = compiler_int_string_pair(element.as_ref());
                 let int_list_pair = compiler_int_list_pair(element.as_ref());
                 let four_pointer = compiler_int_int_string_int_tuple(element.as_ref());
@@ -3463,7 +3465,7 @@ impl<'a> Generator<'a> {
                 if int_pair {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntPair);
-                } else if int_triple {
+                } else if three_pointer {
                     self.scalar_list_runtime_fragments
                         .insert(ScalarListRuntimeFragment::IntTriple);
                 } else if int_string_pair || int_list_pair {
@@ -3491,7 +3493,7 @@ impl<'a> Generator<'a> {
                                 "int-string"
                             } else if int_pair {
                                 "int.pair"
-                            } else if int_triple {
+                            } else if three_pointer {
                                 "int.triple"
                             } else if string {
                                 "string"
@@ -3587,12 +3589,13 @@ impl<'a> Generator<'a> {
                     CompilerType::List(element)
                         if compiler_integer_pair(element.as_ref())
                             || compiler_list_integer_pair(element.as_ref())
+                            || compiler_list_string_rational_pair(element.as_ref())
                             || compiler_rational_nat_pair(element.as_ref())
                             || compiler_rational_pair(element.as_ref())
                 );
                 let int_triple = matches!(
                     &value.value_type,
-                    CompilerType::List(element) if compiler_int_triple(element.as_ref())
+                    CompilerType::List(element) if compiler_three_pointer_tuple(element.as_ref())
                 );
                 let int_int_boolean_pair = matches!(
                     &value.value_type,
@@ -3803,12 +3806,13 @@ impl<'a> Generator<'a> {
             | CompilerExpressionKind::ListUncons(value) => {
                 let int_pair = matches!(&value.value_type, CompilerType::List(element)
                     if compiler_integer_pair(element.as_ref())
-                        || compiler_list_integer_pair(element.as_ref()));
+                        || compiler_list_integer_pair(element.as_ref())
+                        || compiler_list_string_rational_pair(element.as_ref()));
                 let int_pointer_pair = matches!(&value.value_type, CompilerType::List(element)
                     if compiler_int_string_pair(element.as_ref())
                         || compiler_int_list_pair(element.as_ref()));
                 let int_triple = matches!(&value.value_type, CompilerType::List(element)
-                    if compiler_int_triple(element.as_ref()));
+                    if compiler_three_pointer_tuple(element.as_ref()));
                 let four_pointer = matches!(&value.value_type, CompilerType::List(element)
                     if compiler_int_int_string_int_tuple(element.as_ref()));
                 let boolean = matches!(&value.value_type, CompilerType::List(element)
@@ -3914,12 +3918,13 @@ impl<'a> Generator<'a> {
             } => {
                 let int_pair = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_integer_pair(element.as_ref())
-                        || compiler_list_integer_pair(element.as_ref()));
+                        || compiler_list_integer_pair(element.as_ref())
+                        || compiler_list_string_rational_pair(element.as_ref()));
                 let int_pointer_pair = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_int_string_pair(element.as_ref())
                         || compiler_int_list_pair(element.as_ref()));
                 let int_triple = matches!(&list.value_type, CompilerType::List(element)
-                    if compiler_int_triple(element.as_ref()));
+                    if compiler_three_pointer_tuple(element.as_ref()));
                 let four_pointer = matches!(&list.value_type, CompilerType::List(element)
                     if compiler_int_int_string_int_tuple(element.as_ref()));
                 if int_pair {
@@ -5483,8 +5488,11 @@ impl<'a> Generator<'a> {
                 debug_assert_eq!(fields.len(), 2);
                 self.emit_boxed_int_tuple(&value, 2, body, span)
             }
-            CompilerType::Tuple(fields) if compiler_list_integer_pair(value_type) => {
-                let [CompilerType::List(element), _] = fields.as_slice() else {
+            CompilerType::Tuple(fields)
+                if compiler_list_integer_pair(value_type)
+                    || compiler_list_string_rational_pair(value_type) =>
+            {
+                let [CompilerType::List(element), scalar_type] = fields.as_slice() else {
                     unreachable!("checked list/integer pair retains its classifiers")
                 };
                 let list = body.instruction(
@@ -5508,12 +5516,46 @@ impl<'a> Generator<'a> {
                         element: element.as_ref().clone(),
                         function_captures: Vec::new(),
                     },
-                    LlValue::Int(integer),
+                    if scalar_type == &CompilerType::Rational {
+                        LlValue::Rational(integer)
+                    } else {
+                        LlValue::Int(integer)
+                    },
                 ])
             }
-            CompilerType::Tuple(fields) if compiler_int_triple(value_type) => {
-                debug_assert_eq!(fields.len(), 3);
-                self.emit_boxed_int_tuple(&value, 3, body, span)
+            CompilerType::Tuple(fields) if compiler_three_pointer_tuple(value_type) => {
+                let values = fields
+                    .iter()
+                    .enumerate()
+                    .map(|(index, field_type)| {
+                        let address = if index == 0 {
+                            value.clone()
+                        } else {
+                            body.instruction(
+                                &format!("getelementptr i8, ptr {value}, i64 {}", index * 8),
+                                span,
+                                &mut self.debug,
+                            )
+                        };
+                        let field = body.instruction(
+                            &format!("load ptr, ptr {address}, align 8"),
+                            span,
+                            &mut self.debug,
+                        );
+                        match field_type {
+                            CompilerType::Int | CompilerType::Nat => LlValue::Int(field),
+                            CompilerType::Rational => LlValue::Rational(field),
+                            CompilerType::String => LlValue::String(field),
+                            CompilerType::List(element) => LlValue::List {
+                                value: field,
+                                element: element.as_ref().clone(),
+                                function_captures: Vec::new(),
+                            },
+                            _ => unreachable!("checked three-pointer Optional field"),
+                        }
+                    })
+                    .collect();
+                LlValue::Tuple(values)
             }
             CompilerType::Tuple(fields) if compiler_int_int_string_int_tuple(value_type) => {
                 let values = fields
@@ -6942,7 +6984,7 @@ impl<'a> Generator<'a> {
         let int_triple_source_int_list_state_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
-                if compiler_int_triple(element.as_ref())
+                if compiler_three_pointer_tuple(element.as_ref())
                     && state_element.as_ref() == &CompilerType::Int
         );
         let tuple_list_state_fold = matches!(
@@ -6988,11 +7030,8 @@ impl<'a> Generator<'a> {
                 || compiler_int_list_pair(element.as_ref())
                 || compiler_string_pair(element.as_ref())
                 || compiler_boolean_int_pair(element.as_ref()));
-        let int_triple_fold = matches!(&list.value_type, CompilerType::List(element)
-            if compiler_int_triple(element.as_ref()));
-        let int_int_list_triple_fold = matches!(&list.value_type, CompilerType::List(element)
-            if compiler_int_int_list_triple(element.as_ref()));
-        let three_pointer_fold = int_triple_fold || int_int_list_triple_fold;
+        let three_pointer_fold = matches!(&list.value_type, CompilerType::List(element)
+            if compiler_three_pointer_tuple(element.as_ref()));
         let four_pointer_fold = matches!(&list.value_type, CompilerType::List(element)
             if compiler_int_int_string_int_tuple(element.as_ref()));
         let source = self
@@ -7243,19 +7282,29 @@ impl<'a> Generator<'a> {
                     .collect(),
             )
         } else if let Some([second, third]) = triple_tail {
-            LlValue::Tuple(vec![
-                LlValue::Int(value),
-                LlValue::Int(second),
-                if int_int_list_triple_fold {
-                    LlValue::List {
-                        value: third,
-                        element: CompilerType::Int,
-                        function_captures: Vec::new(),
-                    }
-                } else {
-                    LlValue::Int(third)
-                },
-            ])
+            let CompilerType::List(element) = &list.value_type else {
+                unreachable!("checked three-pointer fold subject retains its List classifier")
+            };
+            let CompilerType::Tuple(fields) = element.as_ref() else {
+                unreachable!("checked three-pointer fold entry retains its tuple classifier")
+            };
+            LlValue::Tuple(
+                [value, second, third]
+                    .into_iter()
+                    .zip(fields)
+                    .map(|(value, field)| match field {
+                        CompilerType::Int | CompilerType::Nat => LlValue::Int(value),
+                        CompilerType::Rational => LlValue::Rational(value),
+                        CompilerType::String => LlValue::String(value),
+                        CompilerType::List(element) => LlValue::List {
+                            value,
+                            element: element.as_ref().clone(),
+                            function_captures: Vec::new(),
+                        },
+                        _ => unreachable!("checked three-pointer fold field"),
+                    })
+                    .collect(),
+            )
         } else if let Some(second) = second {
             let CompilerType::List(element) = &list.value_type else {
                 unreachable!("checked fold subject retains its List classifier")
@@ -8218,7 +8267,38 @@ impl<'a> Generator<'a> {
             return storage;
         }
         if let (LlValue::Tuple(fields), CompilerType::Tuple(_)) = (value, value_type)
-            && compiler_int_triple(value_type)
+            && compiler_list_string_rational_pair(value_type)
+        {
+            let [list, rational] = fields.as_slice() else {
+                unreachable!("checked Optional list/Rational pair has two fields")
+            };
+            let storage = body.instruction(
+                "call ptr @topal.platform.allocate(i64 16)",
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!("store ptr {}, ptr {storage}, align 8", list.list_pointer()),
+                span,
+                &mut self.debug,
+            );
+            let rational_address = body.instruction(
+                &format!("getelementptr i8, ptr {storage}, i64 8"),
+                span,
+                &mut self.debug,
+            );
+            body.effect(
+                &format!(
+                    "store ptr {}, ptr {rational_address}, align 8",
+                    rational.rational()
+                ),
+                span,
+                &mut self.debug,
+            );
+            return storage;
+        }
+        if let (LlValue::Tuple(fields), CompilerType::Tuple(_)) = (value, value_type)
+            && compiler_three_pointer_tuple(value_type)
         {
             let storage = body.instruction(
                 "call ptr @topal.platform.allocate(i64 24)",
@@ -8237,7 +8317,10 @@ impl<'a> Generator<'a> {
                     )
                 };
                 body.effect(
-                    &format!("store ptr {}, ptr {address}, align 8", field.integer()),
+                    &format!(
+                        "store ptr {}, ptr {address}, align 8",
+                        field.aggregate_pointer()
+                    ),
                     span,
                     &mut self.debug,
                 );
@@ -8913,7 +8996,7 @@ impl<'a> Generator<'a> {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::IntPair);
             "int.pair"
-        } else if compiler_int_triple(element) {
+        } else if compiler_three_pointer_tuple(element) {
             self.scalar_list_runtime_fragments
                 .insert(ScalarListRuntimeFragment::IntTriple);
             "int.triple"
@@ -11093,9 +11176,19 @@ impl<'a> Generator<'a> {
         environment: &BTreeMap<String, LlValue>,
         span: Span,
     ) -> LlValue {
-        let _ = self.emit_expression(text, body, environment);
+        let text = self.emit_expression(text, body, environment);
         let range = self.emit_expression(range, body, environment);
         let range = range.range().0.to_owned();
+        if characters.is_empty() {
+            return LlValue::String(body.instruction(
+                &format!(
+                    "call ptr @topal.runtime.string.select.index.range(ptr {}, ptr {range})",
+                    text.string()
+                ),
+                span,
+                &mut self.debug,
+            ));
+        }
         let mut selected = self.emit_string_value("", body, span);
         for (index, character) in characters.iter().enumerate() {
             let present = body.label("string.range.present");
@@ -12332,6 +12425,16 @@ impl LlValue {
         match self {
             Self::Int(value) | Self::String(value) => value,
             _ => unreachable!("checked List pair field is Int or String"),
+        }
+    }
+
+    fn aggregate_pointer(&self) -> &str {
+        match self {
+            Self::Int(value)
+            | Self::Rational(value)
+            | Self::String(value)
+            | Self::List { value, .. } => value,
+            _ => unreachable!("checked aggregate field has a pointer representation"),
         }
     }
 
@@ -14477,6 +14580,15 @@ fn compiler_list_integer_pair(value_type: &CompilerType) -> bool {
     )
 }
 
+fn compiler_list_string_rational_pair(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::List(element), CompilerType::Rational]
+                if element.as_ref() == &CompilerType::String)
+    )
+}
+
 fn compiler_string_function_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -14491,6 +14603,33 @@ fn compiler_int_triple(value_type: &CompilerType) -> bool {
         CompilerType::Tuple(fields)
             if fields.as_slice()
                 == [CompilerType::Int, CompilerType::Int, CompilerType::Int]
+    )
+}
+
+fn compiler_string_string_rational_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if fields.as_slice()
+                == [CompilerType::String, CompilerType::String, CompilerType::Rational]
+    )
+}
+
+fn compiler_string_rational_string_list_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::String, CompilerType::Rational, CompilerType::List(element)]
+                if element.as_ref() == &CompilerType::String)
+    )
+}
+
+fn compiler_string_string_list_int_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::String, CompilerType::List(element), CompilerType::Int]
+                if element.as_ref() == &CompilerType::String)
     )
 }
 
@@ -14517,6 +14656,14 @@ fn compiler_int_int_list_triple(value_type: &CompilerType) -> bool {
             if matches!(fields.as_slice(), [CompilerType::Int, CompilerType::Int, CompilerType::List(element)]
                 if matches!(element.as_ref(), CompilerType::Int | CompilerType::Nat))
     )
+}
+
+fn compiler_three_pointer_tuple(value_type: &CompilerType) -> bool {
+    compiler_int_triple(value_type)
+        || compiler_string_string_rational_triple(value_type)
+        || compiler_string_rational_string_list_triple(value_type)
+        || compiler_string_string_list_int_triple(value_type)
+        || compiler_int_int_list_triple(value_type)
 }
 
 fn compiler_int_int_boolean_pair(value_type: &CompilerType) -> bool {
@@ -17892,7 +18039,7 @@ mod tests {
         assert_eq!(
             llvm.matches("call ptr @topal.runtime.string.concat")
                 .count(),
-            5
+            6
         );
         assert_eq!(
             llvm.matches("call i1 @topal.runtime.string.is.empty")

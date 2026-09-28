@@ -753,8 +753,10 @@ pub enum CompilerExpressionKind {
     },
     StringEmptyPredicate(Box<CompilerExpression>),
     StringUtf8ByteCount(Box<CompilerExpression>),
+    StringCharacterCount(Box<CompilerExpression>),
     StringUnicodeScalarValue(Box<CompilerExpression>),
     CharacterAsciiDecimalDigit(Box<CompilerExpression>),
+    CharacterUnicodeWhitespace(Box<CompilerExpression>),
     StringCharactersGenerator {
         text: Box<CompilerExpression>,
         characters: Vec<String>,
@@ -11638,7 +11640,8 @@ impl Analyzer {
                                 && !matches!(function_result, Some(CompilerType::Result(_)))
                                 && matches!(&expected,
                                     CompilerType::Refined { constraint, .. }
-                                        if constraint == "RegexValid");
+                                        if matches!(constraint.as_str(),
+                                            "NonemptyPattern" | "RegexValid" | "NonnegativeWeight"));
                             if kind != BlockKind::TopLevel
                                 && !matches!(function_result, Some(CompilerType::Result(_)))
                                 && !boundary_projection
@@ -12615,6 +12618,21 @@ impl Analyzer {
                     text: text.clone(),
                     characters: characters.clone(),
                     range: range.clone(),
+                },
+                value_type: character_unit_generator_type(),
+                int_range: None,
+                rational_value: None,
+                span,
+            });
+        }
+        if matches!(&text_value.kind, CompilerExpressionKind::Local(storage_name)
+            if binding_facts_by_storage(environment, storage_name)
+                .is_none_or(|facts| facts.string_value.is_none()))
+        {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringProvenanceCharactersGenerator {
+                    text: Box::new(text_value),
+                    characters: Vec::new(),
                 },
                 value_type: character_unit_generator_type(),
                 int_range: None,
@@ -15681,16 +15699,27 @@ impl Analyzer {
                     span,
                 ));
             }
-            let candidates = self
+            let Some(candidates) = self
                 .known_structural_value_facts(&character, environment)?
                 .string_characters
-                .ok_or_else(|| {
-                    unsupported(
-                        &self.source,
-                        character.span,
-                        "Unicode Character predicate without finite Character provenance",
-                    )
-                })?;
+            else {
+                if operation_name == "unicode-whitespace-character" {
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::CharacterUnicodeWhitespace(Box::new(
+                            character,
+                        )),
+                        value_type: CompilerType::Boolean,
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
+                return Err(unsupported(
+                    &self.source,
+                    character.span,
+                    "Unicode Character predicate without finite Character provenance",
+                ));
+            };
             let mut matching = candidates
                 .into_iter()
                 .filter(|candidate| unicode_character_predicate(operation_name, candidate))
@@ -16915,11 +16944,15 @@ impl Analyzer {
                             || compiler_rational_nat_pair(element.as_ref())
                             || compiler_list_integer_pair(element.as_ref())
                             || compiler_int_string_pair(element.as_ref())
+                            || compiler_string_pair(element.as_ref())
                             || compiler_int_list_pair(element.as_ref())
                             || compiler_boolean_string_pair(element.as_ref())
                             || compiler_int_int_boolean_pair(element.as_ref())
                             || compiler_int_int_string_int_tuple(element.as_ref())
                             || compiler_int_triple(element.as_ref())
+                            || compiler_string_string_rational_triple(element.as_ref())
+                            || compiler_string_rational_string_list_triple(element.as_ref())
+                            || compiler_string_string_list_int_triple(element.as_ref())
                             || compiler_int_int_list_triple(element.as_ref())
                             || compiler_nested_int_list_element(element.as_ref())
                             || compiler_nested_string_list_element(element.as_ref())
@@ -17197,6 +17230,15 @@ impl Analyzer {
                 characters,
             } = generator.kind
             {
+                if characters.is_empty() {
+                    return Ok(CompilerExpression {
+                        kind: CompilerExpressionKind::StringDynamicScalarCharactersCollect(text),
+                        value_type: CompilerType::List(Box::new(CompilerType::Character)),
+                        int_range: None,
+                        rational_value: None,
+                        span,
+                    });
+                }
                 return Ok(CompilerExpression {
                     kind: CompilerExpressionKind::StringProvenanceCharactersCollect {
                         text,
@@ -17550,6 +17592,11 @@ impl Analyzer {
                 {
                     (CompilerType::Int, CompilerType::String)
                 }
+                (CompilerType::List(element), CompilerType::Int)
+                    if compiler_string_string_list_int_triple(element.as_ref()) =>
+                {
+                    (CompilerType::Int, element.as_ref().clone())
+                }
                 (CompilerType::List(element), CompilerType::String)
                     if element.as_ref() == &CompilerType::Character =>
                 {
@@ -17883,16 +17930,14 @@ impl Analyzer {
                     });
                 }
                 CompilerType::String if operation == "select-index" => {
-                    let text =
-                        Self::known_string_value(&collection, environment).ok_or_else(|| {
-                            unsupported(
-                                &self.source,
-                                collection.span,
-                                "dynamic String range selection",
-                            )
-                        })?;
-                    let text_characters = characters(&text).map(str::to_owned).collect::<Vec<_>>();
-                    if let Some(range) = Self::known_closed_int_range(&selector, environment) {
+                    let text = Self::known_string_value(&collection, environment);
+                    let text_characters = text
+                        .as_deref()
+                        .map(|text| characters(text).map(str::to_owned).collect::<Vec<_>>())
+                        .unwrap_or_default();
+                    if text.is_some()
+                        && let Some(range) = Self::known_closed_int_range(&selector, environment)
+                    {
                         let selected = text_characters
                             .into_iter()
                             .enumerate()
@@ -18407,6 +18452,8 @@ impl Analyzer {
                 self.source.slice(*field),
                 "code" | "domain" | "detail" | "cause" | "source"
             )
+            && !matches!(error, Expression::Identifier(name)
+                if !environment.contains_key(self.source.slice(*name)))
         {
             return self.analyze_error_field(error, *field, span, environment);
         }
@@ -19074,9 +19121,18 @@ impl Analyzer {
             &CompilerType::String,
             &operand_value.value_type,
         )?;
-        let text = Self::known_string_value(&operand_value, environment).ok_or_else(|| {
-            unsupported(&self.source, operand.span(), "dynamic Character counting")
-        })?;
+        let Some(text) = Self::known_string_value(&operand_value, environment) else {
+            return Ok(CompilerExpression {
+                kind: CompilerExpressionKind::StringCharacterCount(Box::new(operand_value)),
+                value_type: CompilerType::Int,
+                int_range: Some(IntRange {
+                    lower: BigInt::from(0_u8),
+                    upper: BigInt::from(u64::MAX),
+                }),
+                rational_value: None,
+                span,
+            });
+        };
         let count = BigInt::from(character_count(&text));
         Ok(CompilerExpression {
             kind: CompilerExpressionKind::Int(count.clone()),
@@ -25920,13 +25976,14 @@ impl Analyzer {
                         infinity_negative: (!generalize_parameters)
                             .then(|| compiler_infinity_direction(argument))
                             .flatten(),
-                        string_value: (!generalize_parameters)
-                            .then(|| {
-                                exact_string(argument).or_else(|| {
-                                    aggregate_arguments[parameter_index].string_value.clone()
-                                })
+                        string_value: (!generalize_parameters
+                            && !matches!(argument.kind, CompilerExpressionKind::Local(_)))
+                        .then(|| {
+                            exact_string(argument).or_else(|| {
+                                aggregate_arguments[parameter_index].string_value.clone()
                             })
-                            .flatten(),
+                        })
+                        .flatten(),
                         string_characters: aggregate_arguments[parameter_index]
                             .string_characters
                             .clone(),
@@ -29386,6 +29443,15 @@ fn compiler_string_rational_string_list_triple(value_type: &CompilerType) -> boo
     )
 }
 
+fn compiler_string_string_list_int_triple(value_type: &CompilerType) -> bool {
+    matches!(
+        value_type,
+        CompilerType::Tuple(fields)
+            if matches!(fields.as_slice(), [CompilerType::String, CompilerType::List(element), CompilerType::Int]
+                if element.as_ref() == &CompilerType::String)
+    )
+}
+
 fn compiler_int_int_boolean_pair(value_type: &CompilerType) -> bool {
     matches!(
         value_type,
@@ -29499,9 +29565,11 @@ fn compiler_list_observation_element_supported(value_type: &CompilerType) -> boo
         || compiler_string_string_rational_triple(value_type)
         || compiler_int_int_list_triple(value_type)
         || compiler_string_rational_string_list_triple(value_type)
+        || compiler_string_string_list_int_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
         || compiler_int_int_string_int_tuple(value_type)
         || compiler_int_list_pair(value_type)
+        || compiler_list_string_rational_pair(value_type)
         || compiler_list_integer_pair(value_type)
         || compiler_boolean_int_pair(value_type)
         || compiler_boolean_string_pair(value_type)
@@ -29544,6 +29612,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         )
         || compiler_int_string_pair(value_type)
         || compiler_int_list_pair(value_type)
+        || compiler_list_string_rational_pair(value_type)
         || compiler_string_int_pair(value_type)
         || compiler_string_pair(value_type)
         || compiler_boolean_int_pair(value_type)
@@ -29554,6 +29623,7 @@ fn compiler_list_node_element_supported(value_type: &CompilerType) -> bool {
         || compiler_string_string_rational_triple(value_type)
         || compiler_int_int_list_triple(value_type)
         || compiler_string_rational_string_list_triple(value_type)
+        || compiler_string_string_list_int_triple(value_type)
         || compiler_int_int_boolean_pair(value_type)
         || compiler_int_int_string_int_tuple(value_type)
         || compiler_nested_int_list_element(value_type)
@@ -30021,6 +30091,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 || compiler_string_string_rational_triple(element.as_ref())
                 || compiler_int_int_list_triple(element.as_ref())
                 || compiler_string_rational_string_list_triple(element.as_ref())
+                || compiler_string_string_list_int_triple(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Optional(payload)
                     if matches!(payload.as_ref(), CompilerType::Int | CompilerType::Rational | CompilerType::String))
                 || compiler_string_function_pair(element.as_ref())
@@ -30028,6 +30099,7 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 || compiler_int_int_string_int_tuple(element.as_ref())
                 || compiler_int_list_pair(element.as_ref())
                 || compiler_list_integer_pair(element.as_ref())
+                || compiler_list_string_rational_pair(element.as_ref())
                 || matches!(element.as_ref(), CompilerType::Range(endpoint)
                     if endpoint.as_ref() == &CompilerType::Int)
         }
@@ -30047,6 +30119,9 @@ fn compiler_abi_type_supported(value_type: &CompilerType) -> bool {
                 || compiler_list_integer_pair(payload)
                 || compiler_list_string_rational_pair(payload)
                 || compiler_int_triple(payload)
+                || compiler_string_string_rational_triple(payload)
+                || compiler_string_rational_string_list_triple(payload)
+                || compiler_string_string_list_int_triple(payload)
                 || compiler_int_string_pair(payload)
                 || compiler_int_list_pair(payload)
                 || compiler_int_int_string_int_tuple(payload)
@@ -32044,8 +32119,10 @@ fn require_optional_payload(
             | CompilerType::List(_)
     ) || compiler_integer_pair(value_type)
         || compiler_int_triple(value_type)
+        || compiler_string_string_list_int_triple(value_type)
         || compiler_int_int_string_int_tuple(value_type)
         || compiler_int_list_pair(value_type)
+        || compiler_list_string_rational_pair(value_type)
         || matches!(value_type, CompilerType::Tuple(fields)
         if fields.as_slice() == [CompilerType::Int, CompilerType::String]
             || matches!(fields.as_slice(), [CompilerType::Int, CompilerType::List(element)]
@@ -32439,9 +32516,11 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::TraversalControl { value, .. }
         | CompilerExpressionKind::StringEmptyPredicate(value)
         | CompilerExpressionKind::StringUtf8ByteCount(value)
+        | CompilerExpressionKind::StringCharacterCount(value)
         | CompilerExpressionKind::StringUnicodeScalarValue(value)
         | CompilerExpressionKind::StringDynamicScalarCharactersCollect(value)
         | CompilerExpressionKind::CharacterAsciiDecimalDigit(value)
+        | CompilerExpressionKind::CharacterUnicodeWhitespace(value)
         | CompilerExpressionKind::StringCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringProvenanceCharactersCollect { text: value, .. }
         | CompilerExpressionKind::StringCharactersClose(value)

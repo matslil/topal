@@ -325,6 +325,7 @@ const EXTERNAL_PARITY_REGRESSIONS: &[&str] = &[
     "tests/standard-library/data-spans.t",
     "tests/standard-library/fundamental-boundaries.t",
     "tests/standard-library/geometry-algorithms.t",
+    "tests/standard-library/graph-algorithms.t",
     "tests/standard-library/harness.t",
     "tests/standard-library/machine-algorithms.t",
     "tests/standard-library/network-addresses.t",

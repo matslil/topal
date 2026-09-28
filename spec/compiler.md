@@ -8097,6 +8097,29 @@ the exact classifiers and field values of `(Int, String, Int, Int)`,
 selection, `first`, counting, and equality. These layouts remain sealed native
 implementation details and SHALL pass LLVM verification.
 
+### TOPAL-COMPILER-GRAPH-001 — Source-defined graph execution
+
+The compiler SHALL admit the finite graph algorithms defined by `std graph`
+and `advent-of-code graph`, including deterministic traversal, minimum-edge
+and exact minimum-weight paths, topological ordering, weak components, and
+described-route counting. Native results SHALL agree with interpretation for
+the shared graph conformance source, including missing and cyclic results.
+
+Runtime-bound String traversal SHALL decode the actual preserved UTF-8 scalar
+sequence for each invocation. Character counting, index-range selection, and
+Unicode whitespace classification SHALL preserve scalar rather than byte
+semantics and SHALL NOT reuse finite Character facts from a different folded
+entry. Weighted edges SHALL preserve exact Rational values, and the native
+boundary SHALL reject a dynamically negative weight rather than silently
+running a nonnegative-weight algorithm.
+
+Compiler-private List and Optional layouts used by these algorithms SHALL
+preserve all fields of `(String, String, Rational)`,
+`(String, Rational, List String)`, `(String, List String, Int)`, and
+`(List String, Rational)` values across construction, append, fold, `first`,
+counting, and selection. These representations remain sealed implementation
+details and SHALL pass LLVM verification.
+
 ### TOPAL-COMPILER-LLVM-001 — LLVM module and tool qualification
 
 Every LLVM module SHALL carry the exact qualified target triple and data layout,
