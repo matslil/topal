@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use topal_compiler::{CompileError, CompileOptions, Emit, compile_source};
-use topal_language::{Session, declares_library, load_module_tree};
+use topal_language::interpreter::Session;
+use topal_language::modules::{declares_library, load_module_tree};
 
 const SHARED_REGRESSIONS: &[&str] = &[
     "examples/language/aggregate-environments.t",

@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use topal_geir::LEGACY_ARTIFACT_REVISION;
-use topal_language::CompilerProgram;
+use topal_language::compiler::CompilerProgram;
 
 use crate::{DATA_LAYOUT, LLVM_MAJOR, TARGET_TRIPLE};
 

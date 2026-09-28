@@ -11,6 +11,7 @@ mod trace;
 /// Checked semantic model consumed by native compiler backends.
 pub mod compiler {
     pub use crate::compiler_model::*;
+    pub use crate::source::display_string_literal;
 }
 
 /// Deterministic source execution model consumed by interpreters and debuggers.

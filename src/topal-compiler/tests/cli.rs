@@ -4,7 +4,8 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use topal_compiler::{LlvmTools, NATIVE_ABI, NativeArtifactMetadata, metadata_path};
-use topal_language::{Session, load_module_tree};
+use topal_language::interpreter::Session;
+use topal_language::modules::load_module_tree;
 
 static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
 
