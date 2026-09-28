@@ -4,10 +4,11 @@ use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use topal_language::{
-    JsonLines, LanguageVersion, Session, TraceSink, UNICODE_VERSION, Value, declares_library,
-    declares_string_solver, load_module_tree,
-};
+use topal_interpreter::{EvaluationRequest, Interpreter};
+use topal_language::interpreter::Session;
+use topal_language::modules::declares_string_solver;
+use topal_language::tracing::{JsonLines, TraceSink};
+use topal_language::{LanguageVersion, UNICODE_VERSION};
 
 mod test_runner;
 
@@ -58,12 +59,12 @@ fn run() -> Result<(), String> {
             if arguments.input.is_some() && arguments.source.is_none() {
                 return Err("--input requires a Topal source file".into());
             }
-            let mut session = Session::new();
+            let mut interpreter = Interpreter::new();
             if matches!(arguments.mode, Mode::Test) {
                 let stderr = io::stderr();
                 let mut trace = JsonLines::new(stderr.lock());
                 evaluate_input(
-                    &mut session,
+                    &mut interpreter,
                     arguments.source.as_deref(),
                     source_name,
                     &arguments.library_root,
@@ -72,7 +73,7 @@ fn run() -> Result<(), String> {
                 )
             } else {
                 evaluate_input(
-                    &mut session,
+                    &mut interpreter,
                     arguments.source.as_deref(),
                     source_name,
                     &arguments.library_root,
@@ -250,20 +251,30 @@ fn interactive(
 }
 
 fn evaluate_and_print(
-    session: &mut Session,
+    interpreter: &mut Interpreter,
     source: &str,
     source_name: &str,
+    library_root: Option<&Path>,
+    input: Option<&str>,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
-    let value = session
-        .evaluate_source_file(source, trace)
-        .map_err(|error| error.render(source_name))?;
+    let value = interpreter
+        .evaluate(
+            EvaluationRequest {
+                source,
+                source_name,
+                library_root,
+                application_input: input,
+            },
+            trace,
+        )
+        .map_err(|error| error.to_string())?;
     println!("{value}");
     Ok(())
 }
 
 fn evaluate_input(
-    session: &mut Session,
+    interpreter: &mut Interpreter,
     path: Option<&str>,
     source_name: &str,
     library_root: &Path,
@@ -271,45 +282,57 @@ fn evaluate_input(
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
     if let Some(path) = path.filter(|path| Path::new(path).is_dir()) {
-        return evaluate_directory(session, Path::new(path), trace);
+        return evaluate_directory(interpreter, Path::new(path), trace);
     }
     let source = read_source(path)?;
-    if declares_library(&source, "std") || declares_library(&source, "advent-of-code") {
-        load_module_tree(session, library_root, trace)?;
-    }
     if input.is_none() && path.is_some() && declares_string_solver(&source) {
         return Err(format!(
             "application `{source_name}` requires an input file\nusage: topal APPLICATION INPUT"
         ));
     }
     if let Some(input) = input {
-        session
-            .evaluate_source_file(&source, trace)
-            .map_err(|error| error.render(source_name))?;
         let input = fs::read_to_string(input)
             .map_err(|error| format!("cannot read {}: {error}", input.display()))?;
-        let expression = format!("solve {}", Value::String(input));
-        let value = session
-            .evaluate(&expression, trace)
-            .map_err(|error| error.render(source_name))?;
-        println!("{value}");
-        Ok(())
+        evaluate_and_print(
+            interpreter,
+            &source,
+            source_name,
+            Some(library_root),
+            Some(&input),
+            trace,
+        )
     } else {
-        evaluate_and_print(session, &source, source_name, trace)
+        evaluate_and_print(
+            interpreter,
+            &source,
+            source_name,
+            Some(library_root),
+            None,
+            trace,
+        )
     }
 }
 
 fn evaluate_directory(
-    session: &mut Session,
+    interpreter: &mut Interpreter,
     directory: &Path,
     trace: &mut impl TraceSink,
 ) -> Result<(), String> {
-    load_module_tree(session, directory, trace)?;
+    interpreter
+        .load_modules(directory, trace)
+        .map_err(|error| error.to_string())?;
     let entry = directory.join("application.t");
     if !entry.is_file() {
         return Err(format!("{} has no application.t", directory.display()));
     }
     let source = fs::read_to_string(&entry)
         .map_err(|error| format!("cannot read {}: {error}", entry.display()))?;
-    evaluate_and_print(session, &source, &entry.display().to_string(), trace)
+    evaluate_and_print(
+        interpreter,
+        &source,
+        &entry.display().to_string(),
+        None,
+        None,
+        trace,
+    )
 }

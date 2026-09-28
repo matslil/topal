@@ -5,6 +5,18 @@ These tool requirements refine `TOPAL-REQ-TOOLS-001`,
 interpreter. The three modes and their command-line selection record the
 implementation intent approved for the initial interpreter work.
 
+## TOPAL-INTP-ARCH-001 — Application-service boundary
+
+The interpreter shall expose script and application evaluation through a
+reusable application service which owns a persistent shared semantic `Session`.
+The service shall accept explicit source identity, optional library root, and
+optional String application input and shall return a semantic value or
+structured error without reading terminal input, printing, or terminating the
+process. Command-line parsing, terminal interaction, input-file reading,
+rendering, and exit status shall remain adapter responsibilities. Interactive
+mode may operate directly on one persistent shared session because incremental
+line acquisition and prompting are terminal policies, not a second evaluator.
+
 ## TOPAL-INTP-LIBRARY-GENERICS-001 — Capability-generic library calls
 
 The interpreter shall execute capability-constrained standard-library
