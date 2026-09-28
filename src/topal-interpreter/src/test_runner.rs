@@ -5,7 +5,8 @@ use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 
-use topal_language::{Session, Value, declares_library, load_module_tree};
+use topal_language::interpreter::{Session, Value};
+use topal_language::modules::{declares_library, load_module_tree};
 
 struct Arguments {
     paths: Vec<PathBuf>,
