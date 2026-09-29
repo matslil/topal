@@ -3,8 +3,10 @@
 These requirements refine `TOPAL-REQ-COMPILER-001`,
 `TOPAL-REQ-NATIVE-PLATFORM-001`, `TOPAL-REQ-NATIVE-ABI-001`,
 `TOPAL-REQ-NATIVE-ARTIFACT-001`, `TOPAL-REQ-NATIVE-DEBUG-001`, and
-`TOPAL-REQ-LLVM-001`, plus `TOPAL-REQ-C-ABI-001`, for the admitted `topalc`
-increments.
+`TOPAL-REQ-LLVM-001`, `TOPAL-REQ-ARCH-TARGET-001`,
+`TOPAL-REQ-ARCH-PROVENANCE-001`, `TOPAL-REQ-OPT-PROFILE-001`, and
+`TOPAL-REQ-OPT-CONTROL-001`, plus `TOPAL-REQ-C-ABI-001`, for the admitted
+`topalc` increments.
 
 ## TOPAL-COMP-ARCH-001 — Ordered typed compilation stages
 
@@ -22,6 +24,22 @@ not depend on LLVM spelling, target layout, or artifact paths.
 The compiler shall accept only `x86_64-unknown-linux-gnu`, emit the exact
 qualified data layout and x86-64 CPU baseline, use position-independent code,
 and reject every other target before creating an output.
+
+## TOPAL-COMP-OPT-PLAN-001 — Validated generic target plan
+
+Before source lowering, the compiler shall resolve a typed optimization plan.
+An omitted target shall select the built-in generic Linux x86-64 model only
+when the build host has that architecture and platform. The compiler shall
+validate and canonically hash that architecture model, select no optional CPU
+features, and record its identity and digest plus the optimization-plan
+revision in artifact evidence and provenance.
+
+The CLI shall parse every standard optimization-profile spelling and the
+target, CPU, board, and model controls defined by `TOPAL-OPT-PROFILE-001` and
+`TOPAL-OPT-TARGET-001`. This increment shall accept only `O0`, the qualified
+target, and the generic CPU selection; it shall reject every optimized,
+specific, native, board, custom-model, or foreign selection before frontend or
+toolchain output rather than ignore, approximate, or silently strengthen it.
 
 ## TOPAL-COMP-LLVM-001 — Verified LLVM 22 pipeline
 

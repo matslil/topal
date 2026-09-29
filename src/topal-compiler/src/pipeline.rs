@@ -8,6 +8,7 @@ pub(crate) fn compile(
     source: &str,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
+    let plan = crate::OptimizationPlan::resolve(&options.target, &options.optimization)?;
     let checked = frontend::check(source, &options.library_root)?;
     let llvm = backend::lower(checked.program(), &options.source_name);
     toolchain::materialize(
@@ -17,5 +18,6 @@ pub(crate) fn compile(
         checked.foreign_dependencies(),
         &llvm,
         options,
+        &plan,
     )
 }

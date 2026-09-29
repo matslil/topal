@@ -14,6 +14,7 @@ sha2 = "0.10"
 topal-geir = { path = "../topal-geir" }
 topal-c-abi = { path = "../topal-c-abi" }
 topal-language = { path = "../topal-language" }
+topal-semantics = { path = "../topal-semantics" }
 topal-source = { path = "../topal-source" }
 
 [lints]

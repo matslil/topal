@@ -3,7 +3,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use topal_compiler::{CompileError, CompileOptions, Emit, TARGET_TRIPLE, compile_source};
+use topal_compiler::{
+    CompileError, CompileOptions, Emit, OptimizationLevel, OptimizationRequest, TARGET_TRIPLE,
+    TargetSelection, compile_source,
+};
 
 mod test_runner;
 
@@ -43,6 +46,8 @@ fn run() -> Result<(), String> {
         emit: arguments.emit,
         llvm_tools: arguments.llvm_tools,
         library_root: arguments.library_root,
+        target: arguments.target,
+        optimization: arguments.optimization,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, &source_name))?;
     Ok(())
@@ -54,6 +59,8 @@ struct Arguments {
     emit: Emit,
     llvm_tools: Option<PathBuf>,
     library_root: PathBuf,
+    target: TargetSelection,
+    optimization: OptimizationRequest,
 }
 
 fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
@@ -63,10 +70,26 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut llvm_tools = None;
     let mut library_root =
         env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
+    let mut target = TargetSelection::default();
+    let mut optimization_level = None;
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
-            "-O0" | "-g" => {}
+            "-O0" | "-O1" | "-O2" | "-O3" | "-Os" | "-Oz" => {
+                let selected = match argument.as_str() {
+                    "-O0" => OptimizationLevel::O0,
+                    "-O1" => OptimizationLevel::O1,
+                    "-O2" => OptimizationLevel::O2,
+                    "-O3" => OptimizationLevel::O3,
+                    "-Os" => OptimizationLevel::Os,
+                    "-Oz" => OptimizationLevel::Oz,
+                    _ => unreachable!(),
+                };
+                if optimization_level.replace(selected).is_some() {
+                    return Err("only one standard optimization profile may be selected".into());
+                }
+            }
+            "-g" => {}
             "-o" => {
                 output = Some(PathBuf::from(arguments.next().ok_or("-o requires a path")?));
             }
@@ -83,10 +106,27 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--target" => {
                 let value = arguments.next().ok_or("--target requires a triple")?;
-                if value != TARGET_TRIPLE {
-                    return Err(format!(
-                        "unsupported target `{value}`; this increment supports only `{TARGET_TRIPLE}`"
-                    ));
+                if target.target.replace(value).is_some() {
+                    return Err("--target may be specified only once".into());
+                }
+            }
+            "--cpu" => {
+                let value = arguments.next().ok_or("--cpu requires a profile")?;
+                if target.cpu.replace(value).is_some() {
+                    return Err("--cpu may be specified only once".into());
+                }
+            }
+            "--board" => {
+                let value = arguments.next().ok_or("--board requires a profile")?;
+                if target.board.replace(value).is_some() {
+                    return Err("--board may be specified only once".into());
+                }
+            }
+            "--target-model" => {
+                let value =
+                    PathBuf::from(arguments.next().ok_or("--target-model requires a path")?);
+                if target.model.replace(value).is_some() {
+                    return Err("--target-model may be specified only once".into());
                 }
             }
             "--llvm-tools" => {
@@ -112,7 +152,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0] [-g] [--target {TARGET_TRIPLE}] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\n-O0 and full DWARF debugging are the mandatory semantics of this compiler increment. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic and implements only -O0. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
                 );
                 std::process::exit(0);
             }
@@ -129,6 +169,10 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         emit,
         llvm_tools,
         library_root,
+        target,
+        optimization: OptimizationRequest {
+            level: optimization_level.unwrap_or_default(),
+        },
     })
 }
 

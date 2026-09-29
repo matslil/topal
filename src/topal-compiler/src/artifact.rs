@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use topal_geir::LEGACY_ARTIFACT_REVISION;
 use topal_language::compiler::CompilerProgram;
 
-use crate::{DATA_LAYOUT, LLVM_MAJOR, TARGET_TRIPLE};
+use crate::{DATA_LAYOUT, LLVM_MAJOR, OptimizationPlan, TARGET_TRIPLE};
 
 pub const NATIVE_ARTIFACT_SCHEMA: &str = "topal.native-artifact/1";
 pub const NATIVE_ABI: &str = "topal-native/6";
@@ -75,6 +75,7 @@ impl NativeArtifactMetadata {
         output_kind: &str,
         output: &[u8],
         llvm_version: &str,
+        plan: &OptimizationPlan,
     ) -> Self {
         let source_sha256 =
             sha256(&program.source.as_str().as_bytes()[..program.primary_source_end]);
@@ -101,6 +102,10 @@ impl NativeArtifactMetadata {
             llvm_version.to_owned(),
             env!("CARGO_PKG_VERSION").to_owned(),
             output_kind.to_owned(),
+            plan.revision.to_owned(),
+            plan.level.name().to_owned(),
+            plan.architecture_model.to_owned(),
+            plan.architecture_model_sha256.clone(),
         ];
         build_inputs.extend(
             dependencies
@@ -123,15 +128,15 @@ impl NativeArtifactMetadata {
             manifest_revision: 1,
             native_abi: NATIVE_ABI.into(),
             platform_abi: PLATFORM_ABI.into(),
-            target_triple: TARGET_TRIPLE.into(),
+            target_triple: plan.target_triple.clone(),
             data_layout: DATA_LAYOUT.into(),
             object_format: "elf64-x86-64".into(),
-            cpu: "x86-64".into(),
-            features: Vec::new(),
+            cpu: plan.cpu.clone(),
+            features: plan.features.clone(),
             llvm_major: LLVM_MAJOR,
             llvm_version: llvm_version.into(),
             compiler: format!("topalc/{}", env!("CARGO_PKG_VERSION")),
-            optimization: 0,
+            optimization: plan.level.artifact_code(),
             debug_format: "dwarf-v5-full".into(),
             source_name: source_name.into(),
             source_sha256,
@@ -140,9 +145,12 @@ impl NativeArtifactMetadata {
             dependencies,
             exports: Vec::new(),
             platform_requirements,
-            evidence: Vec::new(),
+            evidence: vec![DigestEntry {
+                identity: plan.architecture_model.into(),
+                sha256: plan.architecture_model_sha256.clone(),
+            }],
             debug_prefix_map: Vec::new(),
-            provenance: Vec::new(),
+            provenance: vec![plan.revision.into()],
             native_slices: vec![NativeSlice {
                 kind: output_kind.into(),
                 sha256: sha256(output),
@@ -399,6 +407,17 @@ mod tests {
 
     use super::*;
 
+    fn plan() -> OptimizationPlan {
+        OptimizationPlan::resolve(
+            &crate::TargetSelection {
+                target: Some(TARGET_TRIPLE.into()),
+                ..crate::TargetSelection::default()
+            },
+            &crate::OptimizationRequest::default(),
+        )
+        .unwrap()
+    }
+
     #[test]
     fn native_metadata_round_trips_only_in_canonical_form() {
         let program = analyze_for_compiler("use language (version is v0.1)\n()\n").unwrap();
@@ -410,6 +429,7 @@ mod tests {
             "llvm-ir",
             b"ir",
             "22.1.6-test",
+            &plan(),
         );
         let bytes = metadata.encode().unwrap();
         assert_eq!(NativeArtifactMetadata::decode(&bytes).unwrap(), metadata);
@@ -429,6 +449,7 @@ mod tests {
             "llvm-ir",
             b"ir",
             "22.1.6-test",
+            &plan(),
         );
         metadata.target_triple = "x86_64-pc-windows-msvc".into();
         assert!(metadata.validate().is_err());
