@@ -4,7 +4,7 @@ use std::path::Path;
 
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
-use topal_language::{
+use topal_language::compiler::{
     CompilerAggregatePathElement, CompilerBinary, CompilerBlock, CompilerComparisonRule,
     CompilerContainerKind, CompilerEnumRule, CompilerEnumType, CompilerErrorCodeRule,
     CompilerErrorField, CompilerExpression, CompilerExpressionKind, CompilerFallible,
@@ -14999,7 +14999,7 @@ const LIST_NESTED_INT_STRING_CORE_RUNTIME: &str =
 
 #[cfg(test)]
 mod tests {
-    use topal_language::{
+    use topal_language::compiler::{
         CompilerSourceModule, analyze_for_compiler, analyze_for_compiler_with_modules,
     };
 

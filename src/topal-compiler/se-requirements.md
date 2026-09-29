@@ -5,6 +5,17 @@ These requirements refine `TOPAL-REQ-COMPILER-001`,
 `TOPAL-REQ-NATIVE-ARTIFACT-001`, `TOPAL-REQ-NATIVE-DEBUG-001`, and
 `TOPAL-REQ-LLVM-001` for the admitted `topalc` increments.
 
+## TOPAL-COMP-ARCH-001 — Ordered typed compilation stages
+
+The compiler shall coordinate source-module selection, shared frontend
+analysis, target-specific LLVM lowering, LLVM verification, and atomic artifact
+publication through distinct implementation stages. Only a checked frontend
+program may enter a backend, and only the qualified LLVM backend may construct
+the typed LLVM-module value accepted by the toolchain publisher. Source-module
+filesystem policy shall use the shared module adapter. The backend shall not
+invoke external tools or publish files, and the checked semantic model shall
+not depend on LLVM spelling, target layout, or artifact paths.
+
 ## TOPAL-COMP-TARGET-001 — Linux x86-64 qualification
 
 The compiler shall accept only `x86_64-unknown-linux-gnu`, emit the exact

@@ -4,10 +4,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use topal_language::CompilerProgram;
+use topal_language::compiler::CompilerProgram;
 
 use crate::{
-    CompileError, CompileOptions, Emit, LLVM_MAJOR, NativeArtifactMetadata, metadata_path,
+    CompileError, CompileOptions, Emit, LLVM_MAJOR, NativeArtifactMetadata, backend::LlvmModule,
+    metadata_path,
 };
 
 static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
@@ -98,7 +99,7 @@ fn verify(directory: &Path) -> Result<String, CompileError> {
 
 pub(crate) fn materialize(
     program: &CompilerProgram,
-    llvm: &[u8],
+    llvm: &LlvmModule,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
@@ -110,7 +111,7 @@ pub(crate) fn materialize(
         ))
     })?;
     let temporary = temporary_directory(output_parent)?;
-    let result = materialize_in(program, llvm, options, &tools, &temporary);
+    let result = materialize_in(program, llvm.as_bytes(), options, &tools, &temporary);
     let _ = fs::remove_dir_all(&temporary);
     result
 }

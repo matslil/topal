@@ -1,7 +1,10 @@
 //! Correctness-first native compilation for the currently admitted Topal slice.
 
 mod artifact;
+mod backend;
 mod codegen;
+mod frontend;
+mod pipeline;
 mod toolchain;
 
 use std::fmt;
@@ -74,16 +77,7 @@ pub fn compile_source(
     source: &str,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
-    let modules = topal_language::modules::select_source_modules(
-        source,
-        &options.library_root,
-        &["advent-of-code", "std"],
-    )
-    .map_err(|error| CompileError::Io(error.to_string()))?;
-    let program = topal_language::analyze_for_compiler_with_modules(source, &modules)
-        .map_err(CompileError::Diagnostic)?;
-    let llvm = codegen::emit_llvm(&program, &options.source_name);
-    toolchain::materialize(&program, llvm.as_bytes(), options)
+    pipeline::compile(source, options)
 }
 
 #[must_use]
