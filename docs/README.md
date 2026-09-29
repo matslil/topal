@@ -34,3 +34,7 @@ targeted C boundary and does not change those portable semantics.
 The [design-pattern research library](design-patterns/README.md) is a
 non-normative survey used to test the breadth of the core design. Its pattern
 requirements and tradeoffs do not state that Topal already supplies a feature.
+The [compiler-optimization research library](compiler-optimizations/README.md)
+similarly catalogs production and research transformations, their evidence,
+target assumptions, limitations, and competing cost characteristics without
+claiming that Topal implements or promises them.
