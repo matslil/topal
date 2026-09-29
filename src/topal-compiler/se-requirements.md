@@ -31,12 +31,14 @@ O0 object generation with frame pointers, and use LLD for executable linking.
 Tool failure shall preserve the responsible command's diagnostics and shall not
 publish a partial requested output.
 
-## TOPAL-COMP-PLATFORM-001 — No foreign runtime dependency
+## TOPAL-COMP-PLATFORM-001 — No implicit foreign runtime dependency
 
 An executable shall define `_start`, perform complete standard-output writes
-and termination through the Linux x86-64 syscall ABI, and link as a static PIE
-without startup files, default libraries, a dynamic interpreter, `DT_NEEDED`
-entries, or undefined symbols.
+and termination through the Linux x86-64 syscall ABI, and use no startup files
+or default libraries. It shall link as a static PIE without a dynamic
+interpreter, `DT_NEEDED` entries, or undefined symbols unless an explicitly
+selected shared C access library supplies the loader and object requirements
+defined by `TOPAL-COMP-C-SHARED-001`.
 
 ## TOPAL-COMP-C-STATIC-001 — Checked static C access libraries
 
@@ -55,9 +57,19 @@ dependencies. This realizes `TOPAL-C-ABI-CONTEXT-001` through
 `topal-c-bindgen` shall require Clang 22 and the qualified target, parse rather
 than text-match C declarations, reject every declaration outside const,
 non-variadic C functions with `int` parameters and C `int` or `void` results,
-verify ELF x86-64 archive
-symbols with LLVM tools, and publish no partial access-library directory after
-failure.
+verify ELF x86-64 binary symbols with LLVM tools, and publish no partial
+access-library directory after failure.
+
+## TOPAL-COMP-C-SHARED-001 — Closed shared C access libraries
+
+For `topal-c-abi-shared/1`, the translator and compiler shall verify an ELF
+x86-64 shared object with a filename-matching SONAME and reject dynamic
+dependencies, unresolved symbols, and load or unload initializers. Executable
+linking shall name the declared object through `DT_NEEDED`, use the qualified
+`/lib64/ld-linux-x86-64.so.2` interpreter and `$ORIGIN` runpath, and deploy the
+exact digested object beside the executable without replacing a conflicting
+SONAME. Artifact identity shall include the object digest and platform
+requirements. This realizes `TOPAL-C-ABI-SHARED-001`.
 
 ## TOPAL-COMP-O0-001 — Exact first-slice lowering
 

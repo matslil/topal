@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use sha2::{Digest, Sha256};
 use topal_c_abi::{
     AccessLibrary, CEffect, CValue, Function, InputArtifact, PLATFORM_ABI, Parameter, SCHEMA,
-    TARGET,
+    SHARED_SCHEMA, SharedAccessLibrary, SharedObjectArtifact, TARGET,
 };
 use topal_compiler::{LlvmTools, NATIVE_ABI, NativeArtifactMetadata, metadata_path};
 use topal_language::interpreter::Session;
@@ -295,6 +295,177 @@ fn links_a_checked_generated_c_access_library_from_a_static_archive() {
         executed.stderr,
         b"error[E-C-ABI-RANGE]: Topal Int is not representable as a C signed int\n"
     );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // One end-to-end proof covers ELF input, deployment, linking, and execution.
+fn links_and_deploys_a_checked_c_shared_object() {
+    // TOPAL-C-ABI-SHARED-001, TOPAL-COMP-C-SHARED-001
+    let directory = temporary("c-shared-library");
+    let library_root = directory.join("library");
+    let library = library_root.join("arithmetic");
+    let output_directory = directory.join("output");
+    fs::create_dir_all(&library).unwrap();
+    fs::create_dir_all(&output_directory).unwrap();
+    let header = b"int c_add(int left, int right) __attribute__((const));\n";
+    fs::write(library.join("interface.h"), header).unwrap();
+    let tools = LlvmTools::discover(None).unwrap();
+    let ir = directory.join("arithmetic.ll");
+    let bitcode = directory.join("arithmetic.bc");
+    let object = directory.join("arithmetic.o");
+    let shared_object = library.join("libarithmetic.so");
+    fs::write(
+        &ir,
+        "target triple = \"x86_64-unknown-linux-gnu\"\ndefine i32 @c_add(i32 %left, i32 %right) {\nentry:\n  %sum = add i32 %left, %right\n  ret i32 %sum\n}\n",
+    )
+    .unwrap();
+    for output in [
+        run(Command::new(tools.directory.join("llvm-as")).args([
+            ir.to_str().unwrap(),
+            "-o",
+            bitcode.to_str().unwrap(),
+        ])),
+        run(Command::new(tools.directory.join("llc")).args([
+            "-filetype=obj",
+            "-relocation-model=pic",
+            "-mtriple=x86_64-unknown-linux-gnu",
+            bitcode.to_str().unwrap(),
+            "-o",
+            object.to_str().unwrap(),
+        ])),
+        run(Command::new(tools.directory.join("rust-lld")).args([
+            "-flavor",
+            "gnu",
+            "-shared",
+            "-soname",
+            "libarithmetic.so",
+            object.to_str().unwrap(),
+            "-o",
+            shared_object.to_str().unwrap(),
+        ])),
+    ] {
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let shared_bytes = fs::read(&shared_object).unwrap();
+    let manifest = SharedAccessLibrary {
+        schema: SHARED_SCHEMA.into(),
+        identity: "arithmetic".into(),
+        version: "v0.1".into(),
+        target: TARGET.into(),
+        platform_abi: PLATFORM_ABI.into(),
+        clang_version: "clang version 22.0.0".into(),
+        header: InputArtifact {
+            file: "interface.h".into(),
+            sha256: format!("{:x}", Sha256::digest(header)),
+        },
+        shared_object: SharedObjectArtifact {
+            file: "libarithmetic.so".into(),
+            sha256: format!("{:x}", Sha256::digest(&shared_bytes)),
+            soname: "libarithmetic.so".into(),
+        },
+        functions: vec![Function {
+            topal_name: "add".into(),
+            symbol: "c_add".into(),
+            parameters: vec![
+                Parameter {
+                    name: "left".into(),
+                    value: CValue::SignedInt32,
+                },
+                Parameter {
+                    name: "right".into(),
+                    value: CValue::SignedInt32,
+                },
+            ],
+            result: CValue::SignedInt32,
+            effect: CEffect::NoObservableEffect,
+        }],
+    };
+    fs::write(library.join("module.t"), manifest.topal_source()).unwrap();
+    fs::write(
+        library.join("module.topal-c-abi.json"),
+        manifest.encode().unwrap(),
+    )
+    .unwrap();
+
+    let source = directory.join("application.t");
+    let executable = output_directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nuse library arithmetic (version is v0.1)\nadd is arithmetic add\nadd (20, 22)\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert_eq!(
+        fs::read(output_directory.join("libarithmetic.so")).unwrap(),
+        shared_bytes
+    );
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args([
+            "--program-headers",
+            "--dynamic-table",
+            "--needed-libs",
+            "--string-dump=.interp",
+        ])
+        .arg(&executable));
+    assert!(inspected.status.success());
+    let elf = String::from_utf8_lossy(&inspected.stdout);
+    assert!(elf.contains("/lib64/ld-linux-x86-64.so.2"), "{elf}");
+    assert!(elf.contains("libarithmetic.so"), "{elf}");
+    assert!(elf.contains("$ORIGIN"), "{elf}");
+    let executed = run(&mut Command::new(&executable));
+    assert!(
+        executed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&executed.stderr)
+    );
+    assert_eq!(executed.stdout, b"42\n");
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+    assert!(
+        metadata
+            .dependencies
+            .iter()
+            .any(|dependency| dependency.identity == "c-abi.arithmetic.shared-object")
+    );
+    assert!(
+        metadata
+            .platform_requirements
+            .contains(&"shared-object:libarithmetic.so".into())
+    );
+
+    fs::write(
+        output_directory.join("libarithmetic.so"),
+        b"conflicting object",
+    )
+    .unwrap();
+    let conflicting_output = output_directory.join("second-application");
+    let rejected = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        conflicting_output.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("conflicts with required digest"));
+    assert!(!conflicting_output.exists());
+    assert!(!metadata_path(&conflicting_output).exists());
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

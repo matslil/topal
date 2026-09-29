@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
-use topal_c_abi::{AccessLibrary, CValue};
+use topal_c_abi::{AccessLibraryManifest, CValue};
 use topal_language::compiler::{
     CompilerCFunction, CompilerCValue, CompilerProgram, CompilerType,
     analyze_for_compiler_with_modules,
@@ -23,8 +23,33 @@ const BUILT_IN_LIBRARIES: &[&str] = &["advent-of-code", "std"];
 /// source or raw module collections from reaching a native backend stage.
 pub(crate) struct CheckedProgram {
     program: CompilerProgram,
-    static_archives: Vec<PathBuf>,
+    static_archives: Vec<StaticArchiveLink>,
+    shared_objects: Vec<SharedObjectLink>,
     foreign_dependencies: Vec<DigestEntry>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct SharedObjectLink {
+    pub(crate) library_identity: String,
+    pub(crate) path: PathBuf,
+    pub(crate) soname: String,
+    pub(crate) sha256: String,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct StaticArchiveLink {
+    pub(crate) library_identity: String,
+    pub(crate) path: PathBuf,
+}
+
+enum ForeignBinary {
+    StaticArchive(PathBuf),
+    SharedObject(SharedObjectLink),
+}
+
+struct LoadedAccessLibrary {
+    manifest: AccessLibraryManifest,
+    binary: ForeignBinary,
 }
 
 impl CheckedProgram {
@@ -32,8 +57,12 @@ impl CheckedProgram {
         &self.program
     }
 
-    pub(crate) fn static_archives(&self) -> &[PathBuf] {
+    pub(crate) fn static_archives(&self) -> &[StaticArchiveLink] {
         &self.static_archives
+    }
+
+    pub(crate) fn shared_objects(&self) -> &[SharedObjectLink] {
+        &self.shared_objects
     }
 
     pub(crate) fn foreign_dependencies(&self) -> &[DigestEntry] {
@@ -59,36 +88,58 @@ pub(crate) fn check(source: &str, library_root: &Path) -> Result<CheckedProgram,
     let mut program =
         analyze_for_compiler_with_modules(source, &modules).map_err(CompileError::Diagnostic)?;
     attach_foreign_functions(&mut program, &access_libraries)?;
-    let static_archives = access_libraries
-        .values()
-        .map(|(_, archive)| archive.clone())
-        .collect();
-    let mut foreign_dependencies = access_libraries
-        .values()
-        .flat_map(|(library, _)| {
-            [
-                DigestEntry {
-                    identity: format!("c-abi.{}.header", library.identity),
-                    sha256: library.header.sha256.clone(),
-                },
-                DigestEntry {
-                    identity: format!("c-abi.{}.static-archive", library.identity),
-                    sha256: library.static_archive.sha256.clone(),
-                },
-            ]
-        })
-        .collect::<Vec<_>>();
+    let mut static_archives = Vec::new();
+    let mut shared_objects = Vec::new();
+    let mut foreign_dependencies = Vec::new();
+    let mut shared_sonames = BTreeMap::new();
+    for library in access_libraries.values() {
+        foreign_dependencies.push(DigestEntry {
+            identity: format!("c-abi.{}.header", library.manifest.identity()),
+            sha256: library.manifest.header().sha256.clone(),
+        });
+        match &library.binary {
+            ForeignBinary::StaticArchive(path) => {
+                static_archives.push(StaticArchiveLink {
+                    library_identity: library.manifest.identity().to_owned(),
+                    path: path.clone(),
+                });
+                let AccessLibraryManifest::Static(manifest) = &library.manifest else {
+                    unreachable!("static binary retains static manifest")
+                };
+                foreign_dependencies.push(DigestEntry {
+                    identity: format!("c-abi.{}.static-archive", manifest.identity),
+                    sha256: manifest.static_archive.sha256.clone(),
+                });
+            }
+            ForeignBinary::SharedObject(shared) => {
+                if let Some(previous) = shared_sonames.insert(&shared.soname, &shared.sha256)
+                    && previous != &shared.sha256
+                {
+                    return Err(CompileError::Tool(format!(
+                        "C shared-object SONAME `{}` resolves to conflicting digests",
+                        shared.soname
+                    )));
+                }
+                shared_objects.push(shared.clone());
+                foreign_dependencies.push(DigestEntry {
+                    identity: format!("c-abi.{}.shared-object", library.manifest.identity()),
+                    sha256: shared.sha256.clone(),
+                });
+            }
+        }
+    }
     foreign_dependencies.sort_by(|left, right| left.identity.cmp(&right.identity));
     Ok(CheckedProgram {
         program,
         static_archives,
+        shared_objects,
         foreign_dependencies,
     })
 }
 
 fn load_access_libraries(
     modules: &[topal_language::modules::SourceModule],
-) -> Result<BTreeMap<String, (AccessLibrary, PathBuf)>, CompileError> {
+) -> Result<BTreeMap<String, LoadedAccessLibrary>, CompileError> {
     let mut libraries = BTreeMap::new();
     for module in modules {
         if !module.source.contains("features is ( abi )") {
@@ -102,7 +153,7 @@ fn load_access_libraries(
                 manifest_path.display()
             ))
         })?;
-        let manifest = AccessLibrary::decode(&bytes).map_err(CompileError::Tool)?;
+        let manifest = AccessLibraryManifest::decode(&bytes).map_err(CompileError::Tool)?;
         if module.source != manifest.topal_source() {
             return Err(CompileError::Tool(format!(
                 "Topal ABI source {} is not the canonical rendering of {}",
@@ -113,21 +164,42 @@ fn load_access_libraries(
         let identity = module.identity.first().ok_or_else(|| {
             CompileError::Tool("C access-library module has no library identity".into())
         })?;
-        if &manifest.identity != identity {
+        if manifest.identity() != identity {
             return Err(CompileError::Tool(format!(
                 "C manifest identity `{}` does not match selected library `{identity}`",
-                manifest.identity
+                manifest.identity()
             )));
         }
         let directory = manifest_path.parent().unwrap_or_else(|| Path::new("."));
-        verify_artifact(directory, &manifest.header.file, &manifest.header.sha256)?;
-        let archive = verify_artifact(
+        verify_artifact(
             directory,
-            &manifest.static_archive.file,
-            &manifest.static_archive.sha256,
+            &manifest.header().file,
+            &manifest.header().sha256,
         )?;
+        let binary = match &manifest {
+            AccessLibraryManifest::Static(library) => {
+                ForeignBinary::StaticArchive(verify_artifact(
+                    directory,
+                    &library.static_archive.file,
+                    &library.static_archive.sha256,
+                )?)
+            }
+            AccessLibraryManifest::Shared(library) => {
+                let path = verify_artifact(
+                    directory,
+                    &library.shared_object.file,
+                    &library.shared_object.sha256,
+                )?;
+                ForeignBinary::SharedObject(SharedObjectLink {
+                    library_identity: identity.clone(),
+                    path,
+                    soname: library.shared_object.soname.clone(),
+                    sha256: library.shared_object.sha256.clone(),
+                })
+            }
+        };
         if libraries
-            .insert(identity.clone(), (manifest, archive))
+            .insert(identity.clone(), LoadedAccessLibrary { manifest, binary })
             .is_some()
         {
             return Err(CompileError::Tool(format!(
@@ -176,7 +248,7 @@ fn verify_artifact(directory: &Path, file: &str, expected: &str) -> Result<PathB
 
 fn attach_foreign_functions(
     program: &mut CompilerProgram,
-    libraries: &BTreeMap<String, (AccessLibrary, PathBuf)>,
+    libraries: &BTreeMap<String, LoadedAccessLibrary>,
 ) -> Result<(), CompileError> {
     for function in &mut program.functions {
         let Some(identity) = function
@@ -186,7 +258,7 @@ fn attach_foreign_functions(
         else {
             continue;
         };
-        let Some((library, _)) = libraries.get(identity) else {
+        let Some(library) = libraries.get(identity) else {
             continue;
         };
         let source_name = function
@@ -195,7 +267,8 @@ fn attach_foreign_functions(
             .next()
             .unwrap_or(&function.source_name);
         let declaration = library
-            .functions
+            .manifest
+            .functions()
             .iter()
             .find(|candidate| candidate.topal_name == source_name)
             .ok_or_else(|| {

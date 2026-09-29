@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use topal_c_abi::AccessLibrary;
+use topal_c_abi::{AccessLibrary, AccessLibraryManifest};
 
 static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
 
@@ -37,6 +37,7 @@ fn llvm_tools() -> PathBuf {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // One fixture proves atomic static and shared generation from the same interface.
 fn generates_a_canonical_access_library_atomically() {
     let directory = temporary("generate");
     let tools = llvm_tools();
@@ -45,6 +46,7 @@ fn generates_a_canonical_access_library_atomically() {
     let bitcode = directory.join("arithmetic.bc");
     let object = directory.join("arithmetic.o");
     let archive = directory.join("libarithmetic.a");
+    let shared_object = directory.join("libarithmetic.so");
     let clang = directory.join("clang-22");
     let output = directory.join("arithmetic");
     fs::write(
@@ -74,6 +76,19 @@ fn generates_a_canonical_access_library_atomically() {
             .unwrap(),
         Command::new(tools.join("llvm-ar"))
             .args(["rcs", archive.to_str().unwrap(), object.to_str().unwrap()])
+            .status()
+            .unwrap(),
+        Command::new(tools.join("rust-lld"))
+            .args([
+                "-flavor",
+                "gnu",
+                "-shared",
+                "-soname",
+                "libarithmetic.so",
+                object.to_str().unwrap(),
+                "-o",
+                shared_object.to_str().unwrap(),
+            ])
             .status()
             .unwrap(),
     ] {
@@ -118,4 +133,41 @@ fn generates_a_canonical_access_library_atomically() {
     );
     assert_eq!(manifest.functions[0].symbol, "c_add");
     assert!(output.join("libarithmetic.a").is_file());
+
+    let shared_output = directory.join("arithmetic-shared");
+    let generated = Command::new(env!("CARGO_BIN_EXE_topal-c-bindgen"))
+        .args([
+            "--library",
+            "arithmetic",
+            "--header",
+            header.to_str().unwrap(),
+            "--shared-object",
+            shared_object.to_str().unwrap(),
+            "--output",
+            shared_output.to_str().unwrap(),
+            "--clang",
+            clang.to_str().unwrap(),
+            "--llvm-tools",
+            tools.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        generated.status.success(),
+        "{}",
+        String::from_utf8_lossy(&generated.stderr)
+    );
+    let manifest = AccessLibraryManifest::decode(
+        &fs::read(shared_output.join("module.topal-c-abi.json")).unwrap(),
+    )
+    .unwrap();
+    let AccessLibraryManifest::Shared(manifest) = manifest else {
+        panic!("shared input must generate the shared schema")
+    };
+    assert_eq!(manifest.shared_object.soname, "libarithmetic.so");
+    assert_eq!(
+        fs::read_to_string(shared_output.join("module.t")).unwrap(),
+        manifest.topal_source()
+    );
+    assert!(shared_output.join("libarithmetic.so").is_file());
 }

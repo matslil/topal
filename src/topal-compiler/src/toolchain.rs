@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,10 +9,20 @@ use topal_language::compiler::CompilerProgram;
 
 use crate::{
     CompileError, CompileOptions, DigestEntry, Emit, LLVM_MAJOR, NativeArtifactMetadata,
-    backend::LlvmModule, metadata_path,
+    artifact::sha256,
+    backend::LlvmModule,
+    frontend::{SharedObjectLink, StaticArchiveLink},
+    metadata_path,
 };
 
 static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
+const DYNAMIC_LOADER: &str = "/lib64/ld-linux-x86-64.so.2";
+
+struct ForeignLinkInputs<'a> {
+    static_archives: &'a [StaticArchiveLink],
+    shared_objects: &'a [SharedObjectLink],
+    dependencies: &'a [DigestEntry],
+}
 
 #[derive(Clone, Debug)]
 pub struct LlvmTools {
@@ -100,13 +110,18 @@ fn verify(directory: &Path) -> Result<String, CompileError> {
 
 pub(crate) fn materialize(
     program: &CompilerProgram,
-    static_archives: &[PathBuf],
+    static_archives: &[StaticArchiveLink],
+    shared_objects: &[SharedObjectLink],
     foreign_dependencies: &[DigestEntry],
     llvm: &LlvmModule,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
-    verify_static_archives(program, static_archives, &tools)?;
+    let mut foreign_symbols = verify_static_archives(static_archives, &tools)?;
+    for (identity, symbols) in verify_shared_objects(shared_objects, &tools)? {
+        foreign_symbols.entry(identity).or_default().extend(symbols);
+    }
+    verify_foreign_symbols(program, &foreign_symbols)?;
     let output_parent = options.output.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(output_parent).map_err(|error| {
         CompileError::Io(format!(
@@ -117,8 +132,11 @@ pub(crate) fn materialize(
     let temporary = temporary_directory(output_parent)?;
     let result = materialize_in(
         program,
-        static_archives,
-        foreign_dependencies,
+        &ForeignLinkInputs {
+            static_archives,
+            shared_objects,
+            dependencies: foreign_dependencies,
+        },
         llvm.as_bytes(),
         options,
         &tools,
@@ -128,44 +146,131 @@ pub(crate) fn materialize(
     result
 }
 
-fn verify_static_archives(
-    program: &CompilerProgram,
-    static_archives: &[PathBuf],
+fn verify_shared_objects(
+    shared_objects: &[SharedObjectLink],
     tools: &LlvmTools,
-) -> Result<(), CompileError> {
-    let mut symbols = BTreeSet::new();
-    for archive in static_archives {
-        let headers = run_output(
+) -> Result<BTreeMap<String, BTreeSet<String>>, CompileError> {
+    let mut libraries = BTreeMap::new();
+    for shared in shared_objects {
+        let inspected = run_output(
             Command::new(tools.path("llvm-readobj"))
-                .arg("--file-headers")
-                .arg(archive),
+                .args([
+                    "--file-header",
+                    "--program-headers",
+                    "--dynamic-table",
+                    "--needed-libs",
+                ])
+                .arg(&shared.path),
         )?;
-        let headers = String::from_utf8_lossy(&headers.stdout);
-        if !headers.contains("elf64-x86-64") && !headers.contains("x86_64") {
+        let description = String::from_utf8_lossy(&inspected.stdout);
+        if !description.contains("Format: elf64-x86-64")
+            || !description.contains("Type: SharedObject")
+            || !description.contains(&format!("Library soname: [{}]", shared.soname))
+        {
             return Err(CompileError::Tool(format!(
-                "C static archive {} does not contain qualified x86-64 ELF objects",
-                archive.display()
+                "C shared object {} does not match qualified SONAME `{}`",
+                shared.path.display(),
+                shared.soname
+            )));
+        }
+        let needed = description
+            .split_once("NeededLibraries [")
+            .and_then(|(_, suffix)| suffix.split_once(']'))
+            .map_or("", |(entries, _)| entries)
+            .trim();
+        if !needed.is_empty() {
+            return Err(CompileError::Tool(format!(
+                "C shared object {} has undeclared dynamic dependencies",
+                shared.path.display()
+            )));
+        }
+        if [" INIT ", " INIT_ARRAY ", " FINI ", " FINI_ARRAY "]
+            .iter()
+            .any(|tag| description.contains(tag))
+        {
+            return Err(CompileError::Tool(format!(
+                "C shared object {} contains a load or unload initializer",
+                shared.path.display()
+            )));
+        }
+        let undefined = run_output(
+            Command::new(tools.path("llvm-nm"))
+                .args(["--undefined-only", "--extern-only"])
+                .arg(&shared.path),
+        )?;
+        if !String::from_utf8_lossy(&undefined.stdout).trim().is_empty() {
+            return Err(CompileError::Tool(format!(
+                "C shared object {} contains unresolved external symbols",
+                shared.path.display()
             )));
         }
         let names = run_output(
             Command::new(tools.path("llvm-nm"))
                 .args(["--defined-only", "--extern-only"])
-                .arg(archive),
+                .arg(&shared.path),
         )?;
+        let symbols = libraries
+            .entry(shared.library_identity.clone())
+            .or_insert_with(BTreeSet::new);
         symbols.extend(
             String::from_utf8_lossy(&names.stdout)
                 .split_whitespace()
                 .map(str::to_owned),
         );
     }
+    Ok(libraries)
+}
+
+fn verify_static_archives(
+    static_archives: &[StaticArchiveLink],
+    tools: &LlvmTools,
+) -> Result<BTreeMap<String, BTreeSet<String>>, CompileError> {
+    let mut libraries = BTreeMap::new();
+    for archive in static_archives {
+        let headers = run_output(
+            Command::new(tools.path("llvm-readobj"))
+                .arg("--file-headers")
+                .arg(&archive.path),
+        )?;
+        let headers = String::from_utf8_lossy(&headers.stdout);
+        if !headers.contains("elf64-x86-64") && !headers.contains("x86_64") {
+            return Err(CompileError::Tool(format!(
+                "C static archive {} does not contain qualified x86-64 ELF objects",
+                archive.path.display()
+            )));
+        }
+        let names = run_output(
+            Command::new(tools.path("llvm-nm"))
+                .args(["--defined-only", "--extern-only"])
+                .arg(&archive.path),
+        )?;
+        let symbols = libraries
+            .entry(archive.library_identity.clone())
+            .or_insert_with(BTreeSet::new);
+        symbols.extend(
+            String::from_utf8_lossy(&names.stdout)
+                .split_whitespace()
+                .map(str::to_owned),
+        );
+    }
+    Ok(libraries)
+}
+
+fn verify_foreign_symbols(
+    program: &CompilerProgram,
+    symbols: &BTreeMap<String, BTreeSet<String>>,
+) -> Result<(), CompileError> {
     for function in program
         .functions
         .iter()
         .filter_map(|function| function.foreign.as_ref())
     {
-        if !symbols.contains(&function.external_symbol) {
+        if !symbols
+            .get(&function.library_identity)
+            .is_some_and(|symbols| symbols.contains(&function.external_symbol))
+        {
             return Err(CompileError::Tool(format!(
-                "selected C static archives do not define `{}`",
+                "selected C libraries do not define `{}`",
                 function.external_symbol
             )));
         }
@@ -175,13 +280,72 @@ fn verify_static_archives(
 
 fn materialize_in(
     program: &CompilerProgram,
-    static_archives: &[PathBuf],
-    foreign_dependencies: &[DigestEntry],
+    foreign: &ForeignLinkInputs<'_>,
     llvm: &[u8],
     options: &CompileOptions,
     tools: &LlvmTools,
     temporary: &Path,
 ) -> Result<NativeArtifactMetadata, CompileError> {
+    let generated = generate_native_output(foreign, llvm, options, tools, temporary)?;
+    let output_bytes =
+        fs::read(&generated).map_err(io_error("read generated output", &generated))?;
+    let deploy_shared_objects =
+        options.emit == Emit::Executable && !foreign.shared_objects.is_empty();
+    let additional_platform_requirements =
+        shared_platform_requirements(foreign.shared_objects, deploy_shared_objects);
+    let metadata = NativeArtifactMetadata::for_program(
+        program,
+        foreign.dependencies,
+        &additional_platform_requirements,
+        &options.source_name,
+        options.emit.name(),
+        &output_bytes,
+        &tools.version,
+    );
+    let encoded = metadata.encode().map_err(CompileError::Tool)?;
+    let staged_output = temporary.join("published-output");
+    let staged_metadata = temporary.join("published-metadata");
+    fs::write(&staged_output, &output_bytes).map_err(io_error("stage output", &staged_output))?;
+    let permissions = fs::metadata(&generated)
+        .map_err(io_error("read output permissions", &generated))?
+        .permissions();
+    fs::set_permissions(&staged_output, permissions)
+        .map_err(io_error("preserve output permissions", &staged_output))?;
+    fs::write(&staged_metadata, encoded).map_err(io_error("stage metadata", &staged_metadata))?;
+
+    let staged_shared_objects = stage_shared_objects(
+        foreign.shared_objects,
+        deploy_shared_objects,
+        &options.output,
+        temporary,
+    )?;
+    let published_shared_objects = publish_shared_objects(staged_shared_objects)?;
+    let sidecar = metadata_path(&options.output);
+    if let Err(error) = fs::rename(&staged_metadata, &sidecar) {
+        remove_files(&published_shared_objects);
+        return Err(CompileError::Io(format!(
+            "cannot publish metadata {}: {error}",
+            sidecar.display()
+        )));
+    }
+    if let Err(error) = fs::rename(&staged_output, &options.output) {
+        let _ = fs::remove_file(&sidecar);
+        remove_files(&published_shared_objects);
+        return Err(CompileError::Io(format!(
+            "cannot publish output {}: {error}",
+            options.output.display()
+        )));
+    }
+    Ok(metadata)
+}
+
+fn generate_native_output(
+    foreign: &ForeignLinkInputs<'_>,
+    llvm: &[u8],
+    options: &CompileOptions,
+    tools: &LlvmTools,
+    temporary: &Path,
+) -> Result<PathBuf, CompileError> {
     let input = temporary.join("module.ll");
     fs::write(&input, llvm).map_err(io_error("write LLVM IR", &input))?;
     let generated = match options.emit {
@@ -214,54 +378,134 @@ fn materialize_in(
             } else {
                 let executable = temporary.join("application");
                 let mut linker = Command::new(tools.path("rust-lld"));
+                linker.arg("-flavor").arg("gnu");
+                if foreign.shared_objects.is_empty() {
+                    linker.arg("-static").arg("--no-dynamic-linker");
+                } else {
+                    linker
+                        .arg("--dynamic-linker")
+                        .arg(DYNAMIC_LOADER)
+                        .arg("--enable-new-dtags")
+                        .arg("-rpath")
+                        .arg("$ORIGIN");
+                }
                 linker
-                    .arg("-flavor")
-                    .arg("gnu")
-                    .arg("-static")
                     .arg("-pie")
-                    .arg("--no-dynamic-linker")
                     .arg("-e")
                     .arg("_start")
                     .arg(&object)
-                    .args(static_archives)
-                    .arg("-o")
-                    .arg(&executable);
+                    .args(foreign.static_archives.iter().map(|archive| &archive.path));
+                if !foreign.shared_objects.is_empty() {
+                    linker.arg("--no-as-needed");
+                    for shared in foreign.shared_objects {
+                        linker.arg(&shared.path);
+                    }
+                }
+                linker.arg("-o").arg(&executable);
                 run(&mut linker)?;
                 executable
             }
         }
     };
-    let output_bytes =
-        fs::read(&generated).map_err(io_error("read generated output", &generated))?;
-    let metadata = NativeArtifactMetadata::for_program(
-        program,
-        foreign_dependencies,
-        &options.source_name,
-        options.emit.name(),
-        &output_bytes,
-        &tools.version,
-    );
-    let encoded = metadata.encode().map_err(CompileError::Tool)?;
-    let staged_output = temporary.join("published-output");
-    let staged_metadata = temporary.join("published-metadata");
-    fs::write(&staged_output, &output_bytes).map_err(io_error("stage output", &staged_output))?;
-    let permissions = fs::metadata(&generated)
-        .map_err(io_error("read output permissions", &generated))?
-        .permissions();
-    fs::set_permissions(&staged_output, permissions)
-        .map_err(io_error("preserve output permissions", &staged_output))?;
-    fs::write(&staged_metadata, encoded).map_err(io_error("stage metadata", &staged_metadata))?;
+    Ok(generated)
+}
 
-    let sidecar = metadata_path(&options.output);
-    fs::rename(&staged_metadata, &sidecar).map_err(io_error("publish metadata", &sidecar))?;
-    if let Err(error) = fs::rename(&staged_output, &options.output) {
-        let _ = fs::remove_file(&sidecar);
-        return Err(CompileError::Io(format!(
-            "cannot publish output {}: {error}",
-            options.output.display()
-        )));
+type StagedSharedObject = (PathBuf, PathBuf, String);
+
+fn shared_platform_requirements(shared_objects: &[SharedObjectLink], deploy: bool) -> Vec<String> {
+    if deploy {
+        let mut requirements = vec![format!("elf-interpreter:{DYNAMIC_LOADER}")];
+        requirements.extend(
+            shared_objects
+                .iter()
+                .map(|shared| format!("shared-object:{}", shared.soname)),
+        );
+        requirements.sort();
+        requirements.dedup();
+        requirements
+    } else {
+        Vec::new()
     }
-    Ok(metadata)
+}
+
+fn stage_shared_objects(
+    shared_objects: &[SharedObjectLink],
+    deploy: bool,
+    output: &Path,
+    temporary: &Path,
+) -> Result<Vec<StagedSharedObject>, CompileError> {
+    if !deploy {
+        return Ok(Vec::new());
+    }
+    let output_parent = output.parent().unwrap_or_else(|| Path::new("."));
+    let mut staged_objects = Vec::new();
+    for (index, shared) in shared_objects.iter().enumerate() {
+        let destination = output_parent.join(&shared.soname);
+        if destination == output {
+            return Err(CompileError::Tool(format!(
+                "output path collides with C shared-object SONAME `{}`",
+                shared.soname
+            )));
+        }
+        let source_bytes =
+            fs::read(&shared.path).map_err(io_error("read C shared object", &shared.path))?;
+        if sha256(&source_bytes) != shared.sha256 {
+            return Err(CompileError::Tool(format!(
+                "C shared object {} changed after frontend validation",
+                shared.path.display()
+            )));
+        }
+        if destination.exists() {
+            let existing = fs::read(&destination)
+                .map_err(io_error("read deployed C shared object", &destination))?;
+            if sha256(&existing) != shared.sha256 {
+                return Err(CompileError::Tool(format!(
+                    "deployed C shared object {} conflicts with required digest",
+                    destination.display()
+                )));
+            }
+            continue;
+        }
+        let staged = temporary.join(format!("published-shared-{index}"));
+        fs::write(&staged, source_bytes).map_err(io_error("stage C shared object", &staged))?;
+        staged_objects.push((staged, destination, shared.sha256.clone()));
+    }
+    Ok(staged_objects)
+}
+
+fn publish_shared_objects(
+    staged_objects: Vec<StagedSharedObject>,
+) -> Result<Vec<PathBuf>, CompileError> {
+    let mut published_objects = Vec::new();
+    for (staged, destination, expected_digest) in staged_objects {
+        if let Err(error) = fs::hard_link(&staged, &destination) {
+            if error.kind() == std::io::ErrorKind::AlreadyExists {
+                let existing = fs::read(&destination).map_err(|read_error| {
+                    remove_files(&published_objects);
+                    CompileError::Io(format!(
+                        "cannot read concurrently deployed C shared object {}: {read_error}",
+                        destination.display()
+                    ))
+                })?;
+                if sha256(&existing) == expected_digest {
+                    continue;
+                }
+            }
+            remove_files(&published_objects);
+            return Err(CompileError::Io(format!(
+                "cannot publish C shared object {}: {error}",
+                destination.display()
+            )));
+        }
+        published_objects.push(destination);
+    }
+    Ok(published_objects)
+}
+
+fn remove_files(paths: &[PathBuf]) {
+    for path in paths {
+        let _ = fs::remove_file(path);
+    }
 }
 
 fn temporary_directory(parent: &Path) -> Result<PathBuf, CompileError> {
