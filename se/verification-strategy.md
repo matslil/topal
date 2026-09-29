@@ -17,3 +17,10 @@ Mermaid diagrams are informative verification aids, not formal evidence.
 Claims of consistency, totality, race freedom, or deadlock freedom require an
 explicit argument, executable model, proof, or conservative checker appropriate
 to the claim. Assumptions and verification limits shall be recorded.
+
+Optimization-policy verification shall include unit-checked cost comparisons,
+permutation tests for deterministic tie-breaking, negative tests for unknown or
+incompatible targets and controls, golden canonical explanations, and
+differential semantic tests against `O0`. Performance tests shall state the
+dimension, model or measurement method, expected direction, tolerance, and
+noise treatment; an elapsed-time observation alone is not a correctness proof.

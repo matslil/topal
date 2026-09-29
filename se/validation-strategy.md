@@ -29,6 +29,16 @@ Measured validation records the exact model, board, firmware, operating mode,
 toolchain, method, workload shape, and tolerance. It validates a qualified cost
 claim, not portable language semantics or a universal performance guarantee.
 
+Optimization-policy validation additionally presents the same candidate plans
+under `O0`, speed-first, size-first, memory-first, and explicit-limit scenarios.
+Reviews confirm that infeasible plans never win, dominated plans are removed,
+unknown facts supply no preference, incomparable plans follow the documented
+ordered goals, and ties are independent of enumeration order. Generic-host,
+specific-host, native, board, and cross-target scenarios confirm that target
+selection remains independent from optimization level. Pass isolation, later
+enable/disable precedence, listing, explanation, and missing-information
+diagnostics are reviewed without treating mandatory lowering as optional.
+
 Validation is performed whenever a design or requirement changes and before a
 language revision is declared stable. Open ambiguity that could alter
 observable behavior is a validation finding, not an implementation choice.
