@@ -97,9 +97,11 @@ assumption or convert it to unconditional verification.
 
 Implementation evidence MAY record an optional architecture-model identity and
 provider certificate. Ordinary source SHALL request the associated property,
-not construct or inspect this record. Until an approved model exists, physical
-timing, placement, transfer, scheduler, instruction, compartment, and
-fault-domain properties SHALL remain unavailable to hard matching.
+not construct or inspect this record. Physical timing, placement, transfer,
+scheduler, instruction, compartment, and fault-domain properties SHALL remain
+unavailable to hard matching unless their applicable qualified provider model
+and assumptions satisfy `TOPAL-ARCH-VALID-001` and
+`TOPAL-ARCH-QUALIFICATION-001`.
 
 ### TOPAL-IMPL-SELECTION-001 — Hard and preferred matching
 
