@@ -13,6 +13,7 @@ pub(crate) fn compile(
     toolchain::materialize(
         checked.program(),
         checked.static_archives(),
+        checked.shared_objects(),
         checked.foreign_dependencies(),
         &llvm,
         options,

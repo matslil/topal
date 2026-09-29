@@ -70,6 +70,30 @@ Clang and Topal cannot prove it from machine code. Stateful, I/O-performing,
 nondeterministic, or otherwise effectful C functions are rejected until a
 Topal effect identity and capability contract can describe them.
 
+## Shared-object profile
+
+Schema `topal-c-abi-shared/1` retains the same function, value, effect, and
+target rules while replacing the archive with one ELF shared object. The
+object must carry an explicit SONAME identical to its access-library filename.
+It may not contain `DT_NEEDED` dependencies, unresolved external symbols, or
+load/unload initializers. These restrictions keep the first dynamic boundary
+closed rather than inheriting an ambient process dependency graph.
+
+For an executable that selects a shared access library, `topalc`:
+
+- rechecks its ELF kind, SONAME, symbols, dependencies, initializers, and digest;
+- links it explicitly and records its SONAME in `DT_NEEDED`;
+- fixes the ELF interpreter to `/lib64/ld-linux-x86-64.so.2`;
+- emits a `$ORIGIN` runpath; and
+- atomically deploys the exact shared object beside the executable, refusing
+  to replace a different file with the same SONAME.
+
+The interpreter path is part of this initial Linux profile, not a claim that
+all GNU/Linux installations use that filesystem layout. A system without that
+loader path cannot run this profile. Moving the executable and its colocated
+shared objects together preserves lookup; ambient library paths are neither
+required nor recorded.
+
 ## Deliberate limitations
 
 The first profile rejects pointers, arrays, structures, unions, enumerations,
@@ -81,7 +105,6 @@ profiles may add a type only together with explicit layout, validity,
 ownership, aliasing, failure, effect, and callback rules.
 
 Static archives may themselves contain only dependencies resolvable within the
-freestanding final link. The first profile adds no default C runtime, startup
-object, dynamic interpreter, or implicit library. Shared objects are a
-separate increment because their loader, search, identity, and deployment
-semantics are observable.
+freestanding final link. Neither profile adds a default C runtime or startup
+object. The static profile has no dynamic interpreter or implicit library; the
+shared profile admits only its declared objects and explicit loader contract.

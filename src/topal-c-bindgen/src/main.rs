@@ -1,4 +1,4 @@
-//! Generate a checked Topal access library from a C header and static archive.
+//! Generate a checked Topal access library from a C header and ELF binary.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -10,7 +10,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use topal_c_abi::{
     AccessLibrary, CEffect, CValue, Function, InputArtifact, PLATFORM_ABI, Parameter, SCHEMA,
-    TARGET,
+    SHARED_SCHEMA, SharedAccessLibrary, SharedObjectArtifact, TARGET,
 };
 
 fn main() -> ExitCode {
@@ -34,7 +34,7 @@ fn run() -> Result<(), String> {
     let clang_version = clang_version(&arguments.clang)?;
     let ast = clang_ast(&arguments)?;
     let functions = extract_functions(&ast)?;
-    verify_archive(&arguments.llvm_tools, &arguments.archive, &functions)?;
+    let verified_binary = verify_binary(&arguments.llvm_tools, &arguments.binary, &functions)?;
 
     let parent = arguments.output.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent)
@@ -46,7 +46,13 @@ fn run() -> Result<(), String> {
     ));
     fs::create_dir(&staging)
         .map_err(|error| format!("cannot create {}: {error}", staging.display()))?;
-    let result = generate(&arguments, &clang_version, functions, &staging);
+    let result = generate(
+        &arguments,
+        &clang_version,
+        functions,
+        &verified_binary,
+        &staging,
+    );
     if result.is_ok() {
         fs::rename(&staging, &arguments.output).map_err(|error| {
             format!(
@@ -64,11 +70,21 @@ fn run() -> Result<(), String> {
 struct Arguments {
     identity: String,
     header: PathBuf,
-    archive: PathBuf,
+    binary: BinaryInput,
     output: PathBuf,
     clang: PathBuf,
     llvm_tools: PathBuf,
     extra_clang_args: Vec<String>,
+}
+
+enum BinaryInput {
+    StaticArchive(PathBuf),
+    SharedObject(PathBuf),
+}
+
+enum VerifiedBinary {
+    StaticArchive,
+    SharedObject { soname: String },
 }
 
 impl Arguments {
@@ -76,6 +92,7 @@ impl Arguments {
         let mut identity = None;
         let mut header = None;
         let mut archive = None;
+        let mut shared_object = None;
         let mut output = None;
         let mut clang = None;
         let mut llvm_tools = None;
@@ -93,6 +110,9 @@ impl Arguments {
                 "--archive" => {
                     archive = Some(PathBuf::from(value(&mut arguments, "--archive")?));
                 }
+                "--shared-object" => {
+                    shared_object = Some(PathBuf::from(value(&mut arguments, "--shared-object")?));
+                }
                 "--output" => output = Some(PathBuf::from(value(&mut arguments, "--output")?)),
                 "--clang" => clang = Some(PathBuf::from(value(&mut arguments, "--clang")?)),
                 "--llvm-tools" => {
@@ -101,17 +121,22 @@ impl Arguments {
                 "--clang-arg" => extra_clang_args.push(value(&mut arguments, "--clang-arg")?),
                 "--help" | "-h" => {
                     println!(
-                        "Usage: topal-c-bindgen --library NAME --header FILE --archive FILE --output DIR --clang CLANG-22 --llvm-tools DIR [--clang-arg ARG]"
+                        "Usage: topal-c-bindgen --library NAME --header FILE (--archive FILE | --shared-object FILE) --output DIR --clang CLANG-22 --llvm-tools DIR [--clang-arg ARG]"
                     );
                     std::process::exit(0);
                 }
                 _ => return Err(format!("unknown argument `{argument}`")),
             }
         }
+        let binary = match (archive, shared_object) {
+            (Some(path), None) => BinaryInput::StaticArchive(path),
+            (None, Some(path)) => BinaryInput::SharedObject(path),
+            _ => return Err("exactly one of --archive or --shared-object is required".into()),
+        };
         Ok(Self {
             identity: identity.ok_or("--library is required")?,
             header: header.ok_or("--header is required")?,
-            archive: archive.ok_or("--archive is required")?,
+            binary,
             output: output.ok_or("--output is required")?,
             clang: clang.ok_or("--clang is required")?,
             llvm_tools: llvm_tools.ok_or("--llvm-tools is required")?,
@@ -275,6 +300,23 @@ fn topal_identifier(symbol: &str) -> String {
     symbol.replace('_', "-")
 }
 
+fn verify_binary(
+    tools: &Path,
+    binary: &BinaryInput,
+    functions: &[Function],
+) -> Result<VerifiedBinary, String> {
+    match binary {
+        BinaryInput::StaticArchive(archive) => {
+            verify_archive(tools, archive, functions)?;
+            Ok(VerifiedBinary::StaticArchive)
+        }
+        BinaryInput::SharedObject(shared_object) => {
+            let soname = verify_shared_object(tools, shared_object, functions)?;
+            Ok(VerifiedBinary::SharedObject { soname })
+        }
+    }
+}
+
 fn verify_archive(tools: &Path, archive: &Path, functions: &[Function]) -> Result<(), String> {
     let readobj = command_output(
         Command::new(tools.join("llvm-readobj"))
@@ -309,42 +351,172 @@ fn verify_archive(tools: &Path, archive: &Path, functions: &[Function]) -> Resul
     Ok(())
 }
 
+fn verify_shared_object(
+    tools: &Path,
+    shared_object: &Path,
+    functions: &[Function],
+) -> Result<String, String> {
+    let readobj = command_output(
+        Command::new(tools.join("llvm-readobj"))
+            .args([
+                "--file-header",
+                "--program-headers",
+                "--dynamic-table",
+                "--needed-libs",
+            ])
+            .arg(shared_object),
+    )?;
+    let description = String::from_utf8_lossy(&readobj.stdout);
+    if !description.contains("Format: elf64-x86-64") || !description.contains("Type: SharedObject")
+    {
+        return Err(format!(
+            "shared object {} is not a qualified x86-64 ELF shared object",
+            shared_object.display()
+        ));
+    }
+    let soname = description
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix("0x000000000000000E SONAME")
+                .and_then(|suffix| suffix.split('[').nth(1))
+                .and_then(|suffix| suffix.strip_suffix(']'))
+                .map(str::to_owned)
+        })
+        .ok_or_else(|| {
+            format!(
+                "shared object {} has no explicit SONAME",
+                shared_object.display()
+            )
+        })?;
+    let needed = description
+        .split_once("NeededLibraries [")
+        .and_then(|(_, suffix)| suffix.split_once(']'))
+        .map_or("", |(entries, _)| entries)
+        .trim();
+    if !needed.is_empty() {
+        return Err(format!(
+            "shared object {} has undeclared dynamic dependencies: {}",
+            shared_object.display(),
+            needed.replace('\n', ", ")
+        ));
+    }
+    if [" INIT ", " INIT_ARRAY ", " FINI ", " FINI_ARRAY "]
+        .iter()
+        .any(|tag| description.contains(tag))
+    {
+        return Err(format!(
+            "shared object {} contains a load or unload initializer",
+            shared_object.display()
+        ));
+    }
+    let undefined = command_output(
+        Command::new(tools.join("llvm-nm"))
+            .args(["--undefined-only", "--extern-only"])
+            .arg(shared_object),
+    )?;
+    if !String::from_utf8_lossy(&undefined.stdout).trim().is_empty() {
+        return Err(format!(
+            "shared object {} contains unresolved external symbols",
+            shared_object.display()
+        ));
+    }
+    verify_symbols(tools, shared_object, functions, "shared object")?;
+    Ok(soname)
+}
+
+fn verify_symbols(
+    tools: &Path,
+    binary: &Path,
+    functions: &[Function],
+    kind: &str,
+) -> Result<(), String> {
+    let symbols = command_output(
+        Command::new(tools.join("llvm-nm"))
+            .args(["--defined-only", "--extern-only"])
+            .arg(binary),
+    )?;
+    let symbols = String::from_utf8_lossy(&symbols.stdout)
+        .split_whitespace()
+        .map(str::to_owned)
+        .collect::<BTreeSet<_>>();
+    for function in functions {
+        if !symbols.contains(&function.symbol) {
+            return Err(format!(
+                "{kind} {} does not define C symbol `{}`",
+                binary.display(),
+                function.symbol
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn generate(
     arguments: &Arguments,
     clang_version: &str,
     functions: Vec<Function>,
+    verified_binary: &VerifiedBinary,
     staging: &Path,
 ) -> Result<(), String> {
     let header_file = "interface.h";
-    let archive_file = format!("lib{}.a", arguments.identity);
     let header = fs::read(&arguments.header)
         .map_err(|error| format!("cannot read {}: {error}", arguments.header.display()))?;
-    let archive = fs::read(&arguments.archive)
-        .map_err(|error| format!("cannot read {}: {error}", arguments.archive.display()))?;
+    let binary_path = match &arguments.binary {
+        BinaryInput::StaticArchive(path) | BinaryInput::SharedObject(path) => path,
+    };
+    let binary = fs::read(binary_path)
+        .map_err(|error| format!("cannot read {}: {error}", binary_path.display()))?;
     fs::write(staging.join(header_file), &header)
         .map_err(|error| format!("cannot copy C header: {error}"))?;
-    fs::write(staging.join(&archive_file), &archive)
-        .map_err(|error| format!("cannot copy static archive: {error}"))?;
-    let library = AccessLibrary {
-        schema: SCHEMA.into(),
-        identity: arguments.identity.clone(),
-        version: "v0.1".into(),
-        target: TARGET.into(),
-        platform_abi: PLATFORM_ABI.into(),
-        clang_version: clang_version.into(),
-        header: InputArtifact {
-            file: header_file.into(),
-            sha256: digest(&header),
-        },
-        static_archive: InputArtifact {
-            file: archive_file,
-            sha256: digest(&archive),
-        },
-        functions,
+    let header_artifact = InputArtifact {
+        file: header_file.into(),
+        sha256: digest(&header),
     };
-    fs::write(staging.join("module.t"), library.topal_source())
+    let (binary_file, source, manifest) = match (&arguments.binary, verified_binary) {
+        (BinaryInput::StaticArchive(_), VerifiedBinary::StaticArchive) => {
+            let binary_file = format!("lib{}.a", arguments.identity);
+            let library = AccessLibrary {
+                schema: SCHEMA.into(),
+                identity: arguments.identity.clone(),
+                version: "v0.1".into(),
+                target: TARGET.into(),
+                platform_abi: PLATFORM_ABI.into(),
+                clang_version: clang_version.into(),
+                header: header_artifact,
+                static_archive: InputArtifact {
+                    file: binary_file.clone(),
+                    sha256: digest(&binary),
+                },
+                functions,
+            };
+            (binary_file, library.topal_source(), library.encode()?)
+        }
+        (BinaryInput::SharedObject(_), VerifiedBinary::SharedObject { soname }) => {
+            let library = SharedAccessLibrary {
+                schema: SHARED_SCHEMA.into(),
+                identity: arguments.identity.clone(),
+                version: "v0.1".into(),
+                target: TARGET.into(),
+                platform_abi: PLATFORM_ABI.into(),
+                clang_version: clang_version.into(),
+                header: header_artifact,
+                shared_object: SharedObjectArtifact {
+                    file: soname.clone(),
+                    sha256: digest(&binary),
+                    soname: soname.clone(),
+                },
+                functions,
+            };
+            (soname.clone(), library.topal_source(), library.encode()?)
+        }
+        _ => return Err("internal C binary verification mismatch".into()),
+    };
+    fs::write(staging.join(&binary_file), &binary)
+        .map_err(|error| format!("cannot copy C binary: {error}"))?;
+    fs::write(staging.join("module.t"), source)
         .map_err(|error| format!("cannot write generated Topal access library: {error}"))?;
-    fs::write(staging.join("module.topal-c-abi.json"), library.encode()?)
+    fs::write(staging.join("module.topal-c-abi.json"), manifest)
         .map_err(|error| format!("cannot write C access-library manifest: {error}"))?;
     Ok(())
 }

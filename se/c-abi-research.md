@@ -39,6 +39,14 @@ archive by digest. Compilation flags and frontend version are part of
 provenance because preprocessing and implementation-defined C choices can
 change the interface.
 
+ELF shared objects add identity and deployment dimensions absent from an
+archive: `DT_SONAME`, `DT_NEEDED`, the executable's `PT_INTERP`, and loader
+search rules such as `DT_RUNPATH`. The first shared profile makes each of these
+closed and inspectable: one filename-matching SONAME, no transitive dependency,
+one qualified interpreter, and `$ORIGIN` lookup of a colocated digest. This is
+deliberately narrower than the ambient lookup and transitive dependency graph
+accepted by a conventional system linker.
+
 ## Model completeness
 
 The general C ABI model has fields for target and toolchain identity, object

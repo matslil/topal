@@ -49,6 +49,14 @@ The toolchain passes the verified archive explicitly to LLD; it adds neither a
 default library nor C startup code. This keeps filesystem discovery, semantic
 checking, target lowering, and artifact publication in their existing stages.
 
+Schema `topal-c-abi-shared/1` reuses the checked semantic adapter and replaces
+the archive link input with a closed ELF shared object. Frontend verification
+binds its digest and SONAME; toolchain verification rejects dependencies,
+unresolved symbols, and initializers. Executable materialization uses the
+profile's explicit loader and `$ORIGIN` runpath, then publishes the exact object
+beside the executable without overwriting a conflicting SONAME. Link and
+deployment policy therefore remain outside semantic lowering.
+
 An admitted positional-product result whose fields already have exact private
 machine values uses a recursively nested, non-packed LLVM literal struct. Unit
 occupies a sealed `i8` field inside such a value even though a standalone Unit

@@ -70,6 +70,7 @@ impl NativeArtifactMetadata {
     pub fn for_program(
         program: &CompilerProgram,
         foreign_dependencies: &[DigestEntry],
+        additional_platform_requirements: &[String],
         source_name: &str,
         output_kind: &str,
         output: &[u8],
@@ -106,6 +107,14 @@ impl NativeArtifactMetadata {
                 .iter()
                 .map(|dependency| format!("{}={}", dependency.identity, dependency.sha256)),
         );
+        let mut platform_requirements = vec!["topal.platform.linux-x86_64/1".into()];
+        platform_requirements.extend_from_slice(additional_platform_requirements);
+        platform_requirements.sort();
+        build_inputs.extend(
+            platform_requirements
+                .iter()
+                .map(|requirement| format!("platform={requirement}")),
+        );
         let build_identity = sha256(build_inputs.join("\0").as_bytes());
         Self {
             schema: NATIVE_ARTIFACT_SCHEMA.into(),
@@ -130,7 +139,7 @@ impl NativeArtifactMetadata {
             build_identity,
             dependencies,
             exports: Vec::new(),
-            platform_requirements: vec!["topal.platform.linux-x86_64/1".into()],
+            platform_requirements,
             evidence: Vec::new(),
             debug_prefix_map: Vec::new(),
             provenance: Vec::new(),
@@ -244,8 +253,30 @@ impl NativeArtifactMetadata {
                 .map(|(source, _)| source.as_str())
                 .collect::<Vec<_>>(),
         )?;
-        if self.platform_requirements != ["topal.platform.linux-x86_64/1"] {
-            return Err("native artifact lacks its exact Linux platform requirement".into());
+        let base_platform = "topal.platform.linux-x86_64/1";
+        let dynamic_loader = "elf-interpreter:/lib64/ld-linux-x86-64.so.2";
+        let has_shared_objects = self
+            .platform_requirements
+            .iter()
+            .any(|requirement| requirement.starts_with("shared-object:"));
+        let has_dynamic_loader = self
+            .platform_requirements
+            .iter()
+            .any(|requirement| requirement == dynamic_loader);
+        if !self
+            .platform_requirements
+            .iter()
+            .any(|requirement| requirement == base_platform)
+            || self.platform_requirements.iter().any(|requirement| {
+                requirement != base_platform
+                    && requirement != dynamic_loader
+                    && !requirement
+                        .strip_prefix("shared-object:")
+                        .is_some_and(valid_shared_object_requirement)
+            })
+            || has_shared_objects != has_dynamic_loader
+        {
+            return Err("native artifact has an invalid Linux platform requirement set".into());
         }
         if self.native_slices.is_empty()
             || self
@@ -334,6 +365,15 @@ impl NativeArtifactMetadata {
     }
 }
 
+fn valid_shared_object_requirement(soname: &str) -> bool {
+    soname.starts_with("lib")
+        && soname.contains(".so")
+        && !soname.contains("..")
+        && soname
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
+}
+
 fn require_sorted_unique(field: &str, values: &[&str]) -> Result<(), String> {
     if values.windows(2).any(|pair| pair[0] >= pair[1])
         || values.len() != values.iter().copied().collect::<BTreeSet<_>>().len()
@@ -365,6 +405,7 @@ mod tests {
         let metadata = NativeArtifactMetadata::for_program(
             &program,
             &[],
+            &[],
             "unit.t",
             "llvm-ir",
             b"ir",
@@ -382,6 +423,7 @@ mod tests {
         let program = analyze_for_compiler("use language (version is v0.1)\n()\n").unwrap();
         let mut metadata = NativeArtifactMetadata::for_program(
             &program,
+            &[],
             &[],
             "unit.t",
             "llvm-ir",

@@ -325,7 +325,12 @@ topalc --library-root library -o application application.t
 
 The translator emits canonical `module.t` and
 `module.topal-c-abi.json` descriptions plus copied, digested interface and
-archive inputs. The compiler compares both descriptions, rechecks the input
+binary inputs. The compiler compares both descriptions, rechecks the input
 digests, lowers only used published adapters, and records the C inputs in the
-native artifact. No default C library or startup code is added. Shared-library
-loading is a separately versioned increment.
+native artifact. No default C library or startup code is added.
+
+Passing `--shared-object libarithmetic.so` instead of `--archive` selects the
+separately versioned shared schema. Its closed deployment profile requires an
+exact SONAME with no further dependencies or initializers, copies the digested
+object beside the executable, and records an origin-relative lookup plus the
+qualified ELF interpreter described in [C access libraries](foreign-c.md).

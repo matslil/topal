@@ -64,5 +64,17 @@ callback, or error semantics.
 ## TOPAL-C-ABI-PROVENANCE-001 — Reproducible inputs
 
 Generation SHALL record Clang identity and SHA-256 digests of the header and
-archive. Compilation SHALL revalidate both digests and SHALL record them in
-the native artifact dependency set and build identity.
+selected archive or shared object. Compilation SHALL revalidate both digests
+and SHALL record them in the native artifact dependency set and build identity.
+
+## TOPAL-C-ABI-SHARED-001 — Closed shared-object deployment
+
+For schema `topal-c-abi-shared/1`, the binary SHALL be an ELF x86-64 shared
+object with an explicit SONAME identical to its access-library filename. It
+SHALL contain no `DT_NEEDED` dependency, unresolved external symbol, load
+initializer, or unload initializer. The linked executable SHALL name each and
+only the selected SONAMEs through `DT_NEEDED`, use ELF interpreter
+`/lib64/ld-linux-x86-64.so.2`, and use `$ORIGIN` lookup. The compiler SHALL
+deploy the exact digested object beside the executable and SHALL reject a
+different existing object with the same SONAME. Artifact metadata SHALL record
+the object digest, SONAME requirement, and interpreter requirement.

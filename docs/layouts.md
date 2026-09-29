@@ -624,9 +624,9 @@ in-process trust and effect contract is explicit.
 
 The first committed catalog is the separately selected [`abi` language
 feature](foreign-c.md). It admits only the target-qualified copied C `int` and
-`void` static-library subset. Other C layouts and every non-C ABI remain
-outside the current commitment until their validation, ownership, failure,
-effect, and callback rules are specified.
+`void` static- and shared-library subsets. Other C layouts and every non-C ABI
+remain outside the current commitment until their validation, ownership,
+failure, effect, and callback rules are specified.
 
 ## Revision `v0.2` compositional layouts
 
