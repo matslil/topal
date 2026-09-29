@@ -54,7 +54,7 @@ until the core-language coverage ledger changes it from `planned` to
 | Time and dataflow | clock, deadline, periodic policy, balance, causality, capacity, and sequential schedule models | source operation binding, trace integration, mode transitions, compiled differential execution |
 | Handlers and specialization | affine/multi-shot resumption model and compiler-only typed plan authority | effect-protocol/handler source grammar and execution, cleanup integration, direct/CPS/state-machine lowerings, emitted-code evidence |
 | Layout and information flow | multidimensional/sparse validation, zero-copy predicate, finite lattice, program-counter propagation, scoped authority | complete component-path model, source checking/operations, message/effect labels, compiler representation selection and erasure proof |
-| Architecture seam | opaque optional model identity and fail-closed evidence boundary | synthetic provider integration test and the separately approved architecture model |
+| Architecture seam | opaque optional model identity, fail-closed evidence boundary, and approved layered model design | formal schema, qualified profiles, provider integration, and decision tests |
 | Compiled parity | artifact schema can carry required evidence | a scalar CPU backend and generated-code/differential tests; no current repository component can establish binary-code parity |
 
 These gaps are also retained in the repository-root remaining-work document.
@@ -62,13 +62,15 @@ Reference-model tests are implementation evidence for their algorithms, not a
 claim that the corresponding Topal source forms or compiled lowerings already
 exist.
 
-## Deferred provider boundary
+## Architecture provider boundary
 
 The core retains an opaque implementation-evidence schema with optional
-architecture-model identity. It does not define target profiles, processors,
-device launches, physical clocks, schedulers, memory domains, transfers, fault
-domains, foreign symbols, or ABIs. Later architecture and ABI proposals must
-use this verifier boundary and cannot make target facts semantic values.
+architecture-model identity. The approved
+[architecture-model design](../docs/architecture-models.md) separately describes
+target profiles, processors, accelerators, memory domains, transfers,
+interconnects, and boards. Formal schema and provider integration remain later
+increments. Schedulers, fault domains, foreign symbols, and ABIs retain their
+own qualifications. None can make target facts ordinary semantic values.
 
 ## Risk and verification
 
