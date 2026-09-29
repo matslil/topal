@@ -288,6 +288,46 @@ model and policy identities, and the authorized source capable of supplying the
 fact. It shall not suggest that ordinary source assert hardware truth or
 evidence status.
 
+## TOPAL-REQ-OPT-FEASIBILITY-001 — Constraints before optimization preference
+
+An optimizer shall prove semantic preconditions and target legality and shall
+enforce language guarantees, safety, capacity, timing, security, and explicit
+user limits before comparing performance preferences. No optimization level,
+cost estimate, or pass override shall admit an infeasible plan.
+
+## TOPAL-REQ-OPT-POLICY-001 — Multidimensional deterministic selection
+
+Optimization policy shall preserve cost units, conditions, provenance,
+uncertainty, and unknown values. It shall eliminate proved dominated plans,
+compare remaining plans by explicit ordered goals, and use a stable final
+tie-break without collapsing unlike dimensions into an unversioned scalar
+score. Identical recorded inputs shall produce the same plan.
+
+## TOPAL-REQ-OPT-PROFILE-001 — Standard optimization profiles
+
+The compiler shall expose versioned `O0`, `O1`, `O2`, `O3`, `Os`, and `Oz`
+profiles with documented ordered intent. `O0` shall perform no optional Topal
+rewrite or specialization. A selected profile shall not silently enable build-
+host processor features, and artifacts shall record the effective profile and
+plan revision.
+
+## TOPAL-REQ-OPT-CONTROL-001 — Explicit target, goal, and pass controls
+
+Compiler controls shall distinguish target selection from optimization intent,
+support generic, specific, native, board, model, and foreign selections when
+qualified, and provide ordered goals, hard limits, stable per-pass enable and
+disable controls, isolated-pass selection, and optimization listing. Unknown,
+incompatible, contradictory, and unqualified selections shall fail explicitly.
+Mandatory correctness work shall not be disableable.
+
+## TOPAL-REQ-OPT-EXPLAIN-001 — Explainable conservative decisions
+
+The compiler shall be able to report its effective target and policy, enabled
+passes, relevant candidates, preconditions, evidence, missing facts,
+rejections, and decisions. A missing fact shall provide no favorable
+preference. Diagnostics shall distinguish source proof from trusted target-
+model input and identify a legitimate provider of the missing information.
+
 ## TOPAL-REQ-COMPILER-001 — Correct native compilation
 
 At its unoptimized reference level, the compiler shall preserve the observable

@@ -21,7 +21,8 @@ The design currently covers:
   [target-qualified C access-library feature](foreign-c.md);
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
   source documentation, generated API reference material,
-  [architecture models](architecture-models.md), and performance; and
+  [architecture models](architecture-models.md), the
+  [compiler optimization policy](optimization-policy.md), and performance; and
 - unit testing, structural path coverage, and the best-practice database.
 
 Revision `v0.2` additionally defines [contracts and evidence](contracts-and-evidence.md),
