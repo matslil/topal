@@ -190,6 +190,71 @@ fn rejects_unqualified_optimization_and_target_selections_before_toolchain_use()
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn o1_prunes_unreachable_runtime_and_preserves_existing_program_result() {
+    // TOPAL-COMPILER-RUNTIME-GLOBAL-DCE-001, TOPAL-OPT-PROFILE-001
+    let directory = temporary("o1-runtime-global-dce");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let o0_ir = directory.join("ordinary-o0.ll");
+    let o1_ir = directory.join("ordinary-o1.ll");
+    for (level, output) in [("-O0", &o0_ir), ("-O1", &o1_ir)] {
+        let result = run(topalc().args([
+            level,
+            "--emit",
+            "llvm-ir",
+            "-o",
+            output.to_str().unwrap(),
+            source.to_str().unwrap(),
+        ]));
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    let unoptimized = fs::read_to_string(&o0_ir).unwrap();
+    let optimized = fs::read_to_string(&o1_ir).unwrap();
+    assert!(unoptimized.contains("define internal ptr @topal.runtime.task.make"));
+    assert!(!optimized.contains("@topal.runtime.task.make"));
+    assert!(optimized.len() < unoptimized.len());
+
+    let o0_executable = directory.join("ordinary-o0");
+    let o1_executable = directory.join("ordinary-o1");
+    for (level, expected_profile, executable) in
+        [("-O0", 0, &o0_executable), ("-O1", 1, &o1_executable)]
+    {
+        let compiled = run(topalc().args([
+            level,
+            "-o",
+            executable.to_str().unwrap(),
+            source.to_str().unwrap(),
+        ]));
+        assert!(
+            compiled.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiled.stderr)
+        );
+        let executed = run(&mut Command::new(executable));
+        assert!(executed.status.success());
+        assert_eq!(executed.stdout, b"42\n");
+        let metadata =
+            NativeArtifactMetadata::decode(&fs::read(metadata_path(executable)).unwrap()).unwrap();
+        assert_eq!(metadata.optimization, expected_profile);
+        if expected_profile == 1 {
+            assert!(
+                metadata
+                    .provenance
+                    .contains(&"topal.runtime-global-dce/1".into())
+            );
+        }
+    }
+    assert!(
+        fs::metadata(&o1_executable).unwrap().len() < fs::metadata(&o0_executable).unwrap().len()
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 #[allow(clippy::too_many_lines)] // The fixture, link, execution, and failure checks are one boundary proof.
 fn links_a_checked_generated_c_access_library_from_a_static_archive() {
     // TOPAL-C-ABI-STATIC-001, TOPAL-C-BINDGEN-001,

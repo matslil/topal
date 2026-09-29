@@ -30,6 +30,23 @@ accepted program. LLVM verification and correctness-preserving backend lowering
 remain mandatory. The resulting executable's observable value and trace SHALL
 equal the interpreter's for every source in their shared implemented subset.
 
+### TOPAL-COMPILER-RUNTIME-GLOBAL-DCE-001 — Qualified private runtime pruning
+
+For the qualified generic Linux x86-64 target, `-O1` SHALL enable the stable
+pass `topal.runtime-global-dce/1`. The pass SHALL preserve executable roots,
+exports, `llvm.used` roots, and every transitively referenced definition, and
+MAY remove only unreachable compiler-private LLVM definitions. LLVM
+verification SHALL follow the pass. This isolated increment SHALL otherwise
+retain O0 backend selection and SHALL preserve every observable value and trace
+required by `TOPAL-COMPILER-O0-001`.
+
+The artifact SHALL record optimization profile 1, the architecture-model
+identity and digest, and the optimization-plan revision. An unqualified target
+or linkage/root policy SHALL make the pass unavailable rather than authorize
+removal. The pass SHALL NOT infer that a reached Topal effect, allocation,
+failure, volatile or MMIO access, synchronization, cleanup, or debug-observable
+source value is dead.
+
 ### TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
 
 The compiler SHALL accept warning-specific and structured diagnostic-control

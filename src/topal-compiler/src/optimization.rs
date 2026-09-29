@@ -10,6 +10,7 @@ use crate::{CompileError, DATA_LAYOUT, TARGET_TRIPLE};
 
 pub const OPTIMIZATION_PLAN_REVISION: &str = "topal.optimization-plan/1";
 pub const GENERIC_X86_64_MODEL: &str = "topal.architecture.generic-x86_64-linux/1";
+pub const RUNTIME_GLOBAL_DCE: &str = "topal.runtime-global-dce/1";
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum OptimizationLevel {
@@ -71,6 +72,7 @@ pub struct OptimizationPlan {
     pub architecture_model: &'static str,
     pub architecture_model_sha256: String,
     pub features: Vec<String>,
+    pub enabled_optimizations: Vec<&'static str>,
 }
 
 impl OptimizationPlan {
@@ -115,9 +117,12 @@ impl OptimizationPlan {
                 path.display()
             )));
         }
-        if optimization.level != OptimizationLevel::O0 {
+        if !matches!(
+            optimization.level,
+            OptimizationLevel::O0 | OptimizationLevel::O1
+        ) {
             return Err(CompileError::Tool(format!(
-                "optimization profile -{} is specified but not implemented by this compiler increment; use -O0",
+                "optimization profile -{} is specified but not implemented by this compiler increment; use -O0 or -O1",
                 optimization.level.name()
             )));
         }
@@ -125,6 +130,11 @@ impl OptimizationPlan {
         let architecture_model_sha256 = model.canonical_sha256().map_err(|error| {
             CompileError::Tool(format!("invalid built-in architecture model: {error}"))
         })?;
+        let enabled_optimizations = match optimization.level {
+            OptimizationLevel::O0 => Vec::new(),
+            OptimizationLevel::O1 => vec![RUNTIME_GLOBAL_DCE],
+            _ => unreachable!("unsupported profiles were rejected"),
+        };
         Ok(Self {
             revision: OPTIMIZATION_PLAN_REVISION,
             level: optimization.level,
@@ -134,6 +144,7 @@ impl OptimizationPlan {
             architecture_model: GENERIC_X86_64_MODEL,
             architecture_model_sha256,
             features: Vec::new(),
+            enabled_optimizations,
         })
     }
 }
@@ -163,6 +174,8 @@ fn generic_x86_64_model() -> ArchitectureModel {
                 properties: BTreeMap::from([
                     ("target-triple".into(), TARGET_TRIPLE.into()),
                     ("data-layout".into(), DATA_LAYOUT.into()),
+                    ("object-format".into(), "elf64-x86-64".into()),
+                    ("linkage".into(), "static".into()),
                 ]),
                 provenance: provenance.into(),
             },
@@ -225,6 +238,7 @@ mod tests {
             assert_eq!(plan.target_triple, TARGET_TRIPLE);
             assert_eq!(plan.cpu, "x86-64");
             assert!(plan.features.is_empty());
+            assert!(plan.enabled_optimizations.is_empty());
             assert_eq!(plan.architecture_model_sha256.len(), 64);
         }
     }
@@ -261,5 +275,20 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn o1_enables_only_qualified_runtime_global_dce() {
+        let plan = OptimizationPlan::resolve(
+            &TargetSelection {
+                target: Some(TARGET_TRIPLE.into()),
+                ..TargetSelection::default()
+            },
+            &OptimizationRequest {
+                level: OptimizationLevel::O1,
+            },
+        )
+        .unwrap();
+        assert_eq!(plan.enabled_optimizations, [RUNTIME_GLOBAL_DCE]);
     }
 }

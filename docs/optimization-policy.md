@@ -88,6 +88,25 @@ only as an explicit, versioned policy decision.
 The standard profiles do not silently select `native` CPU features. Target
 selection and optimization intent are independent.
 
+### Initial qualified optimization
+
+The first implemented optional pass is `topal.runtime-global-dce/1`. Under the
+qualified generic Linux x86-64 model, `-O1` treats the executable entry points,
+exported definitions, and `llvm.used` entries as roots and asks LLVM global
+dead-code elimination to remove unreachable compiler-private runtime
+definitions. The target model establishes the static ELF object format and
+private linkage assumptions; LLVM establishes symbol reachability. The pass
+does not remove a reached operation, infer that a source effect is dead, or
+erase an allocation based on cost.
+
+The expected improvement is fewer emitted LLVM definitions and fewer object or
+executable bytes when a program uses only part of the private runtime. The pass
+usually also reduces later compilation work. It may have no effect when all
+runtime fragments are reachable, and debugging an unreachable compiler helper
+is intentionally unavailable in `-O1`. Dynamic symbol lookup, externally
+visible runtime symbols, a different object format, or an unqualified linker
+root policy makes this pass unavailable rather than speculative.
+
 ## Target selection
 
 Without a target option, a compiler which supports the compilation host uses a

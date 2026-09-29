@@ -36,10 +36,22 @@ revision in artifact evidence and provenance.
 
 The CLI shall parse every standard optimization-profile spelling and the
 target, CPU, board, and model controls defined by `TOPAL-OPT-PROFILE-001` and
-`TOPAL-OPT-TARGET-001`. This increment shall accept only `O0`, the qualified
-target, and the generic CPU selection; it shall reject every optimized,
-specific, native, board, custom-model, or foreign selection before frontend or
-toolchain output rather than ignore, approximate, or silently strengthen it.
+`TOPAL-OPT-TARGET-001`. This increment shall accept `O0` and the separately
+qualified `O1` runtime-pruning slice, the qualified target, and the generic CPU
+selection; it shall reject every higher profile, specific or native CPU,
+board, custom-model, or foreign selection before frontend or toolchain output
+rather than ignore, approximate, or silently strengthen it.
+
+## TOPAL-COMP-OPT-RUNTIME-DCE-001 — Target-qualified runtime global DCE
+
+On the validated built-in generic Linux x86-64 model, `O1` shall enable only
+`topal.runtime-global-dce/1`. The toolchain shall run LLVM `globaldce` followed
+by verification, preserve LLVM roots and all transitively referenced
+definitions, and retain the O0 backend so this pass remains isolated. LLVM-IR,
+object, and executable output shall use the resulting module. Existing Topal
+examples shall retain their exact result while unused private runtime
+definitions and resulting output size decrease where applicable. Artifact
+identity shall include the selected pass and profile.
 
 ## TOPAL-COMP-LLVM-001 — Verified LLVM 22 pipeline
 
