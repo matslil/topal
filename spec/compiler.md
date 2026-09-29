@@ -47,6 +47,27 @@ removal. The pass SHALL NOT infer that a reached Topal effect, allocation,
 failure, volatile or MMIO access, synchronization, cleanup, or debug-observable
 source value is dead.
 
+### TOPAL-COMPILER-LLVM-PIPELINE-001 — Versioned optimized LLVM pipelines
+
+The stable optimization identity `llvm.default-pipeline/22` SHALL select the
+LLVM 22 new-pass-manager default pipeline corresponding to effective profile
+O1, O2, O3, Os, or Oz, followed by LLVM verification. Backend code-generation
+effort SHALL be O1, O2, O3, O2, and O2 respectively. The identity SHALL be
+rejected at O0. Disabling the identity SHALL remove the entire bundle; the
+compiler SHALL NOT claim independent control of LLVM-internal passes hidden by
+the bundle.
+
+Profile selection, ordered pass overrides, goals, and hard limits SHALL resolve
+before the pipeline runs. Unknown identities, goals, malformed limits, and
+incompatible isolated/profile selections SHALL reject before output. The
+source-free optimization-list query SHALL report every exposed stable identity,
+status, default profiles, description, and required evidence.
+
+An explicitly requested explanation SHALL be canonical JSON identifying the
+plan and model revisions, target, CPU/features, effective profile, ordered
+goals, hard limits, enabled identities, decisions, and missing-information
+remarks. Its canonical content SHALL contain no timestamp or output path.
+
 ### TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
 
 The compiler SHALL accept warning-specific and structured diagnostic-control

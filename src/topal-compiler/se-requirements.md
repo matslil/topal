@@ -53,6 +53,18 @@ examples shall retain their exact result while unused private runtime
 definitions and resulting output size decrease where applicable. Artifact
 identity shall include the selected pass and profile.
 
+## TOPAL-COMP-OPT-CONTROL-001 — Profile pipelines and explicit controls
+
+Profiles O2, O3, Os, and Oz shall select `llvm.default-pipeline/22` with the
+corresponding LLVM 22 default IR pipeline and qualified backend effort. The
+compiler shall expose source-free optimization listing; ordered stable-ID
+enable and disable controls; isolated selection; ordered goals; hard limits;
+and deterministic JSON explanations to standard error or an explicit path.
+Unknown or incompatible controls shall reject before output. Explanations shall
+include conservative remarks for absent workload, hotness, and trip-count facts
+without fabricating them. Artifact provenance and build identity shall include
+the effective exposed optimization identities.
+
 ## TOPAL-COMP-LLVM-001 — Verified LLVM 22 pipeline
 
 The compiler shall locate an explicit or toolchain-provided LLVM 22 suite,

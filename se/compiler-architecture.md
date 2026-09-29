@@ -2615,9 +2615,10 @@ verification and its O0 code generator; emitted arithmetic is still required to
 implement exact Topal behavior. The first `-O1` slice runs only qualified
 global dead-code elimination over compiler-private unreachable runtime
 definitions, followed by verification and the O0 backend, so that the
-transformation can be isolated. Later higher-level pipelines will begin from
-LLVM's new-pass-manager defaults, with Topal-specific changes admitted only by
-conformance and differential tests. LLVM's [new pass manager
+transformation can be isolated. `-O2`, `-O3`, `-Os`, and `-Oz` use the
+corresponding LLVM 22 new-pass-manager default pipeline and matching qualified
+backend effort. Topal-specific changes remain admitted only by conformance and
+differential tests. LLVM's [new pass manager
 documentation](https://llvm.org/docs/NewPassManager.html) recommends constructing
 the standard pipeline through `PassBuilder`; the command-tool integration uses
 the equivalent named default pipeline when those levels are enabled.
@@ -2681,7 +2682,7 @@ validated semantic interface.
 | --- | --- | --- |
 | LLVM IR, opaque pointers, target triple, `DataLayout` | used | portable optimizer/code-generator boundary |
 | `llvm-as` and IR verifier | used on every native build | reject malformed or internally inconsistent IR |
-| New pass manager | O0 verification; `globaldce,verify` for the isolated `-O1` runtime-pruning slice | broader optimized pipelines wait for differential conformance coverage |
+| New pass manager | O0 verification; `globaldce,verify` for isolated O1; version-qualified default O2/O3/Os/Oz pipelines followed by verification | exposed as two stable optimization identities; LLVM-internal composition remains LLVM-owned |
 | `llc` target backend | used | instruction selection, register allocation, scheduling, ELF object emission |
 | LLD | used | deterministic no-default-library static PIE link |
 | `br`, `switch`, and `phi` | used | once-evaluated Boolean, exact-matcher, Comparison, nominal Enum/sum decisions, active-payload repeated identity and derived Sum equality, modular bound validation, and fallible arithmetic control flow with typed result joins |
