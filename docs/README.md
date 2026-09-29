@@ -20,7 +20,8 @@ The design currently covers:
   [incremental build system](build-system.md), including the optional
   [target-qualified C access-library feature](foreign-c.md);
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
-  source documentation, generated API reference material, and performance; and
+  source documentation, generated API reference material,
+  [architecture models](architecture-models.md), and performance; and
 - unit testing, structural path coverage, and the best-practice database.
 
 Revision `v0.2` additionally defines [contracts and evidence](contracts-and-evidence.md),

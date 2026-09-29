@@ -215,9 +215,78 @@ declassification or endorsement only with exact unforgeable scoped authority.
 ## TOPAL-REQ-ARCH-EVIDENCE-001 — Opaque architecture-evidence seam
 
 Hard target-dependent requirements shall consume typed provider evidence
-without exposing target facts to ordinary semantic computation. Architecture,
-scheduler, device, fault-domain, and foreign-ABI schemas remain separately
-deferred and shall not be inferred from this seam.
+without exposing target facts to ordinary semantic computation. Architecture
+models, schedulers, devices, fault domains, and foreign ABIs shall use this
+boundary without being inferred from it, and favorable cost evidence shall not
+establish semantic or hardware legality.
+
+## TOPAL-REQ-ARCH-MODEL-001 — Layered compositional architecture model
+
+A versioned architecture model shall distinguish execution architecture,
+microarchitecture, ABI/platform, compute elements, memory and translation,
+cache/coherence, transfer and communication mechanisms, interconnect topology,
+board composition, and calibration. Reusable component models and board
+overlays shall compose by stable identity without treating vendor, ISA,
+processor, operating system, and deployment board as interchangeable.
+
+## TOPAL-REQ-ARCH-COST-001 — Conditional multidimensional costs
+
+Architecture costs shall retain their units, conditions, provenance,
+applicability, uncertainty, and independent latency, throughput, code-size,
+memory, transfer, resource-occupancy, energy, and predictability dimensions.
+Unknown shall remain distinct from zero, unbounded, and unsupported. Hard
+compatibility, capacity, safety, and timing constraints shall be checked before
+any preference or weighted comparison.
+
+## TOPAL-REQ-ARCH-MEMORY-001 — Explicit memory and communication topology
+
+The model shall describe heterogeneous address spaces and memories, access
+sizes and alignment, banks and controllers, virtual translation and IOMMUs,
+cache organization and coherence scope, barriers and maintenance, DMA and
+hardware channels, and shared interconnect routes and bottleneck resources.
+Cache utilization, false sharing, contention, and path cost shall be derived
+from model and program-plan facts rather than asserted as context-free hardware
+constants.
+
+## TOPAL-REQ-ARCH-COMPUTE-001 — Heterogeneous compute description
+
+The model shall represent CPU, GPU, NPU, DSP, and fixed-function compute
+elements without requiring one common ISA. It shall distinguish instruction
+legality from conditional latency, throughput, encoding size, register and
+pipeline resource use, and shall describe scalar, SIMD, scalable-vector, SIMT,
+tensor, matrix, synchronization, launch, and completion facilities where
+applicable.
+
+## TOPAL-REQ-ARCH-TARGET-001 — Explicit generic, specific, and cross targets
+
+A compiler after it admits multiple architecture profiles shall resolve its
+implicit target to a recorded generic baseline for the compilation host's
+architecture family and platform without silently enabling that host
+processor's optional features. Explicit selection shall support a more specific
+compatible target and a foreign cross target. Native detection and runtime
+multiversioning shall be explicit qualified modes with a baseline fallback,
+recorded assumptions, and no implicit foreign runtime or dynamic-loader
+dependency. An incremental compiler shall continue to reject an unqualified
+target rather than approximating this requirement.
+
+## TOPAL-REQ-ARCH-PROVENANCE-001 — Validated Topal model identity
+
+Architecture packages shall be declarative, total, deterministic,
+authority-free Topal descriptions validated through shared target-independent
+syntax and semantics before backend selection. Canonical identity shall cover
+schema and language revisions, effective facts, imports, overlays, provenance,
+and calibrations. Qualification shall separately report schema,
+implementation, cost, and platform coverage; application source shall neither
+mint physical evidence nor edit a diagnostic projection into proof input.
+
+## TOPAL-REQ-ARCH-DIAGNOSTIC-001 — Explainable missing target information
+
+When missing or uncertain program, target, board, calibration, or workload
+information changes plan selection or prevents a hard guarantee, the compiler
+shall identify the affected transformation, alternatives, conservative result,
+model and policy identities, and the authorized source capable of supplying the
+fact. It shall not suggest that ordinary source assert hardware truth or
+evidence status.
 
 ## TOPAL-REQ-COMPILER-001 — Correct native compilation
 

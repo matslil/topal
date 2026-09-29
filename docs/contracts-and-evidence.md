@@ -152,8 +152,9 @@ reject `guarantees ( Progress ( class is LockFree ) )`, while accepting the
 same semantic program when the property occurs only inside `Prefer`.
 
 Target facts do not enter ordinary values or branches. Architecture evidence
-uses the same typed matching seam, but its provider schema and physical
-properties remain deferred to the architecture model.
+uses the same typed matching seam. The separately loaded
+[architecture model](architecture-models.md) supplies physical properties and
+cost facts without becoming an application value or proof authority.
 
 ## Actors and authority
 
