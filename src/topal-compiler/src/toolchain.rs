@@ -9,6 +9,7 @@ use topal_language::compiler::CompilerProgram;
 
 use crate::{
     CompileError, CompileOptions, DigestEntry, Emit, LLVM_MAJOR, NativeArtifactMetadata,
+    OptimizationPlan,
     artifact::sha256,
     backend::LlvmModule,
     frontend::{SharedObjectLink, StaticArchiveLink},
@@ -115,6 +116,7 @@ pub(crate) fn materialize(
     foreign_dependencies: &[DigestEntry],
     llvm: &LlvmModule,
     options: &CompileOptions,
+    plan: &OptimizationPlan,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
     let mut foreign_symbols = verify_static_archives(static_archives, &tools)?;
@@ -139,6 +141,7 @@ pub(crate) fn materialize(
         },
         llvm.as_bytes(),
         options,
+        plan,
         &tools,
         &temporary,
     );
@@ -283,6 +286,7 @@ fn materialize_in(
     foreign: &ForeignLinkInputs<'_>,
     llvm: &[u8],
     options: &CompileOptions,
+    plan: &OptimizationPlan,
     tools: &LlvmTools,
     temporary: &Path,
 ) -> Result<NativeArtifactMetadata, CompileError> {
@@ -301,6 +305,7 @@ fn materialize_in(
         options.emit.name(),
         &output_bytes,
         &tools.version,
+        plan,
     );
     let encoded = metadata.encode().map_err(CompileError::Tool)?;
     let staged_output = temporary.join("published-output");

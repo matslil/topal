@@ -132,8 +132,6 @@ fn compiles_and_executes_shared_regression_with_canonical_metadata() {
     let result = run(topalc().args([
         "-O0",
         "-g",
-        "--target",
-        "x86_64-unknown-linux-gnu",
         "-o",
         output.to_str().unwrap(),
         source.to_str().unwrap(),
@@ -152,7 +150,42 @@ fn compiles_and_executes_shared_regression_with_canonical_metadata() {
     assert_eq!(metadata.target_triple, "x86_64-unknown-linux-gnu");
     assert!(metadata.llvm_version.starts_with("22."));
     assert_eq!(metadata.optimization, 0);
+    assert_eq!(metadata.cpu, "x86-64");
+    assert!(metadata.features.is_empty());
+    assert_eq!(metadata.evidence.len(), 1);
+    assert_eq!(
+        metadata.evidence[0].identity,
+        "topal.architecture.generic-x86_64-linux/1"
+    );
+    assert_eq!(metadata.evidence[0].sha256.len(), 64);
+    assert_eq!(metadata.provenance, ["topal.optimization-plan/1"]);
     assert_eq!(metadata.native_slices[0].kind, "executable");
+}
+
+#[test]
+fn rejects_unqualified_optimization_and_target_selections_before_toolchain_use() {
+    // TOPAL-OPT-TARGET-001, TOPAL-OPT-PROFILE-001
+    let directory = temporary("unsupported-optimization-target");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let cases: &[&[&str]] = &[
+        &["-O2"],
+        &["--cpu", "native"],
+        &["--board", "unknown-board"],
+        &["--target", "aarch64-unknown-linux-gnu"],
+    ];
+    for (index, options) in cases.iter().enumerate() {
+        let output = directory.join(format!("rejected-{index}"));
+        let result = run(topalc().args(*options).arg("-o").arg(&output).arg(&source));
+        assert!(!result.status.success());
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        assert!(
+            stderr.contains("not implemented") || stderr.contains("unsupported"),
+            "{stderr}"
+        );
+        assert!(!output.exists());
+        assert!(!metadata_path(&output).exists());
+    }
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

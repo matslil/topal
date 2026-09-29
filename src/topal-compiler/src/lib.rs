@@ -4,6 +4,7 @@ mod artifact;
 mod backend;
 mod codegen;
 mod frontend;
+mod optimization;
 mod pipeline;
 mod toolchain;
 
@@ -13,6 +14,10 @@ use std::path::{Path, PathBuf};
 pub use artifact::{
     DigestEntry, ExportEntry, NATIVE_ABI, NATIVE_ARTIFACT_SCHEMA, NativeArtifactMetadata,
     NativeSlice, PLATFORM_ABI,
+};
+pub use optimization::{
+    GENERIC_X86_64_MODEL, OPTIMIZATION_PLAN_REVISION, OptimizationLevel, OptimizationPlan,
+    OptimizationRequest, TargetSelection,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;
@@ -47,6 +52,8 @@ pub struct CompileOptions {
     pub emit: Emit,
     pub llvm_tools: Option<PathBuf>,
     pub library_root: PathBuf,
+    pub target: TargetSelection,
+    pub optimization: OptimizationRequest,
 }
 
 #[derive(Debug)]

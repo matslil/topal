@@ -461,6 +461,8 @@ fn execute(
         emit: Emit::Executable,
         llvm_tools: llvm_tools.map(Path::to_owned),
         library_root: root.join("library"),
+        target: topal_compiler::TargetSelection::default(),
+        optimization: topal_compiler::OptimizationRequest::default(),
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)

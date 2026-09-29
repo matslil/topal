@@ -569,6 +569,7 @@ dependencies = [
  "topal-c-abi",
  "topal-geir",
  "topal-language",
+ "topal-semantics",
  "topal-source",
 ]
 
