@@ -29,6 +29,15 @@ implicit program-counter propagation, and scoped declassification or
 endorsement authority. Validation shall fail closed on unknown identities,
 overflow, overlap, or authority mismatch.
 
+## TOPAL-SEM-ARCH-001 — Deterministic architecture reference model
+
+The shared semantic library shall validate unique architecture component,
+connection, cost, and provenance identities; reject dangling topology,
+resources, provenance, feature dependencies, and reversed cost intervals; and
+derive an order-independent SHA-256 identity from canonical effective facts.
+This reference model shall perform no host detection and shall not itself
+qualify a backend, platform, or empirical cost claim.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but
