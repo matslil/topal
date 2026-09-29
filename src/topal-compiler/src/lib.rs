@@ -17,7 +17,7 @@ pub use artifact::{
 };
 pub use optimization::{
     GENERIC_X86_64_MODEL, OPTIMIZATION_PLAN_REVISION, OptimizationLevel, OptimizationPlan,
-    OptimizationRequest, TargetSelection,
+    OptimizationRequest, RUNTIME_GLOBAL_DCE, TargetSelection,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;

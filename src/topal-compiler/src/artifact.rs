@@ -112,6 +112,11 @@ impl NativeArtifactMetadata {
                 .iter()
                 .map(|dependency| format!("{}={}", dependency.identity, dependency.sha256)),
         );
+        build_inputs.extend(
+            plan.enabled_optimizations
+                .iter()
+                .map(|identity| format!("optimization={identity}")),
+        );
         let mut platform_requirements = vec!["topal.platform.linux-x86_64/1".into()];
         platform_requirements.extend_from_slice(additional_platform_requirements);
         platform_requirements.sort();
@@ -121,6 +126,13 @@ impl NativeArtifactMetadata {
                 .map(|requirement| format!("platform={requirement}")),
         );
         let build_identity = sha256(build_inputs.join("\0").as_bytes());
+        let mut provenance = vec![plan.revision.into()];
+        provenance.extend(
+            plan.enabled_optimizations
+                .iter()
+                .map(|identity| (*identity).to_owned()),
+        );
+        provenance.sort();
         Self {
             schema: NATIVE_ARTIFACT_SCHEMA.into(),
             language_revision: program.language_version.to_string(),
@@ -150,7 +162,7 @@ impl NativeArtifactMetadata {
                 sha256: plan.architecture_model_sha256.clone(),
             }],
             debug_prefix_map: Vec::new(),
-            provenance: vec![plan.revision.into()],
+            provenance,
             native_slices: vec![NativeSlice {
                 kind: output_kind.into(),
                 sha256: sha256(output),
@@ -186,7 +198,7 @@ impl NativeArtifactMetadata {
         if self.geir_revision != LEGACY_ARTIFACT_REVISION
             || self.manifest_revision != 1
             || self.llvm_major != LLVM_MAJOR
-            || self.optimization != 0
+            || self.optimization > 1
         {
             return Err("unsupported artifact, GEIR, LLVM, or optimization revision".into());
         }

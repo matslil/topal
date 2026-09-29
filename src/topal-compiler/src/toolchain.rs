@@ -9,7 +9,7 @@ use topal_language::compiler::CompilerProgram;
 
 use crate::{
     CompileError, CompileOptions, DigestEntry, Emit, LLVM_MAJOR, NativeArtifactMetadata,
-    OptimizationPlan,
+    OptimizationPlan, RUNTIME_GLOBAL_DCE,
     artifact::sha256,
     backend::LlvmModule,
     frontend::{SharedObjectLink, StaticArchiveLink},
@@ -290,7 +290,7 @@ fn materialize_in(
     tools: &LlvmTools,
     temporary: &Path,
 ) -> Result<NativeArtifactMetadata, CompileError> {
-    let generated = generate_native_output(foreign, llvm, options, tools, temporary)?;
+    let generated = generate_native_output(foreign, llvm, options, plan, tools, temporary)?;
     let output_bytes =
         fs::read(&generated).map_err(io_error("read generated output", &generated))?;
     let deploy_shared_objects =
@@ -348,13 +348,25 @@ fn generate_native_output(
     foreign: &ForeignLinkInputs<'_>,
     llvm: &[u8],
     options: &CompileOptions,
+    plan: &OptimizationPlan,
     tools: &LlvmTools,
     temporary: &Path,
 ) -> Result<PathBuf, CompileError> {
     let input = temporary.join("module.ll");
     fs::write(&input, llvm).map_err(io_error("write LLVM IR", &input))?;
+    let passes = llvm_passes(plan)?;
     let generated = match options.emit {
-        Emit::LlvmIr => input,
+        Emit::LlvmIr if plan.enabled_optimizations.is_empty() => input,
+        Emit::LlvmIr => {
+            let optimized = temporary.join("module.optimized.ll");
+            run(Command::new(tools.path("opt"))
+                .arg(format!("-passes={passes}"))
+                .arg("-S")
+                .arg(&input)
+                .arg("-o")
+                .arg(&optimized))?;
+            optimized
+        }
         Emit::Object | Emit::Executable => {
             let bitcode = temporary.join("module.bc");
             run(Command::new(tools.path("llvm-as"))
@@ -363,7 +375,7 @@ fn generate_native_output(
                 .arg(&bitcode))?;
             let verified = temporary.join("verified.bc");
             run(Command::new(tools.path("opt"))
-                .arg("-passes=verify")
+                .arg(format!("-passes={passes}"))
                 .arg(&bitcode)
                 .arg("-o")
                 .arg(&verified))?;
@@ -413,6 +425,17 @@ fn generate_native_output(
         }
     };
     Ok(generated)
+}
+
+fn llvm_passes(plan: &OptimizationPlan) -> Result<&'static str, CompileError> {
+    match plan.enabled_optimizations.as_slice() {
+        [] => Ok("verify"),
+        [RUNTIME_GLOBAL_DCE] => Ok("globaldce,verify"),
+        unsupported => Err(CompileError::Tool(format!(
+            "optimization plan contains an unsupported pass set: {}",
+            unsupported.join(", ")
+        ))),
+    }
 }
 
 type StagedSharedObject = (PathBuf, PathBuf, String);
