@@ -163,13 +163,12 @@ fn compiles_and_executes_shared_regression_with_canonical_metadata() {
 }
 
 #[test]
-fn rejects_unqualified_optimization_and_target_selections_before_toolchain_use() {
-    // TOPAL-OPT-TARGET-001, TOPAL-OPT-PROFILE-001
+fn rejects_unqualified_target_selections_before_toolchain_use() {
+    // TOPAL-OPT-TARGET-001
     let directory = temporary("unsupported-optimization-target");
     let source =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
     let cases: &[&[&str]] = &[
-        &["-O2"],
         &["--cpu", "native"],
         &["--board", "unknown-board"],
         &["--target", "aarch64-unknown-linux-gnu"],
@@ -186,6 +185,108 @@ fn rejects_unqualified_optimization_and_target_selections_before_toolchain_use()
         assert!(!output.exists());
         assert!(!metadata_path(&output).exists());
     }
+}
+
+#[test]
+fn lists_stable_optimizations_without_source_input() {
+    // TOPAL-OPT-LIST-001
+    let result = run(topalc().arg("--list-optimizations"));
+    assert!(result.status.success());
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    assert!(stdout.contains("topal.runtime-global-dce/1"));
+    assert!(stdout.contains("llvm.default-pipeline/22"));
+    assert!(stdout.contains("Status: implemented"));
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn controls_pipeline_and_writes_deterministic_optimization_explanation() {
+    // TOPAL-OPT-CONTROL-001, TOPAL-OPT-EXPLAIN-001
+    let directory = temporary("optimization-controls");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let output = directory.join("controlled");
+    let explanation = directory.join("optimization.json");
+    let explanation_argument = format!("--explain-optimizations={}", explanation.display());
+    let result = run(topalc().args([
+        "-O3",
+        "--disable-optimization",
+        "llvm.default-pipeline/22",
+        "--enable-optimization",
+        "topal.runtime-global-dce/1",
+        "--optimization-goal",
+        "code-size",
+        "--optimization-limit",
+        "code-size=64KiB",
+        &explanation_argument,
+        "-o",
+        output.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(run(&mut Command::new(&output)).stdout, b"42\n");
+    let report = fs::read_to_string(explanation).unwrap();
+    assert!(report.contains("\"profile\": \"O3\""));
+    assert!(report.contains("\"code-size=64KiB\""));
+    assert!(report.contains("topal.runtime-global-dce/1"));
+    assert!(report.contains("optimization-workload"));
+    assert!(!report.contains("llvm.default-pipeline/22"));
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn hard_code_size_limit_rejects_before_artifact_publication() {
+    // TOPAL-OPT-FEASIBLE-001, TOPAL-OPT-CONTROL-001
+    let directory = temporary("optimization-hard-limit");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let output = directory.join("too-large");
+    let result = run(topalc().args([
+        "-O2",
+        "--optimization-limit",
+        "code-size=1B",
+        "-o",
+        output.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("exceeds optimization limit"));
+    assert!(!output.exists());
+    assert!(!metadata_path(&output).exists());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn o2_default_llvm_pipeline_preserves_existing_program_result() {
+    // TOPAL-COMPILER-LLVM-PIPELINE-001
+    let directory = temporary("o2-default-pipeline");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let output = directory.join("ordinary-o2");
+    let result = run(topalc().args([
+        "-O2",
+        "-o",
+        output.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(run(&mut Command::new(&output)).stdout, b"42\n");
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&output)).unwrap()).unwrap();
+    assert_eq!(metadata.optimization, 2);
+    assert!(
+        metadata
+            .provenance
+            .contains(&"llvm.default-pipeline/22".into())
+    );
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

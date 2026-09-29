@@ -16,8 +16,9 @@ pub use artifact::{
     NativeSlice, PLATFORM_ABI,
 };
 pub use optimization::{
-    GENERIC_X86_64_MODEL, OPTIMIZATION_PLAN_REVISION, OptimizationLevel, OptimizationPlan,
-    OptimizationRequest, RUNTIME_GLOBAL_DCE, TargetSelection,
+    ExplanationDestination, GENERIC_X86_64_MODEL, LLVM_DEFAULT_PIPELINE,
+    OPTIMIZATION_PLAN_REVISION, OptimizationLevel, OptimizationOverride, OptimizationPlan,
+    OptimizationRequest, RUNTIME_GLOBAL_DCE, TargetSelection, optimization_listing,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;

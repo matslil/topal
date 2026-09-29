@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use topal_compiler::{
-    CompileError, CompileOptions, Emit, OptimizationLevel, OptimizationRequest, TARGET_TRIPLE,
-    TargetSelection, compile_source,
+    CompileError, CompileOptions, Emit, ExplanationDestination, OptimizationLevel,
+    OptimizationOverride, OptimizationRequest, TARGET_TRIPLE, TargetSelection, compile_source,
+    optimization_listing,
 };
 
 mod test_runner;
@@ -31,7 +32,12 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), String> {
-    let mut arguments = env::args().skip(1).peekable();
+    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    if arguments.as_slice() == ["--list-optimizations"] {
+        print!("{}", optimization_listing());
+        return Ok(());
+    }
+    let mut arguments = arguments.into_iter().peekable();
     if arguments.peek().is_some_and(|argument| argument == "test") {
         arguments.next();
         return test_runner::run(arguments);
@@ -72,6 +78,11 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
     let mut target = TargetSelection::default();
     let mut optimization_level = None;
+    let mut optimization_goals = Vec::new();
+    let mut optimization_limits = Vec::new();
+    let mut optimization_overrides = Vec::new();
+    let mut only_optimization = None;
+    let mut explain_optimizations = None;
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -129,6 +140,42 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                     return Err("--target-model may be specified only once".into());
                 }
             }
+            "--optimization-goal" => optimization_goals.push(
+                arguments
+                    .next()
+                    .ok_or("--optimization-goal requires a dimension")?,
+            ),
+            "--optimization-limit" => optimization_limits.push(
+                arguments
+                    .next()
+                    .ok_or("--optimization-limit requires DIMENSION=QUANTITY")?,
+            ),
+            "--enable-optimization" => optimization_overrides.push(OptimizationOverride::Enable(
+                arguments
+                    .next()
+                    .ok_or("--enable-optimization requires a stable ID")?,
+            )),
+            "--disable-optimization" => optimization_overrides.push(OptimizationOverride::Disable(
+                arguments
+                    .next()
+                    .ok_or("--disable-optimization requires a stable ID")?,
+            )),
+            "--only-optimization" => {
+                let identity = arguments
+                    .next()
+                    .ok_or("--only-optimization requires a stable ID")?;
+                if only_optimization.replace(identity).is_some() {
+                    return Err("--only-optimization may be specified only once".into());
+                }
+            }
+            "--explain-optimizations" => {
+                if explain_optimizations
+                    .replace(ExplanationDestination::StandardError)
+                    .is_some()
+                {
+                    return Err("--explain-optimizations may be specified only once".into());
+                }
+            }
             "--llvm-tools" => {
                 llvm_tools = Some(PathBuf::from(
                     arguments
@@ -152,9 +199,24 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic; -O1 prunes unreachable private runtime definitions, while higher profiles remain unavailable. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc --list-optimizations\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
                 );
                 std::process::exit(0);
+            }
+            option if option.starts_with("--explain-optimizations=") => {
+                let path = option.trim_start_matches("--explain-optimizations=");
+                if path.is_empty() {
+                    return Err("--explain-optimizations requires a nonempty path after =".into());
+                }
+                if explain_optimizations
+                    .replace(ExplanationDestination::Path(path.into()))
+                    .is_some()
+                {
+                    return Err("--explain-optimizations may be specified only once".into());
+                }
+            }
+            "--list-optimizations" => {
+                return Err("--list-optimizations must be used without other arguments".into());
             }
             option if option.starts_with('-') => return Err(format!("unknown option: {option}")),
             path if source.is_none() => source = Some(PathBuf::from(path)),
@@ -172,6 +234,12 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         target,
         optimization: OptimizationRequest {
             level: optimization_level.unwrap_or_default(),
+            explicit_level: optimization_level.is_some(),
+            goals: optimization_goals,
+            limits: optimization_limits,
+            overrides: optimization_overrides,
+            only: only_optimization,
+            explain: explain_optimizations,
         },
     })
 }

@@ -198,7 +198,7 @@ impl NativeArtifactMetadata {
         if self.geir_revision != LEGACY_ARTIFACT_REVISION
             || self.manifest_revision != 1
             || self.llvm_major != LLVM_MAJOR
-            || self.optimization > 1
+            || self.optimization > 5
         {
             return Err("unsupported artifact, GEIR, LLVM, or optimization revision".into());
         }
