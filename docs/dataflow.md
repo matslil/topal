@@ -27,5 +27,6 @@ evidence; source and graph translators cannot assert them.
 The interpreter executes one derived schedule in actor order for each logical
 period. A compiler may fuse actors, statically allocate buffers, or vectorize
 periods only when the observable sequence is unchanged. Physical placement,
-DSP/FPGA resources, systolic mapping, and pipeline timing remain deferred to
-the architecture model.
+DSP/FPGA resources, systolic mapping, and pipeline timing consume the
+[architecture model](architecture-models.md) and separately established
+placement and workload evidence.

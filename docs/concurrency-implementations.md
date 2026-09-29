@@ -56,8 +56,9 @@ A resource remains owned by one task. A handler classified by
 `ImmediateHandler` must be non-suspending, allocation-free, effect-bounded, and
 work-bounded. It is still an ordinary task handler; there is no `protected`
 block or critical-section syntax. A compiler may use a direct call or serial
-queue. Priority-ceiling lowering and physical response-time proof remain part
-of the deferred scheduler/architecture model.
+queue. Priority-ceiling lowering and physical response-time proof require the
+[architecture model](architecture-models.md) plus a separately qualified
+scheduler and workload model.
 
 The checker owns topology, suspension, effect, allocation, and bound proofs.
 Programmers and translators choose semantic policies and request guarantees;
