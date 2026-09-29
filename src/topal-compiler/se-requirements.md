@@ -3,7 +3,8 @@
 These requirements refine `TOPAL-REQ-COMPILER-001`,
 `TOPAL-REQ-NATIVE-PLATFORM-001`, `TOPAL-REQ-NATIVE-ABI-001`,
 `TOPAL-REQ-NATIVE-ARTIFACT-001`, `TOPAL-REQ-NATIVE-DEBUG-001`, and
-`TOPAL-REQ-LLVM-001` for the admitted `topalc` increments.
+`TOPAL-REQ-LLVM-001`, plus `TOPAL-REQ-C-ABI-001`, for the admitted `topalc`
+increments.
 
 ## TOPAL-COMP-ARCH-001 — Ordered typed compilation stages
 
@@ -36,6 +37,27 @@ An executable shall define `_start`, perform complete standard-output writes
 and termination through the Linux x86-64 syscall ABI, and link as a static PIE
 without startup files, default libraries, a dynamic interpreter, `DT_NEEDED`
 entries, or undefined symbols.
+
+## TOPAL-COMP-C-STATIC-001 — Checked static C access libraries
+
+The compiler shall discover only explicitly selected generated access
+libraries, require canonical matching `topal-c-abi/1` Topal and JSON models,
+revalidate the header and archive SHA-256 digests, and accept only the
+`x86_64-unknown-linux-gnu`/`sysv-amd64` profile. It shall lower a used C `int`
+function through a private Topal adapter and external `ccc` call, diagnose an
+out-of-range value without truncation, include the archive explicitly in the
+no-default-library static link, and record both C inputs in artifact
+dependencies. This realizes `TOPAL-C-ABI-CONTEXT-001` through
+`TOPAL-C-ABI-PROVENANCE-001` for the closed static function subset.
+
+## TOPAL-COMP-C-BINDGEN-001 — Clang-derived interface translation
+
+`topal-c-bindgen` shall require Clang 22 and the qualified target, parse rather
+than text-match C declarations, reject every declaration outside const,
+non-variadic C functions with `int` parameters and C `int` or `void` results,
+verify ELF x86-64 archive
+symbols with LLVM tools, and publish no partial access-library directory after
+failure.
 
 ## TOPAL-COMP-O0-001 — Exact first-slice lowering
 

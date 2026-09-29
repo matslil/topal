@@ -541,6 +541,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-c-abi"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "topal-c-bindgen"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sha2",
+ "topal-c-abi",
+]
+
+[[package]]
 name = "topal-compiler"
 version = "0.1.0"
 dependencies = [
@@ -549,6 +566,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "topal-c-abi",
  "topal-geir",
  "topal-language",
  "topal-source",

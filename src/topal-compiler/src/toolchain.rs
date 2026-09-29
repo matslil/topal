@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -7,8 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use topal_language::compiler::CompilerProgram;
 
 use crate::{
-    CompileError, CompileOptions, Emit, LLVM_MAJOR, NativeArtifactMetadata, backend::LlvmModule,
-    metadata_path,
+    CompileError, CompileOptions, DigestEntry, Emit, LLVM_MAJOR, NativeArtifactMetadata,
+    backend::LlvmModule, metadata_path,
 };
 
 static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
@@ -99,10 +100,13 @@ fn verify(directory: &Path) -> Result<String, CompileError> {
 
 pub(crate) fn materialize(
     program: &CompilerProgram,
+    static_archives: &[PathBuf],
+    foreign_dependencies: &[DigestEntry],
     llvm: &LlvmModule,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
+    verify_static_archives(program, static_archives, &tools)?;
     let output_parent = options.output.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(output_parent).map_err(|error| {
         CompileError::Io(format!(
@@ -111,13 +115,68 @@ pub(crate) fn materialize(
         ))
     })?;
     let temporary = temporary_directory(output_parent)?;
-    let result = materialize_in(program, llvm.as_bytes(), options, &tools, &temporary);
+    let result = materialize_in(
+        program,
+        static_archives,
+        foreign_dependencies,
+        llvm.as_bytes(),
+        options,
+        &tools,
+        &temporary,
+    );
     let _ = fs::remove_dir_all(&temporary);
     result
 }
 
+fn verify_static_archives(
+    program: &CompilerProgram,
+    static_archives: &[PathBuf],
+    tools: &LlvmTools,
+) -> Result<(), CompileError> {
+    let mut symbols = BTreeSet::new();
+    for archive in static_archives {
+        let headers = run_output(
+            Command::new(tools.path("llvm-readobj"))
+                .arg("--file-headers")
+                .arg(archive),
+        )?;
+        let headers = String::from_utf8_lossy(&headers.stdout);
+        if !headers.contains("elf64-x86-64") && !headers.contains("x86_64") {
+            return Err(CompileError::Tool(format!(
+                "C static archive {} does not contain qualified x86-64 ELF objects",
+                archive.display()
+            )));
+        }
+        let names = run_output(
+            Command::new(tools.path("llvm-nm"))
+                .args(["--defined-only", "--extern-only"])
+                .arg(archive),
+        )?;
+        symbols.extend(
+            String::from_utf8_lossy(&names.stdout)
+                .split_whitespace()
+                .map(str::to_owned),
+        );
+    }
+    for function in program
+        .functions
+        .iter()
+        .filter_map(|function| function.foreign.as_ref())
+    {
+        if !symbols.contains(&function.external_symbol) {
+            return Err(CompileError::Tool(format!(
+                "selected C static archives do not define `{}`",
+                function.external_symbol
+            )));
+        }
+    }
+    Ok(())
+}
+
 fn materialize_in(
     program: &CompilerProgram,
+    static_archives: &[PathBuf],
+    foreign_dependencies: &[DigestEntry],
     llvm: &[u8],
     options: &CompileOptions,
     tools: &LlvmTools,
@@ -154,7 +213,8 @@ fn materialize_in(
                 object
             } else {
                 let executable = temporary.join("application");
-                run(Command::new(tools.path("rust-lld"))
+                let mut linker = Command::new(tools.path("rust-lld"));
+                linker
                     .arg("-flavor")
                     .arg("gnu")
                     .arg("-static")
@@ -163,8 +223,10 @@ fn materialize_in(
                     .arg("-e")
                     .arg("_start")
                     .arg(&object)
+                    .args(static_archives)
                     .arg("-o")
-                    .arg(&executable))?;
+                    .arg(&executable);
+                run(&mut linker)?;
                 executable
             }
         }
@@ -173,6 +235,7 @@ fn materialize_in(
         fs::read(&generated).map_err(io_error("read generated output", &generated))?;
     let metadata = NativeArtifactMetadata::for_program(
         program,
+        foreign_dependencies,
         &options.source_name,
         options.emit.name(),
         &output_bytes,

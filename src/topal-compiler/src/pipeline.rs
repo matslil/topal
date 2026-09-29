@@ -10,5 +10,11 @@ pub(crate) fn compile(
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let checked = frontend::check(source, &options.library_root)?;
     let llvm = backend::lower(checked.program(), &options.source_name);
-    toolchain::materialize(checked.program(), &llvm, options)
+    toolchain::materialize(
+        checked.program(),
+        checked.static_archives(),
+        checked.foreign_dependencies(),
+        &llvm,
+        options,
+    )
 }

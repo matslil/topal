@@ -16,6 +16,7 @@ The specification is divided into:
 - [tool diagnostics](diagnostics.md);
 - [generic export intermediate language](generic-ir.md);
 - [native compiler and artifact conformance](compiler.md);
+- [target-qualified C ABI access](foreign-c.md);
 - [native serialization protocol](serialization.md);
 - [standard-library conformance](standard-library.md);
 - [data-transfer package boundaries](data-transfer-packages.md);

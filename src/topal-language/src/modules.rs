@@ -232,6 +232,24 @@ pub fn declares_library(source: &str, identity: &str) -> bool {
         })
 }
 
+/// Return explicitly selected v0.1 library identities in source order.
+#[must_use]
+pub fn declared_libraries(source: &str) -> Vec<String> {
+    let Ok(source) = SourceText::new(source) else {
+        return Vec::new();
+    };
+    parse(&source, &lex(&source))
+        .statements
+        .iter()
+        .filter_map(|statement| {
+            let Statement::LibrarySelection { name, version, .. } = statement else {
+                return None;
+            };
+            (source.slice(*version) == "v0.1").then(|| source.slice(*name).to_owned())
+        })
+        .collect()
+}
+
 /// Test whether a source file declares the conventional string-input
 /// application entry point.
 #[must_use]

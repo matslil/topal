@@ -34,6 +34,21 @@ foreign adapters may use target `ccc` only with fixed-width scalars or opaque
 handles. Aggregate classification is adapter work and will be checked against
 the target's reference C frontend before a foreign interface is admitted.
 
+The first admitted foreign interface is `topal-c-abi/1`. A separate
+`topal-c-bindgen` process runs Clang 22 over a C header for the qualified
+target, checks the matching static archive with `llvm-readobj` and `llvm-nm`,
+and publishes a canonical Topal `abi` module beside its machine manifest and
+digested inputs. Compiler discovery loads only an explicitly selected module,
+compares the Topal and JSON descriptions, and rechecks both input digests.
+
+The checked compiler model marks instantiated access functions with semantic C
+metadata while retaining the ordinary private Topal call edge. The LLVM backend
+emits a module-private `fastcc` adapter that validates and converts each Topal
+`Int`, calls the external symbol with `ccc`, and constructs the Topal result.
+The toolchain passes the verified archive explicitly to LLD; it adds neither a
+default library nor C startup code. This keeps filesystem discovery, semantic
+checking, target lowering, and artifact publication in their existing stages.
+
 An admitted positional-product result whose fields already have exact private
 machine values uses a recursively nested, non-packed LLVM literal struct. Unit
 occupies a sealed `i8` field inside such a value even though a standalone Unit

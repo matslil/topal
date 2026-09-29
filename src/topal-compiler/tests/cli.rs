@@ -3,6 +3,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use sha2::{Digest, Sha256};
+use topal_c_abi::{
+    AccessLibrary, CEffect, CValue, Function, InputArtifact, PLATFORM_ABI, Parameter, SCHEMA,
+    TARGET,
+};
 use topal_compiler::{LlvmTools, NATIVE_ABI, NativeArtifactMetadata, metadata_path};
 use topal_language::interpreter::Session;
 use topal_language::modules::load_module_tree;
@@ -148,6 +153,148 @@ fn compiles_and_executes_shared_regression_with_canonical_metadata() {
     assert!(metadata.llvm_version.starts_with("22."));
     assert_eq!(metadata.optimization, 0);
     assert_eq!(metadata.native_slices[0].kind, "executable");
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+#[allow(clippy::too_many_lines)] // The fixture, link, execution, and failure checks are one boundary proof.
+fn links_a_checked_generated_c_access_library_from_a_static_archive() {
+    // TOPAL-C-ABI-STATIC-001, TOPAL-C-BINDGEN-001,
+    // TOPAL-COMPILER-C-ADAPTER-001
+    let directory = temporary("c-static-library");
+    let library_root = directory.join("library");
+    let library = library_root.join("arithmetic");
+    fs::create_dir_all(&library).unwrap();
+    let header = b"int c_add(int left, int right);\n";
+    fs::write(library.join("interface.h"), header).unwrap();
+    let tools = LlvmTools::discover(None).unwrap();
+    let ir = directory.join("arithmetic.ll");
+    let bitcode = directory.join("arithmetic.bc");
+    let object = directory.join("arithmetic.o");
+    let archive = library.join("libarithmetic.a");
+    fs::write(
+        &ir,
+        "target triple = \"x86_64-unknown-linux-gnu\"\ndefine i32 @c_add(i32 %left, i32 %right) {\nentry:\n  %sum = add i32 %left, %right\n  ret i32 %sum\n}\n",
+    )
+    .unwrap();
+    for output in [
+        run(Command::new(tools.directory.join("llvm-as")).args([
+            ir.to_str().unwrap(),
+            "-o",
+            bitcode.to_str().unwrap(),
+        ])),
+        run(Command::new(tools.directory.join("llc")).args([
+            "-filetype=obj",
+            "-mtriple=x86_64-unknown-linux-gnu",
+            bitcode.to_str().unwrap(),
+            "-o",
+            object.to_str().unwrap(),
+        ])),
+        run(Command::new(tools.directory.join("llvm-ar")).args([
+            "rcs",
+            archive.to_str().unwrap(),
+            object.to_str().unwrap(),
+        ])),
+    ] {
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let archive_bytes = fs::read(&archive).unwrap();
+    let manifest = AccessLibrary {
+        schema: SCHEMA.into(),
+        identity: "arithmetic".into(),
+        version: "v0.1".into(),
+        target: TARGET.into(),
+        platform_abi: PLATFORM_ABI.into(),
+        clang_version: "clang version 22.0.0".into(),
+        header: InputArtifact {
+            file: "interface.h".into(),
+            sha256: format!("{:x}", Sha256::digest(header)),
+        },
+        static_archive: InputArtifact {
+            file: "libarithmetic.a".into(),
+            sha256: format!("{:x}", Sha256::digest(&archive_bytes)),
+        },
+        functions: vec![Function {
+            topal_name: "add".into(),
+            symbol: "c_add".into(),
+            parameters: vec![
+                Parameter {
+                    name: "left".into(),
+                    value: CValue::SignedInt32,
+                },
+                Parameter {
+                    name: "right".into(),
+                    value: CValue::SignedInt32,
+                },
+            ],
+            result: CValue::SignedInt32,
+            effect: CEffect::NoObservableEffect,
+        }],
+    };
+    fs::write(library.join("module.t"), manifest.topal_source()).unwrap();
+    fs::write(
+        library.join("module.topal-c-abi.json"),
+        manifest.encode().unwrap(),
+    )
+    .unwrap();
+
+    let source = directory.join("application.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nuse library arithmetic (version is v0.1)\nadd is arithmetic add\nadd (20, 22)\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = run(&mut Command::new(&executable));
+    assert!(executed.status.success());
+    assert_eq!(executed.stdout, b"42\n");
+    assert_freestanding_elf_and_valid_dwarf(&executable);
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+    assert!(
+        metadata
+            .dependencies
+            .iter()
+            .any(|dependency| dependency.identity == "c-abi.arithmetic.static-archive")
+    );
+
+    let range_source = directory.join("range-error.t");
+    let range_executable = directory.join("range-error");
+    fs::write(
+        &range_source,
+        "use language (version is v0.1)\nuse library arithmetic (version is v0.1)\nadd is arithmetic add\nadd (2147483648, 0)\n",
+    )
+    .unwrap();
+    let compiled = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        range_executable.to_str().unwrap(),
+        range_source.to_str().unwrap(),
+    ]));
+    assert!(compiled.status.success());
+    let executed = run(&mut Command::new(&range_executable));
+    assert_eq!(executed.status.code(), Some(65));
+    assert_eq!(
+        executed.stderr,
+        b"error[E-C-ABI-RANGE]: Topal Int is not representable as a C signed int\n"
+    );
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
