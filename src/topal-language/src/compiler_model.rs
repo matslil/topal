@@ -27,8 +27,8 @@ use topal_syntax::{
 
 use crate::modules::SourceModule;
 use crate::source::{
-    body_mentions_name, direct_expression_returns_from_function, explicit_single_measure,
-    expression_mentions_name, is_supported_returning_boolean_action_shape,
+    body_mentions_name, direct_expression_returns_from_function, explicit_absolute_measure,
+    explicit_single_measure, expression_mentions_name, is_supported_returning_boolean_action_shape,
     is_supported_returning_comparison_value_action_shape,
     is_supported_returning_enum_fallback_action_shape,
     is_supported_returning_error_code_action_shape,
@@ -36,7 +36,8 @@ use crate::source::{
     is_supported_returning_optional_action_shape,
     is_supported_returning_ordered_comparison_action_shape,
     is_supported_returning_result_action_shape, parse_integer, parse_rational, parse_string,
-    prove_explicit_parameter_recursion, prove_int_recursion, prove_mutual_bounded_recursion_edge,
+    prove_euclidean_recursion, prove_explicit_parameter_recursion, prove_int_recursion,
+    prove_mutual_bounded_recursion_edge,
 };
 
 const COMPILER_SYMBOLIC_CALLABLES: &[(CallableKind, &str)] = &[
@@ -1848,6 +1849,9 @@ impl Analyzer {
         if matches!(&value.kind, CompilerExpressionKind::Local(name)
             if self.active_nonnegative_bindings.contains(name))
         {
+            return true;
+        }
+        if matches!(&value.kind, CompilerExpressionKind::Absolute(_)) {
             return true;
         }
         if let CompilerExpressionKind::TupleField { tuple, index } = &value.kind
@@ -8767,7 +8771,7 @@ fn compiler_declared_effect_row(
             identities: Vec::new(),
         }));
     }
-    if explicit_single_measure(text).is_some() {
+    if explicit_single_measure(text).is_some() || explicit_absolute_measure(text).is_some() {
         return Ok(None);
     }
     Err(unsupported(
@@ -26991,9 +26995,39 @@ impl Analyzer {
         function_name: &str,
         declaration: &FunctionSource,
     ) -> Option<CompilerRecursionProof> {
-        self.explicit_measure_recursion_proof(function_name, declaration)
+        self.euclidean_recursion_proof(function_name, declaration)
+            .or_else(|| self.explicit_measure_recursion_proof(function_name, declaration))
             .or_else(|| self.direct_bounded_recursion_proof(function_name, declaration))
             .or_else(|| self.mutual_bounded_recursion_proof(function_name, declaration))
+    }
+
+    fn euclidean_recursion_proof(
+        &self,
+        function_name: &str,
+        declaration: &FunctionSource,
+    ) -> Option<CompilerRecursionProof> {
+        let parameters = declaration
+            .parameters
+            .iter()
+            .map(|parameter| {
+                (
+                    self.source.slice(parameter.name).to_owned(),
+                    compact_classifier(self.source.slice(parameter.classifier)),
+                )
+            })
+            .collect::<Vec<_>>();
+        let rule = prove_euclidean_recursion(
+            &self.source,
+            function_name,
+            &parameters,
+            declaration.effect_bound.map(|span| self.source.slice(span)),
+            &declaration.body,
+        )?;
+        Some(CompilerRecursionProof {
+            rule,
+            nat_step_parameters: BTreeSet::new(),
+            mutual_target: None,
+        })
     }
 
     fn direct_bounded_recursion_proof(
@@ -28572,11 +28606,16 @@ impl Analyzer {
                             &operand.value_type,
                         )?;
                     }
-                    if operation == CompilerBinary::LessEqual
+                    if (operation == CompilerBinary::LessEqual
+                        || operation == CompilerBinary::Equal)
                         && exact_int(&operand).is_some_and(|value| value == BigInt::from(0))
                         && let CompilerExpressionKind::Local(name) = &subject.kind
-                        && binding_facts_by_storage(environment, name)
-                            .is_some_and(|facts| facts.value_type == CompilerType::Nat)
+                        && binding_facts_by_storage(environment, name).is_some_and(|facts| {
+                            (operation == CompilerBinary::LessEqual
+                                && facts.value_type == CompilerType::Nat)
+                                || (operation == CompilerBinary::Equal
+                                    && facts.value_type == CompilerType::Int)
+                        })
                     {
                         nonzero_otherwise = Some(name.clone());
                     }
@@ -46957,6 +46996,38 @@ mod tests {
         ] {
             assert!(analyze_for_compiler(&invalid).is_err());
         }
+    }
+
+    #[test]
+    fn models_interpreter_proven_euclidean_recursion_without_fallible_modulo() {
+        // TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001, TOPAL-NUM-INT-MODULO-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/euclidean-gcd.t"))
+                .unwrap();
+        let function = &program.functions[0];
+        assert_eq!(function.source_name, "gcd");
+        assert_eq!(function.result_type, CompilerType::Nat);
+        let CompilerExpressionKind::OrderedComparisonDecision {
+            rules, otherwise, ..
+        } = &function.body.result.kind
+        else {
+            panic!("expected Euclidean comparison decision")
+        };
+        assert!(matches!(
+            rules[0].action.kind,
+            CompilerExpressionKind::IntToNat(_)
+        ));
+        let CompilerExpressionKind::Call { symbol, arguments } = &otherwise.kind else {
+            panic!("expected direct Euclidean recursive edge")
+        };
+        assert_eq!(symbol, &function.symbol);
+        assert!(matches!(
+            arguments[1].kind,
+            CompilerExpressionKind::Binary {
+                operation: CompilerBinary::Modulo,
+                ..
+            }
+        ));
     }
 
     #[test]
