@@ -22,10 +22,12 @@ use language (
 
 The source contains an `abi-library` record, one `abi-function-N` record per
 function, and ordinary published Topal functions. These records describe the
-schema, target, platform ABI, source and binary digests, linker symbol, calling
-convention, ordered external layouts, unwind policy, and transfer policy. The
-compiler compares this readable Topal model with the canonical machine
-manifest before either representation is trusted.
+schema and library version, target, platform ABI, source and binary filenames
+and digests, linker symbol, calling convention, ordered parameter names and
+external layouts, unwind policy, and transfer policy. `module.t` is the single
+canonical description of the access library; no second machine manifest is
+required. The compiler accepts only its canonical generated form and validates
+the described artifacts before trusting it.
 
 The access function is an adapter, not exposure of the compiler's private
 representation. It converts Topal values to their declared external layouts,
@@ -58,7 +60,8 @@ private layout. A C `int` result is sign-extended and constructs a new Topal
 `topal-c-bindgen` parses the header with the target-qualified Clang frontend,
 rejects every unsupported declaration, verifies the archive architecture and
 exported symbols with LLVM tools, and atomically emits the access-library
-directory. It records SHA-256 digests for the header and archive. `topalc`
+directory. It records the relative filenames and SHA-256 digests for the header
+and binary in `module.t`. `topalc`
 rechecks those digests before compilation and records them as native artifact
 dependencies.
 

@@ -37,9 +37,11 @@ the target's reference C frontend before a foreign interface is admitted.
 The first admitted foreign interface is `topal-c-abi/1`. A separate
 `topal-c-bindgen` process runs Clang 22 over a C header for the qualified
 target, checks the matching static archive with `llvm-readobj` and `llvm-nm`,
-and publishes a canonical Topal `abi` module beside its machine manifest and
+and publishes a canonical, self-describing Topal `abi` module beside its
 digested inputs. Compiler discovery loads only an explicitly selected module,
-compares the Topal and JSON descriptions, and rechecks both input digests.
+decodes its closed ABI records, verifies its canonical rendering, and rechecks
+both input digests. There is no parallel machine manifest whose consistency
+could diverge from the Topal source.
 
 The checked compiler model marks instantiated access functions with semantic C
 metadata while retaining the ordinary private Topal call edge. The LLVM backend
