@@ -70,7 +70,7 @@ the relevant finding rather than asserting a globally empty diagnostic set.
 | AP-01 | Partial | Strategy shape is expressible; semantic capability/authority evidence is not yet source-complete. |
 | AP-02 | Partial | Adapter shape and checked C boundary exist; general validated external boundaries need declared authority and failure evidence. |
 | AP-03 | Demonstrable | `L-DESIGN-PATTERN-AP-03` advises on state-named Boolean fields and warns when a state-named `Union` reaches eight alternatives. |
-| AP-04 | Partial | Sum-state models are expressible; typestate/session protocol admission is not. |
+| AP-04 | Partial | `L-DESIGN-PATTERN-AP-04` advises on a protocol-named Boolean and warns that an explicit protocol `Union` remains runtime-checked. |
 | AP-05 | Partial | Lexical scoping exists; deterministic cleanup/destruction is absent. |
 | AP-06 | Partial | Smart construction can be modeled; opaque construction, invariant propagation, and proof import remain incomplete. |
 | FD-01 | Partial | Bulk pipelines are expressible; association/parallelism and resource/optimization evidence are incomplete. |

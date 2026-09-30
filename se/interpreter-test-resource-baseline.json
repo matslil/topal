@@ -1551,6 +1551,11 @@
       "cpu_time_ns": 8687579,
       "memory_peak_bytes": 18575360,
       "samples_per_test": 50
+    },
+    "topal-interpreter::examples/language/design-pattern-typestate-protocol.t": {
+      "cpu_time_ns": 8242080,
+      "memory_peak_bytes": 18522112,
+      "samples_per_test": 50
     }
   }
 }

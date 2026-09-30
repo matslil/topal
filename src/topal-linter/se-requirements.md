@@ -34,7 +34,9 @@ parsed declarations, expressions, calls, decisions, lexical scope, and source
 spans, then supply an attachment only its declared facts. Its initial AP-03
 projection supplies whether an applicable state-named Boolean binding or state
 field exists and whether an applicable state-named `Union` has at least eight
-alternatives. It shall provide no application values, ambient authority,
+alternatives. Its AP-04 projection supplies whether a protocol-named Boolean
+binding or state field exists and whether a protocol-named `Union` exists. It
+shall provide no application values, ambient authority,
 timing, architecture, device, or runtime facts. A structural advisory shall
 identify its bounded source evidence and false-positive boundary. A limitation
 warning shall identify the catalog condition not observable from the declared

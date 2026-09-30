@@ -1,0 +1,52 @@
+{
+  "generated_by": "topal-best-practices/6",
+  "schema": 6,
+  "authoritative_sha256": "d7490891a3ff6e54bac7bcf471bcf764b28cd0650c8fa2a5aa964af3044ac79d",
+  "identity": "lang best-practice design-pattern ap-04-typestate-protocol",
+  "version": "v0.1",
+  "status": {
+    "kind": "proposed",
+    "since_language_version": null,
+    "explanation": null,
+    "replacement": null
+  },
+  "class": "recommended",
+  "title": "Model protocol states explicitly until typestate is available",
+  "summary": "A closed Union documents protocol alternatives, but current Topal cannot make an operation consume one state and return the next.",
+  "recommendation": "Represent meaningful protocol alternatives explicitly and validate every operation boundary until affine state-indexed capabilities are available.",
+  "rationale": "A Boolean connection flag cannot express all protocol alternatives; a union makes the model reviewable even though it does not provide typestate enforcement.",
+  "applicability": {
+    "language": "topal",
+    "versions": ">=v0.1",
+    "required_features": [],
+    "excluded_features": []
+  },
+  "exceptions": [
+    "A Boolean is appropriate for a genuinely binary connection fact.",
+    "A union model remains runtime-checked until the language provides affine state-indexed capabilities."
+  ],
+  "default_enabled": false,
+  "default_severity": "warning",
+  "checkability": "heuristic",
+  "confidence": "The rule recognizes protocol-named Boolean state and protocol-named unions. It cannot prove operation ordering, ownership transfer, peer behavior, or liveness.",
+  "rectification": "suggestion",
+  "tags": [
+    "lang best-practice tag architecture",
+    "lang best-practice tag safety"
+  ],
+  "examples": [
+    "examples/language/design-pattern-typestate-protocol.t",
+    "examples/linter/design-pattern-ap-04-rule.t",
+    "examples/linter/design-pattern-ap-04-boolean-protocol.t"
+  ],
+  "lint_rule": {
+    "engine": "topal",
+    "entry_point": "rule",
+    "version": "v0.1",
+    "stage": "syntax",
+    "view": "design-pattern-syntax/1",
+    "diagnostic_code": "L-DESIGN-PATTERN-AP-04",
+    "source_sha256": "94db44a7531207a37262f30e4cae661bfbf4950fed2dcbecb1e2325a90f67d1a",
+    "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# The host supplies bounded syntax facts for a protocol-named Boolean and a\n# protocol-named Union. A union model is still limited: it cannot establish\n# typestate without affine, state-indexed capabilities.\nrule is fn static (boolean-protocol : Boolean, model-protocol : Boolean) -> Boolean\n  (not boolean-protocol) and (not model-protocol)\n"
+  }
+}

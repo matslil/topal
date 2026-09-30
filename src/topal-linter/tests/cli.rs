@@ -254,6 +254,32 @@ fn algebraic_state_pattern_fixtures_distinguish_advisory_and_limitation() {
 }
 
 #[test]
+fn typestate_protocol_fixtures_distinguish_model_limitation_and_advisory() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let identity = "lang best-practice design-pattern ap-04-typestate-protocol";
+    for (fixture, expected) in [
+        (
+            "examples/language/design-pattern-typestate-protocol.t",
+            "cannot statically enforce transition order",
+        ),
+        (
+            "examples/linter/design-pattern-ap-04-boolean-protocol.t",
+            "Boolean protocol state",
+        ),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .args(["--enable", identity])
+            .arg(root.join(fixture))
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let diagnostic = String::from_utf8(output.stderr).unwrap();
+        assert!(diagnostic.contains("warning[L-DESIGN-PATTERN-AP-04]"));
+        assert!(diagnostic.contains(expected));
+    }
+}
+
+#[test]
 fn accepts_standard_library_sources_and_topal_tests() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     for relative in [
