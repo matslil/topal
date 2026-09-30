@@ -25,6 +25,17 @@ guidance](https://llvm.org/docs/Frontend/PerformanceTips.html), [language
 reference](https://llvm.org/docs/LangRef.html), and [code-generator
 architecture](https://llvm.org/docs/CodeGenerator.html).
 
+The optimized pipeline remains subject to the freestanding platform boundary.
+LLVM may recognize loops and synthesize calls to conventional memory helpers,
+so the compiler module supplies an internal `memset` implementation and keeps
+it alive until optimization has finished. This is compiler-owned target
+support, not a dependency on libc. The current static PIE also has no dynamic
+loader to apply absolute pointer relocations. LLVM's switch-to-lookup-table
+conversion is therefore disabled: a pointer-valued lookup table can otherwise
+encode unresolved load-time addresses even though the ELF has no undefined
+symbol. This restriction can be revisited only with a qualified relocation
+strategy or a lowering proven not to require one.
+
 LLVM lowers an already selected LLVM calling convention to physical registers
 and stack locations, but a source-language frontend still owns semantic value
 representation and any coercion needed to form that LLVM signature. The C

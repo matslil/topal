@@ -636,7 +636,7 @@ impl<'a> Generator<'a> {
             llvm_string(self.debug.filename())
         );
         module.push_str(
-            "@llvm.used = appending global [2 x ptr] [ptr @topal.main, ptr @topal.platform.exit], section \"llvm.metadata\"\n",
+            "@llvm.used = appending global [3 x ptr] [ptr @topal.main, ptr @topal.platform.exit, ptr @memset], section \"llvm.metadata\"\n",
         );
         module.push('\n');
         module.push_str(PLATFORM_RUNTIME);
@@ -15131,6 +15131,7 @@ mod tests {
         assert!(llvm.contains("define void @_start() naked"));
         assert!(llvm.contains("andq $$-16, %rsp"));
         assert!(llvm.contains("@llvm.used"));
+        assert!(llvm.contains("define internal ptr @memset"));
         assert!(llvm.contains("call ptr @topal.runtime.int.add"));
         assert!(llvm.contains("call ptr @topal.runtime.int.multiply"));
         assert!(llvm.contains("call i32 @topal.runtime.int.compare"));

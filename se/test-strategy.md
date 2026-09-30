@@ -91,13 +91,15 @@ hidden by another phase's cost.
 
 `scripts/test_resource_usage.py --domain compiler` discovers the shared Topal
 regressions admitted by `topalc test --list`. It records each source identity
-twice: `topalc-build::` measures an unoptimized, debug-enabled native build and
-`topalc-run::` measures the resulting freestanding executable. These records
-live in the separate `se/compiler-test-resource-baseline.json`; compiler cost is
-therefore never confused with interpreter cost or with execution of generated
-code. Generated executables are sampled 500 times because their sub-millisecond
-CPU time otherwise makes a 20-percent relative threshold sensitive to scheduler
-noise; compiler builds retain the default 50 samples.
+four times: `topalc-build-O0::` and `topalc-build-O2::` independently measure
+reference and optimized native builds, while `topalc-run-O0::` and
+`topalc-run-O2::` independently measure their freestanding executables. These
+records live in the separate `se/compiler-test-resource-baseline.json`;
+optimization cost and benefit therefore cannot be hidden by the other profile,
+the interpreter, or another compilation phase. Generated executables are
+sampled 500 times because their sub-millisecond CPU time otherwise makes a
+20-percent relative threshold sensitive to scheduler noise; compiler builds
+retain the default 50 samples.
 
 Each measured case runs 50 times in one cgroup by default. The recorded CPU
 time is the per-invocation average and peak memory is the maximum across those

@@ -3,7 +3,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use topal_compiler::{CompileError, CompileOptions, Emit, compile_source};
+use topal_compiler::{
+    CompileError, CompileOptions, Emit, OptimizationLevel, OptimizationRequest, compile_source,
+};
 use topal_language::interpreter::Session;
 use topal_language::modules::{declares_library, load_module_tree};
 
@@ -376,10 +378,18 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String>
         .map_err(|error| format!("cannot create {}: {error}", temporary.display()))?;
     let mut failures = Vec::new();
     for identity in &tests {
-        if let Err(error) = execute(identity, &root, &temporary, arguments.llvm_tools.as_deref()) {
-            failures.push((identity, error));
-        } else {
-            println!("PASS {identity}");
+        for level in arguments.profiles.levels() {
+            if let Err(error) = execute(
+                identity,
+                &root,
+                &temporary,
+                arguments.llvm_tools.as_deref(),
+                *level,
+            ) {
+                failures.push((format!("{}::{identity}", level.name()), error));
+            } else {
+                println!("PASS {}::{identity}", level.name());
+            }
         }
     }
     for (identity, error) in &failures {
@@ -388,8 +398,8 @@ pub(crate) fn run(arguments: impl Iterator<Item = String>) -> Result<(), String>
     }
     println!(
         "{} compiler regressions: {} passed; {} failed",
-        tests.len(),
-        tests.len() - failures.len(),
+        tests.len() * arguments.profiles.levels().len(),
+        tests.len() * arguments.profiles.levels().len() - failures.len(),
         failures.len()
     );
     if failures.is_empty() {
@@ -403,6 +413,25 @@ struct Arguments {
     exact: Option<String>,
     list: bool,
     llvm_tools: Option<PathBuf>,
+    profiles: TestProfiles,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+enum TestProfiles {
+    O0,
+    O2,
+    #[default]
+    Both,
+}
+
+impl TestProfiles {
+    const fn levels(self) -> &'static [OptimizationLevel] {
+        match self {
+            Self::O0 => &[OptimizationLevel::O0],
+            Self::O2 => &[OptimizationLevel::O2],
+            Self::Both => &[OptimizationLevel::O0, OptimizationLevel::O2],
+        }
+    }
 }
 
 impl Arguments {
@@ -410,6 +439,7 @@ impl Arguments {
         let mut exact = None;
         let mut list = false;
         let mut llvm_tools = None;
+        let mut profiles = TestProfiles::Both;
         let mut arguments = arguments.peekable();
         while let Some(argument) = arguments.next() {
             match argument.as_str() {
@@ -422,6 +452,18 @@ impl Arguments {
                             .ok_or("--llvm-tools requires a directory")?,
                     ));
                 }
+                "--profile" => {
+                    profiles = match arguments
+                        .next()
+                        .ok_or("--profile requires O0, O2, or both")?
+                        .as_str()
+                    {
+                        "O0" | "o0" => TestProfiles::O0,
+                        "O2" | "o2" => TestProfiles::O2,
+                        "both" => TestProfiles::Both,
+                        value => return Err(format!("unsupported test profile `{value}`")),
+                    };
+                }
                 option => return Err(format!("unknown compiler-test option: {option}")),
             }
         }
@@ -429,6 +471,7 @@ impl Arguments {
             exact,
             list,
             llvm_tools,
+            profiles,
         })
     }
 }
@@ -438,6 +481,7 @@ fn execute(
     root: &Path,
     temporary: &Path,
     llvm_tools: Option<&Path>,
+    level: OptimizationLevel,
 ) -> Result<(), String> {
     let path = root.join(identity);
     let source = fs::read_to_string(&path)
@@ -454,7 +498,11 @@ fn execute(
         .map_err(|diagnostic| diagnostic.render(identity))?
         .to_string()
         + "\n";
-    let executable = temporary.join(identity.replace(['/', '\\'], "-") + ".bin");
+    let executable = temporary.join(format!(
+        "{}-{}.bin",
+        identity.replace(['/', '\\'], "-"),
+        level.name()
+    ));
     let options = CompileOptions {
         source_name: identity.into(),
         output: executable.clone(),
@@ -462,7 +510,11 @@ fn execute(
         llvm_tools: llvm_tools.map(Path::to_owned),
         library_root: root.join("library"),
         target: topal_compiler::TargetSelection::default(),
-        optimization: topal_compiler::OptimizationRequest::default(),
+        optimization: OptimizationRequest {
+            level,
+            explicit_level: true,
+            ..OptimizationRequest::default()
+        },
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)
@@ -498,7 +550,20 @@ mod tests {
     use std::fs;
     use std::path::Path;
 
-    use super::SHARED_REGRESSIONS;
+    use super::{Arguments, SHARED_REGRESSIONS, TestProfiles};
+
+    #[test]
+    fn profile_selection_defaults_to_both_and_accepts_focused_runs() {
+        let default = Arguments::parse(std::iter::empty()).unwrap();
+        assert_eq!(default.profiles, TestProfiles::Both);
+
+        let o0 = Arguments::parse(["--profile".into(), "O0".into()].into_iter()).unwrap();
+        assert_eq!(o0.profiles, TestProfiles::O0);
+        let o2 = Arguments::parse(["--profile".into(), "o2".into()].into_iter()).unwrap();
+        assert_eq!(o2.profiles, TestProfiles::O2);
+
+        assert!(Arguments::parse(["--profile".into(), "O3".into()].into_iter()).is_err());
+    }
 
     #[test]
     fn shared_regression_manifest_covers_the_entire_canonical_corpus() {

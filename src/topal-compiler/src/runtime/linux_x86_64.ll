@@ -116,6 +116,24 @@ not.whitespace:
 declare i32 @llvm.ctlz.i32(i32, i1 immarg)
 declare void @llvm.memcpy.inline.p0.p0.i64(ptr, ptr, i64, i1 immarg)
 
+; Optimized freestanding code can lower a recognized fill loop to the standard
+; LLVM memset libcall. Supply that ABI locally so no C runtime is introduced.
+define internal ptr @memset(ptr %destination, i32 %value, i64 %length) nounwind noinline optnone {
+entry:
+  %empty = icmp eq i64 %length, 0
+  br i1 %empty, label %complete, label %fill
+fill:
+  %index = phi i64 [ 0, %entry ], [ %next, %fill ]
+  %pointer = getelementptr i8, ptr %destination, i64 %index
+  %byte = trunc i32 %value to i8
+  store i8 %byte, ptr %pointer, align 1
+  %next = add nuw i64 %index, 1
+  %done = icmp eq i64 %next, %length
+  br i1 %done, label %complete, label %fill
+complete:
+  ret ptr %destination
+}
+
 define internal i64 @topal.platform.write(i64 %fd, ptr %buffer, i64 %length) nounwind noinline {
 entry:
   %result = call i64 asm sideeffect "syscall", "={rax},{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}"(i64 1, i64 %fd, ptr %buffer, i64 %length)

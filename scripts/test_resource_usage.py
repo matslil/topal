@@ -193,29 +193,30 @@ def discover_compiler_tests(rust_min_stack: int) -> list[TestCase]:
     for index, name in enumerate(
         line for line in listed.stdout.splitlines() if line.endswith(".t")
     ):
-        executable = artifact_directory / f"case-{index}"
-        command(
-            [str(compiler), "-O0", "-g", "-o", str(executable), name],
-            cwd=ROOT,
-            capture_output=True,
-        )
-        tests.extend(
-            [
+        for profile in ("O0", "O2"):
+            executable = artifact_directory / f"case-{index}-{profile}"
+            command(
+                [str(compiler), f"-{profile}", "-g", "-o", str(executable), name],
+                cwd=ROOT,
+                capture_output=True,
+            )
+            tests.extend(
+                [
                 TestCase(
-                    identity=f"topalc-build::{name}",
+                    identity=f"topalc-build-{profile}::{name}",
                     executable=str(compiler),
-                    arguments=("-O0", "-g", "-o", str(executable), name),
+                    arguments=(f"-{profile}", "-g", "-o", str(executable), name),
                     working_directory=str(ROOT),
                 ),
                 TestCase(
-                    identity=f"topalc-run::{name}",
+                    identity=f"topalc-run-{profile}::{name}",
                     executable=str(executable),
                     arguments=(),
                     working_directory=str(ROOT),
                     samples_multiplier=10,
                 ),
-            ]
-        )
+                ]
+            )
     return sorted(tests, key=lambda test: test.identity)
 
 
@@ -565,7 +566,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--jobs", type=int)
     parser.add_argument("--memory-limit", default="4G")
     parser.add_argument("--rust-min-stack", type=int, default=32 * 1024 * 1024)
-    parser.add_argument("--timeout", type=int, default=600)
+    parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument("--samples", type=int, default=50)
     parser.add_argument("--approve-baseline-update", action="store_true")
     parser.add_argument("--replace-existing-baseline", action="store_true")
