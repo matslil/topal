@@ -5,6 +5,8 @@
 use std::fs;
 use std::process::Command;
 
+use std::collections::BTreeSet;
+
 use topal_best_practices::Catalog;
 
 fn temporary_source(name: &str, source: &str) -> std::path::PathBuf {
@@ -12,6 +14,40 @@ fn temporary_source(name: &str, source: &str) -> std::path::PathBuf {
     fs::write(&path, source).unwrap();
     path
 }
+
+struct ConfigurableDiagnosticCase {
+    identity: &'static str,
+    code: &'static str,
+    source: &'static str,
+    source_suppressed: &'static str,
+}
+
+const CONFIGURABLE_DIAGNOSTIC_CASES: &[ConfigurableDiagnosticCase] = &[
+    ConfigurableDiagnosticCase {
+        identity: "lang best-practice design-pattern ap-03-algebraic-state",
+        code: "L-DESIGN-PATTERN-AP-03",
+        source: "use language (version is v0.1)\ngate-state : Boolean is false\n",
+        source_suppressed: "use language (version is v0.1)\nlang disable-diagnostic ( lang best-practice design-pattern ap-03-algebraic-state )\ngate-state : Boolean is false\n",
+    },
+    ConfigurableDiagnosticCase {
+        identity: "lang best-practice design-pattern ap-04-typestate-protocol",
+        code: "L-DESIGN-PATTERN-AP-04",
+        source: "use language (version is v0.1)\nconnection-protocol : Boolean is false\n",
+        source_suppressed: "use language (version is v0.1)\nlang disable-diagnostic ( lang best-practice design-pattern ap-04-typestate-protocol )\nconnection-protocol : Boolean is false\n",
+    },
+    ConfigurableDiagnosticCase {
+        identity: "lang best-practice task declaration-order",
+        code: "L-TASK-DECLARATION-ORDER",
+        source: "use language (version is v0.1)\nCounter is Task (queue-size is 2)\nservice is Counter\n  start is fn (initial : Nat) -> Completed\n    Completed\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\n    ()\n  count : Nat\n",
+        source_suppressed: "use language (version is v0.1)\nCounter is Task (queue-size is 2)\nlang disable-diagnostic ( lang best-practice task declaration-order )\nservice is Counter\n  start is fn (initial : Nat) -> Completed\n    Completed\n  increment is fn (_ : MessageContext, amount : Nat) -> Unit\n    ()\n  count : Nat\n",
+    },
+    ConfigurableDiagnosticCase {
+        identity: "lang best-practice task state-machine",
+        code: "L-TASK-STATE-MACHINE",
+        source: "use language (version is v0.1)\nCounter is Task (queue-size is 2)\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n",
+        source_suppressed: "use language (version is v0.1)\nCounter is Task (queue-size is 2)\nlang disable-diagnostic ( lang best-practice task state-machine )\nservice is Counter\n  count : Nat\n  start is fn (initial : Nat) -> Completed\n    @ count is initial\n    Completed\n  current is fn (_ : MessageContext, _ : Unit) -> Nat\n    @ count\n",
+    },
+];
 
 #[test]
 fn lists_and_explains_the_built_in_catalog() {
@@ -124,6 +160,72 @@ fn emits_shared_style_terminal_and_json_syntax_diagnostics() {
     let finding: serde_json::Value = serde_json::from_slice(first).unwrap();
     assert_eq!(finding["code"], "E-UNKNOWN-TOKEN");
     assert_eq!(finding["severity"], "error");
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn every_configurable_diagnostic_can_be_disabled_by_selector_or_source_control() {
+    let catalog_codes = Catalog::builtin()
+        .entries
+        .into_iter()
+        .filter_map(|entry| {
+            entry
+                .lint_rule
+                .map(|rule| (entry.identity, rule.diagnostic_code))
+        })
+        .collect::<BTreeSet<_>>();
+    let covered_codes = CONFIGURABLE_DIAGNOSTIC_CASES
+        .iter()
+        .map(|case| (case.identity.to_owned(), case.code.to_owned()))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        covered_codes, catalog_codes,
+        "add command-line and source-control coverage for every configurable lint diagnostic"
+    );
+
+    for case in CONFIGURABLE_DIAGNOSTIC_CASES {
+        let path = temporary_source(case.code, case.source);
+        let enabled = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .args(["--enable", case.identity])
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(enabled.status.success());
+        assert!(String::from_utf8_lossy(&enabled.stderr).contains(case.code));
+
+        let disabled = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .args(["--enable", case.identity, "--disable", case.identity])
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(disabled.status.success());
+        assert!(disabled.stderr.is_empty(), "{}", case.code);
+        fs::remove_file(path).unwrap();
+
+        let path = temporary_source(&format!("{}-source", case.code), case.source_suppressed);
+        let suppressed = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .args(["--enable", case.identity])
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(suppressed.status.success());
+        assert!(suppressed.stderr.is_empty(), "{}", case.code);
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn source_controls_cannot_hide_shared_language_errors() {
+    let path = temporary_source(
+        "unsuppressible-syntax-error",
+        "use language (version is v0.1)\nlang disable-diagnostic ( E-UNKNOWN-TOKEN )\nvalue is #\n",
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("error[E-UNKNOWN-TOKEN]"));
     fs::remove_file(path).unwrap();
 }
 

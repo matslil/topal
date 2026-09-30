@@ -19,6 +19,12 @@ effective when project policy changes the finding between warning and error.
 One-statement and matched lexical-region suppression shall follow the shared
 diagnostic-control semantics.
 
+Every shipped configurable lint diagnostic shall have conformance coverage for
+both an explicit command-line disable selector and a source-level stable
+identity control. The coverage inventory shall fail when a catalog rule gains a
+diagnostic without both cases. Shared syntax and language errors shall remain
+visible after an attempted source-level diagnostic control.
+
 ## TOPAL-LINT-RULE-001 — Contained Topal rules
 
 Lint rules shall select the `lint` language variant and receive only their
