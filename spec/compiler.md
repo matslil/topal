@@ -68,6 +68,25 @@ plan and model revisions, target, CPU/features, effective profile, ordered
 goals, hard limits, enabled identities, decisions, and missing-information
 remarks. Its canonical content SHALL contain no timestamp or output path.
 
+For the qualified freestanding static-PIE target, the pipeline SHALL retain a
+compiler-owned implementation of any standard memory operation that LLVM is
+permitted to synthesize and SHALL introduce no unresolved C-runtime symbol.
+An LLVM transform that creates absolute data pointers requiring load-time
+relocation SHALL remain disabled until the platform model supplies and
+qualifies such relocation processing.
+
+### TOPAL-COMPILER-OPTIMIZATION-MATRIX-001 — Differential optimization evidence
+
+Every source admitted to the shared compiler regression corpus SHALL execute
+under both O0 and O2, and both results SHALL equal the shared interpreter
+result. Each exposed optimization family SHALL additionally have an existing
+representative source compiled with O0, that family in isolation, and all
+profile-selected optimizations; all variants SHALL have equal observable
+results and the optimized variants SHALL demonstrate the claimed structural,
+execution-time, or memory-use benefit. Resource baselines SHALL identify the
+optimization profile independently for compiler work and generated-program
+execution so one profile cannot hide a regression in another.
+
 ### TOPAL-COMPILER-DIAGNOSTIC-CONTROL-001 — Static diagnostic controls
 
 The compiler SHALL accept warning-specific and structured diagnostic-control

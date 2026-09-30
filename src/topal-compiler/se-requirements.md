@@ -65,6 +65,22 @@ include conservative remarks for absent workload, hotness, and trip-count facts
 without fabricating them. Artifact provenance and build identity shall include
 the effective exposed optimization identities.
 
+## TOPAL-COMP-OPT-TEST-MATRIX-001 — Profile and isolated-pass evidence
+
+The native corpus runner shall default to every selected regression at O0 and
+O2, compare each result with the interpreter, and permit an explicit single
+profile only for focused diagnosis. A representative existing program shall
+also run at O0, with `topal.runtime-global-dce/1` isolated, and at O2; the
+variants shall produce the same result and demonstrate the expected IR and
+artifact-size ordering. Compiler resource records shall use separate build and
+execution identities for O0 and O2.
+
+The optimized freestanding pipeline shall retain a private compiler-owned
+`memset` implementation for LLVM-synthesized memory operations. It shall
+disable switch lookup-table conversion while the static PIE has no loader for
+absolute pointer relocations. Optimized executables shall retain no unintended
+undefined runtime symbols or load-time relocation requirement.
+
 ## TOPAL-COMP-LLVM-001 — Verified LLVM 22 pipeline
 
 The compiler shall locate an explicit or toolchain-provided LLVM 22 suite,

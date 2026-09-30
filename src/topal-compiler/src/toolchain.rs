@@ -361,6 +361,7 @@ fn generate_native_output(
         Emit::LlvmIr => {
             let optimized = temporary.join("module.optimized.ll");
             run(Command::new(tools.path("opt"))
+                .arg("-switch-to-lookup=false")
                 .arg(format!("-passes={passes}"))
                 .arg("-S")
                 .arg(&input)
@@ -376,6 +377,7 @@ fn generate_native_output(
                 .arg(&bitcode))?;
             let verified = temporary.join("verified.bc");
             run(Command::new(tools.path("opt"))
+                .arg("-switch-to-lookup=false")
                 .arg(format!("-passes={passes}"))
                 .arg(&bitcode)
                 .arg("-o")

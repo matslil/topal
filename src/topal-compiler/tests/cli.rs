@@ -291,6 +291,61 @@ fn o2_default_llvm_pipeline_preserves_existing_program_result() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn existing_example_covers_unoptimized_isolated_and_all_optimization_matrix() {
+    // TOPAL-COMPILER-OPTIMIZATION-MATRIX-001
+    let directory = temporary("optimization-fixture-matrix");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let cases: &[(&str, &[&str], u8)] = &[
+        ("none", &["-O0"], 0),
+        (
+            "isolated-runtime-dce",
+            &["--only-optimization", "topal.runtime-global-dce/1"],
+            1,
+        ),
+        ("all", &["-O2"], 2),
+    ];
+    let mut ir_sizes = Vec::new();
+    let mut executable_sizes = Vec::new();
+    for (name, controls, expected_profile) in cases {
+        let ir = directory.join(format!("{name}.ll"));
+        let ir_result = run(topalc()
+            .args(*controls)
+            .args(["--emit", "llvm-ir", "-o"])
+            .arg(&ir)
+            .arg(&source));
+        assert!(
+            ir_result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&ir_result.stderr)
+        );
+        ir_sizes.push(fs::metadata(ir).unwrap().len());
+
+        let executable = directory.join(name);
+        let executable_result = run(topalc()
+            .args(*controls)
+            .arg("-o")
+            .arg(&executable)
+            .arg(&source));
+        assert!(
+            executable_result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&executable_result.stderr)
+        );
+        assert_eq!(run(&mut Command::new(&executable)).stdout, b"42\n");
+        executable_sizes.push(fs::metadata(&executable).unwrap().len());
+        let metadata =
+            NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+        assert_eq!(metadata.optimization, *expected_profile);
+    }
+    assert!(ir_sizes[1] < ir_sizes[0]);
+    assert!(ir_sizes[2] <= ir_sizes[1]);
+    assert!(executable_sizes[1] < executable_sizes[0]);
+    assert!(executable_sizes[2] <= executable_sizes[1]);
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn o1_prunes_unreachable_runtime_and_preserves_existing_program_result() {
     // TOPAL-COMPILER-RUNTIME-GLOBAL-DCE-001, TOPAL-OPT-PROFILE-001
     let directory = temporary("o1-runtime-global-dce");

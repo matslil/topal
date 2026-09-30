@@ -447,7 +447,7 @@ fn generic_x86_64_model() -> ArchitectureModel {
             source_class: "compiler-built-in".into(),
             revision: "1".into(),
             digest: crate::artifact::sha256(include_bytes!(
-                "../../../library/std/architecture/generic-x86-64-linux.t"
+                "../../../architecture-models/generic-x86-64-linux.t"
             )),
             assumptions: BTreeSet::from(["generic baseline; no host feature detection".into()]),
         }],
