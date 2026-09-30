@@ -107,6 +107,22 @@ is intentionally unavailable in `-O1`. Dynamic symbol lookup, externally
 visible runtime symbols, a different object format, or an unqualified linker
 root policy makes this pass unavailable rather than speculative.
 
+The second implemented optimization identity is `llvm.default-pipeline/22`.
+`-O2`, `-O3`, `-Os`, and `-Oz` select LLVM 22's correspondingly named default
+pipeline and matching backend code-generation effort; the size profiles use
+LLVM's size-aware IR pipelines and the O2 backend. This identity is a
+version-qualified backend bundle, not a claim that Topal owns or can separately
+prove each LLVM-internal transform. Disabling it removes the whole bundle.
+Enabling it at `-O1` selects LLVM's O1 bundle. `-O0` rejects it because O0 is
+the optional-transform-free reference.
+
+The compiler's listing reports both implemented identities. Ordered enable and
+disable controls operate after profile selection, so the later mention wins.
+Isolated selection uses the pass's least applicable implemented profile: O1
+for private runtime pruning and O2 for the LLVM default bundle. Explanations
+include missing workload, hotness, and trip-count facts as remarks; these facts
+never become assumptions merely because an optimized profile was requested.
+
 ## Target selection
 
 Without a target option, a compiler which supports the compilation host uses a

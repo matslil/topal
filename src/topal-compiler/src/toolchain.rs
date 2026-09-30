@@ -8,8 +8,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use topal_language::compiler::CompilerProgram;
 
 use crate::{
-    CompileError, CompileOptions, DigestEntry, Emit, LLVM_MAJOR, NativeArtifactMetadata,
-    OptimizationPlan, RUNTIME_GLOBAL_DCE,
+    CompileError, CompileOptions, DigestEntry, Emit, LLVM_DEFAULT_PIPELINE, LLVM_MAJOR,
+    NativeArtifactMetadata, OptimizationLevel, OptimizationPlan, RUNTIME_GLOBAL_DCE,
     artifact::sha256,
     backend::LlvmModule,
     frontend::{SharedObjectLink, StaticArchiveLink},
@@ -293,6 +293,7 @@ fn materialize_in(
     let generated = generate_native_output(foreign, llvm, options, plan, tools, temporary)?;
     let output_bytes =
         fs::read(&generated).map_err(io_error("read generated output", &generated))?;
+    plan.validate_output_limits(&output_bytes)?;
     let deploy_shared_objects =
         options.emit == Emit::Executable && !foreign.shared_objects.is_empty();
     let additional_platform_requirements =
@@ -381,7 +382,7 @@ fn generate_native_output(
                 .arg(&verified))?;
             let object = temporary.join("module.o");
             run(Command::new(tools.path("llc"))
-                .arg("-O0")
+                .arg(llvm_codegen_level(plan))
                 .arg("-filetype=obj")
                 .arg("-mtriple=x86_64-unknown-linux-gnu")
                 .arg("-mcpu=x86-64")
@@ -427,14 +428,47 @@ fn generate_native_output(
     Ok(generated)
 }
 
-fn llvm_passes(plan: &OptimizationPlan) -> Result<&'static str, CompileError> {
-    match plan.enabled_optimizations.as_slice() {
-        [] => Ok("verify"),
-        [RUNTIME_GLOBAL_DCE] => Ok("globaldce,verify"),
-        unsupported => Err(CompileError::Tool(format!(
+fn llvm_passes(plan: &OptimizationPlan) -> Result<String, CompileError> {
+    let runtime_dce = plan.enabled_optimizations.contains(&RUNTIME_GLOBAL_DCE);
+    let default_pipeline = plan.enabled_optimizations.contains(&LLVM_DEFAULT_PIPELINE);
+    if plan.enabled_optimizations.len() != usize::from(runtime_dce) + usize::from(default_pipeline)
+    {
+        return Err(CompileError::Tool(format!(
             "optimization plan contains an unsupported pass set: {}",
-            unsupported.join(", ")
-        ))),
+            plan.enabled_optimizations.join(", ")
+        )));
+    }
+    let mut passes = Vec::new();
+    if runtime_dce {
+        passes.push("globaldce");
+    }
+    if default_pipeline {
+        passes.push(match plan.level {
+            OptimizationLevel::O0 => {
+                return Err(CompileError::Tool(
+                    "LLVM default pipeline cannot run at O0".into(),
+                ));
+            }
+            OptimizationLevel::O1 => "default<O1>",
+            OptimizationLevel::O2 => "default<O2>",
+            OptimizationLevel::O3 => "default<O3>",
+            OptimizationLevel::Os => "default<Os>",
+            OptimizationLevel::Oz => "default<Oz>",
+        });
+    }
+    passes.push("verify");
+    Ok(passes.join(","))
+}
+
+fn llvm_codegen_level(plan: &OptimizationPlan) -> &'static str {
+    if !plan.enabled_optimizations.contains(&LLVM_DEFAULT_PIPELINE) {
+        return "-O0";
+    }
+    match plan.level {
+        OptimizationLevel::O0 => "-O0",
+        OptimizationLevel::O1 => "-O1",
+        OptimizationLevel::O2 | OptimizationLevel::Os | OptimizationLevel::Oz => "-O2",
+        OptimizationLevel::O3 => "-O3",
     }
 }
 
