@@ -473,7 +473,7 @@ fn generate(
         file: header_file.into(),
         sha256: digest(&header),
     };
-    let (binary_file, source, manifest) = match (&arguments.binary, verified_binary) {
+    let (binary_file, source) = match (&arguments.binary, verified_binary) {
         (BinaryInput::StaticArchive(_), VerifiedBinary::StaticArchive) => {
             let binary_file = format!("lib{}.a", arguments.identity);
             let library = AccessLibrary {
@@ -490,7 +490,7 @@ fn generate(
                 },
                 functions,
             };
-            (binary_file, library.topal_source(), library.encode()?)
+            (binary_file, library.topal_source())
         }
         (BinaryInput::SharedObject(_), VerifiedBinary::SharedObject { soname }) => {
             let library = SharedAccessLibrary {
@@ -508,7 +508,7 @@ fn generate(
                 },
                 functions,
             };
-            (soname.clone(), library.topal_source(), library.encode()?)
+            (soname.clone(), library.topal_source())
         }
         _ => return Err("internal C binary verification mismatch".into()),
     };
@@ -516,8 +516,6 @@ fn generate(
         .map_err(|error| format!("cannot copy C binary: {error}"))?;
     fs::write(staging.join("module.t"), source)
         .map_err(|error| format!("cannot write generated Topal access library: {error}"))?;
-    fs::write(staging.join("module.topal-c-abi.json"), manifest)
-        .map_err(|error| format!("cannot write C access-library manifest: {error}"))?;
     Ok(())
 }
 

@@ -111,8 +111,9 @@ defined by `TOPAL-COMP-C-SHARED-001`.
 ## TOPAL-COMP-C-STATIC-001 — Checked static C access libraries
 
 The compiler shall discover only explicitly selected generated access
-libraries, require canonical matching `topal-c-abi/1` Topal and JSON models,
-revalidate the header and archive SHA-256 digests, and accept only the
+libraries, decode the complete canonical `topal-c-abi/1` model from `module.t`,
+require no parallel manifest, revalidate the header and archive SHA-256
+digests, and accept only the
 `x86_64-unknown-linux-gnu`/`sysv-amd64` profile. It shall lower a used C `int`
 function through a private Topal adapter and external `ccc` call, diagnose an
 out-of-range value without truncation, include the archive explicitly in the
@@ -126,7 +127,9 @@ dependencies. This realizes `TOPAL-C-ABI-CONTEXT-001` through
 than text-match C declarations, reject every declaration outside const,
 non-variadic C functions with `int` parameters and C `int` or `void` results,
 verify ELF x86-64 binary symbols with LLVM tools, and publish no partial
-access-library directory after failure.
+access-library directory after failure. Its canonical `module.t` shall include
+every filename, digest, identity, and function property required by the
+compiler and shall be the only emitted ABI description.
 
 ## TOPAL-COMP-C-SHARED-001 — Closed shared C access libraries
 

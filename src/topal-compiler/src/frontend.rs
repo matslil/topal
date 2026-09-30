@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sha2::{Digest, Sha256};
-use topal_c_abi::{AccessLibraryManifest, CValue};
+use topal_c_abi::{AccessLibraryModel, CValue};
 use topal_language::compiler::{
     CompilerCFunction, CompilerCValue, CompilerProgram, CompilerType,
     analyze_for_compiler_with_modules,
@@ -48,7 +48,7 @@ enum ForeignBinary {
 }
 
 struct LoadedAccessLibrary {
-    manifest: AccessLibraryManifest,
+    model: AccessLibraryModel,
     binary: ForeignBinary,
 }
 
@@ -94,21 +94,21 @@ pub(crate) fn check(source: &str, library_root: &Path) -> Result<CheckedProgram,
     let mut shared_sonames = BTreeMap::new();
     for library in access_libraries.values() {
         foreign_dependencies.push(DigestEntry {
-            identity: format!("c-abi.{}.header", library.manifest.identity()),
-            sha256: library.manifest.header().sha256.clone(),
+            identity: format!("c-abi.{}.header", library.model.identity()),
+            sha256: library.model.header().sha256.clone(),
         });
         match &library.binary {
             ForeignBinary::StaticArchive(path) => {
                 static_archives.push(StaticArchiveLink {
-                    library_identity: library.manifest.identity().to_owned(),
+                    library_identity: library.model.identity().to_owned(),
                     path: path.clone(),
                 });
-                let AccessLibraryManifest::Static(manifest) = &library.manifest else {
-                    unreachable!("static binary retains static manifest")
+                let AccessLibraryModel::Static(model) = &library.model else {
+                    unreachable!("static binary retains static model")
                 };
                 foreign_dependencies.push(DigestEntry {
-                    identity: format!("c-abi.{}.static-archive", manifest.identity),
-                    sha256: manifest.static_archive.sha256.clone(),
+                    identity: format!("c-abi.{}.static-archive", model.identity),
+                    sha256: model.static_archive.sha256.clone(),
                 });
             }
             ForeignBinary::SharedObject(shared) => {
@@ -122,7 +122,7 @@ pub(crate) fn check(source: &str, library_root: &Path) -> Result<CheckedProgram,
                 }
                 shared_objects.push(shared.clone());
                 foreign_dependencies.push(DigestEntry {
-                    identity: format!("c-abi.{}.shared-object", library.manifest.identity()),
+                    identity: format!("c-abi.{}.shared-object", library.model.identity()),
                     sha256: shared.sha256.clone(),
                 });
             }
@@ -146,45 +146,25 @@ fn load_access_libraries(
             continue;
         }
         let source_path = Path::new(&module.source_name);
-        let manifest_path = source_path.with_file_name("module.topal-c-abi.json");
-        let bytes = fs::read(&manifest_path).map_err(|error| {
-            CompileError::Io(format!(
-                "cannot read C access-library manifest {}: {error}",
-                manifest_path.display()
-            ))
-        })?;
-        let manifest = AccessLibraryManifest::decode(&bytes).map_err(CompileError::Tool)?;
-        if module.source != manifest.topal_source() {
-            return Err(CompileError::Tool(format!(
-                "Topal ABI source {} is not the canonical rendering of {}",
-                source_path.display(),
-                manifest_path.display()
-            )));
-        }
+        let model = AccessLibraryModel::decode_topal(&module.source).map_err(CompileError::Tool)?;
         let identity = module.identity.first().ok_or_else(|| {
             CompileError::Tool("C access-library module has no library identity".into())
         })?;
-        if manifest.identity() != identity {
+        if model.identity() != identity {
             return Err(CompileError::Tool(format!(
-                "C manifest identity `{}` does not match selected library `{identity}`",
-                manifest.identity()
+                "C ABI model identity `{}` does not match selected library `{identity}`",
+                model.identity()
             )));
         }
-        let directory = manifest_path.parent().unwrap_or_else(|| Path::new("."));
-        verify_artifact(
-            directory,
-            &manifest.header().file,
-            &manifest.header().sha256,
-        )?;
-        let binary = match &manifest {
-            AccessLibraryManifest::Static(library) => {
-                ForeignBinary::StaticArchive(verify_artifact(
-                    directory,
-                    &library.static_archive.file,
-                    &library.static_archive.sha256,
-                )?)
-            }
-            AccessLibraryManifest::Shared(library) => {
+        let directory = source_path.parent().unwrap_or_else(|| Path::new("."));
+        verify_artifact(directory, &model.header().file, &model.header().sha256)?;
+        let binary = match &model {
+            AccessLibraryModel::Static(library) => ForeignBinary::StaticArchive(verify_artifact(
+                directory,
+                &library.static_archive.file,
+                &library.static_archive.sha256,
+            )?),
+            AccessLibraryModel::Shared(library) => {
                 let path = verify_artifact(
                     directory,
                     &library.shared_object.file,
@@ -199,7 +179,7 @@ fn load_access_libraries(
             }
         };
         if libraries
-            .insert(identity.clone(), LoadedAccessLibrary { manifest, binary })
+            .insert(identity.clone(), LoadedAccessLibrary { model, binary })
             .is_some()
         {
             return Err(CompileError::Tool(format!(
@@ -267,13 +247,13 @@ fn attach_foreign_functions(
             .next()
             .unwrap_or(&function.source_name);
         let declaration = library
-            .manifest
+            .model
             .functions()
             .iter()
             .find(|candidate| candidate.topal_name == source_name)
             .ok_or_else(|| {
                 CompileError::Tool(format!(
-                    "generated ABI module function `{identity} {}` is absent from its manifest",
+                    "generated ABI module function `{identity} {}` is absent from its ABI model",
                     function.source_name
                 ))
             })?;
@@ -285,7 +265,7 @@ fn attach_foreign_functions(
             || function.result_type != compiler_type(declaration.result)
         {
             return Err(CompileError::Tool(format!(
-                "generated Topal signature for `{identity} {}` disagrees with its C manifest",
+                "generated Topal signature for `{identity} {}` disagrees with its C ABI model",
                 function.source_name
             )));
         }

@@ -543,10 +543,6 @@ dependencies = [
 [[package]]
 name = "topal-c-abi"
 version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "topal-c-bindgen"

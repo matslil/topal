@@ -524,11 +524,6 @@ fn links_a_checked_generated_c_access_library_from_a_static_archive() {
         }],
     };
     fs::write(library.join("module.t"), manifest.topal_source()).unwrap();
-    fs::write(
-        library.join("module.topal-c-abi.json"),
-        manifest.encode().unwrap(),
-    )
-    .unwrap();
 
     let source = directory.join("application.t");
     let executable = directory.join("application");
@@ -674,11 +669,6 @@ fn links_and_deploys_a_checked_c_shared_object() {
         }],
     };
     fs::write(library.join("module.t"), manifest.topal_source()).unwrap();
-    fs::write(
-        library.join("module.topal-c-abi.json"),
-        manifest.encode().unwrap(),
-    )
-    .unwrap();
 
     let source = directory.join("application.t");
     let executable = output_directory.join("application");

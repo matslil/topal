@@ -14,14 +14,18 @@ binary kind, binary digest, and library version. A consumer SHALL reject a
 missing, unknown, contradictory, or noncanonical identity before code
 generation.
 
-## TOPAL-C-ABI-MODEL-001 — Dual canonical representation
+## TOPAL-C-ABI-MODEL-001 — Self-describing Topal representation
 
-The human-readable Topal `abi` source and machine-readable manifest SHALL
-describe the same library and functions. Each function description SHALL
-contain its Topal name, linker symbol, calling convention, ordered parameter
-layouts, result layout, unwind rule, and transfer rule. A compiler SHALL
-compare the canonical source rendering with the manifest and SHALL reject any
-divergence.
+The Topal `abi` source SHALL be the sole canonical description of the access
+library. Its library record SHALL contain the schema, library identity and
+version, target, platform ABI, object format, binary kind, Clang identity, and
+the relative filename and digest of each input artifact. Each function record
+SHALL contain its Topal name, linker symbol, calling convention, variadic
+status, ordered parameter names and layouts, result layout, effect, unwind
+rule, and transfer rule. A compiler SHALL reject a noncanonical source,
+missing or duplicate field, unsafe artifact path, or disagreement between a
+function record and its published Topal declaration. A producer and consumer
+SHALL NOT require a parallel non-Topal manifest.
 
 ## TOPAL-C-ABI-STATIC-001 — Qualified static archive
 
@@ -36,8 +40,8 @@ object, or default library.
 
 The initial function subset SHALL admit only non-variadic ordinary C functions
 that carry Clang's `const` function attribute, whose parameters are C `int`,
-and whose result is C `int` or `void`. The manifest and canonical Topal model
-SHALL record `no-observable-effect`. The producer SHALL ensure that the linked
+and whose result is C `int` or `void`. The canonical Topal model SHALL record
+`no-observable-effect`. The producer SHALL ensure that the linked
 definition honors the declared contract; functions with observable state,
 I/O, nondeterminism, or other effects are outside this profile. Every
 parameter is a copied Topal `Int`; every `int` result constructs a new Topal
