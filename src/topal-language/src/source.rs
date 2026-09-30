@@ -13623,6 +13623,21 @@ pub(super) fn explicit_single_measure(effect_bound: &str) -> Option<&str> {
     .then_some(measure)
 }
 
+pub(super) fn explicit_absolute_measure(effect_bound: &str) -> Option<&str> {
+    let measure = effect_bound.trim().strip_prefix("Decreases")?.trim();
+    let measure = measure
+        .strip_prefix('(')
+        .and_then(|value| value.strip_suffix(')'))
+        .unwrap_or(measure)
+        .trim();
+    let measure = measure.strip_prefix("absolute")?.trim();
+    (!measure.is_empty()
+        && measure
+            .chars()
+            .all(|character| character == '-' || character.is_alphanumeric()))
+    .then_some(measure)
+}
+
 fn recursive_call_argument<'a>(
     source: &SourceText,
     function_name: &str,
@@ -13784,7 +13799,7 @@ fn measured_recursive_calls_fit_nat_bound(
     }
 }
 
-fn prove_euclidean_recursion(
+pub(super) fn prove_euclidean_recursion(
     source: &SourceText,
     function_name: &str,
     parameters: &[(String, String)],
@@ -13796,7 +13811,7 @@ fn prove_euclidean_recursion(
     };
     if left_classifier != "Int"
         || right_classifier != "Int"
-        || !effect_bound.is_some_and(|bound| bound.trim_start().starts_with("Decreases"))
+        || effect_bound.and_then(explicit_absolute_measure) != Some(right)
     {
         return None;
     }

@@ -4733,6 +4733,7 @@ target-specific physical argument placement.
 
 When a recursive edge is independently admitted by
 `TOPAL-COMPILER-FUNCTION-DECREASES-001`,
+`TOPAL-COMPILER-RECURSION-EUCLIDEAN-001`,
 `TOPAL-COMPILER-RECURSION-INT-001`,
 `TOPAL-COMPILER-RECURSION-INT-INCREASING-001`,
 `TOPAL-COMPILER-RECURSION-NAT-001`,
@@ -5068,6 +5069,23 @@ The explicit measure SHALL add no hidden machine parameter, runtime counter,
 allocation, validation call, foreign dependency, standard library, or native
 ABI revision. One recursive overload SHALL retain one exact private prototype,
 and DWARF/GDB SHALL expose all source parameters in each non-inlined frame.
+
+### TOPAL-COMPILER-RECURSION-EUCLIDEAN-001 — Proven Euclidean recursion
+
+The compiler SHALL admit a binary `Int` recursive function when the shared
+language proof establishes `TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001`. The
+`Decreases (absolute right)` effect bound SHALL be accepted as proof metadata,
+not emitted behavior. In the `right = 0` base branch, `absolute left` SHALL
+retain its total nonnegative fact when adapted to a declared `Nat` result. In
+the complementary branch, the compiler SHALL retain the proof that `right` is
+nonzero for the direct `left % right` recursive argument; it SHALL NOT add a
+dynamic modulo Result path or a dynamic Nat-validation path.
+
+This proof and its branch facts SHALL not add a hidden parameter, counter,
+allocation, validation call, or native ABI field. The recursive overload SHALL
+retain one exact private prototype, O0 correctness, `noinline` without
+`norecurse`, source-visible recursive frames, and the ordinary freestanding
+runtime obligations.
 
 ### TOPAL-COMPILER-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific call graph identity
 
