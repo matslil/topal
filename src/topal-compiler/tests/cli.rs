@@ -198,6 +198,40 @@ fn lists_stable_optimizations_without_source_input() {
     assert!(stdout.contains("Status: implemented"));
 }
 
+#[test]
+fn lists_executable_and_model_only_targets_without_source_input() {
+    // TOPAL-COMPILER-TARGET-REGISTRY-001
+    let result = run(topalc().arg("--list-targets"));
+    assert!(result.status.success());
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    assert!(stdout.contains("Registry: topal.target-qualification/1"));
+    assert!(stdout.contains("generic-x86-64-linux"));
+    assert!(stdout.contains("Status: executable-qualified"));
+    assert!(stdout.contains("example-x86-64-avx2"));
+    assert!(stdout.contains("example-riscv-dsp-board"));
+    assert_eq!(stdout.matches("Status: model-only").count(), 2);
+}
+
+#[test]
+fn model_only_target_selection_fails_with_qualification_details() {
+    // TOPAL-COMPILER-TARGET-REGISTRY-001
+    let directory = temporary("model-only-target-selection");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t");
+    let output = directory.join("unqualified");
+    let result = run(topalc()
+        .args(["--cpu", "x86-64-avx2"])
+        .arg("-o")
+        .arg(&output)
+        .arg(&source));
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("model-only"), "{stderr}");
+    assert!(stderr.contains("instruction legality"), "{stderr}");
+    assert!(stderr.contains("topal.target-qualification/1"), "{stderr}");
+    assert!(!output.exists());
+}
+
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
 fn controls_pipeline_and_writes_deterministic_optimization_explanation() {

@@ -25,6 +25,16 @@ The compiler shall accept only `x86_64-unknown-linux-gnu`, emit the exact
 qualified data layout and x86-64 CPU baseline, use position-independent code,
 and reject every other target before creating an output.
 
+## TOPAL-COMP-TARGET-REGISTRY-001 — Qualified and model-only discovery
+
+The compiler shall expose a deterministic source-free target listing under
+registry `topal.target-qualification/1`. It shall report the executable
+generic Linux x86-64 profile and the model-only x86-64 AVX2 and RISC-V/DSP
+examples with target assignment, CPU/features, board, model source, status,
+and missing qualification scopes. A selected model-only CPU, board, or model
+shall fail before lowering with those details. Adding an entry shall not make
+it executable-qualified or change the sole admitted code-generation target.
+
 ## TOPAL-COMP-OPT-PLAN-001 — Validated generic target plan
 
 Before source lowering, the compiler shall resolve a typed optimization plan.

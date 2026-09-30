@@ -10,6 +10,7 @@ use topal_semantics::{
 use crate::{CompileError, DATA_LAYOUT, TARGET_TRIPLE};
 
 pub const OPTIMIZATION_PLAN_REVISION: &str = "topal.optimization-plan/1";
+pub const TARGET_REGISTRY_REVISION: &str = "topal.target-qualification/1";
 pub const GENERIC_X86_64_MODEL: &str = "topal.architecture.generic-x86_64-linux/1";
 pub const RUNTIME_GLOBAL_DCE: &str = "topal.runtime-global-dce/1";
 pub const LLVM_DEFAULT_PIPELINE: &str = "llvm.default-pipeline/22";
@@ -22,6 +23,70 @@ const GOALS: &[&str] = &[
     "peak-memory",
     "energy",
     "compile-time",
+];
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TargetQualificationStatus {
+    Executable,
+    ModelOnly,
+}
+
+impl TargetQualificationStatus {
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Executable => "executable-qualified",
+            Self::ModelOnly => "model-only",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TargetQualification {
+    profile: &'static str,
+    target: Option<&'static str>,
+    cpu: &'static str,
+    features: &'static str,
+    board: Option<&'static str>,
+    model: &'static str,
+    source: &'static str,
+    status: TargetQualificationStatus,
+    missing: &'static str,
+}
+
+const TARGET_QUALIFICATIONS: &[TargetQualification] = &[
+    TargetQualification {
+        profile: "generic-x86-64-linux",
+        target: Some(TARGET_TRIPLE),
+        cpu: "generic",
+        features: "x86-64-baseline",
+        board: None,
+        model: GENERIC_X86_64_MODEL,
+        source: "architecture-models/generic-x86-64-linux.t",
+        status: TargetQualificationStatus::Executable,
+        missing: "none",
+    },
+    TargetQualification {
+        profile: "example-x86-64-avx2",
+        target: Some(TARGET_TRIPLE),
+        cpu: "x86-64-avx2",
+        features: "avx,avx2",
+        board: None,
+        model: "example-x86-64-avx2",
+        source: "architecture-models/example-x86-64-avx2-overlay.t",
+        status: TargetQualificationStatus::ModelOnly,
+        missing: "instruction legality, cost, backend, runtime, ABI, and validation qualification",
+    },
+    TargetQualification {
+        profile: "example-riscv-dsp-board",
+        target: None,
+        cpu: "rv64imafdc-generic",
+        features: "model-declared RISC-V CPU plus DSP accelerator",
+        board: Some("example-riscv-dsp-board"),
+        model: "example-riscv-dsp-board",
+        source: "architecture-models/example-riscv-dsp-board.t",
+        status: TargetQualificationStatus::ModelOnly,
+        missing: "target triple, instruction legality, cost, backend, runtime, ABI, and validation qualification",
+    },
 ];
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -123,7 +188,7 @@ impl OptimizationPlan {
             Some(TARGET_TRIPLE) => TARGET_TRIPLE,
             Some(other) => {
                 return Err(CompileError::Tool(format!(
-                    "unsupported target `{other}`; this increment has only the qualified `{TARGET_TRIPLE}` model"
+                    "unsupported target `{other}`; no executable-qualified registry entry matches it (use --list-targets)"
                 )));
             }
             None if cfg!(all(target_arch = "x86_64", target_os = "linux")) => TARGET_TRIPLE,
@@ -135,18 +200,35 @@ impl OptimizationPlan {
         };
         let cpu = target.cpu.as_deref().unwrap_or("generic");
         if cpu != "generic" {
+            if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| entry.cpu == cpu) {
+                return Err(unqualified_target_error(entry));
+            }
             return Err(CompileError::Tool(format!(
-                "unsupported CPU profile `{cpu}`; this increment qualifies only `generic` and does not silently detect native features"
+                "unsupported CPU profile `{cpu}`; only `generic` is executable-qualified and native features are never detected implicitly (use --list-targets)"
             )));
         }
         if let Some(board) = &target.board {
+            if let Some(entry) = TARGET_QUALIFICATIONS
+                .iter()
+                .find(|entry| entry.board == Some(board.as_str()))
+            {
+                return Err(unqualified_target_error(entry));
+            }
             return Err(CompileError::Tool(format!(
-                "unsupported board profile `{board}`; no board model is qualified by this compiler increment"
+                "unsupported board profile `{board}`; no executable-qualified board model matches it (use --list-targets)"
             )));
         }
         if let Some(path) = &target.model {
+            if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| {
+                path.file_name()
+                    .is_some_and(|name| PathBuf::from(entry.source).file_name() == Some(name))
+            }) {
+                if entry.status == TargetQualificationStatus::ModelOnly {
+                    return Err(unqualified_target_error(entry));
+                }
+            }
             return Err(CompileError::Tool(format!(
-                "custom architecture model `{}` is not yet supported; this increment loads only `{GENERIC_X86_64_MODEL}`",
+                "custom architecture model `{}` is not executable-qualified; this increment loads only `{GENERIC_X86_64_MODEL}` (use --list-targets)",
                 path.display()
             )));
         }
@@ -385,6 +467,36 @@ pub fn optimization_listing() -> &'static str {
     "topal.runtime-global-dce/1\n  Remove unreachable compiler-private runtime definitions.\n  Status: implemented; default profile: O1; evidence: qualified static linkage roots.\nllvm.default-pipeline/22\n  Run the LLVM 22 default pipeline selected by O2, O3, Os, or Oz.\n  Status: implemented; default profiles: O2 O3 Os Oz; evidence: verified LLVM IR and target model.\n"
 }
 
+#[must_use]
+pub fn target_listing() -> String {
+    let mut listing = format!("Registry: {TARGET_REGISTRY_REVISION}\n");
+    for entry in TARGET_QUALIFICATIONS {
+        let target = entry.target.unwrap_or("unassigned");
+        let board = entry.board.unwrap_or("none");
+        listing.push_str(&format!(
+            "{}\n  Target: {target}; CPU: {}; features: {}; board: {board}\n  Model: {}; source: {}\n  Status: {}; missing: {}.\n",
+            entry.profile,
+            entry.cpu,
+            entry.features,
+            entry.model,
+            entry.source,
+            entry.status.name(),
+            entry.missing,
+        ));
+    }
+    listing
+}
+
+fn unqualified_target_error(entry: &TargetQualification) -> CompileError {
+    CompileError::Tool(format!(
+        "target profile `{}` is {} and cannot produce code; missing {} (model `{}`, registry `{TARGET_REGISTRY_REVISION}`; use --list-targets)",
+        entry.profile,
+        entry.status.name(),
+        entry.missing,
+        entry.model,
+    ))
+}
+
 fn generic_x86_64_model() -> ArchitectureModel {
     let provenance = "compiler-model";
     ArchitectureModel {
@@ -487,21 +599,33 @@ mod tests {
                 ..TargetSelection::default()
             },
             TargetSelection {
-                cpu: Some("native".into()),
+                cpu: Some("x86-64-avx2".into()),
                 ..TargetSelection::default()
             },
             TargetSelection {
-                board: Some("example".into()),
+                board: Some("example-riscv-dsp-board".into()),
                 ..TargetSelection::default()
             },
             TargetSelection {
-                model: Some("model.t".into()),
+                model: Some("architecture-models/example-riscv-dsp-board.t".into()),
                 ..TargetSelection::default()
             },
         ];
         for target in unsupported {
             assert!(OptimizationPlan::resolve(&target, &OptimizationRequest::default()).is_err());
         }
+    }
+
+    #[test]
+    fn target_registry_distinguishes_executable_and_model_only_profiles() {
+        let listing = target_listing();
+        assert!(listing.starts_with("Registry: topal.target-qualification/1\n"));
+        assert!(listing.contains("generic-x86-64-linux"));
+        assert!(listing.contains("Status: executable-qualified"));
+        assert!(listing.contains("example-x86-64-avx2"));
+        assert!(listing.contains("example-riscv-dsp-board"));
+        assert_eq!(listing.matches("Status: model-only").count(), 2);
+        assert_eq!(listing, target_listing());
     }
 
     #[test]
