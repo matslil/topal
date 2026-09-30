@@ -1305,65 +1305,19 @@ fn visit_topal_design_pattern_syntax(
     findings: &mut Vec<RuleFinding>,
 ) -> Result<(), String> {
     for statement in statements {
+        if let Statement::LanguageSelection {
+            version, features, ..
+        } = statement
+        {
+            context.select(source, *version, features);
+            continue;
+        }
+        if let Some(finding) =
+            design_pattern_finding(entry, rule_source, entry_point, source, statement, context)?
+        {
+            findings.push(finding);
+        }
         match statement {
-            Statement::LanguageSelection {
-                version, features, ..
-            } => context.select(source, *version, features),
-            Statement::StateField { name, classifier }
-                if source.slice(*classifier) == "Boolean"
-                    && state_like_name(source.slice(*name))
-                    && entry_applies(
-                        entry,
-                        context.version.as_deref(),
-                        &context.selected_features,
-                    )?
-                    && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)? =>
-            {
-                findings.push(RuleFinding {
-                    span: *name,
-                    message: "Boolean state conceals future workflow alternatives",
-                    suggestion: "use a named Union with one alternative per workflow state when the protocol can grow beyond two states",
-                    rectification: None,
-                });
-            }
-            Statement::Binding {
-                name,
-                classifier: Some(classifier),
-                ..
-            } if source.slice(*classifier) == "Boolean"
-                && state_like_name(source.slice(*name))
-                && entry_applies(
-                    entry,
-                    context.version.as_deref(),
-                    &context.selected_features,
-                )?
-                && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)? =>
-            {
-                findings.push(RuleFinding {
-                    span: *name,
-                    message: "Boolean state conceals future workflow alternatives",
-                    suggestion: "use a named Union with one alternative per workflow state when the protocol can grow beyond two states",
-                    rectification: None,
-                });
-            }
-            Statement::Union {
-                name, alternatives, ..
-            } if alternatives.len() >= 8
-                && state_like_name(source.slice(*name))
-                && entry_applies(
-                    entry,
-                    context.version.as_deref(),
-                    &context.selected_features,
-                )?
-                && !evaluate_topal_boolean_rule(rule_source, entry_point, false, true)? =>
-            {
-                findings.push(RuleFinding {
-                    span: *name,
-                    message: "large algebraic state union may be suffering state explosion",
-                    suggestion: "factor independent state dimensions or keep runtime-only checks explicit before adding more alternatives",
-                    rectification: None,
-                });
-            }
             Statement::Published { declaration, .. } => visit_topal_design_pattern_syntax(
                 entry,
                 rule_source,
@@ -1402,9 +1356,127 @@ fn visit_topal_design_pattern_syntax(
     Ok(())
 }
 
+fn design_pattern_finding(
+    entry: &CatalogEntry,
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statement: &Statement,
+    context: &ApplicabilityContext,
+) -> Result<Option<RuleFinding>, String> {
+    if !entry_applies(
+        entry,
+        context.version.as_deref(),
+        &context.selected_features,
+    )? {
+        return Ok(None);
+    }
+    if entry_is(entry, "ap-03-algebraic-state") {
+        return algebraic_state_finding(rule_source, entry_point, source, statement);
+    }
+    if entry_is(entry, "ap-04-typestate-protocol") {
+        return typestate_protocol_finding(rule_source, entry_point, source, statement);
+    }
+    Ok(None)
+}
+
+fn algebraic_state_finding(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statement: &Statement,
+) -> Result<Option<RuleFinding>, String> {
+    if let Some(name) =
+        boolean_named_statement(source, statement).filter(|name| state_like_name(name.1))
+        && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)?
+    {
+        return Ok(Some(RuleFinding {
+            span: name.0,
+            message: "Boolean state conceals future workflow alternatives",
+            suggestion: "use a named Union with one alternative per workflow state when the protocol can grow beyond two states",
+            rectification: None,
+        }));
+    }
+    if let Statement::Union {
+        name, alternatives, ..
+    } = statement
+        && alternatives.len() >= 8
+        && state_like_name(source.slice(*name))
+        && !evaluate_topal_boolean_rule(rule_source, entry_point, false, true)?
+    {
+        return Ok(Some(RuleFinding {
+            span: *name,
+            message: "large algebraic state union may be suffering state explosion",
+            suggestion: "factor independent state dimensions or keep runtime-only checks explicit before adding more alternatives",
+            rectification: None,
+        }));
+    }
+    Ok(None)
+}
+
+fn typestate_protocol_finding(
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statement: &Statement,
+) -> Result<Option<RuleFinding>, String> {
+    if let Some(name) =
+        boolean_named_statement(source, statement).filter(|name| protocol_like_name(name.1))
+        && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)?
+    {
+        return Ok(Some(RuleFinding {
+            span: name.0,
+            message: "Boolean protocol state cannot prevent invalid operation order",
+            suggestion: "model the protocol alternatives explicitly; Topal cannot yet make transitions consume a state-indexed capability",
+            rectification: None,
+        }));
+    }
+    if let Statement::Union {
+        name, alternatives, ..
+    } = statement
+        && !alternatives.is_empty()
+        && protocol_like_name(source.slice(*name))
+        && !evaluate_topal_boolean_rule(rule_source, entry_point, false, true)?
+    {
+        return Ok(Some(RuleFinding {
+            span: *name,
+            message: "protocol model cannot statically enforce transition order",
+            suggestion: "keep validation at every operation boundary until Topal has affine state-indexed capabilities",
+            rectification: None,
+        }));
+    }
+    Ok(None)
+}
+
+fn boolean_named_statement<'a>(
+    source: &'a SourceText,
+    statement: &'a Statement,
+) -> Option<(Span, &'a str)> {
+    match statement {
+        Statement::StateField { name, classifier } if source.slice(*classifier) == "Boolean" => {
+            Some((*name, source.slice(*name)))
+        }
+        Statement::Binding {
+            name,
+            classifier: Some(classifier),
+            ..
+        } if source.slice(*classifier) == "Boolean" => Some((*name, source.slice(*name))),
+        _ => None,
+    }
+}
+
 fn state_like_name(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     name == "state" || name.ends_with("state") || name.ends_with("_state")
+}
+
+fn protocol_like_name(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.contains("protocol") || name.contains("session") || name.contains("connection")
+}
+
+fn entry_is(entry: &CatalogEntry, suffix: &str) -> bool {
+    entry.identity.ends_with(suffix)
 }
 
 fn topal_task_state_machine(
@@ -1911,7 +1983,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 307);
+        assert_eq!(examples.len(), 308);
         for example in examples {
             let source = std::fs::read_to_string(&example).unwrap();
             let report = lint_text(&source, &[]).unwrap();
