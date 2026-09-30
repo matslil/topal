@@ -1247,7 +1247,7 @@ fn topal_rule(
     let rule_source = &rule.source_text;
     let expected_parameters: &[&str] = match rule.view.as_str() {
         "task-declaration-order/1" => &["Int", "Int"],
-        "task-state-machine/1" => &["Boolean", "Boolean"],
+        "task-state-machine/1" | "design-pattern-syntax/1" => &["Boolean", "Boolean"],
         other => {
             return Err(format!(
                 "best-practice {} requires unsupported read-only view `{other}`",
@@ -1268,8 +1268,143 @@ fn topal_rule(
         "task-state-machine/1" => {
             topal_task_state_machine(entry, rule_source, &rule.entry_point, source, statements)
         }
+        "design-pattern-syntax/1" => {
+            topal_design_pattern_syntax(entry, rule_source, &rule.entry_point, source, statements)
+        }
         _ => unreachable!("view checked above"),
     }
+}
+
+fn topal_design_pattern_syntax(
+    entry: &CatalogEntry,
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+) -> Result<Vec<RuleFinding>, String> {
+    let mut findings = Vec::new();
+    visit_topal_design_pattern_syntax(
+        entry,
+        rule_source,
+        entry_point,
+        source,
+        statements,
+        &mut ApplicabilityContext::default(),
+        &mut findings,
+    )?;
+    Ok(findings)
+}
+
+fn visit_topal_design_pattern_syntax(
+    entry: &CatalogEntry,
+    rule_source: &str,
+    entry_point: &str,
+    source: &SourceText,
+    statements: &[Statement],
+    context: &mut ApplicabilityContext,
+    findings: &mut Vec<RuleFinding>,
+) -> Result<(), String> {
+    for statement in statements {
+        match statement {
+            Statement::LanguageSelection {
+                version, features, ..
+            } => context.select(source, *version, features),
+            Statement::StateField { name, classifier }
+                if source.slice(*classifier) == "Boolean"
+                    && state_like_name(source.slice(*name))
+                    && entry_applies(
+                        entry,
+                        context.version.as_deref(),
+                        &context.selected_features,
+                    )?
+                    && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)? =>
+            {
+                findings.push(RuleFinding {
+                    span: *name,
+                    message: "Boolean state conceals future workflow alternatives",
+                    suggestion: "use a named Union with one alternative per workflow state when the protocol can grow beyond two states",
+                    rectification: None,
+                });
+            }
+            Statement::Binding {
+                name,
+                classifier: Some(classifier),
+                ..
+            } if source.slice(*classifier) == "Boolean"
+                && state_like_name(source.slice(*name))
+                && entry_applies(
+                    entry,
+                    context.version.as_deref(),
+                    &context.selected_features,
+                )?
+                && !evaluate_topal_boolean_rule(rule_source, entry_point, true, false)? =>
+            {
+                findings.push(RuleFinding {
+                    span: *name,
+                    message: "Boolean state conceals future workflow alternatives",
+                    suggestion: "use a named Union with one alternative per workflow state when the protocol can grow beyond two states",
+                    rectification: None,
+                });
+            }
+            Statement::Union {
+                name, alternatives, ..
+            } if alternatives.len() >= 8
+                && state_like_name(source.slice(*name))
+                && entry_applies(
+                    entry,
+                    context.version.as_deref(),
+                    &context.selected_features,
+                )?
+                && !evaluate_topal_boolean_rule(rule_source, entry_point, false, true)? =>
+            {
+                findings.push(RuleFinding {
+                    span: *name,
+                    message: "large algebraic state union may be suffering state explosion",
+                    suggestion: "factor independent state dimensions or keep runtime-only checks explicit before adding more alternatives",
+                    rectification: None,
+                });
+            }
+            Statement::Published { declaration, .. } => visit_topal_design_pattern_syntax(
+                entry,
+                rule_source,
+                entry_point,
+                source,
+                std::slice::from_ref(declaration.as_ref()),
+                context,
+                findings,
+            )?,
+            Statement::Implementation { declarations, .. }
+            | Statement::InterfaceImplementation { declarations, .. } => {
+                visit_topal_design_pattern_syntax(
+                    entry,
+                    rule_source,
+                    entry_point,
+                    source,
+                    declarations,
+                    &mut context.clone(),
+                    findings,
+                )?;
+            }
+            Statement::Function { body, .. }
+            | Statement::Generator { body, .. }
+            | Statement::Foreach { body, .. } => visit_topal_design_pattern_syntax(
+                entry,
+                rule_source,
+                entry_point,
+                source,
+                body,
+                &mut context.clone(),
+                findings,
+            )?,
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn state_like_name(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name == "state" || name.ends_with("state") || name.ends_with("_state")
 }
 
 fn topal_task_state_machine(
@@ -1776,7 +1911,7 @@ mod tests {
             .filter(|path| path.extension().is_some_and(|extension| extension == "t"))
             .collect::<Vec<_>>();
         examples.sort();
-        assert_eq!(examples.len(), 306);
+        assert_eq!(examples.len(), 307);
         for example in examples {
             let source = std::fs::read_to_string(&example).unwrap();
             let report = lint_text(&source, &[]).unwrap();
@@ -1938,6 +2073,62 @@ mod tests {
             !evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, true, false)
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn algebraic_state_rule_identifies_its_advisory_and_limitation_shapes() {
+        let entry = Catalog::builtin()
+            .entries
+            .into_iter()
+            .find(|entry| entry.identity.ends_with("ap-03-algebraic-state"))
+            .unwrap();
+        let rule = entry.lint_rule.unwrap();
+        assert!(
+            evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, false, false)
+                .unwrap()
+        );
+        assert!(
+            !evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, true, false)
+                .unwrap()
+        );
+        assert!(
+            !evaluate_topal_boolean_rule(&rule.source_text, &rule.entry_point, false, true)
+                .unwrap()
+        );
+
+        let boolean_state = "use language (version is v0.1)\ngate-state : Boolean is false\n";
+        let report = lint_text(
+            boolean_state,
+            &["lang best-practice design-pattern ap-03-algebraic-state"],
+        )
+        .unwrap();
+        assert!(report.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "L-DESIGN-PATTERN-AP-03"
+                && diagnostic.message.contains("Boolean state")
+        }));
+
+        let small_union =
+            "use language (version is v0.1)\nWorkflowState is Union\n  Idle\n  Working\n  Failed\n";
+        assert!(
+            lint_text(
+                small_union,
+                &["lang best-practice design-pattern ap-03-algebraic-state"]
+            )
+            .unwrap()
+            .diagnostics
+            .is_empty()
+        );
+
+        let large_union = "use language (version is v0.1)\nWorkflowState is Union\n  Idle\n  Armed\n  Reading\n  Validating\n  Writing\n  Retrying\n  Recovering\n  Failed\n";
+        let report = lint_text(
+            large_union,
+            &["lang best-practice design-pattern ap-03-algebraic-state"],
+        )
+        .unwrap();
+        assert!(report.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == "L-DESIGN-PATTERN-AP-03"
+                && diagnostic.message.contains("state explosion")
+        }));
     }
 
     #[test]

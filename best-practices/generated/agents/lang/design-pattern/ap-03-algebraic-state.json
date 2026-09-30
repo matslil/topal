@@ -1,0 +1,53 @@
+{
+  "generated_by": "topal-best-practices/6",
+  "schema": 6,
+  "authoritative_sha256": "9d834e84eda6437878cdadebce9e498f80813fa8cc0496772f9e51dc6a02a395",
+  "identity": "lang best-practice design-pattern ap-03-algebraic-state",
+  "version": "v0.1",
+  "status": {
+    "kind": "proposed",
+    "since_language_version": null,
+    "explanation": null,
+    "replacement": null
+  },
+  "class": "recommended",
+  "title": "Model extensible workflow state as an algebraic union",
+  "summary": "A named Union makes workflow alternatives explicit and lets exhaustive decisions expose new cases.",
+  "recommendation": "When a stateful workflow can grow beyond a genuinely binary condition, model its alternatives as a named Union and use exhaustive transitions.",
+  "rationale": "Boolean flags and independent fields can hide impossible combinations; a tagged union keeps each meaningful state visible to readers and analyzers.",
+  "applicability": {
+    "language": "topal",
+    "versions": ">=v0.1",
+    "required_features": [],
+    "excluded_features": []
+  },
+  "exceptions": [
+    "Keep a Boolean for a stable, genuinely binary condition.",
+    "A large Union can be clearer than an artificial decomposition when its alternatives are intrinsically coupled."
+  ],
+  "default_enabled": false,
+  "default_severity": "warning",
+  "checkability": "heuristic",
+  "confidence": "The rule sees only state-named Boolean fields and state-named unions with eight or more alternatives. A Boolean can be correct and a large union can be appropriate.",
+  "rectification": "suggestion",
+  "tags": [
+    "lang best-practice tag architecture",
+    "lang best-practice tag readability"
+  ],
+  "examples": [
+    "examples/language/design-pattern-algebraic-state.t",
+    "examples/linter/design-pattern-ap-03-rule.t",
+    "examples/linter/design-pattern-ap-03-boolean-state.t",
+    "examples/linter/design-pattern-ap-03-state-explosion.t"
+  ],
+  "lint_rule": {
+    "engine": "topal",
+    "entry_point": "rule",
+    "version": "v0.1",
+    "stage": "syntax",
+    "view": "design-pattern-syntax/1",
+    "diagnostic_code": "L-DESIGN-PATTERN-AP-03",
+    "source_sha256": "5c728b660bca538cbcc2202f667c31b939f1a984f33170b32b2cef9007434018",
+    "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# The host supplies two bounded syntax facts: a state-named Boolean field and a\n# state-named Union with eight or more alternatives. Either fact asks for an\n# advisory. It cannot prove that a Boolean is wrong or that a large union is\n# unmaintainable.\nrule is fn static (boolean-state : Boolean, large-union : Boolean) -> Boolean\n  (not boolean-state) and (not large-union)\n"
+  }
+}

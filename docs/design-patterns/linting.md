@@ -36,12 +36,12 @@ of these checkability labels:
   instead.
 
 Rules use the versioned, read-only `design-pattern-syntax/1` lint view. The
-view contains only bounded parsed declaration, expression, call, decision, and
-lexical-scope facts with source spans; it contains no application values,
-filesystem, process, network, debugger, architecture, timing, or ambient
-authority. A rule may request only the facts listed by its attachment contract.
-The linter remains responsible for parsing, source spans, diagnostics, policy,
-and suppression.
+linter derives bounded facts from parsed declarations, expressions, calls,
+decisions, and lexical scope, then supplies each attachment only the facts in
+its contract. The view contains no application values, filesystem, process,
+network, debugger, architecture, timing, or ambient authority. The linter
+remains responsible for parsing, source spans, diagnostics, policy, and
+suppression.
 
 ## Example and measurement contract
 
@@ -69,7 +69,7 @@ the relevant finding rather than asserting a globally empty diagnostic set.
 | --- | --- | --- |
 | AP-01 | Partial | Strategy shape is expressible; semantic capability/authority evidence is not yet source-complete. |
 | AP-02 | Partial | Adapter shape and checked C boundary exist; general validated external boundaries need declared authority and failure evidence. |
-| AP-03 | Demonstrable | Prefer algebraic states and exhaustive transitions over Boolean/number state encodings. |
+| AP-03 | Demonstrable | `L-DESIGN-PATTERN-AP-03` advises on state-named Boolean fields and warns when a state-named `Union` reaches eight alternatives. |
 | AP-04 | Partial | Sum-state models are expressible; typestate/session protocol admission is not. |
 | AP-05 | Partial | Lexical scoping exists; deterministic cleanup/destruction is absent. |
 | AP-06 | Partial | Smart construction can be modeled; opaque construction, invariant propagation, and proof import remain incomplete. |

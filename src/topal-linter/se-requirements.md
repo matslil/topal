@@ -29,14 +29,17 @@ ambient filesystem, network, process, debugger, or application authority.
 ## TOPAL-LINT-DESIGN-PATTERN-001 — Bounded pattern evidence
 
 Design-pattern rules shall receive only their declared revision of the
-`design-pattern-syntax` view. Revision one shall provide bounded parsed
-declaration, expression, call, decision, lexical-scope, and source-span facts;
-it shall provide no application values, ambient authority, timing,
-architecture, device, or runtime facts. A structural advisory shall identify
-its bounded source evidence and false-positive boundary. A limitation warning
-shall identify the catalog condition not observable from the declared view. No
-rule shall infer or claim a real-time, safety, security, distributed-system, or
-hardware guarantee from source resemblance alone.
+`design-pattern-syntax` view. Revision one shall derive bounded facts from
+parsed declarations, expressions, calls, decisions, lexical scope, and source
+spans, then supply an attachment only its declared facts. Its initial AP-03
+projection supplies whether an applicable state-named Boolean binding or state
+field exists and whether an applicable state-named `Union` has at least eight
+alternatives. It shall provide no application values, ambient authority,
+timing, architecture, device, or runtime facts. A structural advisory shall
+identify its bounded source evidence and false-positive boundary. A limitation
+warning shall identify the catalog condition not observable from the declared
+view. No rule shall infer or claim a real-time, safety, security,
+distributed-system, or hardware guarantee from source resemblance alone.
 
 ## TOPAL-LINT-VARIANT-001 — Rule-module admission
 
