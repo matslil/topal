@@ -57,6 +57,16 @@ explicit target, CPU, board, model, or native selection SHALL validate through
 detection is requested, or qualification is insufficient. An incremental
 compiler MAY implement only the target admitted by `TOPAL-COMPILER-TARGET-001`.
 
+### TOPAL-OPT-TARGET-LIST-001 — Target qualification discovery
+
+The target-list query SHALL require no source input and SHALL identify its
+registry revision. For every registered profile it SHALL report the target (or
+that no target is assigned), CPU and feature baseline, optional board,
+architecture-model identity and source, executable or model-only status, and
+missing qualification scopes. The query SHALL NOT produce a native artifact.
+A model-only listing SHALL NOT make that profile selectable for code
+generation.
+
 ### TOPAL-OPT-CONTROL-001 — Goal, limit, and pass controls
 
 Repeated explicit goals SHALL replace profile goals in occurrence order.

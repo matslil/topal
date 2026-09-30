@@ -156,6 +156,15 @@ of target probes. Runtime feature detection and multiversioning are separate
 optimizations: they require an explicit qualified baseline fallback and may be
 chosen only when their dispatch and deployment dependencies are available.
 
+Target discovery is source-free and qualification-aware. The compiler lists
+each registered profile's target, CPU and feature baseline, optional board,
+architecture-model identity and source, and whether it is executable-qualified
+or model-only. A model-only entry is useful design input, not permission to
+emit code: its listing names the missing legality, cost, backend, runtime, ABI,
+platform, or validation scopes. Selecting it fails before lowering. This lets
+new target models enter the registry without weakening the rule that code
+generation begins only after the complete selected target is qualified.
+
 ## Goal, limit, and pass controls
 
 Profiles can be refined with the following interface:

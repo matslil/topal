@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use topal_compiler::{
     CompileError, CompileOptions, Emit, ExplanationDestination, OptimizationLevel,
     OptimizationOverride, OptimizationRequest, TARGET_TRIPLE, TargetSelection, compile_source,
-    optimization_listing,
+    optimization_listing, target_listing,
 };
 
 mod test_runner;
@@ -35,6 +35,10 @@ fn run() -> Result<(), String> {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
     if arguments.as_slice() == ["--list-optimizations"] {
         print!("{}", optimization_listing());
+        return Ok(());
+    }
+    if arguments.as_slice() == ["--list-targets"] {
+        print!("{}", target_listing());
         return Ok(());
     }
     let mut arguments = arguments.into_iter().peekable();
@@ -199,7 +203,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc --list-optimizations\n       topalc test [--list | --exact ID] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
                 );
                 std::process::exit(0);
             }
@@ -215,8 +219,8 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                     return Err("--explain-optimizations may be specified only once".into());
                 }
             }
-            "--list-optimizations" => {
-                return Err("--list-optimizations must be used without other arguments".into());
+            "--list-optimizations" | "--list-targets" => {
+                return Err(format!("{argument} must be used without other arguments"));
             }
             option if option.starts_with('-') => return Err(format!("unknown option: {option}")),
             path if source.is_none() => source = Some(PathBuf::from(path)),

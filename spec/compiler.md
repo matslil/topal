@@ -11,6 +11,18 @@ layout and x86-64 baseline recorded in `se/compiler-architecture.md`; it SHALL
 reject every other target before lowering. Host CPU discovery SHALL NOT silently
 strengthen the emitted feature set.
 
+### TOPAL-COMPILER-TARGET-REGISTRY-001 — Fail-closed extension registry
+
+The compiler SHALL expose the source-free target registry required by
+`TOPAL-OPT-TARGET-LIST-001`. Registry revision
+`topal.target-qualification/1` SHALL identify the generic Linux x86-64 profile
+as executable-qualified and SHALL identify the example x86-64 AVX2 overlay and
+RISC-V/DSP board as model-only. Selecting a model-only CPU, board, or model
+SHALL reject before lowering, name the model and registry, and report the
+missing qualification scopes. Model presence alone SHALL NOT weaken
+`TOPAL-COMPILER-TARGET-001` or authorize an instruction, ABI, runtime, object,
+linker, deployment, or execution assumption.
+
 ### TOPAL-COMPILER-PLATFORM-001 — Freestanding Linux execution
 
 The initial executable SHALL define its own process entry and SHALL link with

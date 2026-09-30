@@ -20,6 +20,14 @@ CPU:         x86-64 baseline (never the compiler host's native CPU)
 object:      ELF64 little-endian, static PIE
 ```
 
+Target registry `topal.target-qualification/1` separates discovery from code
+generation authority. The generic Linux x86-64 entry is executable-qualified.
+The example AVX2 overlay and heterogeneous RISC-V/DSP board remain model-only:
+they exercise model composition and expose the qualification work required by
+later specific-target and cross-target increments, but cannot select a backend
+or produce an artifact. `topalc --list-targets` reports this boundary without
+requiring source input.
+
 References: LLVM's [frontend performance
 guidance](https://llvm.org/docs/Frontend/PerformanceTips.html), [language
 reference](https://llvm.org/docs/LangRef.html), and [code-generator
