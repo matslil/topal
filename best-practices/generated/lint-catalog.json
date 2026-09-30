@@ -3,6 +3,41 @@
   "schema": 6,
   "entries": [
     {
+      "identity": "lang best-practice design-pattern ap-03-algebraic-state",
+      "version": "v0.1",
+      "authoritative_sha256": "9d834e84eda6437878cdadebce9e498f80813fa8cc0496772f9e51dc6a02a395",
+      "status": {
+        "kind": "proposed",
+        "since_language_version": null,
+        "explanation": null,
+        "replacement": null
+      },
+      "class": "recommended",
+      "recommendation": "When a stateful workflow can grow beyond a genuinely binary condition, model its alternatives as a named Union and use exhaustive transitions.",
+      "checkability": "heuristic",
+      "confidence": "The rule sees only state-named Boolean fields and state-named unions with eight or more alternatives. A Boolean can be correct and a large union can be appropriate.",
+      "default_enabled": false,
+      "default_severity": "warning",
+      "language": "topal",
+      "language_versions": ">=v0.1",
+      "required_features": [],
+      "excluded_features": [],
+      "tags": [
+        "lang best-practice tag architecture",
+        "lang best-practice tag readability"
+      ],
+      "lint_rule": {
+        "engine": "topal",
+        "entry_point": "rule",
+        "version": "v0.1",
+        "stage": "syntax",
+        "view": "design-pattern-syntax/1",
+        "diagnostic_code": "L-DESIGN-PATTERN-AP-03",
+        "source_sha256": "5c728b660bca538cbcc2202f667c31b939f1a984f33170b32b2cef9007434018",
+        "source_text": "use language (\n  version is v0.1,\n  features is ( lint )\n)\n# The host supplies two bounded syntax facts: a state-named Boolean field and a\n# state-named Union with eight or more alternatives. Either fact asks for an\n# advisory. It cannot prove that a Boolean is wrong or that a large union is\n# unmaintainable.\nrule is fn static (boolean-state : Boolean, large-union : Boolean) -> Boolean\n  (not boolean-state) and (not large-union)\n"
+      }
+    },
+    {
       "identity": "lang best-practice task declaration-order",
       "version": "v0.1",
       "authoritative_sha256": "2a0d6d0be04570629a2bf57ed3ce4a7dad2976b9fb0eda218d0761ee45f2e808",

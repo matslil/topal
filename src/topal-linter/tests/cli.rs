@@ -48,7 +48,9 @@ fn lists_and_explains_the_built_in_catalog() {
 #[test]
 fn explains_lifecycle_applicability_and_rule_attachment() {
     let mut catalog = Catalog::builtin();
-    catalog.entries.truncate(1);
+    catalog
+        .entries
+        .retain(|entry| entry.identity.ends_with("declaration-order"));
     let entry = &mut catalog.entries[0];
     entry.identity = "org.example best-practice historical order".into();
     entry.status.kind = "obsolete".into();
@@ -212,6 +214,43 @@ fn accepts_clean_shared_language_source() {
     );
     assert!(output.stdout.is_empty());
     assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn algebraic_state_pattern_fixtures_distinguish_advisory_and_limitation() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let identity = "lang best-practice design-pattern ap-03-algebraic-state";
+    let positive = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+        .args(["--enable", identity])
+        .arg(root.join("examples/language/design-pattern-algebraic-state.t"))
+        .output()
+        .unwrap();
+    assert!(
+        positive.status.success(),
+        "{}",
+        String::from_utf8_lossy(&positive.stderr)
+    );
+
+    for (fixture, expected) in [
+        (
+            "examples/linter/design-pattern-ap-03-boolean-state.t",
+            "Boolean state",
+        ),
+        (
+            "examples/linter/design-pattern-ap-03-state-explosion.t",
+            "state explosion",
+        ),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_topal-lint"))
+            .args(["--enable", identity])
+            .arg(root.join(fixture))
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let diagnostic = String::from_utf8(output.stderr).unwrap();
+        assert!(diagnostic.contains("warning[L-DESIGN-PATTERN-AP-03]"));
+        assert!(diagnostic.contains(expected));
+    }
 }
 
 #[test]
