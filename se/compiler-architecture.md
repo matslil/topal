@@ -78,6 +78,18 @@ profile's explicit loader and `$ORIGIN` runpath, then publishes the exact object
 beside the executable without overwriting a conflicting SONAME. Link and
 deployment policy therefore remain outside semantic lowering.
 
+Native Topal library slices use a distinct `topal-library/1` boundary. It is
+not a C ABI and does not publish the compiler's `fastcc` value representation:
+the checked source interface selects target-qualified wrappers and a sealed
+versioned entry table. The first provider is `std`. Linux and FreeBSD publish
+one ELF object with SONAME `libtopal-std.so.1`; Windows publishes one PE/COFF
+DLL named `topal-std-1.dll`. Applications link precisely that one object when
+they select `std`; internal standard-library modules remain hidden and are not
+copied into the application's dependency graph. A slice manifest binds the
+source interface, library major version, ABI revision, target layout, export
+map, and digest before linking. It rejects a C/C++ runtime or another Topal
+dynamic library, preserving a bounded one-edge Topal dependency graph.
+
 An admitted positional-product result whose fields already have exact private
 machine values uses a recursively nested, non-packed LLVM literal struct. Unit
 occupies a sealed `i8` field inside such a value even though a standalone Unit

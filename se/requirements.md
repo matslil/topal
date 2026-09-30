@@ -359,6 +359,22 @@ target-qualified native slices and reproducible dependency, toolchain,
 provenance, and debug mappings. LLVM IR or bitcode shall not become the stable
 library compatibility boundary.
 
+## TOPAL-REQ-NATIVE-LIBRARY-001 — Sealed standard-library dynamic boundary
+
+A qualified standard-library native slice shall use `topal-library/1` wrappers
+and expose one versioned entry table rather than the compiler-private ABI or a
+foreign ABI. Linux and FreeBSD slices shall use the ELF SONAME
+`libtopal-std.so.1`; Windows slices shall use `topal-std-1.dll`. An application
+that selects `std` shall have at most one direct Topal dynamic dependency. The
+standard library shall internalize its implementation modules and shall not
+propagate their links as application dynamic dependencies.
+
+The compiler shall validate the selected slice's source-interface identity,
+library major version, ABI revision, target/object-format/layout identity,
+export map, and digest before native linking. It shall record the one selected
+slice in artifact metadata and reject a slice which adds a C/C++ runtime or
+another Topal dynamic-library dependency.
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

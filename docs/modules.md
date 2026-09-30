@@ -917,6 +917,45 @@ layouts, or resource relationships. Any future foreign export requires a
 concrete ABI; unresolved Topal generic intermediate code cannot cross that
 boundary.
 
+## Native library slices
+
+A compiled Topal library may publish a target-qualified native slice alongside
+its checked source interface and generic intermediate code. The first such
+slice is the standard library: it uses the `topal-library/1` intra-Topal ABI,
+not the compiler-private `topal-native` calling convention and not a foreign
+C ABI. The compiler derives concrete wrapper entry points only for the
+published declarations selected by a client. Their ABI revision, library major
+version, target triple, object format, data layout, dependency digests, and
+export map are part of the slice metadata.
+
+The implementation of a native slice is private. A loader may see the one
+versioned library entry table required by `topal-library/1`, but it shall not
+see individual implementation modules, helper functions, generic bodies,
+private Topal value representations, or transitive library dependencies as an
+application ABI. Rebuilding a library may freely change those private details
+without changing a compatible published source interface and ABI revision.
+
+The standard-library distribution has exactly one native artifact per qualified
+target and standard-library major version:
+
+| Platform format | Artifact | Application deployment rule |
+| --- | --- | --- |
+| ELF (Linux, FreeBSD) | `libtopal-std.so.1` | link one `DT_NEEDED` entry and locate it through an origin-relative runpath |
+| PE/COFF (Windows) | `topal-std-1.dll` | import one DLL and deploy it beside the executable |
+
+The standard-library artifact contains its implementation modules and carries
+no dependency on another Topal dynamic library. A client that selects `std`
+therefore has one direct Topal native dependency, regardless of the number of
+standard-library modules or declarations it uses. The compiler records that
+single dependency in the application artifact metadata; it does not copy
+private module dependencies into the application's dynamic dependency set.
+
+An ELF soname or Windows DLL filename is a deployment identity, not a source
+package resolver. Source selection remains governed by the library identity,
+version, lockfile, and checked interface rules above. A loader mismatch in ABI
+revision, target, digest, or major version is rejected before native linking or
+publication.
+
 ## Licenses and copyright
 
 License and copyright information is static source metadata. Every function has

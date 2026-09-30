@@ -44,6 +44,26 @@ exact structural identity and required capability evidence. The replacement
 SHALL be observationally equivalent to executing the authoritative Topal
 source. Absence of a substitution SHALL NOT affect program correctness.
 
+### TOPAL-LIB-NATIVE-SLICE-001 — Sealed standard-library native slice
+
+A qualified compiler MAY satisfy an explicitly selected `std` dependency from
+one target-qualified standard-library native slice. The slice SHALL retain the
+same authoritative source interface and shall identify its `topal-library/1`
+ABI revision, standard-library major version, language revision, target triple,
+object format, data layout, export map, and content digest. A client SHALL link
+only the wrapper entry table and declarations it selects; it SHALL NOT acquire
+the library's private functions, module identities, generic bodies, or private
+Topal value representation as a public ABI.
+
+For an ELF-qualified target, the standard-library slice SHALL have SONAME
+`libtopal-std.so.1`; for a PE/COFF-qualified Windows target, it SHALL be named
+`topal-std-1.dll`. The compiler SHALL reject a mismatched target, ABI revision,
+major version, export map, or digest before publication. A selected `std`
+dependency SHALL result in at most one direct Topal dynamic dependency in the
+application, independent of the number of internal standard-library modules.
+The slice SHALL NOT introduce a C/C++ runtime or another Topal dynamic-library
+dependency.
+
 ### TOPAL-LIB-ORDERING-001 — Generic scalar extrema
 
 The `std` namespace SHALL provide `min`, `max`, and `min-max` for
