@@ -4,6 +4,7 @@
 - Language revision: `v0.2`
 - Pattern scope: [`docs/design-patterns`](docs/design-patterns/README.md)
 - Detailed status: [`se/design-pattern-language-support.md`](se/design-pattern-language-support.md)
+- Lint/example disposition: [`docs/design-patterns/linting.md`](docs/design-patterns/linting.md)
 
 ## Purpose
 
