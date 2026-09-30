@@ -334,3 +334,29 @@ separately versioned shared schema. Its closed deployment profile requires an
 exact SONAME with no further dependencies or initializers, copies the digested
 object beside the executable, and records an origin-relative lookup plus the
 qualified ELF interpreter described in [C access libraries](foreign-c.md).
+
+## Native standard-library deployment
+
+The standard library is selected in source as usual with `use library std`, but
+a qualified native build may satisfy that selection from one versioned Topal
+standard-library artifact. This does not make the compiler's private calling
+convention public: `topal-library/1` supplies generated, target-qualified
+wrappers and a sealed entry table for the published declarations that a client
+uses.
+
+The deployment boundary is deliberately one library, rather than one shared
+object or DLL per standard-library module. On Linux and FreeBSD it is
+`libtopal-std.so.1`; the executable carries one `DT_NEEDED` entry and an
+origin-relative runpath. On Windows it is `topal-std-1.dll`, placed beside the
+executable and named by the executable's one import-library dependency. The
+standard-library implementation and all of its internal modules are hidden.
+They neither become application imports nor create a cascade of Topal dynamic
+dependencies.
+
+The compiler validates the native-slice manifest before linking: language and
+library major versions, `topal-library/1` revision, target triple, object
+format, data layout, export map, and digest must match the checked source
+selection. The slice may depend only on the operating-system loader mechanisms
+required by its qualified platform profile; it may not add a C/C++ runtime or
+another Topal dynamic library. A build records exactly this one standard-library
+slice in its native artifact metadata.
