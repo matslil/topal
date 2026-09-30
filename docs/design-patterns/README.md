@@ -64,6 +64,16 @@ out rather than misrepresented as syntax features.
 | [Distributed reliability](distributed-reliability.md) | DS-01..DS-06 | Bounded retry, circuit breaker, bulkhead, idempotent consumer, saga, transactional outbox |
 | [Accelerators and DSP](accelerators-and-dsp.md) | HA-01..HA-12 | SIMT, tiling, layout, fusion, DMA pipeline, schedules, quantization, mixed precision, sparsity, systolic flow, synchronous dataflow, saturating fixed point |
 
+## Executable and lint disposition
+
+[Design-pattern linting and demonstrations](linting.md) records the current
+disposition of every catalog entry. A pattern is not treated as implemented
+merely because its shape can be imitated in ordinary source: a demonstration
+must distinguish a runnable Topal implementation from a partial model and from
+a feature gap that needs language, runtime, operating-system, or target
+support. The same distinction controls whether a lint rule may make a
+structural advisory, a limitation warning, or no source finding at all.
+
 ## Deliberate boundaries
 
 - The library does not copy every Gang-of-Four pattern. Patterns such as

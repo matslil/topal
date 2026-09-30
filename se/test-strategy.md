@@ -152,6 +152,20 @@ scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain interp
 scripts/run_bounded.py -- scripts/test_resource_usage.py compare --domain compiler
 ```
 
+## Design-pattern demonstrations
+
+Each runnable design-pattern demonstration shall be a separately discoverable
+Topal test with a stable catalog pattern ID in its identity or traceability
+record. It shall use the existing per-test resource-baseline mechanism to
+record average child CPU time and peak child resident memory in the relevant
+Topal, interpreter, or compiler domain. Wall-clock measurements may educate a
+reader but shall not be accepted as portable conformance evidence. A partial
+demonstration shall name the unproved condition in its expected output or
+traceability record. A deferred design-pattern entry shall have no fabricated
+runnable or resource test; its feature-gap fixture shall identify the missing
+language, runtime, operating-system, device, distributed-system, or target
+evidence.
+
 Functional and interoperability tests shall cite stable specification IDs.
 Tests shall cover valid behavior, invalid behavior, boundaries, and interactions
 between specification domains. Coverage quantity alone does not establish
