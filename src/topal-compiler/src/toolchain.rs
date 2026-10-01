@@ -14,6 +14,7 @@ use crate::{
     backend::LlvmModule,
     frontend::{SharedObjectLink, StaticArchiveLink},
     metadata_path,
+    standard_library::STANDARD_LIBRARY_ENTRY,
 };
 
 static NEXT_TEMPORARY: AtomicU64 = AtomicU64::new(0);
@@ -53,6 +54,10 @@ impl LlvmTools {
 
     fn path(&self, name: &str) -> PathBuf {
         self.directory.join(name)
+    }
+
+    pub(crate) fn tool_path(&self, name: &str) -> PathBuf {
+        self.path(name)
     }
 }
 
@@ -122,6 +127,17 @@ pub(crate) fn materialize(
     let mut foreign_symbols = verify_static_archives(static_archives, &tools)?;
     for (identity, symbols) in verify_shared_objects(shared_objects, &tools)? {
         foreign_symbols.entry(identity).or_default().extend(symbols);
+    }
+    if shared_objects
+        .iter()
+        .any(|shared| shared.library_identity == "std")
+        && !foreign_symbols
+            .get("std")
+            .is_some_and(|symbols| symbols.contains(STANDARD_LIBRARY_ENTRY))
+    {
+        return Err(CompileError::Tool(format!(
+            "standard-library slice does not export `{STANDARD_LIBRARY_ENTRY}`"
+        )));
     }
     verify_foreign_symbols(program, &foreign_symbols)?;
     let output_parent = options.output.parent().unwrap_or_else(|| Path::new("."));

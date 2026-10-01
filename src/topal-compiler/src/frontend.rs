@@ -14,6 +14,9 @@ use topal_language::modules::{declared_libraries, select_source_modules};
 
 use crate::CompileError;
 use crate::DigestEntry;
+use crate::standard_library::{
+    StandardLibrarySlice, source_interface_digest, standard_library_manifest_path,
+};
 
 const BUILT_IN_LIBRARIES: &[&str] = &["advent-of-code", "std"];
 
@@ -71,14 +74,20 @@ impl CheckedProgram {
 }
 
 /// Discover referenced modules and construct the checked compiler model.
-pub(crate) fn check(source: &str, library_root: &Path) -> Result<CheckedProgram, CompileError> {
+#[allow(clippy::too_many_lines)] // Source, C ABI, and sealed Topal slice discovery remain one ordered boundary.
+pub(crate) fn check(
+    source: &str,
+    library_root: &Path,
+    standard_library: Option<&Path>,
+) -> Result<CheckedProgram, CompileError> {
     let mut libraries = BUILT_IN_LIBRARIES
         .iter()
         .map(|identity| (*identity).to_owned())
         .collect::<Vec<_>>();
-    for identity in declared_libraries(source) {
-        if !libraries.contains(&identity) {
-            libraries.push(identity);
+    let declared = declared_libraries(source);
+    for identity in &declared {
+        if !libraries.contains(identity) {
+            libraries.push(identity.clone());
         }
     }
     let library_names = libraries.iter().map(String::as_str).collect::<Vec<_>>();
@@ -127,6 +136,62 @@ pub(crate) fn check(source: &str, library_root: &Path) -> Result<CheckedProgram,
                 });
             }
         }
+    }
+    if let Some(path) = standard_library {
+        if !declared.iter().any(|identity| identity == "std") {
+            return Err(CompileError::Tool(
+                "--std-library requires an explicit `use library std` selection".into(),
+            ));
+        }
+        let manifest_path = standard_library_manifest_path(path);
+        let manifest_bytes = fs::read(&manifest_path).map_err(|error| {
+            CompileError::Io(format!(
+                "cannot read standard-library manifest {}: {error}",
+                manifest_path.display()
+            ))
+        })?;
+        let manifest = StandardLibrarySlice::decode(&manifest_bytes)?;
+        if path.file_name().and_then(|name| name.to_str()) != Some(manifest.soname.as_str()) {
+            return Err(CompileError::Tool(format!(
+                "standard-library slice filename must match SONAME `{}`",
+                manifest.soname
+            )));
+        }
+        let payload = fs::read(path).map_err(|error| {
+            CompileError::Io(format!(
+                "cannot read standard-library slice {}: {error}",
+                path.display()
+            ))
+        })?;
+        let payload_digest = format!("{:x}", Sha256::digest(&payload));
+        if payload_digest != manifest.shared_object_sha256 {
+            return Err(CompileError::Tool(
+                "standard-library shared-object digest does not match its manifest".into(),
+            ));
+        }
+        if source_interface_digest(library_root)? != manifest.source_interface_sha256 {
+            return Err(CompileError::Tool(
+                "standard-library source interface does not match the selected native slice".into(),
+            ));
+        }
+        if let Some(previous) = shared_sonames.insert(&manifest.soname, &payload_digest)
+            && previous != &payload_digest
+        {
+            return Err(CompileError::Tool(format!(
+                "shared-object SONAME `{}` resolves to conflicting digests",
+                manifest.soname
+            )));
+        }
+        shared_objects.push(SharedObjectLink {
+            library_identity: "std".into(),
+            path: path.to_owned(),
+            soname: manifest.soname,
+            sha256: payload_digest.clone(),
+        });
+        foreign_dependencies.push(DigestEntry {
+            identity: "topal-library.std.shared-object".into(),
+            sha256: payload_digest,
+        });
     }
     foreign_dependencies.sort_by(|left, right| left.identity.cmp(&right.identity));
     Ok(CheckedProgram {

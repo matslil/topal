@@ -9,7 +9,11 @@ pub(crate) fn compile(
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     let plan = crate::OptimizationPlan::resolve(&options.target, &options.optimization)?;
-    let checked = frontend::check(source, &options.library_root)?;
+    let checked = frontend::check(
+        source,
+        &options.library_root,
+        options.standard_library.as_deref(),
+    )?;
     let llvm = backend::lower(checked.program(), &options.source_name);
     toolchain::materialize(
         checked.program(),
