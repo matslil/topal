@@ -748,6 +748,7 @@ fn links_and_deploys_a_checked_c_shared_object() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+#[allow(clippy::too_many_lines)]
 fn builds_links_and_deploys_one_sealed_standard_library_object() {
     // TOPAL-LIB-NATIVE-SLICE-001, TOPAL-REQ-NATIVE-LIBRARY-001,
     // TOPAL-COMP-STANDARD-LIBRARY-SHARED-001
@@ -860,12 +861,12 @@ fn builds_links_and_deploys_one_sealed_standard_library_object() {
     let mut manifest = fs::read_to_string(manifest_path).unwrap();
     let marker = "\"source_interface_sha256\": \"";
     let digest_start = manifest.find(marker).unwrap() + marker.len();
-    let replacement = if &manifest[digest_start..digest_start + 1] == "0" {
+    let replacement = if &manifest[digest_start..=digest_start] == "0" {
         "1"
     } else {
         "0"
     };
-    manifest.replace_range(digest_start..digest_start + 1, replacement);
+    manifest.replace_range(digest_start..=digest_start, replacement);
     fs::write(
         mismatched_directory.join("libtopal-std.so.1.topal-library.json"),
         manifest,
