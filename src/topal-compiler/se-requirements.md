@@ -73,8 +73,8 @@ defined by `TOPAL-COMP-C-SHARED-001`.
 ## TOPAL-COMP-C-STATIC-001 — Checked static C access libraries
 
 The compiler shall discover only explicitly selected generated access
-libraries, require canonical matching `topal-c-abi/1` Topal and JSON models,
-revalidate the header and archive SHA-256 digests, and accept only the
+libraries, decode the complete canonical `topal-c-abi/1` model from `module.t`,
+revalidate the named header and archive SHA-256 digests, and accept only the
 `x86_64-unknown-linux-gnu`/`sysv-amd64` profile. It shall lower a used C `int`
 function through a private Topal adapter and external `ccc` call, diagnose an
 out-of-range value without truncation, include the archive explicitly in the

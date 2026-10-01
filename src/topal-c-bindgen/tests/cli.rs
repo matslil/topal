@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use topal_c_abi::{AccessLibrary, AccessLibraryManifest};
+use topal_c_abi::AccessLibraryManifest;
 
 static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
 
@@ -125,14 +125,15 @@ fn generates_a_canonical_access_library_atomically() {
         "{}",
         String::from_utf8_lossy(&generated.stderr)
     );
-    let manifest =
-        AccessLibrary::decode(&fs::read(output.join("module.topal-c-abi.json")).unwrap()).unwrap();
-    assert_eq!(
-        fs::read_to_string(output.join("module.t")).unwrap(),
-        manifest.topal_source()
-    );
+    let source = fs::read_to_string(output.join("module.t")).unwrap();
+    let manifest = AccessLibraryManifest::decode_topal_source(&source).unwrap();
+    let AccessLibraryManifest::Static(manifest) = manifest else {
+        panic!("archive input must generate the static schema")
+    };
+    assert_eq!(source, manifest.topal_source());
     assert_eq!(manifest.functions[0].symbol, "c_add");
     assert!(output.join("libarithmetic.a").is_file());
+    assert!(!output.join("module.topal-c-abi.json").exists());
 
     let shared_output = directory.join("arithmetic-shared");
     let generated = Command::new(env!("CARGO_BIN_EXE_topal-c-bindgen"))
@@ -157,17 +158,13 @@ fn generates_a_canonical_access_library_atomically() {
         "{}",
         String::from_utf8_lossy(&generated.stderr)
     );
-    let manifest = AccessLibraryManifest::decode(
-        &fs::read(shared_output.join("module.topal-c-abi.json")).unwrap(),
-    )
-    .unwrap();
+    let source = fs::read_to_string(shared_output.join("module.t")).unwrap();
+    let manifest = AccessLibraryManifest::decode_topal_source(&source).unwrap();
     let AccessLibraryManifest::Shared(manifest) = manifest else {
         panic!("shared input must generate the shared schema")
     };
     assert_eq!(manifest.shared_object.soname, "libarithmetic.so");
-    assert_eq!(
-        fs::read_to_string(shared_output.join("module.t")).unwrap(),
-        manifest.topal_source()
-    );
+    assert_eq!(source, manifest.topal_source());
     assert!(shared_output.join("libarithmetic.so").is_file());
+    assert!(!shared_output.join("module.topal-c-abi.json").exists());
 }

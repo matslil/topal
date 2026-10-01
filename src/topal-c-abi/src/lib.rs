@@ -117,6 +117,69 @@ impl AccessLibraryManifest {
         }
     }
 
+    /// Decode the canonical Topal access-library module without a sidecar.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when required ABI fields are absent, inconsistent, or
+    /// not in the one canonical generated Topal representation.
+    pub fn decode_topal_source(source: &str) -> Result<Self, String> {
+        let schema = source_field(source, "schema")?;
+        let functions = decode_source_functions(source)?;
+        let identity = source_field(source, "identity")?;
+        let version = source_field(source, "library-version")?;
+        let target = source_field(source, "target")?;
+        let platform_abi = source_field(source, "platform-abi")?;
+        let clang_version = source_field(source, "clang-version")?;
+        let header = InputArtifact {
+            file: source_field(source, "header-file")?,
+            sha256: source_field(source, "header-sha256")?,
+        };
+        let manifest = match schema.as_str() {
+            SCHEMA => Self::Static(AccessLibrary {
+                schema,
+                identity,
+                version,
+                target,
+                platform_abi,
+                clang_version,
+                header,
+                static_archive: InputArtifact {
+                    file: source_field(source, "static-archive-file")?,
+                    sha256: source_field(source, "static-archive-sha256")?,
+                },
+                functions,
+            }),
+            SHARED_SCHEMA => {
+                let soname = source_field(source, "soname")?;
+                Self::Shared(SharedAccessLibrary {
+                    schema,
+                    identity,
+                    version,
+                    target,
+                    platform_abi,
+                    clang_version,
+                    header,
+                    shared_object: SharedObjectArtifact {
+                        file: source_field(source, "shared-object-file")?,
+                        sha256: source_field(source, "shared-object-sha256")?,
+                        soname,
+                    },
+                    functions,
+                })
+            }
+            schema => return Err(format!("unsupported C access-library schema `{schema}`")),
+        };
+        match &manifest {
+            Self::Static(library) => library.validate()?,
+            Self::Shared(library) => library.validate()?,
+        }
+        if manifest.topal_source() != source {
+            return Err("C access-library module is not canonical".into());
+        }
+        Ok(manifest)
+    }
+
     #[must_use]
     pub fn identity(&self) -> &str {
         match self {
@@ -203,18 +266,20 @@ impl AccessLibrary {
 
     /// Render the canonical human-readable Topal ABI access library.
     ///
-    /// The JSON manifest is a machine transport for this same model. Consumers
-    /// compare both representations before trusting either one.
+    /// The module is the complete machine-readable and human-readable model.
     #[must_use]
     pub fn topal_source(&self) -> String {
         let mut source = format!(
-            "use language (\n  version is v0.1,\n  features is ( abi )\n)\n# Generated checked C ABI access library. Do not edit independently of its manifest.\nabi-library is (\n  schema is \"{}\",\n  identity is \"{}\",\n  target is \"{}\",\n  platform-abi is \"{}\",\n  object-format is \"elf64-x86-64\",\n  binary-kind is \"static-archive\",\n  clang-version is \"{}\",\n  header-sha256 is \"{}\",\n  static-archive-sha256 is \"{}\"\n)\n",
+            "use language (\n  version is v0.1,\n  features is ( abi )\n)\n# Generated checked C ABI access library. This module is the complete manifest.\nabi-library is (\n  schema is \"{}\",\n  identity is \"{}\",\n  library-version is \"{}\",\n  target is \"{}\",\n  platform-abi is \"{}\",\n  object-format is \"elf64-x86-64\",\n  binary-kind is \"static-archive\",\n  clang-version is \"{}\",\n  header-file is \"{}\",\n  header-sha256 is \"{}\",\n  static-archive-file is \"{}\",\n  static-archive-sha256 is \"{}\"\n)\n",
             self.schema,
             self.identity,
+            self.version,
             self.target,
             self.platform_abi,
             self.clang_version,
+            self.header.file,
             self.header.sha256,
+            self.static_archive.file,
             self.static_archive.sha256
         );
         render_functions(&mut source, &self.functions);
@@ -293,13 +358,16 @@ impl SharedAccessLibrary {
     #[must_use]
     pub fn topal_source(&self) -> String {
         let mut source = format!(
-            "use language (\n  version is v0.1,\n  features is ( abi )\n)\n# Generated checked C ABI access library. Do not edit independently of its manifest.\nabi-library is (\n  schema is \"{}\",\n  identity is \"{}\",\n  target is \"{}\",\n  platform-abi is \"{}\",\n  object-format is \"elf64-x86-64\",\n  binary-kind is \"shared-object\",\n  clang-version is \"{}\",\n  header-sha256 is \"{}\",\n  shared-object-sha256 is \"{}\",\n  soname is \"{}\"\n)\n",
+            "use language (\n  version is v0.1,\n  features is ( abi )\n)\n# Generated checked C ABI access library. This module is the complete manifest.\nabi-library is (\n  schema is \"{}\",\n  identity is \"{}\",\n  library-version is \"{}\",\n  target is \"{}\",\n  platform-abi is \"{}\",\n  object-format is \"elf64-x86-64\",\n  binary-kind is \"shared-object\",\n  clang-version is \"{}\",\n  header-file is \"{}\",\n  header-sha256 is \"{}\",\n  shared-object-file is \"{}\",\n  shared-object-sha256 is \"{}\",\n  soname is \"{}\"\n)\n",
             self.schema,
             self.identity,
+            self.version,
             self.target,
             self.platform_abi,
             self.clang_version,
+            self.header.file,
             self.header.sha256,
+            self.shared_object.file,
             self.shared_object.sha256,
             self.shared_object.soname
         );
@@ -316,12 +384,19 @@ fn render_functions(source: &mut String, functions: &[Function]) {
             .map(|parameter| c_value_name(parameter.value))
             .collect::<Vec<_>>()
             .join(",");
+        let parameter_names = function
+            .parameters
+            .iter()
+            .map(|parameter| parameter.name.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
         let _ = write!(
             source,
-            "abi-function-{} is (\n  topal-name is \"{}\",\n  symbol is \"{}\",\n  calling-convention is \"c\",\n  variadic is \"false\",\n  parameter-layouts is \"{}\",\n  result-layout is \"{}\",\n  effect is \"no-observable-effect\",\n  unwind is \"forbidden\",\n  transfer is \"copied-value\"\n)\n",
+            "abi-function-{} is (\n  topal-name is \"{}\",\n  symbol is \"{}\",\n  calling-convention is \"c\",\n  variadic is \"false\",\n  parameter-names is \"{}\",\n  parameter-layouts is \"{}\",\n  result-layout is \"{}\",\n  effect is \"no-observable-effect\",\n  unwind is \"forbidden\",\n  transfer is \"copied-value\"\n)\n",
             index + 1,
             function.topal_name,
             function.symbol,
+            parameter_names,
             parameter_layouts,
             c_value_name(function.result)
         );
@@ -342,6 +417,85 @@ fn render_functions(source: &mut String, functions: &[Function]) {
                 "0"
             }
         );
+    }
+}
+
+fn source_field(source: &str, name: &str) -> Result<String, String> {
+    let marker = format!("  {name} is \"");
+    let mut values = source
+        .lines()
+        .filter_map(|line| line.strip_prefix(&marker))
+        .filter_map(|value| {
+            value
+                .strip_suffix("\",")
+                .or_else(|| value.strip_suffix('"'))
+        });
+    let value = values
+        .next()
+        .ok_or_else(|| format!("C access-library module has no `{name}` field"))?;
+    if values.next().is_some() || value.contains(['"', '\\']) {
+        return Err(format!(
+            "C access-library module has an ambiguous `{name}` field"
+        ));
+    }
+    Ok(value.to_owned())
+}
+
+fn decode_source_functions(source: &str) -> Result<Vec<Function>, String> {
+    let mut functions = Vec::new();
+    for index in 1.. {
+        let marker = format!("abi-function-{index} is (\n");
+        let Some((_, remaining)) = source.split_once(&marker) else {
+            break;
+        };
+        let (block, _) = remaining.split_once("\n)\npub ").ok_or_else(|| {
+            format!("C access-library function {index} has no canonical terminator")
+        })?;
+        let field = |name| source_field(block, name);
+        let parameter_names = split_source_list(&field("parameter-names")?);
+        let parameter_layouts = split_source_list(&field("parameter-layouts")?);
+        if parameter_names.len() != parameter_layouts.len() {
+            return Err(format!(
+                "C access-library function {index} has mismatched parameter metadata"
+            ));
+        }
+        let parameters = parameter_names
+            .into_iter()
+            .zip(parameter_layouts)
+            .map(|(name, layout)| {
+                Ok(Parameter {
+                    name,
+                    value: decode_c_value(&layout)?,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        functions.push(Function {
+            topal_name: field("topal-name")?,
+            symbol: field("symbol")?,
+            parameters,
+            result: decode_c_value(&field("result-layout")?)?,
+            effect: CEffect::NoObservableEffect,
+        });
+    }
+    if functions.is_empty() {
+        return Err("C access-library module has no ABI functions".into());
+    }
+    Ok(functions)
+}
+
+fn split_source_list(value: &str) -> Vec<String> {
+    if value.is_empty() {
+        Vec::new()
+    } else {
+        value.split(',').map(str::to_owned).collect()
+    }
+}
+
+fn decode_c_value(value: &str) -> Result<CValue, String> {
+    match value {
+        "void" => Ok(CValue::Void),
+        "signed-int-32" => Ok(CValue::SignedInt32),
+        value => Err(format!("unsupported C ABI value layout `{value}`")),
     }
 }
 
@@ -513,7 +667,56 @@ mod tests {
             AccessLibraryManifest::decode(&encoded).unwrap(),
             AccessLibraryManifest::Shared(library.clone())
         );
-        assert!(library.topal_source().contains("soname is \"libmath.so\""));
+        let source = library.topal_source();
+        assert_eq!(
+            AccessLibraryManifest::decode_topal_source(&source).unwrap(),
+            AccessLibraryManifest::Shared(library)
+        );
+        assert!(source.contains("soname is \"libmath.so\""));
+    }
+
+    #[test]
+    fn static_topal_module_is_a_complete_canonical_manifest() {
+        let library = AccessLibrary {
+            schema: SCHEMA.into(),
+            identity: "math".into(),
+            version: "v0.1".into(),
+            target: TARGET.into(),
+            platform_abi: PLATFORM_ABI.into(),
+            clang_version: "clang version 22.0.0".into(),
+            header: artifact("interface.h"),
+            static_archive: artifact("libmath.a"),
+            functions: vec![Function {
+                topal_name: "add".into(),
+                symbol: "c_add".into(),
+                parameters: vec![
+                    Parameter {
+                        name: "left".into(),
+                        value: CValue::SignedInt32,
+                    },
+                    Parameter {
+                        name: "right".into(),
+                        value: CValue::SignedInt32,
+                    },
+                ],
+                result: CValue::SignedInt32,
+                effect: CEffect::NoObservableEffect,
+            }],
+        };
+        let source = library.topal_source();
+        assert_eq!(
+            AccessLibraryManifest::decode_topal_source(&source).unwrap(),
+            AccessLibraryManifest::Static(library)
+        );
+        assert!(source.contains("parameter-names is \"left,right\""));
+        assert!(
+            AccessLibraryManifest::decode_topal_source(&source.replace(
+                "binary-kind is \"static-archive\"",
+                "binary-kind is \"shared-object\""
+            ))
+            .unwrap_err()
+            .contains("canonical")
+        );
     }
 
     fn artifact(file: &str) -> InputArtifact {

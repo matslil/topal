@@ -323,11 +323,11 @@ topal-c-bindgen \
 topalc --library-root library -o application application.t
 ```
 
-The translator emits canonical `module.t` and
-`module.topal-c-abi.json` descriptions plus copied, digested interface and
-binary inputs. The compiler compares both descriptions, rechecks the input
-digests, lowers only used published adapters, and records the C inputs in the
-native artifact. No default C library or startup code is added.
+The translator emits one canonical, complete `module.t` manifest plus copied,
+digested interface and binary inputs. The compiler parses that Topal model,
+requires its canonical generated form, rechecks the input digests, lowers only
+used published adapters, and records the C inputs in the native artifact. No
+redundant JSON sidecar, default C library, or startup code is added.
 
 Passing `--shared-object libarithmetic.so` instead of `--archive` selects the
 separately versioned shared schema. Its closed deployment profile requires an

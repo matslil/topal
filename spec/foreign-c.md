@@ -14,14 +14,16 @@ binary kind, binary digest, and library version. A consumer SHALL reject a
 missing, unknown, contradictory, or noncanonical identity before code
 generation.
 
-## TOPAL-C-ABI-MODEL-001 — Dual canonical representation
+## TOPAL-C-ABI-MODEL-001 — Canonical Topal representation
 
-The human-readable Topal `abi` source and machine-readable manifest SHALL
-describe the same library and functions. Each function description SHALL
-contain its Topal name, linker symbol, calling convention, ordered parameter
-layouts, result layout, unwind rule, and transfer rule. A compiler SHALL
-compare the canonical source rendering with the manifest and SHALL reject any
-divergence.
+The human-readable Topal `abi` source SHALL be the complete machine-readable
+manifest for the library and its functions. It SHALL contain the source
+library version, input filenames and digests, and for each function its Topal
+name, linker symbol, calling convention, ordered parameter names and layouts,
+result layout, effect, unwind rule, and transfer rule. A compiler SHALL decode
+`module.t`, require the one canonical generated rendering, and reject any
+missing, duplicate, contradictory, or noncanonical field. A second JSON or
+other machine-manifest sidecar SHALL NOT be required.
 
 ## TOPAL-C-ABI-STATIC-001 — Qualified static archive
 
