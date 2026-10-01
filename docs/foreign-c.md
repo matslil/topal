@@ -22,10 +22,11 @@ use language (
 
 The source contains an `abi-library` record, one `abi-function-N` record per
 function, and ordinary published Topal functions. These records describe the
-schema, target, platform ABI, source and binary digests, linker symbol, calling
-convention, ordered external layouts, unwind policy, and transfer policy. The
-compiler compares this readable Topal model with the canonical machine
-manifest before either representation is trusted.
+schema, library version, target, platform ABI, input filenames and digests,
+linker symbol, ordered parameter names and external layouts, calling
+convention, unwind policy, and transfer policy. `module.t` is the complete
+manifest. The compiler parses it, requires its canonical generated form, and
+rechecks the named input digests before trusting the library.
 
 The access function is an adapter, not exposure of the compiler's private
 representation. It converts Topal values to their declared external layouts,
