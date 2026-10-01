@@ -9247,6 +9247,7 @@ impl Analyzer {
         }))
     }
 
+    #[allow(clippy::too_many_lines)] // Contextual Result decisions stay beside scalar and collection adaptation.
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
