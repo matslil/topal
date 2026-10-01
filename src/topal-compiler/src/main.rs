@@ -5,8 +5,8 @@ use std::process::ExitCode;
 
 use topal_compiler::{
     CompileError, CompileOptions, Emit, ExplanationDestination, OptimizationLevel,
-    OptimizationOverride, OptimizationRequest, TARGET_TRIPLE, TargetSelection, compile_source,
-    optimization_listing, target_listing,
+    OptimizationOverride, OptimizationRequest, TARGET_TRIPLE, TargetSelection,
+    build_standard_library, compile_source, optimization_listing, target_listing,
 };
 
 mod test_runner;
@@ -46,6 +46,13 @@ fn run() -> Result<(), String> {
         arguments.next();
         return test_runner::run(arguments);
     }
+    if arguments
+        .peek()
+        .is_some_and(|argument| argument == "std-library")
+    {
+        arguments.next();
+        return build_std_library(arguments);
+    }
     let arguments = parse_arguments(arguments)?;
     let source = fs::read_to_string(&arguments.source)
         .map_err(|error| format!("cannot read {}: {error}", arguments.source.display()))?;
@@ -58,6 +65,7 @@ fn run() -> Result<(), String> {
         library_root: arguments.library_root,
         target: arguments.target,
         optimization: arguments.optimization,
+        standard_library: arguments.standard_library,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, &source_name))?;
     Ok(())
@@ -71,8 +79,10 @@ struct Arguments {
     library_root: PathBuf,
     target: TargetSelection,
     optimization: OptimizationRequest,
+    standard_library: Option<PathBuf>,
 }
 
+#[allow(clippy::too_many_lines)] // Every mutually exclusive command-line spelling remains visible together.
 fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments, String> {
     let mut source = None;
     let mut output = None;
@@ -87,6 +97,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut optimization_overrides = Vec::new();
     let mut only_optimization = None;
     let mut explain_optimizations = None;
+    let mut standard_library = None;
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -194,6 +205,12 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                         .ok_or("--library-root requires a directory")?,
                 );
             }
+            "--std-library" => {
+                let value = PathBuf::from(arguments.next().ok_or("--std-library requires a path")?);
+                if standard_library.replace(value).is_some() {
+                    return Err("--std-library may be specified only once".into());
+                }
+            }
             "--version" => {
                 println!(
                     "topalc {} (LLVM 22; {TARGET_TRIPLE})",
@@ -203,7 +220,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs with a Topal Linux syscall runtime and no C/C++ runtime dependency."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] [--std-library PATH] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc std-library [--library-root DIR] [--llvm-tools DIR] -o libtopal-std.so.1\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs unless a checked shared library is explicitly selected."
                 );
                 std::process::exit(0);
             }
@@ -245,7 +262,41 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             only: only_optimization,
             explain: explain_optimizations,
         },
+        standard_library,
     })
+}
+
+fn build_std_library(arguments: impl Iterator<Item = String>) -> Result<(), String> {
+    let mut library_root =
+        env::var_os("TOPAL_LIBRARY_ROOT").map_or_else(|| PathBuf::from("library"), PathBuf::from);
+    let mut llvm_tools = None;
+    let mut output = None;
+    let mut arguments = arguments;
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--library-root" => {
+                library_root = PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or("--library-root requires a directory")?,
+                );
+            }
+            "--llvm-tools" => {
+                llvm_tools = Some(PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or("--llvm-tools requires a directory")?,
+                ));
+            }
+            "-o" => output = Some(PathBuf::from(arguments.next().ok_or("-o requires a path")?)),
+            option if option.starts_with('-') => return Err(format!("unknown option: {option}")),
+            path => return Err(format!("unexpected input path: {path}")),
+        }
+    }
+    let output = output.ok_or("std-library requires -o libtopal-std.so.1")?;
+    build_standard_library(&library_root, &output, llvm_tools.as_deref())
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 fn default_output(source: &Path, emit: Emit) -> PathBuf {

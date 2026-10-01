@@ -6,6 +6,7 @@ mod codegen;
 mod frontend;
 mod optimization;
 mod pipeline;
+mod standard_library;
 mod toolchain;
 
 use std::fmt;
@@ -20,6 +21,10 @@ pub use optimization::{
     OPTIMIZATION_PLAN_REVISION, OptimizationLevel, OptimizationOverride, OptimizationPlan,
     OptimizationRequest, RUNTIME_GLOBAL_DCE, TARGET_REGISTRY_REVISION, TargetSelection,
     optimization_listing, target_listing,
+};
+pub use standard_library::{
+    STANDARD_LIBRARY_ABI, STANDARD_LIBRARY_ENTRY, STANDARD_LIBRARY_SCHEMA, STANDARD_LIBRARY_SONAME,
+    StandardLibrarySlice, build_standard_library, standard_library_manifest_path,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;
@@ -56,6 +61,7 @@ pub struct CompileOptions {
     pub library_root: PathBuf,
     pub target: TargetSelection,
     pub optimization: OptimizationRequest,
+    pub standard_library: Option<PathBuf>,
 }
 
 #[derive(Debug)]

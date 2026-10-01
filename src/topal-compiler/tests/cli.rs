@@ -10,7 +10,7 @@ use topal_c_abi::{
 };
 use topal_compiler::{LlvmTools, NATIVE_ABI, NativeArtifactMetadata, metadata_path};
 use topal_language::interpreter::Session;
-use topal_language::modules::load_module_tree;
+use topal_language::modules::{declared_libraries, load_module_tree, select_source_modules};
 
 static NEXT_TEST: AtomicU64 = AtomicU64::new(0);
 
@@ -744,6 +744,146 @@ fn links_and_deploys_a_checked_c_shared_object() {
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("conflicts with required digest"));
     assert!(!conflicting_output.exists());
     assert!(!metadata_path(&conflicting_output).exists());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn builds_links_and_deploys_one_sealed_standard_library_object() {
+    // TOPAL-LIB-NATIVE-SLICE-001, TOPAL-REQ-NATIVE-LIBRARY-001,
+    // TOPAL-COMP-STANDARD-LIBRARY-SHARED-001
+    let directory = temporary("standard-library-shared-object");
+    let slice_directory = directory.join("slice");
+    let output_directory = directory.join("output");
+    fs::create_dir_all(&slice_directory).unwrap();
+    fs::create_dir_all(&output_directory).unwrap();
+    let library_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../library");
+    let shared_object = slice_directory.join("libtopal-std.so.1");
+    let built = run(topalc().args([
+        "std-library",
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "-o",
+        shared_object.to_str().unwrap(),
+    ]));
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    assert!(
+        shared_object
+            .with_file_name("libtopal-std.so.1.topal-library.json")
+            .is_file()
+    );
+
+    let tools = LlvmTools::discover(None).unwrap();
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--file-header", "--dynamic-table", "--needed-libs"])
+        .arg(&shared_object));
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert!(inspected.contains("Type: SharedObject"), "{inspected}");
+    assert!(
+        inspected.contains("Library soname: [libtopal-std.so.1]"),
+        "{inspected}"
+    );
+    assert!(inspected.contains("NeededLibraries [\n]"), "{inspected}");
+    let symbols = run(Command::new(tools.directory.join("llvm-nm"))
+        .args(["--defined-only", "--extern-only"])
+        .arg(&shared_object));
+    assert_eq!(
+        String::from_utf8_lossy(&symbols.stdout)
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .count(),
+        1
+    );
+    assert!(String::from_utf8_lossy(&symbols.stdout).contains("topal_library_v1_entry"));
+    let undefined = run(Command::new(tools.directory.join("llvm-nm"))
+        .args(["--undefined-only", "--extern-only"])
+        .arg(&shared_object));
+    assert!(undefined.stdout.is_empty());
+
+    let source = directory.join("application.t");
+    fs::write(
+        &source,
+        "use language (version is v0.1)\nuse library std (version is v0.1)\nmin is std min\nmin (4, 2)\n",
+    )
+    .unwrap();
+    let executable = output_directory.join("application");
+    let compiled = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "--std-library",
+        shared_object.to_str().unwrap(),
+        "-o",
+        executable.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    assert_eq!(run(&mut Command::new(&executable)).stdout, b"2\n");
+    assert!(output_directory.join("libtopal-std.so.1").is_file());
+    let inspected = run(Command::new(tools.directory.join("llvm-readobj"))
+        .args(["--needed-libs", "--dynamic-table"])
+        .arg(&executable));
+    let inspected = String::from_utf8_lossy(&inspected.stdout);
+    assert_eq!(
+        inspected
+            .matches("Shared library: [libtopal-std.so.1]")
+            .count(),
+        1
+    );
+    assert!(
+        inspected.contains("Library runpath: [$ORIGIN]"),
+        "{inspected}"
+    );
+    let metadata =
+        NativeArtifactMetadata::decode(&fs::read(metadata_path(&executable)).unwrap()).unwrap();
+    assert_eq!(
+        metadata
+            .dependencies
+            .iter()
+            .filter(|dependency| dependency.identity.starts_with("topal-library."))
+            .map(|dependency| dependency.identity.as_str())
+            .collect::<Vec<_>>(),
+        ["topal-library.std.shared-object"]
+    );
+
+    let mismatched_directory = directory.join("mismatched");
+    fs::create_dir_all(&mismatched_directory).unwrap();
+    let mismatched_object = mismatched_directory.join("libtopal-std.so.1");
+    fs::copy(&shared_object, &mismatched_object).unwrap();
+    let manifest_path = shared_object.with_file_name("libtopal-std.so.1.topal-library.json");
+    let mut manifest = fs::read_to_string(manifest_path).unwrap();
+    let marker = "\"source_interface_sha256\": \"";
+    let digest_start = manifest.find(marker).unwrap() + marker.len();
+    let replacement = if &manifest[digest_start..digest_start + 1] == "0" {
+        "1"
+    } else {
+        "0"
+    };
+    manifest.replace_range(digest_start..digest_start + 1, replacement);
+    fs::write(
+        mismatched_directory.join("libtopal-std.so.1.topal-library.json"),
+        manifest,
+    )
+    .unwrap();
+    let rejected_output = output_directory.join("rejected");
+    let rejected = run(topalc().args([
+        "--library-root",
+        library_root.to_str().unwrap(),
+        "--std-library",
+        mismatched_object.to_str().unwrap(),
+        "-o",
+        rejected_output.to_str().unwrap(),
+        source.to_str().unwrap(),
+    ]));
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("source interface"));
+    assert!(!rejected_output.exists());
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
@@ -14286,7 +14426,17 @@ fn assert_source_library_program(
     let executable = directory.join(name);
     fs::write(&source, source_text).unwrap();
     let mut session = Session::new();
-    load_module_tree(&mut session, library_root, &mut std::io::sink()).unwrap();
+    let interpreted_root = directory.join("interpreted-library");
+    let libraries = declared_libraries(source_text);
+    let names = libraries.iter().map(String::as_str).collect::<Vec<_>>();
+    for module in select_source_modules(source_text, library_root, &names).unwrap() {
+        let source_path = Path::new(&module.source_name);
+        let relative = source_path.strip_prefix(library_root).unwrap();
+        let destination = interpreted_root.join(relative);
+        fs::create_dir_all(destination.parent().unwrap()).unwrap();
+        fs::write(destination, module.source).unwrap();
+    }
+    load_module_tree(&mut session, &interpreted_root, &mut std::io::sink()).unwrap();
     let expected = session
         .evaluate_source_file(source_text, &mut std::io::sink())
         .unwrap()
@@ -16178,7 +16328,14 @@ fn function_interface_is_direct_freestanding_debuggable_and_statically_erased() 
     let metadata_bytes = fs::read(metadata_path(&executable)).unwrap();
     let metadata = NativeArtifactMetadata::decode(&metadata_bytes).unwrap();
     assert!(metadata.exports.is_empty());
-    assert!(metadata.evidence.is_empty());
+    assert_eq!(
+        metadata
+            .evidence
+            .iter()
+            .map(|entry| entry.identity.as_str())
+            .collect::<Vec<_>>(),
+        ["topal.architecture.generic-x86_64-linux/1"]
+    );
     assert!(!String::from_utf8_lossy(&metadata_bytes).contains("root.Parser"));
 
     let tools = LlvmTools::discover(None).unwrap();

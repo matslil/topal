@@ -12,7 +12,11 @@ pub(crate) fn compile(
     if let Some(destination) = &options.optimization.explain {
         plan.publish_explanation(destination)?;
     }
-    let checked = frontend::check(source, &options.library_root)?;
+    let checked = frontend::check(
+        source,
+        &options.library_root,
+        options.standard_library.as_deref(),
+    )?;
     let llvm = backend::lower(checked.program(), &options.source_name);
     toolchain::materialize(
         checked.program(),

@@ -518,6 +518,7 @@ fn execute(
             explicit_level: true,
             ..OptimizationRequest::default()
         },
+        standard_library: None,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)
