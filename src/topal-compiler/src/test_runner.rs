@@ -466,6 +466,7 @@ fn execute(
         library_root: root.join("library"),
         target: topal_compiler::TargetSelection::default(),
         optimization: topal_compiler::OptimizationRequest::default(),
+        standard_library: None,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)

@@ -67,6 +67,7 @@ pub struct NativeArtifactMetadata {
 
 impl NativeArtifactMetadata {
     #[must_use]
+    #[allow(clippy::too_many_arguments)] // Artifact identity keeps every independently hashed input explicit.
     pub fn for_program(
         program: &CompilerProgram,
         foreign_dependencies: &[DigestEntry],
