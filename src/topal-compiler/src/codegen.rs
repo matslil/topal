@@ -303,6 +303,7 @@ fn expression_uses_extended_debug(expression: &CompilerExpression) -> bool {
         | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::ResultSuccess(value)
+        | CompilerExpressionKind::ResultError(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::ResultProjectBoundary(value)
         | CompilerExpressionKind::OptionalSome(value)
@@ -2543,6 +2544,24 @@ impl<'a> Generator<'a> {
                     ),
                     success: value.value_type.clone(),
                     function_captures,
+                }
+            }
+            CompilerExpressionKind::ResultError(value) => {
+                let error = self.emit_expression(value, body, environment);
+                LlValue::Result {
+                    value: body.instruction(
+                        &format!(
+                            "call ptr @topal.runtime.result.error(ptr {})",
+                            error.error()
+                        ),
+                        expression.span,
+                        &mut self.debug,
+                    ),
+                    success: match &expression.value_type {
+                        CompilerType::Result(success) => success.as_ref().clone(),
+                        _ => unreachable!("checked Result Error expression has Result type"),
+                    },
+                    function_captures: Vec::new(),
                 }
             }
             CompilerExpressionKind::ResultProject(value) => {
@@ -7058,6 +7077,11 @@ impl<'a> Generator<'a> {
                 if compiler_nested_int_list_element(element.as_ref())
                     && payload.as_ref() == &CompilerType::Nat
         );
+        let generic_optional_state_fold = matches!(
+            (&list.value_type, &initial.value_type),
+            (CompilerType::List(element), CompilerType::Optional(payload))
+                if element.as_ref() == payload.as_ref()
+        );
         let string_list_fold = matches!(
             (&list.value_type, &initial.value_type),
             (CompilerType::List(element), CompilerType::List(state_element))
@@ -7169,6 +7193,7 @@ impl<'a> Generator<'a> {
         } else if string_pair_optional_fold
             || integer_pair_optional_nat_fold
             || nested_int_optional_nat_fold
+            || generic_optional_state_fold
         {
             initial_value.optional_pointer().to_owned()
         } else if character_string_fold {
@@ -7310,7 +7335,12 @@ impl<'a> Generator<'a> {
         {
             LlValue::Optional {
                 value: state.clone(),
-                payload: if string_pair_optional_fold {
+                payload: if generic_optional_state_fold {
+                    let CompilerType::Optional(payload) = &initial_type else {
+                        unreachable!("checked Optional fold state retains its classifier")
+                    };
+                    payload.as_ref().clone()
+                } else if string_pair_optional_fold {
                     CompilerType::String
                 } else {
                     CompilerType::Nat
@@ -7556,6 +7586,7 @@ impl<'a> Generator<'a> {
             } else if string_pair_optional_fold
                 || integer_pair_optional_nat_fold
                 || nested_int_optional_nat_fold
+                || generic_optional_state_fold
             {
                 (value.optional_pointer().to_owned(), "ptr".to_owned())
             } else if character_string_fold {
@@ -7605,10 +7636,16 @@ impl<'a> Generator<'a> {
         } else if string_pair_optional_fold
             || integer_pair_optional_nat_fold
             || nested_int_optional_nat_fold
+            || generic_optional_state_fold
         {
             LlValue::Optional {
                 value: state,
-                payload: if string_pair_optional_fold {
+                payload: if generic_optional_state_fold {
+                    let CompilerType::Optional(payload) = &initial_type else {
+                        unreachable!("checked Optional fold state retains its classifier")
+                    };
+                    payload.as_ref().clone()
+                } else if string_pair_optional_fold {
                     CompilerType::String
                 } else {
                     CompilerType::Nat
