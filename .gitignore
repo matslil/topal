@@ -7,3 +7,11 @@
 
 # Advent of Code asks public repositories not to redistribute personal inputs.
 /examples/advent-of-code/2025/inputs/
+
+# Linux-kernel research and VM artifacts are reproduced from committed recipes.
+/linux-kernel/.cache/
+/linux-kernel/build/
+/linux-kernel/downloads/
+/linux-kernel/labs/**/*.img
+/linux-kernel/labs/**/*.qcow2
+/linux-kernel/labs/**/*.raw
