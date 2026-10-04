@@ -142,6 +142,32 @@ exact digested object beside the executable without replacing a conflicting
 SONAME. Artifact identity shall include the object digest and platform
 requirements. This realizes `TOPAL-C-ABI-SHARED-001`.
 
+## TOPAL-COMP-STANDARD-LIBRARY-SHARED-001 — Sealed standard-library object
+
+`topalc std-library` shall build the qualified Linux x86-64 standard-library
+slice as `libtopal-std.so.1` with ABI revision `topal-library/1`. The slice
+manifest shall bind the complete canonical `std` source tree, language and
+library major revisions, target triple, object format, data layout, one sealed
+entry-table export, SONAME, export map, and shared-object digest. The ELF object
+shall define only that public entry table and shall have no undefined symbol,
+load/unload initializer, C/C++ runtime, or dynamic dependency.
+
+For an application which explicitly selects both `use library std` and
+`--std-library`, the compiler shall validate the canonical manifest, source
+interface digest, payload digest, ELF identity, export, and closed dependency
+set before linking. It shall deploy the exact object beside the executable,
+use an origin-relative runpath, record the slice as one artifact dependency,
+and emit exactly one Topal `DT_NEEDED` entry regardless of selected standard
+modules or declarations. Source-specialized declarations remain permitted by
+`TOPAL-LIB-SUBSTITUTION-001` and shall remain observationally equivalent to
+the authoritative source.
+
+This Linux slice shall not imply support for an unqualified FreeBSD or Windows
+target; those target-qualified ELF and PE/COFF publishers remain required when
+their compiler targets are admitted. Tests shall build, inspect, link, deploy,
+execute, and validate dependency metadata for the slice. This realizes
+`TOPAL-REQ-NATIVE-LIBRARY-001` and `TOPAL-LIB-NATIVE-SLICE-001`.
+
 ## TOPAL-COMP-O0-001 — Exact first-slice lowering
 
 The first compiler increment shall lower Unit, Boolean, signed-64-bit-
