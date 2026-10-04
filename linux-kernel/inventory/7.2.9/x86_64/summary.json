@@ -1,0 +1,32 @@
+{
+  "architecture": "x86_64",
+  "archive_sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+  "baseline": "7.2.9",
+  "inventories": {
+    "abi-documents.json": {
+      "count": 6289,
+      "entries_sha256": "629efda5e70588952198a617fc6dab1e08c2b3006af0a5bae2c3f4ee61072933"
+    },
+    "devicetree-bindings.json": {
+      "count": 6276,
+      "entries_sha256": "b9ed043dc255af234e55492ba6c74c8574d31203bde25a772a4eafd0b60f202c"
+    },
+    "installed-uapi-headers.json": {
+      "count": 1025,
+      "entries_sha256": "02f1e1dde6486ed3f3135d66068f8614cd56912f9fc2a0dc6ac24a7b19d35c78"
+    },
+    "ioctl-definitions.json": {
+      "count": 2333,
+      "entries_sha256": "82dea41f9c4dc2bebaa8c43949963193240de447ac7615291bd74721bf9419c9"
+    },
+    "syscalls.json": {
+      "count": 385,
+      "entries_sha256": "83dfe5683c5cd02b65a13cd92083ff7c07f768823413ec5c99fd04090951db45"
+    },
+    "vdso-symbols.json": {
+      "count": 15,
+      "entries_sha256": "cc8f901fa29ffe6e951ab02d35c963b99533d652870b094dfbc07683d787dee8"
+    }
+  },
+  "schema": "topal-linux-interface-inventory/1"
+}

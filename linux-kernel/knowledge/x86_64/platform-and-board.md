@@ -23,6 +23,51 @@ producer. Neither source is allowed silently to override the other: mismatch
 must reject, degrade through an explicit supported path, or produce a precise
 diagnostic according to the owning contract.
 
+Linux 7.2.9 source families used to construct the eventual manifest include
+`arch/x86/boot/`, `arch/x86/kernel/setup.c`, `arch/x86/kernel/acpi/`,
+`drivers/acpi/`, `drivers/firmware/efi/`, `drivers/pci/`, `drivers/virtio/`,
+`drivers/tty/serial/`, `drivers/clocksource/`, and `drivers/char/hw_random/`.
+These locations explain Linux implementation responsibilities; the external
+machine and firmware specifications remain authoritative for hardware meaning.
+
+## LK-X64-BOARD-002 — Qualified board manifest
+
+Step 3 must emit a machine-readable manifest alongside its QEMU launch recipe.
+At minimum it pins:
+
+| Manifest area | Required facts |
+| --- | --- |
+| execution | QEMU version, accelerator, machine name/version, CPU model/features, vCPU count |
+| boot | firmware artifact/digest, boot protocol, kernel image, command line, initramfs |
+| memory | size, firmware map, reserved ranges, NUMA/topology if enabled |
+| interrupts/time | local and I/O APICs, routing, MSI/MSI-X, clocks, timers |
+| buses | ACPI table set/digests, PCI topology, configuration mechanism |
+| console | early and normal console device, address/transport, terminal settings |
+| storage/network | exact device models, transports, identifiers, queue/features, topology |
+| entropy/power | entropy device policy, reset, shutdown, suspend support |
+| persistence | image format/digest, writable-overlay policy, generated-state locations |
+
+The manifest is the board-support input for both Linux-reference and Topal
+kernel boots. A launch command without this data is not reproducible because
+QEMU defaults and unversioned CPU models can change observable hardware.
+
+## LK-X64-DISCOVERY-001 — Discovery and authority order
+
+The boot path establishes trusted transport and memory bounds before parsing
+firmware input. Firmware-table checksums, lengths, pointers, table references,
+and arithmetic are validated before typed interpretation. ACPI supplies
+platform topology and control descriptions; PCI enumeration supplies live
+discoverable functions and resources; CPUID supplies processor capabilities;
+SMBIOS supplies descriptive identity and narrowly reviewed quirks; the command
+line supplies policy. Conflicts are resolved by a named owning contract, not by
+last-writer-wins properties.
+
+Board initialization is dependency ordered: early console and memory precede
+general allocation; interrupt controllers and timers precede scheduling and
+device interrupts; PCI host setup precedes virtio-pci discovery; block support
+precedes the selected root filesystem. Those dependencies become explicit
+construction inputs in the Topal design.
+
 ## LK-X64-VIRTIO-001 — Proposed initial virtual-device set
 
 The minimal useful QEMU profile should prefer standardized, inspectable devices:
@@ -55,3 +100,5 @@ architecture models answer different questions:
 Board support composes these inputs by provenance and authority. It does not
 flatten them into one untyped property map.
 
+Device Tree source/DTB behavior and its relationship to firmware nodes are
+mapped separately in [the Device Tree record](../common/device-tree.md).

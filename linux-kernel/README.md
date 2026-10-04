@@ -13,9 +13,11 @@ in this phase.
 
 ## Current phase
 
-This foundation defines scope and research structure. It does not approve new
-Topal semantics or claim that the present compiler can build a kernel. The
-current compiler remains a Linux x86-64 userspace compiler. Any change to Topal
+The foundation and Step 1 research map define scope, reproducible source
+coverage, and the Linux design inputs for the next phase. See the
+[Step 1 report](step-1-report.md). This work does not approve new Topal
+semantics or claim that the present compiler can build a kernel. The current
+compiler remains a Linux x86-64 userspace compiler. Any change to Topal
 language meaning follows the repository authority order in `docs/`, `se/`,
 `spec/`, tests, and `src/` after a concrete design is discussed and approved.
 
@@ -90,7 +92,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Pinned baseline and compatibility contract](baseline.md)
 - [Knowledge-library rules](knowledge/README.md)
 - [Knowledge catalog](knowledge/catalog.md)
+- [Step 1 report](step-1-report.md)
+- [Generated inventory coverage](inventory/coverage.md)
 - [Topal kernel-element design criteria](design/topal-kernel-primitives.md)
 - [Open decision register](design/decision-register.md)
 - [Traceability](traceability.md)
-
