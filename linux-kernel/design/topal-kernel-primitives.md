@@ -128,3 +128,8 @@ Before kernel code, each candidate family needs:
 5. rejected alternatives and compatibility consequences; and
 6. an approval checkpoint before changing `docs/` or `se/`.
 
+Step 2 supplies that proposal in the [systems-profile element set](kernel-elements.md),
+[cross-architecture pressure test](architecture-pressure-test.md),
+[kernel architecture](topal-kernel-architecture.md), and
+[Linux mapping ledger](linux-to-topal-mapping.md). Those records remain
+proposals until the required approval and authority-ordered propagation.
