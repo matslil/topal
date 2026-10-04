@@ -6696,6 +6696,66 @@
       "cpu_time_ns": 602888,
       "memory_peak_bytes": 18669568,
       "samples_per_test": 500
+    },
+    "topalc-build-O0::examples/language/design-pattern-algebraic-state.t": {
+      "cpu_time_ns": 148529660,
+      "memory_peak_bytes": 43208704,
+      "samples_per_test": 50
+    },
+    "topalc-build-O0::examples/language/design-pattern-typestate-protocol.t": {
+      "cpu_time_ns": 143240080,
+      "memory_peak_bytes": 43155456,
+      "samples_per_test": 50
+    },
+    "topalc-build-O0::examples/language/euclidean-gcd.t": {
+      "cpu_time_ns": 134151160,
+      "memory_peak_bytes": 42844160,
+      "samples_per_test": 50
+    },
+    "topalc-build-O2::examples/language/design-pattern-algebraic-state.t": {
+      "cpu_time_ns": 138451940,
+      "memory_peak_bytes": 44224512,
+      "samples_per_test": 50
+    },
+    "topalc-build-O2::examples/language/design-pattern-typestate-protocol.t": {
+      "cpu_time_ns": 133597640,
+      "memory_peak_bytes": 44142592,
+      "samples_per_test": 50
+    },
+    "topalc-build-O2::examples/language/euclidean-gcd.t": {
+      "cpu_time_ns": 159933660,
+      "memory_peak_bytes": 47349760,
+      "samples_per_test": 50
+    },
+    "topalc-run-O0::examples/language/design-pattern-algebraic-state.t": {
+      "cpu_time_ns": 139452,
+      "memory_peak_bytes": 18739200,
+      "samples_per_test": 500
+    },
+    "topalc-run-O0::examples/language/design-pattern-typestate-protocol.t": {
+      "cpu_time_ns": 138359,
+      "memory_peak_bytes": 18657280,
+      "samples_per_test": 500
+    },
+    "topalc-run-O0::examples/language/euclidean-gcd.t": {
+      "cpu_time_ns": 339672,
+      "memory_peak_bytes": 18657280,
+      "samples_per_test": 500
+    },
+    "topalc-run-O2::examples/language/design-pattern-algebraic-state.t": {
+      "cpu_time_ns": 131990,
+      "memory_peak_bytes": 18923520,
+      "samples_per_test": 500
+    },
+    "topalc-run-O2::examples/language/design-pattern-typestate-protocol.t": {
+      "cpu_time_ns": 129992,
+      "memory_peak_bytes": 18657280,
+      "samples_per_test": 500
+    },
+    "topalc-run-O2::examples/language/euclidean-gcd.t": {
+      "cpu_time_ns": 341634,
+      "memory_peak_bytes": 18665472,
+      "samples_per_test": 500
     }
   }
 }
