@@ -18452,6 +18452,30 @@ mod tests {
     }
 
     #[test]
+    fn emits_euclidean_recursion_without_dynamic_arithmetic_checks() {
+        // TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001, TOPAL-NUM-INT-MODULO-001
+        let program =
+            analyze_for_compiler(include_str!("../../../examples/language/euclidean-gcd.t"))
+                .unwrap();
+        let symbol = &program.functions[0].symbol;
+        let llvm = Generator::new(&program, "euclidean-gcd.t").emit();
+        assert_eq!(
+            llvm.matches(&format!(
+                "define internal fastcc ptr @{symbol}(ptr %arg0, ptr %arg1)"
+            ))
+            .count(),
+            1
+        );
+        assert_eq!(
+            llvm.matches(&format!("call fastcc ptr @{symbol}(ptr %"))
+                .count(),
+            1
+        );
+        assert!(!llvm.contains("call ptr @topal.runtime.int.try.modulo"));
+        assert!(!llvm.contains("call ptr @topal.runtime.int.try.to.nat"));
+    }
+
+    #[test]
     fn emits_layout_policies_as_closed_nominal_tags_without_a_layout_runtime() {
         // TOPAL-LAYOUT-ENDIAN-001, TOPAL-LAYOUT-ACCESS-001,
         // TOPAL-LAYOUT-BIT-ORDER-001, TOPAL-LAYOUT-PACKING-001,

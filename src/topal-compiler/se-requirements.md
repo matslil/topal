@@ -5453,6 +5453,25 @@ Topal-owned Linux syscall runtime. No C/C++ runtime, other-language standard
 library, or `topal-native/6` revision is permitted. This realizes
 `TOPAL-COMPILER-FUNCTION-DECREASES-001` for increment 3b2-b5e4.
 
+## TOPAL-COMP-RECURSION-EUCLIDEAN-001 — Proven Euclidean recursion
+
+The checked compiler model shall admit the shared
+`TOPAL-FUNCTION-RECURSION-EUCLIDEAN-001` proof for a binary `Int` function
+with `Decreases (absolute right)`, a zero-divisor base, and the exact
+`(right, left % right)` recursive edge. The compiler shall retain the
+nonzero fact established by the zero comparison exclusively in its otherwise
+branch, so that this modulo is direct and does not introduce an arithmetic
+`Result`. It shall also retain the total nonnegative result fact of `absolute`
+when adapting the base to its declared `Nat` result.
+
+The proof and these facts shall be compile-time only: they shall add no hidden
+argument, counter, dynamic Nat validator, dynamic modulo check, allocation, or
+ABI field. The recursive overload shall retain one exact private `fastcc`
+prototype, `noinline` without `norecurse`, and ordinary source parameter
+DWARF/GDB frames. It shall use only the existing Topal-owned runtime and no
+C/C++ runtime, other-language standard library, or native ABI revision. This
+realizes `TOPAL-COMPILER-RECURSION-EUCLIDEAN-001`.
+
 ## TOPAL-COMP-RECURSION-OVERLOAD-IDENTITY-001 — Overload-specific recursion identity
 
 The checked compiler model shall use function name, staticness, and the complete
