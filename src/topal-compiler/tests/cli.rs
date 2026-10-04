@@ -14366,6 +14366,28 @@ fn assert_source_library_program(
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn standard_library_application_matches_the_interpreter() {
+    // TOPAL-LIB-SOURCE-001, TOPAL-COMPILER-LIBRARY-SOURCE-001,
+    // TOPAL-COMPILER-STANDARD-LIBRARY-PARITY-001
+    let directory = temporary("standard-library-application");
+    let library_root = directory.join("library");
+    fs::create_dir_all(library_root.join("std")).unwrap();
+    fs::write(
+        library_root.join("std/module.t"),
+        include_str!("../../../library/std/module.t"),
+    )
+    .unwrap();
+    assert_source_library_program(
+        &directory,
+        &library_root,
+        "application",
+        include_str!("../../../library/application.t"),
+        &["std"],
+    );
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 #[allow(clippy::too_many_lines)] // The source-module matrix keeps each dependency identity beside its corpus.
 fn qualified_standard_library_functions_compile_from_source_modules() {
     // TOPAL-LIB-SOURCE-001, TOPAL-NAMESPACE-USE-001,

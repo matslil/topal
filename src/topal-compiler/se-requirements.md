@@ -2991,6 +2991,32 @@ ELF/DWARF, the compiler corpus, and bounded validation. This realizes
 `TOPAL-TYPE-CALL-001`, and `TOPAL-CAPABILITY-COMPOSE-001` for compiler increment
 6b7.
 
+## TOPAL-COMPILER-STANDARD-LIBRARY-PARITY-001 — Standard facade parity
+
+The compiler shall compile the unchanged standard-library facade application
+with the same observable result as the interpreter. Source specialization
+shall preserve generic substitutions through callable results, including named
+and anonymous `Optional` and `Result` transformations, same-module helpers,
+and generic result classifiers. Result decisions in a Result-returning context
+shall lift successful values and forwarded Error values without replacing the
+original Error provenance.
+
+An ordinary Int iterate factory may return its fresh linear Generator through
+a selected source-library Function boundary. A caller may retain that exact
+provenance through a binding, apply a finite `take-while`, and collect it once.
+Finite List folds shall admit Boolean state over Int entries and Optional state
+whose payload equals the entry classifier; lowering shall retain the existing
+private Boolean, Optional, List, and Result carriers and direct-call/loop
+structure.
+
+Tests shall compile `library/application.t`, execute both implementations, and
+compare exact output while retaining selective `std` dependency metadata and
+freestanding ELF/DWARF validation. This shall add no runtime type descriptor,
+generic dispatch, callback ABI, foreign dependency, public ABI, or native ABI
+revision. This realizes `TOPAL-COMPILER-STANDARD-LIBRARY-PARITY-001`,
+`TOPAL-LIB-SOURCE-001`, `TOPAL-TYPE-CALL-001`,
+`TOPAL-COLLECTION-FOLD-001`, and `TOPAL-GENERATOR-TAKE-WHILE-001`.
+
 ## TOPAL-COMP-LIBRARY-OPTIONAL-AGGREGATE-001 — Generic queue boundary
 
 The checked compiler shall admit the concrete `(Int, List Int)` Optional

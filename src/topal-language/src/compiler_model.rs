@@ -910,6 +910,7 @@ pub enum CompilerExpressionKind {
     IntToNat(Box<CompilerExpression>),
     IntToNatBoundary(Box<CompilerExpression>),
     ResultSuccess(Box<CompilerExpression>),
+    ResultError(Box<CompilerExpression>),
     ResultProject(Box<CompilerExpression>),
     ResultProjectBoundary(Box<CompilerExpression>),
     OptionalSome(Box<CompilerExpression>),
@@ -9129,6 +9130,24 @@ impl Analyzer {
         span: Span,
     ) -> Result<CompilerExpression, Diagnostic> {
         match expected {
+            Some(expected @ CompilerType::Result(success)) if value.value_type == **success => {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ResultSuccess(Box::new(value)),
+                    value_type: expected.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
+            Some(expected @ CompilerType::Result(_)) if value.value_type == CompilerType::Error => {
+                Ok(CompilerExpression {
+                    kind: CompilerExpressionKind::ResultError(Box::new(value)),
+                    value_type: expected.clone(),
+                    int_range: None,
+                    rational_value: None,
+                    span,
+                })
+            }
             Some(CompilerType::Nat) if value.value_type == CompilerType::Int => {
                 self.finish_nat_conversion(value, span, span)
             }
@@ -9228,6 +9247,7 @@ impl Analyzer {
         }))
     }
 
+    #[allow(clippy::too_many_lines)] // Contextual Result decisions stay beside scalar and collection adaptation.
     fn analyze_expression_with_expected(
         &mut self,
         expression: &Expression,
@@ -9316,6 +9336,25 @@ impl Analyzer {
                         self.finish_contextual_scalar(value, expected, expression.span())
                     }),
             };
+        }
+        if let Some(expected @ CompilerType::Result(_)) = expected
+            && let Expression::DecisionTable {
+                subject,
+                rules,
+                span,
+            } = expression
+        {
+            let subject = self.analyze_expression(subject, environment)?;
+            if let CompilerType::Result(success) = subject.value_type.clone() {
+                return self.analyze_result_decision(
+                    subject,
+                    success.as_ref(),
+                    rules,
+                    *span,
+                    environment,
+                    Some(expected),
+                );
+            }
         }
         let value = self.analyze_expression(expression, environment)?;
         self.finish_contextual_scalar(value, expected, expression.span())
@@ -11850,6 +11889,14 @@ impl Analyzer {
                                 self.generator_values.get(storage_name).cloned()
                             }
                             CompilerExpressionKind::Call { symbol, .. } => {
+                                self.returned_generator_values.get(symbol).cloned()
+                            }
+                            CompilerExpressionKind::PrivateBinding { body, .. }
+                                if matches!(&body.kind, CompilerExpressionKind::Call { .. }) =>
+                            {
+                                let CompilerExpressionKind::Call { symbol, .. } = &body.kind else {
+                                    unreachable!("guard retains a call")
+                                };
                                 self.returned_generator_values.get(symbol).cloned()
                             }
                             CompilerExpressionKind::IterateGenerator { .. }
@@ -17320,11 +17367,11 @@ impl Analyzer {
             match &collection_generator.kind {
                 CompilerExpressionKind::GeneratorTakeWhile {
                     generator: source, ..
-                } if direct_bounded.is_some()
-                    && matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) =>
-                {
+                } if matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) => {
                     return Ok(CompilerExpression {
-                        kind: CompilerExpressionKind::GeneratorCollect(Box::new(generator)),
+                        kind: CompilerExpressionKind::GeneratorCollect(Box::new(
+                            collection_generator.clone(),
+                        )),
                         value_type: CompilerType::List(Box::new(CompilerType::Int)),
                         int_range: None,
                         rational_value: None,
@@ -17574,6 +17621,15 @@ impl Analyzer {
                         element.as_ref().clone(),
                     )
                 }
+                (CompilerType::List(element), CompilerType::Optional(payload))
+                    if element.as_ref() == payload.as_ref()
+                        && compiler_list_node_element_supported(element.as_ref()) =>
+                {
+                    (
+                        CompilerType::Optional(payload.clone()),
+                        element.as_ref().clone(),
+                    )
+                }
                 (CompilerType::List(element), CompilerType::Nat)
                     if matches!(
                         element.as_ref(),
@@ -17595,14 +17651,17 @@ impl Analyzer {
                     if element.as_ref() == &CompilerType::Nat
                         || element.as_ref() == &CompilerType::String
                         || element.as_ref() == &CompilerType::Int
-                            && self.compiler_proven_nonnegative_list(&list)
                         || compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_integer_pair_list_element(element.as_ref())
                         || compiler_integer_pair(element.as_ref())
                         || compiler_int_string_pair(element.as_ref())
                         || compiler_int_list_pair(element.as_ref()) =>
                 {
-                    let entry_type = if compiler_nested_int_list_element(element.as_ref())
+                    let entry_type = if element.as_ref() == &CompilerType::Int
+                        && self.compiler_proven_nonnegative_list(&list)
+                    {
+                        CompilerType::Nat
+                    } else if compiler_nested_int_list_element(element.as_ref())
                         || compiler_nested_integer_pair_list_element(element.as_ref())
                         || compiler_integer_pair(element.as_ref())
                         || compiler_int_string_pair(element.as_ref())
@@ -19353,7 +19412,7 @@ impl Analyzer {
 
     fn analyze_int_generator_take_while(
         &mut self,
-        generator: CompilerExpression,
+        mut generator: CompilerExpression,
         parameters: &[AnonymousPattern],
         predicate_body: &Expression,
         function_span: Span,
@@ -19366,6 +19425,22 @@ impl Analyzer {
             &int_unit_generator_type(),
             &generator.value_type,
         )?;
+        let retained = match &generator.kind {
+            CompilerExpressionKind::Local(storage_name) => self.generator_values.get(storage_name),
+            CompilerExpressionKind::Call { symbol, .. } => {
+                self.returned_generator_values.get(symbol)
+            }
+            CompilerExpressionKind::PrivateBinding { body, .. } => match &body.kind {
+                CompilerExpressionKind::Call { symbol, .. } => {
+                    self.returned_generator_values.get(symbol)
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(retained) = retained {
+            generator = retained.clone();
+        }
         let consumed_before_body = self.consumed_generators.clone();
         let (parameters, predicate) = self.analyze_collection_function(
             parameters,
@@ -24336,7 +24411,7 @@ impl Analyzer {
                 break;
             }
         }
-        let Some((mut declaration, arguments, argument_bindings, classifier_substitutions)) =
+        let Some((mut declaration, arguments, argument_bindings, mut classifier_substitutions)) =
             selected
         else {
             let actual = arguments
@@ -24351,6 +24426,110 @@ impl Analyzer {
                 format!("no overload of `{function_name}` accepts ({actual}) in this context"),
             ));
         };
+        for (parameter, argument) in declaration.parameters.iter().zip(&arguments) {
+            let classifier = compact_classifier(self.source.slice(parameter.classifier));
+            let Some((input_classifier, output_classifier)) =
+                split_compact_function_classifier(&classifier)
+            else {
+                continue;
+            };
+            let Some(callable) = self.known_callable(argument, environment, argument.span.start)?
+            else {
+                continue;
+            };
+            let Some(input_type) =
+                parse_substituted_classifier(input_classifier, &classifier_substitutions, &|_| {
+                    None
+                })
+            else {
+                continue;
+            };
+            let result_type = match callable {
+                CompilerCallableFacts::Anonymous {
+                    parameters,
+                    body,
+                    captures,
+                    static_context,
+                    span: function_span,
+                } => {
+                    let mut callable_environment = environment.clone();
+                    callable_environment.extend(captures);
+                    let (_, analyzed) = self.analyze_collection_function(
+                        &parameters,
+                        &body,
+                        &[input_type],
+                        &callable_environment,
+                        static_context,
+                        function_span,
+                    )?;
+                    analyzed.result.value_type
+                }
+                CompilerCallableFacts::Named { declarations, .. } => {
+                    let mut inferred = None;
+                    for callable in declarations {
+                        let [callable_parameter] = callable.parameters.as_slice() else {
+                            continue;
+                        };
+                        let mut nested_substitutions = classifier_substitutions.clone();
+                        let parameter_classifier =
+                            compact_classifier(self.source.slice(callable_parameter.classifier));
+                        if !infer_classifier_substitutions(
+                            &parameter_classifier,
+                            &input_type,
+                            &mut nested_substitutions,
+                            &|_| None,
+                        ) {
+                            continue;
+                        }
+                        let result_classifier =
+                            compact_classifier(self.source.slice(callable.result));
+                        if let Some(result) = parse_substituted_classifier(
+                            &result_classifier,
+                            &nested_substitutions,
+                            &|_| None,
+                        ) {
+                            inferred = Some(result);
+                            break;
+                        }
+                    }
+                    let Some(result) = inferred else {
+                        continue;
+                    };
+                    result
+                }
+                CompilerCallableFacts::Symbolic(_) => continue,
+            };
+            let inferred = if !classifier_substitutions.contains_key(output_classifier)
+                && parse_compact_classifier(output_classifier).is_none()
+                && !["List", "Optional", "Range", "Set", "Bag", "Result("]
+                    .iter()
+                    .any(|prefix| output_classifier.starts_with(prefix))
+                && output_classifier
+                    .chars()
+                    .all(|character| character == '-' || character.is_alphanumeric())
+            {
+                classifier_substitutions.insert(output_classifier.to_owned(), result_type.clone());
+                true
+            } else {
+                infer_classifier_substitutions(
+                    output_classifier,
+                    &result_type,
+                    &mut classifier_substitutions,
+                    &|_| None,
+                )
+            };
+            if !inferred {
+                return Err(source_diagnostic(
+                    &self.source,
+                    "E-NO-APPLICABLE-OVERLOAD",
+                    argument.span,
+                    format!(
+                        "function argument result {} does not satisfy `{output_classifier}`",
+                        result_type.name()
+                    ),
+                ));
+            }
+        }
         if function_name == "std.nfc"
             && let [text] = arguments.as_slice()
             && let Some(text) = exact_string(text)
@@ -26697,6 +26876,27 @@ impl Analyzer {
             };
             let returns_fresh_generator = match (&parameter.value_type, &body.result.kind) {
                 (
+                    CompilerType::Int,
+                    CompilerExpressionKind::IterateGenerator {
+                        initial,
+                        parameters,
+                        next,
+                    },
+                ) => {
+                    returns_value_boundary_generator
+                        && matches!(initial.kind, CompilerExpressionKind::Local(ref name)
+                            if name == &parameter.name)
+                        && parameters.len() == 1
+                        && parameters[0].value_type == CompilerType::Int
+                        && matches!(
+                            next.result.kind,
+                            CompilerExpressionKind::Binary {
+                                operation: CompilerBinary::Add,
+                                ..
+                            }
+                        )
+                }
+                (
                     CompilerType::String,
                     CompilerExpressionKind::StringCharactersGenerator { text, .. },
                 ) => matches!(text.kind, CompilerExpressionKind::Local(ref name)
@@ -26846,12 +27046,13 @@ impl Analyzer {
             }
             let mut returned = body.result.clone();
             if returns_value_boundary_generator {
-                let CompilerExpressionKind::CustomValueGenerator { initial, .. } =
-                    &mut returned.kind
-                else {
-                    unreachable!("checked value Generator result retains its construction")
-                };
-                **initial = arguments[0].clone();
+                match &mut returned.kind {
+                    CompilerExpressionKind::CustomValueGenerator { initial, .. }
+                    | CompilerExpressionKind::IterateGenerator { initial, .. } => {
+                        **initial = arguments[0].clone();
+                    }
+                    _ => unreachable!("checked value Generator result retains its construction"),
+                }
             }
             Some(returned)
         } else {
@@ -27338,7 +27539,7 @@ impl Analyzer {
             }
             CompilerType::Result(success) => {
                 let success = success.as_ref().clone();
-                self.analyze_result_decision(subject, &success, rules, span, environment)
+                self.analyze_result_decision(subject, &success, rules, span, environment, None)
             }
             CompilerType::Optional(payload) => {
                 let payload = payload.as_ref().clone();
@@ -28225,6 +28426,7 @@ impl Analyzer {
         rules: &[topal_syntax::DecisionRule],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
+        expected: Option<&CompilerType>,
     ) -> Result<CompilerExpression, Diagnostic> {
         let subject_facts = (success_type == &CompilerType::Function)
             .then(|| self.known_structural_value_facts(&subject, environment))
@@ -28259,7 +28461,7 @@ impl Analyzer {
                     ok = Some((
                         name,
                         binding,
-                        self.analyze_expression(&rule.action, &branch)?,
+                        self.analyze_expression_with_expected(&rule.action, &branch, expected)?,
                     ));
                 }
                 DecisionMatcher::Result {
@@ -28277,7 +28479,11 @@ impl Analyzer {
                     error_fallback = Some((
                         name,
                         binding,
-                        Box::new(self.analyze_expression(&rule.action, &branch)?),
+                        Box::new(self.analyze_expression_with_expected(
+                            &rule.action,
+                            &branch,
+                            expected,
+                        )?),
                     ));
                 }
                 DecisionMatcher::ErrorCode {
@@ -28317,7 +28523,11 @@ impl Analyzer {
                     }
                     error_codes.push(CompilerErrorCodeRule {
                         code: code_value,
-                        action: self.analyze_expression(&rule.action, environment)?,
+                        action: self.analyze_expression_with_expected(
+                            &rule.action,
+                            environment,
+                            expected,
+                        )?,
                         span: rule.span,
                     });
                 }
@@ -28575,6 +28785,7 @@ impl Analyzer {
                     };
                     if !numeric
                         && !matches!(operation, CompilerBinary::Equal | CompilerBinary::NotEqual)
+                        && !compiler_ordering_supported(&subject.value_type)
                     {
                         return Err(unsupported(
                             &self.source,
@@ -29746,6 +29957,14 @@ fn parse_compact_classifier(classifier: &str) -> Option<CompilerType> {
     parse_compact_classifier_with(classifier, &|_| None)
 }
 
+fn split_compact_function_classifier(classifier: &str) -> Option<(&str, &str)> {
+    let body = classifier.strip_prefix("fn(")?;
+    let separator = body.rfind(")->")?;
+    let input = &body[..separator];
+    let output = &body[separator + 3..];
+    (!input.is_empty() && !output.is_empty()).then_some((input, output))
+}
+
 fn split_classifier_constraint(classifier: &str) -> Option<(&str, &str)> {
     let inner = classifier.strip_prefix('(')?.strip_suffix(')')?;
     if split_classifier_fields(inner)?.len() != 1 {
@@ -29789,6 +30008,15 @@ fn classifier_uses_substitution(
             return classifier_uses_substitution(element, substitutions);
         }
     }
+    if let Some(fields) = classifier
+        .strip_prefix("Result(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+    {
+        return fields
+            .iter()
+            .any(|field| classifier_uses_substitution(field, substitutions));
+    }
     classifier
         .strip_prefix('(')
         .and_then(|value| value.strip_suffix(')'))
@@ -29822,6 +30050,27 @@ fn infer_classifier_substitutions(
         return expected == actual;
     }
     if let Some(fields) = classifier
+        .strip_prefix("Result(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        && let [success, codes] = fields.as_slice()
+    {
+        let CompilerType::Result(actual_success) = actual else {
+            return false;
+        };
+        return infer_classifier_substitutions(
+            success,
+            actual_success,
+            substitutions,
+            resolve_nominal,
+        ) && infer_classifier_substitutions(
+            codes,
+            &CompilerType::ErrorCode,
+            substitutions,
+            resolve_nominal,
+        );
+    }
+    if let Some(fields) = classifier
         .strip_prefix('(')
         .and_then(|value| value.strip_suffix(')'))
         .and_then(split_classifier_fields)
@@ -29853,6 +30102,19 @@ fn infer_classifier_substitutions(
             });
     }
     let expected = parse_compact_classifier_with(classifier, resolve_nominal);
+    if expected.is_none()
+        && classifier
+            .chars()
+            .all(|character| character == '-' || character.is_alphanumeric())
+    {
+        return substitutions
+            .get(classifier)
+            .is_none_or(|existing| existing == actual)
+            && {
+                substitutions.insert(classifier.to_owned(), actual.clone());
+                true
+            };
+    }
     expected.as_ref() == Some(actual)
         || matches!(actual, CompilerType::Refined { base, .. }
             if expected.as_ref() == Some(base.as_ref()))
@@ -29890,6 +30152,16 @@ fn parse_substituted_classifier(
         return Some(CompilerType::Optional(Box::new(
             parse_substituted_classifier(payload, substitutions, resolve_nominal)?,
         )));
+    }
+    if let Some(fields) = classifier
+        .strip_prefix("Result(")
+        .and_then(|value| value.strip_suffix(')'))
+        .and_then(split_classifier_fields)
+        && let [success, codes] = fields.as_slice()
+    {
+        let success = parse_substituted_classifier(success, substitutions, resolve_nominal)?;
+        let codes = parse_substituted_classifier(codes, substitutions, resolve_nominal)?;
+        return (codes == CompilerType::ErrorCode).then(|| CompilerType::Result(Box::new(success)));
     }
     if let Some(element) = classifier.strip_prefix("Range") {
         return Some(CompilerType::Range(Box::new(parse_substituted_classifier(
@@ -30051,6 +30323,7 @@ fn parse_compact_scalar_classifier(classifier: &str) -> Option<CompilerType> {
         "GeneratorCharacterUnitCharacter" => {
             Some(character_generator_type(CompilerType::Character))
         }
+        "GeneratorIntUnitUnit" => Some(int_unit_generator_type()),
         "GeneratorIntUnitString" => Some(value_boundary_generator_type()),
         "Generator(Int,String)Unit(Int,String)" => Some(product_boundary_generator_type()),
         "GeneratorOptional(Int,String)UnitResult((Int,String),langarithmeticArithmeticErrorCode)" => {
@@ -31789,16 +32062,18 @@ fn is_admitted_character_generator_type(value_type: &CompilerType) -> bool {
 }
 
 fn is_admitted_value_boundary_generator_type(value_type: &CompilerType) -> bool {
-    matches!(
-        value_type,
-        CompilerType::Generator(CompilerGeneratorType {
-            yield_type,
-            resume_type,
-            result_type,
-        }) if yield_type.as_ref() == &CompilerType::Int
-            && resume_type.as_ref() == &CompilerType::Unit
-            && result_type.as_ref() == &CompilerType::String
-    ) || value_type == &product_boundary_generator_type()
+    value_type == &int_unit_generator_type()
+        || matches!(
+            value_type,
+            CompilerType::Generator(CompilerGeneratorType {
+                yield_type,
+                resume_type,
+                result_type,
+            }) if yield_type.as_ref() == &CompilerType::Int
+                && resume_type.as_ref() == &CompilerType::Unit
+                && result_type.as_ref() == &CompilerType::String
+        )
+        || value_type == &product_boundary_generator_type()
         || value_type == &nested_boundary_generator_type()
         || value_type == &list_boundary_generator_type()
 }
@@ -32562,6 +32837,7 @@ fn compiler_expression_is_closed_with(
         | CompilerExpressionKind::IntToNat(value)
         | CompilerExpressionKind::IntToNatBoundary(value)
         | CompilerExpressionKind::ResultSuccess(value)
+        | CompilerExpressionKind::ResultError(value)
         | CompilerExpressionKind::ResultProject(value)
         | CompilerExpressionKind::ResultProjectBoundary(value)
         | CompilerExpressionKind::OptionalSome(value)
