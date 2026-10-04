@@ -28,6 +28,29 @@ later specific-target and cross-target increments, but cannot select a backend
 or produce an artifact. `topalc --list-targets` reports this boundary without
 requiring source input.
 
+## Freestanding systems target boundary
+
+The approved `systems` feature introduces a separate planned compiler target
+class. It does not modify the executable-qualified
+`x86_64-unknown-linux-gnu` application profile. Until the systems checker,
+x86-64 provider, artifact publisher, and selected QEMU/boot adapter have their
+required evidence, every systems selection remains fail-closed before lowering
+or output.
+
+The systems pipeline reuses the checked frontend, architecture-evidence seam,
+LLVM verification, debug/provenance infrastructure, and atomic publication
+stages. Its checked model additionally retains entry, authority, execution
+context, observation, address/mapping, recovery, atomic/order, critical-state,
+context-transfer, device/DMA, storage, and placement identities. These are
+semantic inputs to lowering rather than LLVM intrinsics exposed in source.
+
+The systems backend generates its entry and machine support, links with no
+Linux process startup or syscall runtime, inspects the linked kernel artifact,
+and passes its digest to a separately qualified boot-image adapter. Exact boot
+protocol, machine, firmware, image container, relocation/code model, and board
+identity are selected by the reproducible x86-64 VM qualification rather than
+inherited from compilation-host defaults.
+
 References: LLVM's [frontend performance
 guidance](https://llvm.org/docs/Frontend/PerformanceTips.html), [language
 reference](https://llvm.org/docs/LangRef.html), and [code-generator

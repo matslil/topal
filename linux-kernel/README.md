@@ -14,13 +14,12 @@ in this phase.
 ## Current phase
 
 The foundation and Step 1 research map define scope and Linux source coverage.
-Step 2 adds a concrete [Topal-native kernel proposal](step-2-report.md), Linux
-responsibility mapping, and cross-architecture systems-element design. This
-proposal does not itself approve new Topal semantics or claim that the present
-compiler can build a kernel. The current compiler remains a Linux x86-64
-userspace compiler. Any change to Topal language meaning follows the repository
-authority order in `docs/`, `se/`, `spec/`, tests, and `src/` after the
-concrete proposal is discussed and approved.
+Step 2 adds an approved [Topal-native kernel design](step-2-report.md), Linux
+responsibility mapping, and cross-architecture systems-element model. The
+approved meaning is adopted in the authoritative Topal systems profile,
+requirements, and formal rules. This does not claim that the present compiler
+can build a kernel: implementation and executable x86-64 qualification remain
+planned, and the current compiler remains a Linux x86-64 userspace compiler.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline

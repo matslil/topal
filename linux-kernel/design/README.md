@@ -1,8 +1,9 @@
 # Topal kernel design proposals
 
-This directory contains kernel-project design proposals. It is downstream of
-the authoritative Topal language intent in `docs/` and system intent in `se/`.
-Nothing here changes language meaning by itself.
+This directory contains the kernel-project design records from which the
+approved systems profile was derived. It is downstream of the authoritative
+Topal language intent in `docs/` and system intent in `se/`; those authoritative
+records, not this directory alone, define language meaning.
 
 ## Step 2 design set
 
@@ -14,8 +15,7 @@ Nothing here changes language meaning by itself.
 - [Decision register](decision-register.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
-The proposal is intentionally semantic rather than syntactic. Approval chooses
-the responsibility boundaries and required guarantees; exact syntax is then
-designed and propagated through `docs/`, `se/`, `spec/`, tests, and
-implementation under the repository change procedure.
-
+The semantic proposal was approved in the project discussion after PR #790.
+It is adopted through `docs/systems-profile.md`, the `TOPAL-REQ-SYSTEMS-*`
+requirements, and `spec/systems-profile.md`. The approved profile adds no new
+grammar; its sealed vocabulary uses ordinary Topal construction syntax.

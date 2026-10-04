@@ -1,4 +1,5 @@
 use language (version is v0.1)
+# Demonstrates representing algebraic state with a nominal Union.
 # A parcel locker has several externally visible modes. Modeling the controller
 # as a Union is clearer than a cluster of flags such as `door-open`,
 # `payment-pending`, and `faulted`, because impossible combinations cannot be

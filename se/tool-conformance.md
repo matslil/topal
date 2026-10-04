@@ -25,6 +25,7 @@ applicable to the interpreter and debugger.
 | --- | --- | --- | --- | --- | --- |
 | `spec/abstractions.md` | direct | shared | shared | shared | `topal-semantics`; interpreter and debugger functional suites; LSP and linter source corpora |
 | `spec/advent-of-code-library.md` | direct | shared | shared | shared | companion-library Topal tests and Advent of Code application corpus; shared loader and source-tool acceptance suites |
+| `spec/architecture-models.md` | shared | shared | shared | not-applicable | `topal-semantics` architecture reference model; source/model diagnostics; physical target qualification is a compiler boundary |
 | `spec/best-practices.md` | not-applicable | direct | direct | not-applicable | `topal-best-practices`; `topal-linter`; LSP lint adapter tests |
 | `spec/concurrency-model.md` | shared | not-applicable | shared | shared | `topal-semantics`; task source tests; contained task-rule views; reversible message tests |
 | `spec/concurrency-implementations.md` | shared | shared | shared | shared | `topal-semantics::portable_runtime` reference models and unit tests; source-operation and debugger integration remains planned |
@@ -43,6 +44,7 @@ applicable to the interpreter and debugger.
 | `spec/memory-model.md` | shared | not-applicable | not-applicable | shared | `topal-semantics` memory-model tests; shared execution boundary |
 | `spec/modules.md` | direct | shared | shared | shared | shared module loader; directory-application and library corpus tests |
 | `spec/numbers.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
+| `spec/optimization-policy.md` | not-applicable | not-applicable | not-applicable | not-applicable | compiler implementation-plan and optimization-policy evidence; source tools preserve controls and diagnostics through shared syntax boundaries |
 | `spec/ranges.md` | direct | shared | shared | shared | `topal-language`; cross-tool source corpora |
 | `spec/resources.md` | shared | not-applicable | shared | shared | `topal-semantics` ownership tests; shared semantic views and execution |
 | `spec/resource-evidence.md` | shared | shared | shared | shared | shared bounds, progress, exclusivity, and region models; compiler inference and source-region integration remain planned |
@@ -50,6 +52,7 @@ applicable to the interpreter and debugger.
 | `spec/source-documentation.md` | shared | shared | not-applicable | direct | `topal-syntax`; `topal-language`; LSP corpus; debugger help tests |
 | `spec/standard-library.md` | direct | shared | shared | shared | shared library application and cross-tool conformance suites |
 | `spec/strings.md` | direct | shared | shared | shared | `topal-source`; `topal-language`; cross-tool source corpora |
+| `spec/systems-profile.md` | shared | shared | shared | shared | planned `topal-semantics` systems model; shared feature/context diagnostics; debugger trace/replay views; physical lowering remains a compiler boundary |
 | `spec/syntax.md` | shared | direct | shared | shared | `topal-source`; `topal-syntax`; all four source-tool corpora |
 | `spec/tasks.md` | direct | shared | shared | shared | task examples, contained rule views, and reversible transaction tests |
 | `spec/time-and-dataflow.md` | shared | shared | shared | shared | shared clock, periodic-release, balance, causality, and schedule models; source execution integration remains planned |

@@ -35,6 +35,55 @@ and missing qualification scopes. A selected model-only CPU, board, or model
 shall fail before lowering with those details. Adding an entry shall not make
 it executable-qualified or change the sole admitted code-generation target.
 
+## TOPAL-COMP-SYSTEMS-CONTEXT-001 — Systems feature and target isolation
+
+The compiler shall admit `systems` only for an explicitly selected qualified
+freestanding systems target. It shall expose the sealed `lang systems`
+vocabulary without adding grammar, retain the exact feature and authority
+profile in the checked program, and reject a systems source paired with the
+hosted Linux-process target or an ordinary source attempting to use systems
+vocabulary. Until a systems target is executable-qualified, it shall reject
+before lowering or output rather than approximate with host mechanisms.
+
+## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
+
+Before backend lowering, the checked compiler model shall validate special
+entry kinds and dispositions, capability provenance, execution contexts,
+observation/linearization protocols, address and mapping states, recovery
+scopes, atomic and visibility orders, affine critical tokens, context transfer,
+device and DMA protocols, storage, placement, and artifact obligations. Every
+systems operation shall retain a stable semantic identity and required target
+evidence; LLVM spelling shall not enter the checked model.
+
+## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
+
+The first executable systems provider shall be native 64-bit x86-64 and shall
+lower only checked systems operations for its recorded architecture, CPU,
+feature, ABI/platform, board, and provider identities. It shall generate entry,
+fault-recovery, context-transfer, privileged, atomic, ordering, and device
+support without source assembly, instruction templates, programmer-selected
+registers, or a generic intrinsic escape. AArch64 and RISC-V review evidence
+shall not mark their backends executable-qualified.
+
+## TOPAL-COMP-SYSTEMS-ARTIFACT-001 — Kernel artifact publication
+
+The systems publisher shall use a distinct target/data-layout/object/relocation
+profile, generate and retain semantic placement and entry roots, link without
+host startup, syscalls, allocator, libc, dynamic loader, foreign runtime, or
+ordinary process termination, and inspect the linked artifact before atomic
+publication. It shall publish kernel, debug, map, and canonical provenance
+outputs and pass the kernel digest to a separately qualified boot-image adapter.
+
+## TOPAL-COMP-SYSTEMS-TEST-001 — Systems negative and physical evidence
+
+Tests shall cover every systems rule's accepted model transitions and reject
+wrong feature, artifact, context, authority, lifetime, order, target, and
+provider before output. X86-64 tests shall inspect entry code, privileged
+instruction confinement, sections, placement, relocations, symbols, undefined
+dependencies, unwind/debug data, and absence of host mechanisms, then exercise
+the target provider under the pinned QEMU board. The test record shall retain
+all model, provider, toolchain, image, and board identities.
+
 ## TOPAL-COMP-OPT-PLAN-001 — Validated generic target plan
 
 Before source lowering, the compiler shall resolve a typed optimization plan.

@@ -124,6 +124,11 @@ each trace by declared independent-event swaps. Reductions executed in parallel
 shall carry verified associative evidence; unordered reductions additionally
 require verified commutative evidence.
 
+A systems-profile `Observe` or `Linearize` event is a declared observation or
+protocol order rather than an unobservable scheduler choice. After conditioning
+on the same declared observation/linearization trace, this schedule-equivalence
+rule continues to apply.
+
 ### TOPAL-CONC-PROGRESS-001 — Progress boundary
 
 Race freedom, protocol fidelity, deterministic results, and absence of internal

@@ -106,8 +106,11 @@ when these preserve the program's meaning.
 - Scheduling and performance may vary, but semantic results are deterministic.
   Ordered folds preserve order, while parallel reductions require appropriate
   algebraic laws.
-- Data races and deadlocks are compile errors. Safe code has no direct mutex or
-  equivalent primitive; the compiler introduces synchronization when required.
+- Data races and deadlocks are compile errors. Portable safe code has no direct
+  mutex or equivalent primitive; the compiler introduces synchronization when
+  required. The separately selected systems profile exposes checked atomic and
+  critical-scope foundations for privileged protocols without adding a
+  general unsafe mode.
 - Structured [task scopes](tasks.md), resource-aware effects, linear capabilities, and
   first-class protocols describe ownership, ordering, message passing, and
   request/reply dependencies. The compiler derives and explains the resulting
@@ -128,6 +131,11 @@ when these preserve the program's meaning.
   removed, cached, or reordered unless their declarations allow it.
 - Typestate protocols and linear capabilities describe device state changes and
   interference between registers or other views of the same resource.
+- The optional [systems profile](systems-profile.md) permits kernels and other
+  privileged freestanding artifacts through sealed entry, machine, address,
+  synchronization, context, device, and artifact capabilities. Source assembly,
+  arbitrary intrinsics, forged addresses, and implicit host services remain
+  outside safe Topal.
 
 ## Sources of inspiration
 

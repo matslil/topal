@@ -209,10 +209,12 @@ errata constraints. They cannot contradict a base model silently. Every
 override names the replaced fact, its authority, applicability, and resulting
 model identity.
 
-This extensibility prepares later systems work involving MMIO, privileged
-execution, interrupts, devices, and boot platforms. The architecture model by
-itself does not claim that the current Topal language or compiler can build an
-operating-system kernel.
+This extensibility supports the selected [systems profile](systems-profile.md)
+for MMIO, privileged execution, interrupts, devices, and boot platforms. The
+architecture model by itself grants no runtime systems authority and does not
+qualify a compiler or target provider. The current compiler remains
+unqualified for a kernel until the systems-profile implementation evidence is
+complete.
 
 ## Access barriers and ordering
 

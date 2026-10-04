@@ -1,10 +1,12 @@
 # Synthesized concurrency implementations
 
-Topal source describes isolated tasks, protocols, ordering, admission, and
-bounded capacity. It does not expose atomics, locks, fences, memory orders,
+Portable Topal source describes isolated tasks, protocols, ordering, admission,
+and bounded capacity. It does not expose atomics, locks, fences, memory orders,
 hazard pointers, epochs, or mutable shared references. Revision `v0.2` adds the
 portable information needed for a compiler to synthesize low-latency
-implementations without weakening that boundary.
+implementations without weakening that boundary. The separately selected
+[systems profile](systems-profile.md) adds checked atomic and critical
+foundations for privileged protocols without changing this portable model.
 
 ## Interaction policy and inferred topology
 

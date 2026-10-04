@@ -1,9 +1,10 @@
 # Proposed Topal-native kernel architecture
 
-This is the Step 2 kernel design. It is a proposal and does not change the
-authoritative Topal language in `docs/`, `se/`, or `spec/`. Stable `TK-KERNEL-*`
-identities describe kernel responsibilities; proposed language/toolchain
-elements are isolated in [the systems-profile proposal](kernel-elements.md).
+This is the approved Step 2 kernel design. Stable `TK-KERNEL-*` identities
+describe kernel responsibilities. Authoritative Topal meaning is defined by
+the repository-root systems-profile design, requirements, and specification;
+the originating element analysis remains in
+[the systems-profile design record](kernel-elements.md).
 
 ## TK-KERNEL-ARCH-001 — Design objective
 
@@ -294,4 +295,3 @@ Trace, debug, and crash facilities are capability-gated and bounded. A disabled
 facility must not change application behavior. Architecture artifact tests
 inspect entry stubs, sections, relocations, undefined symbols, stack rules,
 privileged instruction placement, and absence of host-Linux runtime calls.
-

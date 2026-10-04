@@ -299,6 +299,31 @@ fn lint_language_variant_is_freestanding_and_debuggable() {
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 #[test]
+fn systems_feature_fails_closed_before_artifact_until_target_qualification() {
+    // TOPAL-SYSTEMS-FEATURE-001, TOPAL-SYSTEMS-QUALIFY-001,
+    // TOPAL-COMP-SYSTEMS-CONTEXT-001
+    let directory = temporary("systems-feature-unqualified");
+    let source = directory.join("systems-feature.t");
+    let executable = directory.join("application");
+    fs::write(
+        &source,
+        "use language (\n  version is v0.1,\n  features is ( systems )\n)\nUnit\n",
+    )
+    .unwrap();
+
+    let compiled =
+        run(topalc().args(["-o", executable.to_str().unwrap(), source.to_str().unwrap()]));
+    assert!(!compiled.status.success());
+    let error = String::from_utf8_lossy(&compiled.stderr);
+    assert!(
+        error.contains("does not support the `systems` language feature"),
+        "{error}"
+    );
+    assert!(!executable.exists());
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
 fn native_serialization_is_canonical_freestanding_and_debuggable() {
     // TOPAL-SER-HEADER-001 through TOPAL-SER-DESER-001,
     // TOPAL-COMPILER-NATIVE-SERIALIZATION-001,

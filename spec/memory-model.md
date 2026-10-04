@@ -65,9 +65,12 @@ no permitted execution contains a data race. Inability to prove this is a
 compile error. There is no execution with race-based undefined behavior.
 
 A read observes the value selected by `coherence`. Acceptance requires that all
-coherence orders permitted by the program produce equivalent semantic results.
-Tearing is forbidden unless the location explicitly declares independently
-addressable subfields and the read layout is composed from those subfields.
+coherence orders permitted by the program produce equivalent semantic results,
+except that a selected systems-profile protocol may expose a permitted order
+through `TOPAL-SYSTEMS-OBSERVATION-001` and remains subject to that protocol's
+invariant and contract. Tearing is forbidden unless the location explicitly
+declares independently addressable subfields and the read layout is composed
+from those subfields.
 
 ### TOPAL-MEM-ATOMIC-001 — Implementation synchronization
 
@@ -77,6 +80,12 @@ locks, transactions, or message queues only when their behavior refines `hb`
 and `coherence` and is not observable as a source value. A future source-level
 atomic facility requires its own revisioned ordering rules; target behavior
 must not leak through in its absence.
+
+The selected `systems` feature is that separate revisioned facility. Its
+atomic locations, orders, critical scopes, and external linearizations are
+governed by `TOPAL-SYSTEMS-ATOMIC-001` through
+`TOPAL-SYSTEMS-CRITICAL-001`; they do not change this rule for contexts which
+do not select the feature.
 
 ### TOPAL-MEM-HARDWARE-001 — Hardware and volatile access
 
