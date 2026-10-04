@@ -7,22 +7,28 @@ traceability ledger.
 | Project intent | Research/design identity | Current artifact | Required downstream evidence |
 | --- | --- | --- | --- |
 | implement only x86-64 initially | `LK-SCOPE-001` | [baseline](baseline.md) | target profile, boot test, native UAPI inventory |
-| support the complete latest interface | `LK-SCOPE-002`, `LK-SCOPE-003` | [baseline](baseline.md), [UAPI map](knowledge/common/linux-uapi.md) | generated 7.2.9 inventory, dispositions, differential tests |
+| support the complete latest interface | `LK-SCOPE-002`, `LK-SCOPE-003` | [baseline](baseline.md), [UAPI map](knowledge/common/linux-uapi.md), [source inventory](inventory/coverage.md) | semantic dispositions and differential tests |
 | use Topal elements instead of source assembly | `TK-ELEMENT-001` | [primitive criteria](design/topal-kernel-primitives.md) | approved language design, spec rules, compiler tests, entry artifact inspection |
 | keep new elements portable in meaning | `TK-ELEMENT-001` | cross-architecture pressure table | x86-64/AArch64/RISC-V design review |
-| map Linux driver frameworks | `LK-DRIVER-*` | [driver map](knowledge/common/driver-frameworks.md) | subsystem records and Topal protocol mappings |
-| describe board support | `LK-X64-BOARD-001` | [platform map](knowledge/x86_64/platform-and-board.md) | pinned QEMU machine manifest and runtime discovery tests |
+| map Linux driver frameworks | `LK-DRIVER-*` | [driver map](knowledge/common/driver-frameworks.md) | Topal protocol mappings and subsystem conformance ledgers |
+| support DTS/DTB | `LK-DT-*` | [Device Tree map](knowledge/common/device-tree.md), [binding inventory](inventory/7.2.9/x86_64/devicetree-bindings.json) | parser/binding tests and selected platform boot |
+| describe board support | `LK-X64-BOARD-001`, `LK-X64-BOARD-002`, `LK-X64-DISCOVERY-001` | [platform map](knowledge/x86_64/platform-and-board.md) | pinned QEMU machine manifest and runtime discovery tests |
 | run standard applications | `LK-SCOPE-005` | acceptance ladder | pinned rootfs, libc/application corpus, result records |
 | run Docker and Podman | `LK-UAPI-CONTAINER-001` | [UAPI map](knowledge/common/linux-uapi.md) | separate rootful/rootless profiles and OCI tests |
 | run VMs on the Topal kernel | `LK-UAPI-KVM-001` | [UAPI map](knowledge/common/linux-uapi.md) | QEMU TCG tests, KVM API tests, optional nested profile |
 
-## Foundation exit criteria
+## Step 1 exit criteria
 
 - Linux release and architecture scope are immutable and reproducible.
 - “All public interfaces” has an explicit inclusion rule and status model.
-- UAPI, kernel, driver, ABI, board, container, and virtualization research have
-  stable identities and primary source families.
+- The native syscall table, installed UAPI headers, documented ABI entries,
+  direct ioctl definitions, vDSO exports, and Device Tree bindings have
+  reproducible counts, identities, locations, and aggregate digests.
+- UAPI, kernel, driver, Device Tree, ABI, board, container, and virtualization
+  research have stable identities, reviewed boundaries, and primary source
+  families.
 - The no-source-assembly direction has semantic design criteria and an open
   decision register rather than premature syntax.
 - No protected Topal meaning or Linux-derived code has been introduced.
-
+- Remaining semantic enumeration and runtime qualification are explicitly
+  carried into later steps rather than hidden behind source-file counts.

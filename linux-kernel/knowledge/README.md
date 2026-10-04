@@ -14,8 +14,10 @@ Every substantive record has a stable `LK-` identity and contains:
 - **contract:** observable behavior or internal design purpose;
 - **sources:** primary documentation and exact source locations;
 - **Topal relevance:** required semantic facility or mapping question;
-- **status:** researched, generated, reviewed, implemented, qualified, or
-  blocked; and
+- **status:** `mapped` when boundaries and source families are known,
+  `source-indexed` when a reproducible extractor covers the stated source
+  boundary, `reviewed` when the described contract has human-readable semantic
+  review, or later `implemented`, `qualified`, or `blocked`; and
 - **relationships:** parent, dependency, consumer, test, and replacement IDs.
 
 Generated inventories may use a machine-readable companion format later, but a
@@ -56,6 +58,7 @@ version behavior.
 - [Linux userspace interface map](common/linux-uapi.md)
 - [Kernel design map](common/kernel-design.md)
 - [Driver-framework map](common/driver-frameworks.md)
+- [Device Tree map](common/device-tree.md)
 - [x86-64 ABI and entry map](x86_64/abi-and-entry.md)
 - [x86-64 platform and board map](x86_64/platform-and-board.md)
-
+- [Generated inventory coverage](../inventory/coverage.md)

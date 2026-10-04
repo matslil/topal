@@ -1,0 +1,23 @@
+{
+  "architecture": "x86_64",
+  "baseline": "7.2.9",
+  "entries": [
+    {"conditions": [], "name": "clock_gettime", "source_line": 20, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_clock_gettime", "source_line": 21, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "gettimeofday", "source_line": 22, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_gettimeofday", "source_line": 23, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "getcpu", "source_line": 24, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_getcpu", "source_line": 25, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "time", "source_line": 26, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_time", "source_line": 27, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "clock_getres", "source_line": 28, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_clock_getres", "source_line": 29, "version": "LINUX_2.6"},
+    {"conditions": ["ifdef CONFIG_X86_SGX"], "name": "__vdso_sgx_enter_enclave", "source_line": 31, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "getrandom", "source_line": 33, "version": "LINUX_2.6"},
+    {"conditions": [], "name": "__vdso_getrandom", "source_line": 34, "version": "LINUX_2.6"},
+    {"conditions": ["ifdef CONFIG_FUTEX_ROBUST_UNLOCK"], "name": "__vdso_futex_robust_list64_try_unlock", "source_line": 37, "version": "LINUX_2.6"},
+    {"conditions": ["ifdef CONFIG_FUTEX_ROBUST_UNLOCK", "ifdef CONFIG_COMPAT"], "name": "__vdso_futex_robust_list32_try_unlock", "source_line": 39, "version": "LINUX_2.6"}
+  ],
+  "schema": "topal-linux-interface-inventory/1",
+  "source": "arch/x86/entry/vdso/vdso64/vdso64.lds.S"
+}
