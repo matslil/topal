@@ -53,6 +53,10 @@ debug-break-handler is fn (
   context resume
 
 lang systems artifact (
+  bootstrap-storage is lang systems bounded-bootstrap-storage (
+    capacity-bytes is 65536,
+    alignment-bytes is 4096
+  ),
   bootstrap is lang systems bootstrap-entry boot,
   debug-break is lang systems synchronous-exception-entry debug-break-handler
 )
@@ -73,6 +77,17 @@ resumes the interrupted bootstrap continuation. `context fatal` consumes the
 bootstrap context and enters the nonreturning fatal provider. These members are
 recognized only through their exact live context; they are not general
 functions, namespace aliases, or values which can be stored or passed.
+
+`bounded-bootstrap-storage` declares one artifact-provided monotonic pool. Its
+capacity and maximum supported allocation alignment are positive byte counts;
+the alignment is a power of two and cannot exceed the capacity. Allocation
+through the live bootstrap context is fallible, never calls a host service, and
+returns either one affine `BootstrapRegion` or the sealed storage error
+`invalid-request`/`exhausted`. Released regions are consumed but their bytes are
+not reused during bootstrap. The whole pool becomes reclaimable only after
+bootstrap completes with no live regions. Requests carry semantic placement;
+neither the pool nor a region exposes a physical address, object section, or
+linker spelling.
 
 The first target identity is `x86_64-unknown-none`, board
 `topal-qemu-pc-q35-10.2`, under profile

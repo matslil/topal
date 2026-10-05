@@ -55,6 +55,14 @@ an abstract transition trace but shall not make the target available to object
 or executable emission. The existing Linux-process compiler path shall
 continue to reject `systems` source before lowering and publication.
 
+The next checked-source increment shall require exactly one
+`bounded-bootstrap-storage` artifact member with positive literal byte capacity
+and power-of-two alignment no greater than capacity. It shall retain the
+descriptor in the checked program, model its provision before bootstrap entry,
+and reject missing, duplicate, malformed, or open storage declarations before
+lowering. This source acceptance shall not assign a physical address, object
+section, or executable qualification.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

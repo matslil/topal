@@ -33,11 +33,15 @@ SHALL NOT satisfy runtime authority.
 
 The initial systems source profile SHALL use ordinary application, function,
 product, and binding syntax under the sealed `lang systems` namespace. A root
-SHALL construct exactly one `lang systems artifact` whose `bootstrap` member is
-one `lang systems bootstrap-entry` and whose `debug-break` member is one
-`lang systems synchronous-exception-entry`. The former SHALL have one handler
-from `BootstrapContext` to `BootstrapDisposition`; the latter SHALL have one
-handler from `DebugBreakContext` to `DebugBreakDisposition`.
+SHALL construct exactly one `lang systems artifact` whose `bootstrap-storage`
+member is one `lang systems bounded-bootstrap-storage`, whose `bootstrap`
+member is one `lang systems bootstrap-entry`, and whose `debug-break` member is
+one `lang systems synchronous-exception-entry`. The storage constructor SHALL
+contain exactly positive `capacity-bytes` and `alignment-bytes` natural-number
+fields. Alignment SHALL be a power of two and SHALL NOT exceed capacity. The
+bootstrap entry SHALL have one handler from `BootstrapContext` to
+`BootstrapDisposition`; the debug-break entry SHALL have one handler from
+`DebugBreakContext` to `DebugBreakDisposition`.
 
 The only admitted initial handler operations SHALL be context-qualified
 `console write`, `debug break`, `resume`, and `fatal`. Console write SHALL
@@ -54,6 +58,17 @@ captured, stored, passed, returned, or used after consumption. Unknown
 namespace members, extra artifact entries, mismatched handler classifiers,
 duplicate roots, and ordinary-source use of any systems classifier or member
 SHALL be rejected before lowering.
+
+The bounded bootstrap pool SHALL be monotonic and SHALL NOT acquire a host
+service. Each allocation request SHALL name a positive byte count, a
+power-of-two alignment no greater than the pool alignment, and a closed
+semantic placement. It SHALL return either one affine `BootstrapRegion` or one
+sealed `BootstrapStorageErrorCode`: `invalid-request` for a malformed or
+phase-invalid request and `exhausted` when aligned capacity is insufficient.
+Releasing a region SHALL consume it without making its bytes available for a
+later bootstrap allocation. Bootstrap completion SHALL require no live region
+and SHALL make the complete pool reclaimable. No source operation SHALL expose
+the model offset as a machine or physical address.
 
 The first semantic target profile SHALL record target
 `x86_64-unknown-none`, board `topal-qemu-pc-q35-10.2`, and profile

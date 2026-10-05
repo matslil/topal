@@ -58,6 +58,12 @@ as returning to the interrupted bootstrap continuation. Unimplemented systems
 families shall remain unavailable rather than receiving placeholder host
 behavior.
 
+The second implementation increment shall model one artifact-provided bounded
+bootstrap pool, deterministic aligned monotonic allocation, sealed malformed
+and exhaustion failures, affine region provenance and release, and whole-pool
+reclamation only after bootstrap completes without live regions. Model offsets
+shall remain abstract and shall not acquire machine-address meaning.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

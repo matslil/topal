@@ -101,10 +101,10 @@ are explicit rather than schedule accidents.
 
 | Tool requirement | Governing rules | Evidence/status |
 | --- | --- | --- |
-| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | initial entry/observation/disposition model and negative tests implemented; remaining element families stay fail-closed |
+| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | initial entry/observation/disposition and bounded bootstrap-storage models with negative tests implemented; remaining element families stay fail-closed |
 | `TOPAL-SEM-ARCH-001` | `TOPAL-ARCH-SOURCE-001` through `TOPAL-ARCH-DIAGNOSTIC-001` | deterministic architecture validation, canonical identity, and negative model tests |
 | `TOPAL-COMP-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001`, `TOPAL-SYSTEMS-VOCABULARY-001` | initial feature/target isolation and fail-before-output CLI tests implemented |
-| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition checking implemented; remaining authority/lifetime/order corpus stays fail-closed |
+| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition and bounded storage declaration checking implemented; allocation source operations and remaining authority/lifetime/order corpus stay fail-closed |
 | `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | inspected x86-64 lowering and negative unqualified-target tests |
 | `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | ELF/image structure, placement, relocation, dependency, provenance, and atomic-publication tests |
 | `TOPAL-COMP-SYSTEMS-TEST-001` | `TOPAL-SYSTEMS-QUALIFY-001` | shared negative matrix plus pinned-QEMU provider evidence |
