@@ -15,3 +15,5 @@
 /linux-kernel/labs/**/*.img
 /linux-kernel/labs/**/*.qcow2
 /linux-kernel/labs/**/*.raw
+/linux-kernel/**/__pycache__/
+/linux-kernel/**/*.py[cod]

@@ -1,0 +1,66 @@
+#cloud-config
+preserve_hostname: false
+hostname: topal-linux-reference
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: topal
+    gecos: Topal kernel lab
+    groups: [sudo]
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: topal
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - @SSH_PUBLIC_KEY@
+write_files:
+  - path: /usr/local/sbin/topal-provision
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      set -eu
+      rm -f /etc/apt/sources.list.d/debian.sources
+      cat > /etc/apt/sources.list <<'EOF'
+      deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/20261002T000000Z/ trixie main
+      deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20261002T000000Z/ trixie-security main
+      EOF
+      export DEBIAN_FRONTEND=noninteractive
+      dpkg --configure -a
+      apt-get -o Acquire::Check-Valid-Until=false update
+      apt-get -o Acquire::Check-Valid-Until=false install -y --no-install-recommends acpica-tools busybox-static docker-cli docker.io pciutils podman sudo
+      systemctl enable --now docker.service
+      install -d -m 0755 /var/lib/topal-smoke/rootfs
+      install -m 0755 /bin/busybox /var/lib/topal-smoke/rootfs/busybox
+      tar -C /var/lib/topal-smoke/rootfs -cf /var/lib/topal-smoke/rootfs.tar .
+      docker image rm topal/smoke:step3 >/dev/null 2>&1 || true
+      podman image rm topal/smoke:step3 >/dev/null 2>&1 || true
+      docker import /var/lib/topal-smoke/rootfs.tar topal/smoke:step3
+      podman import /var/lib/topal-smoke/rootfs.tar topal/smoke:step3
+      touch /var/lib/topal-smoke/provisioned
+  - path: /usr/local/sbin/topal-smoke
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      set -eu
+      test -e /var/lib/topal-smoke/provisioned
+      test "$(uname -m)" = x86_64
+      test -r /proc/self/status
+      test -r /sys/devices/system/cpu/online
+      test -c /dev/null
+      test -c /dev/urandom
+      printf 'shell:%s\n' "$(/bin/sh -c 'printf ok')"
+      printf 'dynamic-libc:'
+      ldd /bin/sh | head -n 1
+      printf 'filesystem:%s\n' "$(stat -c %F /tmp)"
+      printf 'process:%s\n' "$(printf ok | tr a-z A-Z)"
+      printf 'docker:'
+      docker run --rm --network none topal/smoke:step3 /busybox sh -c 'test -r /proc/self/status; printf ok'
+      printf '\npodman:'
+      podman run --rm --network none topal/smoke:step3 /busybox sh -c 'test -r /proc/self/status; printf ok'
+      printf '\nSTEP3_SMOKE_OK\n'
+runcmd:
+  - [/usr/local/sbin/topal-provision]
+final_message: TOPAL_CLOUD_INIT_COMPLETE
