@@ -28,8 +28,9 @@ The specification is divided into:
 - [synthesized concurrency and transactions](concurrency-implementations.md);
 - [time and static-rate dataflow](time-and-dataflow.md);
 - [effect handlers and implementation plans](effect-handlers-and-plans.md); and
-- [composite layouts and information flow](composite-layouts-and-information-flow.md); and
-- [architecture-model conformance](architecture-models.md); and
+- [composite layouts and information flow](composite-layouts-and-information-flow.md);
+- [architecture-model conformance](architecture-models.md);
+- [freestanding systems-profile semantics](systems-profile.md); and
 - [optimization-policy conformance](optimization-policy.md).
 
 Each normative rule has a stable ID. **Shall**, **must**, and **is** are

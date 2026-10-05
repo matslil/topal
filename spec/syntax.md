@@ -49,6 +49,10 @@ not through a second bootstrap grammar. A debugger command file shall select
 implicitly. Selection adds only the variant's vocabulary and authority to that
 source context.
 
+The `systems` feature defined by `TOPAL-SYSTEMS-FEATURE-001` adds sealed
+vocabulary but no grammar production. Its static constructions use this same
+ordinary binding, classification, application, function, and context syntax.
+
 ### TOPAL-SYN-LIBRARY-001 — Explicit library dependency
 
 After its initial language selection, a source file MAY declare a library

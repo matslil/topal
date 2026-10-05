@@ -22,7 +22,10 @@ The design currently covers:
 - layouts, addressed storage, sensitive values, tracing, debugger scripting,
   source documentation, generated API reference material,
   [architecture models](architecture-models.md), the
-  [compiler optimization policy](optimization-policy.md), and performance; and
+  [compiler optimization policy](optimization-policy.md), and performance;
+- the optional capability-gated [freestanding systems profile](systems-profile.md)
+  for typed privileged entry, memory, synchronization, device, and artifact
+  operations; and
 - unit testing, structural path coverage, and the best-practice database.
 
 Revision `v0.2` additionally defines [contracts and evidence](contracts-and-evidence.md),
@@ -32,6 +35,11 @@ Revision `v0.2` additionally defines [contracts and evidence](contracts-and-evid
 introduce source atomics, locks, foreign ABIs, or a hardware architecture
 description. The separately selected `abi` feature provides an explicitly
 targeted C boundary and does not change those portable semantics.
+
+The separately selected `systems` feature is not part of portable `v0.2`
+semantics. It exposes sealed privileged vocabulary only to a qualified
+freestanding root artifact and preserves the portable meaning of dependencies
+which do not select it.
 
 The [design-pattern research library](design-patterns/README.md) is a
 non-normative survey used to test the breadth of the core design. Its pattern

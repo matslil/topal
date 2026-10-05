@@ -516,9 +516,11 @@ type or task.
 The retry property is `RetrySafe`. Capitalized standard property constructors
 are unqualified language-context objects, not keywords or `lang` members.
 Implementation evidence is compiler/provider-owned and cannot change semantic
-results. Topal exposes no source atomic, lock, fence, memory order, or
+results. Portable Topal exposes no source atomic, lock, fence, memory order, or
 reclamation operation; a compiler may synthesize and certify such mechanisms
-behind safe semantic constructs.
+behind safe semantic constructs. The separately selected `systems` feature
+adds the checked atomic and critical foundations defined by the freestanding
+systems profile without weakening portable contexts.
 
 Foreign ABIs and the concrete architecture model remain deferred. The portable
 core defines only the typed evidence seam needed to consume their later checked

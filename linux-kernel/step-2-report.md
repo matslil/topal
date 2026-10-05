@@ -44,14 +44,14 @@ or introducing a generic unsafe mode.
 11. keep Linux policy and subsystems in libraries/modules rather than language
     syntax or compiler intrinsics.
 
-## Approval boundary
+## Approval record
 
-This PR documents a proposal under `linux-kernel/design/`. It intentionally
-does not edit authoritative language design, system requirements, formal
-specifications, tests, or compiler implementation. Merging the research record
-does not silently change Topal. Explicit approval of the choices above in the
-current discussion is required before a follow-up change propagates them into
-the protected authority hierarchy.
+The proposal was approved in the project discussion after PR #790 merged. The
+approved meaning is propagated in a follow-up authority-ordered change through
+`docs/systems-profile.md`, `TOPAL-REQ-SYSTEMS-*`,
+`spec/systems-profile.md`, tool requirements, and traceability. Implementation
+and executable x86-64 qualification remain planned rather than implied by
+design approval.
 
 ## Risk and review assessment
 
@@ -67,12 +67,10 @@ documentation only. The review controls are:
 - preservation of Linux external behavior at adapters; and
 - a required human approval checkpoint before authoritative changes.
 
-## Next work after approval
+## Next work after design adoption
 
-1. propagate approved meaning into `docs/` and `se/`;
-2. add formal `spec/` rules and traceability;
-3. implement architecture-independent semantic checking and model behavior;
-4. implement and qualify the x86-64 providers and kernel artifact toolchain;
-5. use the independently reproducible Step 3 Linux VM as the boot and
+1. implement architecture-independent semantic checking and model behavior;
+2. implement and qualify the x86-64 providers and kernel artifact toolchain;
+3. use the independently reproducible Step 3 Linux VM as the boot and
    differential reference; and
-6. begin kernel implementation only after the necessary toolchain gate passes.
+4. begin kernel implementation only after the necessary toolchain gate passes.

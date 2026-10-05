@@ -131,5 +131,6 @@ Before kernel code, each candidate family needs:
 Step 2 supplies that proposal in the [systems-profile element set](kernel-elements.md),
 [cross-architecture pressure test](architecture-pressure-test.md),
 [kernel architecture](topal-kernel-architecture.md), and
-[Linux mapping ledger](linux-to-topal-mapping.md). Those records remain
-proposals until the required approval and authority-ordered propagation.
+[Linux mapping ledger](linux-to-topal-mapping.md). The records were approved
+after PR #790 and are propagated through the authoritative systems-profile
+design, requirements, and formal specification.

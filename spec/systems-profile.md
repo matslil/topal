@@ -1,0 +1,302 @@
+# Freestanding systems-profile semantics
+
+## Formal text
+
+### TOPAL-SYSTEMS-FEATURE-001 — Feature and artifact boundary
+
+`systems` SHALL be a revisioned language feature selected through
+`TOPAL-SYN-CONTEXT-001`. It SHALL add the sealed `lang systems` namespace and
+SHALL add no grammar production. A source context selecting it SHALL be valid
+only within one qualified freestanding systems root artifact. The same root
+SHALL NOT use an ordinary hosted-process artifact profile.
+
+A dependency which does not select `systems` SHALL retain its portable
+semantics and vocabulary when composed into a systems artifact. Selection,
+import, name lookup, or architecture-model access SHALL NOT itself grant
+runtime authority.
+
+### TOPAL-SYSTEMS-AUTHORITY-001 — Unforgeable systems authority
+
+An entry, processor, privilege, address-space, mapping, interrupt, preemption,
+fault-recovery, device, DMA, context, placement, or artifact capability SHALL
+be an opaque resource identity constructed only by a qualified artifact or
+provider transition. Ordinary or generated source SHALL NOT construct, copy,
+widen, serialize, deserialize, compare for underlying identity, or derive such
+authority from a numeric value, model fact, layout, or diagnostic projection.
+
+Every systems operation SHALL consume or borrow the exact live capability for
+its subject and SHALL record its effects, context, lifetime, failure, and
+provider evidence. A target model SHALL establish legality facts only and
+SHALL NOT satisfy runtime authority.
+
+### TOPAL-SYSTEMS-ENTRY-001 — Static special entry
+
+`SystemEntry K` SHALL classify a static artifact declaration rather than an
+ordinary callable function. `K` SHALL be one of `Bootstrap`, `SecondaryCpu`,
+`SynchronousException`, `ExternalInterrupt`, `UserSyscall`,
+`MachineCritical`, or `ResumeThread` in the initial profile.
+
+An entry declaration SHALL identify one target profile, handler, opaque
+context classifier, legal capability bundle, execution restrictions, and
+closed disposition set. The context and capabilities SHALL be affine, SHALL
+exist only for the dynamic entry extent, and SHALL NOT escape through return,
+storage, capture, message, task, foreign, serialization, or another entry.
+
+The backend SHALL own physical entry symbols, sections, alignment, machine
+frames, stack transitions, saved state, security transitions, unwind/debug
+information, and return sequences. Source SHALL NOT select or observe those
+representations.
+
+### TOPAL-SYSTEMS-DISPOSITION-001 — Complete entry disposition
+
+An entry handler SHALL end in exactly one disposition admitted by its entry
+kind. A disposition SHALL name the semantic continuation, such as resume,
+return to validated user state, schedule, deliver a user exception, or fatal
+transition. It SHALL consume the entry context and every outstanding affine
+entry obligation.
+
+The checker SHALL reject a disposition unless required interrupt
+acknowledgement, masking/preemption restoration or transfer, address-space and
+user-state validation, resource release/transfer, and recovery obligations are
+proved. A disposition SHALL NOT be represented as an ordinary function return
+in checked semantics.
+
+### TOPAL-SYSTEMS-OBSERVATION-001 — Declared observation and linearization
+
+A systems external observation SHALL have event
+`Observe(s,q,p)`, where `s` is one live source capability, `q` is that source's
+monotonic event identity, and `p` is a value or declared error satisfying its
+selected layout. Its contract SHALL state ordering, duplication, loss,
+acknowledgement, and completion rules.
+
+A concurrent protocol MAY expose `Linearize(d,t)` for transition `t` in domain
+`d` when several invariant-preserving transitions are enabled without an
+ordering edge. Every permitted linearization SHALL preserve the protocol
+invariant and external contract. The resulting events SHALL participate in the
+observable trace and replay evidence.
+
+Absent `Observe` or `Linearize` input/effects, systems code SHALL retain the
+portable schedule-equivalence requirement. These events SHALL NOT authorize a
+data race, arbitrary random choice, invented event, or removal, duplication,
+merging, or speculation of a required observation.
+
+### TOPAL-SYSTEMS-MACHINE-001 — Closed machine-provider transition
+
+A machine-provider operation SHALL have a stable closed identity and specify:
+consumed and produced semantic state; privilege and resource identities;
+legal execution contexts; fault and recovery behavior; ordering and visibility
+relations; required architecture evidence; and an abstract model transition or
+explicit unavailable-model result.
+
+Only a language revision SHALL introduce a common machine-operation identity.
+A common identity SHALL have one architecture-independent contract. A facility
+without that contract SHALL use a target-qualified identity. No provider or
+source package SHALL introduce an arbitrary instruction, register, clobber,
+intrinsic, or opaque privileged transition.
+
+### TOPAL-SYSTEMS-ADDRESS-001 — Disjoint address families
+
+Systems address families SHALL include `Physical`, `KernelVirtual`,
+`UserVirtual A`, `Device D`, `Dma I`, and `Firmware F`, each qualified by its
+owning resource identity where shown. Numeric equality across families or
+owners SHALL establish neither aliasing nor authority.
+
+An address range SHALL record a target-qualified width and half-open
+mathematical-natural interval whose endpoint calculation does not overflow
+that width. Checked subrange and offset derivation SHALL preserve family,
+owner, bounds, and no stronger authority. Decoding an external number SHALL
+produce only an untrusted candidate until validated against one live range.
+There SHALL be no general integer-to-address or cross-family cast.
+
+### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
+
+A location SHALL combine one live address range with layout, rights, lifetime,
+supported access sizes/alignment, cache policy, and ordering domain. A mapping
+SHALL be a linear resource relating source and destination ranges under page
+layout, permissions, owner, lifetime, and translation-provider evidence.
+
+Page-table editing SHALL require one exclusive builder. Activation,
+permission change, unmapping, translation invalidation, and reuse SHALL follow
+one declared state protocol and SHALL name every affected processor/scope.
+Storage or address reuse SHALL be invalid until the provider's completion
+contract establishes that no stale translation can authorize access.
+
+### TOPAL-SYSTEMS-RECOVERY-001 — Closed fault recovery and user transfer
+
+A recovery scope SHALL name a finite fault class, admitted generated
+operations, resource identities, result mapping, and cleanup. The backend
+SHALL bind only generated fault sites in that scope to generated recovery
+continuations. Source SHALL NOT observe, construct, or supply a faulting or
+recovery instruction address.
+
+A user transfer SHALL require one live `UserVirtual A` validation capability,
+untrusted candidate range and maximum extent, direction, layout or byte policy,
+kernel-owned storage, and partial-progress/interruption policy. It SHALL return
+validated data, permitted partial progress, or a structured fault. Direct
+source access through a user candidate SHALL be invalid.
+
+An unlisted fault, nested fault outside its own admitted scope,
+machine-critical event, or corrupted entry/stack state SHALL NOT be caught by
+this rule and SHALL follow its owning entry or fatal protocol.
+
+### TOPAL-SYSTEMS-ATOMIC-001 — Atomic location and modification order
+
+`AtomicLocation T D` SHALL be a live, aligned fixed-layout location for one
+provider-supported scalar or tagged state `T` in synchronization domain `D`.
+Its construction SHALL consume exclusive storage ownership; its destruction
+SHALL prove that no atomic operation remains before returning storage to
+non-atomic use or release.
+
+For each atomic location `l`, all successful modifications SHALL have one
+strict total modification order `mo_l` consistent with happens-before. Atomic
+load, store, exchange, compare/exchange, and admitted read-modify-write SHALL
+be indivisible and a read SHALL observe one value permitted by `mo_l` and the
+operation's order. An atomic operation SHALL have an effect on `l` and `D`.
+
+Plain conflicting access to live atomic storage SHALL be invalid. Atomicity
+SHALL NOT grant access to overlapping storage, repair an invalid lifetime, or
+imply device/DMA atomicity.
+
+### TOPAL-SYSTEMS-ORDER-001 — Atomic and visibility relations
+
+Atomic orders SHALL be:
+
+- `AtomicOnly`: `mo_l` participation without an unrelated visibility edge;
+- `Acquire`: `AtomicOnly` plus an edge from an observed release sequence to
+  observations sequenced after the acquire;
+- `Release`: `AtomicOnly` plus an edge from observations sequenced before it to
+  an acquire which observes its release sequence;
+- `AcquireRelease`: both relations for a modifying operation; and
+- `Sequential`: `AcquireRelease` plus one strict total order over all
+  sequential operations consistent with happens-before and each `mo_l`.
+
+Compare/exchange SHALL declare success and failure orders separately; a
+failure order SHALL be `AtomicOnly` or `Acquire`. A provider MAY strengthen an
+implementation order but SHALL NOT expose a result forbidden by the selected
+order.
+
+CPU memory, device/MMIO, DMA ownership, cache maintenance, instruction
+synchronization, and translation maintenance SHALL be distinct relation
+families. Each operation SHALL name direction, observations, agents, topology
+scope, and completion. A zero-instruction lowering SHALL require evidence that
+the target already guarantees the complete relation.
+
+### TOPAL-SYSTEMS-CRITICAL-001 — Affine critical-state restoration
+
+Entering a preemption or interrupt critical scope SHALL produce one affine
+token containing processor identity, domain, nesting identity, and exact prior
+state. The token SHALL be consumed exactly once by the matching restoration or
+an admitted disposition transfer on every exit path. It SHALL NOT escape,
+suspend, cross a processor, or be restored out of nesting order.
+
+The exclusion established by a critical scope SHALL contain only the producers
+named by its domain. Masking local interrupts SHALL NOT establish exclusion
+from another processor, non-maskable event, device, or DMA agent. An operation
+which may block SHALL be invalid in interrupt or machine-critical context.
+
+### TOPAL-SYSTEMS-CONTEXT-001 — Linear execution-context transfer
+
+A suspended execution context SHALL be an opaque linear resource owning its
+kernel stack, saved target state, extended-state policy, thread identity, and
+address-space relationship. It SHALL arise only from special entry,
+initial-context construction, or prior qualified transfer.
+
+Context transfer SHALL consume the running-context capability and exactly one
+validated suspended context, perform its declared per-processor and
+address-space transition, and resume exactly one continuation. It SHALL be
+nonordinary control flow and SHALL NOT expose register slots, stack pointers,
+or continuation instruction addresses to source. User/debug state SHALL use a
+separate validated semantic view.
+
+### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
+
+A device location SHALL bind its layout to one live device session, permitted
+access directions and widths, alignment, read/write side effects, reserved-bit
+policy, ordering domain, and failure behavior. An access SHALL be an observable
+effect and SHALL occur exactly as required by its protocol: it SHALL NOT be
+invented, removed, duplicated, combined, or moved across a conflicting event.
+
+Target-specific addressed-I/O facilities SHALL satisfy the same resource,
+effect, context, and lifetime rules even when they are not MMIO. Knowledge of
+an address or port number SHALL grant no session or access capability.
+
+### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
+
+A DMA buffer SHALL have exactly one of `CpuOwned`, `Prepared`, `DeviceOwned`,
+`Completed`, `Failed`, or terminal reclaimed states. A transition SHALL name
+direction, device and translation domains, mapping, cache/visibility work,
+descriptor publication, notification, completion source, and failure/cleanup.
+
+CPU access SHALL be invalid while ownership is `DeviceOwned`, except for an
+explicitly modeled coherent shared protocol. Device notification SHALL require
+completed preparation and descriptor visibility. Unmapping or reclamation
+SHALL require completed/cancelled device ownership and every provider-specific
+completion obligation. A coherent provider MAY perform no cache instruction
+only with evidence preserving these same transitions.
+
+### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
+
+A systems allocation SHALL be fallible and SHALL name one live pool/region,
+alignment, address family, context legality, reclaim policy, and physical/DMA
+constraints. Bootstrap allocation SHALL remain within its bounded artifact-
+provided resource. No allocation or cleanup path SHALL acquire a host service
+implicitly.
+
+Static placement SHALL use closed semantic requirements, including special
+entry text, read-only or mutable data, per-processor template,
+bootstrap-reclaimable data, page-aligned table, and boot-adapter input. Source
+SHALL NOT name an object section, linker directive, or physical register. The
+artifact provider SHALL prove that its concrete placement satisfies every
+requirement.
+
+### TOPAL-SYSTEMS-ARTIFACT-001 — Validated freestanding publication
+
+A systems artifact SHALL record a distinct target profile, architecture model,
+provider revisions, data layout, object format, relocation/code model, entry
+set, placement plan, link inputs, debug/unwind identity, and provenance. It
+SHALL contain no implicit host syscall, allocator, process startup, libc,
+dynamic loader, foreign runtime, or ordinary process-termination path.
+
+Linking and structural inspection SHALL complete before atomic publication of
+the kernel, debug, map, and provenance outputs. Boot packaging SHALL be a
+separately qualified adapter which records its boot/firmware contract and input
+artifact digest. A fatal disposition SHALL enter a nonreturning provider whose
+minimal path requires no general allocation, blocking lock, scheduler,
+filesystem, or userspace service.
+
+### TOPAL-SYSTEMS-QUALIFY-001 — Qualification and fail-closed support
+
+Each systems element SHALL have semantic, context, authority, lifetime,
+ordering, target, and unsupported-provider tests; an abstract model transition
+or explicit model limitation; artifact inspection where lowering is physical;
+and emulator or hardware evidence for each executable-qualified provider.
+
+A common element SHALL be reviewed against x86-64, AArch64, and RISC-V before
+admission. This review SHALL NOT executable-qualify those targets. A compiler,
+interpreter, or provider missing applicable qualification SHALL reject the
+feature, operation, target, or artifact before producing partial output and
+SHALL NOT substitute a host mechanism.
+
+## Graphical presentation
+
+```mermaid
+flowchart LR
+    S[systems source] --> C[checked semantic element]
+    M[qualified architecture model] --> P[sealed provider]
+    A[live runtime capability] --> P
+    C --> P
+    P --> T[target transition or artifact]
+    T --> E[trace and qualification evidence]
+```
+
+## Explanatory notes
+
+The systems profile exposes machine interaction without making representation
+the source model. A target may use an instruction sequence, runtime table,
+generated entry stub, or no instruction at all when each refines the same
+semantic transition.
+
+Atomic and external-observation rules extend the execution relation only in a
+selected systems context. They do not weaken ordinary Topal race rejection or
+permit an optimizer to choose an application-visible interleaving.
+

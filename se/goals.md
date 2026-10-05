@@ -47,3 +47,12 @@ Compiled Topal applications should integrate directly with their selected
 operating-system platform without an accidental dependency on another
 language's standard library or runtime. Target-specific mechanisms should
 remain behind typed, reviewable Topal platform boundaries.
+
+## TOPAL-GOAL-SYSTEMS-001 — Safe freestanding systems implementation
+
+Topal should implement kernels and other privileged freestanding systems
+without source assembly, generic unsafe operations, forged addresses, ambient
+machine authority, or implicit host services. Machine-irreducible operations
+should use typed capability-gated semantics whose common meaning is tested
+across architecture families and whose implementations are qualified per
+target.

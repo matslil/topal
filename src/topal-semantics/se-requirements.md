@@ -38,6 +38,18 @@ derive an order-independent SHA-256 identity from canonical effective facts.
 This reference model shall perform no host detection and shall not itself
 qualify a backend, platform, or empirical cost claim.
 
+## TOPAL-SEM-SYSTEMS-001 — Authority-safe systems reference model
+
+The shared semantic library shall model systems feature selection, sealed
+authority identities, entry context/disposition compatibility, declared
+observation and protocol linearization, address-family and mapping state,
+fault-recovery scope, atomic modification/ordering relations, affine critical
+tokens, linear context transfer, device-register protocols, DMA ownership,
+semantic placement, and artifact obligations without executing a host machine
+operation. It shall reject forgery, wrong context, escaped affine resources,
+invalid state transitions, insufficient ordering, plain/atomic conflicts, and
+unsupported providers deterministically.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

@@ -1,10 +1,11 @@
 # Proposed Topal systems profile and kernel elements
 
-This document proposes the minimal Topal changes needed to implement the
-architecture in [the kernel design](topal-kernel-architecture.md). It is not
-authoritative language meaning. Illustrative names are descriptive, not
-approved syntax. Adoption requires prior human approval followed by changes in
-`docs/`, `se/`, `spec/`, tests, and `src/` in authority order.
+This document records the minimal Topal changes approved for the architecture
+in [the kernel design](topal-kernel-architecture.md). Authoritative language
+meaning is now defined in `docs/systems-profile.md`, the
+`TOPAL-REQ-SYSTEMS-*` requirements, and `spec/systems-profile.md`. Illustrative
+names here remain explanatory where the authoritative records do not expose a
+surface name.
 
 ## TK-SYSTEMS-001 — Separate, capability-gated profile
 
@@ -321,9 +322,10 @@ stated using the elements above. Making them syntax or backend intrinsics would
 freeze Linux structure into the language and make architecture or policy
 evolution harder.
 
-## Required approval and implementation order
+## Adoption and implementation order
 
-1. approve or revise the semantic families and their boundary with libraries;
+1. approve or revise the semantic families and their boundary with libraries
+   (complete after PR #790);
 2. update authoritative `docs/` and `se/` with the selected systems profile;
 3. add normative rules and traceability in `spec/`;
 4. implement architecture-independent semantic checking and model behavior;

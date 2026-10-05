@@ -8,9 +8,9 @@ traceability ledger.
 | --- | --- | --- | --- |
 | implement only x86-64 initially | `LK-SCOPE-001` | [baseline](baseline.md) | target profile, boot test, native UAPI inventory |
 | support the complete latest interface | `LK-SCOPE-002`, `LK-SCOPE-003` | [baseline](baseline.md), [UAPI map](knowledge/common/linux-uapi.md), [source inventory](inventory/coverage.md) | semantic dispositions and differential tests |
-| use Topal elements instead of source assembly | `TK-ELEMENT-001`, `TK-ELEMENT-ENTRY-001`, `TK-ELEMENT-MACHINE-001` | [systems-profile proposal](design/kernel-elements.md) | approved language design, spec rules, compiler tests, entry artifact inspection |
-| model hardware/concurrent observations | `TK-ELEMENT-OBSERVATION-001` | [systems-profile proposal](design/kernel-elements.md) | approved trace semantics, protocol tests, replay and QEMU evidence |
-| keep new elements portable in meaning | `TK-ELEMENT-*` | [cross-architecture pressure test](design/architecture-pressure-test.md) | approval and x86-64 provider qualification |
+| use Topal elements instead of source assembly | `TK-ELEMENT-001`, `TK-ELEMENT-ENTRY-001`, `TK-ELEMENT-MACHINE-001` | [approved systems profile](../docs/systems-profile.md), [formal rules](../spec/systems-profile.md) | compiler tests and entry artifact inspection |
+| model hardware/concurrent observations | `TK-ELEMENT-OBSERVATION-001` | `TOPAL-SYSTEMS-OBSERVATION-001` | protocol tests, replay and QEMU evidence |
+| keep new elements portable in meaning | `TK-ELEMENT-*` | [cross-architecture pressure test](design/architecture-pressure-test.md), `TOPAL-SYSTEMS-QUALIFY-001` | x86-64 provider qualification |
 | fit Linux responsibilities to Topal | `TK-KERNEL-*`, `TK-MAP-*` | [kernel architecture](design/topal-kernel-architecture.md), [mapping ledger](design/linux-to-topal-mapping.md) | module designs, implementations, and conformance evidence |
 | map Linux driver frameworks | `LK-DRIVER-*` | [driver map](knowledge/common/driver-frameworks.md) | Topal protocol mappings and subsystem conformance ledgers |
 | support DTS/DTB | `LK-DT-*` | [Device Tree map](knowledge/common/device-tree.md), [binding inventory](inventory/7.2.9/x86_64/devicetree-bindings.json) | parser/binding tests and selected platform boot |

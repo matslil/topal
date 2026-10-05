@@ -267,6 +267,11 @@ The selected implementation may use that value to enable dependencies,
 declarations, and published members. Feature types define the permitted values.
 No behavior follows merely from naming an argument `features`.
 
+A revisioned language feature may define additional vocabulary through this
+ordinary argument, as `debug` and `systems` do. That static selection is not a
+runtime privilege grant. In particular, `systems` authority still comes only
+from a qualified freestanding artifact/provider construction.
+
 Feature sets do not accumulate or unify implicitly. Each `use` supplies the
 complete constructor arguments for one instance. In particular, a later
 language selection constructs a new language context:

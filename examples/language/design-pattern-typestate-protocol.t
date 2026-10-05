@@ -1,4 +1,5 @@
 use language (version is v0.1)
+# Demonstrates the current runtime approximation of a typestate protocol.
 # A meter client has a small protocol. The Union makes alternatives and checks
 # explicit, but this is only a runtime model: current Topal cannot consume a
 # Ready capability when `read` is called or prevent callers from retaining it.

@@ -162,8 +162,9 @@ copy, or independence evidence and shall clean up deterministically.
 
 The language shall expose bounded interaction policies and immutable published
 snapshots while keeping atomics, locks, fences, memory orders, and reclamation
-mechanisms out of portable source. Only a verified selected implementation may
-publish nonblocking progress evidence.
+mechanisms out of portable source. The selected systems profile may expose only
+the checked foundations governed by `TOPAL-REQ-SYSTEMS-SYNC-001`. Only a
+verified selected implementation may publish nonblocking progress evidence.
 
 ## TOPAL-REQ-TRANSACTION-001 — Structured atomic state
 
@@ -287,6 +288,92 @@ shall identify the affected transformation, alternatives, conservative result,
 model and policy identities, and the authorized source capable of supplying the
 fact. It shall not suggest that ordinary source assert hardware truth or
 evidence status.
+
+## TOPAL-REQ-SYSTEMS-PROFILE-001 — Isolated freestanding systems profile
+
+The optional `systems` feature shall add a closed privileged vocabulary without
+changing portable Topal meaning or adding new grammar. It shall be valid only
+for a qualified freestanding root artifact; selection alone shall grant no
+runtime authority. Non-systems dependencies shall neither acquire systems
+vocabulary nor machine authority through composition.
+
+## TOPAL-REQ-SYSTEMS-ENTRY-001 — Typed special entry and disposition
+
+Boot, secondary-processor, exception, interrupt, syscall, machine-critical,
+and resumed-thread entry shall use typed static entry declarations rather than
+ordinary calling conventions or source assembly. The compiler/backend shall
+own physical frames, stacks, prologues, epilogues, security state, unwind data,
+and return mechanisms. Source handlers shall receive only context-legal
+capabilities and shall return one checked disposition.
+
+## TOPAL-REQ-SYSTEMS-OBSERVATION-001 — Declared systems nondeterminism
+
+External events and concurrent winner selection shall be observable only
+through declared source capabilities or invariant-preserving protocols with
+typed results, ordering constraints, and trace identities. Portable code shall
+remain deterministic absent such an input or effect. Compilers shall not
+invent, discard, merge, or speculate a required observation.
+
+## TOPAL-REQ-SYSTEMS-MACHINE-001 — Sealed semantic machine providers
+
+Privileged operations shall be closed provider functions whose semantic state
+transition, authority, resource identity, context, fault, ordering, target
+evidence, and model behavior are explicit. Common operations shall state
+architecture-independent meaning; facilities without one honest common
+contract shall remain target-qualified. No source facility shall admit an
+arbitrary instruction, register, intrinsic, or privileged operation.
+
+## TOPAL-REQ-SYSTEMS-MEMORY-001 — Address, mapping, and fault isolation
+
+Physical, kernel virtual, user virtual, device, DMA, and firmware-source
+addresses shall retain distinct resource-qualified identities. Mapping and
+location authority shall arise only through checked construction and shall
+retain bounds, layout, rights, cache/order policy, owner, and lifetime. User
+transfer and other admitted recovery shall use generated closed fault scopes;
+source shall not dereference a user candidate or name a recovery instruction.
+
+## TOPAL-REQ-SYSTEMS-SYNC-001 — Checked shared-state synchronization
+
+Systems shared state shall use typed atomic locations, affine critical scopes,
+or verified higher-level protocols. Atomic orders shall define language
+relations independently of target instructions and shall distinguish CPU,
+device, DMA, translation, cache, and instruction domains. Plain conflicting
+access shall remain a rejected race; masking one producer shall not imply
+exclusion of another.
+
+## TOPAL-REQ-SYSTEMS-CONTEXT-001 — Opaque scheduler context transfer
+
+Running and suspended execution contexts shall be opaque linear resources
+owning their stack and target state. Only a qualified context-transfer
+operation may consume one running context and resume one validated suspended
+context. Register slots and machine continuation addresses shall not be source
+values, and transfer shall not be modeled as an ordinary returning call.
+
+## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
+
+Device locations shall bind layouts to legal access widths, side effects,
+reserved-bit policy, ordering, and a live device session. DMA shall transfer
+buffer ownership through explicit CPU, prepared, device, completion/failure,
+and reclamation states with mapping, cache, notification, and completion
+evidence. Coherent hardware shall not erase the protocol or evidence boundary.
+
+## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
+
+A systems artifact shall use a distinct qualified target profile, generated
+special roots, semantic placement, explicit relocation/code-model policy, and
+atomic validated publication. It shall have no implicit host syscall,
+allocator, process startup, libc, dynamic loader, foreign runtime, or ordinary
+process-termination path. Boot packaging shall be a separately qualified
+artifact adapter.
+
+## TOPAL-REQ-SYSTEMS-QUALIFY-001 — Cross-architecture and target evidence
+
+Every systems element shall have architecture-independent semantic and
+negative tests, an abstract model transition or explicit model limitation,
+target/provider provenance, artifact inspection, and emulator or hardware
+evidence. Common semantics shall be reviewed against x86-64, AArch64, and
+RISC-V; executable qualification may remain target-specific and shall fail
+closed elsewhere.
 
 ## TOPAL-REQ-OPT-FEASIBILITY-001 — Constraints before optimization preference
 

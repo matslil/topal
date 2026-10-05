@@ -29,7 +29,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/tasks.md` | 5 | 7 | `topal-syntax`, `topal-language`, shared execution tools | static, runtime | complete |
 | `spec/serialization.md` | 22 | 8 | shared layout and serialization codecs | artifact, runtime | complete |
 | `spec/generic-ir.md` | 11 | 9 | shared generic artifact and source-package identity model | artifact, compiler-only | complete |
-| `spec/standard-library.md` | 26 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
+| `spec/standard-library.md` | 27 | 9 | shared library loader and cross-tool conformance suites | static, runtime, artifact | complete |
 | `spec/advent-of-code-library.md` | 2 | 9 | shared library loader and companion-library conformance suites | static, runtime | complete |
 | `spec/tracing.md` | 4 | 9 | shared semantic tracing and adapters | static, runtime, artifact | complete |
 | `spec/debugger-scripting.md` | 3 | 9 | `topal-debugger`, shared language variants | static, runtime | complete |
@@ -44,7 +44,10 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/time-and-dataflow.md` | 8 | 12 | `topal-semantics`, shared execution providers | static, runtime | planned |
 | `spec/effect-handlers-and-plans.md` | 7 | 12 | `topal-semantics`, compiler-only implementation planner | static, runtime, compiler-only | planned |
 | `spec/composite-layouts-and-information-flow.md` | 9 | 12 | `topal-semantics`, checked layout and policy providers | static, runtime, artifact | planned |
-| `spec/compiler.md` | 255 | 13 | `topal-compiler`, shared checked frontend, platform runtime | static, runtime, artifact, compiler-only | planned |
+| `spec/architecture-models.md` | 22 | 13 | `topal-semantics`, architecture package validator, compiler target providers | static, artifact, compiler-only | planned |
+| `spec/compiler.md` | 260 | 13 | `topal-compiler`, shared checked frontend, platform runtime | static, runtime, artifact, compiler-only | planned |
+| `spec/optimization-policy.md` | 12 | 13 | compiler implementation planner and optimization-policy engine | static, artifact, compiler-only | planned |
+| `spec/systems-profile.md` | 18 | 14 | `topal-semantics`, compiler systems checker, target providers and artifact publisher | static, runtime, artifact, platform-specific | planned |
 
 ## Cross-tool evidence
 
