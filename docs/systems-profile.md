@@ -35,6 +35,52 @@ whether a lowering is available and qualified; runtime capabilities identify
 the actual processor, address space, interrupt domain, or device on which an
 operation is authorized.
 
+## Initial source vocabulary
+
+The first executable-qualification slice uses ordinary Topal construction
+syntax under the sealed `lang systems` namespace. It does not add keywords or
+make the namespace extensible by source packages. The initial root shape is:
+
+```topal
+boot is fn (context : BootstrapContext) -> BootstrapDisposition
+  context console write "Topal kernel booted"
+  context debug break
+  context fatal "bootstrap complete"
+
+debug-break-handler is fn (
+  context : DebugBreakContext
+) -> DebugBreakDisposition
+  context resume
+
+lang systems artifact (
+  bootstrap is lang systems bootstrap-entry boot,
+  debug-break is lang systems synchronous-exception-entry debug-break-handler
+)
+```
+
+`BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`, and
+`DebugBreakDisposition` are sealed systems classifiers, not constructible
+ordinary values. `bootstrap-entry` specializes `SystemEntry Bootstrap`;
+`synchronous-exception-entry` specializes `SystemEntry
+SynchronousException` to the resumable debug-break cause used by the first
+machine qualification.
+
+`context console write` borrows the board-provided console session and accepts
+a static text value in this first increment. `context debug break` is a
+declared synchronous machine event whose selected provider transfers control
+to the debug-break entry. `context resume` consumes that exception context and
+resumes the interrupted bootstrap continuation. `context fatal` consumes the
+bootstrap context and enters the nonreturning fatal provider. These members are
+recognized only through their exact live context; they are not general
+functions, namespace aliases, or values which can be stored or passed.
+
+The first target identity is `x86_64-unknown-none`, board
+`topal-qemu-pc-q35-10.2`, under profile
+`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model qualification does
+not executable-qualify that target. Until entry lowering, artifact inspection,
+and QEMU evidence are complete, the native publisher continues to reject it
+before producing an object or image.
+
 ## Special entries
 
 A `SystemEntry K` is a static artifact declaration for one closed entry kind
@@ -257,4 +303,3 @@ Each systems element requires:
 The first executable qualification is x86-64 only. Architecture-neutral
 semantics continue to be reviewed against AArch64 and RISC-V so x86 mechanisms
 do not become universal source meaning.
-

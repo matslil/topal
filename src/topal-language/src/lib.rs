@@ -6,12 +6,14 @@ mod documentation;
 mod execution;
 pub mod modules;
 mod source;
+mod systems;
 mod trace;
 
 /// Checked semantic model consumed by native compiler backends.
 pub mod compiler {
     pub use crate::compiler_model::*;
     pub use crate::source::display_string_literal;
+    pub use crate::systems::*;
 }
 
 /// Deterministic source execution model consumed by interpreters and debuggers.
@@ -62,6 +64,14 @@ pub use modules::{
     published_function_names, references_module, select_source_modules,
 };
 pub use source::{Execution, ExecutionStep, Session, Value, display_string_literal};
+pub use systems::{
+    CompilerSystemsContextKind, CompilerSystemsDisposition, CompilerSystemsEntry,
+    CompilerSystemsEntryKind, CompilerSystemsHandler, CompilerSystemsOperation,
+    CompilerSystemsProgram, CompilerSystemsTargetSelection, CompilerSystemsTransition,
+    INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_CONSOLE_WRITE,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK, analyze_systems_for_compiler,
+    model_systems_transitions,
+};
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;
 pub use topal_source::UNICODE_VERSION;

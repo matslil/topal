@@ -29,11 +29,12 @@ and reject every other target before creating an output.
 
 The compiler shall expose a deterministic source-free target listing under
 registry `topal.target-qualification/1`. It shall report the executable
-generic Linux x86-64 profile and the model-only x86-64 AVX2 and RISC-V/DSP
-examples with target assignment, CPU/features, board, model source, status,
-and missing qualification scopes. A selected model-only CPU, board, or model
-shall fail before lowering with those details. Adding an entry shall not make
-it executable-qualified or change the sole admitted code-generation target.
+generic Linux x86-64 profile; the model-only Topal x86-64 QEMU systems profile;
+and the model-only x86-64 AVX2 and RISC-V/DSP examples with target assignment,
+CPU/features, board, model source, status, and missing qualification scopes. A
+selected model-only target, CPU, board, or model shall fail before lowering
+with those details. Adding an entry shall not make it executable-qualified or
+change the sole admitted code-generation target.
 
 ## TOPAL-COMP-SYSTEMS-CONTEXT-001 — Systems feature and target isolation
 
@@ -44,6 +45,15 @@ profile in the checked program, and reject a systems source paired with the
 hosted Linux-process target or an ordinary source attempting to use systems
 vocabulary. Until a systems target is executable-qualified, it shall reject
 before lowering or output rather than approximate with host mechanisms.
+
+The first semantic increment shall recognize only target
+`x86_64-unknown-none`, board `topal-qemu-pc-q35-10.2`, and profile
+`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Its checked source model shall admit
+the exact `TOPAL-SYSTEMS-VOCABULARY-001` artifact, entry, context, console,
+debug-break, resume, and fatal forms. This semantic qualification shall expose
+an abstract transition trace but shall not make the target available to object
+or executable emission. The existing Linux-process compiler path shall
+continue to reject `systems` source before lowering and publication.
 
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 

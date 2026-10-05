@@ -66,6 +66,17 @@ const TARGET_QUALIFICATIONS: &[TargetQualification] = &[
         missing: "none",
     },
     TargetQualification {
+        profile: "topal-x86-64-qemu-kernel",
+        target: Some("x86_64-unknown-none"),
+        cpu: "generic",
+        features: "x86-64-baseline,systems-semantic-model",
+        board: Some("topal-qemu-pc-q35-10.2"),
+        model: "topal.systems.x86_64-qemu-pc-q35-10.2/1",
+        source: "linux-kernel/labs/qemu/x86_64/manifest.json",
+        status: TargetQualificationStatus::ModelOnly,
+        missing: "x86-64 provider lowering, kernel artifact publication, artifact inspection, and QEMU physical evidence",
+    },
+    TargetQualification {
         profile: "example-x86-64-avx2",
         target: Some(TARGET_TRIPLE),
         cpu: "x86-64-avx2",
@@ -184,54 +195,7 @@ impl OptimizationPlan {
         target: &TargetSelection,
         optimization: &OptimizationRequest,
     ) -> Result<Self, CompileError> {
-        let target_triple = match target.target.as_deref() {
-            Some(TARGET_TRIPLE) => TARGET_TRIPLE,
-            Some(other) => {
-                return Err(CompileError::Tool(format!(
-                    "unsupported target `{other}`; no executable-qualified registry entry matches it (use --list-targets)"
-                )));
-            }
-            None if cfg!(all(target_arch = "x86_64", target_os = "linux")) => TARGET_TRIPLE,
-            None => {
-                return Err(CompileError::Tool(format!(
-                    "the build host has no qualified generic target; select a supported --target (this increment has only `{TARGET_TRIPLE}`)"
-                )));
-            }
-        };
-        let cpu = target.cpu.as_deref().unwrap_or("generic");
-        if cpu != "generic" {
-            if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| entry.cpu == cpu) {
-                return Err(unqualified_target_error(entry));
-            }
-            return Err(CompileError::Tool(format!(
-                "unsupported CPU profile `{cpu}`; only `generic` is executable-qualified and native features are never detected implicitly (use --list-targets)"
-            )));
-        }
-        if let Some(board) = &target.board {
-            if let Some(entry) = TARGET_QUALIFICATIONS
-                .iter()
-                .find(|entry| entry.board == Some(board.as_str()))
-            {
-                return Err(unqualified_target_error(entry));
-            }
-            return Err(CompileError::Tool(format!(
-                "unsupported board profile `{board}`; no executable-qualified board model matches it (use --list-targets)"
-            )));
-        }
-        if let Some(path) = &target.model {
-            if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| {
-                path.file_name()
-                    .is_some_and(|name| PathBuf::from(entry.source).file_name() == Some(name))
-            }) {
-                if entry.status == TargetQualificationStatus::ModelOnly {
-                    return Err(unqualified_target_error(entry));
-                }
-            }
-            return Err(CompileError::Tool(format!(
-                "custom architecture model `{}` is not executable-qualified; this increment loads only `{GENERIC_X86_64_MODEL}` (use --list-targets)",
-                path.display()
-            )));
-        }
+        let target_triple = resolve_executable_target(target)?;
         let model = generic_x86_64_model();
         let architecture_model_sha256 = model.canonical_sha256().map_err(|error| {
             CompileError::Tool(format!("invalid built-in architecture model: {error}"))
@@ -391,6 +355,63 @@ impl OptimizationPlan {
         }
         Ok(())
     }
+}
+
+fn resolve_executable_target(target: &TargetSelection) -> Result<&'static str, CompileError> {
+    let target_triple = match target.target.as_deref() {
+        Some(TARGET_TRIPLE) => TARGET_TRIPLE,
+        Some(other) => {
+            if let Some(entry) = TARGET_QUALIFICATIONS
+                .iter()
+                .find(|entry| entry.target == Some(other))
+            {
+                return Err(unqualified_target_error(entry));
+            }
+            return Err(CompileError::Tool(format!(
+                "unsupported target `{other}`; no executable-qualified registry entry matches it (use --list-targets)"
+            )));
+        }
+        None if cfg!(all(target_arch = "x86_64", target_os = "linux")) => TARGET_TRIPLE,
+        None => {
+            return Err(CompileError::Tool(format!(
+                "the build host has no qualified generic target; select a supported --target (this increment has only `{TARGET_TRIPLE}`)"
+            )));
+        }
+    };
+    let cpu = target.cpu.as_deref().unwrap_or("generic");
+    if cpu != "generic" {
+        if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| entry.cpu == cpu) {
+            return Err(unqualified_target_error(entry));
+        }
+        return Err(CompileError::Tool(format!(
+            "unsupported CPU profile `{cpu}`; only `generic` is executable-qualified and native features are never detected implicitly (use --list-targets)"
+        )));
+    }
+    if let Some(board) = &target.board {
+        if let Some(entry) = TARGET_QUALIFICATIONS
+            .iter()
+            .find(|entry| entry.board == Some(board.as_str()))
+        {
+            return Err(unqualified_target_error(entry));
+        }
+        return Err(CompileError::Tool(format!(
+            "unsupported board profile `{board}`; no executable-qualified board model matches it (use --list-targets)"
+        )));
+    }
+    if let Some(path) = &target.model {
+        if let Some(entry) = TARGET_QUALIFICATIONS.iter().find(|entry| {
+            path.file_name()
+                .is_some_and(|name| PathBuf::from(entry.source).file_name() == Some(name))
+        }) && entry.status == TargetQualificationStatus::ModelOnly
+        {
+            return Err(unqualified_target_error(entry));
+        }
+        return Err(CompileError::Tool(format!(
+            "custom architecture model `{}` is not executable-qualified; this increment loads only `{GENERIC_X86_64_MODEL}` (use --list-targets)",
+            path.display()
+        )));
+    }
+    Ok(target_triple)
 }
 
 fn known_optimization(identity: &str) -> Result<&'static str, CompileError> {
@@ -595,6 +616,11 @@ mod tests {
     fn rejects_unqualified_target_cpu_board_and_model() {
         let unsupported = [
             TargetSelection {
+                target: Some("x86_64-unknown-none".into()),
+                board: Some("topal-qemu-pc-q35-10.2".into()),
+                ..TargetSelection::default()
+            },
+            TargetSelection {
                 target: Some("aarch64-unknown-linux-gnu".into()),
                 ..TargetSelection::default()
             },
@@ -624,7 +650,9 @@ mod tests {
         assert!(listing.contains("Status: executable-qualified"));
         assert!(listing.contains("example-x86-64-avx2"));
         assert!(listing.contains("example-riscv-dsp-board"));
-        assert_eq!(listing.matches("Status: model-only").count(), 2);
+        assert!(listing.contains("topal-x86-64-qemu-kernel"));
+        assert!(listing.contains("topal-qemu-pc-q35-10.2"));
+        assert_eq!(listing.matches("Status: model-only").count(), 3);
         assert_eq!(listing, target_listing());
     }
 
