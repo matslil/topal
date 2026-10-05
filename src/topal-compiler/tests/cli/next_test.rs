@@ -195,7 +195,9 @@ fn lists_executable_and_model_only_targets_without_source_input() {
     assert!(stdout.contains("Status: executable-qualified"));
     assert!(stdout.contains("example-x86-64-avx2"));
     assert!(stdout.contains("example-riscv-dsp-board"));
-    assert_eq!(stdout.matches("Status: model-only").count(), 2);
+    assert!(stdout.contains("topal-x86-64-qemu-kernel"));
+    assert!(stdout.contains("topal-qemu-pc-q35-10.2"));
+    assert_eq!(stdout.matches("Status: model-only").count(), 3);
 }
 
 #[test]
@@ -216,6 +218,32 @@ fn model_only_target_selection_fails_with_qualification_details() {
     assert!(stderr.contains("instruction legality"), "{stderr}");
     assert!(stderr.contains("topal.target-qualification/1"), "{stderr}");
     assert!(!output.exists());
+}
+
+#[test]
+fn systems_target_fails_before_lowering_or_publication() {
+    // TOPAL-COMP-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-QUALIFY-001.
+    let directory = temporary("systems-model-only-target-selection");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    let output = directory.join("kernel");
+    let result = run(topalc()
+        .args([
+            "--target",
+            "x86_64-unknown-none",
+            "--board",
+            "topal-qemu-pc-q35-10.2",
+        ])
+        .arg("-o")
+        .arg(&output)
+        .arg(&source));
+    assert!(!result.status.success());
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(stderr.contains("topal-x86-64-qemu-kernel"), "{stderr}");
+    assert!(stderr.contains("model-only"), "{stderr}");
+    assert!(stderr.contains("provider lowering"), "{stderr}");
+    assert!(!output.exists());
+    assert!(!metadata_path(&output).exists());
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

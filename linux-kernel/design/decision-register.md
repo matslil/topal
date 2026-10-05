@@ -6,7 +6,7 @@ Topal or kernel semantics.
 | ID | Decision | Why it matters | Status |
 | --- | --- | --- | --- |
 | `TK-DEC-001` | exact QEMU x86 machine, firmware, and boot path | fixes board, image, and discovery contracts | resolved for initial x86-64 profile; [Step 3 manifest](../labs/qemu/x86_64/manifest.json) |
-| `TK-DEC-002` | kernel artifact format and linker/publication model | current compiler publishes Linux process ELFs | semantic profile and x86 direct-boot container selected; Topal publisher remains open |
+| `TK-DEC-002` | kernel artifact format and linker/publication model | current compiler publishes Linux process ELFs | initial source vocabulary and x86 direct-boot container selected; Topal publisher implementation remains staged |
 | `TK-DEC-003` | typed special-entry functions and context frames | replaces handwritten entry assembly | approved; `TOPAL-SYSTEMS-ENTRY-*` |
 | `TK-DEC-004` | privileged operation and architecture-package boundary | determines which new elements are portable or target-specific | approved; `TOPAL-SYSTEMS-MACHINE-001` |
 | `TK-DEC-005` | physical/virtual/user/device/DMA address types | required for page tables, user access, MMIO, and DMA safety | approved; `TOPAL-SYSTEMS-ADDRESS-001`, `TOPAL-SYSTEMS-MAPPING-001` |

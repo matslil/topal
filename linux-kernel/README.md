@@ -19,10 +19,12 @@ responsibility mapping, and cross-architecture systems-element model. The
 approved meaning is adopted in the authoritative Topal systems profile,
 requirements, and formal rules. Step 3 adds a verified
 [x86-64 Linux reference VM](step-3-report.md), including the direct replacement
-kernel path and Docker/Podman smoke controls. This does not claim that the
-present compiler can build a kernel: Topal implementation and executable
-x86-64 qualification remain planned, and the current compiler remains a Linux
-x86-64 userspace compiler.
+kernel path and Docker/Podman smoke controls. The first Step 4 increment adds
+the [checked systems-root semantic foundation](step-4-semantic-foundation.md)
+and a model-only x86-64 QEMU kernel target. This does not yet claim a bootable
+Topal kernel: provider lowering, publication, inspection, and QEMU evidence
+remain required, while the ordinary compiler remains a Linux x86-64 userspace
+compiler.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -98,6 +100,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 1 report](step-1-report.md)
 - [Step 2 design proposal](step-2-report.md)
 - [Step 3 reference VM report](step-3-report.md)
+- [Step 4 systems-root semantic foundation](step-4-semantic-foundation.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

@@ -29,6 +29,38 @@ its subject and SHALL record its effects, context, lifetime, failure, and
 provider evidence. A target model SHALL establish legality facts only and
 SHALL NOT satisfy runtime authority.
 
+### TOPAL-SYSTEMS-VOCABULARY-001 — Initial sealed root construction
+
+The initial systems source profile SHALL use ordinary application, function,
+product, and binding syntax under the sealed `lang systems` namespace. A root
+SHALL construct exactly one `lang systems artifact` whose `bootstrap` member is
+one `lang systems bootstrap-entry` and whose `debug-break` member is one
+`lang systems synchronous-exception-entry`. The former SHALL have one handler
+from `BootstrapContext` to `BootstrapDisposition`; the latter SHALL have one
+handler from `DebugBreakContext` to `DebugBreakDisposition`.
+
+The only admitted initial handler operations SHALL be context-qualified
+`console write`, `debug break`, `resume`, and `fatal`. Console write SHALL
+borrow the live board console capability and this increment SHALL accept only a
+static text value. Debug break SHALL borrow the bootstrap context and declare
+one synchronous debug-break observation. Resume SHALL consume one live
+debug-break context and resume exactly its interrupted continuation. Fatal
+SHALL consume its live entry context and SHALL NOT return.
+
+Every handler SHALL end in one disposition admitted by its context. The
+context SHALL occur only as the receiver of an admitted operation, SHALL be
+consumed exactly once by the final disposition, and SHALL NOT be rebound,
+captured, stored, passed, returned, or used after consumption. Unknown
+namespace members, extra artifact entries, mismatched handler classifiers,
+duplicate roots, and ordinary-source use of any systems classifier or member
+SHALL be rejected before lowering.
+
+The first semantic target profile SHALL record target
+`x86_64-unknown-none`, board `topal-qemu-pc-q35-10.2`, and profile
+`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model acceptance SHALL NOT
+mark this profile executable-qualified; absent qualified lowering and physical
+evidence, publication SHALL fail before producing an artifact.
+
 ### TOPAL-SYSTEMS-ENTRY-001 — Static special entry
 
 `SystemEntry K` SHALL classify a static artifact declaration rather than an
@@ -299,4 +331,3 @@ semantic transition.
 Atomic and external-observation rules extend the execution relation only in a
 selected systems context. They do not weaken ordinary Topal race rejection or
 permit an optimizer to choose an application-visible interleaving.
-

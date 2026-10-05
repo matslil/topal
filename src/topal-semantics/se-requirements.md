@@ -50,6 +50,14 @@ operation. It shall reject forgery, wrong context, escaped affine resources,
 invalid state transitions, insufficient ordering, plain/atomic conflicts, and
 unsupported providers deterministically.
 
+The first implementation increment shall model the sealed bootstrap and
+debug-break entry kinds, console-write and debug-break effects, resume and
+fatal dispositions, stable semantic identities, and the exact initial target
+profile. It shall model a fatal exception as terminal and a resumed exception
+as returning to the interrupted bootstrap continuation. Unimplemented systems
+families shall remain unavailable rather than receiving placeholder host
+behavior.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

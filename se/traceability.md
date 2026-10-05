@@ -74,7 +74,7 @@ are explicit rather than schedule accidents.
 | `TOPAL-REQ-ARCH-TARGET-001` | `TOPAL-ARCH-TARGET-001`, `TOPAL-ARCH-NATIVE-001`, `TOPAL-ARCH-MULTIVERSION-001`, `TOPAL-OPT-TARGET-LIST-001` |
 | `TOPAL-REQ-ARCH-PROVENANCE-001` | `TOPAL-ARCH-SOURCE-001`, `TOPAL-ARCH-PROVENANCE-001`, `TOPAL-ARCH-OVERLAY-001`, `TOPAL-ARCH-CANONICAL-001`, `TOPAL-ARCH-VALID-001`, `TOPAL-ARCH-QUALIFICATION-001` |
 | `TOPAL-REQ-ARCH-DIAGNOSTIC-001` | `TOPAL-ARCH-DIAGNOSTIC-001` |
-| `TOPAL-REQ-SYSTEMS-PROFILE-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001` |
+| `TOPAL-REQ-SYSTEMS-PROFILE-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001`, `TOPAL-SYSTEMS-VOCABULARY-001` |
 | `TOPAL-REQ-SYSTEMS-ENTRY-001` | `TOPAL-SYSTEMS-ENTRY-001`, `TOPAL-SYSTEMS-DISPOSITION-001` |
 | `TOPAL-REQ-SYSTEMS-OBSERVATION-001` | `TOPAL-SYSTEMS-OBSERVATION-001` |
 | `TOPAL-REQ-SYSTEMS-MACHINE-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` |
@@ -97,14 +97,14 @@ are explicit rather than schedule accidents.
 | `TOPAL-REQ-NATIVE-DEBUG-001` | `TOPAL-COMPILER-DEBUG-001` |
 | `TOPAL-REQ-LLVM-001` | `TOPAL-COMPILER-LLVM-001`, `TOPAL-COMPILER-TOOL-001` |
 
-### Systems-profile planned implementation coverage
+### Systems-profile staged implementation coverage
 
-| Tool requirement | Governing rules | Planned evidence |
+| Tool requirement | Governing rules | Evidence/status |
 | --- | --- | --- |
-| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | deterministic semantic-model unit and negative tests with no host machine operation |
+| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | initial entry/observation/disposition model and negative tests implemented; remaining element families stay fail-closed |
 | `TOPAL-SEM-ARCH-001` | `TOPAL-ARCH-SOURCE-001` through `TOPAL-ARCH-DIAGNOSTIC-001` | deterministic architecture validation, canonical identity, and negative model tests |
-| `TOPAL-COMP-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001` | feature/target isolation and fail-before-output CLI tests |
-| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | checked-model acceptance and authority/context/lifetime/order rejection corpus |
+| `TOPAL-COMP-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001`, `TOPAL-SYSTEMS-VOCABULARY-001` | initial feature/target isolation and fail-before-output CLI tests implemented |
+| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition checking implemented; remaining authority/lifetime/order corpus stays fail-closed |
 | `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | inspected x86-64 lowering and negative unqualified-target tests |
 | `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | ELF/image structure, placement, relocation, dependency, provenance, and atomic-publication tests |
 | `TOPAL-COMP-SYSTEMS-TEST-001` | `TOPAL-SYSTEMS-QUALIFY-001` | shared negative matrix plus pinned-QEMU provider evidence |
