@@ -1,0 +1,169 @@
+{
+  "schema": "topal-linux-reference-vm/1",
+  "profile": "x86_64-linux-7.2.9-reference",
+  "architecture": "x86_64",
+  "decisions": ["TK-DEC-001", "TK-DEC-012", "TK-DEC-013"],
+  "inputs": {
+    "debian_cloud_image": {
+      "distribution": "Debian 13.7 (trixie)",
+      "build": "20261001-2618",
+      "file": "debian-13-genericcloud-amd64-20261001-2618.qcow2",
+      "url": "https://cloud.debian.org/images/cloud/trixie/20261001-2618/debian-13-genericcloud-amd64-20261001-2618.qcow2",
+      "sha512": "f46f0671a6e5bdec5291ab8972bae2f10e5408c2f64a74078f11efc2f06a436a9d0313ed50e0472542eeabf780e9f7c792ac0a314c6c20507fcd9fd81b468c3d"
+    },
+    "linux": {
+      "release": "7.2.9",
+      "file": "linux-7.2.9.tar.xz",
+      "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+      "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+      "build_user": "topal",
+      "build_host": "reference",
+      "build_version": 1,
+      "source_date_epoch": 1791072000,
+      "configuration_sha256": "52a4ee15f0ebfc97963aa197bc8570625c7b7f7d7bc906dd61d2ac4124c89fb8",
+      "bzimage_sha256": "c005235648520b35e104e3d8025abf48f6f523697a54f491b9cf692db53fae0c"
+    },
+    "debian_snapshot": {
+      "timestamp": "20261002T000000Z",
+      "archive": "https://snapshot.debian.org/archive/debian/20261002T000000Z/",
+      "security": "https://snapshot.debian.org/archive/debian-security/20261002T000000Z/"
+    }
+  },
+  "host_tools": {
+    "gcc": "gcc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+    "ld": "GNU ld version 2.46.1-1.fc44",
+    "make": "GNU Make 4.4.1",
+    "python": "Python 3.14.7",
+    "genisoimage": "genisoimage 1.1.11 (Linux)",
+    "qemu_img": "qemu-img version 10.2.2 (qemu-10.2.2-1.fc44)"
+  },
+  "emulator": {
+    "program": "qemu-system-x86_64",
+    "version": "10.2.2",
+    "accelerator": "tcg",
+    "tcg_thread": "multi",
+    "machine": "pc-q35-10.2",
+    "cpu": "qemu64-v1",
+    "vcpus": 2,
+    "topology": {
+      "sockets": 1,
+      "cores": 2,
+      "threads": 1
+    },
+    "memory_mib": 640,
+    "uuid": "2dc81b96-d721-4a7b-9dbe-437e4631d9d2"
+  },
+  "firmware": {
+    "implementation": "SeaBIOS 1.17.0",
+    "path": "/usr/share/seabios/bios-256k.bin",
+    "size": 262144,
+    "sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
+    "secure_boot": false
+  },
+  "machine": {
+    "acpi": true,
+    "smm": false,
+    "vmport": false,
+    "usb": false,
+    "sata": false,
+    "graphics": false,
+    "numa": false,
+    "memory_hotplug": false,
+    "interrupts": ["local APIC", "I/O APIC", "MSI", "MSI-X"],
+    "timers": ["PIT", "HPET", "RTC", "local APIC timer", "TSC"],
+    "reset": "Q35 platform reset",
+    "poweroff": "ACPI S5",
+    "suspend": "not qualified"
+  },
+  "devices": {
+    "console": {
+      "model": "isa-serial",
+      "index": 0,
+      "io_base": "0x3f8",
+      "irq": 4,
+      "terminal": "115200n8"
+    },
+    "root_disk": {
+      "model": "virtio-blk-pci-non-transitional",
+      "pci_address": "00:03.0",
+      "serial": "topal-root",
+      "queues": 1,
+      "queue_size": 256,
+      "format": "qcow2 overlay",
+      "virtual_size_gib": 12,
+      "root_partition": "/dev/vda1",
+      "discard": false,
+      "host_cache": "none"
+    },
+    "network": {
+      "model": "virtio-net-pci-non-transitional",
+      "pci_address": "00:04.0",
+      "mac": "52:54:00:54:4f:50",
+      "queues": 1,
+      "rx_queue_size": 256,
+      "tx_queue_size": 256,
+      "backend": "QEMU user networking",
+      "subnet": "10.0.2.0/24",
+      "guest_address": "10.0.2.15",
+      "ssh_forward": "127.0.0.1:2222 -> 10.0.2.15:22"
+    },
+    "entropy": {
+      "model": "virtio-rng-pci-non-transitional",
+      "pci_address": "00:05.0",
+      "backend": "/dev/urandom",
+      "max_bytes": 1024,
+      "period_ms": 1000
+    },
+    "cloud_init_seed": {
+      "model": "virtio-blk-pci-non-transitional",
+      "pci_address": "00:06.0",
+      "format": "ISO 9660 NoCloud cidata",
+      "attached_after_provisioning": true
+    }
+  },
+  "boot": {
+    "distribution": {
+      "protocol": "SeaBIOS boot from virtio block",
+      "purpose": "provisioning and independent distribution-kernel control"
+    },
+    "reference": {
+      "protocol": "QEMU x86 direct Linux boot through SeaBIOS fw_cfg",
+      "kernel": "linux-kernel/build/x86_64/linux-7.2.9/arch/x86/boot/bzImage",
+      "configuration": "reference-kernel.config",
+      "command_line": "root=/dev/vda1 rw console=ttyS0,115200n8 earlyprintk=ttyS0,115200n8 systemd.unified_cgroup_hierarchy=1 panic=-1"
+    }
+  },
+  "guest": {
+    "hostname": "topal-linux-reference",
+    "user": "topal",
+    "libc": "Debian trixie glibc",
+    "package_snapshot": "20261002T000000Z",
+    "packages": [
+      "acpica-tools",
+      "busybox-static",
+      "docker-cli",
+      "docker.io",
+      "pciutils",
+      "podman",
+      "sudo"
+    ],
+    "container_profile": {
+      "privilege": "rootful",
+      "image": "locally imported Debian busybox-static root filesystem",
+      "network": "none",
+      "purpose": "Step 3 runtime smoke test; not full container qualification"
+    }
+  },
+  "persistence": {
+    "base_image": "read-only downloaded input",
+    "writable_disk": "qcow2 overlay backed by the base image",
+    "generated_root": "linux-kernel/.cache/qemu-x86_64",
+    "committed_artifacts": [
+      "manifest.json",
+      "reference-kernel.config",
+      "cloud-init templates",
+      "vm.py",
+      "verification evidence"
+    ]
+  }
+}

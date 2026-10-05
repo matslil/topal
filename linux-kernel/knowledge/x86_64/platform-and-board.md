@@ -2,10 +2,11 @@
 
 ## LK-X64-BOARD-001 — Firmware-driven board description
 
-The initial board is a version-pinned QEMU x86-64 machine, to be selected in
-the VM phase. Its board contract shall list every CPU, memory region, firmware
-table, interrupt controller, timer, PCI host bridge, storage controller, network
-device, console, entropy device, firmware interface, and power/reset mechanism.
+The initial board is the version-pinned QEMU x86-64 machine selected by the
+[Step 3 manifest](../../labs/qemu/x86_64/manifest.json). Its board contract
+lists every CPU, memory region, firmware table, interrupt controller, timer, PCI
+host bridge, storage controller, network device, console, entropy device,
+firmware interface, and power/reset mechanism.
 
 Unlike the later AArch64 design input, the initial x86 machine is expected to
 use ACPI, PCI discovery, and standard x86 firmware conventions rather than
@@ -68,20 +69,21 @@ device interrupts; PCI host setup precedes virtio-pci discovery; block support
 precedes the selected root filesystem. Those dependencies become explicit
 construction inputs in the Topal design.
 
-## LK-X64-VIRTIO-001 — Proposed initial virtual-device set
+## LK-X64-VIRTIO-001 — Qualified initial virtual-device set
 
-The minimal useful QEMU profile should prefer standardized, inspectable devices:
+The qualified QEMU profile uses standardized, inspectable devices:
 
-- one serial or virtio console for early and userspace interaction;
+- one ISA serial console for early and userspace interaction;
 - virtio block for the root disk;
 - virtio network for application and container tests;
-- virtio random after an explicit entropy design; and
-- PCI transport with MSI/MSI-X once interrupt setup permits it.
+- virtio random backed by the host's `/dev/urandom`; and
+- non-transitional PCI transport with MSI/MSI-X capability.
 
-This is a proposal, not yet the qualified board. The VM pull request will pin
-QEMU, machine version, firmware, device models, feature bits, queue sizes,
-storage format, network topology, and launch command before implementation uses
-the profile.
+The read-only cloud-init seed is also a virtio block function and remains
+attached after provisioning so every qualified boot exposes the same firmware
+and PCI topology. QEMU, machine version, firmware, device models, feature bits,
+queue sizes, storage format, network topology, and launch behavior are pinned
+in the Step 3 manifest. Runtime discovery evidence is recorded alongside it.
 
 ## Board-description relationship
 

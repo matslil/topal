@@ -17,9 +17,12 @@ The foundation and Step 1 research map define scope and Linux source coverage.
 Step 2 adds an approved [Topal-native kernel design](step-2-report.md), Linux
 responsibility mapping, and cross-architecture systems-element model. The
 approved meaning is adopted in the authoritative Topal systems profile,
-requirements, and formal rules. This does not claim that the present compiler
-can build a kernel: implementation and executable x86-64 qualification remain
-planned, and the current compiler remains a Linux x86-64 userspace compiler.
+requirements, and formal rules. Step 3 adds a verified
+[x86-64 Linux reference VM](step-3-report.md), including the direct replacement
+kernel path and Docker/Podman smoke controls. This does not claim that the
+present compiler can build a kernel: Topal implementation and executable
+x86-64 qualification remain planned, and the current compiler remains a Linux
+x86-64 userspace compiler.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -59,7 +62,7 @@ linux-kernel/
   kernel/                     future Topal kernel source
     common/
     arch/x86_64/
-  labs/qemu/x86_64/           future reproducible reference/test VM
+  labs/qemu/x86_64/           reproducible Linux reference/test VM
   tests/                      future differential and conformance tests
   tools/                      future inventory and drift tooling
   traceability.md             stable project identities and evidence links
@@ -94,6 +97,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Knowledge catalog](knowledge/catalog.md)
 - [Step 1 report](step-1-report.md)
 - [Step 2 design proposal](step-2-report.md)
+- [Step 3 reference VM report](step-3-report.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

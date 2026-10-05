@@ -14,9 +14,9 @@ traceability ledger.
 | fit Linux responsibilities to Topal | `TK-KERNEL-*`, `TK-MAP-*` | [kernel architecture](design/topal-kernel-architecture.md), [mapping ledger](design/linux-to-topal-mapping.md) | module designs, implementations, and conformance evidence |
 | map Linux driver frameworks | `LK-DRIVER-*` | [driver map](knowledge/common/driver-frameworks.md) | Topal protocol mappings and subsystem conformance ledgers |
 | support DTS/DTB | `LK-DT-*` | [Device Tree map](knowledge/common/device-tree.md), [binding inventory](inventory/7.2.9/x86_64/devicetree-bindings.json) | parser/binding tests and selected platform boot |
-| describe board support | `LK-X64-BOARD-001`, `LK-X64-BOARD-002`, `LK-X64-DISCOVERY-001` | [platform map](knowledge/x86_64/platform-and-board.md) | pinned QEMU machine manifest and runtime discovery tests |
+| describe board support | `LK-X64-BOARD-001`, `LK-X64-BOARD-002`, `LK-X64-DISCOVERY-001` | [platform map](knowledge/x86_64/platform-and-board.md), [machine manifest](labs/qemu/x86_64/manifest.json) | [two-kernel runtime discovery evidence](labs/qemu/x86_64/results/verification.json) |
 | run standard applications | `LK-SCOPE-005` | acceptance ladder | pinned rootfs, libc/application corpus, result records |
-| run Docker and Podman | `LK-UAPI-CONTAINER-001` | [UAPI map](knowledge/common/linux-uapi.md) | separate rootful/rootless profiles and OCI tests |
+| run Docker and Podman | `LK-UAPI-CONTAINER-001` | [UAPI map](knowledge/common/linux-uapi.md) | Step 3 rootful smoke [evidence](labs/qemu/x86_64/results/verification.json); full rootful/rootless profiles remain |
 | run VMs on the Topal kernel | `LK-UAPI-KVM-001` | [UAPI map](knowledge/common/linux-uapi.md) | QEMU TCG tests, KVM API tests, optional nested profile |
 
 ## Step 1 exit criteria
