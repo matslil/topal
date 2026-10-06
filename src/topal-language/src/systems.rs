@@ -7,7 +7,10 @@
 use std::collections::BTreeMap;
 
 use topal_source::{Diagnostic, SourceText, Span};
-use topal_syntax::{Expression, FunctionClauses, ProductField, Statement, lex, parse};
+use topal_syntax::{
+    CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses, ProductField,
+    Statement, lex, parse,
+};
 
 pub use topal_semantics::{
     BootstrapRegion as CompilerBootstrapRegion,
@@ -17,7 +20,8 @@ pub use topal_semantics::{
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
     SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
@@ -109,6 +113,7 @@ pub fn analyze_systems_for_compiler(
         "bootstrap",
         &root_entries.bootstrap,
         CompilerSystemsContextKind::Bootstrap,
+        Some(&root_entries.bootstrap_storage),
     )?;
     let debug_break = analyze_named_handler(
         &source,
@@ -117,6 +122,7 @@ pub fn analyze_systems_for_compiler(
         "debug-break",
         &root_entries.debug_break,
         CompilerSystemsContextKind::DebugBreak,
+        None,
     )?;
 
     Ok(CompilerSystemsProgram {
@@ -140,6 +146,7 @@ fn analyze_named_handler(
     entry_name: &str,
     handler_name: &str,
     context: CompilerSystemsContextKind,
+    bootstrap_storage: Option<&CompilerBootstrapStorageDescriptor>,
 ) -> Result<CompilerSystemsHandler, Diagnostic> {
     let handler = functions.get(handler_name).copied().ok_or_else(|| {
         source_diagnostic(
@@ -149,7 +156,7 @@ fn analyze_named_handler(
             format!("{entry_name} entry names unknown handler `{handler_name}`"),
         )
     })?;
-    analyze_handler(source, handler, context)
+    analyze_handler(source, handler, context, bootstrap_storage)
 }
 
 fn collect_handler_declarations<'source>(
@@ -496,6 +503,7 @@ fn analyze_handler(
     source: &SourceText,
     statement: &Statement,
     context: CompilerSystemsContextKind,
+    bootstrap_storage: Option<&CompilerBootstrapStorageDescriptor>,
 ) -> Result<CompilerSystemsHandler, Diagnostic> {
     let Statement::Function {
         name,
@@ -547,7 +555,18 @@ fn analyze_handler(
     for operation in operations {
         checked_operations.push(analyze_operation(source, operation, context, context_name)?);
     }
-    let disposition = analyze_disposition(source, last, context, context_name)?;
+    let disposition = if context == CompilerSystemsContextKind::Bootstrap
+        && matches!(
+            last,
+            Statement::Expression(Expression::DecisionTable { .. })
+        ) {
+        let storage = bootstrap_storage.expect("bootstrap handler carries its storage descriptor");
+        let checked = analyze_bootstrap_region_decision(source, last, context_name, storage)?;
+        checked_operations.extend(checked.operations);
+        checked.disposition
+    } else {
+        analyze_disposition(source, last, context, context_name)?
+    };
     let mut effects = checked_operations
         .iter()
         .map(|operation| operation.semantic_identity().to_owned())
@@ -562,6 +581,621 @@ fn analyze_handler(
         disposition,
         effects,
     })
+}
+
+struct CheckedBootstrapRegionDecision {
+    operations: Vec<CompilerSystemsOperation>,
+    disposition: CompilerSystemsDisposition,
+}
+
+fn analyze_bootstrap_region_decision(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let Statement::Expression(Expression::DecisionTable {
+        subject,
+        rules,
+        span,
+    }) = statement
+    else {
+        unreachable!("bootstrap region caller selects a decision table")
+    };
+    let request = parse_bootstrap_allocation(source, subject, context_name, storage)?;
+    let (ok_binding, ok_action, error_action) = result_actions(source, rules, *span)?;
+    let error_disposition = action_disposition(source, error_action, context_name)?;
+    if !matches!(error_disposition, CompilerSystemsDisposition::Fatal { .. }) {
+        return Err(storage_diagnostic(
+            source,
+            error_action.span(),
+            "bootstrap allocation failure must consume the context through `fatal`",
+        ));
+    }
+    let Expression::Block {
+        statements,
+        span: success_span,
+    } = ok_action
+    else {
+        return Err(storage_diagnostic(
+            source,
+            ok_action.span(),
+            "bootstrap allocation success requires a block using and releasing its region",
+        ));
+    };
+    let [store, load, comparison, true_rule, false_rule] = statements.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *success_span,
+            "the initial region success action requires byte store, byte load, and an exhaustive equality decision",
+        ));
+    };
+    let (store_offset, value) = parse_region_store(source, store, &ok_binding)?;
+    let (loaded_name, load_offset) = parse_region_load(source, load, &ok_binding)?;
+    let comparison = parse_region_comparison(
+        source,
+        comparison,
+        true_rule,
+        false_rule,
+        context_name,
+        &ok_binding,
+        &loaded_name,
+    )?;
+    for offset in [store_offset, load_offset] {
+        if offset >= request.byte_count {
+            return Err(storage_diagnostic(
+                source,
+                *success_span,
+                format!(
+                    "bootstrap byte offset {offset} is outside the static region size {}",
+                    request.byte_count
+                ),
+            ));
+        }
+    }
+    Ok(CheckedBootstrapRegionDecision {
+        operations: vec![
+            CompilerSystemsOperation::BootstrapAllocate { request },
+            CompilerSystemsOperation::BootstrapStoreByte {
+                offset_bytes: store_offset,
+                value,
+            },
+            CompilerSystemsOperation::BootstrapLoadByteEquals {
+                offset_bytes: load_offset,
+                expected: comparison.expected,
+                failure_message: comparison.failure_message,
+            },
+            CompilerSystemsOperation::ConsoleWrite {
+                text: comparison.success_text,
+            },
+            CompilerSystemsOperation::BootstrapRelease,
+        ],
+        disposition: comparison.success_disposition,
+    })
+}
+
+fn parse_bootstrap_allocation(
+    source: &SourceText,
+    expression: &Expression,
+    context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CompilerBootstrapStorageRequest, Diagnostic> {
+    let Expression::Application { items, span } = expression else {
+        return Err(storage_diagnostic(
+            source,
+            expression.span(),
+            "allocation decision subject must be `context bootstrap allocate (...)`",
+        ));
+    };
+    let [
+        context,
+        bootstrap,
+        allocate,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "allocation decision subject must be `context bootstrap allocate (...)`",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, bootstrap, "bootstrap")
+        || !identifier_is(source, allocate, "allocate")
+    {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "allocation requires the live bootstrap context",
+        ));
+    }
+    let mut byte_count = None;
+    let mut alignment_bytes = None;
+    let mut placement = None;
+    for field in fields {
+        let label = field.label.ok_or_else(|| {
+            storage_diagnostic(
+                source,
+                field.value.span(),
+                "bootstrap allocation parameters must be named",
+            )
+        })?;
+        match source.slice(label) {
+            "byte-count" => {
+                insert_once(
+                    source,
+                    label,
+                    &mut byte_count,
+                    parse_storage_natural(source, &field.value)?,
+                )?;
+            }
+            "alignment-bytes" => {
+                insert_once(
+                    source,
+                    label,
+                    &mut alignment_bytes,
+                    parse_storage_natural(source, &field.value)?,
+                )?;
+            }
+            "placement" => {
+                let Expression::Identifier(value) = &field.value else {
+                    return Err(storage_diagnostic(
+                        source,
+                        field.value.span(),
+                        "bootstrap allocation placement must be a static systems identity",
+                    ));
+                };
+                let parsed = match source.slice(*value) {
+                    "bootstrap-reclaimable" => {
+                        CompilerBootstrapStoragePlacement::BootstrapReclaimable
+                    }
+                    "page-aligned-table" => CompilerBootstrapStoragePlacement::PageAlignedTable,
+                    other => {
+                        return Err(storage_diagnostic(
+                            source,
+                            *value,
+                            format!("unknown bootstrap allocation placement `{other}`"),
+                        ));
+                    }
+                };
+                insert_once(source, label, &mut placement, parsed)?;
+            }
+            other => {
+                return Err(storage_diagnostic(
+                    source,
+                    label,
+                    format!("unknown bootstrap allocation parameter `{other}`"),
+                ));
+            }
+        }
+    }
+    let request = CompilerBootstrapStorageRequest {
+        byte_count: byte_count.ok_or_else(|| missing_allocation_fields(source, *span))?,
+        alignment_bytes: alignment_bytes.ok_or_else(|| missing_allocation_fields(source, *span))?,
+        placement: placement.ok_or_else(|| missing_allocation_fields(source, *span))?,
+    };
+    validate_static_allocation(source, *span, storage, request)?;
+    Ok(request)
+}
+
+fn validate_static_allocation(
+    source: &SourceText,
+    span: Span,
+    storage: &CompilerBootstrapStorageDescriptor,
+    request: CompilerBootstrapStorageRequest,
+) -> Result<(), Diagnostic> {
+    let mut model = CompilerBootstrapStorageState::new(storage.clone(), "source-check")
+        .map_err(|error| storage_diagnostic(source, span, error.message))?;
+    model.allocate(request).map_err(|code| {
+        storage_diagnostic(
+            source,
+            span,
+            format!("static bootstrap allocation cannot succeed: {code:?}"),
+        )
+    })?;
+    Ok(())
+}
+
+fn insert_once<T>(
+    source: &SourceText,
+    label: Span,
+    destination: &mut Option<T>,
+    value: T,
+) -> Result<(), Diagnostic> {
+    if destination.replace(value).is_some() {
+        return Err(storage_diagnostic(
+            source,
+            label,
+            format!(
+                "bootstrap allocation parameter `{}` is duplicated",
+                source.slice(label)
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn missing_allocation_fields(source: &SourceText, span: Span) -> Diagnostic {
+    storage_diagnostic(
+        source,
+        span,
+        "bootstrap allocation requires exactly `byte-count`, `alignment-bytes`, and `placement`",
+    )
+}
+
+fn result_actions<'a>(
+    source: &SourceText,
+    rules: &'a [DecisionRule],
+    span: Span,
+) -> Result<(String, &'a Expression, &'a Expression), Diagnostic> {
+    let mut ok = None;
+    let mut error = None;
+    for rule in rules {
+        match rule.matcher {
+            DecisionMatcher::Result {
+                error: false,
+                binding,
+                ..
+            } if ok.is_none() => ok = Some((source.slice(binding).to_owned(), &rule.action)),
+            DecisionMatcher::Result { error: true, .. } if error.is_none() => {
+                error = Some(&rule.action);
+            }
+            _ => {
+                return Err(storage_diagnostic(
+                    source,
+                    rule.span,
+                    "bootstrap allocation requires exactly one `Ok region` and one `Error problem` action",
+                ));
+            }
+        }
+    }
+    let (Some((binding, ok)), Some(error)) = (ok, error) else {
+        return Err(storage_diagnostic(
+            source,
+            span,
+            "bootstrap allocation requires exhaustive `Ok` and `Error` actions",
+        ));
+    };
+    Ok((binding, ok, error))
+}
+
+fn parse_region_store(
+    source: &SourceText,
+    statement: &Statement,
+    region_name: &str,
+) -> Result<(u64, u8), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "region success action must begin with `region byte store (...)`",
+        ));
+    };
+    let [region, byte, store, Expression::Product { fields, .. }] = items.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "region success action must begin with `region byte store (...)`",
+        ));
+    };
+    if !identifier_is(source, region, region_name)
+        || !identifier_is(source, byte, "byte")
+        || !identifier_is(source, store, "store")
+    {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte store requires the affine region bound by the `Ok` action",
+        ));
+    }
+    let offset = named_static_natural(source, fields, "offset-bytes")?;
+    let value = named_static_natural(source, fields, "value")?;
+    if fields.len() != 2 {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte store requires exactly `offset-bytes` and `value`",
+        ));
+    }
+    let value = u8::try_from(value).map_err(|_| {
+        storage_diagnostic(
+            source,
+            *span,
+            "byte store value must be a `Nat` from 0 through 255",
+        )
+    })?;
+    Ok((offset, value))
+}
+
+fn parse_region_load(
+    source: &SourceText,
+    statement: &Statement,
+    region_name: &str,
+) -> Result<(String, u64), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "byte load must bind its `Nat` result",
+        ));
+    };
+    let [region, byte, load, Expression::Product { fields, .. }] = items.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte load must be `observed : Nat is region byte load (...)`",
+        ));
+    };
+    if source.slice(*classifier) != "Nat"
+        || !identifier_is(source, region, region_name)
+        || !identifier_is(source, byte, "byte")
+        || !identifier_is(source, load, "load")
+        || fields.len() != 1
+    {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte load requires the affine region and one static `offset-bytes` field",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        named_static_natural(source, fields, "offset-bytes")?,
+    ))
+}
+
+fn named_static_natural(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+) -> Result<u64, Diagnostic> {
+    let mut found = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(storage_diagnostic(
+                source,
+                field.value.span(),
+                "byte access parameters must be named",
+            ));
+        };
+        if source.slice(label) == name {
+            if found
+                .replace(parse_storage_natural(source, &field.value)?)
+                .is_some()
+            {
+                return Err(storage_diagnostic(
+                    source,
+                    label,
+                    format!("byte access parameter `{name}` is duplicated"),
+                ));
+            }
+        } else if !matches!(source.slice(label), "offset-bytes" | "value") {
+            return Err(storage_diagnostic(
+                source,
+                label,
+                format!("unknown byte access parameter `{}`", source.slice(label)),
+            ));
+        }
+    }
+    found.ok_or_else(|| {
+        storage_diagnostic(
+            source,
+            fields
+                .first()
+                .map_or(Span::new(0, 0), |field| field.value.span()),
+            format!("byte access requires `{name}`"),
+        )
+    })
+}
+
+struct CheckedRegionComparison {
+    expected: u8,
+    success_text: String,
+    failure_message: String,
+    success_disposition: CompilerSystemsDisposition,
+}
+
+fn parse_region_comparison(
+    source: &SourceText,
+    statement: &Statement,
+    true_rule: &Statement,
+    false_rule: &Statement,
+    context_name: &str,
+    region_name: &str,
+    loaded_name: &str,
+) -> Result<CheckedRegionComparison, Diagnostic> {
+    let Statement::Expression(Expression::Application { items, .. }) = statement else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "loaded byte requires an exhaustive equality decision",
+        ));
+    };
+    let [
+        loaded,
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        expected,
+    ] = items.as_slice()
+    else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "loaded byte decision subject must use equality with a static byte",
+        ));
+    };
+    if !identifier_is(source, loaded, loaded_name) {
+        return Err(storage_diagnostic(
+            source,
+            loaded.span(),
+            "byte comparison must use the immediately preceding load binding",
+        ));
+    }
+    let expected = u8::try_from(parse_storage_natural(source, expected)?).map_err(|_| {
+        storage_diagnostic(
+            source,
+            expected.span(),
+            "byte comparison value must be from 0 through 255",
+        )
+    })?;
+    let true_action = parse_boolean_rule(source, true_rule, true)?;
+    let false_action = parse_boolean_rule(source, false_rule, false)?;
+    let true_statements = action_block(source, true_action, "successful byte comparison")?;
+    let [console, release, disposition] = true_statements else {
+        return Err(storage_diagnostic(
+            source,
+            true_action.span(),
+            "successful byte comparison requires console marker, region release, and final disposition",
+        ));
+    };
+    let CompilerSystemsOperation::ConsoleWrite { text } = analyze_operation(
+        source,
+        console,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        unreachable!("only the console operation passes the success check")
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let success_disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+
+    let false_statements = action_block(source, false_action, "failed byte comparison")?;
+    let [release, disposition] = false_statements else {
+        return Err(storage_diagnostic(
+            source,
+            false_action.span(),
+            "failed byte comparison requires region release and fatal disposition",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let failure = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    let CompilerSystemsDisposition::Fatal {
+        message: failure_message,
+    } = failure
+    else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(disposition),
+            "failed byte comparison must enter the fatal disposition",
+        ));
+    };
+    Ok(CheckedRegionComparison {
+        expected,
+        success_text: text,
+        failure_message,
+        success_disposition,
+    })
+}
+
+fn parse_boolean_rule<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    expected: bool,
+) -> Result<&'a Expression, Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "byte equality requires explicit `true` and `false` actions",
+        ));
+    };
+    let [Expression::Boolean(value), then, action] = items.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte equality requires explicit `true` and `false` actions",
+        ));
+    };
+    if (source.slice(*value) == "true") != expected || !identifier_is(source, then, "then") {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "byte equality actions must appear once in `true`, `false` order",
+        ));
+    }
+    Ok(action)
+}
+
+fn action_block<'a>(
+    source: &SourceText,
+    action: &'a Expression,
+    description: &str,
+) -> Result<&'a [Statement], Diagnostic> {
+    let Expression::Block { statements, .. } = action else {
+        return Err(storage_diagnostic(
+            source,
+            action.span(),
+            format!("{description} requires a block"),
+        ));
+    };
+    Ok(statements)
+}
+
+fn action_disposition(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+) -> Result<CompilerSystemsDisposition, Diagnostic> {
+    let statement = Statement::Expression(action.clone());
+    analyze_disposition(
+        source,
+        &statement,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )
+}
+
+fn parse_region_release(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    region_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "bootstrap region must be released exactly once",
+        ));
+    };
+    let [context, bootstrap, release, region] = items.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "release must be `context bootstrap release region`",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, bootstrap, "bootstrap")
+        || !identifier_is(source, release, "release")
+        || !identifier_is(source, region, region_name)
+    {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "release requires the live bootstrap context and its affine region",
+        ));
+    }
+    Ok(())
 }
 
 fn analyze_operation(
@@ -720,6 +1354,10 @@ mod tests {
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
     const STORAGE_DECLARATION: &str = "  bootstrap-storage is lang systems bounded-bootstrap-storage (\n    capacity-bytes is 65536,\n    alignment-bytes is 4096\n  ),\n";
 
+    fn memory_source() -> String {
+        SOURCE.to_owned()
+    }
+
     #[test]
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
@@ -738,7 +1376,15 @@ mod tests {
         );
         assert_eq!(
             program.bootstrap.handler.effects,
-            [SYSTEMS_CONSOLE_WRITE, SYSTEMS_FATAL, SYSTEMS_DEBUG_BREAK]
+            [
+                SYSTEMS_CONSOLE_WRITE,
+                SYSTEMS_FATAL,
+                SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+                SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+                SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+                SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            ]
         );
         assert_eq!(
             model_systems_transitions(&program).unwrap(),
@@ -757,11 +1403,113 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_FAULT_RESUMED".into(),
                 },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 64,
+                        alignment_bytes: 8,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::StoreBootstrapByte {
+                    offset_bytes: 0,
+                    value: 90,
+                },
+                CompilerSystemsTransition::LoadBootstrapByte {
+                    offset_bytes: 0,
+                    value: 90,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_MEMORY_OK".into(),
+                },
+                CompilerSystemsTransition::ReleaseBootstrapRegion,
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
             ]
         );
+    }
+
+    #[test]
+    fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
+        // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001.
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        assert_eq!(program.bootstrap.handler.operations.len(), 8);
+        assert_eq!(
+            program.bootstrap.handler.effects,
+            [
+                SYSTEMS_CONSOLE_WRITE,
+                SYSTEMS_FATAL,
+                SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+                SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+                SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+                SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            ]
+        );
+        let transitions = model_systems_transitions(&program).unwrap();
+        assert!(
+            transitions.contains(&CompilerSystemsTransition::StoreBootstrapByte {
+                offset_bytes: 0,
+                value: 90,
+            })
+        );
+        assert!(
+            transitions.contains(&CompilerSystemsTransition::LoadBootstrapByte {
+                offset_bytes: 0,
+                value: 90,
+            })
+        );
+        assert!(transitions.contains(&CompilerSystemsTransition::ReleaseBootstrapRegion));
+        assert!(
+            transitions.contains(&CompilerSystemsTransition::ConsoleWrite {
+                text: "TOPAL_KERNEL_MEMORY_OK".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_unbounded_or_non_affine_bootstrap_region_forms() {
+        // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-STORAGE-001.
+        for (source, code, expected) in [
+            (
+                memory_source().replace("offset-bytes is 0, value", "offset-bytes is 64, value"),
+                "E-SYSTEMS-STORAGE",
+                "outside the static region size",
+            ),
+            (
+                memory_source().replace("value is 90)", "value is 256)"),
+                "E-SYSTEMS-STORAGE",
+                "from 0 through 255",
+            ),
+            (
+                memory_source().replace(
+                    "context bootstrap release region\n          context fatal \"toolchain gate complete\"",
+                    "context console write \"not released\"\n          context fatal \"toolchain gate complete\"",
+                ),
+                "E-SYSTEMS-STORAGE",
+                "release requires",
+            ),
+            (
+                memory_source().replace(
+                    "Error problem then context fatal \"toolchain gate allocation failed\"",
+                    "Error problem then region byte load (offset-bytes is 0)",
+                ),
+                "E-SYSTEMS-DISPOSITION",
+                "final operation is not a disposition",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
     }
 
     #[test]
@@ -826,7 +1574,10 @@ mod tests {
             "E-SYSTEMS-OPERATION"
         );
 
-        let missing = SOURCE.replace("  context fatal \"toolchain gate complete\"\n", "");
+        let missing = SOURCE.replace(
+            "  context resume",
+            "  context console write \"missing disposition\"",
+        );
         assert_eq!(
             analyze_systems_for_compiler(
                 &missing,

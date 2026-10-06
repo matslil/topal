@@ -27,9 +27,12 @@ architecture-independent reference model. The third increment adds the
 [sealed x86-64 provider plan](step-4-x86-provider-plan.md). The fourth adds a
 [generated and structurally inspected provider object](step-4-x86-provider-object.md).
 The fifth adds a [linked freestanding payload and atomic artifact set](step-4-linked-artifact.md).
-This does not yet claim a bootable Topal kernel: the Linux boot-protocol
-adapter and QEMU evidence remain required, while the ordinary compiler remains
-a Linux x86-64 userspace compiler.
+The sixth adds the [generated Linux x86 boot adapter](step-4-x86-boot-adapter.md).
+The seventh [passes the initial toolchain gate under pinned QEMU](step-4-toolchain-gate.md):
+entry, polling serial output, debug-break recovery, checked kernel-owned-memory
+use, and the fatal halt execute without a host runtime. The ordinary compiler
+remains a Linux x86-64 userspace compiler and exposes the systems target as
+model-only until general systems-artifact publication is integrated.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -110,6 +113,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 x86-64 provider plan](step-4-x86-provider-plan.md)
 - [Step 4 generated x86-64 provider object](step-4-x86-provider-object.md)
 - [Step 4 linked freestanding x86-64 artifact](step-4-linked-artifact.md)
+- [Step 4 generated Linux x86 boot adapter](step-4-x86-boot-adapter.md)
+- [Step 4 pinned-QEMU boot and exception gate](step-4-toolchain-gate.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

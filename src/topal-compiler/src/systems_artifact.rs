@@ -14,8 +14,10 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
-    CompilerSystemsTransition, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK, model_systems_transitions,
+    CompilerSystemsTransition, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK,
+    model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -172,6 +174,18 @@ fn publish_in_stage(
         &linked.debug,
         &linked.map,
         plan.bootstrap_placement.capacity_bytes,
+        program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .any(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::BootstrapStoreByte { .. }
+                        | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
+                )
+            }),
     )?;
     let placements = linked_placements(&linked.kernel)?;
     let record = artifact_provenance(
@@ -329,14 +343,19 @@ fn inspect_linked_kernel(
     debug: &[u8],
     map: &[u8],
     storage_capacity: u64,
+    requires_bootstrap_memory: bool,
 ) -> Result<(), CompileError> {
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
-    inspect_kernel_elf(&file, storage_capacity)?;
+    inspect_kernel_elf(&file, storage_capacity, requires_bootstrap_memory)?;
     inspect_debug_and_map(debug, map)
 }
 
-fn inspect_kernel_elf(file: &object::File<'_>, storage_capacity: u64) -> Result<(), CompileError> {
+fn inspect_kernel_elf(
+    file: &object::File<'_>,
+    storage_capacity: u64,
+    requires_bootstrap_memory: bool,
+) -> Result<(), CompileError> {
     if file.format() != BinaryFormat::Elf
         || file.architecture() != Architecture::X86_64
         || !file.is_little_endian()
@@ -357,6 +376,9 @@ fn inspect_kernel_elf(file: &object::File<'_>, storage_capacity: u64) -> Result<
         return Err(CompileError::Tool(
             "linked systems ELF entry does not select its generated bootstrap root".into(),
         ));
+    }
+    if requires_bootstrap_memory {
+        inspect_bootstrap_memory_instructions(file)?;
     }
     if file
         .symbols()
@@ -434,6 +456,48 @@ fn inspect_kernel_elf(file: &object::File<'_>, storage_capacity: u64) -> Result<
     Ok(())
 }
 
+fn inspect_bootstrap_memory_instructions(file: &object::File<'_>) -> Result<(), CompileError> {
+    let entry = file
+        .symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY)
+        .ok_or_else(|| CompileError::Tool("generated bootstrap root is absent".into()))?;
+    let section = entry
+        .section_index()
+        .and_then(|index| file.section_by_index(index).ok())
+        .ok_or_else(|| {
+            CompileError::Tool("generated bootstrap root has no executable section".into())
+        })?;
+    let section_data = section.data().map_err(|error| {
+        CompileError::Tool(format!(
+            "cannot inspect generated bootstrap root bytes: {error}"
+        ))
+    })?;
+    let start =
+        usize::try_from(entry.address().saturating_sub(section.address())).map_err(|_| {
+            CompileError::Tool("generated bootstrap root offset exceeds host range".into())
+        })?;
+    let size = usize::try_from(entry.size()).map_err(|_| {
+        CompileError::Tool("generated bootstrap root size exceeds host range".into())
+    })?;
+    let end = start
+        .checked_add(size)
+        .ok_or_else(|| CompileError::Tool("generated bootstrap root range overflows".into()))?;
+    let root = section_data.get(start..end).ok_or_else(|| {
+        CompileError::Tool("generated bootstrap root range exceeds its section".into())
+    })?;
+    let retains_store = root
+        .windows(7)
+        .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90);
+    let retains_load_and_check = root
+        .windows(15)
+        .any(|bytes| bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]);
+    if !retains_store || !retains_load_and_check {
+        return Err(CompileError::Tool(
+            "linked bootstrap root omits its checked byte store/load path".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
     let debug_file = object::File::parse(debug).map_err(|error| {
         CompileError::Tool(format!("cannot parse systems debug artifact: {error}"))
@@ -501,6 +565,14 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             "topal_bootstrap_storage",
         ),
+        (
+            SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+            "topal_bootstrap_storage",
+        ),
+        (
+            SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+            "topal_bootstrap_storage",
+        ),
     ] {
         let symbol = file.symbol_by_name(symbol_name).ok_or_else(|| {
             CompileError::Tool(format!(
@@ -538,6 +610,7 @@ enum ProviderSymbol {
     DebugBreak,
     InterruptReturn,
     Fatal,
+    BootstrapStorage,
 }
 
 impl ProviderSymbol {
@@ -547,6 +620,16 @@ impl ProviderSymbol {
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
             Self::Fatal => "topal_x86_systems_fatal",
+            Self::BootstrapStorage => "topal_bootstrap_storage",
+        }
+    }
+
+    const fn kind(self) -> SymbolKind {
+        match self {
+            Self::BootstrapStorage => SymbolKind::Data,
+            Self::Uart16550Write | Self::DebugBreak | Self::InterruptReturn | Self::Fatal => {
+                SymbolKind::Text
+            }
         }
     }
 }
@@ -591,12 +674,25 @@ const SAVED_REGISTERS: [SavedRegister; 15] = [
 struct PendingRelocation {
     offset: u64,
     target: ProviderSymbol,
+    addend: i64,
+    kind: RelocationKind,
+    encoding: RelocationEncoding,
 }
 
 #[derive(Default)]
 struct RootEncoder {
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
+    bootstrap_region_offset: Option<u64>,
+}
+
+#[derive(Clone, Copy)]
+struct ProviderSymbols {
+    uart16550_write: SymbolId,
+    debug_break: SymbolId,
+    interrupt_return: SymbolId,
+    fatal: SymbolId,
+    bootstrap_storage: Option<SymbolId>,
 }
 
 impl RootEncoder {
@@ -614,6 +710,9 @@ impl RootEncoder {
         self.relocations.push(PendingRelocation {
             offset: self.bytes.len() as u64,
             target,
+            addend: -4,
+            kind: RelocationKind::PltRelative,
+            encoding: RelocationEncoding::X86Branch,
         });
         self.bytes.extend_from_slice(&[0; 4]);
     }
@@ -623,6 +722,9 @@ impl RootEncoder {
         self.relocations.push(PendingRelocation {
             offset: self.bytes.len() as u64,
             target,
+            addend: -4,
+            kind: RelocationKind::PltRelative,
+            encoding: RelocationEncoding::X86Branch,
         });
         self.bytes.extend_from_slice(&[0; 4]);
     }
@@ -641,6 +743,86 @@ impl RootEncoder {
             self.bytes.push(rex);
         }
         self.bytes.push(opcode);
+    }
+
+    fn allocate_bootstrap_region(&mut self) -> Result<(), CompileError> {
+        if self.bootstrap_region_offset.replace(0).is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered overlapping bootstrap regions".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn store_bootstrap_byte(&mut self, offset: u64, value: u8) -> Result<(), CompileError> {
+        let storage_offset = self.bootstrap_storage_offset(offset)?;
+        self.bytes.extend_from_slice(&[0xc6, 0x05]);
+        self.rip_relative_storage(storage_offset, 1)?;
+        self.bytes.push(value);
+        Ok(())
+    }
+
+    fn load_bootstrap_byte_equals(
+        &mut self,
+        offset: u64,
+        expected: u8,
+    ) -> Result<(), CompileError> {
+        let storage_offset = self.bootstrap_storage_offset(offset)?;
+        self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x05]);
+        self.rip_relative_storage(storage_offset, 0)?;
+        self.bytes.extend_from_slice(&[0x3c, expected, 0x0f, 0x85]);
+        self.relocations.push(PendingRelocation {
+            offset: u64::try_from(self.bytes.len()).map_err(|_| {
+                CompileError::Tool("generated root relocation offset exceeds u64".into())
+            })?,
+            target: ProviderSymbol::Fatal,
+            addend: -4,
+            kind: RelocationKind::PltRelative,
+            encoding: RelocationEncoding::X86Branch,
+        });
+        self.bytes.extend_from_slice(&[0; 4]);
+        Ok(())
+    }
+
+    fn release_bootstrap_region(&mut self) -> Result<(), CompileError> {
+        if self.bootstrap_region_offset.take().is_none() {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered release without a live bootstrap region".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn bootstrap_storage_offset(&self, offset: u64) -> Result<u64, CompileError> {
+        self.bootstrap_region_offset
+            .ok_or_else(|| {
+                CompileError::Tool(
+                    "x86 root lowering encountered byte access without a live region".into(),
+                )
+            })?
+            .checked_add(offset)
+            .ok_or_else(|| CompileError::Tool("bootstrap storage offset overflows".into()))
+    }
+
+    fn rip_relative_storage(
+        &mut self,
+        storage_offset: u64,
+        trailing_bytes: i64,
+    ) -> Result<(), CompileError> {
+        let storage_offset = i64::try_from(storage_offset).map_err(|_| {
+            CompileError::Tool("bootstrap storage offset exceeds x86 relocation range".into())
+        })?;
+        self.relocations.push(PendingRelocation {
+            offset: u64::try_from(self.bytes.len()).map_err(|_| {
+                CompileError::Tool("generated root relocation offset exceeds u64".into())
+            })?,
+            target: ProviderSymbol::BootstrapStorage,
+            addend: storage_offset - 4 - trailing_bytes,
+            kind: RelocationKind::Relative,
+            encoding: RelocationEncoding::X86RipRelative,
+        });
+        self.bytes.extend_from_slice(&[0; 4]);
+        Ok(())
     }
 }
 
@@ -678,15 +860,31 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         X86_SYSTEMS_ROOT_TEXT_SECTION.as_bytes().to_vec(),
         SectionKind::Text,
     );
-    let symbols = [
-        undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
-        undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
-        undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
-        undefined_provider_symbol(&mut object, ProviderSymbol::Fatal),
-    ];
+    let uses_bootstrap_storage = program
+        .bootstrap
+        .handler
+        .operations
+        .iter()
+        .any(|operation| {
+            matches!(
+                operation,
+                CompilerSystemsOperation::BootstrapAllocate { .. }
+                    | CompilerSystemsOperation::BootstrapStoreByte { .. }
+                    | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
+                    | CompilerSystemsOperation::BootstrapRelease
+            )
+        });
+    let symbols = ProviderSymbols {
+        uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
+        debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
+        interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
+        fatal: undefined_provider_symbol(&mut object, ProviderSymbol::Fatal),
+        bootstrap_storage: uses_bootstrap_storage
+            .then(|| undefined_provider_symbol(&mut object, ProviderSymbol::BootstrapStorage)),
+    };
 
     let mut bootstrap = RootEncoder::default();
-    encode_operations(&mut bootstrap, &program.bootstrap.handler.operations);
+    encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
     bootstrap.jump(ProviderSymbol::Fatal);
     append_root(
         &mut object,
@@ -700,7 +898,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     for register in SAVED_REGISTERS {
         debug_break.push(register);
     }
-    encode_operations(&mut debug_break, &program.debug_break.handler.operations);
+    encode_operations(&mut debug_break, &program.debug_break.handler.operations)?;
     match program.debug_break.handler.disposition {
         CompilerSystemsDisposition::Resume => {
             for register in SAVED_REGISTERS.into_iter().rev() {
@@ -722,13 +920,35 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         .map_err(|error| CompileError::Tool(format!("cannot encode systems root ELF: {error}")))
 }
 
-fn encode_operations(encoder: &mut RootEncoder, operations: &[CompilerSystemsOperation]) {
+fn encode_operations(
+    encoder: &mut RootEncoder,
+    operations: &[CompilerSystemsOperation],
+) -> Result<(), CompileError> {
     for operation in operations {
         match operation {
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
+            CompilerSystemsOperation::BootstrapAllocate { .. } => {
+                encoder.allocate_bootstrap_region()?;
+            }
+            CompilerSystemsOperation::BootstrapStoreByte {
+                offset_bytes,
+                value,
+            } => encoder.store_bootstrap_byte(*offset_bytes, *value)?,
+            CompilerSystemsOperation::BootstrapLoadByteEquals {
+                offset_bytes,
+                expected,
+                ..
+            } => encoder.load_bootstrap_byte_equals(*offset_bytes, *expected)?,
+            CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
         }
     }
+    if encoder.bootstrap_region_offset.is_some() {
+        return Err(CompileError::Tool(
+            "x86 root lowering ended with a live bootstrap region".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn undefined_provider_symbol(object: &mut Object<'_>, symbol: ProviderSymbol) -> SymbolId {
@@ -736,7 +956,7 @@ fn undefined_provider_symbol(object: &mut Object<'_>, symbol: ProviderSymbol) ->
         name: symbol.name().as_bytes().to_vec(),
         value: 0,
         size: 0,
-        kind: SymbolKind::Text,
+        kind: symbol.kind(),
         scope: SymbolScope::Linkage,
         weak: false,
         section: SymbolSection::Undefined,
@@ -749,7 +969,7 @@ fn append_root(
     section: SectionId,
     name: &str,
     encoded: &RootEncoder,
-    provider_symbols: [SymbolId; 4],
+    provider_symbols: ProviderSymbols,
 ) -> Result<(), CompileError> {
     let start = object.append_section_data(section, &encoded.bytes, 16);
     object.add_symbol(Symbol {
@@ -764,10 +984,17 @@ fn append_root(
     });
     for relocation in &encoded.relocations {
         let symbol = match relocation.target {
-            ProviderSymbol::Uart16550Write => provider_symbols[0],
-            ProviderSymbol::DebugBreak => provider_symbols[1],
-            ProviderSymbol::InterruptReturn => provider_symbols[2],
-            ProviderSymbol::Fatal => provider_symbols[3],
+            ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
+            ProviderSymbol::DebugBreak => provider_symbols.debug_break,
+            ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
+            ProviderSymbol::Fatal => provider_symbols.fatal,
+            ProviderSymbol::BootstrapStorage => {
+                provider_symbols.bootstrap_storage.ok_or_else(|| {
+                    CompileError::Tool(
+                        "x86 root lowering emitted a storage relocation without storage use".into(),
+                    )
+                })?
+            }
         };
         object
             .add_relocation(
@@ -775,10 +1002,10 @@ fn append_root(
                 Relocation {
                     offset: start + relocation.offset,
                     symbol,
-                    addend: -4,
+                    addend: relocation.addend,
                     flags: RelocationFlags::Generic {
-                        kind: RelocationKind::PltRelative,
-                        encoding: RelocationEncoding::X86Branch,
+                        kind: relocation.kind,
+                        encoding: relocation.encoding,
                         size: 32,
                     },
                 },
@@ -807,10 +1034,25 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 CompilerSystemsTransition::Fatal { message } => {
                     format!("{identity}:sha256:{}", sha256(message.as_bytes()))
                 }
+                CompilerSystemsTransition::AllocateBootstrapRegion { request } => format!(
+                    "{identity}:bytes={}:alignment={}:placement={}",
+                    request.byte_count,
+                    request.alignment_bytes,
+                    request.placement.semantic_identity()
+                ),
+                CompilerSystemsTransition::StoreBootstrapByte {
+                    offset_bytes,
+                    value,
+                }
+                | CompilerSystemsTransition::LoadBootstrapByte {
+                    offset_bytes,
+                    value,
+                } => format!("{identity}:offset={offset_bytes}:value={value}"),
                 CompilerSystemsTransition::EnterBootstrap
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
-                | CompilerSystemsTransition::ResumeDebugBreak => identity.into(),
+                | CompilerSystemsTransition::ResumeDebugBreak
+                | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }
         })
         .collect();
@@ -862,7 +1104,10 @@ fn io_error<'a>(
 #[cfg(test)]
 mod tests {
     use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
-    use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
+    use topal_language::compiler::{
+        CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, analyze_systems_for_compiler,
+    };
 
     use super::*;
 
@@ -893,6 +1138,7 @@ mod tests {
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
                 "topal_x86_systems_fatal",
+                "topal_bootstrap_storage",
             ]
         );
         let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
@@ -905,20 +1151,48 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 46);
-        assert!(
-            relocation_targets[..17]
+        assert_eq!(relocation_targets.len(), 71);
+        assert_eq!(
+            relocation_targets
                 .iter()
-                .all(|target| *target == "topal_x86_systems_uart16550_write")
+                .filter(|target| **target == "topal_x86_systems_uart16550_write")
+                .count(),
+            65
         );
-        assert_eq!(relocation_targets[17], "topal_x86_systems_debug_break");
-        assert!(
-            relocation_targets[18..44]
+        assert_eq!(
+            relocation_targets
                 .iter()
-                .all(|target| *target == "topal_x86_systems_uart16550_write")
+                .filter(|target| **target == "topal_bootstrap_storage")
+                .count(),
+            2
         );
-        assert_eq!(relocation_targets[44], "topal_x86_systems_fatal");
-        assert_eq!(relocation_targets[45], "topal_x86_systems_interrupt_return");
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == "topal_x86_systems_fatal")
+                .count(),
+            2
+        );
+        let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
+        let root_section = file
+            .section_by_index(root.section_index().unwrap())
+            .unwrap();
+        let data = root_section.data().unwrap();
+        let start = usize::try_from(root.address() - root_section.address()).unwrap();
+        let end = start + usize::try_from(root.size()).unwrap();
+        let root_bytes = &data[start..end];
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90),
+            "root must retain the real byte store"
+        );
+        assert!(
+            root_bytes.windows(15).any(|bytes| {
+                bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]
+            }),
+            "root must retain the real byte load and mismatch branch"
+        );
         assert!(file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).is_some());
         assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
     }
@@ -950,10 +1224,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 7);
+        assert_eq!(decoded.placements.len(), 9);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 8);
+        assert_eq!(decoded.semantic_trace.len(), 13);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert!(decoded.semantic_trace[2].starts_with(SYSTEMS_CONSOLE_WRITE));
@@ -964,7 +1238,15 @@ mod tests {
         );
         assert_eq!(decoded.semantic_trace[5], SYSTEMS_RESUME_DEBUG_BREAK);
         assert!(decoded.semantic_trace[6].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
+        assert!(decoded.semantic_trace[9].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert!(decoded.semantic_trace[10].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[11],
+            SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
+        );
+        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

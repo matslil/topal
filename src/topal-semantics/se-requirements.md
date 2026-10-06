@@ -64,6 +64,13 @@ and exhaustion failures, affine region provenance and release, and whole-pool
 reclamation only after bootstrap completes without live regions. Model offsets
 shall remain abstract and shall not acquire machine-address meaning.
 
+The third implementation increment shall model source-visible exhaustive
+bootstrap allocation, borrowed bounds-checked plain byte store/load, and
+consuming release. It shall retain byte contents without assigning a machine
+address, reject out-of-bounds access and use after release, and distinguish
+plain storage from volatile, atomic, device, DMA, firmware, and user-memory
+protocols.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

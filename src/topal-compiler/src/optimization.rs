@@ -74,7 +74,7 @@ const TARGET_QUALIFICATIONS: &[TargetQualification] = &[
         model: "topal.systems.x86_64-qemu-pc-q35-10.2/1",
         source: "linux-kernel/labs/qemu/x86_64/manifest.json",
         status: TargetQualificationStatus::ModelOnly,
-        missing: "x86-64 provider lowering, kernel artifact publication, artifact inspection, and QEMU physical evidence",
+        missing: "ordinary compiler publication integration beyond the qualified lab-only toolchain gate",
     },
     TargetQualification {
         profile: "example-x86-64-avx2",

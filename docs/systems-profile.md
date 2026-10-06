@@ -89,6 +89,47 @@ bootstrap completes with no live regions. Requests carry semantic placement;
 neither the pool nor a region exposes a physical address, object section, or
 linker spelling.
 
+The initial region-access form uses the language's ordinary exhaustive
+`Result` and Boolean decisions:
+
+```topal
+context bootstrap allocate (
+  byte-count is 64,
+  alignment-bytes is 8,
+  placement is bootstrap-reclaimable
+)
+  Ok region then {
+    region byte store (offset-bytes is 0, value is 90)
+    observed : Nat is region byte load (offset-bytes is 0)
+    observed = 90
+      true then {
+        context bootstrap release region
+        context fatal "complete"
+      }
+      false then {
+        context bootstrap release region
+        context fatal "memory mismatch"
+      }
+  }
+  Error problem then context fatal "allocation failed"
+```
+
+`BootstrapRegion` is an affine capability for ordinary kernel-owned memory,
+not a pointer or address. Byte load and store borrow the live region, require a
+zero-based offset within its byte count, and produce or accept a `Nat` from 0
+through 255. Release consumes the region after its last borrow. No operation
+reveals the pool offset or permits the region to escape its bootstrap
+execution. The initial executable slice admits only static requests and static
+offsets whose alignment, capacity, value range, and bounds are proven before
+lowering. A later dynamic offset must carry a proof or use a separately
+approved explicit failure result; it never gains unchecked behavior.
+
+These are plain-memory operations. They do not imply volatile, atomic, device,
+DMA, firmware, or user-memory access, and cannot substitute for the separately
+typed protocols governing those domains. Providers may choose different
+concrete locations and addressing instructions while preserving the same
+allocation, byte-content, lifetime, and failure observations.
+
 The first target identity is `x86_64-unknown-none`, board
 `topal-qemu-pc-q35-10.2`, under profile
 `topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model qualification does
@@ -283,6 +324,12 @@ allocator capabilities. Allocation is fallible and names a region or pool,
 alignment, address family, context legality, reclaim policy, and any physical
 or DMA constraints. No allocation or failure path calls a host operating
 system implicitly.
+
+Ordinary kernel-owned regions support bounds-checked plain byte load and store
+while borrowed and become inaccessible when consumed by release. They expose
+neither their address nor their provider's allocation metadata. Volatile,
+atomic, device, DMA, firmware, and user-memory operations remain distinct typed
+protocols rather than flags on a plain region access.
 
 Static placement is semantic evidence such as special-entry text, read-only
 data, mutable data, per-CPU template, bootstrap-reclaimable data, page-aligned

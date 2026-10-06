@@ -70,6 +70,30 @@ later bootstrap allocation. Bootstrap completion SHALL require no live region
 and SHALL make the complete pool reclaimable. No source operation SHALL expose
 the model offset as a machine or physical address.
 
+A live `BootstrapRegion` SHALL admit plain byte store and load only while
+borrowed by its originating bootstrap execution. An access SHALL use a
+zero-based offset strictly below the region byte count; a stored value SHALL be
+a `Nat` no greater than 255, and a load SHALL return such a `Nat`. The initial
+executable slice SHALL accept only statically known requests and offsets whose
+alignment, capacity, value range, and bounds are proven before lowering.
+Dynamic access SHALL remain unavailable until it carries a proof or an
+explicitly specified failure result. It SHALL NOT be unchecked.
+
+Allocation SHALL use the ordinary exhaustive `Result` decision, with an affine
+region bound only in the `Ok` action and a sealed storage error bound only in
+the `Error` action. Every reachable success action SHALL release its region
+exactly once before the bootstrap context is consumed. Load and store SHALL
+borrow rather than consume the region; release SHALL consume it. A region SHALL
+NOT escape through return, storage, capture, message, task, foreign,
+serialization, another entry, or an allocation-error action.
+
+Plain region access SHALL NOT acquire volatile, atomic, device, DMA, firmware,
+or user-memory semantics. Those domains SHALL require their separately typed
+protocols. A provider MAY choose a target-specific concrete location and
+instruction sequence only when it preserves the region's bounds, byte
+contents, ownership, lifetime, and failure behavior without exposing its
+address or allocation metadata to source.
+
 The first semantic target profile SHALL record target
 `x86_64-unknown-none`, board `topal-qemu-pc-q35-10.2`, and profile
 `topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model acceptance SHALL NOT
@@ -288,6 +312,12 @@ alignment, address family, context legality, reclaim policy, and physical/DMA
 constraints. Bootstrap allocation SHALL remain within its bounded artifact-
 provided resource. No allocation or cleanup path SHALL acquire a host service
 implicitly.
+
+An ordinary kernel-owned region SHALL support bounds-checked plain byte load
+and store while borrowed. Release SHALL consume the region, after which no
+access is valid. Region access SHALL expose neither a machine address nor
+provider allocation metadata and SHALL NOT be used for volatile, atomic,
+device, DMA, firmware, or user memory.
 
 Static placement SHALL use closed semantic requirements, including special
 entry text, read-only or mutable data, per-processor template,

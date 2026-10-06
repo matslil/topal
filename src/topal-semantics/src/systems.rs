@@ -2,7 +2,12 @@
 
 use std::fmt;
 
-use crate::{BootstrapStorageDescriptor, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION};
+use crate::{
+    BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+};
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
 pub const INITIAL_SYSTEMS_BOARD: &str = "topal-qemu-pc-q35-10.2";
@@ -44,8 +49,23 @@ pub enum SystemsContextKind {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsOperation {
-    ConsoleWrite { text: String },
+    ConsoleWrite {
+        text: String,
+    },
     DebugBreak,
+    BootstrapAllocate {
+        request: BootstrapStorageRequest,
+    },
+    BootstrapStoreByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    BootstrapLoadByteEquals {
+        offset_bytes: u64,
+        expected: u8,
+        failure_message: String,
+    },
+    BootstrapRelease,
 }
 
 impl SystemsOperation {
@@ -54,6 +74,10 @@ impl SystemsOperation {
         match self {
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
+            Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+            Self::BootstrapStoreByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+            Self::BootstrapLoadByteEquals { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+            Self::BootstrapRelease => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
         }
     }
 }
@@ -110,6 +134,18 @@ pub enum SystemsTransition {
     ObserveDebugBreak,
     EnterDebugBreak,
     ResumeDebugBreak,
+    AllocateBootstrapRegion {
+        request: BootstrapStorageRequest,
+    },
+    StoreBootstrapByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    LoadBootstrapByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    ReleaseBootstrapRegion,
     Fatal {
         message: String,
     },
@@ -148,6 +184,10 @@ impl SystemsTransition {
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
             Self::ResumeDebugBreak => SYSTEMS_RESUME_DEBUG_BREAK,
+            Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+            Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+            Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+            Self::ReleaseBootstrapRegion => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
     }
@@ -184,6 +224,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             "bootstrap and debug-break entries require distinct handlers",
         ));
     }
+    validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
 
@@ -205,10 +246,16 @@ fn validate_entry(
         ));
     }
     if required_context == SystemsContextKind::DebugBreak
-        && entry
-            .handler
-            .operations
-            .contains(&SystemsOperation::DebugBreak)
+        && entry.handler.operations.iter().any(|operation| {
+            matches!(
+                operation,
+                SystemsOperation::DebugBreak
+                    | SystemsOperation::BootstrapAllocate { .. }
+                    | SystemsOperation::BootstrapStoreByte { .. }
+                    | SystemsOperation::BootstrapLoadByteEquals { .. }
+                    | SystemsOperation::BootstrapRelease
+            )
+        })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-OPERATION",
@@ -247,6 +294,75 @@ fn validate_entry(
     Ok(())
 }
 
+fn validate_bootstrap_storage_operations(
+    program: &SystemsProgram,
+) -> Result<(), SystemsModelError> {
+    let mut storage = BootstrapStorageState::new(
+        program.bootstrap_storage.clone(),
+        "systems-program-validation",
+    )?;
+    let mut region: Option<BootstrapRegion> = None;
+    for operation in &program.bootstrap.handler.operations {
+        match operation {
+            SystemsOperation::BootstrapAllocate { request } => {
+                if region.is_some() {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STORAGE-LIFETIME",
+                        "the initial executable slice admits one live bootstrap region",
+                    ));
+                }
+                region = Some(storage.allocate(*request).map_err(|code| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-STORAGE-REQUEST",
+                        format!("static bootstrap allocation cannot succeed: {code:?}"),
+                    )
+                })?);
+            }
+            SystemsOperation::BootstrapStoreByte {
+                offset_bytes,
+                value,
+            } => storage.store_byte(
+                region.as_ref().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-STORAGE-LIFETIME",
+                        "bootstrap byte store requires one live region",
+                    )
+                })?,
+                *offset_bytes,
+                *value,
+            )?,
+            SystemsOperation::BootstrapLoadByteEquals { offset_bytes, .. } => {
+                let _ = storage.load_byte(
+                    region.as_ref().ok_or_else(|| {
+                        SystemsModelError::new(
+                            "E-SYSTEMS-STORAGE-LIFETIME",
+                            "bootstrap byte load requires one live region",
+                        )
+                    })?,
+                    *offset_bytes,
+                )?;
+            }
+            SystemsOperation::BootstrapRelease => {
+                let released = region.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-STORAGE-LIFETIME",
+                        "bootstrap release requires one live region",
+                    )
+                })?;
+                storage.release(released)?;
+            }
+            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
+        }
+    }
+    if region.is_some() {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-STORAGE-LIVE",
+            "bootstrap handler consumes its context while a region remains live",
+        ));
+    }
+    Ok(())
+}
+
 /// Execute the deterministic abstract transition model for one checked root.
 ///
 /// # Errors
@@ -264,29 +380,29 @@ pub fn model_systems_transitions(
         },
         SystemsTransition::EnterBootstrap,
     ];
+    let mut storage = BootstrapStorageState::new(
+        program.bootstrap_storage.clone(),
+        "systems-transition-model",
+    )?;
+    let mut region: Option<BootstrapRegion> = None;
     for operation in &program.bootstrap.handler.operations {
         match operation {
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
             }
             SystemsOperation::DebugBreak => {
-                transitions.push(SystemsTransition::ObserveDebugBreak);
-                transitions.push(SystemsTransition::EnterDebugBreak);
-                for operation in &program.debug_break.handler.operations {
-                    if let SystemsOperation::ConsoleWrite { text } = operation {
-                        transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
-                    }
+                if model_debug_break(&program.debug_break.handler, &mut transitions) {
+                    return Ok(transitions);
                 }
-                match &program.debug_break.handler.disposition {
-                    SystemsDisposition::Resume => {
-                        transitions.push(SystemsTransition::ResumeDebugBreak);
-                    }
-                    SystemsDisposition::Fatal { message } => {
-                        transitions.push(SystemsTransition::Fatal {
-                            message: message.clone(),
-                        });
-                        return Ok(transitions);
-                    }
+            }
+            _ => {
+                if model_bootstrap_storage_operation(
+                    operation,
+                    &mut storage,
+                    &mut region,
+                    &mut transitions,
+                )? {
+                    return Ok(transitions);
                 }
             }
         }
@@ -299,9 +415,108 @@ pub fn model_systems_transitions(
     Ok(transitions)
 }
 
+fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTransition>) -> bool {
+    transitions.push(SystemsTransition::ObserveDebugBreak);
+    transitions.push(SystemsTransition::EnterDebugBreak);
+    for operation in &handler.operations {
+        if let SystemsOperation::ConsoleWrite { text } = operation {
+            transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
+        }
+    }
+    match &handler.disposition {
+        SystemsDisposition::Resume => {
+            transitions.push(SystemsTransition::ResumeDebugBreak);
+            false
+        }
+        SystemsDisposition::Fatal { message } => {
+            transitions.push(SystemsTransition::Fatal {
+                message: message.clone(),
+            });
+            true
+        }
+    }
+}
+
+fn model_bootstrap_storage_operation(
+    operation: &SystemsOperation,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::BootstrapAllocate { request } => {
+            *region = Some(storage.allocate(*request).map_err(|code| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-REQUEST",
+                    format!("checked bootstrap allocation failed during modeling: {code:?}"),
+                )
+            })?);
+            transitions.push(SystemsTransition::AllocateBootstrapRegion { request: *request });
+        }
+        SystemsOperation::BootstrapStoreByte {
+            offset_bytes,
+            value,
+        } => {
+            storage.store_byte(
+                required_region(region.as_ref(), "store")?,
+                *offset_bytes,
+                *value,
+            )?;
+            transitions.push(SystemsTransition::StoreBootstrapByte {
+                offset_bytes: *offset_bytes,
+                value: *value,
+            });
+        }
+        SystemsOperation::BootstrapLoadByteEquals {
+            offset_bytes,
+            expected,
+            failure_message,
+        } => {
+            let value =
+                storage.load_byte(required_region(region.as_ref(), "load")?, *offset_bytes)?;
+            transitions.push(SystemsTransition::LoadBootstrapByte {
+                offset_bytes: *offset_bytes,
+                value,
+            });
+            if value != *expected {
+                transitions.push(SystemsTransition::Fatal {
+                    message: failure_message.clone(),
+                });
+                return Ok(true);
+            }
+        }
+        SystemsOperation::BootstrapRelease => {
+            storage.release(region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-LIFETIME",
+                    "bootstrap release requires one live region",
+                )
+            })?)?;
+            transitions.push(SystemsTransition::ReleaseBootstrapRegion);
+        }
+        SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {
+            unreachable!("non-storage operations are modeled by the caller")
+        }
+    }
+    Ok(false)
+}
+
+fn required_region<'a>(
+    region: Option<&'a BootstrapRegion>,
+    operation: &str,
+) -> Result<&'a BootstrapRegion, SystemsModelError> {
+    region.ok_or_else(|| {
+        SystemsModelError::new(
+            "E-SYSTEMS-STORAGE-LIFETIME",
+            format!("bootstrap byte {operation} requires one live region"),
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BootstrapStoragePlacement;
 
     fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
         let target = SystemsTargetSelection::initial_x86_64_qemu();
@@ -366,6 +581,82 @@ mod tests {
                     message: "done".into(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn models_checked_bootstrap_region_contents_and_release() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STORAGE-001.
+        let mut program = program(SystemsDisposition::Resume);
+        program.bootstrap.handler.operations.extend([
+            SystemsOperation::BootstrapAllocate {
+                request: BootstrapStorageRequest {
+                    byte_count: 64,
+                    alignment_bytes: 8,
+                    placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                },
+            },
+            SystemsOperation::BootstrapStoreByte {
+                offset_bytes: 7,
+                value: 90,
+            },
+            SystemsOperation::BootstrapLoadByteEquals {
+                offset_bytes: 7,
+                expected: 90,
+                failure_message: "mismatch".into(),
+            },
+            SystemsOperation::ConsoleWrite {
+                text: "memory ok".into(),
+            },
+            SystemsOperation::BootstrapRelease,
+        ]);
+        program.bootstrap.handler.effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_FATAL.into(),
+            SYSTEMS_DEBUG_BREAK.into(),
+            SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE.into(),
+            SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE.into(),
+            SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
+            SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into(),
+        ];
+        let transitions = model_systems_transitions(&program).unwrap();
+        assert!(
+            transitions.contains(&SystemsTransition::StoreBootstrapByte {
+                offset_bytes: 7,
+                value: 90,
+            })
+        );
+        assert!(transitions.contains(&SystemsTransition::LoadBootstrapByte {
+            offset_bytes: 7,
+            value: 90,
+        }));
+        assert!(transitions.contains(&SystemsTransition::ReleaseBootstrapRegion));
+
+        let release = program.bootstrap.handler.operations.pop().unwrap();
+        program
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| effect != SYSTEMS_BOOTSTRAP_STORAGE_RELEASE);
+        assert_eq!(
+            validate_systems_program(&program).unwrap_err().code,
+            "E-SYSTEMS-STORAGE-LIVE"
+        );
+        program.bootstrap.handler.operations.push(release);
+        program
+            .bootstrap
+            .handler
+            .effects
+            .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
+        program.bootstrap.handler.effects.sort();
+        if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
+            &mut program.bootstrap.handler.operations[3]
+        {
+            *offset_bytes = 64;
+        }
+        assert_eq!(
+            validate_systems_program(&program).unwrap_err().code,
+            "E-SYSTEMS-STORAGE-BOUNDS"
         );
     }
 

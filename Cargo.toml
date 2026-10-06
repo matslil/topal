@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "linux-kernel/tools/toolchain-gate-builder",
     "src/topal-best-practices",
     "src/topal-build",
     "src/topal-c-abi",
