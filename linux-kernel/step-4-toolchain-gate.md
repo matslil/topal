@@ -1,4 +1,4 @@
-# Step 4 pinned-QEMU boot and exception gate
+# Step 4 pinned-QEMU toolchain gate
 
 ## Outcome
 
@@ -6,19 +6,21 @@ This is the seventh implementation increment of Step 4. The checked Topal
 kernel source now builds through a dedicated lab-only publisher, boots as the
 replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU profile,
 writes through the polling 16550 provider, enters and resumes from the generated
-vector-3 handler, and reaches the nonreturning fatal provider.
+vector-3 handler, stores and reloads a sentinel in kernel-owned memory, and
+reaches the nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMED
+TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
 ```
 
-After both ordered markers, QEMU remained running and the serial stream stayed
-unchanged for the settling interval. Combined with structural inspection of
-the fatal provider's interrupt-disable/halt loop, this is the physical evidence
-that the checked bootstrap completed its expected path without returning to a
-host runtime.
+After all three ordered markers, QEMU remained running and the serial stream
+stayed unchanged for the settling interval. Combined with structural inspection
+of the fatal provider's interrupt-disable/halt loop and the root's separate
+store/load/compare sequence, this is the physical evidence that the checked
+bootstrap used its generated `.bss` pool and completed its expected path
+without returning to a host runtime.
 
 ## Reproduction and evidence
 
@@ -49,31 +51,24 @@ without launching the emulator.
 
 ## Qualification boundary and risk
 
-This completes the physical boot and exception portion of the repository's
-toolchain phase gate for the initial admitted systems slice: bootstrap entry,
-polling console write, synchronous debug-break observation,
-context-preserving resume, and fatal disposition. The phase gate's
-kernel-owned-memory criterion remains open: the artifact reserves the checked
-pool, but the Topal root does not yet allocate, write, read, and release a
-region. It also does not claim memory management, general interrupts, ACPI/PCI
-discovery, SMP, time, virtio, a userspace ABI, containers, or hosted
-virtualization.
+This completes the repository's toolchain phase gate for the initial admitted
+systems slice: bootstrap entry, polling console write, synchronous debug-break
+observation, context-preserving resume, checked kernel-owned-memory use, and
+fatal disposition. The byte load is a retained machine operation rather than a
+constant-folded echo of the sentinel. This gate does not claim general memory
+management, general interrupts, ACPI/PCI discovery, SMP, time, virtio, a
+userspace ABI, containers, or hosted virtualization.
 
 The ordinary `topalc` target registry remains model-only. The physical evidence
 qualifies this dedicated lab boot path, but the ordinary native compiler still
 has no systems-artifact command and must not route this target through its
-Linux-process pipeline. Its diagnostic now names the remaining memory-use and
-publication gaps instead of claiming that provider, artifact, or QEMU evidence
-is absent.
-
-Closing the memory criterion requires `TK-DEC-016`. The approved storage model
-defines monotonic allocation, affine release, bounds, alignment, and semantic
-placement, but the authoritative language design does not yet define the
-source spelling for allocation or any checked byte-access operation on the
-opaque `BootstrapRegion`. Those semantics cannot be invented in the backend.
+Linux-process pipeline. Its diagnostic now names ordinary compiler publication
+as the remaining integration gap instead of claiming that provider, artifact,
+memory-use, or QEMU evidence is absent.
 
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,
-deterministic typed provider, structural ELF and boot-image inspection, exact
-machine identity, no guest devices beyond the serial port, content-addressed
-evidence, and continued fail-closed ordinary target selection.
+affine region checking, byte-content reference model, deterministic typed
+provider, structural ELF and boot-image inspection, exact machine identity, no
+guest devices beyond the serial port, content-addressed evidence, and continued
+fail-closed ordinary target selection.

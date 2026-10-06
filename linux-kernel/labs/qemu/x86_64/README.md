@@ -117,7 +117,8 @@ Step 4 now exercises the initial Topal kernel image on the same pinned QEMU,
 SeaBIOS, machine, CPU, memory, topology, UUID, RTC, and serial-console profile.
 The focused gate intentionally attaches no root disk or network device because
 this kernel increment tests privileged entry, console output, a resumable
-debug-break exception, and the nonreturning fatal path rather than userspace.
+debug-break exception, checked kernel-owned-memory use, and the nonreturning
+fatal path rather than userspace.
 
 From the repository root:
 
@@ -131,7 +132,7 @@ python3 -m unittest \
 The first command builds the checked Topal source through the lab-only
 `topal-kernel-toolchain-gate-builder`, publishes the linked artifact and Linux
 boot image into ignored temporary state, boots it through QEMU's direct Linux
-interface, and waits for the two ordered serial markers. It then proves QEMU
+interface, and waits for the three ordered serial markers. It then proves QEMU
 is still running and the serial stream is quiescent in the fatal halt before
 terminating the harness. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,

@@ -60,9 +60,11 @@ remains a checked source and model transition and closes the region lifetime.
 
 The toolchain-gate root writes a sentinel, loads it back, and emits
 `TOPAL_KERNEL_MEMORY_OK` only from the equality-success action. Pinned-QEMU
-evidence must contain that marker between the fault-resume marker and the final
-fatal halt. Artifact inspection must prove that the root retains relocations to
-the generated pool and fatal provider and that the byte load has not been
+evidence contains that marker after the fault-resume marker and before the final
+fatal halt. Artifact inspection proves that the root retains relocations to the
+generated pool and fatal provider and that the byte load has not been
 constant-folded away.
 
-This contract was approved in the project discussion before implementation.
+This contract was approved in the project discussion before implementation and
+is qualified for the initial x86-64 slice by the committed toolchain-gate
+evidence.

@@ -64,11 +64,18 @@ class TopalToolchainGateTests(unittest.TestCase):
         observations = evidence["observations"]
         self.assertEqual(
             observations["markers_in_order"],
-            ["TOPAL_KERNEL_BOOT", "TOPAL_KERNEL_FAULT_RESUMED"],
+            [
+                "TOPAL_KERNEL_BOOT",
+                "TOPAL_KERNEL_FAULT_RESUMED",
+                "TOPAL_KERNEL_MEMORY_OK",
+            ],
         )
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
+        self.assertEqual(
+            observations["serial_utf8"], "".join(observations["markers_in_order"])
+        )
         self.assertEqual(
             observations["serial_sha256"],
             hashlib.sha256(observations["serial_utf8"].encode()).hexdigest(),

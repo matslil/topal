@@ -20,7 +20,7 @@ Topal or kernel semantics.
 | `TK-DEC-013` | root filesystems and dynamic libc qualification corpus | application tests do not define the interface alone | resolved for initial corpus; [Step 3 report](../step-3-report.md) |
 | `TK-DEC-014` | rootful/rootless Docker and Podman profiles | container requirements and security boundaries differ | open; container phase |
 | `TK-DEC-015` | KVM and nested-virtualization acceptance profiles | guest, QEMU TCG host, KVM host, and nested host are distinct | open; virtualization phase |
-| `TK-DEC-016` | bootstrap-region source vocabulary and checked byte access | the approved storage model defines allocation ownership but not source spelling or how a region proves physical read/write use | resolved for the initial slice; [bootstrap-region contract](bootstrap-region.md), implementation and QEMU evidence pending |
+| `TK-DEC-016` | bootstrap-region source vocabulary and checked byte access | the approved storage model defines allocation ownership but not source spelling or how a region proves physical read/write use | resolved and implemented for the initial slice; [bootstrap-region contract](bootstrap-region.md) and [pinned-QEMU evidence](../step-4-toolchain-gate.md) |
 
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected

@@ -28,12 +28,11 @@ architecture-independent reference model. The third increment adds the
 [generated and structurally inspected provider object](step-4-x86-provider-object.md).
 The fifth adds a [linked freestanding payload and atomic artifact set](step-4-linked-artifact.md).
 The sixth adds the [generated Linux x86 boot adapter](step-4-x86-boot-adapter.md).
-The seventh [passes the initial boot and exception execution slice under pinned QEMU](step-4-toolchain-gate.md):
-entry, polling serial output, debug-break recovery, and the fatal halt execute
-without a host runtime. Kernel-owned memory use is still required to close the
-toolchain phase gate. The ordinary compiler remains a Linux x86-64 userspace
-compiler and exposes the systems target as model-only until that evidence and
-general publication are integrated.
+The seventh [passes the initial toolchain gate under pinned QEMU](step-4-toolchain-gate.md):
+entry, polling serial output, debug-break recovery, checked kernel-owned-memory
+use, and the fatal halt execute without a host runtime. The ordinary compiler
+remains a Linux x86-64 userspace compiler and exposes the systems target as
+model-only until general systems-artifact publication is integrated.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline

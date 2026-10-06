@@ -22,7 +22,11 @@ BUILD_ROOT = LINUX_KERNEL / "build" / "x86_64" / "topal-toolchain-gate"
 MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
-MARKERS = (b"TOPAL_KERNEL_BOOT", b"TOPAL_KERNEL_FAULT_RESUMED")
+MARKERS = (
+    b"TOPAL_KERNEL_BOOT",
+    b"TOPAL_KERNEL_FAULT_RESUMED",
+    b"TOPAL_KERNEL_MEMORY_OK",
+)
 
 
 class GateError(Exception):
@@ -144,9 +148,10 @@ def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> b
                 if status is not None:
                     raise GateError(f"QEMU exited with status {status} before the gate completed")
                 observed = serial.read_bytes() if serial.exists() else b""
-                first = observed.find(MARKERS[0])
-                second = observed.find(MARKERS[1])
-                if first >= 0 and second > first:
+                positions = [observed.find(marker) for marker in MARKERS]
+                if positions[0] >= 0 and all(
+                    later > earlier for earlier, later in zip(positions, positions[1:])
+                ):
                     time.sleep(0.25)
                     settled = serial.read_bytes()
                     time.sleep(1.0)
@@ -156,7 +161,7 @@ def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> b
                         raise GateError("serial output continued after the fatal disposition")
                     return settled
                 time.sleep(0.05)
-            raise GateError(f"timed out after {timeout:g}s waiting for both kernel markers")
+            raise GateError(f"timed out after {timeout:g}s waiting for all kernel markers")
         finally:
             if process.poll() is None:
                 process.terminate()
