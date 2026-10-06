@@ -6,7 +6,7 @@ traceability ledger.
 
 | Project intent | Research/design identity | Current artifact | Required downstream evidence |
 | --- | --- | --- | --- |
-| implement only x86-64 initially | `LK-SCOPE-001` | [baseline](baseline.md) | target profile, boot test, native UAPI inventory |
+| implement only x86-64 initially | `LK-SCOPE-001` | [baseline](baseline.md), [approved boot-adapter contract](design/x86-boot-adapter.md) | adapter implementation, boot test, native UAPI inventory |
 | support the complete latest interface | `LK-SCOPE-002`, `LK-SCOPE-003` | [baseline](baseline.md), [UAPI map](knowledge/common/linux-uapi.md), [source inventory](inventory/coverage.md) | semantic dispositions and differential tests |
 | use Topal elements instead of source assembly | `TK-ELEMENT-001`, `TK-ELEMENT-ENTRY-001`, `TK-ELEMENT-MACHINE-001` | [approved systems profile](../docs/systems-profile.md), [formal rules](../spec/systems-profile.md), [checked kernel root](kernel/arch/x86_64/toolchain-gate.t), [generated provider object](step-4-x86-provider-object.md), [linked artifact](step-4-linked-artifact.md) | initial entry roots and machine primitives are typed, generated, linked, and inspected; boot-adapter setup remains |
 | model hardware/concurrent observations | `TK-ELEMENT-OBSERVATION-001` | `TOPAL-SYSTEMS-OBSERVATION-001`, [Step 4 semantic report](step-4-semantic-foundation.md), [linked artifact](step-4-linked-artifact.md) | debug-break transition and context-preserving handler are implemented; QEMU evidence remains |

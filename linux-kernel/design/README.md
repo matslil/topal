@@ -13,6 +13,7 @@ records, not this directory alone, define language meaning.
 - [Cross-architecture pressure test](architecture-pressure-test.md)
 - [Linux-to-Topal mapping](linux-to-topal-mapping.md)
 - [Decision register](decision-register.md)
+- [Initial x86-64 Linux boot adapter contract](x86-boot-adapter.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
 The semantic proposal was approved in the project discussion after PR #790.
