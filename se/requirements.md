@@ -332,6 +332,12 @@ retain bounds, layout, rights, cache/order policy, owner, and lifetime. User
 transfer and other admitted recovery shall use generated closed fault scopes;
 source shall not dereference a user candidate or name a recovery instruction.
 
+An ordinary kernel-owned region shall provide bounds-checked plain byte access
+without exposing a machine address. Load and store shall borrow a live region,
+release shall consume it, and no access shall silently acquire volatile,
+atomic, device, DMA, firmware, or user-memory behavior. Unsupported dynamic
+bounds shall fail closed rather than become unchecked access.
+
 ## TOPAL-REQ-SYSTEMS-SYNC-001 — Checked shared-state synchronization
 
 Systems shared state shall use typed atomic locations, affine critical scopes,
