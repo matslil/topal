@@ -1355,10 +1355,7 @@ mod tests {
     const STORAGE_DECLARATION: &str = "  bootstrap-storage is lang systems bounded-bootstrap-storage (\n    capacity-bytes is 65536,\n    alignment-bytes is 4096\n  ),\n";
 
     fn memory_source() -> String {
-        SOURCE.replace(
-            "  context fatal \"toolchain gate complete\"",
-            "  context bootstrap allocate (\n    byte-count is 64,\n    alignment-bytes is 8,\n    placement is bootstrap-reclaimable\n  )\n    Ok region then {\n      region byte store (offset-bytes is 0, value is 90)\n      observed : Nat is region byte load (offset-bytes is 0)\n      observed = 90\n        true then {\n          context console write \"TOPAL_KERNEL_MEMORY_OK\"\n          context bootstrap release region\n          context fatal \"toolchain gate complete\"\n        }\n        false then {\n          context bootstrap release region\n          context fatal \"toolchain gate memory mismatch\"\n        }\n    }\n    Error problem then context fatal \"toolchain gate allocation failed\"",
-        )
+        SOURCE.to_owned()
     }
 
     #[test]
@@ -1379,7 +1376,15 @@ mod tests {
         );
         assert_eq!(
             program.bootstrap.handler.effects,
-            [SYSTEMS_CONSOLE_WRITE, SYSTEMS_FATAL, SYSTEMS_DEBUG_BREAK]
+            [
+                SYSTEMS_CONSOLE_WRITE,
+                SYSTEMS_FATAL,
+                SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+                SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+                SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+                SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            ]
         );
         assert_eq!(
             model_systems_transitions(&program).unwrap(),
@@ -1398,6 +1403,25 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_FAULT_RESUMED".into(),
                 },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 64,
+                        alignment_bytes: 8,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::StoreBootstrapByte {
+                    offset_bytes: 0,
+                    value: 90,
+                },
+                CompilerSystemsTransition::LoadBootstrapByte {
+                    offset_bytes: 0,
+                    value: 90,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_MEMORY_OK".into(),
+                },
+                CompilerSystemsTransition::ReleaseBootstrapRegion,
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -1550,7 +1574,10 @@ mod tests {
             "E-SYSTEMS-OPERATION"
         );
 
-        let missing = SOURCE.replace("  context fatal \"toolchain gate complete\"\n", "");
+        let missing = SOURCE.replace(
+            "  context resume",
+            "  context console write \"missing disposition\"",
+        );
         assert_eq!(
             analyze_systems_for_compiler(
                 &missing,

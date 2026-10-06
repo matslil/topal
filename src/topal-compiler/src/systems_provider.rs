@@ -2,6 +2,7 @@
 
 use topal_language::compiler::{
     CompilerSystemsProgram, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
     SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK, validate_systems_program,
@@ -18,6 +19,8 @@ pub const X86_SYSTEMS_DATA_LAYOUT: &str =
 pub enum X86SystemsLowering {
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
+    PlainBootstrapRegionStoreByte,
+    PlainBootstrapRegionLoadByte,
     ConsumeBootstrapRegion,
     CompleteBootstrapStorage,
     PolledUart16550PortIo,
@@ -34,6 +37,10 @@ impl X86SystemsLowering {
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
             }
+            Self::PlainBootstrapRegionStoreByte => {
+                "topal.provider.x86_64.storage.plain-store-byte/1"
+            }
+            Self::PlainBootstrapRegionLoadByte => "topal.provider.x86_64.storage.plain-load-byte/1",
             Self::ConsumeBootstrapRegion => "topal.provider.x86_64.storage.consume-region/1",
             Self::CompleteBootstrapStorage => "topal.provider.x86_64.storage.complete-bootstrap/1",
             Self::PolledUart16550PortIo => "topal.provider.x86_64.uart16550.polled-port-io/1",
@@ -150,6 +157,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
     let lowering = match identity {
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
+        SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
+        SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE => X86SystemsLowering::PlainBootstrapRegionLoadByte,
         SYSTEMS_BOOTSTRAP_STORAGE_RELEASE => X86SystemsLowering::ConsumeBootstrapRegion,
         SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE => X86SystemsLowering::CompleteBootstrapStorage,
         SYSTEMS_CONSOLE_WRITE => X86SystemsLowering::PolledUart16550PortIo,
@@ -166,6 +175,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         semantic_identity: match lowering {
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+            X86SystemsLowering::PlainBootstrapRegionStoreByte => {
+                SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE
+            }
+            X86SystemsLowering::PlainBootstrapRegionLoadByte => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             X86SystemsLowering::ConsumeBootstrapRegion => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
             X86SystemsLowering::CompleteBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
             X86SystemsLowering::PolledUart16550PortIo => SYSTEMS_CONSOLE_WRITE,
@@ -207,7 +220,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 8);
+        assert_eq!(plan.operations.len(), 10);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -223,6 +236,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FATAL
                 && operation.lowering == X86SystemsLowering::InterruptsDisabledHalt
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE
+                && operation.lowering == X86SystemsLowering::PlainBootstrapRegionStoreByte
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE
+                && operation.lowering == X86SystemsLowering::PlainBootstrapRegionLoadByte
         }));
     }
 
