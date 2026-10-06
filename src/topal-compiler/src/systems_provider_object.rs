@@ -18,7 +18,11 @@ pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum X86Instruction {
-    MovePortArgumentToDx,
+    MoveUartLineStatusPortToDx,
+    InputByteFromPort,
+    TestTransmitterHoldingRegisterEmpty,
+    RetryWhileTransmitterBusy,
+    MoveUartDataPortToDx,
     MoveByteArgumentToAl,
     OutputByteToPort,
     Breakpoint,
@@ -32,8 +36,18 @@ enum X86Instruction {
 impl X86Instruction {
     fn encode(self, output: &mut Vec<u8>) {
         match self {
-            Self::MovePortArgumentToDx => output.extend_from_slice(&[0x66, 0x89, 0xfa]),
-            Self::MoveByteArgumentToAl => output.extend_from_slice(&[0x40, 0x88, 0xf0]),
+            Self::MoveUartLineStatusPortToDx => {
+                output.extend_from_slice(&[0x66, 0xba, 0xfd, 0x03]);
+            }
+            Self::InputByteFromPort => output.push(0xec),
+            Self::TestTransmitterHoldingRegisterEmpty => {
+                output.extend_from_slice(&[0xa8, 0x20]);
+            }
+            Self::RetryWhileTransmitterBusy => output.extend_from_slice(&[0x74, 0xfb]),
+            Self::MoveUartDataPortToDx => {
+                output.extend_from_slice(&[0x66, 0xba, 0xf8, 0x03]);
+            }
+            Self::MoveByteArgumentToAl => output.extend_from_slice(&[0x40, 0x88, 0xf8]),
             Self::OutputByteToPort => output.push(0xee),
             Self::Breakpoint => output.push(0xcc),
             Self::InterruptReturn => output.extend_from_slice(&[0x48, 0xcf]),
@@ -72,9 +86,13 @@ pub fn generate_x86_64_systems_provider_object(
     append_function(
         &mut object,
         text,
-        "topal_x86_systems_out8",
+        "topal_x86_systems_uart16550_write",
         &[
-            X86Instruction::MovePortArgumentToDx,
+            X86Instruction::MoveUartLineStatusPortToDx,
+            X86Instruction::InputByteFromPort,
+            X86Instruction::TestTransmitterHoldingRegisterEmpty,
+            X86Instruction::RetryWhileTransmitterBusy,
+            X86Instruction::MoveUartDataPortToDx,
             X86Instruction::MoveByteArgumentToAl,
             X86Instruction::OutputByteToPort,
             X86Instruction::Return,
@@ -297,8 +315,11 @@ mod tests {
         let file = object::File::parse(generated.bytes.as_slice()).unwrap();
         for (name, expected) in [
             (
-                "topal_x86_systems_out8",
-                &[0x66, 0x89, 0xfa, 0x40, 0x88, 0xf0, 0xee, 0xc3][..],
+                "topal_x86_systems_uart16550_write",
+                &[
+                    0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20, 0x74, 0xfb, 0x66, 0xba, 0xf8, 0x03,
+                    0x40, 0x88, 0xf8, 0xee, 0xc3,
+                ][..],
             ),
             ("topal_x86_systems_debug_break", &[0xcc, 0xc3]),
             ("topal_x86_systems_interrupt_return", &[0x48, 0xcf]),
