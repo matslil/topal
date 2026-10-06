@@ -24,10 +24,11 @@ the [checked systems-root semantic foundation](step-4-semantic-foundation.md)
 and a model-only x86-64 QEMU kernel target. The second increment adds
 [bounded bootstrap storage](step-4-bootstrap-storage.md) to that root and its
 architecture-independent reference model. The third increment adds the
-[sealed x86-64 provider plan](step-4-x86-provider-plan.md). This does not yet
-claim a bootable Topal kernel: physical lowering, publication, inspection, and
-QEMU evidence remain required, while the ordinary compiler remains a Linux
-x86-64 userspace compiler.
+[sealed x86-64 provider plan](step-4-x86-provider-plan.md). The fourth adds a
+[generated and structurally inspected provider object](step-4-x86-provider-object.md).
+This does not yet claim a bootable Topal kernel: linked entry support,
+publication, a boot container, and QEMU evidence remain required, while the
+ordinary compiler remains a Linux x86-64 userspace compiler.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -106,6 +107,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 systems-root semantic foundation](step-4-semantic-foundation.md)
 - [Step 4 bounded bootstrap storage](step-4-bootstrap-storage.md)
 - [Step 4 x86-64 provider plan](step-4-x86-provider-plan.md)
+- [Step 4 generated x86-64 provider object](step-4-x86-provider-object.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

@@ -8,6 +8,7 @@ mod optimization;
 mod pipeline;
 mod standard_library;
 mod systems_provider;
+mod systems_provider_object;
 mod toolchain;
 
 use std::fmt;
@@ -31,6 +32,11 @@ pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsLowering,
     X86SystemsProviderPlan, plan_x86_64_systems_provider,
+};
+pub use systems_provider_object::{
+    GeneratedSystemsProviderObject, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
+    X86_SYSTEMS_PROVIDER_NOTE_SECTION, X86_SYSTEMS_PROVIDER_OBJECT_REVISION,
+    X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;
