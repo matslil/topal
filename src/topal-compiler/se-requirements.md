@@ -83,6 +83,13 @@ support without source assembly, instruction templates, programmer-selected
 registers, or a generic intrinsic escape. AArch64 and RISC-V review evidence
 shall not mark their backends executable-qualified.
 
+The first x86-64 provider increment shall derive a deterministic sealed plan
+from the checked systems program. It shall bind the exact target, QEMU board,
+profile, CPU baseline, platform ABI, LLVM data layout, ELF64 object format,
+static relocation, small code model, bootstrap-storage placement, and every
+initial semantic operation to one closed provider identity. Planning alone
+shall not authorize lowering or publication.
+
 ## TOPAL-COMP-SYSTEMS-ARTIFACT-001 — Kernel artifact publication
 
 The systems publisher shall use a distinct target/data-layout/object/relocation

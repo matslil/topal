@@ -7,6 +7,7 @@ mod frontend;
 mod optimization;
 mod pipeline;
 mod standard_library;
+mod systems_provider;
 mod toolchain;
 
 use std::fmt;
@@ -25,6 +26,11 @@ pub use optimization::{
 pub use standard_library::{
     STANDARD_LIBRARY_ABI, STANDARD_LIBRARY_ENTRY, STANDARD_LIBRARY_SCHEMA, STANDARD_LIBRARY_SONAME,
     StandardLibrarySlice, build_standard_library, standard_library_manifest_path,
+};
+pub use systems_provider::{
+    SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
+    X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsLowering,
+    X86SystemsProviderPlan, plan_x86_64_systems_provider,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;

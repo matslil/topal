@@ -1,0 +1,249 @@
+//! Deterministic x86-64 provider planning for checked systems programs.
+
+use topal_language::compiler::{
+    CompilerSystemsProgram, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK, validate_systems_program,
+};
+
+use crate::CompileError;
+
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/1";
+pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
+pub const X86_SYSTEMS_DATA_LAYOUT: &str =
+    "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum X86SystemsLowering {
+    StaticBootstrapStorage,
+    MonotonicBootstrapAllocate,
+    ConsumeBootstrapRegion,
+    CompleteBootstrapStorage,
+    PolledUart16550PortIo,
+    BreakpointVector3,
+    InterruptReturn,
+    InterruptsDisabledHalt,
+}
+
+impl X86SystemsLowering {
+    #[must_use]
+    pub const fn provider_identity(self) -> &'static str {
+        match self {
+            Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
+            Self::MonotonicBootstrapAllocate => {
+                "topal.provider.x86_64.storage.monotonic-allocate/1"
+            }
+            Self::ConsumeBootstrapRegion => "topal.provider.x86_64.storage.consume-region/1",
+            Self::CompleteBootstrapStorage => "topal.provider.x86_64.storage.complete-bootstrap/1",
+            Self::PolledUart16550PortIo => "topal.provider.x86_64.uart16550.polled-port-io/1",
+            Self::BreakpointVector3 => "topal.provider.x86_64.exception.breakpoint-vector-3/1",
+            Self::InterruptReturn => "topal.provider.x86_64.exception.interrupt-return/1",
+            Self::InterruptsDisabledHalt => {
+                "topal.provider.x86_64.fatal.interrupts-disabled-halt/1"
+            }
+        }
+    }
+
+    #[must_use]
+    pub const fn requires_privileged_machine_state(self) -> bool {
+        matches!(
+            self,
+            Self::PolledUart16550PortIo | Self::InterruptReturn | Self::InterruptsDisabledHalt
+        )
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemsProviderOperationPlan {
+    pub semantic_identity: &'static str,
+    pub lowering: X86SystemsLowering,
+}
+
+impl SystemsProviderOperationPlan {
+    #[must_use]
+    pub const fn provider_identity(&self) -> &'static str {
+        self.lowering.provider_identity()
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemsBootstrapPlacementPlan {
+    pub capacity_bytes: u64,
+    pub alignment_bytes: u64,
+    pub semantic_placement: &'static str,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct X86SystemsProviderPlan {
+    pub revision: &'static str,
+    pub target: &'static str,
+    pub board: &'static str,
+    pub profile: &'static str,
+    pub machine_cpu_model: &'static str,
+    pub codegen_cpu: &'static str,
+    pub platform_abi: &'static str,
+    pub data_layout: &'static str,
+    pub object_format: &'static str,
+    pub relocation_model: &'static str,
+    pub code_model: &'static str,
+    pub bootstrap_placement: SystemsBootstrapPlacementPlan,
+    pub operations: Vec<SystemsProviderOperationPlan>,
+}
+
+/// Derive the sealed x86-64 provider plan without executable-qualifying it.
+///
+/// # Errors
+///
+/// Returns a tool error when the checked program is outside the initial
+/// systems profile or contains an operation without a sealed provider mapping.
+pub fn plan_x86_64_systems_provider(
+    program: &CompilerSystemsProgram,
+) -> Result<X86SystemsProviderPlan, CompileError> {
+    validate_systems_program(program)
+        .map_err(|error| CompileError::Tool(format!("invalid systems program: {error}")))?;
+
+    let mut semantic_identities = program
+        .bootstrap
+        .handler
+        .effects
+        .iter()
+        .chain(&program.debug_break.handler.effects)
+        .map(String::as_str)
+        .collect::<Vec<_>>();
+    semantic_identities.extend([
+        SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+        SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+        SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+    ]);
+    semantic_identities.sort_unstable();
+    semantic_identities.dedup();
+
+    let operations = semantic_identities
+        .into_iter()
+        .map(provider_operation)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(X86SystemsProviderPlan {
+        revision: X86_SYSTEMS_PROVIDER_REVISION,
+        target: INITIAL_SYSTEMS_TARGET,
+        board: INITIAL_SYSTEMS_BOARD,
+        profile: INITIAL_SYSTEMS_PROFILE,
+        machine_cpu_model: "qemu64-v1",
+        codegen_cpu: "x86-64",
+        platform_abi: X86_SYSTEMS_PLATFORM_ABI,
+        data_layout: X86_SYSTEMS_DATA_LAYOUT,
+        object_format: "elf64-x86-64",
+        relocation_model: "static",
+        code_model: "small",
+        bootstrap_placement: SystemsBootstrapPlacementPlan {
+            capacity_bytes: program.bootstrap_storage.capacity_bytes,
+            alignment_bytes: program.bootstrap_storage.alignment_bytes,
+            semantic_placement: "topal.systems.placement.bootstrap-reclaimable/1",
+        },
+        operations,
+    })
+}
+
+fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, CompileError> {
+    let lowering = match identity {
+        SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
+        SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
+        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE => X86SystemsLowering::ConsumeBootstrapRegion,
+        SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE => X86SystemsLowering::CompleteBootstrapStorage,
+        SYSTEMS_CONSOLE_WRITE => X86SystemsLowering::PolledUart16550PortIo,
+        SYSTEMS_DEBUG_BREAK => X86SystemsLowering::BreakpointVector3,
+        SYSTEMS_RESUME_DEBUG_BREAK => X86SystemsLowering::InterruptReturn,
+        SYSTEMS_FATAL => X86SystemsLowering::InterruptsDisabledHalt,
+        _ => {
+            return Err(CompileError::Tool(format!(
+                "systems operation `{identity}` has no mapping in provider `{X86_SYSTEMS_PROVIDER_REVISION}`"
+            )));
+        }
+    };
+    Ok(SystemsProviderOperationPlan {
+        semantic_identity: match lowering {
+            X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+            X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+            X86SystemsLowering::ConsumeBootstrapRegion => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            X86SystemsLowering::CompleteBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+            X86SystemsLowering::PolledUart16550PortIo => SYSTEMS_CONSOLE_WRITE,
+            X86SystemsLowering::BreakpointVector3 => SYSTEMS_DEBUG_BREAK,
+            X86SystemsLowering::InterruptReturn => SYSTEMS_RESUME_DEBUG_BREAK,
+            X86SystemsLowering::InterruptsDisabledHalt => SYSTEMS_FATAL,
+        },
+        lowering,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
+
+    use super::*;
+
+    const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+
+    fn program() -> CompilerSystemsProgram {
+        analyze_systems_for_compiler(
+            SOURCE,
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn plans_the_complete_sealed_initial_provider_mapping() {
+        // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-MACHINE-001.
+        let plan = plan_x86_64_systems_provider(&program()).unwrap();
+        assert_eq!(plan.revision, X86_SYSTEMS_PROVIDER_REVISION);
+        assert_eq!(plan.target, INITIAL_SYSTEMS_TARGET);
+        assert_eq!(plan.board, INITIAL_SYSTEMS_BOARD);
+        assert_eq!(plan.machine_cpu_model, "qemu64-v1");
+        assert_eq!(plan.codegen_cpu, "x86-64");
+        assert_eq!(plan.object_format, "elf64-x86-64");
+        assert_eq!(plan.relocation_model, "static");
+        assert_eq!(plan.code_model, "small");
+        assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
+        assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
+        assert_eq!(plan.operations.len(), 8);
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
+                && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_DEBUG_BREAK
+                && operation.lowering == X86SystemsLowering::BreakpointVector3
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_RESUME_DEBUG_BREAK
+                && operation.lowering == X86SystemsLowering::InterruptReturn
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_FATAL
+                && operation.lowering == X86SystemsLowering::InterruptsDisabledHalt
+        }));
+    }
+
+    #[test]
+    fn plan_is_deterministic_and_retains_no_host_platform_identity() {
+        // TOPAL-SYSTEMS-ARTIFACT-001, TOPAL-SYSTEMS-QUALIFY-001.
+        let first = plan_x86_64_systems_provider(&program()).unwrap();
+        let second = plan_x86_64_systems_provider(&program()).unwrap();
+        assert_eq!(first, second);
+        let evidence = format!("{first:?}");
+        for forbidden in ["linux-gnu", "syscall", "libc", "dynamic-loader"] {
+            assert!(!evidence.contains(forbidden), "{evidence}");
+        }
+    }
+
+    #[test]
+    fn plan_rejects_programs_outside_the_qualified_semantic_profile() {
+        // TOPAL-SYSTEMS-QUALIFY-001.
+        let mut invalid = program();
+        invalid.target.board = "another-board".into();
+        let error = plan_x86_64_systems_provider(&invalid).unwrap_err();
+        assert!(error.to_string().contains("E-SYSTEMS-TARGET"));
+    }
+}
