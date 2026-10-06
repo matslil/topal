@@ -7,6 +7,7 @@ mod frontend;
 mod optimization;
 mod pipeline;
 mod standard_library;
+mod systems_artifact;
 mod systems_provider;
 mod systems_provider_object;
 mod toolchain;
@@ -27,6 +28,13 @@ pub use optimization::{
 pub use standard_library::{
     STANDARD_LIBRARY_ABI, STANDARD_LIBRARY_ENTRY, STANDARD_LIBRARY_SCHEMA, STANDARD_LIBRARY_SONAME,
     StandardLibrarySlice, build_standard_library, standard_library_manifest_path,
+};
+pub use systems_artifact::{
+    PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE,
+    SYSTEMS_PROVENANCE_FILE, SystemsArtifactPlacement, SystemsArtifactProvenance,
+    X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_ROOT_OBJECT_REVISION, X86_SYSTEMS_ROOT_TEXT_SECTION,
+    publish_x86_64_systems_artifact,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
