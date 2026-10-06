@@ -8,6 +8,10 @@ pub const SYSTEMS_BOOTSTRAP_STORAGE_PROVISION: &str = "topal.systems.storage.boo
 pub const SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE: &str = "topal.systems.storage.bootstrap.allocate/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_RELEASE: &str = "topal.systems.storage.bootstrap.release/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE: &str = "topal.systems.storage.bootstrap.complete/1";
+pub const SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE: &str =
+    "topal.systems.storage.bootstrap-region.store-byte/1";
+pub const SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE: &str =
+    "topal.systems.storage.bootstrap-region.load-byte/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST: &str =
     "topal.systems.storage.error.invalid-request/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED: &str = "topal.systems.storage.error.exhausted/1";
@@ -97,6 +101,16 @@ pub enum BootstrapStorageTransition {
     Released {
         allocation_id: u64,
     },
+    StoredByte {
+        allocation_id: u64,
+        offset_bytes: u64,
+        value: u8,
+    },
+    LoadedByte {
+        allocation_id: u64,
+        offset_bytes: u64,
+        value: u8,
+    },
     Completed,
 }
 
@@ -108,6 +122,8 @@ impl BootstrapStorageTransition {
             Self::Allocated { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::AllocationFailed { code, .. } => code.semantic_identity(),
             Self::Released { .. } => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            Self::StoredByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+            Self::LoadedByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             Self::Completed => SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
         }
     }
@@ -152,6 +168,7 @@ pub struct BootstrapStorageState {
     next_offset: u64,
     next_allocation_id: u64,
     live_regions: BTreeMap<u64, (u64, u64)>,
+    contents: BTreeMap<(u64, u64), u8>,
     transitions: Vec<BootstrapStorageTransition>,
     complete: bool,
 }
@@ -184,6 +201,7 @@ impl BootstrapStorageState {
             next_offset: 0,
             next_allocation_id: 0,
             live_regions: BTreeMap::new(),
+            contents: BTreeMap::new(),
             complete: false,
         })
     }
@@ -286,6 +304,89 @@ impl BootstrapStorageState {
         Err(code)
     }
 
+    /// Store one byte through a borrowed live bootstrap region.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable storage diagnostic when the region belongs to another
+    /// execution, is no longer live, or the offset is outside its byte count.
+    pub fn store_byte(
+        &mut self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+        value: u8,
+    ) -> Result<(), SystemsModelError> {
+        let allocation_id = self.validate_byte_access(region, offset_bytes)?;
+        self.contents.insert((allocation_id, offset_bytes), value);
+        self.transitions
+            .push(BootstrapStorageTransition::StoredByte {
+                allocation_id,
+                offset_bytes,
+                value,
+            });
+        Ok(())
+    }
+
+    /// Load one byte through a borrowed live bootstrap region.
+    ///
+    /// Unwritten bytes read as zero because the artifact-provided pool is
+    /// zero-initialized before bootstrap entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable storage diagnostic when the region belongs to another
+    /// execution, is no longer live, or the offset is outside its byte count.
+    pub fn load_byte(
+        &mut self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+    ) -> Result<u8, SystemsModelError> {
+        let allocation_id = self.validate_byte_access(region, offset_bytes)?;
+        let value = self
+            .contents
+            .get(&(allocation_id, offset_bytes))
+            .copied()
+            .unwrap_or(0);
+        self.transitions
+            .push(BootstrapStorageTransition::LoadedByte {
+                allocation_id,
+                offset_bytes,
+                value,
+            });
+        Ok(value)
+    }
+
+    fn validate_byte_access(
+        &self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+    ) -> Result<u64, SystemsModelError> {
+        if region.execution_identity != self.execution_identity {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-STORAGE-PROVENANCE",
+                "bootstrap region belongs to another execution",
+            ));
+        }
+        if self.live_regions.get(&region.allocation_id)
+            != Some(&(region.offset_bytes, region.byte_count))
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-STORAGE-REGION",
+                "bootstrap region is not live in this storage pool",
+            ));
+        }
+        if offset_bytes >= region.byte_count {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-STORAGE-BOUNDS",
+                format!(
+                    "bootstrap byte offset {offset_bytes} is outside region size {}",
+                    region.byte_count
+                ),
+            ));
+        }
+        Ok(region.allocation_id)
+    }
+
     /// Consume one region while retaining monotonic pool consumption.
     ///
     /// # Errors
@@ -314,6 +415,8 @@ impl BootstrapStorageState {
                 "bootstrap region is not live in this storage pool",
             ));
         }
+        self.contents
+            .retain(|(owner, _), _| *owner != allocation_id);
         self.transitions
             .push(BootstrapStorageTransition::Released { allocation_id });
         Ok(())
@@ -424,6 +527,49 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
                 SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
                 SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
+            ]
+        );
+    }
+
+    #[test]
+    fn byte_access_retains_contents_and_checks_bounds_and_provenance() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STORAGE-001.
+        let mut storage = storage();
+        let region = storage.allocate(request(8, 8)).unwrap();
+        assert_eq!(storage.load_byte(&region, 0).unwrap(), 0);
+        storage.store_byte(&region, 3, 90).unwrap();
+        assert_eq!(storage.load_byte(&region, 3).unwrap(), 90);
+        assert_eq!(
+            storage.load_byte(&region, 8).unwrap_err().code,
+            "E-SYSTEMS-STORAGE-BOUNDS"
+        );
+
+        let mut other = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 16_384,
+                alignment_bytes: 4096,
+            },
+            "other-execution",
+        )
+        .unwrap();
+        assert_eq!(
+            other.store_byte(&region, 0, 1).unwrap_err().code,
+            "E-SYSTEMS-STORAGE-PROVENANCE"
+        );
+        storage.release(region).unwrap();
+        assert_eq!(
+            storage
+                .transitions()
+                .iter()
+                .map(BootstrapStorageTransition::semantic_identity)
+                .collect::<Vec<_>>(),
+            [
+                SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+                SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+                SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+                SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+                SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+                SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
             ]
         );
     }
