@@ -115,6 +115,15 @@ debug companion, and map, and atomically publish one directory containing only
 the kernel, debug, map, and canonical provenance outputs. This linked payload
 shall not itself claim a boot protocol or executable-qualify the systems target.
 
+The first boot-adapter increment shall validate that exact linked payload and
+its provenance before generating a Linux x86 boot-protocol 2.15 image. It shall
+materialize ELF load segments at their reviewed physical addresses, generate
+the approved real-mode and long-mode transition structures without source
+assembly, bind IDT vector 3 to the linked debug-break entry, and atomically
+publish only the boot image and canonical adapter provenance. Structural
+packaging alone shall not executable-qualify the systems target; qualification
+requires separate execution under the pinned QEMU board and CPU.
+
 ## TOPAL-COMP-SYSTEMS-TEST-001 — Systems negative and physical evidence
 
 Tests shall cover every systems rule's accepted model transitions and reject

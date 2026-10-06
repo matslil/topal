@@ -8,6 +8,7 @@ mod optimization;
 mod pipeline;
 mod standard_library;
 mod systems_artifact;
+mod systems_boot_image;
 mod systems_provider;
 mod systems_provider_object;
 mod toolchain;
@@ -35,6 +36,13 @@ pub use systems_artifact::{
     X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_ROOT_OBJECT_REVISION, X86_SYSTEMS_ROOT_TEXT_SECTION,
     publish_x86_64_systems_artifact,
+};
+pub use systems_boot_image::{
+    GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
+    X86_BOOT_PROVENANCE_FILE, X86_INITIAL_IDENTITY_LIMIT, X86_INITIAL_STACK_TOP,
+    X86_KERNEL_MINIMUM_ADDRESS, X86_LINUX_BOOT_ADAPTER_REVISION, X86_LINUX_BOOT_PROTOCOL,
+    X86_LINUX_SETUP_SECTORS, X86_PROTECTED_PAYLOAD_ADDRESS, X86LinuxBootImageProvenance,
+    generate_x86_64_linux_boot_image, publish_x86_64_linux_boot_image,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
