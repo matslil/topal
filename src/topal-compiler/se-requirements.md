@@ -107,6 +107,14 @@ ordinary process termination, and inspect the linked artifact before atomic
 publication. It shall publish kernel, debug, map, and canonical provenance
 outputs and pass the kernel digest to a separately qualified boot-image adapter.
 
+The first linked-artifact increment shall lower checked handler operation order
+and dispositions into a generated root object whose only undefined references
+are sealed provider facilities. It shall link a static executable payload,
+inspect its entry set, placements, dependencies, relocations, hosted sections,
+debug companion, and map, and atomically publish one directory containing only
+the kernel, debug, map, and canonical provenance outputs. This linked payload
+shall not itself claim a boot protocol or executable-qualify the systems target.
+
 ## TOPAL-COMP-SYSTEMS-TEST-001 — Systems negative and physical evidence
 
 Tests shall cover every systems rule's accepted model transitions and reject
