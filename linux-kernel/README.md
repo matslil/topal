@@ -23,10 +23,11 @@ kernel path and Docker/Podman smoke controls. The first Step 4 increment adds
 the [checked systems-root semantic foundation](step-4-semantic-foundation.md)
 and a model-only x86-64 QEMU kernel target. The second increment adds
 [bounded bootstrap storage](step-4-bootstrap-storage.md) to that root and its
-architecture-independent reference model. This does not yet claim a bootable
-Topal kernel: physical storage placement, provider lowering, publication,
-inspection, and QEMU evidence remain required, while the ordinary compiler
-remains a Linux x86-64 userspace compiler.
+architecture-independent reference model. The third increment adds the
+[sealed x86-64 provider plan](step-4-x86-provider-plan.md). This does not yet
+claim a bootable Topal kernel: physical lowering, publication, inspection, and
+QEMU evidence remain required, while the ordinary compiler remains a Linux
+x86-64 userspace compiler.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -104,6 +105,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 3 reference VM report](step-3-report.md)
 - [Step 4 systems-root semantic foundation](step-4-semantic-foundation.md)
 - [Step 4 bounded bootstrap storage](step-4-bootstrap-storage.md)
+- [Step 4 x86-64 provider plan](step-4-x86-provider-plan.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
