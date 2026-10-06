@@ -15,7 +15,7 @@ Topal or kernel semantics.
 | `TK-DEC-008` | kernel allocation, stack, and fatal-failure model | removes dependency on host syscalls and process termination | approved; storage/artifact/disposition rules |
 | `TK-DEC-009` | safe user-memory transfer and recoverable faults | every pointer-bearing UAPI depends on it | approved; `TOPAL-SYSTEMS-RECOVERY-001` |
 | `TK-DEC-010` | permitted non-Topal bootstrap or generated support | user requested Topal elements instead of source assembly | resolved: backend-generated typed support only; no source assembly |
-| `TK-DEC-011` | kernel code license and third-party provenance policy | Linux and this repository use different licensing terms | open before implementation/import |
+| `TK-DEC-011` | kernel code license and third-party provenance policy | Linux and this repository use different licensing terms | resolved; [clean-room Unlicense and import-provenance policy](license-and-provenance.md) approved before kernel-foundation implementation |
 | `TK-DEC-012` | reference kernel configuration and conditional UAPI policy | required to reproduce absence and capability behavior | resolved for initial profile; [Linux 7.2.9 configuration](../labs/qemu/x86_64/reference-kernel.config) |
 | `TK-DEC-013` | root filesystems and dynamic libc qualification corpus | application tests do not define the interface alone | resolved for initial corpus; [Step 3 report](../step-3-report.md) |
 | `TK-DEC-014` | rootful/rootless Docker and Podman profiles | container requirements and security boundaries differ | open; container phase |
