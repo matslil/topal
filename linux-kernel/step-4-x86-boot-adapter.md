@@ -55,7 +55,6 @@ tests also exercise the single two-file publication rename.
 
 Risk remains high because the adapter executes before the typed kernel entry
 and a malformed transition can fail without diagnostics. Structural checks
-close the admitted input and layout, but do not establish physical execution.
-The systems target remains model-only until a separate increment boots this
-exact image on the pinned QEMU board and records the console and fault-recovery
-evidence.
+close the admitted input and layout. The subsequent
+[pinned-QEMU toolchain gate](step-4-toolchain-gate.md) establishes physical
+execution for this exact lab-only publication path.

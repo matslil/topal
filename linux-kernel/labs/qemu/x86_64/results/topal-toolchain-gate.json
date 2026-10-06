@@ -1,0 +1,27 @@
+{
+  "artifact_provenance_sha256": "1834a1f8d82eeb6975c80008941bf2c0272748a93d07e8805f59af8b2fd968f8",
+  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/1",
+  "boot_image_sha256": "0e2449793616cc50401a5c3cb89fa12309441e61bf2f3817f2697dbb139e0851",
+  "boot_provenance_sha256": "66eb2846e19527f5ccb347c25dab9511bce4e1f04a309ba7d0f8c83cf3a92f7d",
+  "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/1",
+  "cpu": "qemu64-v1",
+  "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
+  "linked_kernel_sha256": "4ee23e872aee3dcb35660174ec8348bcef52c1497e6eaa179ffb3596679758e1",
+  "machine": "pc-q35-10.2",
+  "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+  "observations": {
+    "markers_in_order": [
+      "TOPAL_KERNEL_BOOT",
+      "TOPAL_KERNEL_FAULT_RESUMED"
+    ],
+    "qemu_running_after_markers": true,
+    "result": "pass",
+    "serial_quiescent_after_fatal_disposition": true,
+    "serial_sha256": "f0a238c19cfb32e1cea2ebf462ba0c9617e0e7da0e70d01af653ce8f1792844a",
+    "serial_utf8": "TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMED"
+  },
+  "provider": "topal.provider.x86_64-qemu-pc-q35/1",
+  "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+  "schema": "topal-kernel-toolchain-gate-qemu/1",
+  "source_sha256": "3f73284f3cb4a57237ca5eb5b9bc6841be1d5b0d6dbfd5662f4b18b1eef45c44"
+}

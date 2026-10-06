@@ -659,6 +659,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "topal-kernel-toolchain-gate-builder"
+version = "0.1.0"
+dependencies = [
+ "topal-compiler",
+ "topal-language",
+]
+
+[[package]]
 name = "topal-language"
 version = "0.1.0"
 dependencies = [
