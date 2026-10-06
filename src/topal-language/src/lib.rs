@@ -65,12 +65,17 @@ pub use modules::{
 };
 pub use source::{Execution, ExecutionStep, Session, Value, display_string_literal};
 pub use systems::{
-    CompilerSystemsContextKind, CompilerSystemsDisposition, CompilerSystemsEntry,
-    CompilerSystemsEntryKind, CompilerSystemsHandler, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTargetSelection, CompilerSystemsTransition,
-    INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK, analyze_systems_for_compiler,
-    model_systems_transitions,
+    CompilerBootstrapRegion, CompilerBootstrapStorageDescriptor, CompilerBootstrapStorageErrorCode,
+    CompilerBootstrapStoragePlacement, CompilerBootstrapStorageRequest,
+    CompilerBootstrapStorageState, CompilerBootstrapStorageTransition, CompilerSystemsContextKind,
+    CompilerSystemsDisposition, CompilerSystemsEntry, CompilerSystemsEntryKind,
+    CompilerSystemsHandler, CompilerSystemsOperation, CompilerSystemsProgram,
+    CompilerSystemsTargetSelection, CompilerSystemsTransition, INITIAL_SYSTEMS_BOARD,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
+    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_RESUME_DEBUG_BREAK, analyze_systems_for_compiler, model_systems_transitions,
 };
 pub use topal_semantics::LanguageVersion;
 pub use topal_source::Diagnostic;

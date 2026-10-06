@@ -10,9 +10,18 @@ use topal_source::{Diagnostic, SourceText, Span};
 use topal_syntax::{Expression, FunctionClauses, ProductField, Statement, lex, parse};
 
 pub use topal_semantics::{
-    INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK,
-    SystemsContextKind as CompilerSystemsContextKind,
+    BootstrapRegion as CompilerBootstrapRegion,
+    BootstrapStorageDescriptor as CompilerBootstrapStorageDescriptor,
+    BootstrapStorageErrorCode as CompilerBootstrapStorageErrorCode,
+    BootstrapStoragePlacement as CompilerBootstrapStoragePlacement,
+    BootstrapStorageRequest as CompilerBootstrapStorageRequest,
+    BootstrapStorageState as CompilerBootstrapStorageState,
+    BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
+    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_RESUME_DEBUG_BREAK, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -112,6 +121,7 @@ pub fn analyze_systems_for_compiler(
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
+        bootstrap_storage: root_entries.bootstrap_storage,
         bootstrap: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::Bootstrap,
             handler: bootstrap,
@@ -219,6 +229,7 @@ fn validate_language_selection(
 }
 
 struct ArtifactEntries {
+    bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
 }
@@ -254,49 +265,22 @@ fn parse_artifact_root(
             "the final root expression must be `lang systems artifact (...)`",
         ));
     }
+    let mut bootstrap_storage = None;
     let mut entries = BTreeMap::new();
     for field in fields {
-        let (label, label_text, handler) = parse_artifact_field(source, field)?;
-        if entries.insert(label_text.clone(), handler).is_some() {
-            return Err(source_diagnostic(
-                source,
-                "E-SYSTEMS-ENTRY-SET",
-                label,
-                format!("systems artifact entry `{label_text}` is duplicated"),
-            ));
-        }
-    }
-    let (Some(bootstrap), Some(debug_break)) =
-        (entries.remove("bootstrap"), entries.remove("debug-break"))
-    else {
-        return Err(invalid_entry_set(source, *span));
-    };
-    if !entries.is_empty() {
-        return Err(invalid_entry_set(source, *span));
-    }
-    Ok(ArtifactEntries {
-        bootstrap,
-        debug_break,
-    })
-}
-
-fn parse_artifact_field(
-    source: &SourceText,
-    field: &ProductField,
-) -> Result<(Span, String, String), Diagnostic> {
-    let Some(label) = field.label else {
-        return Err(source_diagnostic(
-            source,
-            "E-SYSTEMS-ENTRY-SET",
-            field.value.span(),
-            "systems artifact entries require named `bootstrap` and `debug-break` fields",
-        ));
-    };
-    let label_text = source.slice(label);
-    let expected_constructor = match label_text {
-        "bootstrap" => "bootstrap-entry",
-        "debug-break" => "synchronous-exception-entry",
-        _ => {
+        let label = artifact_field_label(source, field)?;
+        let label_text = source.slice(label);
+        if label_text == "bootstrap-storage" {
+            let descriptor = parse_bootstrap_storage(source, field)?;
+            if bootstrap_storage.replace(descriptor).is_some() {
+                return Err(duplicate_artifact_field(source, label, label_text));
+            }
+        } else if matches!(label_text, "bootstrap" | "debug-break") {
+            let handler = parse_entry_field(source, field, label_text)?;
+            if entries.insert(label_text.to_owned(), handler).is_some() {
+                return Err(duplicate_artifact_field(source, label, label_text));
+            }
+        } else {
             return Err(source_diagnostic(
                 source,
                 "E-SYSTEMS-ENTRY-SET",
@@ -304,6 +288,53 @@ fn parse_artifact_field(
                 format!("unknown initial systems artifact entry `{label_text}`"),
             ));
         }
+    }
+    let (Some(bootstrap_storage), Some(bootstrap), Some(debug_break)) = (
+        bootstrap_storage,
+        entries.remove("bootstrap"),
+        entries.remove("debug-break"),
+    ) else {
+        return Err(invalid_entry_set(source, *span));
+    };
+    if !entries.is_empty() {
+        return Err(invalid_entry_set(source, *span));
+    }
+    Ok(ArtifactEntries {
+        bootstrap_storage,
+        bootstrap,
+        debug_break,
+    })
+}
+
+fn artifact_field_label(source: &SourceText, field: &ProductField) -> Result<Span, Diagnostic> {
+    field.label.ok_or_else(|| {
+        source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTRY-SET",
+            field.value.span(),
+            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, and `debug-break` fields",
+        )
+    })
+}
+
+fn duplicate_artifact_field(source: &SourceText, label: Span, label_text: &str) -> Diagnostic {
+    source_diagnostic(
+        source,
+        "E-SYSTEMS-ENTRY-SET",
+        label,
+        format!("systems artifact entry `{label_text}` is duplicated"),
+    )
+}
+
+fn parse_entry_field(
+    source: &SourceText,
+    field: &ProductField,
+    label_text: &str,
+) -> Result<String, Diagnostic> {
+    let expected_constructor = match label_text {
+        "bootstrap" => "bootstrap-entry",
+        "debug-break" => "synchronous-exception-entry",
+        _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
         items: entry_items,
@@ -344,11 +375,112 @@ fn parse_artifact_field(
             format!("`{label_text}` requires `lang systems {expected_constructor}`"),
         ));
     }
-    Ok((
-        label,
-        label_text.to_owned(),
-        source.slice(*handler).to_owned(),
-    ))
+    Ok(source.slice(*handler).to_owned())
+}
+
+fn parse_bootstrap_storage(
+    source: &SourceText,
+    field: &ProductField,
+) -> Result<CompilerBootstrapStorageDescriptor, Diagnostic> {
+    let Expression::Application { items, span } = &field.value else {
+        return Err(storage_diagnostic(
+            source,
+            field.value.span(),
+            "bootstrap storage must construct `lang systems bounded-bootstrap-storage`",
+        ));
+    };
+    let [
+        lang,
+        systems,
+        constructor,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "bootstrap storage requires one capacity/alignment product",
+        ));
+    };
+    if !identifier_is(source, lang, "lang")
+        || !identifier_is(source, systems, "systems")
+        || !identifier_is(source, constructor, "bounded-bootstrap-storage")
+    {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "bootstrap storage must construct `lang systems bounded-bootstrap-storage`",
+        ));
+    }
+    let mut values = BTreeMap::new();
+    for parameter in fields {
+        let Some(label) = parameter.label else {
+            return Err(storage_diagnostic(
+                source,
+                parameter.value.span(),
+                "bootstrap storage parameters must be named",
+            ));
+        };
+        let label_text = source.slice(label);
+        if !matches!(label_text, "capacity-bytes" | "alignment-bytes") {
+            return Err(storage_diagnostic(
+                source,
+                label,
+                format!("unknown bounded bootstrap-storage parameter `{label_text}`"),
+            ));
+        }
+        let value = parse_storage_natural(source, &parameter.value)?;
+        if values.insert(label_text.to_owned(), value).is_some() {
+            return Err(storage_diagnostic(
+                source,
+                label,
+                format!("bootstrap storage parameter `{label_text}` is duplicated"),
+            ));
+        }
+    }
+    let (Some(capacity_bytes), Some(alignment_bytes)) = (
+        values.remove("capacity-bytes"),
+        values.remove("alignment-bytes"),
+    ) else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "bounded bootstrap storage requires exactly `capacity-bytes` and `alignment-bytes`",
+        ));
+    };
+    let descriptor = CompilerBootstrapStorageDescriptor {
+        capacity_bytes,
+        alignment_bytes,
+    };
+    descriptor
+        .validate()
+        .map_err(|error| storage_diagnostic(source, *span, error.message))?;
+    Ok(descriptor)
+}
+
+fn parse_storage_natural(source: &SourceText, value: &Expression) -> Result<u64, Diagnostic> {
+    let Expression::Integer(span) = value else {
+        return Err(storage_diagnostic(
+            source,
+            value.span(),
+            "bootstrap storage byte counts must be static natural-number literals",
+        ));
+    };
+    source
+        .slice(*span)
+        .replace('_', "")
+        .parse::<u64>()
+        .map_err(|_| {
+            storage_diagnostic(
+                source,
+                *span,
+                "bootstrap storage byte count is outside the supported natural-number range",
+            )
+        })
+}
+
+fn storage_diagnostic(source: &SourceText, span: Span, message: impl Into<String>) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-STORAGE", span, message)
 }
 
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
@@ -356,7 +488,7 @@ fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
         source,
         "E-SYSTEMS-ENTRY-SET",
         span,
-        "the initial systems artifact requires exactly `bootstrap` and `debug-break` entries",
+        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, and `debug-break` entries",
     )
 }
 
@@ -586,6 +718,7 @@ mod tests {
     use crate::analyze_for_compiler;
 
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    const STORAGE_DECLARATION: &str = "  bootstrap-storage is lang systems bounded-bootstrap-storage (\n    capacity-bytes is 65536,\n    alignment-bytes is 4096\n  ),\n";
 
     #[test]
     fn checks_the_initial_artifact_and_models_entry_transitions() {
@@ -597,6 +730,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(program.bootstrap.kind, CompilerSystemsEntryKind::Bootstrap);
+        assert_eq!(program.bootstrap_storage.capacity_bytes, 65_536);
+        assert_eq!(program.bootstrap_storage.alignment_bytes, 4096);
         assert_eq!(
             program.debug_break.kind,
             CompilerSystemsEntryKind::SynchronousExceptionDebugBreak
@@ -608,6 +743,10 @@ mod tests {
         assert_eq!(
             model_systems_transitions(&program).unwrap(),
             vec![
+                CompilerSystemsTransition::ProvisionBootstrapStorage {
+                    capacity_bytes: 65_536,
+                    alignment_bytes: 4096,
+                },
                 CompilerSystemsTransition::EnterBootstrap,
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -727,6 +866,57 @@ mod tests {
             .code,
             "E-SYSTEMS-ENTRY-SET"
         );
+    }
+
+    #[test]
+    fn rejects_missing_malformed_and_open_bootstrap_storage() {
+        // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-STORAGE-001.
+        let missing = SOURCE.replace(STORAGE_DECLARATION, "");
+        assert_eq!(
+            analyze_systems_for_compiler(
+                &missing,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err()
+            .code,
+            "E-SYSTEMS-ENTRY-SET"
+        );
+
+        let duplicate = SOURCE.replace(
+            STORAGE_DECLARATION,
+            &format!("{STORAGE_DECLARATION}{STORAGE_DECLARATION}"),
+        );
+        assert_eq!(
+            analyze_systems_for_compiler(
+                &duplicate,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err()
+            .code,
+            "E-SYSTEMS-ENTRY-SET"
+        );
+
+        for malformed in [
+            SOURCE.replace("    capacity-bytes is 65536,\n", ""),
+            SOURCE.replace("capacity-bytes is 65536", "capacity-bytes is 0"),
+            SOURCE.replace("alignment-bytes is 4096", "alignment-bytes is 3"),
+            SOURCE.replace("alignment-bytes is 4096", "alignment-bytes is 131072"),
+            SOURCE.replace("capacity-bytes is 65536", "capacity-bytes is capacity"),
+            SOURCE.replace(
+                "alignment-bytes is 4096",
+                "alignment-bytes is 4096,\n    physical-address is 4096",
+            ),
+        ] {
+            assert_eq!(
+                analyze_systems_for_compiler(
+                    &malformed,
+                    &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+                )
+                .unwrap_err()
+                .code,
+                "E-SYSTEMS-STORAGE"
+            );
+        }
     }
 
     #[test]

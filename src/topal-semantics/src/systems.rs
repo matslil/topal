@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use crate::{BootstrapStorageDescriptor, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION};
+
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
 pub const INITIAL_SYSTEMS_BOARD: &str = "topal-qemu-pc-q35-10.2";
 pub const INITIAL_SYSTEMS_PROFILE: &str = "topal.systems.x86_64-qemu-pc-q35-10.2/1";
@@ -90,18 +92,27 @@ pub struct SystemsEntry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
+    pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsTransition {
+    ProvisionBootstrapStorage {
+        capacity_bytes: u64,
+        alignment_bytes: u64,
+    },
     EnterBootstrap,
-    ConsoleWrite { text: String },
+    ConsoleWrite {
+        text: String,
+    },
     ObserveDebugBreak,
     EnterDebugBreak,
     ResumeDebugBreak,
-    Fatal { message: String },
+    Fatal {
+        message: String,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -111,7 +122,7 @@ pub struct SystemsModelError {
 }
 
 impl SystemsModelError {
-    fn new(code: &'static str, message: impl Into<String>) -> Self {
+    pub(crate) fn new(code: &'static str, message: impl Into<String>) -> Self {
         Self {
             code,
             message: message.into(),
@@ -131,6 +142,7 @@ impl SystemsTransition {
     #[must_use]
     pub const fn semantic_identity(&self) -> &'static str {
         match self {
+            Self::ProvisionBootstrapStorage { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::EnterBootstrap => "topal.systems.entry.bootstrap/1",
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
@@ -155,6 +167,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             "the initial systems model requires its exact target, board, and profile identity",
         ));
     }
+    program.bootstrap_storage.validate()?;
     validate_entry(
         &program.bootstrap,
         SystemsEntryKind::Bootstrap,
@@ -244,7 +257,13 @@ pub fn model_systems_transitions(
     program: &SystemsProgram,
 ) -> Result<Vec<SystemsTransition>, SystemsModelError> {
     validate_systems_program(program)?;
-    let mut transitions = vec![SystemsTransition::EnterBootstrap];
+    let mut transitions = vec![
+        SystemsTransition::ProvisionBootstrapStorage {
+            capacity_bytes: program.bootstrap_storage.capacity_bytes,
+            alignment_bytes: program.bootstrap_storage.alignment_bytes,
+        },
+        SystemsTransition::EnterBootstrap,
+    ];
     for operation in &program.bootstrap.handler.operations {
         match operation {
             SystemsOperation::ConsoleWrite { text } => {
@@ -288,6 +307,10 @@ mod tests {
         let target = SystemsTargetSelection::initial_x86_64_qemu();
         SystemsProgram {
             target,
+            bootstrap_storage: BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
             bootstrap: SystemsEntry {
                 kind: SystemsEntryKind::Bootstrap,
                 handler: SystemsHandler {
@@ -328,6 +351,10 @@ mod tests {
         assert_eq!(
             model_systems_transitions(&program(SystemsDisposition::Resume)).unwrap(),
             [
+                SystemsTransition::ProvisionBootstrapStorage {
+                    capacity_bytes: 65_536,
+                    alignment_bytes: 4096,
+                },
                 SystemsTransition::EnterBootstrap,
                 SystemsTransition::ConsoleWrite {
                     text: "boot".into(),
@@ -408,6 +435,17 @@ mod tests {
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-DISPOSITION"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_bootstrap_storage_descriptor() {
+        // TOPAL-SYSTEMS-STORAGE-001.
+        let mut invalid = program(SystemsDisposition::Resume);
+        invalid.bootstrap_storage.alignment_bytes = 3;
+        assert_eq!(
+            validate_systems_program(&invalid).unwrap_err().code,
+            "E-SYSTEMS-STORAGE"
         );
     }
 }
