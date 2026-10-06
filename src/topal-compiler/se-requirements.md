@@ -90,6 +90,14 @@ static relocation, small code model, bootstrap-storage placement, and every
 initial semantic operation to one closed provider identity. Planning alone
 shall not authorize lowering or publication.
 
+The next provider increment shall generate a deterministic relocatable ELF64
+object directly from that checked plan. It shall confine x86-64 encodings to a
+private typed provider model, define no source-level instruction or register
+interface, reserve the checked bootstrap storage as aligned uninitialized data,
+retain exact target/provider provenance, and have no relocation or undefined
+dependency. This partial provider object shall not by itself qualify target
+selection, linking, publication, or boot.
+
 ## TOPAL-COMP-SYSTEMS-ARTIFACT-001 — Kernel artifact publication
 
 The systems publisher shall use a distinct target/data-layout/object/relocation

@@ -105,8 +105,8 @@ are explicit rather than schedule accidents.
 | `TOPAL-SEM-ARCH-001` | `TOPAL-ARCH-SOURCE-001` through `TOPAL-ARCH-DIAGNOSTIC-001` | deterministic architecture validation, canonical identity, and negative model tests |
 | `TOPAL-COMP-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001`, `TOPAL-SYSTEMS-VOCABULARY-001` | initial feature/target isolation and fail-before-output CLI tests implemented |
 | `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition and bounded storage declaration checking implemented; allocation source operations and remaining authority/lifetime/order corpus stay fail-closed |
-| `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | deterministic sealed x86-64 provider plan implemented; machine lowering, inspection, and physical evidence remain |
-| `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | ELF/image structure, placement, relocation, dependency, provenance, and atomic-publication tests |
+| `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | deterministic sealed plan and typed generated primitive object implemented and structurally inspected; entry/link/boot evidence remains |
+| `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | relocatable provider ELF structure, storage, relocation, dependency, and provenance inspected; linked image and atomic-publication tests remain |
 | `TOPAL-COMP-SYSTEMS-TEST-001` | `TOPAL-SYSTEMS-QUALIFY-001` | shared negative matrix plus pinned-QEMU provider evidence |
 | `TOPAL-COMPILER-STANDARD-LIBRARY-PARITY-001` | `TOPAL-LIB-SOURCE-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-COLLECTION-FOLD-001`, `TOPAL-GENERATOR-TAKE-WHILE-001` | compiled standard-library facade parity, selective dependency, and freestanding artifact tests |
 
