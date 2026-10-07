@@ -20,6 +20,14 @@ The first adapter has this exact contract:
   advertises Linux x86 boot protocol 2.15;
 - the setup entry is relocatable 16-bit code and enters the protected payload
   at physical address `0x0010_0000`;
+- before leaving BIOS real mode, the adapter collects at most 128 complete
+  20-byte E820 records into the Linux zeropage, publishes a nonzero count only
+  for a complete BIOS continuation chain, and leaves a zero count on malformed
+  or truncated results;
+- because the zeropage E820 table overlaps the setup-code address range, the
+  adapter copies its bounded post-E820 continuation to adapter-reserved
+  real-mode scratch before the first BIOS call and transfers there after
+  collection;
 - compiler-generated transition support occupies the range beginning at
   `0x0010_0000`; the validated kernel ELF `PT_LOAD` segments are materialized
   at their physical addresses beginning at `0x0020_0000` with at least 4 KiB
@@ -61,8 +69,8 @@ The generated setup header records a high-loaded, non-relocatable 64-bit
 kernel, `code32_start = 0x0010_0000`, 4 KiB kernel alignment, the protected
 payload size, and no embedded initramfs. QEMU remains responsible for the
 command-line pointer and other bootloader-written fields. The adapter preserves
-the boot-parameter address even though the current toolchain-gate root does not
-yet consume the command line or firmware map.
+the boot-parameter address, supplies the BIOS E820 portion needed by the
+boot-memory provider, and does not consume the command line.
 
 Packaging publishes the `bzImage` and canonical adapter provenance together.
 The record includes the exact protocol/header identity, transition layout,

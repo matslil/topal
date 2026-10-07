@@ -148,9 +148,12 @@ boot-protocol 2.15 `boot_params` handoff privately, validate the admitted E820
 table, reject unsupported extension data, prove at least one complete
 allocatable page remains after generated reservations, and branch to the
 fatal provider on failure. The root object shall retain no source-visible
-firmware layout, address, register, or instruction interface. Artifact
-inspection and pinned-QEMU evidence shall prove the success marker is reachable
-only after validation.
+firmware layout, address, register, or instruction interface. The x86 boot
+adapter shall populate the admitted zeropage table through a bounded BIOS E820
+continuation chain before leaving real mode; incomplete or malformed
+collection shall remain fail-closed.
+Artifact inspection and pinned-QEMU evidence shall prove the success marker is
+reachable only after validation.
 
 ## TOPAL-COMP-SYSTEMS-TEST-001 — Systems negative and physical evidence
 

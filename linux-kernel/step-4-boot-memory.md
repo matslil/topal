@@ -44,7 +44,7 @@ general frame allocator. Later allocator work must materialize and consume the
 normalized range capabilities modeled by the common semantics, and separately
 qualify setup-data extension traversal and any additional boot path.
 
-## Evidence before the physical gate
+## Evidence
 
 - semantic tests cover overlap precedence, provenance, reservations, page
   edges, malformed and overflowing ranges, unsupported handoffs, and empty
@@ -56,7 +56,15 @@ qualify setup-data extension traversal and any additional boot path.
 - root-object tests require the validator dependency and its fail-to-fatal
   branch; and
 - linked-artifact tests enforce the 16 MiB reservation floor and updated
-  semantic trace.
+  semantic trace;
+- the generated four-sector adapter collects the SeaBIOS E820 continuation
+  chain before protected-mode entry without exposing its records to source;
+  and
+- two pinned-QEMU reproductions produced identical artifact and observation
+  digests and emitted `TOPAL_KERNEL_MEMORY_DESCRIBED` before the prior entry,
+  exception, storage, and fatal-path markers.
 
-Pinned-QEMU execution and refreshed content-addressed evidence are the next
-stage; this increment alone does not claim that physical result.
+The committed content-addressed evidence therefore qualifies the positive
+physical path for the exact `pc-q35-10.2`/`qemu64-v1` profile. Unsupported
+setup-data extensions, other boot paths, and a capability-backed frame
+allocator remain outside this slice.

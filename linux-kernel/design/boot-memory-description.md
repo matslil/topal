@@ -81,8 +81,11 @@ The initial provider accepts the Linux x86 boot-protocol 2.15 handoff carried
 privately from `RSI`. It validates the zeropage E820 count and entries, rejects
 wrapping or empty usable ranges, treats every unknown E820 type as reserved,
 and proves that at least one page remains allocatable after generated image
-reservations. A nonzero setup-data pointer fails closed in this first slice;
-bounded extension-list traversal and provenance require separate qualification.
+reservations. For the direct-QEMU path, the generated boot adapter obtains the
+bounded E820 continuation from BIOS before protected-mode entry and publishes a
+zero count if collection is incomplete. A nonzero setup-data pointer fails
+closed in this first slice; bounded extension-list traversal and provenance
+require separate qualification.
 
 The checked source must perform this transition before console, debug-break,
 bootstrap-allocation, or successful fatal disposition operations. The pinned

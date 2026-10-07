@@ -9,14 +9,18 @@ materialize its load segments, generate the approved Linux x86 boot-protocol
 canonical adapter provenance.
 
 The generated adapter contains a relocatable 16-bit setup entry followed by
-compiler-owned 32-bit and 64-bit transition code. It enables A20, installs the
-generated GDT, enables PAE and long mode, establishes the approved one-GiB
-identity map and bootstrap stack, installs the generated IDT, retains the
-boot-parameter address in `RSI`, and transfers directly to the linked kernel
-entry. IDT vector 3 names the linked debug-break handler. These encodings and
-register obligations remain private typed compiler operations; Topal source
-does not gain instruction, register, descriptor, page-table, or source-assembly
-syntax.
+compiler-owned 32-bit and 64-bit transition code. Its current revision also
+collects a bounded BIOS E820 map into the Linux zeropage. Because those records
+overwrite part of the setup-code address range, the adapter first copies its
+bounded continuation to adapter-reserved real-mode scratch; an incomplete BIOS
+continuation chain publishes a zero entry count for the kernel validator to
+reject. It then enables A20, installs the generated GDT, enables PAE and long
+mode, establishes the approved one-GiB identity map and bootstrap stack,
+installs the generated IDT, retains the boot-parameter address in `RSI`, and
+transfers directly to the linked kernel entry. IDT vector 3 names the linked
+debug-break handler. These encodings and register obligations remain private
+typed compiler operations; Topal source does not gain instruction, register,
+descriptor, page-table, or source-assembly syntax.
 
 The published directory contains exactly:
 
@@ -49,9 +53,10 @@ and the image digest is computed only after the complete byte sequence exists.
 
 Focused compiler tests build the checked Topal toolchain-gate root through the
 existing LLVM 22 artifact publisher, generate two images at different paths,
-inspect the boot header, PML4 and IDT gate, compare both publication sets byte
-for byte, and decode and verify the canonical provenance and both digests. The
-tests also exercise the single two-file publication rename.
+inspect the boot header, BIOS E820 call and relocated continuation, PML4 and
+IDT gate, compare both publication sets byte for byte, and decode and verify
+the canonical provenance and both digests. The tests also exercise the single
+two-file publication rename.
 
 Risk remains high because the adapter executes before the typed kernel entry
 and a malformed transition can fail without diagnostics. Structural checks

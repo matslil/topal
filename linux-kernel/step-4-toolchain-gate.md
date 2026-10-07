@@ -3,24 +3,26 @@
 ## Outcome
 
 This is the seventh implementation increment of Step 4. The checked Topal
-kernel source now builds through the ordinary `topalc` target publisher, boots as the
-replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU profile,
-writes through the polling 16550 provider, enters and resumes from the generated
+kernel source now builds through the ordinary `topalc` target publisher, boots
+as the replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU
+profile, validates the Linux E820 handoff and reserved bootstrap floor, writes
+through the polling 16550 provider, enters and resumes from the generated
 vector-3 handler, stores and reloads a sentinel in kernel-owned memory, and
 reaches the nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
 ```
 
-After all three ordered markers, QEMU remained running and the serial stream
+After all four ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
-of the fatal provider's interrupt-disable/halt loop and the root's separate
-store/load/compare sequence, this is the physical evidence that the checked
-bootstrap used its generated `.bss` pool and completed its expected path
-without returning to a host runtime.
+of the bounded E820 validator, fail-to-fatal branch, reserved image floor, fatal
+provider's interrupt-disable/halt loop, and the root's separate store/load/
+compare sequence, this is the physical evidence that the checked bootstrap
+refined its handoff, used its generated `.bss` pool, and completed its expected
+path without returning to a host runtime.
 
 ## Reproduction and evidence
 
@@ -48,7 +50,8 @@ The committed
 Re-running the harness regenerates all intermediate artifacts rather than
 trusting committed binaries. Static tests independently verify the QEMU command
 shape and every committed evidence/input relationship that can be checked
-without launching the emulator.
+without launching the emulator. Two consecutive reproductions produced the
+same linked-artifact, boot-image, provenance, and serial-observation digests.
 
 ## Qualification boundary and risk
 
@@ -67,7 +70,7 @@ packaging remains a separate adapter.
 
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,
-affine region checking, byte-content reference model, deterministic typed
-provider, structural ELF and boot-image inspection, exact machine identity, no
-guest devices beyond the serial port, content-addressed evidence, and continued
-fail-closed ordinary target selection.
+affine handoff and region checking, conservative range and byte-content
+reference models, deterministic typed provider, structural ELF and boot-image
+inspection, exact machine identity, no guest devices beyond the serial port,
+content-addressed evidence, and continued fail-closed ordinary target selection.
