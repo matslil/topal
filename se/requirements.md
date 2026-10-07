@@ -342,6 +342,15 @@ termination. Portable source shall observe neither raw firmware layouts nor
 numeric addresses, and unknown or unsupported input shall not become
 allocatable memory.
 
+A memory-described bootstrap context shall refine through one exhaustive,
+affine frame-allocator transition. The resulting allocator shall exclusively
+own normalized allocatable-frame authority. Each successful allocation shall
+produce a nonoverlapping opaque extent carrying allocator identity, frame
+count, alignment, and provenance but no numeric address or access authority.
+Release shall consume an extent back into its originating allocator. Invalid,
+exhausted, cross-allocator, double-release, escaping, or disposition-with-live-
+extent behavior shall fail closed.
+
 An ordinary kernel-owned region shall provide bounds-checked plain byte access
 without exposing a machine address. Load and store shall borrow a live region,
 release shall consume it, and no access shall silently acquire volatile,

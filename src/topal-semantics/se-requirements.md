@@ -71,6 +71,14 @@ explicit live reservations; source provenance; and absence of allocatable
 memory. Model range bounds shall be mathematical values for validation and
 shall not grant machine-address authority.
 
+The frame-allocation increment shall model consuming allocator creation,
+exclusive allocator identity, deterministic aligned selection from normalized
+allocatable ranges, explicit malformed and exhaustion failures, nonoverlapping
+affine extent ownership and provenance, same-allocator consuming release, and
+rejection of escape, cross-allocator release, double release, or completion
+with live extents. Model frame indices shall not grant machine-address or
+mapping authority.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine
