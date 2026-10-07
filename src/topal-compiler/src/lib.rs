@@ -51,9 +51,10 @@ pub use systems_provider::{
     X86SystemsProviderPlan, plan_x86_64_systems_provider,
 };
 pub use systems_provider_object::{
-    GeneratedSystemsProviderObject, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
-    X86_SYSTEMS_PROVIDER_NOTE_SECTION, X86_SYSTEMS_PROVIDER_OBJECT_REVISION,
-    X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
+    GeneratedSystemsProviderObject, X86_SYSTEMS_ALLOCATABLE_FLOOR, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_PROVIDER_NOTE_SECTION,
+    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_TEXT_SECTION,
+    generate_x86_64_systems_provider_object,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;

@@ -40,6 +40,8 @@ The next Step 4 kernel-foundation slice uses the approved
 [portable boot-memory description contract](design/boot-memory-description.md)
 to refine the provider-private Linux x86 handoff into architecture-neutral
 physical-range capabilities before ordinary kernel initialization continues.
+Its [checked model and initial x86 E820 provider](step-4-boot-memory.md) are
+implemented; pinned-QEMU evidence remains the closing stage for this slice.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -123,6 +125,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 generated Linux x86 boot adapter](step-4-x86-boot-adapter.md)
 - [Step 4 pinned-QEMU boot and exception gate](step-4-toolchain-gate.md)
 - [Step 4 ordinary compiler systems publication](step-4-compiler-publication.md)
+- [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
