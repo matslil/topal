@@ -6,7 +6,8 @@ use std::process::ExitCode;
 use topal_compiler::{
     CompileError, CompileOptions, Emit, ExplanationDestination, OptimizationLevel,
     OptimizationOverride, OptimizationRequest, TARGET_TRIPLE, TargetSelection,
-    build_standard_library, compile_source, optimization_listing, target_listing,
+    build_standard_library, compile_source, optimization_listing, publish_systems_source,
+    selects_systems_publication, target_listing,
 };
 
 mod test_runner;
@@ -67,7 +68,12 @@ fn run() -> Result<(), String> {
         optimization: arguments.optimization,
         standard_library: arguments.standard_library,
     };
-    compile_source(&source, &options).map_err(|error| render_error(error, &source_name))?;
+    if selects_systems_publication(&options) {
+        publish_systems_source(&source, &options)
+            .map_err(|error| render_error(error, &source_name))?;
+    } else {
+        compile_source(&source, &options).map_err(|error| render_error(error, &source_name))?;
+    }
     Ok(())
 }
 
@@ -220,7 +226,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] [--std-library PATH] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc std-library [--library-root DIR] [--llvm-tools DIR] -o libtopal-std.so.1\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. This increment qualifies only {TARGET_TRIPLE} with --cpu generic. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Executables are static PIEs unless a checked shared library is explicitly selected."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] [--std-library PATH] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc std-library [--library-root DIR] [--llvm-tools DIR] -o libtopal-std.so.1\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. Native applications use {TARGET_TRIPLE} with --cpu generic. The qualified x86_64-unknown-none systems target requires --cpu generic and --board topal-qemu-pc-q35-10.2; --emit executable publishes its canonical artifact directory at -o. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Native executables are static PIEs unless a checked shared library is explicitly selected."
                 );
                 std::process::exit(0);
             }

@@ -197,7 +197,8 @@ fn lists_executable_and_model_only_targets_without_source_input() {
     assert!(stdout.contains("example-riscv-dsp-board"));
     assert!(stdout.contains("topal-x86-64-qemu-kernel"));
     assert!(stdout.contains("topal-qemu-pc-q35-10.2"));
-    assert_eq!(stdout.matches("Status: model-only").count(), 3);
+    assert_eq!(stdout.matches("Status: executable-qualified").count(), 2);
+    assert_eq!(stdout.matches("Status: model-only").count(), 2);
 }
 
 #[test]
@@ -221,9 +222,9 @@ fn model_only_target_selection_fails_with_qualification_details() {
 }
 
 #[test]
-fn systems_target_fails_before_lowering_or_publication() {
-    // TOPAL-COMP-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-QUALIFY-001.
-    let directory = temporary("systems-model-only-target-selection");
+fn systems_target_publishes_the_canonical_artifact_set() {
+    // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-SYSTEMS-QUALIFY-001.
+    let directory = temporary("systems-qualified-target-selection");
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
     let output = directory.join("kernel");
@@ -237,13 +238,54 @@ fn systems_target_fails_before_lowering_or_publication() {
         .arg("-o")
         .arg(&output)
         .arg(&source));
-    assert!(!result.status.success());
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    assert!(stderr.contains("topal-x86-64-qemu-kernel"), "{stderr}");
-    assert!(stderr.contains("model-only"), "{stderr}");
-    assert!(stderr.contains("provider lowering"), "{stderr}");
-    assert!(!output.exists());
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    for name in ["kernel.elf", "kernel.debug", "kernel.map", "provenance.json"] {
+        assert!(output.join(name).is_file(), "missing {name}");
+    }
     assert!(!metadata_path(&output).exists());
+}
+
+#[test]
+fn systems_publication_rejects_unqualified_controls_before_output() {
+    // TOPAL-COMP-SYSTEMS-CONTEXT-001, TOPAL-COMP-SYSTEMS-TEST-001.
+    let directory = temporary("systems-publication-controls");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    for (name, controls, expected) in [
+        (
+            "object",
+            vec!["--board", "topal-qemu-pc-q35-10.2", "--emit", "object"],
+            "canonical executable artifact set",
+        ),
+        (
+            "optimized",
+            vec!["--board", "topal-qemu-pc-q35-10.2", "-O1"],
+            "default unoptimized publication profile",
+        ),
+        (
+            "wrong-board",
+            vec!["--board", "another-board"],
+            "requires --cpu generic and --board topal-qemu-pc-q35-10.2",
+        ),
+    ] {
+        let output = directory.join(name);
+        let mut command = topalc();
+        command.args(["--target", "x86_64-unknown-none"]);
+        command.args(controls);
+        command.arg("-o").arg(&output).arg(&source);
+        let result = run(&mut command);
+        assert!(!result.status.success());
+        assert!(
+            String::from_utf8_lossy(&result.stderr).contains(expected),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(!output.exists());
+    }
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

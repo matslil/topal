@@ -59,12 +59,12 @@ constant-folded echo of the sentinel. This gate does not claim general memory
 management, general interrupts, ACPI/PCI discovery, SMP, time, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
-The ordinary `topalc` target registry remains model-only. The physical evidence
-qualifies this dedicated lab boot path, but the ordinary native compiler still
-has no systems-artifact command and must not route this target through its
-Linux-process pipeline. Its diagnostic now names ordinary compiler publication
-as the remaining integration gap instead of claiming that provider, artifact,
-memory-use, or QEMU evidence is absent.
+The ordinary `topalc` target registry and output path now publish the same
+qualified systems artifact without routing it through the Linux-process
+pipeline. Linux boot-protocol packaging remains a separate adapter. The
+follow-up physical stage makes the QEMU harness consume this ordinary compiler
+publication instead of calling the publisher through an embedded-source lab
+tool.
 
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,

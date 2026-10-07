@@ -9,6 +9,7 @@ mod pipeline;
 mod standard_library;
 mod systems_artifact;
 mod systems_boot_image;
+mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
 mod toolchain;
@@ -121,6 +122,24 @@ pub fn compile_source(
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     pipeline::compile(source, options)
+}
+
+/// Check and atomically publish a qualified freestanding systems artifact.
+///
+/// # Errors
+///
+/// Returns a source diagnostic, target/profile rejection, LLVM tool failure,
+/// structural-inspection failure, or I/O failure before partial publication.
+pub fn publish_systems_source(
+    source: &str,
+    options: &CompileOptions,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    systems_pipeline::publish(source, options)
+}
+
+#[must_use]
+pub fn selects_systems_publication(options: &CompileOptions) -> bool {
+    systems_pipeline::selected(options)
 }
 
 #[must_use]
