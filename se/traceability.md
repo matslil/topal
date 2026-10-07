@@ -78,7 +78,7 @@ are explicit rather than schedule accidents.
 | `TOPAL-REQ-SYSTEMS-ENTRY-001` | `TOPAL-SYSTEMS-ENTRY-001`, `TOPAL-SYSTEMS-DISPOSITION-001` |
 | `TOPAL-REQ-SYSTEMS-OBSERVATION-001` | `TOPAL-SYSTEMS-OBSERVATION-001` |
 | `TOPAL-REQ-SYSTEMS-MACHINE-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` |
-| `TOPAL-REQ-SYSTEMS-MEMORY-001` | `TOPAL-SYSTEMS-ADDRESS-001`, `TOPAL-SYSTEMS-MAPPING-001`, `TOPAL-SYSTEMS-RECOVERY-001` |
+| `TOPAL-REQ-SYSTEMS-MEMORY-001` | `TOPAL-SYSTEMS-ADDRESS-001`, `TOPAL-SYSTEMS-BOOT-MEMORY-001`, `TOPAL-SYSTEMS-MAPPING-001`, `TOPAL-SYSTEMS-RECOVERY-001` |
 | `TOPAL-REQ-SYSTEMS-SYNC-001` | `TOPAL-SYSTEMS-ATOMIC-001`, `TOPAL-SYSTEMS-ORDER-001`, `TOPAL-SYSTEMS-CRITICAL-001` |
 | `TOPAL-REQ-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-CONTEXT-001` |
 | `TOPAL-REQ-SYSTEMS-DEVICE-001` | `TOPAL-SYSTEMS-DEVICE-001`, `TOPAL-SYSTEMS-DMA-001` |
@@ -101,13 +101,13 @@ are explicit rather than schedule accidents.
 
 | Tool requirement | Governing rules | Evidence/status |
 | --- | --- | --- |
-| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | initial entry/observation/disposition, bounded bootstrap allocation, affine release, and borrowed byte-content models with negative tests implemented; remaining element families stay fail-closed |
+| `TOPAL-SEM-SYSTEMS-001` | `TOPAL-SYSTEMS-FEATURE-001` through `TOPAL-SYSTEMS-QUALIFY-001` | initial entry/observation/disposition, boot-memory normalization and affine refinement, bounded bootstrap allocation, affine release, and borrowed byte-content models with negative tests implemented; remaining element families stay fail-closed |
 | `TOPAL-SEM-ARCH-001` | `TOPAL-ARCH-SOURCE-001` through `TOPAL-ARCH-DIAGNOSTIC-001` | deterministic architecture validation, canonical identity, and negative model tests |
 | `TOPAL-COMP-SYSTEMS-CONTEXT-001` | `TOPAL-SYSTEMS-FEATURE-001`, `TOPAL-SYSTEMS-AUTHORITY-001`, `TOPAL-SYSTEMS-VOCABULARY-001` | initial feature/target isolation and fail-before-output CLI tests implemented |
-| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition, exhaustive static allocation, affine region release, and statically bounded plain byte store/load checking implemented; dynamic access and remaining authority/lifetime/order corpus stay fail-closed |
-| `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | deterministic plan, typed provider/root objects, context-preserving handler lowering, retained bootstrap byte store/load inspection, and pinned-QEMU entry/console/debug-break/memory/fatal execution implemented for the lab-only gate |
-| `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | linked static ELF and generated Linux x86 protocol 2.15 adapter, entry/storage/transition placement, closed dependencies, deterministic rebuild, digested provenance, atomic publication, and pinned-QEMU execution inspected |
-| `TOPAL-COMP-SYSTEMS-TEST-001` | `TOPAL-SYSTEMS-QUALIFY-001` | shared negative matrix plus digested pinned-QEMU provider and kernel-owned-memory evidence; ordinary CLI publication remains fail-closed |
+| `TOPAL-COMP-SYSTEMS-CHECK-001` | `TOPAL-SYSTEMS-VOCABULARY-001`, `TOPAL-SYSTEMS-ENTRY-001` through `TOPAL-SYSTEMS-STORAGE-001` | initial entry/context/disposition, exhaustive affine boot-memory refinement, exhaustive static allocation, affine region release, and statically bounded plain byte store/load checking implemented; dynamic access and remaining authority/lifetime/order corpus stay fail-closed |
+| `TOPAL-COMP-SYSTEMS-X64-001` | `TOPAL-SYSTEMS-MACHINE-001`, `TOPAL-SYSTEMS-QUALIFY-001` | deterministic plan, typed provider/root objects, generated bounded Linux E820 collection and validation witness, context-preserving handler lowering, retained bootstrap byte store/load inspection, and pinned-QEMU boot-memory/entry/console/debug-break/memory/fatal execution pass |
+| `TOPAL-COMP-SYSTEMS-ARTIFACT-001` | `TOPAL-SYSTEMS-STORAGE-001`, `TOPAL-SYSTEMS-ARTIFACT-001` | ordinary `topalc` publication of the linked static ELF/debug/map/provenance set plus the separate generated Linux x86 protocol 2.15 adapter; E820 collection, entry/storage/transition placement, closed dependencies, deterministic rebuild, digested provenance, atomic publication, and pinned-QEMU execution inspected |
+| `TOPAL-COMP-SYSTEMS-TEST-001` | `TOPAL-SYSTEMS-QUALIFY-001` | shared negative matrix plus digested deterministic pinned-QEMU boot-memory, provider, and kernel-owned-memory evidence; unsupported ordinary CLI selections remain fail-closed |
 | `TOPAL-COMPILER-STANDARD-LIBRARY-PARITY-001` | `TOPAL-LIB-SOURCE-001`, `TOPAL-TYPE-CALL-001`, `TOPAL-COLLECTION-FOLD-001`, `TOPAL-GENERATOR-TAKE-WHILE-001` | compiled standard-library facade parity, selective dependency, and freestanding artifact tests |
 
 ## Maintenance rules

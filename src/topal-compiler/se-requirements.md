@@ -21,20 +21,23 @@ not depend on LLVM spelling, target layout, or artifact paths.
 
 ## TOPAL-COMP-TARGET-001 — Linux x86-64 qualification
 
-The compiler shall accept only `x86_64-unknown-linux-gnu`, emit the exact
-qualified data layout and x86-64 CPU baseline, use position-independent code,
-and reject every other target before creating an output.
+The hosted compiler shall accept `x86_64-unknown-linux-gnu`; the separately
+qualified systems pipeline shall accept `x86_64-unknown-none` only with board
+`topal-qemu-pc-q35-10.2`. Each shall emit its exact qualified data layout and
+x86-64 CPU baseline, and every other target/profile combination shall be
+rejected before creating output.
 
 ## TOPAL-COMP-TARGET-REGISTRY-001 — Qualified and model-only discovery
 
 The compiler shall expose a deterministic source-free target listing under
 registry `topal.target-qualification/1`. It shall report the executable
-generic Linux x86-64 profile; the model-only Topal x86-64 QEMU systems profile;
-and the model-only x86-64 AVX2 and RISC-V/DSP examples with target assignment,
-CPU/features, board, model source, status, and missing qualification scopes. A
-selected model-only target, CPU, board, or model shall fail before lowering
-with those details. Adding an entry shall not make it executable-qualified or
-change the sole admitted code-generation target.
+generic Linux x86-64 profile; the executable-qualified Topal x86-64 QEMU
+systems profile; and the model-only x86-64 AVX2 and RISC-V/DSP examples with
+target assignment, CPU/features, board, model source, status, and missing
+qualification scopes. A selected model-only target, CPU, board, or model shall
+fail before lowering with those details. Adding an entry shall not make it
+executable-qualified or change the admitted code-generation targets without
+separate qualification.
 
 ## TOPAL-COMP-SYSTEMS-CONTEXT-001 — Systems feature and target isolation
 
@@ -62,6 +65,12 @@ descriptor in the checked program, model its provision before bootstrap entry,
 and reject missing, duplicate, malformed, or open storage declarations before
 lowering. This source acceptance shall not assign a physical address, object
 section, or executable qualification.
+
+The boot-memory increment shall require the bootstrap handler to begin with an
+exhaustive `context boot describe memory` decision. The success action shall
+use only its memory-described context and the error action only its fatal-
+capable failure context. The checked model shall retain conservative normalized
+range semantics without exposing provider-native records or address authority.
 
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
@@ -133,6 +142,18 @@ dynamic or non-plain memory access unavailable. X86-64 lowering shall address
 the generated bootstrap pool without exposing that address to source, execute
 the load rather than constant-folding it, branch to the fatal provider on a
 content mismatch, and retain structural plus pinned-QEMU evidence.
+
+The first executable boot-memory increment shall consume the Linux x86
+boot-protocol 2.15 `boot_params` handoff privately, validate the admitted E820
+table, reject unsupported extension data, prove at least one complete
+allocatable page remains after generated reservations, and branch to the
+fatal provider on failure. The root object shall retain no source-visible
+firmware layout, address, register, or instruction interface. The x86 boot
+adapter shall populate the admitted zeropage table through a bounded BIOS E820
+continuation chain before leaving real mode; incomplete or malformed
+collection shall remain fail-closed.
+Artifact inspection and pinned-QEMU evidence shall prove the success marker is
+reachable only after validation.
 
 ## TOPAL-COMP-SYSTEMS-TEST-001 — Systems negative and physical evidence
 

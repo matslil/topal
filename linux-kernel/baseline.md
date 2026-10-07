@@ -129,3 +129,8 @@ provenance, and compatibility with the intended destination are reviewed. This
 is a project gate, not a conclusion about whether a particular interface fact
 or independently written implementation is copyrightable.
 
+The approved [kernel licensing and provenance policy](design/license-and-provenance.md)
+resolves `TK-DEC-011`: first-party kernel work remains under the Unlicense and
+uses a clean-room implementation boundary. Any later exact UAPI or third-party
+import remains under its reviewed upstream terms and must carry an immutable,
+digest-bound import record.

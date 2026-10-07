@@ -64,6 +64,13 @@ and exhaustion failures, affine region provenance and release, and whole-pool
 reclamation only after bootstrap completes without live regions. Model offsets
 shall remain abstract and shall not acquire machine-address meaning.
 
+The boot-memory increment shall model consumption of the entered bootstrap
+context; exhaustive success/failure refinement; normalized disjoint physical
+range classes; conservative overlap precedence; complete-page alignment;
+explicit live reservations; source provenance; and absence of allocatable
+memory. Model range bounds shall be mathematical values for validation and
+shall not grant machine-address authority.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

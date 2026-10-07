@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/1";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/2";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -27,8 +27,13 @@ pub const X86_BOOT_IMAGE_FILE: &str = "bzImage";
 pub const X86_BOOT_PROVENANCE_FILE: &str = "boot-provenance.json";
 
 const SETUP_BYTES: usize = 5 * 512;
-const REAL_MODE_ENTRY_OFFSET: usize = 0x280;
-const REAL_MODE_GDT_DESCRIPTOR_OFFSET: usize = 0x300;
+const REAL_MODE_ENTRY_OFFSET: usize = 0x26c;
+const REAL_MODE_CONTINUATION_SOURCE_OFFSET: usize = 0x300;
+const REAL_MODE_CONTINUATION_RELOCATION_OFFSET: u16 = 0x7000;
+const BOOT_PARAMS_E820_COUNT_OFFSET: u16 = 0x01e8;
+const BOOT_PARAMS_E820_TABLE_OFFSET: u16 = 0x02d0;
+const BOOT_PARAMS_E820_ENTRY_BYTES: u16 = 20;
+const BOOT_PARAMS_E820_MAX_ENTRIES: u8 = 128;
 const PAGE_TABLE_PML4_ADDRESS: u64 = 0x0010_1000;
 const PAGE_TABLE_PDPT_ADDRESS: u64 = 0x0010_2000;
 const PAGE_TABLE_PD_ADDRESS: u64 = 0x0010_3000;
@@ -514,36 +519,120 @@ fn build_setup_header(syssize: u32, protected_size: u32) -> Result<Vec<u8>, Comp
     write_u64(&mut setup, 0x258, X86_PROTECTED_PAYLOAD_ADDRESS);
     write_u32(&mut setup, 0x260, protected_size);
 
-    let code = real_mode_setup_code()?;
+    let continuation = real_mode_continuation_code()?;
+    let code = real_mode_setup_code(continuation.len())?;
     let code_end = REAL_MODE_ENTRY_OFFSET + code.len();
-    if code_end > REAL_MODE_GDT_DESCRIPTOR_OFFSET {
+    if code_end > usize::from(BOOT_PARAMS_E820_TABLE_OFFSET) {
         return Err(CompileError::Tool(
-            "generated real-mode setup overlaps its GDT descriptor".into(),
+            "generated real-mode setup overlaps the E820 table".into(),
         ));
     }
     setup[REAL_MODE_ENTRY_OFFSET..code_end].copy_from_slice(&code);
-    write_u16(&mut setup, REAL_MODE_GDT_DESCRIPTOR_OFFSET, 31);
-    write_u32(
-        &mut setup,
-        REAL_MODE_GDT_DESCRIPTOR_OFFSET + 2,
-        narrow_u32(GDT_ADDRESS, "GDT")?,
-    );
+    let continuation_end = REAL_MODE_CONTINUATION_SOURCE_OFFSET
+        .checked_add(continuation.len())
+        .ok_or_else(|| CompileError::Tool("real-mode continuation extent overflows".into()))?;
+    if continuation_end > setup.len() {
+        return Err(CompileError::Tool(
+            "generated real-mode continuation exceeds the setup image".into(),
+        ));
+    }
+    setup[REAL_MODE_CONTINUATION_SOURCE_OFFSET..continuation_end].copy_from_slice(&continuation);
     Ok(setup)
 }
 
-fn real_mode_setup_code() -> Result<Vec<u8>, CompileError> {
+fn real_mode_setup_code(continuation_bytes: usize) -> Result<Vec<u8>, CompileError> {
     let mut code = vec![
         0xfa, // disable interrupts
         0x0e, 0x58, // derive setup base segment from CS - 0x20
-        0x83, 0xe8, 0x20, 0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0x8e, 0xe0, 0x8e, 0xe8, 0xbc, 0x00,
-        0x7c, // bounded setup stack
-        0x66, 0x31, 0xc0, 0x8c, 0xd8, 0x66, 0xc1, 0xe0, 0x04, 0x66, 0x89, 0xc6, 0xe4, 0x92, 0x0c,
-        0x02, 0xe6, 0x92, // enable A20 through port 0x92
-        0x0f, 0x01, 0x16,
+        0x83, 0xe8, 0x20, 0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0xbc, 0x00, 0x7c, // setup stack
+        0xfc, // copy forward
     ];
+
+    // Copy the continuation out of the zeropage range which E820 overwrites.
+    code.push(0xbe); // mov si, source
     code.extend_from_slice(
-        &u16::try_from(REAL_MODE_GDT_DESCRIPTOR_OFFSET)
-            .map_err(|_| CompileError::Tool("setup GDT descriptor offset exceeds u16".into()))?
+        &u16::try_from(REAL_MODE_CONTINUATION_SOURCE_OFFSET)
+            .map_err(|_| CompileError::Tool("continuation source exceeds u16".into()))?
+            .to_le_bytes(),
+    );
+    code.push(0xbf); // mov di, relocation
+    code.extend_from_slice(&REAL_MODE_CONTINUATION_RELOCATION_OFFSET.to_le_bytes());
+    code.push(0xb9); // mov cx, length
+    code.extend_from_slice(
+        &u16::try_from(continuation_bytes)
+            .map_err(|_| CompileError::Tool("continuation length exceeds u16".into()))?
+            .to_le_bytes(),
+    );
+    code.extend_from_slice(&[0xf3, 0xa4]); // rep movsb
+
+    // Populate the Linux zeropage E820 table before leaving BIOS real mode.
+    code.extend_from_slice(&[0x66, 0x31, 0xdb]); // xor ebx, ebx (continuation)
+    code.extend_from_slice(&[0x31, 0xed]); // xor bp, bp (entry count)
+    code.push(0xbf); // mov di, table offset
+    code.extend_from_slice(&BOOT_PARAMS_E820_TABLE_OFFSET.to_le_bytes());
+    let e820_loop = code.len();
+    code.extend_from_slice(&[0x66, 0xb8, 0x20, 0xe8, 0x00, 0x00]); // eax = E820h
+    code.extend_from_slice(&[0x66, 0xba, 0x50, 0x41, 0x4d, 0x53]); // edx = "SMAP"
+    code.extend_from_slice(&[0x66, 0x31, 0xc9, 0xb1]); // ecx = entry size
+    code.push(
+        u8::try_from(BOOT_PARAMS_E820_ENTRY_BYTES)
+            .map_err(|_| CompileError::Tool("E820 entry size exceeds imm8".into()))?,
+    );
+    code.extend_from_slice(&[0xcd, 0x15]);
+    let carry_to_failure = short_jump_placeholder(&mut code, 0x72); // jc failure
+    code.extend_from_slice(&[0x66, 0x3d, 0x50, 0x41, 0x4d, 0x53]);
+    let signature_to_failure = short_jump_placeholder(&mut code, 0x75); // jne failure
+    code.extend_from_slice(&[0x66, 0x83, 0xf9]);
+    code.push(
+        u8::try_from(BOOT_PARAMS_E820_ENTRY_BYTES)
+            .map_err(|_| CompileError::Tool("E820 entry size exceeds imm8".into()))?,
+    );
+    let short_entry_to_failure = short_jump_placeholder(&mut code, 0x72); // jb failure
+    code.extend_from_slice(&[0x45]); // inc bp
+    code.extend_from_slice(&[0x83, 0xc7]); // add di, entry size
+    code.push(
+        u8::try_from(BOOT_PARAMS_E820_ENTRY_BYTES)
+            .map_err(|_| CompileError::Tool("E820 entry size exceeds imm8".into()))?,
+    );
+    code.extend_from_slice(&[0x66, 0x85, 0xdb]); // test ebx, ebx
+    let complete_to_done = short_jump_placeholder(&mut code, 0x74); // je done
+    code.extend_from_slice(&[0x81, 0xfd]); // cmp bp, max
+    code.extend_from_slice(&u16::from(BOOT_PARAMS_E820_MAX_ENTRIES).to_le_bytes());
+    let continuation_to_loop = short_jump_placeholder(&mut code, 0x75); // jne loop
+    let e820_failure = code.len();
+    code.extend_from_slice(&[0x31, 0xed]); // any truncated result is unusable
+    let e820_done = code.len();
+    for jump in [
+        carry_to_failure,
+        signature_to_failure,
+        short_entry_to_failure,
+    ] {
+        patch_short_jump(&mut code, jump, e820_failure)?;
+    }
+    patch_short_jump(&mut code, complete_to_done, e820_done)?;
+    patch_short_jump(&mut code, continuation_to_loop, e820_loop)?;
+
+    code.extend_from_slice(&[0x89, 0xe8, 0xa2]); // publish the complete entry count
+    code.extend_from_slice(&BOOT_PARAMS_E820_COUNT_OFFSET.to_le_bytes());
+    code.extend_from_slice(&[0x1e, 0x68]); // transfer to the relocated continuation
+    code.extend_from_slice(&REAL_MODE_CONTINUATION_RELOCATION_OFFSET.to_le_bytes());
+    code.push(0xcb); // retf with CS = boot-parameter segment
+    Ok(code)
+}
+
+fn real_mode_continuation_code() -> Result<Vec<u8>, CompileError> {
+    let mut code = vec![
+        0xfa, 0x0e, 0x58, // derive all data segments from relocated CS
+        0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0x66, 0x0f, 0xb7, 0xf0, 0x66, 0xc1, 0xe6, 0x04, 0xe4,
+        0x92, 0x0c, 0x02, 0xe6, 0x92, // enable A20 through port 0x92
+        0x2e, 0x0f, 0x01, 0x16,
+    ];
+    let descriptor_offset = usize::from(REAL_MODE_CONTINUATION_RELOCATION_OFFSET)
+        .checked_add(code.len() + 2 + 10 + 8)
+        .ok_or_else(|| CompileError::Tool("relocated GDT descriptor offset overflows".into()))?;
+    code.extend_from_slice(
+        &u16::try_from(descriptor_offset)
+            .map_err(|_| CompileError::Tool("relocated GDT descriptor exceeds u16".into()))?
             .to_le_bytes(),
     );
     code.extend_from_slice(&[0x0f, 0x20, 0xc0, 0x66, 0x83, 0xc8, 0x01, 0x0f, 0x22, 0xc0]);
@@ -552,7 +641,32 @@ fn real_mode_setup_code() -> Result<Vec<u8>, CompileError> {
         &narrow_u32(X86_PROTECTED_PAYLOAD_ADDRESS, "protected payload")?.to_le_bytes(),
     );
     code.extend_from_slice(&0x08_u16.to_le_bytes());
+    code.extend_from_slice(&31_u16.to_le_bytes());
+    code.extend_from_slice(&narrow_u32(GDT_ADDRESS, "GDT")?.to_le_bytes());
     Ok(code)
+}
+
+fn short_jump_placeholder(code: &mut Vec<u8>, opcode: u8) -> usize {
+    code.push(opcode);
+    let displacement = code.len();
+    code.push(0);
+    displacement
+}
+
+fn patch_short_jump(
+    code: &mut [u8],
+    displacement_offset: usize,
+    target: usize,
+) -> Result<(), CompileError> {
+    let origin = displacement_offset
+        .checked_add(1)
+        .ok_or_else(|| CompileError::Tool("real-mode jump origin overflows".into()))?;
+    let displacement =
+        i64::try_from(target).unwrap_or(i64::MAX) - i64::try_from(origin).unwrap_or(i64::MIN);
+    code[displacement_offset] = i8::try_from(displacement)
+        .map_err(|_| CompileError::Tool("real-mode short jump is out of range".into()))?
+        .to_le_bytes()[0];
+    Ok(())
 }
 
 fn narrow_u32(value: u64, description: &str) -> Result<u32, CompileError> {
@@ -660,6 +774,24 @@ mod tests {
             X86_LINUX_BOOT_PROTOCOL
         );
         assert_eq!(generated.bytes[0x211], 0x81);
+        let real_mode =
+            &generated.bytes[REAL_MODE_ENTRY_OFFSET..usize::from(BOOT_PARAMS_E820_TABLE_OFFSET)];
+        assert!(real_mode.windows(2).any(|bytes| bytes == [0xcd, 0x15]));
+        assert!(real_mode.windows(5).any(|bytes| {
+            bytes
+                == [
+                    0x89,
+                    0xe8,
+                    0xa2,
+                    BOOT_PARAMS_E820_COUNT_OFFSET.to_le_bytes()[0],
+                    BOOT_PARAMS_E820_COUNT_OFFSET.to_le_bytes()[1],
+                ]
+        }));
+        assert_eq!(
+            &generated.bytes
+                [REAL_MODE_CONTINUATION_SOURCE_OFFSET..REAL_MODE_CONTINUATION_SOURCE_OFFSET + 3],
+            &[0xfa, 0x0e, 0x58]
+        );
         assert_eq!(
             u32::from_le_bytes(generated.bytes[0x214..0x218].try_into().unwrap()),
             u32::try_from(X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()

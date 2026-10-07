@@ -1,16 +1,17 @@
 {
-  "artifact_provenance_sha256": "643d9fffb6c3dcadbc22fc8e31e3bf046ce174501a9c10f67d59885891dde199",
-  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/1",
-  "boot_image_sha256": "599841c7aa537130803ff0a9b25508d0651c2af6a812e091094ccb06e5c2e7ab",
-  "boot_provenance_sha256": "f8bb78f7dafc87b9519cfd5369fd17d18bc5f7f89ed0c68f327f7ce718fcf377",
-  "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/1",
+  "artifact_provenance_sha256": "ae7b9f839533eadf22e57c385a57c2e319508a3b121df691ee6d11be7a95733c",
+  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/2",
+  "boot_image_sha256": "ae8e83b4e091f0320ce6874f4e7d47070bd584981bc20bf67d8186d4fdf98bde",
+  "boot_provenance_sha256": "398dec2949657d6c73504f724e6aa892d5d416fb8d1e9c8d5499e23dff526ce9",
+  "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/2",
   "cpu": "qemu64-v1",
   "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
-  "linked_kernel_sha256": "05b017330e571349409f1854ae69f445743aa15bc94d61f87ae834cf2599462b",
+  "linked_kernel_sha256": "309653ec4708b3f65f7594e8c213ce2edea176aad4ff25e87a23f5791dfa0777",
   "machine": "pc-q35-10.2",
   "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
   "observations": {
     "markers_in_order": [
+      "TOPAL_KERNEL_MEMORY_DESCRIBED",
       "TOPAL_KERNEL_BOOT",
       "TOPAL_KERNEL_FAULT_RESUMED",
       "TOPAL_KERNEL_MEMORY_OK"
@@ -18,11 +19,12 @@
     "qemu_running_after_markers": true,
     "result": "pass",
     "serial_quiescent_after_fatal_disposition": true,
-    "serial_sha256": "8533a08fe1f7926f4ddb8e24ab2ac4c36de30cf16a74dae14da2c2c4e1238ffd",
-    "serial_utf8": "TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK"
+    "serial_sha256": "e4a613853bd5a1acc20ec1e4cb4a5af66b2b9167f1ac51a995b888d24a487600",
+    "serial_utf8": "TOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK"
   },
-  "provider": "topal.provider.x86_64-qemu-pc-q35/1",
+  "provider": "topal.provider.x86_64-qemu-pc-q35/2",
+  "publication": "topalc-target-interface/1",
   "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-  "schema": "topal-kernel-toolchain-gate-qemu/1",
-  "source_sha256": "7daddc8d6a8eaaa273f93b19d42647e3dbb0cf58896ed034d2edcef47817c076"
+  "schema": "topal-kernel-toolchain-gate-qemu/3",
+  "source_sha256": "6b663f8a754a6ce3d520c45ad524fb43e5be86036a6281d683af0417d4ce35eb"
 }

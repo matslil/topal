@@ -73,8 +73,8 @@ const TARGET_QUALIFICATIONS: &[TargetQualification] = &[
         board: Some("topal-qemu-pc-q35-10.2"),
         model: "topal.systems.x86_64-qemu-pc-q35-10.2/1",
         source: "linux-kernel/labs/qemu/x86_64/manifest.json",
-        status: TargetQualificationStatus::ModelOnly,
-        missing: "ordinary compiler publication integration beyond the qualified lab-only toolchain gate",
+        status: TargetQualificationStatus::Executable,
+        missing: "none",
     },
     TargetQualification {
         profile: "example-x86-64-avx2",
@@ -652,7 +652,8 @@ mod tests {
         assert!(listing.contains("example-riscv-dsp-board"));
         assert!(listing.contains("topal-x86-64-qemu-kernel"));
         assert!(listing.contains("topal-qemu-pc-q35-10.2"));
-        assert_eq!(listing.matches("Status: model-only").count(), 3);
+        assert_eq!(listing.matches("Status: executable-qualified").count(), 2);
+        assert_eq!(listing.matches("Status: model-only").count(), 2);
         assert_eq!(listing, target_listing());
     }
 

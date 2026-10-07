@@ -23,6 +23,7 @@ MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
 MARKERS = (
+    b"TOPAL_KERNEL_MEMORY_DESCRIBED",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
     b"TOPAL_KERNEL_MEMORY_OK",
@@ -68,20 +69,46 @@ def verify_host() -> str:
 
 
 def build_image(destination: Path) -> tuple[Path, Path, Path]:
-    command = [
+    linked = destination / "linked"
+    compiler_command = [
+        "cargo",
+        "run",
+        "--quiet",
+        "-p",
+        "topal-compiler",
+        "--bin",
+        "topalc",
+        "--",
+        "--target",
+        "x86_64-unknown-none",
+        "--cpu",
+        "generic",
+        "--board",
+        "topal-qemu-pc-q35-10.2",
+        "--emit",
+        "executable",
+        "-o",
+        str(linked),
+        str(SOURCE_PATH),
+    ]
+    print("+", " ".join(compiler_command), flush=True)
+    subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
+    boot = destination / "boot"
+    packaging_command = [
         "cargo",
         "run",
         "--quiet",
         "-p",
         "topal-kernel-toolchain-gate-builder",
         "--",
-        str(destination),
+        str(linked),
+        str(boot),
     ]
-    print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=REPOSITORY, check=True)
-    image = destination / "boot" / "bzImage"
-    boot_provenance = destination / "boot" / "boot-provenance.json"
-    artifact_provenance = destination / "linked" / "provenance.json"
+    print("+", " ".join(packaging_command), flush=True)
+    subprocess.run(packaging_command, cwd=REPOSITORY, check=True)
+    image = boot / "bzImage"
+    boot_provenance = boot / "boot-provenance.json"
+    artifact_provenance = linked / "provenance.json"
     for path in (image, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
@@ -183,7 +210,8 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/1",
+        "schema": "topal-kernel-toolchain-gate-qemu/3",
+        "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
         "qemu": qemu_version,

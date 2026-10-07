@@ -20,12 +20,13 @@ pub use topal_semantics::{
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
-    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_RESUME_DEBUG_BREAK, SystemsContextKind as CompilerSystemsContextKind,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+    SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -543,6 +544,25 @@ fn analyze_handler(
         ));
     }
     let context_name = source.slice(parameters[0].name);
+    if context == CompilerSystemsContextKind::Bootstrap {
+        let storage = bootstrap_storage.expect("bootstrap handler carries its storage descriptor");
+        let checked = analyze_boot_memory_decision(source, body, context_name, storage)?;
+        let mut effects = checked
+            .operations
+            .iter()
+            .map(|operation| operation.semantic_identity().to_owned())
+            .collect::<Vec<_>>();
+        effects.push(checked.disposition.semantic_identity().to_owned());
+        effects.sort();
+        effects.dedup();
+        return Ok(CompilerSystemsHandler {
+            name: source.slice(*name).to_owned(),
+            context,
+            operations: checked.operations,
+            disposition: checked.disposition,
+            effects,
+        });
+    }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
             source,
@@ -583,6 +603,8 @@ fn analyze_handler(
     })
 }
 
+include!("systems_boot_memory.rs");
+
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
     disposition: CompilerSystemsDisposition,
@@ -604,6 +626,104 @@ fn analyze_bootstrap_region_decision(
     };
     let request = parse_bootstrap_allocation(source, subject, context_name, storage)?;
     let (ok_binding, ok_action, error_action) = result_actions(source, rules, *span)?;
+    analyze_bootstrap_region_actions(
+        source,
+        request,
+        &ok_binding,
+        ok_action,
+        error_action,
+        context_name,
+    )
+}
+
+fn analyze_bootstrap_region_sequence(
+    source: &SourceText,
+    statements: &[Statement],
+    context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let [Statement::Expression(subject), ok_rule, error_rule] = statements else {
+        return Err(storage_diagnostic(
+            source,
+            statements.first().map_or(Span::new(0, 0), statement_span),
+            "bootstrap allocation requires a subject and exhaustive `Ok`/`Error` actions",
+        ));
+    };
+    let request = parse_bootstrap_allocation(source, subject, context_name, storage)?;
+    let (ok_binding, ok_action) = flattened_result_action(source, ok_rule, false)?;
+    let (_, error_action) = flattened_result_action(source, error_rule, true)?;
+    analyze_bootstrap_region_actions(
+        source,
+        request,
+        &ok_binding,
+        ok_action,
+        error_action,
+        context_name,
+    )
+}
+
+fn flattened_result_action<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    error: bool,
+) -> Result<(String, &'a Expression), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(storage_diagnostic(
+            source,
+            statement_span(statement),
+            "bootstrap allocation requires exhaustive `Ok` and `Error` actions",
+        ));
+    };
+    let [variant, binding, then, action] = items.as_slice() else {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "nested bootstrap allocation actions must use explicit blocks",
+        ));
+    };
+    let expected = if error { "Error" } else { "Ok" };
+    let Expression::Identifier(binding_span) = binding else {
+        return Err(storage_diagnostic(
+            source,
+            binding.span(),
+            "bootstrap allocation result action requires one payload binding",
+        ));
+    };
+    if !identifier_is(source, variant, expected) || !identifier_is(source, then, "then") {
+        return Err(storage_diagnostic(
+            source,
+            *span,
+            "bootstrap allocation actions must appear once in `Ok`, `Error` order",
+        ));
+    }
+    if error {
+        let Expression::Block { statements, .. } = action else {
+            return Err(storage_diagnostic(
+                source,
+                action.span(),
+                "nested bootstrap allocation error action requires a block",
+            ));
+        };
+        let [Statement::Expression(disposition)] = statements.as_slice() else {
+            return Err(storage_diagnostic(
+                source,
+                action.span(),
+                "bootstrap allocation error block requires exactly one fatal disposition",
+            ));
+        };
+        return Ok((source.slice(*binding_span).to_owned(), disposition));
+    }
+    Ok((source.slice(*binding_span).to_owned(), action))
+}
+
+fn analyze_bootstrap_region_actions(
+    source: &SourceText,
+    request: CompilerBootstrapStorageRequest,
+    ok_binding: &str,
+    ok_action: &Expression,
+    error_action: &Expression,
+    context_name: &str,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
     let error_disposition = action_disposition(source, error_action, context_name)?;
     if !matches!(error_disposition, CompilerSystemsDisposition::Fatal { .. }) {
         return Err(storage_diagnostic(
@@ -630,15 +750,15 @@ fn analyze_bootstrap_region_decision(
             "the initial region success action requires byte store, byte load, and an exhaustive equality decision",
         ));
     };
-    let (store_offset, value) = parse_region_store(source, store, &ok_binding)?;
-    let (loaded_name, load_offset) = parse_region_load(source, load, &ok_binding)?;
+    let (store_offset, value) = parse_region_store(source, store, ok_binding)?;
+    let (loaded_name, load_offset) = parse_region_load(source, load, ok_binding)?;
     let comparison = parse_region_comparison(
         source,
         comparison,
         true_rule,
         false_rule,
         context_name,
-        &ok_binding,
+        ok_binding,
         &loaded_name,
     )?;
     for offset in [store_offset, load_offset] {
@@ -1377,6 +1497,7 @@ mod tests {
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DEBUG_BREAK,
@@ -1394,6 +1515,10 @@ mod tests {
                     alignment_bytes: 4096,
                 },
                 CompilerSystemsTransition::EnterBootstrap,
+                CompilerSystemsTransition::DescribeBootMemory,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
                 },
@@ -1437,10 +1562,11 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 8);
+        assert_eq!(program.bootstrap.handler.operations.len(), 10);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DEBUG_BREAK,
@@ -1487,16 +1613,16 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "context bootstrap release region\n          context fatal \"toolchain gate complete\"",
-                    "context console write \"not released\"\n          context fatal \"toolchain gate complete\"",
+                    "described bootstrap release region\n              described fatal \"toolchain gate complete\"",
+                    "described console write \"not released\"\n              described fatal \"toolchain gate complete\"",
                 ),
                 "E-SYSTEMS-STORAGE",
                 "release requires",
             ),
             (
                 memory_source().replace(
-                    "Error problem then context fatal \"toolchain gate allocation failed\"",
-                    "Error problem then region byte load (offset-bytes is 0)",
+                    "Error problem then {\n          described fatal \"toolchain gate allocation failed\"\n        }",
+                    "Error problem then {\n          region byte load (offset-bytes is 0)\n        }",
                 ),
                 "E-SYSTEMS-DISPOSITION",
                 "final operation is not a disposition",
@@ -1550,7 +1676,7 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "context console write \"TOPAL_KERNEL_BOOT\"",
+            "described console write \"TOPAL_KERNEL_BOOT\"",
             "saved is context",
         );
         assert_eq!(
@@ -1560,10 +1686,10 @@ mod tests {
             )
             .unwrap_err()
             .code,
-            "E-SYSTEMS-AFFINE-CONTEXT"
+            "E-SYSTEMS-BOOT-MEMORY"
         );
 
-        let unknown = SOURCE.replace("context debug break", "context machine instruction");
+        let unknown = SOURCE.replace("described debug break", "described machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1587,6 +1713,44 @@ mod tests {
             .code,
             "E-SYSTEMS-DISPOSITION"
         );
+    }
+
+    #[test]
+    fn requires_affine_exhaustive_boot_memory_refinement() {
+        // TOPAL-SYSTEMS-BOOT-MEMORY-001, TOPAL-SYSTEMS-AUTHORITY-001.
+        for (source, code) in [
+            (
+                SOURCE.replace(
+                    "context boot describe memory",
+                    "context console write \"skipped refinement\"",
+                ),
+                "E-SYSTEMS-BOOT-MEMORY",
+            ),
+            (
+                SOURCE.replace(
+                    "described console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                ),
+                "E-SYSTEMS-OPERATION",
+            ),
+            (
+                SOURCE.replace(
+                    "Error failure then failure fatal \"boot memory description failed\"",
+                    "Error failure then failure resume",
+                ),
+                "E-SYSTEMS-DISPOSITION",
+            ),
+        ] {
+            assert_eq!(
+                analyze_systems_for_compiler(
+                    &source,
+                    &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+                )
+                .unwrap_err()
+                .code,
+                code
+            );
+        }
     }
 
     #[test]

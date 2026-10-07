@@ -31,8 +31,17 @@ The sixth adds the [generated Linux x86 boot adapter](step-4-x86-boot-adapter.md
 The seventh [passes the initial toolchain gate under pinned QEMU](step-4-toolchain-gate.md):
 entry, polling serial output, debug-break recovery, checked kernel-owned-memory
 use, and the fatal halt execute without a host runtime. The ordinary compiler
-remains a Linux x86-64 userspace compiler and exposes the systems target as
-model-only until general systems-artifact publication is integrated.
+now exposes the [qualified systems-artifact publication path](step-4-compiler-publication.md)
+without routing it through the Linux-process pipeline. Boot packaging remains
+a separate qualified adapter, and the pinned-QEMU evidence consumes the
+ordinary compiler output before packaging.
+
+The latest Step 4 kernel-foundation slice uses the approved
+[portable boot-memory description contract](design/boot-memory-description.md)
+to refine the provider-private Linux x86 handoff into architecture-neutral
+physical-range capabilities before ordinary kernel initialization continues.
+Its [checked model and initial x86 E820 provider](step-4-boot-memory.md) are
+implemented and qualified by reproducible pinned-QEMU evidence.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -115,6 +124,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 linked freestanding x86-64 artifact](step-4-linked-artifact.md)
 - [Step 4 generated Linux x86 boot adapter](step-4-x86-boot-adapter.md)
 - [Step 4 pinned-QEMU boot and exception gate](step-4-toolchain-gate.md)
+- [Step 4 ordinary compiler systems publication](step-4-compiler-publication.md)
+- [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

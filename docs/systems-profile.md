@@ -130,12 +130,38 @@ typed protocols governing those domains. Providers may choose different
 concrete locations and addressing instructions while preserving the same
 allocation, byte-content, lifetime, and failure observations.
 
+### Boot-memory refinement
+
+An entered bootstrap context owns an opaque provider-private boot handoff.
+`context boot describe memory` consumes that context through an exhaustive
+`Result` decision. Its success binding is a memory-described bootstrap context;
+its error binding is a fatal-only failure context. The original context cannot
+be used on either path after the transition.
+
+The provider validates its native input and produces disjoint, nonempty,
+nonwrapping physical ranges classified as allocatable, reclaimable,
+persistent, reserved, unusable, or unknown. Source classifications and
+provider provenance remain attached. Unknown input is never assumed to be RAM,
+and overlapping claims are resolved conservatively before any physical-frame
+capability is created.
+
+Live image, adapter, stack, page-table, bootstrap-storage, handoff,
+command-line, initramfs, and firmware ranges are reserved automatically.
+Page-edge fragments which do not form complete frames also remain reserved.
+Portable source sees range capabilities rather than firmware records or
+numeric addresses; later frame allocators consume those capabilities.
+
+The portable meaning applies equally to an x86 E820 handoff, AArch64 Device
+Tree or UEFI descriptors, and RISC-V Device Tree or SBI/platform facts. Each
+provider owns parsing and target evidence. Malformed, cyclic, overflowing, or
+unsupported input fails closed without exposing the provider representation.
+
 The first target identity is `x86_64-unknown-none`, board
 `topal-qemu-pc-q35-10.2`, under profile
-`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model qualification does
-not executable-qualify that target. Until entry lowering, artifact inspection,
-and QEMU evidence are complete, the native publisher continues to reject it
-before producing an object or image.
+`topal.systems.x86_64-qemu-pc-q35-10.2/1`. It is executable-qualified only for
+its closed generated entry, provider, storage, linked-artifact, and Linux boot-
+adapter set under the pinned QEMU evidence. Unsupported operations, targets,
+boards, CPUs, models, or publication options continue to fail before output.
 
 ## Special entries
 

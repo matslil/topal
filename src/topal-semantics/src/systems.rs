@@ -4,9 +4,9 @@ use std::fmt;
 
 use crate::{
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -49,6 +49,9 @@ pub enum SystemsContextKind {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsOperation {
+    DescribeBootMemory {
+        failure_message: String,
+    },
     ConsoleWrite {
         text: String,
     },
@@ -72,6 +75,7 @@ impl SystemsOperation {
     #[must_use]
     pub const fn semantic_identity(&self) -> &'static str {
         match self {
+            Self::DescribeBootMemory { .. } => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -128,6 +132,7 @@ pub enum SystemsTransition {
         alignment_bytes: u64,
     },
     EnterBootstrap,
+    DescribeBootMemory,
     ConsoleWrite {
         text: String,
     },
@@ -180,6 +185,7 @@ impl SystemsTransition {
         match self {
             Self::ProvisionBootstrapStorage { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::EnterBootstrap => "topal.systems.entry.bootstrap/1",
+            Self::DescribeBootMemory => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
@@ -249,7 +255,8 @@ fn validate_entry(
         && entry.handler.operations.iter().any(|operation| {
             matches!(
                 operation,
-                SystemsOperation::DebugBreak
+                SystemsOperation::DescribeBootMemory { .. }
+                    | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
                     | SystemsOperation::BootstrapLoadByteEquals { .. }
@@ -302,8 +309,18 @@ fn validate_bootstrap_storage_operations(
         "systems-program-validation",
     )?;
     let mut region: Option<BootstrapRegion> = None;
-    for operation in &program.bootstrap.handler.operations {
+    let mut memory_described = false;
+    for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
         match operation {
+            SystemsOperation::DescribeBootMemory { .. } => {
+                if index != 0 || memory_described {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-BOOT-MEMORY",
+                        "boot memory must be described exactly once as the first bootstrap operation",
+                    ));
+                }
+                memory_described = true;
+            }
             SystemsOperation::BootstrapAllocate { request } => {
                 if region.is_some() {
                     return Err(SystemsModelError::new(
@@ -351,8 +368,21 @@ fn validate_bootstrap_storage_operations(
                 })?;
                 storage.release(released)?;
             }
-            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
+            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {
+                if !memory_described {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-BOOT-MEMORY",
+                        "bootstrap operations require a memory-described context",
+                    ));
+                }
+            }
         }
+    }
+    if !memory_described {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-BOOT-MEMORY",
+            "the bootstrap handler must consume its entered context through boot-memory description",
+        ));
     }
     if region.is_some() {
         return Err(SystemsModelError::new(
@@ -387,6 +417,9 @@ pub fn model_systems_transitions(
     let mut region: Option<BootstrapRegion> = None;
     for operation in &program.bootstrap.handler.operations {
         match operation {
+            SystemsOperation::DescribeBootMemory { .. } => {
+                transitions.push(SystemsTransition::DescribeBootMemory);
+            }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
             }
@@ -444,6 +477,9 @@ fn model_bootstrap_storage_operation(
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::DescribeBootMemory { .. } => {
+            unreachable!("boot-memory refinement is modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -532,6 +568,9 @@ mod tests {
                     name: "boot".into(),
                     context: SystemsContextKind::Bootstrap,
                     operations: vec![
+                        SystemsOperation::DescribeBootMemory {
+                            failure_message: "memory description failed".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "boot".into(),
                         },
@@ -541,6 +580,7 @@ mod tests {
                         message: "done".into(),
                     },
                     effects: vec![
+                        SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
                         SYSTEMS_CONSOLE_WRITE.into(),
                         SYSTEMS_FATAL.into(),
                         SYSTEMS_DEBUG_BREAK.into(),
@@ -571,6 +611,7 @@ mod tests {
                     alignment_bytes: 4096,
                 },
                 SystemsTransition::EnterBootstrap,
+                SystemsTransition::DescribeBootMemory,
                 SystemsTransition::ConsoleWrite {
                     text: "boot".into(),
                 },
@@ -611,6 +652,7 @@ mod tests {
             SystemsOperation::BootstrapRelease,
         ]);
         program.bootstrap.handler.effects = vec![
+            SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_FATAL.into(),
             SYSTEMS_DEBUG_BREAK.into(),
@@ -650,7 +692,7 @@ mod tests {
             .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
         program.bootstrap.handler.effects.sort();
         if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
-            &mut program.bootstrap.handler.operations[3]
+            &mut program.bootstrap.handler.operations[4]
         {
             *offset_bytes = 64;
         }

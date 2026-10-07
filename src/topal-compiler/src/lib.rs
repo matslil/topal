@@ -9,6 +9,7 @@ mod pipeline;
 mod standard_library;
 mod systems_artifact;
 mod systems_boot_image;
+mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
 mod toolchain;
@@ -50,9 +51,10 @@ pub use systems_provider::{
     X86SystemsProviderPlan, plan_x86_64_systems_provider,
 };
 pub use systems_provider_object::{
-    GeneratedSystemsProviderObject, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
-    X86_SYSTEMS_PROVIDER_NOTE_SECTION, X86_SYSTEMS_PROVIDER_OBJECT_REVISION,
-    X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
+    GeneratedSystemsProviderObject, X86_SYSTEMS_ALLOCATABLE_FLOOR, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_PROVIDER_NOTE_SECTION,
+    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_TEXT_SECTION,
+    generate_x86_64_systems_provider_object,
 };
 pub use toolchain::LlvmTools;
 use topal_source::Diagnostic;
@@ -121,6 +123,24 @@ pub fn compile_source(
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
     pipeline::compile(source, options)
+}
+
+/// Check and atomically publish a qualified freestanding systems artifact.
+///
+/// # Errors
+///
+/// Returns a source diagnostic, target/profile rejection, LLVM tool failure,
+/// structural-inspection failure, or I/O failure before partial publication.
+pub fn publish_systems_source(
+    source: &str,
+    options: &CompileOptions,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    systems_pipeline::publish(source, options)
+}
+
+#[must_use]
+pub fn selects_systems_publication(options: &CompileOptions) -> bool {
+    systems_pipeline::selected(options)
 }
 
 #[must_use]
