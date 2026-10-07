@@ -129,12 +129,13 @@ python3 -m unittest \
   linux-kernel/labs/qemu/x86_64/test_topal_gate.py -v
 ```
 
-The first command builds the checked Topal source through the lab-only
-`topal-kernel-toolchain-gate-builder`, publishes the linked artifact and Linux
-boot image into ignored temporary state, boots it through QEMU's direct Linux
-interface, and waits for the three ordered serial markers. It then proves QEMU
-is still running and the serial stream is quiescent in the fatal halt before
-terminating the harness. The committed
+The first command publishes the checked Topal source through the ordinary
+`topalc` systems target, passes that artifact to the packaging-only
+`topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
+ignored temporary state. It then boots through QEMU's direct Linux interface
+and waits for the three ordered serial markers. The harness proves QEMU is
+still running and the serial stream is quiescent in the fatal halt before
+terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
 manifest, firmware, generated artifacts, provider, QEMU identity, and observed
 serial bytes by digest.

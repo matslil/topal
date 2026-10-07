@@ -33,7 +33,8 @@ entry, polling serial output, debug-break recovery, checked kernel-owned-memory
 use, and the fatal halt execute without a host runtime. The ordinary compiler
 now exposes the [qualified systems-artifact publication path](step-4-compiler-publication.md)
 without routing it through the Linux-process pipeline. Boot packaging remains
-a separate qualified adapter.
+a separate qualified adapter, and the pinned-QEMU evidence consumes the
+ordinary compiler output before packaging.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline

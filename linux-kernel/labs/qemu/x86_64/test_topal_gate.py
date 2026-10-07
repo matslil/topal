@@ -42,7 +42,8 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/1")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/2")
+        self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["manifest_sha256"], sha256(LAB / "manifest.json"))
         self.assertEqual(
             evidence["source_sha256"],

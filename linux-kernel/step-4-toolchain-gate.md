@@ -3,7 +3,7 @@
 ## Outcome
 
 This is the seventh implementation increment of Step 4. The checked Topal
-kernel source now builds through a dedicated lab-only publisher, boots as the
+kernel source now builds through the ordinary `topalc` target publisher, boots as the
 replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU profile,
 writes through the polling 16550 provider, enters and resumes from the generated
 vector-3 handler, stores and reloads a sentinel in kernel-owned memory, and
@@ -24,14 +24,14 @@ without returning to a host runtime.
 
 ## Reproduction and evidence
 
-The `topal-kernel-toolchain-gate-builder` workspace tool accepts only the
-committed kernel root, checks it against the initial systems target selection,
-uses the sealed provider and linked-artifact publishers, then feeds that exact
-kernel and provenance to the Linux boot adapter. It writes only below its
-caller-selected destination and refuses to replace an existing destination.
-The QEMU harness builds into ignored temporary state and attaches only the
-pinned firmware and ISA serial device; no disk, network device, initramfs, or
-host service can account for the markers.
+The QEMU harness invokes `topalc` with the exact systems target, CPU, and board
+selection. The packaging-only `topal-kernel-toolchain-gate-builder` then
+accepts that independently published kernel/provenance directory and feeds it
+to the Linux boot adapter. Both stages write only below caller-selected
+destinations and refuse partial or replacement publication. The harness builds
+into ignored temporary state and attaches only the pinned firmware and ISA
+serial device; no disk, network device, initramfs, or host service can account
+for the markers.
 
 The committed
 [evidence record](labs/qemu/x86_64/results/topal-toolchain-gate.json) binds:
@@ -39,6 +39,7 @@ The committed
 - the checked Topal source and Step 3 machine manifest;
 - QEMU 10.2.2 and the SeaBIOS image digest;
 - the provider, linked-artifact, and boot-adapter schema identities;
+- the ordinary `topalc` target-publication identity;
 - the linked ELF, artifact provenance, boot image, and boot provenance
   digests; and
 - the exact serial bytes, ordered markers, post-marker QEMU liveness, and
@@ -59,12 +60,10 @@ constant-folded echo of the sentinel. This gate does not claim general memory
 management, general interrupts, ACPI/PCI discovery, SMP, time, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
-The ordinary `topalc` target registry and output path now publish the same
-qualified systems artifact without routing it through the Linux-process
-pipeline. Linux boot-protocol packaging remains a separate adapter. The
-follow-up physical stage makes the QEMU harness consume this ordinary compiler
-publication instead of calling the publisher through an embedded-source lab
-tool.
+The ordinary `topalc` target registry and output path publish the qualified
+systems artifact without routing it through the Linux-process pipeline. This
+QEMU evidence now consumes that exact publication. Linux boot-protocol
+packaging remains a separate adapter.
 
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,

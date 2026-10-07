@@ -22,7 +22,8 @@
     "serial_utf8": "TOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK"
   },
   "provider": "topal.provider.x86_64-qemu-pc-q35/1",
+  "publication": "topalc-target-interface/1",
   "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-  "schema": "topal-kernel-toolchain-gate-qemu/1",
+  "schema": "topal-kernel-toolchain-gate-qemu/2",
   "source_sha256": "7daddc8d6a8eaaa273f93b19d42647e3dbb0cf58896ed034d2edcef47817c076"
 }

@@ -46,6 +46,8 @@ remains a separate qualified adapter and is not implied by `--emit executable`.
 
 Compiler library tests retain the complete provider/artifact structural
 coverage. CLI integration tests execute `topalc`, inspect the exact four-file
-publication set, and prove unsupported controls leave no output. The next
-stage routes the pinned-QEMU boot packaging harness through this ordinary
-publication path, replacing its embedded-source publisher call.
+publication set, and prove unsupported controls leave no output. The pinned
+QEMU harness consumes this ordinary publication before invoking the separate
+packaging adapter; its version-two evidence record names
+`topalc-target-interface/1` and retains the same deterministic artifact and
+serial digests.

@@ -662,6 +662,7 @@ dependencies = [
 name = "topal-kernel-toolchain-gate-builder"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "topal-compiler",
  "topal-language",
 ]
