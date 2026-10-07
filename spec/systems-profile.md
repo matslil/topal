@@ -96,9 +96,10 @@ address or allocation metadata to source.
 
 The first semantic target profile SHALL record target
 `x86_64-unknown-none`, board `topal-qemu-pc-q35-10.2`, and profile
-`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Semantic-model acceptance SHALL NOT
-mark this profile executable-qualified; absent qualified lowering and physical
-evidence, publication SHALL fail before producing an artifact.
+`topal.systems.x86_64-qemu-pc-q35-10.2/1`. Executable qualification SHALL apply
+only to the closed operation, provider, artifact, option, board, and physical-
+evidence set recorded for that profile. Any unqualified extension SHALL fail
+before producing an artifact.
 
 ### TOPAL-SYSTEMS-ENTRY-001 — Static special entry
 
@@ -178,6 +179,34 @@ that width. Checked subrange and offset derivation SHALL preserve family,
 owner, bounds, and no stronger authority. Decoding an external number SHALL
 produce only an untrusted candidate until validated against one live range.
 There SHALL be no general integer-to-address or cross-family cast.
+
+### TOPAL-SYSTEMS-BOOT-MEMORY-001 — Affine boot-memory refinement
+
+`describe memory` SHALL consume exactly one entered bootstrap context and its
+opaque provider-private handoff. It SHALL be handled through an exhaustive
+`Result` decision. The `Ok` action SHALL bind one `MemoryDescribedContext`; the
+`Error` action SHALL bind one `BootMemoryFailureContext` which admits only a
+fatal disposition. The consumed entered context SHALL be invalid on both
+paths, and neither result context SHALL escape its entry extent.
+
+A successful provider SHALL produce disjoint, nonempty, nonwrapping,
+page-qualified `Physical` ranges classified as `Allocatable`, `Reclaimable`,
+`Persistent`, `Reserved`, `Unusable`, or `Unknown`. Each range SHALL retain its
+source classification and provider provenance. An unknown classification
+SHALL NOT be allocatable. Overlapping claims SHALL be split and resolved so
+that any non-allocatable claim prevents allocation and `Unusable` dominates.
+Incomplete page-edge fragments SHALL remain reserved.
+
+Before an `Allocatable` capability is produced, the provider SHALL subtract
+every live bootstrap reservation, including applicable adapter, transition,
+stack, kernel-image, bootstrap-storage, handoff, command-line, initramfs, and
+firmware ranges. Each reservation SHALL retain an owner and reclamation
+condition. Portable source SHALL NOT inspect a native handoff record, derive a
+numeric physical address, or regain the entered context.
+
+Malformed, overflowing, cyclic, contradictory, unsupported, or allocation-
+empty input SHALL select the failure action. A provider SHALL NOT approximate
+such input with host memory, fabricated RAM, or an unchecked range.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 

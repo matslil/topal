@@ -36,6 +36,11 @@ without routing it through the Linux-process pipeline. Boot packaging remains
 a separate qualified adapter, and the pinned-QEMU evidence consumes the
 ordinary compiler output before packaging.
 
+The next Step 4 kernel-foundation slice uses the approved
+[portable boot-memory description contract](design/boot-memory-description.md)
+to refine the provider-private Linux x86 handoff into architecture-neutral
+physical-range capabilities before ordinary kernel initialization continues.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a

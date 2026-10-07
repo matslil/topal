@@ -332,6 +332,16 @@ retain bounds, layout, rights, cache/order policy, owner, and lifetime. User
 transfer and other admitted recovery shall use generated closed fault scopes;
 source shall not dereference a user candidate or name a recovery instruction.
 
+An entered bootstrap context shall refine through one exhaustive, affine
+boot-memory transition. A qualified provider shall validate its opaque native
+handoff; conservatively normalize overlapping source ranges; retain source
+classification, ownership, reservation, and provenance; subtract every live
+bootstrap object; and produce physical-frame authority only for complete
+allocatable pages. Failure shall retain only authority needed for fatal boot
+termination. Portable source shall observe neither raw firmware layouts nor
+numeric addresses, and unknown or unsupported input shall not become
+allocatable memory.
+
 An ordinary kernel-owned region shall provide bounds-checked plain byte access
 without exposing a machine address. Load and store shall borrow a live region,
 release shall consume it, and no access shall silently acquire volatile,

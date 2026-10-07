@@ -15,6 +15,7 @@ records, not this directory alone, define language meaning.
 - [Decision register](decision-register.md)
 - [Initial x86-64 Linux boot adapter contract](x86-boot-adapter.md)
 - [Bootstrap-region source and provider contract](bootstrap-region.md)
+- [Portable boot-memory description contract](boot-memory-description.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
