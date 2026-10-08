@@ -60,6 +60,7 @@ pub enum PhysicalFrameError {
     WrongAllocator,
     UnknownExtent,
     LiveExtents,
+    MappedExtent,
 }
 
 impl fmt::Display for PhysicalFrameError {
@@ -71,6 +72,7 @@ impl fmt::Display for PhysicalFrameError {
             Self::WrongAllocator => "wrong-allocator",
             Self::UnknownExtent => "unknown-extent",
             Self::LiveExtents => "live-extents",
+            Self::MappedExtent => "mapped-extent",
         })
     }
 }
@@ -88,6 +90,7 @@ struct LiveFrameExtent {
     end_frame: u64,
     alignment_frames: u64,
     provenance: Vec<BootMemoryProvenance>,
+    mapped: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -209,6 +212,7 @@ impl FrameAllocatorContext {
                     end_frame,
                     alignment_frames: request.alignment_frames,
                     provenance: selected.provenance.clone(),
+                    mapped: false,
                 },
             );
             return Ok(PhysicalFrameExtent {
@@ -236,8 +240,11 @@ impl FrameAllocatorContext {
         }
         let live = self
             .live
-            .remove(&extent.extent_identity)
+            .get(&extent.extent_identity)
             .ok_or(PhysicalFrameError::UnknownExtent)?;
+        if live.mapped {
+            return Err(PhysicalFrameError::MappedExtent);
+        }
         if live.start_frame != extent.model_start_frame
             || live.end_frame != extent.model_start_frame + extent.frame_count
             || live.alignment_frames != extent.alignment_frames
@@ -245,6 +252,9 @@ impl FrameAllocatorContext {
         {
             return Err(PhysicalFrameError::UnknownExtent);
         }
+        let Some(live) = self.live.remove(&extent.extent_identity) else {
+            return Err(PhysicalFrameError::UnknownExtent);
+        };
         self.free.push(FreeFrameRun {
             start_frame: live.start_frame,
             end_frame: live.end_frame,
@@ -266,6 +276,49 @@ impl FrameAllocatorContext {
         } else {
             Err(PhysicalFrameError::LiveExtents)
         }
+    }
+
+    pub(crate) fn begin_mapping(
+        &mut self,
+        extent: &PhysicalFrameExtent,
+    ) -> Result<(), PhysicalFrameError> {
+        if extent.allocator_identity != self.allocator_identity {
+            return Err(PhysicalFrameError::WrongAllocator);
+        }
+        let live = self
+            .live
+            .get_mut(&extent.extent_identity)
+            .ok_or(PhysicalFrameError::UnknownExtent)?;
+        if live.mapped {
+            return Err(PhysicalFrameError::MappedExtent);
+        }
+        if live.start_frame != extent.model_start_frame
+            || live.end_frame != extent.model_start_frame + extent.frame_count
+            || live.alignment_frames != extent.alignment_frames
+            || live.provenance != extent.provenance
+        {
+            return Err(PhysicalFrameError::UnknownExtent);
+        }
+        live.mapped = true;
+        Ok(())
+    }
+
+    pub(crate) fn finish_mapping(
+        &mut self,
+        extent: &PhysicalFrameExtent,
+    ) -> Result<(), PhysicalFrameError> {
+        if extent.allocator_identity != self.allocator_identity {
+            return Err(PhysicalFrameError::WrongAllocator);
+        }
+        let live = self
+            .live
+            .get_mut(&extent.extent_identity)
+            .ok_or(PhysicalFrameError::UnknownExtent)?;
+        if !live.mapped {
+            return Err(PhysicalFrameError::UnknownExtent);
+        }
+        live.mapped = false;
+        Ok(())
     }
 }
 

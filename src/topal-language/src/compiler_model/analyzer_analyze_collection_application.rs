@@ -272,7 +272,9 @@ impl Analyzer {
             match &collection_generator.kind {
                 CompilerExpressionKind::GeneratorTakeWhile {
                     generator: source, ..
-                } if matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) => {
+                } if retained_generator.is_none()
+                    && matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) =>
+                {
                     return Ok(CompilerExpression {
                         kind: CompilerExpressionKind::GeneratorCollect(Box::new(
                             collection_generator.clone(),

@@ -17,6 +17,7 @@ records, not this directory alone, define language meaning.
 - [Bootstrap-region source and provider contract](bootstrap-region.md)
 - [Portable boot-memory description contract](boot-memory-description.md)
 - [Affine physical-frame allocation contract](physical-frame-allocation.md)
+- [Opaque kernel-mapping contract](kernel-mapping.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
