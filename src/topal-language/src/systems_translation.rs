@@ -61,6 +61,37 @@ fn analyze_translation_sequence(
         &activate_failure_name,
         "translation activation failure must enter `fatal`",
     )?;
+    let mut checked = analyze_translation_activation_success(
+        source,
+        activate_success,
+        activate_span,
+        &translated_name,
+        activate_failure,
+        storage,
+    )?;
+    checked.operations.splice(
+        0..0,
+        [
+            CompilerSystemsOperation::BeginTranslationUpdate {
+                request,
+                failure_message: begin_failure,
+            },
+            CompilerSystemsOperation::CommitTranslationUpdate {
+                failure_message: commit_failure,
+            },
+        ],
+    );
+    Ok(checked)
+}
+
+fn analyze_translation_activation_success(
+    source: &SourceText,
+    activate_success: &Expression,
+    activate_span: Span,
+    translated_name: &str,
+    activate_failure: String,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
     let activate_statements = translation_block(
         source,
         activate_success,
@@ -79,7 +110,7 @@ fn analyze_translation_sequence(
         source,
         marker,
         CompilerSystemsContextKind::Bootstrap,
-        &translated_name,
+        translated_name,
     )?;
     let CompilerSystemsOperation::ConsoleWrite { .. } = marker else {
         return Err(translation_diagnostic(
@@ -92,17 +123,10 @@ fn analyze_translation_sequence(
         source,
         activate_success,
         rest,
-        &translated_name,
+        translated_name,
         storage,
     )?;
     let mut operations = vec![
-        CompilerSystemsOperation::BeginTranslationUpdate {
-            request,
-            failure_message: begin_failure,
-        },
-        CompilerSystemsOperation::CommitTranslationUpdate {
-            failure_message: commit_failure,
-        },
         CompilerSystemsOperation::ActivateTranslationSpace {
             failure_message: activate_failure,
         },
@@ -113,7 +137,7 @@ fn analyze_translation_sequence(
             source,
             operation,
             CompilerSystemsContextKind::Bootstrap,
-            &translated_name,
+            translated_name,
         )?);
     }
     operations.append(&mut checked.operations);

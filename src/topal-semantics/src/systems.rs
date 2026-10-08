@@ -493,6 +493,27 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
+            operation @ (SystemsOperation::BeginTranslationUpdate { .. }
+            | SystemsOperation::CommitTranslationUpdate { .. }
+            | SystemsOperation::ActivateTranslationSpace { .. }) => {
+                self.observe_translation(operation)?;
+            }
+            _ if !self.allocator_created => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES",
+                    "bootstrap operations require a frame-allocator context",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn observe_translation(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<(), SystemsModelError> {
+        match operation {
             SystemsOperation::BeginTranslationUpdate { request, .. } => {
                 if !self.allocator_created
                     || self.memory_ownership != BootstrapMemoryOwnership::None
@@ -524,15 +545,9 @@ impl BootstrapAuthorityState {
                 }
                 self.translation = BootstrapTranslationState::ReplacementActive;
             }
-            _ if !self.allocator_created => {
-                return Err(SystemsModelError::new(
-                    "E-SYSTEMS-FRAMES",
-                    "bootstrap operations require a frame-allocator context",
-                ));
-            }
-            _ => return Ok(false),
+            _ => unreachable!("caller selects translation operations"),
         }
-        Ok(true)
+        Ok(())
     }
 
     fn complete(self) -> Result<(), SystemsModelError> {

@@ -121,24 +121,7 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         &physical_frame_selector()?,
     );
-    append_encoded_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-        &translation_backing_selector()?,
-    );
-    append_encoded_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-        &translation_space_builder()?,
-    );
-    append_encoded_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-        &translation_space_activator()?,
-    );
+    append_translation_functions(&mut object, text)?;
     append_function(
         &mut object,
         text,
@@ -195,6 +178,29 @@ pub fn generate_x86_64_systems_provider_object(
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
     Ok(GeneratedSystemsProviderObject { plan, bytes })
+}
+
+fn append_translation_functions(
+    object: &mut Object<'_>,
+    text: object::write::SectionId,
+) -> Result<(), CompileError> {
+    for (name, encoded) in [
+        (
+            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+            translation_backing_selector()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+            translation_space_builder()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+            translation_space_activator()?,
+        ),
+    ] {
+        append_encoded_function(object, text, name, &encoded);
+    }
+    Ok(())
 }
 
 fn append_function(

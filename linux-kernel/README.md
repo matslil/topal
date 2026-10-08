@@ -36,7 +36,7 @@ without routing it through the Linux-process pipeline. Boot packaging remains
 a separate qualified adapter, and the pinned-QEMU evidence consumes the
 ordinary compiler output before packaging.
 
-The latest Step 4 kernel-foundation slice uses the approved
+An earlier Step 4 kernel-foundation slice uses the approved
 [portable boot-memory description contract](design/boot-memory-description.md)
 to refine the provider-private Linux x86 handoff into architecture-neutral
 physical-range capabilities before ordinary kernel initialization continues.
@@ -49,12 +49,19 @@ The following Step 4 slice adds the approved
 the architecture-neutral ownership model, sealed one-frame x86 provider
 lowering, structural artifact checks, and two deterministic pinned-QEMU runs.
 
-The latest Step 4 slice adds the approved
+The next Step 4 slice adds the approved
 [opaque kernel mapping](design/kernel-mapping.md). Its
 [implementation and qualification report](step-4-kernel-mapping.md) records
 affine map/access/unmap semantics, an adopted x86-64 bootstrap identity
 mapping, real indirect frame access, structural checks, and two deterministic
 pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[translation-space lifecycle](design/translation-space.md). Its
+[implementation and qualification report](step-4-translation-space.md) records
+the architecture-independent affine builder/commit/activation model, a
+replacement x86-64 four-level root, structural CR3 evidence, and two
+deterministic pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -141,6 +148,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Step 4 affine physical-frame allocation](step-4-frame-allocation.md)
 - [Step 4 opaque kernel mapping](step-4-kernel-mapping.md)
+- [Step 4 translation-space activation](step-4-translation-space.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
