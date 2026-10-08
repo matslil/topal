@@ -208,6 +208,31 @@ Malformed, overflowing, cyclic, contradictory, unsupported, or allocation-
 empty input SHALL select the failure action. A provider SHALL NOT approximate
 such input with host memory, fabricated RAM, or an unchecked range.
 
+### TOPAL-SYSTEMS-FRAMES-001 — Affine physical-frame allocation
+
+`create frame allocator` SHALL consume exactly one memory-described bootstrap
+context through an exhaustive `Result` decision. Its `Ok` action SHALL bind one
+`FrameAllocatorContext` retaining the preceding bootstrap capabilities and
+exclusively owning the normalized allocatable-frame authority. Its `Error`
+action SHALL bind one `FrameAllocatorFailureContext` which admits only a fatal
+disposition. The consumed context SHALL be invalid on both paths, and neither
+result context SHALL escape its entry extent.
+
+An allocation SHALL borrow one live allocator and request a nonzero frame count
+and power-of-two alignment in target-profile base-frame units. Success SHALL
+produce one affine `PhysicalFrameExtent` carrying allocator identity, extent
+identity, count, alignment, and provider provenance. Its base SHALL remain
+opaque. The extent SHALL grant neither byte access nor mapping, device, DMA,
+firmware, or user-memory authority. Malformed or exhausted allocation SHALL
+select an explicit failure without invalidating the allocator.
+
+Live extents SHALL NOT overlap each other, non-allocatable ranges, or retained
+reservations. `release` SHALL consume an extent into exactly its originating
+allocator. Cross-allocator release, double release, use after release, extent
+escape, and a bootstrap disposition with a live extent SHALL be invalid.
+Allocation choice and coalescing MAY vary only when success, failure, alignment,
+non-overlap, ownership, and provenance observations remain equivalent.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

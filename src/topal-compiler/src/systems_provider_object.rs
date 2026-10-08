@@ -13,11 +13,12 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/2";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/3";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
+pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -106,6 +107,12 @@ pub fn generate_x86_64_systems_provider_object(
         &mut object,
         text,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+        &boot_memory_validator()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         &boot_memory_validator()?,
     );
     append_function(
@@ -482,5 +489,12 @@ mod tests {
         let start = usize::try_from(validator.address()).unwrap();
         let end = start + usize::try_from(validator.size()).unwrap();
         assert_eq!(&data[end - 3..end], &[0x31, 0xc0, 0xc3]);
+        let selector = file
+            .symbol_by_name(X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
+            .unwrap();
+        assert_eq!(selector.size(), validator.size());
+        let selector_start = usize::try_from(selector.address()).unwrap();
+        let selector_end = selector_start + usize::try_from(selector.size()).unwrap();
+        assert_eq!(&data[selector_start..selector_end], &data[start..end]);
     }
 }

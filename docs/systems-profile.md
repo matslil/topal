@@ -163,6 +163,35 @@ its closed generated entry, provider, storage, linked-artifact, and Linux boot-
 adapter set under the pinned QEMU evidence. Unsupported operations, targets,
 boards, CPUs, models, or publication options continue to fail before output.
 
+### Physical-frame allocation
+
+`context memory create frame allocator` consumes a memory-described bootstrap
+context through an exhaustive `Result` decision. Success produces one
+`FrameAllocatorContext` which retains the bootstrap capabilities and owns the
+normalized allocatable-frame authority. Failure produces only a fatal-capable
+allocator-failure context. The consumed memory-described context cannot be
+reused on either path.
+
+An allocation requests a nonzero frame count and power-of-two alignment in the
+target profile's base-frame units. Success returns an affine opaque physical-
+frame extent. The extent records its allocator identity, count, alignment, and
+provider provenance without exposing a physical base. It grants ownership, not
+memory access or mapping authority. Exhaustion or a malformed request is an
+explicit failure and leaves the allocator usable.
+
+Release consumes an extent and returns it only to the allocator which created
+it. Live extents do not overlap each other or boot reservations. They cannot
+escape the bootstrap entry, cross allocator identities, be released twice, or
+remain live at a disposition. Allocation strategy and coalescing are ordinary
+library policy so long as these observations are preserved.
+
+X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
+provider facts. Portable source counts the profile-selected complete frames;
+it does not name page-table formats, numeric byte addresses, or target page
+sizes. The first executable x86-64 slice admits one statically proved frame
+aligned to one frame. Multiple live extents, dynamic requests, reclamation, and
+mapping remain unavailable until separately qualified.
+
 ## Special entries
 
 A `SystemEntry K` is a static artifact declaration for one closed entry kind

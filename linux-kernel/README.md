@@ -43,6 +43,12 @@ physical-range capabilities before ordinary kernel initialization continues.
 Its [checked model and initial x86 E820 provider](step-4-boot-memory.md) are
 implemented and qualified by reproducible pinned-QEMU evidence.
 
+The next Step 4 slice adds the approved
+[affine physical-frame allocator](design/physical-frame-allocation.md). Its
+[implementation and qualification report](step-4-frame-allocation.md) records
+the architecture-neutral ownership model, sealed one-frame x86 provider
+lowering, structural artifact checks, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -126,6 +132,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 pinned-QEMU boot and exception gate](step-4-toolchain-gate.md)
 - [Step 4 ordinary compiler systems publication](step-4-compiler-publication.md)
 - [Step 4 boot-memory refinement](step-4-boot-memory.md)
+- [Step 4 affine physical-frame allocation](step-4-frame-allocation.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

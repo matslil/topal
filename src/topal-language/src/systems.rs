@@ -20,12 +20,14 @@ pub use topal_semantics::{
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
     SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
     SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
+    SYSTEMS_FRAMES_RELEASE, SYSTEMS_RESUME_DEBUG_BREAK,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -604,6 +606,7 @@ fn analyze_handler(
 }
 
 include!("systems_boot_memory.rs");
+include!("systems_frames.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -1275,6 +1278,22 @@ fn action_disposition(
     action: &Expression,
     context_name: &str,
 ) -> Result<CompilerSystemsDisposition, Diagnostic> {
+    if let Expression::Block { statements, .. } = action {
+        let [statement] = statements.as_slice() else {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DISPOSITION",
+                action.span(),
+                "a systems failure block must contain exactly one context-consuming disposition",
+            ));
+        };
+        return analyze_disposition(
+            source,
+            statement,
+            CompilerSystemsContextKind::Bootstrap,
+            context_name,
+        );
+    }
     let statement = Statement::Expression(action.clone());
     analyze_disposition(
         source,
@@ -1481,7 +1500,8 @@ mod tests {
     #[test]
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
-        // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001.
+        // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001,
+        // TOPAL-SYSTEMS-FRAMES-001.
         let program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -1500,7 +1520,10 @@ mod tests {
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_FRAMES_ALLOCATE,
+                SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -1516,6 +1539,17 @@ mod tests {
                 },
                 CompilerSystemsTransition::EnterBootstrap,
                 CompilerSystemsTransition::DescribeBootMemory,
+                CompilerSystemsTransition::CreateFrameAllocator,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_ALLOCATED".into(),
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
                 },
@@ -1556,20 +1590,24 @@ mod tests {
 
     #[test]
     fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
-        // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001.
+        // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001,
+        // TOPAL-SYSTEMS-FRAMES-001.
         let program = analyze_systems_for_compiler(
             &memory_source(),
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 10);
+        assert_eq!(program.bootstrap.handler.operations.len(), 14);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_FRAMES_ALLOCATE,
+                SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -1613,16 +1651,16 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "described bootstrap release region\n              described fatal \"toolchain gate complete\"",
-                    "described console write \"not released\"\n              described fatal \"toolchain gate complete\"",
+                    "memory bootstrap release region\n                      memory fatal \"toolchain gate complete\"",
+                    "memory console write \"not released\"\n                      memory fatal \"toolchain gate complete\"",
                 ),
                 "E-SYSTEMS-STORAGE",
                 "release requires",
             ),
             (
                 memory_source().replace(
-                    "Error problem then {\n          described fatal \"toolchain gate allocation failed\"\n        }",
-                    "Error problem then {\n          region byte load (offset-bytes is 0)\n        }",
+                    "memory fatal \"toolchain gate allocation failed\"",
+                    "region byte load (offset-bytes is 0)",
                 ),
                 "E-SYSTEMS-DISPOSITION",
                 "final operation is not a disposition",
@@ -1676,8 +1714,8 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "described console write \"TOPAL_KERNEL_BOOT\"",
-            "saved is context",
+            "memory console write \"TOPAL_KERNEL_BOOT\"",
+            "saved is memory",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -1686,10 +1724,10 @@ mod tests {
             )
             .unwrap_err()
             .code,
-            "E-SYSTEMS-BOOT-MEMORY"
+            "E-SYSTEMS-FRAMES"
         );
 
-        let unknown = SOURCE.replace("described debug break", "described machine instruction");
+        let unknown = SOURCE.replace("memory debug break", "memory machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1728,7 +1766,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "described console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "memory console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                     "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                 ),
                 "E-SYSTEMS-OPERATION",
@@ -1750,6 +1788,55 @@ mod tests {
                 .code,
                 code
             );
+        }
+    }
+
+    #[test]
+    fn requires_affine_physical_frame_allocation_and_release() {
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-AUTHORITY-001.
+        for (source, code, expected) in [
+            (
+                SOURCE.replace(
+                    "described memory create frame allocator",
+                    "context memory create frame allocator",
+                ),
+                "E-SYSTEMS-FRAMES",
+                "live memory-described context",
+            ),
+            (
+                SOURCE.replace("frame-count is 1", "frame-count is 2"),
+                "E-SYSTEMS-FRAMES",
+                "exactly one frame",
+            ),
+            (
+                SOURCE.replace("alignment-frames is 1", "alignment-frames is 2"),
+                "E-SYSTEMS-FRAMES",
+                "aligned to one frame",
+            ),
+            (
+                SOURCE.replace(
+                    "memory frames release frames",
+                    "memory frames release other",
+                ),
+                "E-SYSTEMS-FRAMES",
+                "affine extent",
+            ),
+            (
+                SOURCE.replace(
+                    "failure fatal \"frame allocator creation failed\"",
+                    "failure resume",
+                ),
+                "E-SYSTEMS-DISPOSITION",
+                "not a disposition",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
         }
     }
 

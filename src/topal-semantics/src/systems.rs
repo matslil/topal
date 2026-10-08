@@ -4,9 +4,10 @@ use std::fmt;
 
 use crate::{
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    PhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -52,6 +53,14 @@ pub enum SystemsOperation {
     DescribeBootMemory {
         failure_message: String,
     },
+    CreateFrameAllocator {
+        failure_message: String,
+    },
+    AllocatePhysicalFrames {
+        request: PhysicalFrameRequest,
+        failure_message: String,
+    },
+    ReleasePhysicalFrames,
     ConsoleWrite {
         text: String,
     },
@@ -76,6 +85,9 @@ impl SystemsOperation {
     pub const fn semantic_identity(&self) -> &'static str {
         match self {
             Self::DescribeBootMemory { .. } => SYSTEMS_BOOT_MEMORY_DESCRIBE,
+            Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
+            Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -133,6 +145,11 @@ pub enum SystemsTransition {
     },
     EnterBootstrap,
     DescribeBootMemory,
+    CreateFrameAllocator,
+    AllocatePhysicalFrames {
+        request: PhysicalFrameRequest,
+    },
+    ReleasePhysicalFrames,
     ConsoleWrite {
         text: String,
     },
@@ -186,6 +203,9 @@ impl SystemsTransition {
             Self::ProvisionBootstrapStorage { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::EnterBootstrap => "topal.systems.entry.bootstrap/1",
             Self::DescribeBootMemory => SYSTEMS_BOOT_MEMORY_DESCRIBE,
+            Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
+            Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
+            Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
@@ -256,6 +276,9 @@ fn validate_entry(
             matches!(
                 operation,
                 SystemsOperation::DescribeBootMemory { .. }
+                    | SystemsOperation::CreateFrameAllocator { .. }
+                    | SystemsOperation::AllocatePhysicalFrames { .. }
+                    | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
@@ -301,6 +324,95 @@ fn validate_entry(
     Ok(())
 }
 
+#[derive(Default)]
+struct BootstrapAuthorityState {
+    memory_described: bool,
+    allocator_created: bool,
+    frames_live: bool,
+}
+
+impl BootstrapAuthorityState {
+    fn observe(
+        &mut self,
+        index: usize,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
+            SystemsOperation::DescribeBootMemory { .. } => {
+                if index != 0 || self.memory_described {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-BOOT-MEMORY",
+                        "boot memory must be described exactly once as the first bootstrap operation",
+                    ));
+                }
+                self.memory_described = true;
+            }
+            SystemsOperation::CreateFrameAllocator { .. } => {
+                if index != 1 || !self.memory_described || self.allocator_created {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-FRAMES",
+                        "the frame allocator must consume memory description exactly once as the second bootstrap operation",
+                    ));
+                }
+                self.allocator_created = true;
+            }
+            SystemsOperation::AllocatePhysicalFrames { request, .. } => {
+                if !self.allocator_created
+                    || self.frames_live
+                    || request.frame_count == 0
+                    || request.alignment_frames == 0
+                    || !request.alignment_frames.is_power_of_two()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-FRAMES",
+                        "physical-frame allocation requires one allocator, a valid request, and no live extent",
+                    ));
+                }
+                self.frames_live = true;
+            }
+            SystemsOperation::ReleasePhysicalFrames => {
+                if !self.frames_live {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-FRAMES",
+                        "physical-frame release requires one live extent",
+                    ));
+                }
+                self.frames_live = false;
+            }
+            _ if !self.allocator_created => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES",
+                    "bootstrap operations require a frame-allocator context",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn complete(self) -> Result<(), SystemsModelError> {
+        if !self.memory_described {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-BOOT-MEMORY",
+                "the bootstrap handler must consume its entered context through boot-memory description",
+            ));
+        }
+        if !self.allocator_created {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-FRAMES",
+                "the bootstrap handler must consume memory description through frame-allocator creation",
+            ));
+        }
+        if self.frames_live {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-FRAMES-LIVE",
+                "bootstrap handler consumes its context while a physical-frame extent remains live",
+            ));
+        }
+        Ok(())
+    }
+}
+
 fn validate_bootstrap_storage_operations(
     program: &SystemsProgram,
 ) -> Result<(), SystemsModelError> {
@@ -309,18 +421,12 @@ fn validate_bootstrap_storage_operations(
         "systems-program-validation",
     )?;
     let mut region: Option<BootstrapRegion> = None;
-    let mut memory_described = false;
+    let mut authority = BootstrapAuthorityState::default();
     for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
+        if authority.observe(index, operation)? {
+            continue;
+        }
         match operation {
-            SystemsOperation::DescribeBootMemory { .. } => {
-                if index != 0 || memory_described {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-BOOT-MEMORY",
-                        "boot memory must be described exactly once as the first bootstrap operation",
-                    ));
-                }
-                memory_described = true;
-            }
             SystemsOperation::BootstrapAllocate { request } => {
                 if region.is_some() {
                     return Err(SystemsModelError::new(
@@ -368,22 +474,16 @@ fn validate_bootstrap_storage_operations(
                 })?;
                 storage.release(released)?;
             }
-            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {
-                if !memory_described {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-BOOT-MEMORY",
-                        "bootstrap operations require a memory-described context",
-                    ));
-                }
+            SystemsOperation::DescribeBootMemory { .. }
+            | SystemsOperation::CreateFrameAllocator { .. }
+            | SystemsOperation::AllocatePhysicalFrames { .. }
+            | SystemsOperation::ReleasePhysicalFrames => {
+                unreachable!("authority operations continue above")
             }
+            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
-    if !memory_described {
-        return Err(SystemsModelError::new(
-            "E-SYSTEMS-BOOT-MEMORY",
-            "the bootstrap handler must consume its entered context through boot-memory description",
-        ));
-    }
+    authority.complete()?;
     if region.is_some() {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-STORAGE-LIVE",
@@ -419,6 +519,15 @@ pub fn model_systems_transitions(
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
                 transitions.push(SystemsTransition::DescribeBootMemory);
+            }
+            SystemsOperation::CreateFrameAllocator { .. } => {
+                transitions.push(SystemsTransition::CreateFrameAllocator);
+            }
+            SystemsOperation::AllocatePhysicalFrames { request, .. } => {
+                transitions.push(SystemsTransition::AllocatePhysicalFrames { request: *request });
+            }
+            SystemsOperation::ReleasePhysicalFrames => {
+                transitions.push(SystemsTransition::ReleasePhysicalFrames);
             }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
@@ -479,6 +588,11 @@ fn model_bootstrap_storage_operation(
     match operation {
         SystemsOperation::DescribeBootMemory { .. } => {
             unreachable!("boot-memory refinement is modeled by the caller")
+        }
+        SystemsOperation::CreateFrameAllocator { .. }
+        | SystemsOperation::AllocatePhysicalFrames { .. }
+        | SystemsOperation::ReleasePhysicalFrames => {
+            unreachable!("physical-frame operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
@@ -571,6 +685,9 @@ mod tests {
                         SystemsOperation::DescribeBootMemory {
                             failure_message: "memory description failed".into(),
                         },
+                        SystemsOperation::CreateFrameAllocator {
+                            failure_message: "frame allocator failed".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "boot".into(),
                         },
@@ -584,6 +701,7 @@ mod tests {
                         SYSTEMS_CONSOLE_WRITE.into(),
                         SYSTEMS_FATAL.into(),
                         SYSTEMS_DEBUG_BREAK.into(),
+                        SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
                     ],
                 },
             },
@@ -612,6 +730,7 @@ mod tests {
                 },
                 SystemsTransition::EnterBootstrap,
                 SystemsTransition::DescribeBootMemory,
+                SystemsTransition::CreateFrameAllocator,
                 SystemsTransition::ConsoleWrite {
                     text: "boot".into(),
                 },
@@ -656,6 +775,7 @@ mod tests {
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_FATAL.into(),
             SYSTEMS_DEBUG_BREAK.into(),
+            SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
             SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE.into(),
             SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
@@ -692,13 +812,57 @@ mod tests {
             .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
         program.bootstrap.handler.effects.sort();
         if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
-            &mut program.bootstrap.handler.operations[4]
+            &mut program.bootstrap.handler.operations[5]
         {
             *offset_bytes = 64;
         }
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-STORAGE-BOUNDS"
+        );
+    }
+
+    #[test]
+    fn models_affine_physical_frame_allocation_and_release() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001.
+        let mut program = program(SystemsDisposition::Resume);
+        let request = PhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        };
+        program.bootstrap.handler.operations.splice(
+            2..2,
+            [
+                SystemsOperation::AllocatePhysicalFrames {
+                    request,
+                    failure_message: "frame allocation failed".into(),
+                },
+                SystemsOperation::ReleasePhysicalFrames,
+            ],
+        );
+        program.bootstrap.handler.effects.extend([
+            SYSTEMS_FRAMES_ALLOCATE.into(),
+            SYSTEMS_FRAMES_RELEASE.into(),
+        ]);
+        program.bootstrap.handler.effects.sort();
+        program.bootstrap.handler.effects.dedup();
+        let transitions = model_systems_transitions(&program).unwrap();
+        assert!(transitions.contains(&SystemsTransition::AllocatePhysicalFrames { request }));
+        assert!(transitions.contains(&SystemsTransition::ReleasePhysicalFrames));
+
+        program
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::ReleasePhysicalFrames));
+        program
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| effect != SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            validate_systems_program(&program).unwrap_err().code,
+            "E-SYSTEMS-FRAMES-LIVE"
         );
     }
 

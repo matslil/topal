@@ -66,5 +66,6 @@ qualify setup-data extension traversal and any additional boot path.
 
 The committed content-addressed evidence therefore qualifies the positive
 physical path for the exact `pc-q35-10.2`/`qemu64-v1` profile. Unsupported
-setup-data extensions, other boot paths, and a capability-backed frame
-allocator remain outside this slice.
+setup-data extensions and other boot paths remain outside this slice. The
+subsequent [physical-frame allocation increment](step-4-frame-allocation.md)
+now consumes this description through a capability-backed one-frame allocator.

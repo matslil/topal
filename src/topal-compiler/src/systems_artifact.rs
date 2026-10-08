@@ -16,20 +16,21 @@ use topal_language::compiler::{
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
     CompilerSystemsTransition, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_RESUME_DEBUG_BREAK,
-    model_systems_transitions,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
+    SYSTEMS_RESUME_DEBUG_BREAK, model_systems_transitions,
 };
 
 use crate::artifact::sha256;
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
-    X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
+    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/2";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/2";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/3";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/3";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -37,6 +38,16 @@ pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
+
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 7] = [
+    X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_DEBUG_BREAK_ENTRY,
+    X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    "topal_x86_systems_uart16550_write",
+    "topal_x86_systems_interrupt_return",
+    "topal_x86_systems_fatal",
+];
 
 static NEXT_STAGE: AtomicU64 = AtomicU64::new(0);
 
@@ -413,14 +424,7 @@ fn inspect_kernel_elf(
             )));
         }
     }
-    for required in [
-        X86_SYSTEMS_KERNEL_ENTRY,
-        X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-        X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-        "topal_x86_systems_uart16550_write",
-        "topal_x86_systems_interrupt_return",
-        "topal_x86_systems_fatal",
-    ] {
+    for required in REQUIRED_LINKED_TEXT_SYMBOLS {
         let symbol = file.symbol_by_name(required).ok_or_else(|| {
             CompileError::Tool(format!(
                 "linked systems ELF omits generated symbol `{required}`"
@@ -540,6 +544,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_KERNEL_ENTRY,
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+        X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -574,6 +579,7 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         ),
         (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
+        (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -627,6 +633,7 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
 #[derive(Clone, Copy)]
 enum ProviderSymbol {
     DescribeBootMemory,
+    AllocatePhysicalFrames,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -638,6 +645,7 @@ impl ProviderSymbol {
     const fn name(self) -> &'static str {
         match self {
             Self::DescribeBootMemory => X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+            Self::AllocatePhysicalFrames => X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -650,6 +658,7 @@ impl ProviderSymbol {
         match self {
             Self::BootstrapStorage => SymbolKind::Data,
             Self::DescribeBootMemory
+            | Self::AllocatePhysicalFrames
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -707,12 +716,15 @@ struct PendingRelocation {
 struct RootEncoder {
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
+    frame_allocator_created: bool,
+    physical_frames_live: bool,
     bootstrap_region_offset: Option<u64>,
 }
 
 #[derive(Clone, Copy)]
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
+    allocate_physical_frames: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -722,7 +734,51 @@ struct ProviderSymbols {
 
 impl RootEncoder {
     fn describe_boot_memory(&mut self) -> Result<(), CompileError> {
-        self.call(ProviderSymbol::DescribeBootMemory);
+        self.call_checked_bool(ProviderSymbol::DescribeBootMemory)
+    }
+
+    fn create_frame_allocator(&mut self) -> Result<(), CompileError> {
+        if self.frame_allocator_created {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered duplicate frame-allocator creation".into(),
+            ));
+        }
+        self.frame_allocator_created = true;
+        Ok(())
+    }
+
+    fn allocate_physical_frames(
+        &mut self,
+        frame_count: u64,
+        alignment_frames: u64,
+    ) -> Result<(), CompileError> {
+        if !self.frame_allocator_created
+            || self.physical_frames_live
+            || frame_count != 1
+            || alignment_frames != 1
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires one live allocator and the sealed one-frame request"
+                    .into(),
+            ));
+        }
+        self.call_checked_bool(ProviderSymbol::AllocatePhysicalFrames)?;
+        self.physical_frames_live = true;
+        Ok(())
+    }
+
+    fn release_physical_frames(&mut self) -> Result<(), CompileError> {
+        if !self.physical_frames_live {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered release without a live physical-frame extent".into(),
+            ));
+        }
+        self.physical_frames_live = false;
+        Ok(())
+    }
+
+    fn call_checked_bool(&mut self, target: ProviderSymbol) -> Result<(), CompileError> {
+        self.call(target);
         self.bytes.extend_from_slice(&[0x84, 0xc0, 0x0f, 0x84]);
         self.relocations.push(PendingRelocation {
             offset: u64::try_from(self.bytes.len()).map_err(|_| {
@@ -920,6 +976,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::DescribeBootMemory,
         ),
+        allocate_physical_frames: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AllocatePhysicalFrames,
+        ),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -974,6 +1034,15 @@ fn encode_operations(
             CompilerSystemsOperation::DescribeBootMemory { .. } => {
                 encoder.describe_boot_memory()?;
             }
+            CompilerSystemsOperation::CreateFrameAllocator { .. } => {
+                encoder.create_frame_allocator()?;
+            }
+            CompilerSystemsOperation::AllocatePhysicalFrames { request, .. } => {
+                encoder.allocate_physical_frames(request.frame_count, request.alignment_frames)?;
+            }
+            CompilerSystemsOperation::ReleasePhysicalFrames => {
+                encoder.release_physical_frames()?;
+            }
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
             CompilerSystemsOperation::BootstrapAllocate { .. } => {
@@ -994,6 +1063,11 @@ fn encode_operations(
     if encoder.bootstrap_region_offset.is_some() {
         return Err(CompileError::Tool(
             "x86 root lowering ended with a live bootstrap region".into(),
+        ));
+    }
+    if encoder.physical_frames_live {
+        return Err(CompileError::Tool(
+            "x86 root lowering ended with a live physical-frame extent".into(),
         ));
     }
     Ok(())
@@ -1033,6 +1107,7 @@ fn append_root(
     for relocation in &encoded.relocations {
         let symbol = match relocation.target {
             ProviderSymbol::DescribeBootMemory => provider_symbols.describe_boot_memory,
+            ProviderSymbol::AllocatePhysicalFrames => provider_symbols.allocate_physical_frames,
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -1089,6 +1164,10 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.alignment_bytes,
                     request.placement.semantic_identity()
                 ),
+                CompilerSystemsTransition::AllocatePhysicalFrames { request } => format!(
+                    "{identity}:frames={}:alignment={}",
+                    request.frame_count, request.alignment_frames
+                ),
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -1099,6 +1178,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!("{identity}:offset={offset_bytes}:value={value}"),
                 CompilerSystemsTransition::EnterBootstrap
                 | CompilerSystemsTransition::DescribeBootMemory
+                | CompilerSystemsTransition::CreateFrameAllocator
+                | CompilerSystemsTransition::ReleasePhysicalFrames
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
@@ -1156,7 +1237,8 @@ mod tests {
     use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
     use topal_language::compiler::{
         CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, analyze_systems_for_compiler,
+        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_RELEASE,
+        analyze_systems_for_compiler,
     };
 
     use super::*;
@@ -1185,6 +1267,7 @@ mod tests {
             undefined,
             [
                 "topal_x86_systems_describe_boot_memory",
+                "topal_x86_systems_allocate_physical_frames",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -1202,7 +1285,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 102);
+        assert_eq!(relocation_targets.len(), 132);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1213,9 +1296,16 @@ mod tests {
         assert_eq!(
             relocation_targets
                 .iter()
+                .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            94
+            122
         );
         assert_eq!(
             relocation_targets
@@ -1229,7 +1319,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            3
+            4
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -1282,31 +1372,35 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 10);
+        assert_eq!(decoded.placements.len(), 11);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 15);
+        assert_eq!(decoded.semantic_trace.len(), 19);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
-        assert!(decoded.semantic_trace[3].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[4].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[5], SYSTEMS_DEBUG_BREAK);
+        assert_eq!(decoded.semantic_trace[3], SYSTEMS_FRAME_ALLOCATOR_CREATE);
+        assert!(decoded.semantic_trace[4].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[5].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[6], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[9], SYSTEMS_DEBUG_BREAK);
         assert_eq!(
-            decoded.semantic_trace[6],
+            decoded.semantic_trace[10],
             "topal.systems.entry.synchronous.debug-break/1"
         );
-        assert_eq!(decoded.semantic_trace[7], SYSTEMS_RESUME_DEBUG_BREAK);
-        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[9].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[10].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
-        assert!(decoded.semantic_trace[11].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert_eq!(decoded.semantic_trace[11], SYSTEMS_RESUME_DEBUG_BREAK);
         assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[13].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[14].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
+        assert!(decoded.semantic_trace[15].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[13],
+            decoded.semantic_trace[17],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[14].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

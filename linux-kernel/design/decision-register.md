@@ -22,6 +22,7 @@ Topal or kernel semantics.
 | `TK-DEC-015` | KVM and nested-virtualization acceptance profiles | guest, QEMU TCG host, KVM host, and nested host are distinct | open; virtualization phase |
 | `TK-DEC-016` | bootstrap-region source vocabulary and checked byte access | the approved storage model defines allocation ownership but not source spelling or how a region proves physical read/write use | resolved and implemented for the initial slice; [bootstrap-region contract](bootstrap-region.md) and [pinned-QEMU evidence](../step-4-toolchain-gate.md) |
 | `TK-DEC-017` | portable boot-handoff to physical-memory-description transition | the kernel cannot construct a frame allocator from raw target firmware structures or numeric addresses | resolved; [portable boot-memory description contract](boot-memory-description.md) approved for architecture-independent semantics and the initial x86-64 E820 slice |
+| `TK-DEC-018` | affine physical-frame allocator vocabulary and ownership | later mappings require non-overlapping frame authority without exposing numeric physical addresses | resolved; [physical-frame allocation contract](physical-frame-allocation.md) approved for portable ownership semantics and an initial one-frame x86-64 slice |
 
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected

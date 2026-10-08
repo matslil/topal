@@ -71,25 +71,17 @@ fn analyze_boot_memory_decision(
             "boot-memory success requires a block using its memory-described context",
         ));
     };
-    if statements.len() < 3 {
+    if statements.is_empty() {
         return Err(boot_memory_diagnostic(
             source,
             *success_span,
-            "boot-memory success must continue with the refined context",
+            "boot-memory success must consume its refined context through one frame-allocator decision",
         ));
     }
-    let (operations, allocation) = statements.split_at(statements.len() - 3);
-    let mut checked_operations =
-        vec![CompilerSystemsOperation::DescribeBootMemory { failure_message }];
-    for operation in operations {
-        checked_operations.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            &described_name,
-        )?);
-    }
-    let checked = analyze_bootstrap_region_sequence(source, allocation, &described_name, storage)?;
+    let mut checked_operations = vec![CompilerSystemsOperation::DescribeBootMemory {
+        failure_message,
+    }];
+    let checked = analyze_frame_allocator_sequence(source, statements, &described_name, storage)?;
     checked_operations.extend(checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations: checked_operations,

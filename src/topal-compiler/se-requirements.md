@@ -72,6 +72,14 @@ use only its memory-described context and the error action only its fatal-
 capable failure context. The checked model shall retain conservative normalized
 range semantics without exposing provider-native records or address authority.
 
+The frame-allocation increment shall require the memory-described success path
+to consume its context through an exhaustive `memory create frame allocator`
+decision. The allocator success path shall accept only checked nonzero frame
+counts and power-of-two frame alignments, track every returned extent affinely,
+require same-allocator consuming release before any disposition, and reject
+context reuse, extent escape, cross-allocator release, double release, and
+unsupported dynamic or multi-extent forms before lowering.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
