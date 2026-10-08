@@ -10,6 +10,7 @@ mod systems_boot_memory;
 mod systems_frames;
 mod systems_mapping;
 mod systems_storage;
+mod systems_translation;
 pub mod tracing;
 
 pub use architecture::*;
@@ -21,6 +22,7 @@ pub use systems_boot_memory::*;
 pub use systems_frames::*;
 pub use systems_mapping::*;
 pub use systems_storage::*;
+pub use systems_translation::*;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
