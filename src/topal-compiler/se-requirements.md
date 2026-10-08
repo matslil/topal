@@ -98,6 +98,15 @@ activate it through a typed provider operation, structurally retain the table
 construction and activation instruction, and reject incomplete lifecycle or
 unsupported source before publication.
 
+The active-translation-edit increment shall check exclusive begin/map/commit
+and begin/unmap/commit lifecycles, the sealed provider-selected mapping policy,
+provisional mapping and returned-frame states, refined-context continuation,
+and fatal-only failures. The x86-64 lowering shall reserve non-overlapping E820
+backing, construct a private 4 KiB mapping hierarchy, publish only at commit,
+remove the mapping and retain the exact local invalidation instruction before
+frame reuse, and structurally reject incomplete lifecycle or missing
+publication/invalidation evidence.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

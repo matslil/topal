@@ -388,6 +388,68 @@ This initial operation replaces a bootstrap-equivalent translation only. It
 does not yet create arbitrary ranges, change permissions, construct user
 spaces, support multiple active spaces, or expose general invalidation.
 
+### Active translation edits
+
+Mappings on an active translation space change only through an exclusive
+transaction. The initial map lifecycle is:
+
+```topal
+active translation edit begin
+  Ok edit then {
+    edit kernel map frames (
+      rights is read-write,
+      execution is denied,
+      memory-kind is normal,
+      placement is provider-selected
+    )
+      Ok mapping then {
+        edit translation commit
+          Ok edited then {
+            mapping byte store (offset-bytes is 0, value is 60)
+            edited fatal "complete"
+          }
+          Error failure then {
+            failure fatal "translation edit commit failed"
+          }
+      }
+      Error failure then {
+        failure fatal "translation edit mapping failed"
+      }
+  }
+  Error failure then {
+    failure fatal "translation edit construction failed"
+  }
+```
+
+`translation edit begin` consumes the active context into one affine
+`TranslationEdit`; ordinary operations through the old context are unavailable
+until commit succeeds. Mapping consumes a live physical-frame extent into one
+provisional opaque `KernelMapping`. The mapping grants no access before
+`translation commit` consumes the edit, publishes the target-qualified
+translation changes, completes required ordering and invalidation, and returns
+a refined active context. A failed or indeterminate commit is fatal-only.
+
+Unmapping uses a second exclusive edit. It consumes the live mapping into a
+provisional returned frame extent. That extent cannot be accessed, released,
+or remapped until commit removes the translation, performs the complete
+target-qualified invalidation protocol, and returns the next refined context.
+The mapping becomes unusable when unmap enters the transaction, not after a
+later best-effort cleanup.
+
+The initial placement is exactly `provider-selected`: source observes only the
+mapping capability, bounds, rights, memory kind, and ownership transitions. It
+cannot observe or choose a virtual address, page size, table level, entry,
+address-space identifier, invalidation address, processor mask, register, or
+instruction. The first x86-64 provider admits one 4 KiB normal read-write,
+non-executable mapping in a reserved kernel window and invalidates it before
+returning its frame. AArch64 and RISC-V providers may use different granules,
+levels, address-space identifiers, barriers, and invalidation scopes while
+preserving the same transaction, visibility, and ownership observations.
+
+This slice does not yet admit concurrent edits, multiple live dynamic
+mappings, user mappings, device memory, permission changes, executable
+mappings, remote-processor shootdown, or reclamation of provider metadata.
+
 ## Fault-contained access
 
 User addresses are untrusted ABI values rather than Topal references. A user

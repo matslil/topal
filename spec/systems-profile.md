@@ -293,6 +293,37 @@ owned by an update or space, reuse of the prior translation by ordinary source,
 and disposition with a live inactive update or space SHALL be rejected before
 lowering or fail closed.
 
+An active translation edit SHALL consume one active context into one exclusive
+affine `TranslationEdit`. While the edit is live, the prior context SHALL admit
+no operation or disposition. The initial map request SHALL be exactly normal,
+read-write, non-executable kernel memory with placement `provider-selected`.
+Map SHALL consume one live frame extent into one provisional opaque
+`KernelMapping`; that mapping SHALL admit no access before commit.
+
+`translation commit` SHALL consume the edit, validate the complete candidate
+state, publish the provider-private translation changes, perform the required
+ordering and invalidation completion relations, and return a refined active
+context. Commit failure with indeterminate target visibility SHALL admit only
+fatal termination. On success, the provisional mapping SHALL become live and
+bounded by its consumed extent.
+
+Unmap in an exclusive edit SHALL consume the live mapping into a provisional
+returned extent. That extent SHALL NOT be accessed, released, or remapped until
+commit has removed the translation and completed the required invalidation
+scope. After successful commit, the old mapping SHALL be unusable and the
+returned extent SHALL regain ordinary frame ownership. Abandonment, duplicate
+edit or mapping authority, access before map commit, access after unmap,
+release before unmap commit, nested or concurrent edits, wrong-space commit,
+and disposition with a live edit SHALL be rejected before lowering or fail
+closed.
+
+Source SHALL NOT observe or select a virtual address, granule, table level,
+entry, address-space identifier, invalidation address, processor mask,
+register, or instruction. The initial slice SHALL admit one live dynamic
+mapping and SHALL leave user mappings, device memory, permission changes,
+executable mappings, remote-processor shootdown, and provider-metadata
+reclamation unsupported.
+
 ### TOPAL-SYSTEMS-RECOVERY-001 — Closed fault recovery and user transfer
 
 A recovery scope SHALL name a finite fault class, admitted generated

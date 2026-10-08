@@ -375,6 +375,18 @@ continuation after indeterminate activation shall fail closed. Source shall
 observe no table level, descriptor, physical backing address, activation
 register, or target maintenance instruction.
 
+An active translation change shall consume the active context into one
+exclusive affine edit. Mapping shall consume frame ownership into a provisional
+mapping that grants no access until commit publishes and completes the
+target-qualified update. Unmapping shall consume the live mapping into a
+provisional returned extent that cannot be reused until commit removes the
+translation and completes invalidation. Successful commit shall consume the
+edit and return a refined active context; failed or indeterminate commit shall
+be fatal-only in the initial slice. Source shall not select or observe virtual
+addresses, table structure, descriptor state, invalidation addresses,
+processor masks, registers, or instructions. The initial policy shall admit
+only one provider-selected, normal, read-write, non-executable kernel mapping.
+
 An ordinary kernel-owned region shall provide bounds-checked plain byte access
 without exposing a machine address. Load and store shall borrow a live region,
 release shall consume it, and no access shall silently acquire volatile,
