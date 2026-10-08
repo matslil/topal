@@ -21,13 +21,18 @@ pub use topal_semantics::{
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
     INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    KernelExecutionPolicy as CompilerKernelExecutionPolicy,
+    KernelMappingRequest as CompilerKernelMappingRequest,
+    KernelMappingRights as CompilerKernelMappingRights,
+    KernelMemoryKind as CompilerKernelMemoryKind,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
     SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
     SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
     SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_FRAMES_RELEASE, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -607,6 +612,7 @@ fn analyze_handler(
 
 include!("systems_boot_memory.rs");
 include!("systems_frames.rs");
+include!("systems_mapping.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -1523,6 +1529,10 @@ mod tests {
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+                SYSTEMS_KERNEL_MAP,
+                SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+                SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -1548,6 +1558,21 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_FRAME_ALLOCATED".into(),
+                },
+                CompilerSystemsTransition::MapKernelFrames {
+                    request: CompilerKernelMappingRequest::initial_read_write(),
+                },
+                CompilerSystemsTransition::StoreKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 165,
+                },
+                CompilerSystemsTransition::LoadKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 165,
+                },
+                CompilerSystemsTransition::UnmapKernelFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_MAPPED".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
@@ -1597,7 +1622,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 14);
+        assert_eq!(program.bootstrap.handler.operations.len(), 19);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -1607,6 +1632,10 @@ mod tests {
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_DEBUG_BREAK,
+                SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+                SYSTEMS_KERNEL_MAP,
+                SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+                SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -1629,6 +1658,24 @@ mod tests {
         );
         assert!(transitions.contains(&CompilerSystemsTransition::ReleaseBootstrapRegion));
         assert!(
+            transitions.contains(&CompilerSystemsTransition::MapKernelFrames {
+                request: CompilerKernelMappingRequest::initial_read_write(),
+            })
+        );
+        assert!(
+            transitions.contains(&CompilerSystemsTransition::StoreKernelMappingByte {
+                offset_bytes: 0,
+                value: 165,
+            })
+        );
+        assert!(
+            transitions.contains(&CompilerSystemsTransition::LoadKernelMappingByte {
+                offset_bytes: 0,
+                value: 165,
+            })
+        );
+        assert!(transitions.contains(&CompilerSystemsTransition::UnmapKernelFrames));
+        assert!(
             transitions.contains(&CompilerSystemsTransition::ConsoleWrite {
                 text: "TOPAL_KERNEL_MEMORY_OK".into(),
             })
@@ -1650,9 +1697,10 @@ mod tests {
                 "from 0 through 255",
             ),
             (
-                memory_source().replace(
-                    "memory bootstrap release region\n                      memory fatal \"toolchain gate complete\"",
-                    "memory console write \"not released\"\n                      memory fatal \"toolchain gate complete\"",
+                memory_source().replacen(
+                    "memory bootstrap release region",
+                    "memory console write \"not released\"",
+                    1,
                 ),
                 "E-SYSTEMS-STORAGE",
                 "release requires",
@@ -1724,7 +1772,7 @@ mod tests {
             )
             .unwrap_err()
             .code,
-            "E-SYSTEMS-FRAMES"
+            "E-SYSTEMS-AFFINE-CONTEXT"
         );
 
         let unknown = SOURCE.replace("memory debug break", "memory machine instruction");
@@ -1836,6 +1884,48 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_opaque_affine_kernel_mapping_policy_and_bounds() {
+        // TOPAL-SYSTEMS-MAPPING-001, TOPAL-SYSTEMS-AUTHORITY-001,
+        // TOPAL-SYSTEMS-QUALIFY-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace("rights is read-write", "rights is read-only"),
+                "must be `read-write`",
+            ),
+            (
+                SOURCE.replace("execution is denied", "execution is allowed"),
+                "must be `denied`",
+            ),
+            (
+                SOURCE.replace("memory-kind is normal", "memory-kind is device"),
+                "must be `normal`",
+            ),
+            (
+                SOURCE.replace(
+                    "mapping byte store (offset-bytes is 0",
+                    "mapping byte store (offset-bytes is 4096",
+                ),
+                "outside the one-frame mapping",
+            ),
+            (
+                SOURCE.replace(
+                    "frames is memory kernel unmap mapping",
+                    "frames is memory kernel unmap other",
+                ),
+                "affine mapping",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-MAPPING");
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }
