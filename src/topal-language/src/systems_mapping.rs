@@ -124,26 +124,13 @@ fn analyze_successful_mapping_action(
         ));
     }
     parse_physical_frame_release(source, release, allocator_context, &returned_extent)?;
-    let (ordinary, mut checked) = analyze_mapping_trailing_bootstrap(
-        source,
-        action,
-        rest,
-        allocator_context,
-        storage,
-    )?;
+    let mut checked =
+        analyze_translation_sequence(source, rest, allocator_context, storage)?;
     let mut operations = vec![
         CompilerSystemsOperation::UnmapKernelFrames,
         marker,
         CompilerSystemsOperation::ReleasePhysicalFrames,
     ];
-    for operation in ordinary {
-        operations.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            allocator_context,
-        )?);
-    }
     operations.append(&mut checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,

@@ -9,7 +9,8 @@ use crate::{
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
     SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, TranslationUpdateRequest,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -77,6 +78,16 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     UnmapKernelFrames,
+    BeginTranslationUpdate {
+        request: TranslationUpdateRequest,
+        failure_message: String,
+    },
+    CommitTranslationUpdate {
+        failure_message: String,
+    },
+    ActivateTranslationSpace {
+        failure_message: String,
+    },
     ConsoleWrite {
         text: String,
     },
@@ -108,6 +119,9 @@ impl SystemsOperation {
             Self::KernelMappingStoreByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::KernelMappingLoadByteEquals { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
             Self::UnmapKernelFrames => SYSTEMS_KERNEL_UNMAP,
+            Self::BeginTranslationUpdate { .. } => SYSTEMS_TRANSLATION_BEGIN,
+            Self::CommitTranslationUpdate { .. } => SYSTEMS_TRANSLATION_COMMIT,
+            Self::ActivateTranslationSpace { .. } => SYSTEMS_TRANSLATION_ACTIVATE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -182,6 +196,11 @@ pub enum SystemsTransition {
         value: u8,
     },
     UnmapKernelFrames,
+    BeginTranslationUpdate {
+        request: TranslationUpdateRequest,
+    },
+    CommitTranslationUpdate,
+    ActivateTranslationSpace,
     ConsoleWrite {
         text: String,
     },
@@ -242,6 +261,9 @@ impl SystemsTransition {
             Self::StoreKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::LoadKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
             Self::UnmapKernelFrames => SYSTEMS_KERNEL_UNMAP,
+            Self::BeginTranslationUpdate { .. } => SYSTEMS_TRANSLATION_BEGIN,
+            Self::CommitTranslationUpdate => SYSTEMS_TRANSLATION_COMMIT,
+            Self::ActivateTranslationSpace => SYSTEMS_TRANSLATION_ACTIVATE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
@@ -319,6 +341,9 @@ fn validate_entry(
                     | SystemsOperation::KernelMappingStoreByte { .. }
                     | SystemsOperation::KernelMappingLoadByteEquals { .. }
                     | SystemsOperation::UnmapKernelFrames
+                    | SystemsOperation::BeginTranslationUpdate { .. }
+                    | SystemsOperation::CommitTranslationUpdate { .. }
+                    | SystemsOperation::ActivateTranslationSpace { .. }
                     | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
@@ -369,6 +394,7 @@ struct BootstrapAuthorityState {
     memory_described: bool,
     allocator_created: bool,
     memory_ownership: BootstrapMemoryOwnership,
+    translation: BootstrapTranslationState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -377,6 +403,15 @@ enum BootstrapMemoryOwnership {
     None,
     Frames,
     Mapping,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapTranslationState {
+    #[default]
+    BootstrapActive,
+    Update,
+    InactiveSpace,
+    ReplacementActive,
 }
 
 impl BootstrapAuthorityState {
@@ -458,6 +493,11 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
+            operation @ (SystemsOperation::BeginTranslationUpdate { .. }
+            | SystemsOperation::CommitTranslationUpdate { .. }
+            | SystemsOperation::ActivateTranslationSpace { .. }) => {
+                self.observe_translation(operation)?;
+            }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES",
@@ -467,6 +507,47 @@ impl BootstrapAuthorityState {
             _ => return Ok(false),
         }
         Ok(true)
+    }
+
+    fn observe_translation(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<(), SystemsModelError> {
+        match operation {
+            SystemsOperation::BeginTranslationUpdate { request, .. } => {
+                if !self.allocator_created
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.translation != BootstrapTranslationState::BootstrapActive
+                    || *request != TranslationUpdateRequest::initial_bootstrap_equivalent()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION",
+                        "translation begin requires the live allocator, no borrowed extent, the bootstrap translation, and the sealed request",
+                    ));
+                }
+                self.translation = BootstrapTranslationState::Update;
+            }
+            SystemsOperation::CommitTranslationUpdate { .. } => {
+                if self.translation != BootstrapTranslationState::Update {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION",
+                        "translation commit requires one live exclusive update",
+                    ));
+                }
+                self.translation = BootstrapTranslationState::InactiveSpace;
+            }
+            SystemsOperation::ActivateTranslationSpace { .. } => {
+                if self.translation != BootstrapTranslationState::InactiveSpace {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION",
+                        "translation activation requires one committed inactive space",
+                    ));
+                }
+                self.translation = BootstrapTranslationState::ReplacementActive;
+            }
+            _ => unreachable!("caller selects translation operations"),
+        }
+        Ok(())
     }
 
     fn complete(self) -> Result<(), SystemsModelError> {
@@ -496,6 +577,15 @@ impl BootstrapAuthorityState {
                     "bootstrap handler consumes its context while a kernel mapping remains live",
                 ));
             }
+        }
+        if matches!(
+            self.translation,
+            BootstrapTranslationState::Update | BootstrapTranslationState::InactiveSpace
+        ) {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-TRANSLATION-LIVE",
+                "bootstrap handler consumes its context while a translation update or inactive space remains live",
+            ));
         }
         Ok(())
     }
@@ -574,6 +664,11 @@ fn validate_bootstrap_storage_operations(
             | SystemsOperation::UnmapKernelFrames => {
                 unreachable!("mapping authority operations continue above")
             }
+            SystemsOperation::BeginTranslationUpdate { .. }
+            | SystemsOperation::CommitTranslationUpdate { .. }
+            | SystemsOperation::ActivateTranslationSpace { .. } => {
+                unreachable!("translation authority operations continue above")
+            }
             SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
@@ -644,6 +739,15 @@ pub fn model_systems_transitions(
             SystemsOperation::UnmapKernelFrames => {
                 transitions.push(SystemsTransition::UnmapKernelFrames);
             }
+            SystemsOperation::BeginTranslationUpdate { request, .. } => {
+                transitions.push(SystemsTransition::BeginTranslationUpdate { request: *request });
+            }
+            SystemsOperation::CommitTranslationUpdate { .. } => {
+                transitions.push(SystemsTransition::CommitTranslationUpdate);
+            }
+            SystemsOperation::ActivateTranslationSpace { .. } => {
+                transitions.push(SystemsTransition::ActivateTranslationSpace);
+            }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
             }
@@ -712,6 +816,11 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::KernelMappingLoadByteEquals { .. }
         | SystemsOperation::UnmapKernelFrames => {
             unreachable!("physical-frame and mapping operations are modeled by the caller")
+        }
+        SystemsOperation::BeginTranslationUpdate { .. }
+        | SystemsOperation::CommitTranslationUpdate { .. }
+        | SystemsOperation::ActivateTranslationSpace { .. } => {
+            unreachable!("translation operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {

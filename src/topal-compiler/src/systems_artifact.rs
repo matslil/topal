@@ -14,12 +14,13 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerKernelMappingRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTransition, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
-    model_systems_transitions,
+    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationUpdateRequest,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -28,11 +29,13 @@ use crate::{
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
     X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
-    X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+    generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/4";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/4";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/5";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/5";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -41,11 +44,14 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 7] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 10] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -547,6 +553,9 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -586,6 +595,18 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (SYSTEMS_KERNEL_MAPPING_STORE_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
         (SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
         (SYSTEMS_KERNEL_UNMAP, X86_SYSTEMS_KERNEL_ENTRY),
+        (
+            SYSTEMS_TRANSLATION_BEGIN,
+            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_COMMIT,
+            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_ACTIVATE,
+            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+        ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -640,6 +661,9 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
 enum ProviderSymbol {
     DescribeBootMemory,
     AllocatePhysicalFrames,
+    BeginTranslation,
+    CommitTranslation,
+    ActivateTranslation,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -652,6 +676,9 @@ impl ProviderSymbol {
         match self {
             Self::DescribeBootMemory => X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
             Self::AllocatePhysicalFrames => X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+            Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+            Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+            Self::ActivateTranslation => X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -665,6 +692,9 @@ impl ProviderSymbol {
             Self::BootstrapStorage => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
+            | Self::BeginTranslation
+            | Self::CommitTranslation
+            | Self::ActivateTranslation
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -725,13 +755,26 @@ struct RootEncoder {
     frame_allocator_created: bool,
     physical_frames_live: bool,
     kernel_mapping_live: bool,
+    translation: RootTranslationState,
     bootstrap_region_offset: Option<u64>,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootTranslationState {
+    #[default]
+    BootstrapActive,
+    Update,
+    InactiveSpace,
+    ReplacementActive,
 }
 
 #[derive(Clone, Copy)]
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
     allocate_physical_frames: SymbolId,
+    begin_translation: SymbolId,
+    commit_translation: SymbolId,
+    activate_translation: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -851,6 +894,54 @@ impl RootEncoder {
         }
         self.physical_frames_live = false;
         self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
+        Ok(())
+    }
+
+    fn begin_translation(
+        &mut self,
+        request: CompilerTranslationUpdateRequest,
+    ) -> Result<(), CompileError> {
+        if !self.frame_allocator_created
+            || self.physical_frames_live
+            || self.kernel_mapping_live
+            || self.translation != RootTranslationState::BootstrapActive
+            || request != CompilerTranslationUpdateRequest::initial_bootstrap_equivalent()
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires the live allocator, no borrowed frames, and the sealed translation request".into(),
+            ));
+        }
+        self.call(ProviderSymbol::BeginTranslation);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain root in r12
+        self.translation = RootTranslationState::Update;
+        Ok(())
+    }
+
+    fn commit_translation(&mut self) -> Result<(), CompileError> {
+        if self.translation != RootTranslationState::Update {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered translation commit without an update".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // rdi = r12
+        self.call_checked_bool(ProviderSymbol::CommitTranslation)?;
+        self.translation = RootTranslationState::InactiveSpace;
+        Ok(())
+    }
+
+    fn activate_translation(&mut self) -> Result<(), CompileError> {
+        if self.translation != RootTranslationState::InactiveSpace {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered translation activation without an inactive space"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // rdi = r12
+        self.call_checked_bool(ProviderSymbol::ActivateTranslation)?;
+        self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // consume inactive-space token
+        self.translation = RootTranslationState::ReplacementActive;
         Ok(())
     }
 
@@ -1062,6 +1153,15 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::AllocatePhysicalFrames,
         ),
+        begin_translation: undefined_provider_symbol(&mut object, ProviderSymbol::BeginTranslation),
+        commit_translation: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CommitTranslation,
+        ),
+        activate_translation: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ActivateTranslation,
+        ),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -1138,6 +1238,15 @@ fn encode_operations(
                 ..
             } => encoder.load_kernel_mapping_byte_equals(*offset_bytes, *expected)?,
             CompilerSystemsOperation::UnmapKernelFrames => encoder.unmap_kernel_frames()?,
+            CompilerSystemsOperation::BeginTranslationUpdate { request, .. } => {
+                encoder.begin_translation(*request)?;
+            }
+            CompilerSystemsOperation::CommitTranslationUpdate { .. } => {
+                encoder.commit_translation()?;
+            }
+            CompilerSystemsOperation::ActivateTranslationSpace { .. } => {
+                encoder.activate_translation()?;
+            }
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
             CompilerSystemsOperation::BootstrapAllocate { .. } => {
@@ -1168,6 +1277,14 @@ fn encode_operations(
     if encoder.kernel_mapping_live {
         return Err(CompileError::Tool(
             "x86 root lowering ended with a live kernel mapping".into(),
+        ));
+    }
+    if matches!(
+        encoder.translation,
+        RootTranslationState::Update | RootTranslationState::InactiveSpace
+    ) {
+        return Err(CompileError::Tool(
+            "x86 root lowering ended with an incomplete translation lifecycle".into(),
         ));
     }
     Ok(())
@@ -1208,6 +1325,9 @@ fn append_root(
         let symbol = match relocation.target {
             ProviderSymbol::DescribeBootMemory => provider_symbols.describe_boot_memory,
             ProviderSymbol::AllocatePhysicalFrames => provider_symbols.allocate_physical_frames,
+            ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
+            ProviderSymbol::CommitTranslation => provider_symbols.commit_translation,
+            ProviderSymbol::ActivateTranslation => provider_symbols.activate_translation,
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -1271,6 +1391,11 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }
+                CompilerSystemsTransition::BeginTranslationUpdate { .. } => {
+                    format!(
+                        "{identity}:template=bootstrap-equivalent:page-policy=provider-selected"
+                    )
+                }
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -1292,6 +1417,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::CreateFrameAllocator
                 | CompilerSystemsTransition::ReleasePhysicalFrames
                 | CompilerSystemsTransition::UnmapKernelFrames
+                | CompilerSystemsTransition::CommitTranslationUpdate
+                | CompilerSystemsTransition::ActivateTranslationSpace
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
@@ -1376,18 +1503,7 @@ mod tests {
             .filter(object::ObjectSymbol::is_undefined)
             .map(|symbol| symbol.name().unwrap().to_owned())
             .collect::<Vec<_>>();
-        assert_eq!(
-            undefined,
-            [
-                "topal_x86_systems_describe_boot_memory",
-                "topal_x86_systems_allocate_physical_frames",
-                "topal_x86_systems_uart16550_write",
-                "topal_x86_systems_debug_break",
-                "topal_x86_systems_interrupt_return",
-                "topal_x86_systems_fatal",
-                "topal_bootstrap_storage",
-            ]
-        );
+        assert_root_dependencies(&undefined);
         let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
         let relocation_targets = text
             .relocations()
@@ -1398,7 +1514,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 158);
+        assert_eq!(relocation_targets.len(), 195);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1413,12 +1529,13 @@ mod tests {
                 .count(),
             1
         );
+        assert_translation_relocations(&relocation_targets);
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            147
+            178
         );
         assert_eq!(
             relocation_targets
@@ -1432,7 +1549,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            5
+            8
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -1471,6 +1588,40 @@ mod tests {
         assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
     }
 
+    fn assert_translation_relocations(relocation_targets: &[&str]) {
+        for target in [
+            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
+    }
+
+    fn assert_root_dependencies(undefined: &[String]) {
+        assert_eq!(
+            undefined,
+            [
+                "topal_x86_systems_describe_boot_memory",
+                "topal_x86_systems_allocate_physical_frames",
+                "topal_x86_systems_begin_bootstrap_translation",
+                "topal_x86_systems_commit_bootstrap_translation",
+                "topal_x86_systems_activate_bootstrap_translation",
+                "topal_x86_systems_uart16550_write",
+                "topal_x86_systems_debug_break",
+                "topal_x86_systems_interrupt_return",
+                "topal_x86_systems_fatal",
+                "topal_bootstrap_storage",
+            ]
+        );
+    }
+
     #[test]
     fn publishes_one_closed_freestanding_artifact_directory() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
@@ -1498,10 +1649,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 15);
+        assert_eq!(decoded.placements.len(), 18);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 24);
+        assert_eq!(decoded.semantic_trace.len(), 28);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -1514,24 +1665,28 @@ mod tests {
         assert_eq!(decoded.semantic_trace[9], SYSTEMS_KERNEL_UNMAP);
         assert!(decoded.semantic_trace[10].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[11], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[13].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[14], SYSTEMS_DEBUG_BREAK);
+        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_TRANSLATION_BEGIN));
+        assert_eq!(decoded.semantic_trace[13], SYSTEMS_TRANSLATION_COMMIT);
+        assert_eq!(decoded.semantic_trace[14], SYSTEMS_TRANSLATION_ACTIVATE);
+        assert!(decoded.semantic_trace[15].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[18], SYSTEMS_DEBUG_BREAK);
         assert_eq!(
-            decoded.semantic_trace[15],
+            decoded.semantic_trace[19],
             "topal.systems.entry.synchronous.debug-break/1"
         );
-        assert_eq!(decoded.semantic_trace[16], SYSTEMS_RESUME_DEBUG_BREAK);
-        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[19].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
-        assert!(decoded.semantic_trace[20].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert_eq!(decoded.semantic_trace[20], SYSTEMS_RESUME_DEBUG_BREAK);
         assert!(decoded.semantic_trace[21].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[22].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[23].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
+        assert!(decoded.semantic_trace[24].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert!(decoded.semantic_trace[25].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[22],
+            decoded.semantic_trace[26],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[23].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

@@ -88,6 +88,16 @@ same extent before release, and reject wrong context, unsupported policy,
 frame release while mapped, mapping escape, use after unmap, or disposition
 with a live mapping before lowering.
 
+The translation-space increment shall check the exact
+`bootstrap-equivalent`/`provider-selected` request, exhaustive begin, commit,
+and activation results, affine update and inactive-space identities, fatal-only
+failures, and exclusive continuation through the refined success context. The
+x86-64 lowering shall privately reserve complete E820 backing frames below the
+qualified identity-map limit, construct and validate a replacement root,
+activate it through a typed provider operation, structurally retain the table
+construction and activation instruction, and reject incomplete lifecycle or
+unsupported source before publication.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

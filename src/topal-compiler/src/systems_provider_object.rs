@@ -13,12 +13,18 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/4";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/5";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
+pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
+    "topal_x86_systems_begin_bootstrap_translation";
+pub const X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL: &str =
+    "topal_x86_systems_commit_bootstrap_translation";
+pub const X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL: &str =
+    "topal_x86_systems_activate_bootstrap_translation";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,6 +121,7 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         &physical_frame_selector()?,
     );
+    append_translation_functions(&mut object, text)?;
     append_function(
         &mut object,
         text,
@@ -171,6 +178,29 @@ pub fn generate_x86_64_systems_provider_object(
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
     Ok(GeneratedSystemsProviderObject { plan, bytes })
+}
+
+fn append_translation_functions(
+    object: &mut Object<'_>,
+    text: object::write::SectionId,
+) -> Result<(), CompileError> {
+    for (name, encoded) in [
+        (
+            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+            translation_backing_selector()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+            translation_space_builder()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+            translation_space_activator()?,
+        ),
+    ] {
+        append_encoded_function(object, text, name, &encoded);
+    }
+    Ok(())
 }
 
 fn append_function(
@@ -321,6 +351,101 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xff, 0xc9]);
     code.jump_if(0x85, "loop");
 
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_backing_selector() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xf6]); // test boot_params, boot_params
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0xf0, 0xff, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]);
+    code.bytes(&[0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x81, 0xf9, 0x80, 0x00, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x8d, 0x96, 0xd0, 0x02, 0x00, 0x00]);
+
+    code.bind("loop")?;
+    code.bytes(&[0x48, 0x8b, 0x02]); // candidate = base
+    code.bytes(&[0x4c, 0x8b, 0x4a, 0x08]); // length
+    code.bytes(&[0x44, 0x8b, 0x52, 0x10]); // type
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "zero-length");
+    code.bytes(&[0x49, 0x89, 0xc3]); // end = base
+    code.bytes(&[0x4d, 0x01, 0xcb]); // end += length
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
+    code.jump_if(0x85, "next");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x83, "base-ready");
+    code.bytes(&[0xb8, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("base-ready")?;
+    code.bytes(&[0x48, 0x05, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x81, 0xe3, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x89, 0xc2]); // end of 3 pages = candidate
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x30, 0x00, 0x00]);
+    code.jump_if(0x82, "next");
+    code.bytes(&[0x4d, 0x39, 0xda]); // candidate + 3 pages <= RAM end
+    code.jump_if(0x87, "next");
+    code.bytes(&[0x48, 0x3d, 0x00, 0xd0, 0xff, 0x3f]); // all backing below 1 GiB
+    code.jump_if(0x87, "next");
+    code.bytes(&[0xc3]);
+
+    code.bind("zero-length")?;
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
+    code.jump_if(0x84, "fail");
+    code.bind("next")?;
+    code.bytes(&[0x48, 0x83, 0xc2, 0x14]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "loop");
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x49, 0x89, 0xf8]); // r8 = root
+    code.bytes(&[0x31, 0xc0]); // zero value
+    code.bytes(&[0xb9, 0x00, 0x06, 0x00, 0x00]); // 1536 qwords
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // cld; rep stosq
+    code.bytes(&[0x4d, 0x8d, 0x88, 0x00, 0x10, 0x00, 0x00]); // pdpt
+    code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x83, 0xc8, 0x03]);
+    code.bytes(&[0x49, 0x89, 0x00]); // pml4[0]
+    code.bytes(&[0x4d, 0x8d, 0x88, 0x00, 0x20, 0x00, 0x00]); // pd
+    code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x83, 0xc8, 0x03]);
+    code.bytes(&[0x49, 0x89, 0x80, 0x00, 0x10, 0x00, 0x00]); // pdpt[0]
+    code.bytes(&[0x49, 0x8d, 0xb8, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc9]);
+    code.bind("leaves")?;
+    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0xc1, 0xe0, 0x15]);
+    code.bytes(&[0x48, 0x0d, 0x83, 0x00, 0x00, 0x00]); // present/write/2MiB
+    code.bytes(&[0x48, 0x89, 0x04, 0xcf]);
+    code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
+    code.jump_if(0x85, "leaves");
+    code.bytes(&[0x0f, 0xae, 0xf0]); // mfence publishes the inactive hierarchy
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.finish()
+}
+
+fn translation_space_activator() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0xd0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x0f, 0x22, 0xdf]); // mov cr3, rdi
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -558,5 +683,55 @@ mod tests {
             "selector must constrain the returned page to bootstrap identity mappings"
         );
         assert_eq!(&selector[selector.len() - 3..], &[0x31, 0xc0, 0xc3]);
+
+        let translation_selector = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL)
+            .unwrap();
+        let translation_selector_start = usize::try_from(translation_selector.address()).unwrap();
+        let translation_selector_end =
+            translation_selector_start + usize::try_from(translation_selector.size()).unwrap();
+        let translation_selector = &data[translation_selector_start..translation_selector_end];
+        assert!(
+            translation_selector
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x81, 0xc2, 0x00, 0x30, 0x00, 0x00]),
+            "translation backing selection must reserve three complete pages"
+        );
+        assert!(
+            translation_selector
+                .windows(6)
+                .any(|bytes| { bytes == [0x48, 0x3d, 0x00, 0xd0, 0xff, 0x3f] })
+        );
+
+        let builder = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL)
+            .unwrap();
+        let builder_start = usize::try_from(builder.address()).unwrap();
+        let builder_end = builder_start + usize::try_from(builder.size()).unwrap();
+        let builder = &data[builder_start..builder_end];
+        assert!(
+            builder
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xab])
+        );
+        assert!(
+            builder
+                .windows(6)
+                .any(|bytes| bytes == [0x81, 0xf9, 0x00, 0x02, 0x00, 0x00])
+        );
+        assert!(builder.windows(3).any(|bytes| bytes == [0x0f, 0xae, 0xf0]));
+
+        let activator = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL)
+            .unwrap();
+        let activator_start = usize::try_from(activator.address()).unwrap();
+        let activator_end = activator_start + usize::try_from(activator.size()).unwrap();
+        let activator = &data[activator_start..activator_end];
+        assert!(
+            activator
+                .windows(3)
+                .any(|bytes| bytes == [0x0f, 0x22, 0xdf]),
+            "translation activation must retain the qualified CR3 transition"
+        );
     }
 }

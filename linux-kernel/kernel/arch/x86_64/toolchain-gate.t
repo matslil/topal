@@ -27,31 +27,53 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                       frames is memory kernel unmap mapping
                       memory console write "TOPAL_KERNEL_FRAME_MAPPED"
                       memory frames release frames
-                      memory console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
-                      memory console write "TOPAL_KERNEL_BOOT"
-                      memory debug break
-                      memory console write "TOPAL_KERNEL_FAULT_RESUMED"
-                      memory bootstrap allocate (
-                        byte-count is 64,
-                        alignment-bytes is 8,
-                        placement is bootstrap-reclaimable
+                      memory translation begin (
+                        template is bootstrap-equivalent,
+                        page-policy is provider-selected
                       )
-                        Ok region then {
-                          region byte store (offset-bytes is 0, value is 90)
-                          observed : Nat is region byte load (offset-bytes is 0)
-                          observed = 90
-                            true then {
-                              memory console write "TOPAL_KERNEL_MEMORY_OK"
-                              memory bootstrap release region
-                              memory fatal "toolchain gate complete"
+                        Ok update then {
+                          memory translation commit update
+                            Ok space then {
+                              memory translation activate space
+                                Ok translated then {
+                                  translated console write "TOPAL_KERNEL_TRANSLATION_ACTIVE"
+                                  translated console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
+                                  translated console write "TOPAL_KERNEL_BOOT"
+                                  translated debug break
+                                  translated console write "TOPAL_KERNEL_FAULT_RESUMED"
+                                  translated bootstrap allocate (
+                                    byte-count is 64,
+                                    alignment-bytes is 8,
+                                    placement is bootstrap-reclaimable
+                                  )
+                                    Ok region then {
+                                      region byte store (offset-bytes is 0, value is 90)
+                                      observed : Nat is region byte load (offset-bytes is 0)
+                                      observed = 90
+                                        true then {
+                                          translated console write "TOPAL_KERNEL_MEMORY_OK"
+                                          translated bootstrap release region
+                                          translated fatal "toolchain gate complete"
+                                        }
+                                        false then {
+                                          translated bootstrap release region
+                                          translated fatal "toolchain gate memory mismatch"
+                                        }
+                                    }
+                                    Error problem then {
+                                      translated fatal "toolchain gate allocation failed"
+                                    }
+                                }
+                                Error failure then {
+                                  failure fatal "translation activation failed"
+                                }
                             }
-                            false then {
-                              memory bootstrap release region
-                              memory fatal "toolchain gate memory mismatch"
+                            Error failure then {
+                              failure fatal "translation commit failed"
                             }
                         }
-                        Error problem then {
-                          memory fatal "toolchain gate allocation failed"
+                        Error failure then {
+                          failure fatal "translation construction failed"
                         }
                     }
                     false then {

@@ -2,11 +2,12 @@
 
 ## Outcome
 
-This is the seventh implementation increment of Step 4. The checked Topal
+This report tracks the current executable Step 4 gate. The checked Topal
 kernel source now builds through the ordinary `topalc` target publisher, boots
 as the replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU
 profile, validates the Linux E820 handoff and reserved bootstrap floor, selects
-and accesses an E820 frame through an opaque kernel mapping, writes through the
+and accesses an E820 frame through an opaque kernel mapping, constructs and
+activates a replacement bootstrap-equivalent translation, writes through the
 polling 16550 provider, enters and resumes from the generated vector-3 handler,
 stores and reloads sentinels in kernel-owned memory, and reaches the
 nonreturning fatal provider.
@@ -14,15 +15,17 @@ nonreturning fatal provider.
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
 ```
 
-After all six ordered markers, QEMU remained running and the serial stream
+After all seven ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
-of the bounded E820 validator and selector, fail-to-fatal branches, reserved
-image floor, fatal provider's interrupt-disable/halt loop, and the root's
+of the bounded E820 validators and selectors, replacement page-table
+zeroing/population, CR3 activation, fail-to-fatal branches, reserved image
+floor, fatal provider's interrupt-disable/halt loop, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
+activated a replacement translation,
 accessed both an owned frame and its generated `.bss` pool, and completed its
 expected path without returning to a host runtime.
 
@@ -60,9 +63,10 @@ same linked-artifact, boot-image, provenance, and serial-observation digests.
 This completes the repository's toolchain phase gate for the initial admitted
 systems slice: bootstrap entry, polling console write, synchronous debug-break
 observation, context-preserving resume, checked bootstrap storage, one affine
-physical-frame mapping, and fatal disposition. Both byte loads are retained
+physical-frame mapping, one replacement translation space, and fatal
+disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
-gate does not claim general memory management, general interrupts, ACPI/PCI
+gate does not claim general address-space management, general interrupts, ACPI/PCI
 discovery, SMP, time, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
