@@ -87,6 +87,15 @@ out-of-bounds access, writable execution, frame release while mapped, use after
 unmap, or completion with a live mapping. Model virtual identities shall not
 grant numeric address or page-table authority.
 
+The translation-space increment shall model the affine lifecycle from an
+exclusive bootstrap-equivalent `TranslationUpdate`, through consuming commit
+to an inactive `TranslationSpace`, through activation into a refined bootstrap
+context. It shall retain provider and backing provenance, preserved coverage
+and permission observations, and reject duplication, use after commit,
+activation before commit, wrong-provider activation, backing reuse, and
+completion with a live inactive update or space. Target table formats and
+activation state shall remain outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

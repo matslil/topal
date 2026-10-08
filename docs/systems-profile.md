@@ -324,6 +324,70 @@ Page-table construction uses an exclusive builder. Activation, protection
 change, unmapping, and reuse require the mapping and target-qualified
 translation/invalidation evidence appropriate to every affected processor.
 
+### Translation-space construction and activation
+
+The initial construction vocabulary exposes the builder lifecycle without
+exposing a page-table format:
+
+```topal
+memory translation begin (
+  template is bootstrap-equivalent,
+  page-policy is provider-selected
+)
+  Ok update then {
+    memory translation commit update
+      Ok space then {
+        memory translation activate space
+          Ok translated then {
+            translated console write "TOPAL_KERNEL_TRANSLATION_ACTIVE"
+            translated fatal "complete"
+          }
+          Error failure then {
+            failure fatal "translation activation failed"
+          }
+      }
+      Error failure then {
+        failure fatal "translation commit failed"
+      }
+  }
+  Error failure then {
+    failure fatal "translation construction failed"
+  }
+```
+
+`translation begin` borrows the live frame allocator, reserves the
+provider-selected backing required by the qualified target, and returns one
+affine exclusive `TranslationUpdate`. The update owns that backing and a
+snapshot of the requested semantic mapping template. It exposes neither table
+entries nor backing addresses. The initial template is exactly
+`bootstrap-equivalent`: it preserves the current bootstrap coverage and access
+observations. It does not add a user mapping, widen a permission, or imply that
+physical and virtual identities are interchangeable.
+
+`translation commit` consumes the update after provider validation and returns
+one inactive affine `TranslationSpace`. Commit failure consumes the incomplete
+builder into a fatal-only failure context in the initial slice. `translation
+activate` consumes the inactive space and the current translation authority,
+performs the target-qualified publication, synchronization, activation, and
+completion protocol, and returns a refined bootstrap context owning the new
+active space. The previous bootstrap translation remains provider-owned and
+unavailable to ordinary source.
+
+Builder duplication or escape, activation before commit, use after commit,
+activation of the wrong provider space, backing-frame release while owned by
+an update or space, and a recoverable continuation after an indeterminate
+activation all fail closed. The first x86-64 provider constructs a replacement
+four-level root using provider-owned frames and 2 MiB identity leaves for the
+already qualified first-GiB bootstrap coverage, then activates it with the
+required control-state transition. AArch64 and RISC-V providers may select
+different granules, levels, descriptor formats, and maintenance sequences
+while preserving the same builder, commit, activation, coverage, permission,
+and ownership observations.
+
+This initial operation replaces a bootstrap-equivalent translation only. It
+does not yet create arbitrary ranges, change permissions, construct user
+spaces, support multiple active spaces, or expose general invalidation.
+
 ## Fault-contained access
 
 User addresses are untrusted ABI values rather than Topal references. A user
