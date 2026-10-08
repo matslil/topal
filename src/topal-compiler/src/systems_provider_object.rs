@@ -13,7 +13,7 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/3";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/4";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -113,7 +113,7 @@ pub fn generate_x86_64_systems_provider_object(
         &mut object,
         text,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-        &boot_memory_validator()?,
+        &physical_frame_selector()?,
     );
     append_function(
         &mut object,
@@ -269,6 +269,60 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
 
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]); // failure
+    code.finish()
+}
+
+fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xf6]); // test rsi, rsi
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0xf0, 0xff, 0x00]); // cmp rsi, 0x00fff000
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]); // setup_data == 0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]); // e820_entries
+    code.bytes(&[0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x81, 0xf9, 0x80, 0x00, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x8d, 0x96, 0xd0, 0x02, 0x00, 0x00]); // first E820 entry
+
+    code.bind("loop")?;
+    code.bytes(&[0x48, 0x8b, 0x02]); // candidate = base
+    code.bytes(&[0x4c, 0x8b, 0x4a, 0x08]); // length
+    code.bytes(&[0x44, 0x8b, 0x52, 0x10]); // type
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "zero-length");
+    code.bytes(&[0x49, 0x89, 0xc3]); // end = base
+    code.bytes(&[0x4d, 0x01, 0xcb]); // end += length
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]); // E820 RAM
+    code.jump_if(0x85, "next");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x01]); // base >= 16 MiB
+    code.jump_if(0x83, "base-ready");
+    code.bytes(&[0xb8, 0x00, 0x00, 0x00, 0x01]); // candidate = 16 MiB
+    code.bind("base-ready")?;
+    code.bytes(&[0x48, 0x05, 0xff, 0x0f, 0x00, 0x00]); // align candidate up
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x81, 0xe3, 0x00, 0xf0, 0xff, 0xff]); // align end down
+    code.bytes(&[0x4c, 0x39, 0xd8]); // candidate < end
+    code.jump_if(0x83, "next");
+    code.bytes(&[0x48, 0x3d, 0x00, 0xf0, 0xff, 0x3f]); // identity-mapped page <= 1 GiB
+    code.jump_if(0x87, "next");
+    code.bytes(&[0xc3]); // return physical base in rax
+
+    code.bind("zero-length")?;
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
+    code.jump_if(0x84, "fail");
+
+    code.bind("next")?;
+    code.bytes(&[0x48, 0x83, 0xc2, 0x14]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "loop");
+
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
 }
 
@@ -492,9 +546,17 @@ mod tests {
         let selector = file
             .symbol_by_name(X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
             .unwrap();
-        assert_eq!(selector.size(), validator.size());
+        assert!(selector.size() > 100);
         let selector_start = usize::try_from(selector.address()).unwrap();
         let selector_end = selector_start + usize::try_from(selector.size()).unwrap();
-        assert_eq!(&data[selector_start..selector_end], &data[start..end]);
+        let selector = &data[selector_start..selector_end];
+        assert_ne!(selector, &data[start..end]);
+        assert!(
+            selector
+                .windows(6)
+                .any(|bytes| bytes == [0x48, 0x3d, 0x00, 0xf0, 0xff, 0x3f]),
+            "selector must constrain the returned page to bootstrap identity mappings"
+        );
+        assert_eq!(&selector[selector.len() - 3..], &[0x31, 0xc0, 0xc3]);
     }
 }

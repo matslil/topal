@@ -13,11 +13,13 @@ use object::{
 };
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
-    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
-    CompilerSystemsTransition, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_RESUME_DEBUG_BREAK, model_systems_transitions,
+    CompilerKernelMappingRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
+    CompilerSystemsProgram, CompilerSystemsTransition, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
+    model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -29,8 +31,8 @@ use crate::{
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/3";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/3";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/4";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/4";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -580,6 +582,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         ),
         (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
         (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
+        (SYSTEMS_KERNEL_MAP, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
+        (SYSTEMS_KERNEL_MAPPING_STORE_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
+        (SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, X86_SYSTEMS_KERNEL_ENTRY),
+        (SYSTEMS_KERNEL_UNMAP, X86_SYSTEMS_KERNEL_ENTRY),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -718,6 +724,7 @@ struct RootEncoder {
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
     physical_frames_live: bool,
+    kernel_mapping_live: bool,
     bootstrap_region_offset: Option<u64>,
 }
 
@@ -754,6 +761,7 @@ impl RootEncoder {
     ) -> Result<(), CompileError> {
         if !self.frame_allocator_created
             || self.physical_frames_live
+            || self.kernel_mapping_live
             || frame_count != 1
             || alignment_frames != 1
         {
@@ -762,7 +770,75 @@ impl RootEncoder {
                     .into(),
             ));
         }
-        self.call_checked_bool(ProviderSymbol::AllocatePhysicalFrames)?;
+        self.call(ProviderSymbol::AllocatePhysicalFrames);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
+        self.physical_frames_live = true;
+        Ok(())
+    }
+
+    fn map_kernel_frames(
+        &mut self,
+        request: &CompilerKernelMappingRequest,
+    ) -> Result<(), CompileError> {
+        if !self.physical_frames_live
+            || self.kernel_mapping_live
+            || *request != CompilerKernelMappingRequest::initial_read_write()
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires one live frame extent and the sealed mapping policy"
+                    .into(),
+            ));
+        }
+        self.physical_frames_live = false;
+        self.kernel_mapping_live = true;
+        Ok(())
+    }
+
+    fn store_kernel_mapping_byte(
+        &mut self,
+        offset_bytes: u64,
+        value: u8,
+    ) -> Result<(), CompileError> {
+        if !self.kernel_mapping_live || offset_bytes >= 4096 {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires an in-bounds live kernel mapping store".into(),
+            ));
+        }
+        let offset = u32::try_from(offset_bytes)
+            .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
+        self.bytes.extend_from_slice(&[0xc6, 0x83]); // mov byte ptr [rbx+disp32], imm8
+        self.bytes.extend_from_slice(&offset.to_le_bytes());
+        self.bytes.push(value);
+        Ok(())
+    }
+
+    fn load_kernel_mapping_byte_equals(
+        &mut self,
+        offset_bytes: u64,
+        expected: u8,
+    ) -> Result<(), CompileError> {
+        if !self.kernel_mapping_live || offset_bytes >= 4096 {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires an in-bounds live kernel mapping load".into(),
+            ));
+        }
+        let offset = u32::try_from(offset_bytes)
+            .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
+        self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x83]); // movzx eax, [rbx+disp32]
+        self.bytes.extend_from_slice(&offset.to_le_bytes());
+        self.bytes.extend_from_slice(&[0x3c, expected]); // cmp al, imm8
+        self.jump_to_fatal_if(0x85)
+    }
+
+    fn unmap_kernel_frames(&mut self) -> Result<(), CompileError> {
+        if !self.kernel_mapping_live || self.physical_frames_live {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered unmap without a live kernel mapping".into(),
+            ));
+        }
+        self.kernel_mapping_live = false;
         self.physical_frames_live = true;
         Ok(())
     }
@@ -774,12 +850,18 @@ impl RootEncoder {
             ));
         }
         self.physical_frames_live = false;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
         Ok(())
     }
 
     fn call_checked_bool(&mut self, target: ProviderSymbol) -> Result<(), CompileError> {
         self.call(target);
-        self.bytes.extend_from_slice(&[0x84, 0xc0, 0x0f, 0x84]);
+        self.bytes.extend_from_slice(&[0x84, 0xc0]);
+        self.jump_to_fatal_if(0x84)
+    }
+
+    fn jump_to_fatal_if(&mut self, condition: u8) -> Result<(), CompileError> {
+        self.bytes.extend_from_slice(&[0x0f, condition]);
         self.relocations.push(PendingRelocation {
             offset: u64::try_from(self.bytes.len()).map_err(|_| {
                 CompileError::Tool("generated root relocation offset exceeds u64".into())
@@ -1043,6 +1125,19 @@ fn encode_operations(
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;
             }
+            CompilerSystemsOperation::MapKernelFrames { request, .. } => {
+                encoder.map_kernel_frames(request)?;
+            }
+            CompilerSystemsOperation::KernelMappingStoreByte {
+                offset_bytes,
+                value,
+            } => encoder.store_kernel_mapping_byte(*offset_bytes, *value)?,
+            CompilerSystemsOperation::KernelMappingLoadByteEquals {
+                offset_bytes,
+                expected,
+                ..
+            } => encoder.load_kernel_mapping_byte_equals(*offset_bytes, *expected)?,
+            CompilerSystemsOperation::UnmapKernelFrames => encoder.unmap_kernel_frames()?,
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
             CompilerSystemsOperation::BootstrapAllocate { .. } => {
@@ -1068,6 +1163,11 @@ fn encode_operations(
     if encoder.physical_frames_live {
         return Err(CompileError::Tool(
             "x86 root lowering ended with a live physical-frame extent".into(),
+        ));
+    }
+    if encoder.kernel_mapping_live {
+        return Err(CompileError::Tool(
+            "x86 root lowering ended with a live kernel mapping".into(),
         ));
     }
     Ok(())
@@ -1168,6 +1268,9 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     "{identity}:frames={}:alignment={}",
                     request.frame_count, request.alignment_frames
                 ),
+                CompilerSystemsTransition::MapKernelFrames { .. } => {
+                    format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
+                }
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -1175,11 +1278,20 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::LoadBootstrapByte {
                     offset_bytes,
                     value,
+                }
+                | CompilerSystemsTransition::StoreKernelMappingByte {
+                    offset_bytes,
+                    value,
+                }
+                | CompilerSystemsTransition::LoadKernelMappingByte {
+                    offset_bytes,
+                    value,
                 } => format!("{identity}:offset={offset_bytes}:value={value}"),
                 CompilerSystemsTransition::EnterBootstrap
                 | CompilerSystemsTransition::DescribeBootMemory
                 | CompilerSystemsTransition::CreateFrameAllocator
                 | CompilerSystemsTransition::ReleasePhysicalFrames
+                | CompilerSystemsTransition::UnmapKernelFrames
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
@@ -1238,7 +1350,8 @@ mod tests {
     use topal_language::compiler::{
         CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
         SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_RELEASE,
-        analyze_systems_for_compiler,
+        SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+        SYSTEMS_KERNEL_UNMAP, analyze_systems_for_compiler,
     };
 
     use super::*;
@@ -1285,7 +1398,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 132);
+        assert_eq!(relocation_targets.len(), 158);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1305,7 +1418,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            122
+            147
         );
         assert_eq!(
             relocation_targets
@@ -1319,7 +1432,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            4
+            5
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -1334,6 +1447,19 @@ mod tests {
                 .windows(7)
                 .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90),
             "root must retain the real byte store"
+        );
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes == [0xc6, 0x83, 0, 0, 0, 0, 165]),
+            "root must store through the selected physical frame mapping"
+        );
+        assert!(
+            root_bytes.windows(11).any(|bytes| {
+                bytes[..7] == [0x0f, 0xb6, 0x83, 0, 0, 0, 0]
+                    && bytes[7..11] == [0x3c, 165, 0x0f, 0x85]
+            }),
+            "root must load through the selected physical frame mapping"
         );
         assert!(
             root_bytes.windows(15).any(|bytes| {
@@ -1372,35 +1498,40 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 11);
+        assert_eq!(decoded.placements.len(), 15);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 19);
+        assert_eq!(decoded.semantic_trace.len(), 24);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
         assert_eq!(decoded.semantic_trace[3], SYSTEMS_FRAME_ALLOCATOR_CREATE);
         assert!(decoded.semantic_trace[4].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[5].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[6], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[9], SYSTEMS_DEBUG_BREAK);
+        assert!(decoded.semantic_trace[6].starts_with(SYSTEMS_KERNEL_MAP));
+        assert!(decoded.semantic_trace[7].starts_with(SYSTEMS_KERNEL_MAPPING_STORE_BYTE));
+        assert!(decoded.semantic_trace[8].starts_with(SYSTEMS_KERNEL_MAPPING_LOAD_BYTE));
+        assert_eq!(decoded.semantic_trace[9], SYSTEMS_KERNEL_UNMAP);
+        assert!(decoded.semantic_trace[10].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[11], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[13].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[14], SYSTEMS_DEBUG_BREAK);
         assert_eq!(
-            decoded.semantic_trace[10],
+            decoded.semantic_trace[15],
             "topal.systems.entry.synchronous.debug-break/1"
         );
-        assert_eq!(decoded.semantic_trace[11], SYSTEMS_RESUME_DEBUG_BREAK);
-        assert!(decoded.semantic_trace[12].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[13].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[14].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
-        assert!(decoded.semantic_trace[15].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
-        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[16], SYSTEMS_RESUME_DEBUG_BREAK);
+        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[19].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
+        assert!(decoded.semantic_trace[20].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert!(decoded.semantic_trace[21].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[17],
+            decoded.semantic_trace[22],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[23].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
