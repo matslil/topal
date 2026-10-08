@@ -324,40 +324,41 @@ fn validate_entry(
     Ok(())
 }
 
-fn validate_bootstrap_storage_operations(
-    program: &SystemsProgram,
-) -> Result<(), SystemsModelError> {
-    let mut storage = BootstrapStorageState::new(
-        program.bootstrap_storage.clone(),
-        "systems-program-validation",
-    )?;
-    let mut region: Option<BootstrapRegion> = None;
-    let mut memory_described = false;
-    let mut allocator_created = false;
-    let mut frames_live = false;
-    for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
+#[derive(Default)]
+struct BootstrapAuthorityState {
+    memory_described: bool,
+    allocator_created: bool,
+    frames_live: bool,
+}
+
+impl BootstrapAuthorityState {
+    fn observe(
+        &mut self,
+        index: usize,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
-                if index != 0 || memory_described {
+                if index != 0 || self.memory_described {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-BOOT-MEMORY",
                         "boot memory must be described exactly once as the first bootstrap operation",
                     ));
                 }
-                memory_described = true;
+                self.memory_described = true;
             }
             SystemsOperation::CreateFrameAllocator { .. } => {
-                if index != 1 || !memory_described || allocator_created {
+                if index != 1 || !self.memory_described || self.allocator_created {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "the frame allocator must consume memory description exactly once as the second bootstrap operation",
                     ));
                 }
-                allocator_created = true;
+                self.allocator_created = true;
             }
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
-                if !allocator_created
-                    || frames_live
+                if !self.allocator_created
+                    || self.frames_live
                     || request.frame_count == 0
                     || request.alignment_frames == 0
                     || !request.alignment_frames.is_power_of_two()
@@ -367,17 +368,65 @@ fn validate_bootstrap_storage_operations(
                         "physical-frame allocation requires one allocator, a valid request, and no live extent",
                     ));
                 }
-                frames_live = true;
+                self.frames_live = true;
             }
             SystemsOperation::ReleasePhysicalFrames => {
-                if !frames_live {
+                if !self.frames_live {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "physical-frame release requires one live extent",
                     ));
                 }
-                frames_live = false;
+                self.frames_live = false;
             }
+            _ if !self.allocator_created => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES",
+                    "bootstrap operations require a frame-allocator context",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn complete(self) -> Result<(), SystemsModelError> {
+        if !self.memory_described {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-BOOT-MEMORY",
+                "the bootstrap handler must consume its entered context through boot-memory description",
+            ));
+        }
+        if !self.allocator_created {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-FRAMES",
+                "the bootstrap handler must consume memory description through frame-allocator creation",
+            ));
+        }
+        if self.frames_live {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-FRAMES-LIVE",
+                "bootstrap handler consumes its context while a physical-frame extent remains live",
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn validate_bootstrap_storage_operations(
+    program: &SystemsProgram,
+) -> Result<(), SystemsModelError> {
+    let mut storage = BootstrapStorageState::new(
+        program.bootstrap_storage.clone(),
+        "systems-program-validation",
+    )?;
+    let mut region: Option<BootstrapRegion> = None;
+    let mut authority = BootstrapAuthorityState::default();
+    for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
+        if authority.observe(index, operation)? {
+            continue;
+        }
+        match operation {
             SystemsOperation::BootstrapAllocate { request } => {
                 if region.is_some() {
                     return Err(SystemsModelError::new(
@@ -425,34 +474,16 @@ fn validate_bootstrap_storage_operations(
                 })?;
                 storage.release(released)?;
             }
-            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {
-                if !allocator_created {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-FRAMES",
-                        "bootstrap operations require a frame-allocator context",
-                    ));
-                }
+            SystemsOperation::DescribeBootMemory { .. }
+            | SystemsOperation::CreateFrameAllocator { .. }
+            | SystemsOperation::AllocatePhysicalFrames { .. }
+            | SystemsOperation::ReleasePhysicalFrames => {
+                unreachable!("authority operations continue above")
             }
+            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
-    if !memory_described {
-        return Err(SystemsModelError::new(
-            "E-SYSTEMS-BOOT-MEMORY",
-            "the bootstrap handler must consume its entered context through boot-memory description",
-        ));
-    }
-    if !allocator_created {
-        return Err(SystemsModelError::new(
-            "E-SYSTEMS-FRAMES",
-            "the bootstrap handler must consume memory description through frame-allocator creation",
-        ));
-    }
-    if frames_live {
-        return Err(SystemsModelError::new(
-            "E-SYSTEMS-FRAMES-LIVE",
-            "bootstrap handler consumes its context while a physical-frame extent remains live",
-        ));
-    }
+    authority.complete()?;
     if region.is_some() {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-STORAGE-LIVE",

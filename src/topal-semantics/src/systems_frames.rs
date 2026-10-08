@@ -229,6 +229,7 @@ impl FrameAllocatorContext {
     ///
     /// Returns a provenance error for a foreign, duplicated, or unknown
     /// extent.
+    #[allow(clippy::needless_pass_by_value)] // Release consumes the affine extent token.
     pub fn release(&mut self, extent: PhysicalFrameExtent) -> Result<(), PhysicalFrameError> {
         if extent.allocator_identity != self.allocator_identity {
             return Err(PhysicalFrameError::WrongAllocator);

@@ -39,6 +39,16 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 7] = [
+    X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_DEBUG_BREAK_ENTRY,
+    X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    "topal_x86_systems_uart16550_write",
+    "topal_x86_systems_interrupt_return",
+    "topal_x86_systems_fatal",
+];
+
 static NEXT_STAGE: AtomicU64 = AtomicU64::new(0);
 
 struct LinkedOutputs {
@@ -414,15 +424,7 @@ fn inspect_kernel_elf(
             )));
         }
     }
-    for required in [
-        X86_SYSTEMS_KERNEL_ENTRY,
-        X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-        X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-        X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-        "topal_x86_systems_uart16550_write",
-        "topal_x86_systems_interrupt_return",
-        "topal_x86_systems_fatal",
-    ] {
+    for required in REQUIRED_LINKED_TEXT_SYMBOLS {
         let symbol = file.symbol_by_name(required).ok_or_else(|| {
             CompileError::Tool(format!(
                 "linked systems ELF omits generated symbol `{required}`"
