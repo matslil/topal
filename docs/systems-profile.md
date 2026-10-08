@@ -189,8 +189,9 @@ X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
 sizes. The first executable x86-64 slice admits one statically proved frame
-aligned to one frame. Multiple live extents, dynamic requests, reclamation, and
-mapping remain unavailable until separately qualified.
+aligned to one frame. Multiple live extents, dynamic requests, and reclamation
+remain unavailable. Mapping is admitted only through the separately qualified
+opaque capability below.
 
 ### Opaque kernel mapping
 

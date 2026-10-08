@@ -67,8 +67,9 @@ remained quiescent while QEMU stayed in the fatal halt.
 
 ## Remaining boundary
 
-This increment establishes allocation ownership, not memory access. The
-extent has no source-visible address and grants no byte access, mapping, DMA,
-device, firmware, or userspace authority. Multiple simultaneously live
-extents, dynamic request sizes, page-table mapping, reclaim, setup-data
-extension traversal, and other boot paths remain fail-closed future work.
+This increment established allocation ownership, not memory access. The
+subsequent [opaque kernel-mapping increment](step-4-kernel-mapping.md) adds
+capability-mediated access without exposing an address. Multiple simultaneously
+live extents, dynamic request sizes, general page-table construction, reclaim,
+setup-data extension traversal, and other boot paths remain fail-closed future
+work.
