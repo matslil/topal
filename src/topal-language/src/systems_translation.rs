@@ -119,7 +119,7 @@ fn analyze_translation_activation_success(
             "translation activation success must publish its marker through the refined context",
         ));
     };
-    let (ordinary, mut checked) = analyze_mapping_trailing_bootstrap(
+    let mut checked = analyze_active_translation_edit_sequence(
         source,
         activate_success,
         rest,
@@ -132,14 +132,6 @@ fn analyze_translation_activation_success(
         },
         marker,
     ];
-    for operation in ordinary {
-        operations.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            translated_name,
-        )?);
-    }
     operations.append(&mut checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,

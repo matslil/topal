@@ -34,13 +34,17 @@ pub use topal_semantics::{
     SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
     SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
+    SYSTEMS_TRANSLATION_EDIT_UNMAP, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
     SystemsTargetSelection as CompilerSystemsTargetSelection,
     SystemsTransition as CompilerSystemsTransition,
+    TranslationEditKind as CompilerTranslationEditKind,
+    TranslationMappingRequest as CompilerTranslationMappingRequest,
     TranslationPagePolicy as CompilerTranslationPagePolicy,
+    TranslationPlacement as CompilerTranslationPlacement,
     TranslationTemplate as CompilerTranslationTemplate,
     TranslationUpdateRequest as CompilerTranslationUpdateRequest, model_systems_transitions,
     validate_systems_program,
@@ -618,6 +622,7 @@ include!("systems_boot_memory.rs");
 include!("systems_frames.rs");
 include!("systems_mapping.rs");
 include!("systems_translation.rs");
+include!("systems_translation_edit.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -1509,6 +1514,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // One assertion retains the complete ordered systems trace.
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
         // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001,
@@ -1546,6 +1552,10 @@ mod tests {
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
                 SYSTEMS_TRANSLATION_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_BEGIN,
+                SYSTEMS_TRANSLATION_EDIT_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_MAP,
+                SYSTEMS_TRANSLATION_EDIT_UNMAP,
             ]
         );
         assert_eq!(
@@ -1591,6 +1601,40 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_TRANSLATION_ACTIVE".into(),
                 },
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::BeginTranslationEdit {
+                    kind: CompilerTranslationEditKind::Map,
+                },
+                CompilerSystemsTransition::MapTranslationFrames {
+                    request: CompilerTranslationMappingRequest::initial_read_write(),
+                },
+                CompilerSystemsTransition::CommitTranslationEdit {
+                    kind: CompilerTranslationEditKind::Map,
+                },
+                CompilerSystemsTransition::StoreKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 60,
+                },
+                CompilerSystemsTransition::LoadKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 60,
+                },
+                CompilerSystemsTransition::BeginTranslationEdit {
+                    kind: CompilerTranslationEditKind::Unmap,
+                },
+                CompilerSystemsTransition::UnmapTranslationMapping,
+                CompilerSystemsTransition::CommitTranslationEdit {
+                    kind: CompilerTranslationEditKind::Unmap,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TRANSLATION_EDITED".into(),
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
                 },
@@ -1638,7 +1682,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 23);
+        assert_eq!(program.bootstrap.handler.operations.len(), 34);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -1660,6 +1704,10 @@ mod tests {
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
                 SYSTEMS_TRANSLATION_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_BEGIN,
+                SYSTEMS_TRANSLATION_EDIT_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_MAP,
+                SYSTEMS_TRANSLATION_EDIT_UNMAP,
             ]
         );
         let transitions = model_systems_transitions(&program).unwrap();
@@ -1706,19 +1754,25 @@ mod tests {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-STORAGE-001.
         for (source, code, expected) in [
             (
-                memory_source().replace("offset-bytes is 0, value", "offset-bytes is 64, value"),
+                memory_source().replace(
+                    "region byte store (offset-bytes is 0, value is 90)",
+                    "region byte store (offset-bytes is 64, value is 90)",
+                ),
                 "E-SYSTEMS-STORAGE",
                 "outside the static region size",
             ),
             (
-                memory_source().replace("value is 90)", "value is 256)"),
+                memory_source().replace(
+                    "region byte store (offset-bytes is 0, value is 90)",
+                    "region byte store (offset-bytes is 0, value is 256)",
+                ),
                 "E-SYSTEMS-STORAGE",
                 "from 0 through 255",
             ),
             (
                 memory_source().replacen(
-                    "translated bootstrap release region",
-                    "translated console write \"not released\"",
+                    "unmapped bootstrap release region",
+                    "unmapped console write \"not released\"",
                     1,
                 ),
                 "E-SYSTEMS-STORAGE",
@@ -1726,7 +1780,7 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "translated fatal \"toolchain gate allocation failed\"",
+                    "unmapped fatal \"toolchain gate allocation failed\"",
                     "region byte load (offset-bytes is 0)",
                 ),
                 "E-SYSTEMS-DISPOSITION",
@@ -1781,7 +1835,7 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "translated console write \"TOPAL_KERNEL_BOOT\"",
+            "unmapped console write \"TOPAL_KERNEL_BOOT\"",
             "saved is translated",
         );
         assert_eq!(
@@ -1794,7 +1848,7 @@ mod tests {
             "E-SYSTEMS-MAPPING"
         );
 
-        let unknown = SOURCE.replace("translated debug break", "translated machine instruction");
+        let unknown = SOURCE.replace("unmapped debug break", "unmapped machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1833,7 +1887,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "translated console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "unmapped console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                     "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                 ),
                 "E-SYSTEMS-OPERATION",
@@ -2012,4 +2066,5 @@ mod tests {
 
     include!("systems_mapping_tests.rs");
     include!("systems_translation_tests.rs");
+    include!("systems_translation_edit_tests.rs");
 }

@@ -37,31 +37,100 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                               memory translation activate space
                                 Ok translated then {
                                   translated console write "TOPAL_KERNEL_TRANSLATION_ACTIVE"
-                                  translated console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
-                                  translated console write "TOPAL_KERNEL_BOOT"
-                                  translated debug break
-                                  translated console write "TOPAL_KERNEL_FAULT_RESUMED"
-                                  translated bootstrap allocate (
-                                    byte-count is 64,
-                                    alignment-bytes is 8,
-                                    placement is bootstrap-reclaimable
+                                  translated frames allocate (
+                                    frame-count is 1,
+                                    alignment-frames is 1
                                   )
-                                    Ok region then {
-                                      region byte store (offset-bytes is 0, value is 90)
-                                      observed : Nat is region byte load (offset-bytes is 0)
-                                      observed = 90
-                                        true then {
-                                          translated console write "TOPAL_KERNEL_MEMORY_OK"
-                                          translated bootstrap release region
-                                          translated fatal "toolchain gate complete"
+                                    Ok dynamic-frames then {
+                                      translated translation edit begin
+                                        Ok map-edit then {
+                                          map-edit kernel map dynamic-frames (
+                                            rights is read-write,
+                                            execution is denied,
+                                            memory-kind is normal,
+                                            placement is provider-selected
+                                          )
+                                            Ok dynamic-mapping then {
+                                              map-edit translation commit
+                                                Ok edited then {
+                                                  dynamic-mapping byte store (offset-bytes is 0, value is 60)
+                                                  dynamic-observed : Nat is dynamic-mapping byte load (offset-bytes is 0)
+                                                  dynamic-observed = 60
+                                                    true then {
+                                                      edited translation edit begin
+                                                        Ok unmap-edit then {
+                                                          removed-frames is unmap-edit kernel unmap dynamic-mapping
+                                                          unmap-edit translation commit
+                                                            Ok unmapped then {
+                                                              unmapped console write "TOPAL_KERNEL_TRANSLATION_EDITED"
+                                                              unmapped frames release removed-frames
+                                                              unmapped console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
+                                                              unmapped console write "TOPAL_KERNEL_BOOT"
+                                                              unmapped debug break
+                                                              unmapped console write "TOPAL_KERNEL_FAULT_RESUMED"
+                                                              unmapped bootstrap allocate (
+                                                                byte-count is 64,
+                                                                alignment-bytes is 8,
+                                                                placement is bootstrap-reclaimable
+                                                              )
+                                                                Ok region then {
+                                                                  region byte store (offset-bytes is 0, value is 90)
+                                                                  observed : Nat is region byte load (offset-bytes is 0)
+                                                                  observed = 90
+                                                                    true then {
+                                                                      unmapped console write "TOPAL_KERNEL_MEMORY_OK"
+                                                                      unmapped bootstrap release region
+                                                                      unmapped fatal "toolchain gate complete"
+                                                                    }
+                                                                    false then {
+                                                                      unmapped bootstrap release region
+                                                                      unmapped fatal "toolchain gate memory mismatch"
+                                                                    }
+                                                                }
+                                                                Error problem then {
+                                                                  unmapped fatal "toolchain gate allocation failed"
+                                                                }
+                                                            }
+                                                            Error failure then {
+                                                              failure fatal "translation unmap edit commit failed"
+                                                            }
+                                                        }
+                                                        Error failure then {
+                                                          failure fatal "translation unmap edit construction failed"
+                                                        }
+                                                    }
+                                                    false then {
+                                                      edited translation edit begin
+                                                        Ok unmap-edit then {
+                                                          removed-frames is unmap-edit kernel unmap dynamic-mapping
+                                                          unmap-edit translation commit
+                                                            Ok unmapped then {
+                                                              unmapped frames release removed-frames
+                                                              unmapped fatal "translation edit mapping mismatch"
+                                                            }
+                                                            Error failure then {
+                                                              failure fatal "translation unmap edit commit failed"
+                                                            }
+                                                        }
+                                                        Error failure then {
+                                                          failure fatal "translation unmap edit construction failed"
+                                                        }
+                                                    }
+                                                }
+                                                Error failure then {
+                                                  failure fatal "translation map edit commit failed"
+                                                }
+                                            }
+                                            Error failure then {
+                                              failure fatal "translation edit mapping failed"
+                                            }
                                         }
-                                        false then {
-                                          translated bootstrap release region
-                                          translated fatal "toolchain gate memory mismatch"
+                                        Error failure then {
+                                          failure fatal "translation map edit construction failed"
                                         }
                                     }
                                     Error problem then {
-                                      translated fatal "toolchain gate allocation failed"
+                                      translated fatal "translation edit frame allocation failed"
                                     }
                                 }
                                 Error failure then {
