@@ -21,7 +21,9 @@ described memory create frame allocator
       }
       Error problem then memory fatal "frame allocation failed"
   }
-  Error failure then failure fatal "frame allocator creation failed"
+  Error failure then {
+    failure fatal "frame allocator creation failed"
+  }
 ```
 
 The transition consumes the `MemoryDescribedContext`. Its success binding is a
