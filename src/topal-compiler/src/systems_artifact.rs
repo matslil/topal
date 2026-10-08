@@ -16,9 +16,8 @@ use topal_language::compiler::{
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
     CompilerSystemsTransition, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_RESUME_DEBUG_BREAK,
-    model_systems_transitions,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
+    SYSTEMS_RESUME_DEBUG_BREAK, model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -1236,7 +1235,8 @@ mod tests {
     use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
     use topal_language::compiler::{
         CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, analyze_systems_for_compiler,
+        SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_RELEASE,
+        analyze_systems_for_compiler,
     };
 
     use super::*;
