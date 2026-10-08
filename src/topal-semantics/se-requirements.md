@@ -96,6 +96,15 @@ activation before commit, wrong-provider activation, backing reuse, and
 completion with a live inactive update or space. Target table formats and
 activation state shall remain outside the common model.
 
+The active-translation-edit increment shall consume an active context into one
+exclusive edit, consume a frame extent into a provisional inaccessible mapping,
+and refine both mapping visibility and the active context only on successful
+commit. Unmap shall consume the live mapping into a provisional unavailable
+extent and restore releasable frame ownership only after committed target
+invalidation. The model shall reject old-context use, nested edits, access
+before map commit or after unmap, premature frame reuse, wrong-space commit,
+and completion with a live edit while retaining opaque provider placement.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine
