@@ -780,11 +780,11 @@ impl RootEncoder {
 
     fn map_kernel_frames(
         &mut self,
-        request: &CompilerKernelMappingRequest,
+        request: CompilerKernelMappingRequest,
     ) -> Result<(), CompileError> {
         if !self.physical_frames_live
             || self.kernel_mapping_live
-            || *request != CompilerKernelMappingRequest::initial_read_write()
+            || request != CompilerKernelMappingRequest::initial_read_write()
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires one live frame extent and the sealed mapping policy"
@@ -1126,7 +1126,7 @@ fn encode_operations(
                 encoder.release_physical_frames()?;
             }
             CompilerSystemsOperation::MapKernelFrames { request, .. } => {
-                encoder.map_kernel_frames(request)?;
+                encoder.map_kernel_frames(*request)?;
             }
             CompilerSystemsOperation::KernelMappingStoreByte {
                 offset_bytes,

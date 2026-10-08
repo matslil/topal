@@ -252,10 +252,9 @@ impl FrameAllocatorContext {
         {
             return Err(PhysicalFrameError::UnknownExtent);
         }
-        let live = self
-            .live
-            .remove(&extent.extent_identity)
-            .expect("validated live extent remains present");
+        let Some(live) = self.live.remove(&extent.extent_identity) else {
+            return Err(PhysicalFrameError::UnknownExtent);
+        };
         self.free.push(FreeFrameRun {
             start_frame: live.start_frame,
             end_frame: live.end_frame,

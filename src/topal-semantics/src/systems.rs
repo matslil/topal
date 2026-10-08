@@ -368,8 +368,15 @@ fn validate_entry(
 struct BootstrapAuthorityState {
     memory_described: bool,
     allocator_created: bool,
-    frames_live: bool,
-    mapping_live: bool,
+    memory_ownership: BootstrapMemoryOwnership,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapMemoryOwnership {
+    #[default]
+    None,
+    Frames,
+    Mapping,
 }
 
 impl BootstrapAuthorityState {
@@ -399,7 +406,7 @@ impl BootstrapAuthorityState {
             }
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
                 if !self.allocator_created
-                    || self.frames_live
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
                     || request.frame_count == 0
                     || request.alignment_frames == 0
                     || !request.alignment_frames.is_power_of_two()
@@ -409,20 +416,19 @@ impl BootstrapAuthorityState {
                         "physical-frame allocation requires one allocator, a valid request, and no live extent",
                     ));
                 }
-                self.frames_live = true;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
             SystemsOperation::ReleasePhysicalFrames => {
-                if !self.frames_live {
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "physical-frame release requires one live extent",
                     ));
                 }
-                self.frames_live = false;
+                self.memory_ownership = BootstrapMemoryOwnership::None;
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
-                if !self.frames_live
-                    || self.mapping_live
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames
                     || *request != KernelMappingRequest::initial_read_write()
                 {
                     return Err(SystemsModelError::new(
@@ -430,12 +436,13 @@ impl BootstrapAuthorityState {
                         "kernel mapping requires one live extent and the sealed mapping policy",
                     ));
                 }
-                self.frames_live = false;
-                self.mapping_live = true;
+                self.memory_ownership = BootstrapMemoryOwnership::Mapping;
             }
             SystemsOperation::KernelMappingStoreByte { offset_bytes, .. }
             | SystemsOperation::KernelMappingLoadByteEquals { offset_bytes, .. } => {
-                if !self.mapping_live || *offset_bytes >= 4096 {
+                if self.memory_ownership != BootstrapMemoryOwnership::Mapping
+                    || *offset_bytes >= 4096
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
                         "kernel mapping byte access requires one live mapping and an in-bounds offset",
@@ -443,14 +450,13 @@ impl BootstrapAuthorityState {
                 }
             }
             SystemsOperation::UnmapKernelFrames => {
-                if !self.mapping_live {
+                if self.memory_ownership != BootstrapMemoryOwnership::Mapping {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
                         "kernel unmap requires one live mapping",
                     ));
                 }
-                self.mapping_live = false;
-                self.frames_live = true;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -476,17 +482,20 @@ impl BootstrapAuthorityState {
                 "the bootstrap handler must consume memory description through frame-allocator creation",
             ));
         }
-        if self.frames_live {
-            return Err(SystemsModelError::new(
-                "E-SYSTEMS-FRAMES-LIVE",
-                "bootstrap handler consumes its context while a physical-frame extent remains live",
-            ));
-        }
-        if self.mapping_live {
-            return Err(SystemsModelError::new(
-                "E-SYSTEMS-MAPPING-LIVE",
-                "bootstrap handler consumes its context while a kernel mapping remains live",
-            ));
+        match self.memory_ownership {
+            BootstrapMemoryOwnership::None => {}
+            BootstrapMemoryOwnership::Frames => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES-LIVE",
+                    "bootstrap handler consumes its context while a physical-frame extent remains live",
+                ));
+            }
+            BootstrapMemoryOwnership::Mapping => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-MAPPING-LIVE",
+                    "bootstrap handler consumes its context while a kernel mapping remains live",
+                ));
+            }
         }
         Ok(())
     }

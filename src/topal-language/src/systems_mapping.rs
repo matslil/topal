@@ -56,104 +56,19 @@ fn analyze_kernel_mapping_sequence(
         }
     }
 
-    let true_statements = mapping_action_block(source, true_action, "successful mapping comparison")?;
-    let (returned_extent, true_tail) = parse_kernel_unmap_scope(
+    let checked = analyze_successful_mapping_action(
         source,
-        true_statements,
+        true_action,
+        allocator_context,
+        &mapping_name,
+        storage,
+    )?;
+    let mismatch_message = analyze_failed_mapping_action(
+        source,
+        false_action,
         allocator_context,
         &mapping_name,
     )?;
-    if true_tail.len() < 3 {
-        return Err(mapping_diagnostic(
-            source,
-            true_action.span(),
-            "successful mapping comparison requires unmap, marker, frame release, and bootstrap allocation decision",
-        ));
-    }
-    let [marker, release, rest @ ..] = true_tail else {
-        unreachable!("length was checked")
-    };
-    let marker_span = statement_span(marker);
-    let marker = analyze_operation(
-        source,
-        marker,
-        CompilerSystemsContextKind::Bootstrap,
-        allocator_context,
-    )?;
-    let CompilerSystemsOperation::ConsoleWrite { .. } = marker else {
-        return Err(mapping_diagnostic(
-            source,
-            marker_span,
-            "successful kernel mapping must publish its marker after unmap",
-        ));
-    };
-    parse_physical_frame_release(source, release, allocator_context, &returned_extent)?;
-    let (ordinary, checked) = if matches!(
-        rest.last(),
-        Some(Statement::Expression(Expression::DecisionTable { .. }))
-    ) {
-        let (bootstrap, ordinary) = rest.split_last().expect("mapping tail is non-empty");
-        (
-            ordinary,
-            analyze_bootstrap_region_decision(source, bootstrap, allocator_context, storage)?,
-        )
-    } else {
-        if rest.len() < 3 {
-            return Err(mapping_diagnostic(
-                source,
-                true_action.span(),
-                "successful mapping comparison requires a bootstrap allocation decision",
-            ));
-        }
-        let (ordinary, bootstrap) = rest.split_at(rest.len() - 3);
-        (
-            ordinary,
-            analyze_bootstrap_region_sequence(source, bootstrap, allocator_context, storage)?,
-        )
-    };
-    let mut trailing = Vec::new();
-    for operation in ordinary {
-        trailing.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            allocator_context,
-        )?);
-    }
-    trailing.extend(checked.operations);
-
-    let false_statements =
-        mapping_action_block(source, false_action, "failed mapping comparison")?;
-    let (failed_extent, false_tail) = parse_kernel_unmap_scope(
-        source,
-        false_statements,
-        allocator_context,
-        &mapping_name,
-    )?;
-    let [release, disposition] = false_tail else {
-        return Err(mapping_diagnostic(
-            source,
-            false_action.span(),
-            "failed mapping comparison requires unmap, frame release, and fatal disposition",
-        ));
-    };
-    parse_physical_frame_release(source, release, allocator_context, &failed_extent)?;
-    let failure = analyze_disposition(
-        source,
-        disposition,
-        CompilerSystemsContextKind::Bootstrap,
-        allocator_context,
-    )?;
-    let CompilerSystemsDisposition::Fatal {
-        message: mismatch_message,
-    } = failure
-    else {
-        return Err(mapping_diagnostic(
-            source,
-            statement_span(disposition),
-            "failed mapping comparison must enter the fatal disposition",
-        ));
-    };
 
     let mut operations = vec![
         CompilerSystemsOperation::MapKernelFrames {
@@ -169,15 +84,133 @@ fn analyze_kernel_mapping_sequence(
             expected,
             failure_message: mismatch_message,
         },
-        CompilerSystemsOperation::UnmapKernelFrames,
-        marker,
-        CompilerSystemsOperation::ReleasePhysicalFrames,
     ];
-    operations.extend(trailing);
+    operations.extend(checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition: checked.disposition,
     })
+}
+
+fn analyze_successful_mapping_action(
+    source: &SourceText,
+    action: &Expression,
+    allocator_context: &str,
+    mapping_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let statements = mapping_action_block(source, action, "successful mapping comparison")?;
+    let (returned_extent, tail) =
+        parse_kernel_unmap_scope(source, statements, allocator_context, mapping_name)?;
+    let [marker, release, rest @ ..] = tail else {
+        return Err(mapping_diagnostic(
+            source,
+            action.span(),
+            "successful mapping comparison requires unmap, marker, frame release, and bootstrap allocation decision",
+        ));
+    };
+    let marker_span = statement_span(marker);
+    let marker = analyze_operation(
+        source,
+        marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(marker, CompilerSystemsOperation::ConsoleWrite { .. }) {
+        return Err(mapping_diagnostic(
+            source,
+            marker_span,
+            "successful kernel mapping must publish its marker after unmap",
+        ));
+    }
+    parse_physical_frame_release(source, release, allocator_context, &returned_extent)?;
+    let (ordinary, mut checked) = analyze_mapping_trailing_bootstrap(
+        source,
+        action,
+        rest,
+        allocator_context,
+        storage,
+    )?;
+    let mut operations = vec![
+        CompilerSystemsOperation::UnmapKernelFrames,
+        marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+    ];
+    for operation in ordinary {
+        operations.push(analyze_operation(
+            source,
+            operation,
+            CompilerSystemsContextKind::Bootstrap,
+            allocator_context,
+        )?);
+    }
+    operations.append(&mut checked.operations);
+    Ok(CheckedBootstrapRegionDecision {
+        operations,
+        disposition: checked.disposition,
+    })
+}
+
+fn analyze_mapping_trailing_bootstrap<'a>(
+    source: &SourceText,
+    action: &Expression,
+    statements: &'a [Statement],
+    allocator_context: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<(&'a [Statement], CheckedBootstrapRegionDecision), Diagnostic> {
+    if matches!(
+        statements.last(),
+        Some(Statement::Expression(Expression::DecisionTable { .. }))
+    ) {
+        let (bootstrap, ordinary) = statements.split_last().expect("tail is non-empty");
+        let checked =
+            analyze_bootstrap_region_decision(source, bootstrap, allocator_context, storage)?;
+        return Ok((ordinary, checked));
+    }
+    if statements.len() < 3 {
+        return Err(mapping_diagnostic(
+            source,
+            action.span(),
+            "successful mapping comparison requires a bootstrap allocation decision",
+        ));
+    }
+    let (ordinary, bootstrap) = statements.split_at(statements.len() - 3);
+    let checked =
+        analyze_bootstrap_region_sequence(source, bootstrap, allocator_context, storage)?;
+    Ok((ordinary, checked))
+}
+
+fn analyze_failed_mapping_action(
+    source: &SourceText,
+    action: &Expression,
+    allocator_context: &str,
+    mapping_name: &str,
+) -> Result<String, Diagnostic> {
+    let statements = mapping_action_block(source, action, "failed mapping comparison")?;
+    let (returned_extent, tail) =
+        parse_kernel_unmap_scope(source, statements, allocator_context, mapping_name)?;
+    let [release, disposition] = tail else {
+        return Err(mapping_diagnostic(
+            source,
+            action.span(),
+            "failed mapping comparison requires unmap, frame release, and fatal disposition",
+        ));
+    };
+    parse_physical_frame_release(source, release, allocator_context, &returned_extent)?;
+    let failure = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    let CompilerSystemsDisposition::Fatal { message } = failure else {
+        return Err(mapping_diagnostic(
+            source,
+            statement_span(disposition),
+            "failed mapping comparison must enter the fatal disposition",
+        ));
+    };
+    Ok(message)
 }
 
 fn parse_kernel_mapping_request(
