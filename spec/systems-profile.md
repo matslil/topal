@@ -268,6 +268,31 @@ completes. A provider MAY adopt a pre-existing sealed translation only when it
 proves the same rights, lifetime, inaccessibility-after-unmap, and reuse
 observations as a constructed translation.
 
+Bootstrap translation replacement SHALL begin by borrowing one live allocator
+and consuming provider-selected backing authority into one exclusive affine
+`TranslationUpdate`. The initial request SHALL be exactly template
+`bootstrap-equivalent` with page policy `provider-selected`. The update SHALL
+retain a snapshot of the current qualified bootstrap coverage and access
+observations without exposing backing addresses, table levels, entries, or
+target state.
+
+`translation commit` SHALL consume one live validated update into one inactive
+affine `TranslationSpace`. `translation activate` SHALL consume that inactive
+space and the current translation authority, perform the provider-required
+publication, synchronization, activation, and completion relations, and
+produce a refined bootstrap context owning the new active space. On activation
+success, subsequent operations SHALL use only the refined context. On an
+indeterminate activation result, the initial slice SHALL admit only fatal
+termination.
+
+The replacement SHALL preserve the existing bootstrap coverage and permissions
+and SHALL NOT add user authority, widen access, or make physical and virtual
+families interchangeable. Duplicate or escaped updates, use after commit,
+activation before commit, wrong-provider activation, backing release while
+owned by an update or space, reuse of the prior translation by ordinary source,
+and disposition with a live inactive update or space SHALL be rejected before
+lowering or fail closed.
+
 ### TOPAL-SYSTEMS-RECOVERY-001 — Closed fault recovery and user transfer
 
 A recovery scope SHALL name a finite fault class, admitted generated

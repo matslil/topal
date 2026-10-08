@@ -361,6 +361,20 @@ frame release while mapped, use after unmap, cross-provider use, writable
 execution, or disposition with a live mapping shall fail closed. No source
 operation shall expose or equate its physical and virtual representations.
 
+Bootstrap translation replacement shall use an exclusive affine update rather
+than source-visible page-table records. Beginning an update shall borrow the
+live allocator, reserve provider-selected backing, and snapshot an exact
+semantic template. Commit shall consume a validated update into one inactive
+translation space. Activation shall consume that space and current translation
+authority, perform the provider publication and completion protocol, and
+return a refined context owning the replacement. The initial template shall
+preserve the qualified bootstrap coverage and permissions without widening
+authority. Builder escape or duplication, use after commit, activation before
+commit, wrong-provider activation, backing reuse while owned, or recoverable
+continuation after indeterminate activation shall fail closed. Source shall
+observe no table level, descriptor, physical backing address, activation
+register, or target maintenance instruction.
+
 An ordinary kernel-owned region shall provide bounds-checked plain byte access
 without exposing a machine address. Load and store shall borrow a live region,
 release shall consume it, and no access shall silently acquire volatile,
