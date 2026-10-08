@@ -1503,21 +1503,7 @@ mod tests {
             .filter(object::ObjectSymbol::is_undefined)
             .map(|symbol| symbol.name().unwrap().to_owned())
             .collect::<Vec<_>>();
-        assert_eq!(
-            undefined,
-            [
-                "topal_x86_systems_describe_boot_memory",
-                "topal_x86_systems_allocate_physical_frames",
-                "topal_x86_systems_begin_bootstrap_translation",
-                "topal_x86_systems_commit_bootstrap_translation",
-                "topal_x86_systems_activate_bootstrap_translation",
-                "topal_x86_systems_uart16550_write",
-                "topal_x86_systems_debug_break",
-                "topal_x86_systems_interrupt_return",
-                "topal_x86_systems_fatal",
-                "topal_bootstrap_storage",
-            ]
-        );
+        assert_root_dependencies(&undefined);
         let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
         let relocation_targets = text
             .relocations()
@@ -1543,19 +1529,7 @@ mod tests {
                 .count(),
             1
         );
-        for target in [
-            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-        ] {
-            assert_eq!(
-                relocation_targets
-                    .iter()
-                    .filter(|actual| **actual == target)
-                    .count(),
-                1
-            );
-        }
+        assert_translation_relocations(&relocation_targets);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1612,6 +1586,40 @@ mod tests {
         );
         assert!(file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).is_some());
         assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
+    }
+
+    fn assert_translation_relocations(relocation_targets: &[&str]) {
+        for target in [
+            X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
+    }
+
+    fn assert_root_dependencies(undefined: &[String]) {
+        assert_eq!(
+            undefined,
+            [
+                "topal_x86_systems_describe_boot_memory",
+                "topal_x86_systems_allocate_physical_frames",
+                "topal_x86_systems_begin_bootstrap_translation",
+                "topal_x86_systems_commit_bootstrap_translation",
+                "topal_x86_systems_activate_bootstrap_translation",
+                "topal_x86_systems_uart16550_write",
+                "topal_x86_systems_debug_break",
+                "topal_x86_systems_interrupt_return",
+                "topal_x86_systems_fatal",
+                "topal_bootstrap_storage",
+            ]
+        );
     }
 
     #[test]
