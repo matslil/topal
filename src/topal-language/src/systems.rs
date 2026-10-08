@@ -33,12 +33,16 @@ pub use topal_semantics::{
     SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
     SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
     SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
     SystemsTargetSelection as CompilerSystemsTargetSelection,
-    SystemsTransition as CompilerSystemsTransition, model_systems_transitions,
+    SystemsTransition as CompilerSystemsTransition,
+    TranslationPagePolicy as CompilerTranslationPagePolicy,
+    TranslationTemplate as CompilerTranslationTemplate,
+    TranslationUpdateRequest as CompilerTranslationUpdateRequest, model_systems_transitions,
     validate_systems_program,
 };
 
@@ -613,6 +617,7 @@ fn analyze_handler(
 include!("systems_boot_memory.rs");
 include!("systems_frames.rs");
 include!("systems_mapping.rs");
+include!("systems_translation.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -1538,6 +1543,9 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_TRANSLATION_ACTIVATE,
+                SYSTEMS_TRANSLATION_BEGIN,
+                SYSTEMS_TRANSLATION_COMMIT,
             ]
         );
         assert_eq!(
@@ -1575,6 +1583,14 @@ mod tests {
                     text: "TOPAL_KERNEL_FRAME_MAPPED".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::BeginTranslationUpdate {
+                    request: CompilerTranslationUpdateRequest::initial_bootstrap_equivalent(),
+                },
+                CompilerSystemsTransition::CommitTranslationUpdate,
+                CompilerSystemsTransition::ActivateTranslationSpace,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TRANSLATION_ACTIVE".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
                 },
@@ -1622,7 +1638,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 19);
+        assert_eq!(program.bootstrap.handler.operations.len(), 23);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -1641,6 +1657,9 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_TRANSLATION_ACTIVATE,
+                SYSTEMS_TRANSLATION_BEGIN,
+                SYSTEMS_TRANSLATION_COMMIT,
             ]
         );
         let transitions = model_systems_transitions(&program).unwrap();
@@ -1698,8 +1717,8 @@ mod tests {
             ),
             (
                 memory_source().replacen(
-                    "memory bootstrap release region",
-                    "memory console write \"not released\"",
+                    "translated bootstrap release region",
+                    "translated console write \"not released\"",
                     1,
                 ),
                 "E-SYSTEMS-STORAGE",
@@ -1707,7 +1726,7 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "memory fatal \"toolchain gate allocation failed\"",
+                    "translated fatal \"toolchain gate allocation failed\"",
                     "region byte load (offset-bytes is 0)",
                 ),
                 "E-SYSTEMS-DISPOSITION",
@@ -1762,8 +1781,8 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "memory console write \"TOPAL_KERNEL_BOOT\"",
-            "saved is memory",
+            "translated console write \"TOPAL_KERNEL_BOOT\"",
+            "saved is translated",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -1772,10 +1791,10 @@ mod tests {
             )
             .unwrap_err()
             .code,
-            "E-SYSTEMS-AFFINE-CONTEXT"
+            "E-SYSTEMS-MAPPING"
         );
 
-        let unknown = SOURCE.replace("memory debug break", "memory machine instruction");
+        let unknown = SOURCE.replace("translated debug break", "translated machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1814,7 +1833,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "memory console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "translated console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                     "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                 ),
                 "E-SYSTEMS-OPERATION",
@@ -1992,4 +2011,5 @@ mod tests {
     }
 
     include!("systems_mapping_tests.rs");
+    include!("systems_translation_tests.rs");
 }
