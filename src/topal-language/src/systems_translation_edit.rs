@@ -201,23 +201,14 @@ fn analyze_translation_edit_unmap_success(
         ));
     }
     parse_physical_frame_release(source, release, &unmapped_name, &returned_frames)?;
-    let (ordinary, mut checked) = analyze_mapping_trailing_bootstrap(
+    let mut checked = analyze_local_interrupt_critical_sequence(
         source,
-        commit_success,
         rest,
         &unmapped_name,
         storage,
     )?;
     operations.push(marker);
     operations.push(CompilerSystemsOperation::ReleasePhysicalFrames);
-    for operation in ordinary {
-        operations.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            &unmapped_name,
-        )?);
-    }
     operations.append(&mut checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,

@@ -4,15 +4,16 @@ use std::fmt;
 
 use crate::{
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    KernelMappingRequest, PhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    CriticalDomain, KernelMappingRequest, PhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
     SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -103,6 +104,13 @@ pub enum SystemsOperation {
         kind: TranslationEditKind,
         failure_message: String,
     },
+    EnterCritical {
+        domain: CriticalDomain,
+        failure_message: String,
+    },
+    RestoreCritical {
+        domain: CriticalDomain,
+    },
     ConsoleWrite {
         text: String,
     },
@@ -141,6 +149,8 @@ impl SystemsOperation {
             Self::MapTranslationFrames { .. } => SYSTEMS_TRANSLATION_EDIT_MAP,
             Self::UnmapTranslationMapping => SYSTEMS_TRANSLATION_EDIT_UNMAP,
             Self::CommitTranslationEdit { .. } => SYSTEMS_TRANSLATION_EDIT_COMMIT,
+            Self::EnterCritical { .. } => SYSTEMS_CRITICAL_ENTER,
+            Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -230,6 +240,14 @@ pub enum SystemsTransition {
     CommitTranslationEdit {
         kind: TranslationEditKind,
     },
+    EnterCritical {
+        domain: CriticalDomain,
+        nesting_identity: u64,
+    },
+    RestoreCritical {
+        domain: CriticalDomain,
+        nesting_identity: u64,
+    },
     ConsoleWrite {
         text: String,
     },
@@ -297,6 +315,8 @@ impl SystemsTransition {
             Self::MapTranslationFrames { .. } => SYSTEMS_TRANSLATION_EDIT_MAP,
             Self::UnmapTranslationMapping => SYSTEMS_TRANSLATION_EDIT_UNMAP,
             Self::CommitTranslationEdit { .. } => SYSTEMS_TRANSLATION_EDIT_COMMIT,
+            Self::EnterCritical { .. } => SYSTEMS_CRITICAL_ENTER,
+            Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
@@ -381,6 +401,8 @@ fn validate_entry(
                     | SystemsOperation::MapTranslationFrames { .. }
                     | SystemsOperation::UnmapTranslationMapping
                     | SystemsOperation::CommitTranslationEdit { .. }
+                    | SystemsOperation::EnterCritical { .. }
+                    | SystemsOperation::RestoreCritical { .. }
                     | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
@@ -432,6 +454,8 @@ struct BootstrapAuthorityState {
     allocator_created: bool,
     memory_ownership: BootstrapMemoryOwnership,
     translation: BootstrapTranslationState,
+    critical_stack: Vec<(CriticalDomain, u64)>,
+    next_critical_identity: u64,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -465,6 +489,19 @@ impl BootstrapAuthorityState {
         index: usize,
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
+        if !self.critical_stack.is_empty()
+            && !matches!(
+                operation,
+                SystemsOperation::ConsoleWrite { .. }
+                    | SystemsOperation::EnterCritical { .. }
+                    | SystemsOperation::RestoreCritical { .. }
+            )
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CRITICAL",
+                "a local-interrupt critical context admits only nonblocking scoped operations and matching restoration",
+            ));
+        }
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
                 if index != 0 || self.memory_described {
@@ -546,6 +583,31 @@ impl BootstrapAuthorityState {
             | SystemsOperation::UnmapTranslationMapping
             | SystemsOperation::CommitTranslationEdit { .. }) => {
                 self.observe_translation(operation)?;
+            }
+            SystemsOperation::EnterCritical { domain, .. } => {
+                if !self.allocator_created || *domain != CriticalDomain::LocalMaskableInterrupts {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CRITICAL",
+                        "critical entry requires the live processor context and the local-maskable-interrupts domain",
+                    ));
+                }
+                self.next_critical_identity += 1;
+                self.critical_stack
+                    .push((*domain, self.next_critical_identity));
+            }
+            SystemsOperation::RestoreCritical { domain } => {
+                let Some((current_domain, _)) = self.critical_stack.pop() else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CRITICAL",
+                        "critical restore requires live affine restoration authority",
+                    ));
+                };
+                if current_domain != *domain {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CRITICAL",
+                        "critical scopes must restore their matching domain in last-in-first-out order",
+                    ));
+                }
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -684,6 +746,12 @@ impl BootstrapAuthorityState {
     }
 
     fn complete(self) -> Result<(), SystemsModelError> {
+        if !self.critical_stack.is_empty() {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CRITICAL-LIVE",
+                "bootstrap handler consumes its context while critical restoration authority remains live",
+            ));
+        }
         if !self.memory_described {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-BOOT-MEMORY",
@@ -818,6 +886,9 @@ fn validate_bootstrap_storage_operations(
             | SystemsOperation::CommitTranslationEdit { .. } => {
                 unreachable!("translation authority operations continue above")
             }
+            SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
+                unreachable!("critical authority operations continue above")
+            }
             SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
@@ -853,6 +924,8 @@ pub fn model_systems_transitions(
         "systems-transition-model",
     )?;
     let mut region: Option<BootstrapRegion> = None;
+    let mut critical_stack = Vec::new();
+    let mut next_critical_identity = 1_u64;
     for operation in &program.bootstrap.handler.operations {
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
@@ -908,6 +981,25 @@ pub fn model_systems_transitions(
             }
             SystemsOperation::CommitTranslationEdit { kind, .. } => {
                 transitions.push(SystemsTransition::CommitTranslationEdit { kind: *kind });
+            }
+            SystemsOperation::EnterCritical { domain, .. } => {
+                let nesting_identity = next_critical_identity;
+                next_critical_identity += 1;
+                critical_stack.push((*domain, nesting_identity));
+                transitions.push(SystemsTransition::EnterCritical {
+                    domain: *domain,
+                    nesting_identity,
+                });
+            }
+            SystemsOperation::RestoreCritical { domain } => {
+                let (entered_domain, nesting_identity) = critical_stack
+                    .pop()
+                    .expect("validated critical restore has matching entry");
+                debug_assert_eq!(entered_domain, *domain);
+                transitions.push(SystemsTransition::RestoreCritical {
+                    domain: *domain,
+                    nesting_identity,
+                });
             }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
@@ -986,6 +1078,9 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::UnmapTranslationMapping
         | SystemsOperation::CommitTranslationEdit { .. } => {
             unreachable!("translation operations are modeled by the caller")
+        }
+        SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
+            unreachable!("critical operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
@@ -1256,6 +1351,83 @@ mod tests {
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-FRAMES-LIVE"
+        );
+    }
+
+    #[test]
+    fn critical_scope_requires_lifo_restore_before_blocking_or_completion() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-CRITICAL-001.
+        let mut blocked = program(SystemsDisposition::Resume);
+        blocked.bootstrap.handler.operations.insert(
+            2,
+            SystemsOperation::EnterCritical {
+                domain: CriticalDomain::LocalMaskableInterrupts,
+                failure_message: "critical entry failed".into(),
+            },
+        );
+        blocked
+            .bootstrap
+            .handler
+            .effects
+            .push(SYSTEMS_CRITICAL_ENTER.into());
+        blocked.bootstrap.handler.effects.sort();
+        assert_eq!(
+            validate_systems_program(&blocked).unwrap_err().code,
+            "E-SYSTEMS-CRITICAL"
+        );
+
+        blocked.bootstrap.handler.operations.insert(
+            3,
+            SystemsOperation::RestoreCritical {
+                domain: CriticalDomain::LocalMaskableInterrupts,
+            },
+        );
+        blocked
+            .bootstrap
+            .handler
+            .effects
+            .push(SYSTEMS_CRITICAL_RESTORE.into());
+        blocked.bootstrap.handler.effects.sort();
+        assert!(validate_systems_program(&blocked).is_ok());
+
+        let mut live = program(SystemsDisposition::Resume);
+        live.bootstrap.handler.operations.truncate(2);
+        live.bootstrap
+            .handler
+            .operations
+            .push(SystemsOperation::EnterCritical {
+                domain: CriticalDomain::LocalMaskableInterrupts,
+                failure_message: "critical entry failed".into(),
+            });
+        live.bootstrap.handler.effects = vec![
+            SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
+            SYSTEMS_CRITICAL_ENTER.into(),
+            SYSTEMS_FATAL.into(),
+            SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
+        ];
+        assert_eq!(
+            validate_systems_program(&live).unwrap_err().code,
+            "E-SYSTEMS-CRITICAL-LIVE"
+        );
+
+        let mut restore_without_entry = program(SystemsDisposition::Resume);
+        restore_without_entry.bootstrap.handler.operations.insert(
+            2,
+            SystemsOperation::RestoreCritical {
+                domain: CriticalDomain::LocalMaskableInterrupts,
+            },
+        );
+        restore_without_entry
+            .bootstrap
+            .handler
+            .effects
+            .push(SYSTEMS_CRITICAL_RESTORE.into());
+        restore_without_entry.bootstrap.handler.effects.sort();
+        assert_eq!(
+            validate_systems_program(&restore_without_entry)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CRITICAL"
         );
     }
 
