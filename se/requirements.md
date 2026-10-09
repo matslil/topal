@@ -402,6 +402,13 @@ device, DMA, translation, cache, and instruction domains. Plain conflicting
 access shall remain a rejected race; masking one producer shall not imply
 exclusion of another.
 
+The initial local-maskable-interrupt scope shall consume and refine the
+current processor context, retain the exact prior interrupt state in opaque
+affine restoration authority, and require matching restoration before escape,
+suspension, blocking, processor transfer, or disposition. Nested scopes, when
+admitted, shall restore in last-in-first-out order. Source shall not observe
+target flags, registers, masks, or instructions.
+
 ## TOPAL-REQ-SYSTEMS-CONTEXT-001 — Opaque scheduler context transfer
 
 Running and suspended execution contexts shall be opaque linear resources

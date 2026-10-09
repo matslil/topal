@@ -107,6 +107,17 @@ remove the mapping and retain the exact local invalidation instruction before
 frame reuse, and structurally reject incomplete lifecycle or missing
 publication/invalidation evidence.
 
+The first critical-scope increment shall check exhaustive
+`local-maskable-interrupts` entry, one affine refined context, fatal-only entry
+failure, and consuming restoration before the continuation resumes. It shall
+reject escape, use of the prior context, duplicate or out-of-order restore,
+blocking, suspension, processor transfer, disposition, and completion while
+the scope is live. The x86-64 provider shall privately capture the prior
+maskable-interrupt state, disable local maskable interrupts, and restore that
+exact state without exposing flags, registers, masks, or instructions to
+source. Structural and pinned-QEMU evidence shall retain both provider paths
+and ordered execution through the masked scope.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

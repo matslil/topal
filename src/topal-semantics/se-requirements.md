@@ -105,6 +105,15 @@ invalidation. The model shall reject old-context use, nested edits, access
 before map commit or after unmap, premature frame reuse, wrong-space commit,
 and completion with a live edit while retaining opaque provider placement.
 
+The first critical-scope increment shall model local maskable interrupts as an
+affine context refinement bound to one processor and exact prior state. It
+shall assign nesting identities, require last-in-first-out restoration,
+consume restoration authority exactly once, and reject escape, disposition,
+suspension, blocking, processor transfer, or completion with a live scope.
+The model shall not expose target flags, registers, masks, or instructions and
+shall not claim exclusion of non-maskable events, other processors, devices,
+or DMA agents.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine
