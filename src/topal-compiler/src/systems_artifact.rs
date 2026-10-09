@@ -1590,6 +1590,15 @@ fn encode_operations(
                 expected,
                 ..
             } => encoder.load_bootstrap_byte_equals(*offset_bytes, *expected)?,
+            CompilerSystemsOperation::AtomicWordCreate { .. }
+            | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
+            | CompilerSystemsOperation::AtomicLoadEquals { .. }
+            | CompilerSystemsOperation::AtomicWordEnd => {
+                return Err(CompileError::Tool(
+                    "checked atomic operations require the qualified x86-64 provider increment"
+                        .into(),
+                ));
+            }
             CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
         }
     }
@@ -1734,6 +1743,23 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                         }
                     }
                 ),
+                CompilerSystemsTransition::CreateAtomicWord { request } => format!(
+                    "{identity}:offset={}:initial={}:domain=cpu-shared",
+                    request.offset_bytes, request.initial_value
+                ),
+                CompilerSystemsTransition::CompareExchangeAtomicWord {
+                    expected,
+                    desired,
+                    observed,
+                    exchanged,
+                    success_order,
+                    failure_order,
+                } => format!(
+                    "{identity}:expected={expected}:desired={desired}:observed={observed}:exchanged={exchanged}:success-order={success_order:?}:failure-order={failure_order:?}"
+                ),
+                CompilerSystemsTransition::LoadAtomicWord { value, order } => {
+                    format!("{identity}:value={value}:order={order:?}")
+                }
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -1761,6 +1787,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
+                | CompilerSystemsTransition::EndAtomicWord
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }
         })
