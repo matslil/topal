@@ -103,7 +103,10 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                   restored console write "TOPAL_KERNEL_ATOMIC_OK"
                                                                                   restored console write "TOPAL_KERNEL_MEMORY_OK"
                                                                                   restored bootstrap release region
-                                                                                  restored fatal "toolchain gate complete"
+                                                                                  pending is restored local notification send
+                                                                                  resumed is pending local notification wait
+                                                                                  resumed console write "TOPAL_KERNEL_INTERRUPT_OK"
+                                                                                  resumed fatal "toolchain gate complete"
                                                                                 }
                                                                                 false then {
                                                                                   region is atomic end
@@ -207,11 +210,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
 debug-break-handler is fn (context : DebugBreakContext) -> DebugBreakDisposition
   context resume
 
+local-notification-handler is fn (
+  context : LocalNotificationInterruptContext
+) -> LocalNotificationInterruptDisposition
+  completed is context local notification complete
+  completed resume
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096
   ),
   bootstrap is lang systems bootstrap-entry boot,
-  debug-break is lang systems synchronous-exception-entry debug-break-handler
+  debug-break is lang systems synchronous-exception-entry debug-break-handler,
+  local-notification is lang systems external-interrupt-entry local-notification-handler
 )

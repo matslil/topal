@@ -5,17 +5,19 @@ use std::fmt;
 use crate::{
     AtomicCompareExchangeResult, AtomicOrder, AtomicWordLocation, AtomicWordRequest,
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    CriticalDomain, KernelMappingRequest, PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
-    SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
-    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    CriticalDomain, KernelMappingRequest, LocalInterruptMaskState, LocalNotificationProtocol,
+    PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
     SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -48,12 +50,14 @@ impl SystemsTargetSelection {
 pub enum SystemsEntryKind {
     Bootstrap,
     SynchronousExceptionDebugBreak,
+    ExternalInterruptLocalNotification,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SystemsContextKind {
     Bootstrap,
     DebugBreak,
+    LocalNotificationInterrupt,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -146,6 +150,9 @@ pub enum SystemsOperation {
     },
     AtomicWordEnd,
     BootstrapRelease,
+    SendLocalNotification,
+    WaitLocalNotification,
+    CompleteLocalNotification,
 }
 
 impl SystemsOperation {
@@ -179,6 +186,9 @@ impl SystemsOperation {
             Self::AtomicLoadEquals { .. } => SYSTEMS_ATOMIC_LOAD,
             Self::AtomicWordEnd => SYSTEMS_ATOMIC_END,
             Self::BootstrapRelease => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+            Self::SendLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_SEND,
+            Self::WaitLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_WAIT,
+            Self::CompleteLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
         }
     }
 }
@@ -191,9 +201,12 @@ pub enum SystemsDisposition {
 
 impl SystemsDisposition {
     #[must_use]
-    pub const fn semantic_identity(&self) -> &'static str {
+    pub const fn semantic_identity(&self, context: SystemsContextKind) -> &'static str {
         match self {
-            Self::Resume => SYSTEMS_RESUME_DEBUG_BREAK,
+            Self::Resume if matches!(context, SystemsContextKind::DebugBreak) => {
+                SYSTEMS_RESUME_DEBUG_BREAK
+            }
+            Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
     }
@@ -220,6 +233,7 @@ pub struct SystemsProgram {
     pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
+    pub local_notification: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -276,6 +290,27 @@ pub enum SystemsTransition {
     ObserveDebugBreak,
     EnterDebugBreak,
     ResumeDebugBreak,
+    SendLocalNotification {
+        event_identity: u64,
+    },
+    BeginLocalNotificationWait {
+        event_identity: u64,
+    },
+    ObserveLocalNotification {
+        event_identity: u64,
+    },
+    EnterLocalNotificationInterrupt {
+        event_identity: u64,
+    },
+    CompleteLocalNotificationInterrupt {
+        event_identity: u64,
+    },
+    ResumeLocalNotificationInterrupt {
+        event_identity: u64,
+    },
+    EndLocalNotificationWait {
+        event_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -359,6 +394,18 @@ impl SystemsTransition {
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
             Self::ResumeDebugBreak => SYSTEMS_RESUME_DEBUG_BREAK,
+            Self::SendLocalNotification { .. } => SYSTEMS_LOCAL_NOTIFICATION_SEND,
+            Self::BeginLocalNotificationWait { .. } | Self::EndLocalNotificationWait { .. } => {
+                SYSTEMS_LOCAL_NOTIFICATION_WAIT
+            }
+            Self::ObserveLocalNotification { .. } => {
+                "topal.systems.observation.local-notification/1"
+            }
+            Self::EnterLocalNotificationInterrupt { .. } => {
+                "topal.systems.entry.external.local-notification/1"
+            }
+            Self::CompleteLocalNotificationInterrupt { .. } => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+            Self::ResumeLocalNotificationInterrupt { .. } => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -397,12 +444,23 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsEntryKind::SynchronousExceptionDebugBreak,
         SystemsContextKind::DebugBreak,
     )?;
-    if program.bootstrap.handler.name == program.debug_break.handler.name {
+    validate_entry(
+        &program.local_notification,
+        SystemsEntryKind::ExternalInterruptLocalNotification,
+        SystemsContextKind::LocalNotificationInterrupt,
+    )?;
+    let names = [
+        &program.bootstrap.handler.name,
+        &program.debug_break.handler.name,
+        &program.local_notification.handler.name,
+    ];
+    if names[0] == names[1] || names[0] == names[2] || names[1] == names[2] {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap and debug-break entries require distinct handlers",
+            "bootstrap, debug-break, and local-notification entries require distinct handlers",
         ));
     }
+    validate_local_notification_handler(&program.local_notification.handler)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -424,9 +482,9 @@ fn validate_entry(
             "a systems entry requires a statically named handler",
         ));
     }
-    if required_context == SystemsContextKind::DebugBreak
+    if required_context != SystemsContextKind::Bootstrap
         && entry.handler.operations.iter().any(|operation| {
-            matches!(
+            let bootstrap_only = matches!(
                 operation,
                 SystemsOperation::DescribeBootMemory { .. }
                     | SystemsOperation::CreateFrameAllocator { .. }
@@ -454,12 +512,19 @@ fn validate_entry(
                     | SystemsOperation::AtomicLoadEquals { .. }
                     | SystemsOperation::AtomicWordEnd
                     | SystemsOperation::BootstrapRelease
-            )
+                    | SystemsOperation::SendLocalNotification
+                    | SystemsOperation::WaitLocalNotification
+            );
+            bootstrap_only
+                || (required_context == SystemsContextKind::DebugBreak
+                    && matches!(operation, SystemsOperation::CompleteLocalNotification))
+                || (required_context == SystemsContextKind::LocalNotificationInterrupt
+                    && !matches!(operation, SystemsOperation::CompleteLocalNotification))
         })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-OPERATION",
-            "debug-break is not admitted by a live debug-break context",
+            "operation is not admitted by this live special-entry context",
         ));
     }
     match (required_context, &entry.handler.disposition) {
@@ -467,11 +532,15 @@ fn validate_entry(
         | (
             SystemsContextKind::DebugBreak,
             SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
+        )
+        | (
+            SystemsContextKind::LocalNotificationInterrupt,
+            SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
         ) => {}
         (SystemsContextKind::Bootstrap, SystemsDisposition::Resume) => {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DISPOSITION",
-                "resume is admitted only by a live debug-break context",
+                "resume is admitted only by a live resumable special-entry context",
             ));
         }
     }
@@ -482,13 +551,31 @@ fn validate_entry(
         .iter()
         .map(|operation| operation.semantic_identity().to_owned())
         .collect::<Vec<_>>();
-    expected_effects.push(entry.handler.disposition.semantic_identity().to_owned());
+    expected_effects.push(
+        entry
+            .handler
+            .disposition
+            .semantic_identity(required_context)
+            .to_owned(),
+    );
     expected_effects.sort();
     expected_effects.dedup();
     if entry.handler.effects != expected_effects {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-EFFECTS",
             "systems handler effects must equal its sorted, deduplicated semantic identities",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_local_notification_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
+    if handler.operations != [SystemsOperation::CompleteLocalNotification]
+        || handler.disposition != SystemsDisposition::Resume
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            "the local-notification handler must consume completion authority before resume",
         ));
     }
     Ok(())
@@ -502,6 +589,8 @@ struct BootstrapAuthorityState {
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
+    local_notification_sent: bool,
+    local_notification_pending: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -619,6 +708,35 @@ impl BootstrapAuthorityState {
             | SystemsOperation::UnmapTranslationMapping
             | SystemsOperation::CommitTranslationEdit { .. }) => {
                 self.observe_translation(operation)?;
+            }
+            SystemsOperation::SendLocalNotification => {
+                if !self.allocator_created
+                    || self.local_notification_sent
+                    || self.local_notification_pending
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-LOCAL-INTERRUPT",
+                        "local notification send requires one restored processor context and no pending event",
+                    ));
+                }
+                self.local_notification_sent = true;
+                self.local_notification_pending = true;
+            }
+            SystemsOperation::WaitLocalNotification => {
+                if !self.local_notification_pending {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-LOCAL-INTERRUPT",
+                        "local notification wait requires the matching affine pending session",
+                    ));
+                }
+                self.local_notification_pending = false;
+            }
+            SystemsOperation::CompleteLocalNotification => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-LOCAL-INTERRUPT",
+                    "local notification completion is admitted only by its external-interrupt entry",
+                ));
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -859,6 +977,12 @@ impl BootstrapAuthorityState {
                 "bootstrap handler consumes its context while a translation update, inactive space, or edit remains live",
             ));
         }
+        if !self.local_notification_sent || self.local_notification_pending {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LOCAL-INTERRUPT-LIVE",
+                "bootstrap completion requires one completed local-notification send/wait lifecycle",
+            ));
+        }
         Ok(())
     }
 }
@@ -1035,6 +1159,11 @@ fn validate_bootstrap_storage_operations(
             SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
                 unreachable!("critical authority operations continue above")
             }
+            SystemsOperation::SendLocalNotification
+            | SystemsOperation::WaitLocalNotification
+            | SystemsOperation::CompleteLocalNotification => {
+                unreachable!("local-notification authority operations continue above")
+            }
             SystemsOperation::AtomicWordCreate { .. }
             | SystemsOperation::AtomicCompareExchangeEquals { .. }
             | SystemsOperation::AtomicLoadEquals { .. }
@@ -1086,11 +1215,23 @@ pub fn model_systems_transitions(
     let mut atomic: Option<AtomicWordLocation> = None;
     let mut critical_stack = Vec::new();
     let mut next_critical_identity = 1_u64;
+    let mut local_notification =
+        LocalNotificationProtocol::new("initial-local-notification-source");
+    let mut pending_local_notification = None;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
             &mut critical_stack,
             &mut next_critical_identity,
+            &mut transitions,
+        )? {
+            continue;
+        }
+        if model_local_notification_transition(
+            operation,
+            &program.local_notification.handler,
+            &mut local_notification,
+            &mut pending_local_notification,
             &mut transitions,
         )? {
             continue;
@@ -1173,6 +1314,72 @@ pub fn model_systems_transitions(
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+fn model_local_notification_transition(
+    operation: &SystemsOperation,
+    handler: &SystemsHandler,
+    protocol: &mut LocalNotificationProtocol,
+    pending: &mut Option<u64>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::SendLocalNotification => {
+            let event_identity = protocol.send(LocalInterruptMaskState::Disabled)?;
+            if pending.replace(event_identity).is_some() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-LOCAL-INTERRUPT",
+                    "local-notification model encountered a second pending event",
+                ));
+            }
+            transitions.push(SystemsTransition::SendLocalNotification { event_identity });
+        }
+        SystemsOperation::WaitLocalNotification => {
+            let event_identity = pending.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-LOCAL-INTERRUPT",
+                    "local-notification model wait lost its pending event",
+                )
+            })?;
+            transitions.push(SystemsTransition::BeginLocalNotificationWait { event_identity });
+            protocol.enter(event_identity)?;
+            transitions.push(SystemsTransition::ObserveLocalNotification { event_identity });
+            transitions.push(SystemsTransition::EnterLocalNotificationInterrupt { event_identity });
+            for handler_operation in &handler.operations {
+                if !matches!(
+                    handler_operation,
+                    SystemsOperation::CompleteLocalNotification
+                ) {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-LOCAL-INTERRUPT",
+                        "local-notification model encountered an unsupported handler operation",
+                    ));
+                }
+                protocol.complete(event_identity)?;
+                transitions
+                    .push(SystemsTransition::CompleteLocalNotificationInterrupt { event_identity });
+            }
+            if handler.disposition != SystemsDisposition::Resume {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-LOCAL-INTERRUPT",
+                    "local-notification model requires resume after completion",
+                ));
+            }
+            protocol.resume(event_identity)?;
+            transitions
+                .push(SystemsTransition::ResumeLocalNotificationInterrupt { event_identity });
+            let restored = protocol.finish_wait(event_identity)?;
+            if restored != LocalInterruptMaskState::Disabled {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-LOCAL-INTERRUPT",
+                    "local-notification wait did not restore the sealed initial mask state",
+                ));
+            }
+            transitions.push(SystemsTransition::EndLocalNotificationWait { event_identity });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn model_bootstrap_disposition(
@@ -1386,6 +1593,11 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
             unreachable!("critical operations are modeled by the caller")
         }
+        SystemsOperation::SendLocalNotification
+        | SystemsOperation::WaitLocalNotification
+        | SystemsOperation::CompleteLocalNotification => {
+            unreachable!("local-notification operations are modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -1468,6 +1680,21 @@ mod tests {
 
     fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
         let target = SystemsTargetSelection::initial_x86_64_qemu();
+        let mut bootstrap_effects = vec![
+            SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_FATAL.into(),
+            SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
+            SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
+            SYSTEMS_DEBUG_BREAK.into(),
+            SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
+        ];
+        bootstrap_effects.sort();
+        let mut local_notification_effects = vec![
+            SYSTEMS_RESUME_LOCAL_NOTIFICATION.into(),
+            SYSTEMS_LOCAL_NOTIFICATION_COMPLETE.into(),
+        ];
+        local_notification_effects.sort();
         SystemsProgram {
             target,
             bootstrap_storage: BootstrapStorageDescriptor {
@@ -1490,17 +1717,13 @@ mod tests {
                             text: "boot".into(),
                         },
                         SystemsOperation::DebugBreak,
+                        SystemsOperation::SendLocalNotification,
+                        SystemsOperation::WaitLocalNotification,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
                     },
-                    effects: vec![
-                        SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
-                        SYSTEMS_CONSOLE_WRITE.into(),
-                        SYSTEMS_FATAL.into(),
-                        SYSTEMS_DEBUG_BREAK.into(),
-                        SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
-                    ],
+                    effects: bootstrap_effects,
                 },
             },
             debug_break: SystemsEntry {
@@ -1509,8 +1732,22 @@ mod tests {
                     name: "debug".into(),
                     context: SystemsContextKind::DebugBreak,
                     operations: Vec::new(),
-                    effects: vec![debug_disposition.semantic_identity().into()],
+                    effects: vec![
+                        debug_disposition
+                            .semantic_identity(SystemsContextKind::DebugBreak)
+                            .into(),
+                    ],
                     disposition: debug_disposition,
+                },
+            },
+            local_notification: SystemsEntry {
+                kind: SystemsEntryKind::ExternalInterruptLocalNotification,
+                handler: SystemsHandler {
+                    name: "local-notification".into(),
+                    context: SystemsContextKind::LocalNotificationInterrupt,
+                    operations: vec![SystemsOperation::CompleteLocalNotification],
+                    disposition: SystemsDisposition::Resume,
+                    effects: local_notification_effects,
                 },
             },
         }
@@ -1535,10 +1772,55 @@ mod tests {
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,
                 SystemsTransition::ResumeDebugBreak,
+                SystemsTransition::SendLocalNotification { event_identity: 1 },
+                SystemsTransition::BeginLocalNotificationWait { event_identity: 1 },
+                SystemsTransition::ObserveLocalNotification { event_identity: 1 },
+                SystemsTransition::EnterLocalNotificationInterrupt { event_identity: 1 },
+                SystemsTransition::CompleteLocalNotificationInterrupt { event_identity: 1 },
+                SystemsTransition::ResumeLocalNotificationInterrupt { event_identity: 1 },
+                SystemsTransition::EndLocalNotificationWait { event_identity: 1 },
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn local_notification_requires_matching_wait_completion_and_resume() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-LOCAL-INTERRUPT-001.
+        let mut live = program(SystemsDisposition::Resume);
+        live.bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::WaitLocalNotification));
+        live.bootstrap
+            .handler
+            .effects
+            .retain(|effect| effect != SYSTEMS_LOCAL_NOTIFICATION_WAIT);
+        assert_eq!(
+            validate_systems_program(&live).unwrap_err().code,
+            "E-SYSTEMS-LOCAL-INTERRUPT-LIVE"
+        );
+
+        let mut duplicate = program(SystemsDisposition::Resume);
+        duplicate
+            .bootstrap
+            .handler
+            .operations
+            .insert(5, SystemsOperation::SendLocalNotification);
+        assert_eq!(
+            validate_systems_program(&duplicate).unwrap_err().code,
+            "E-SYSTEMS-LOCAL-INTERRUPT"
+        );
+
+        let mut incomplete = program(SystemsDisposition::Resume);
+        incomplete.local_notification.handler.operations.clear();
+        incomplete.local_notification.handler.effects =
+            vec![SYSTEMS_RESUME_LOCAL_NOTIFICATION.into()];
+        assert_eq!(
+            validate_systems_program(&incomplete).unwrap_err().code,
+            "E-SYSTEMS-LOCAL-INTERRUPT"
         );
     }
 
@@ -1572,6 +1854,8 @@ mod tests {
             SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_FATAL.into(),
+            SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
+            SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
             SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE.into(),
@@ -1610,7 +1894,7 @@ mod tests {
             .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
         program.bootstrap.handler.effects.sort();
         if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
-            &mut program.bootstrap.handler.operations[5]
+            &mut program.bootstrap.handler.operations[7]
         {
             *offset_bytes = 64;
         }

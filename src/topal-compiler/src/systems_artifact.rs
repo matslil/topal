@@ -1758,6 +1758,14 @@ fn encode_operations(
             } => encoder.load_atomic_word_equals(*order, *expected)?,
             CompilerSystemsOperation::AtomicWordEnd => encoder.end_atomic_word()?,
             CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
+            CompilerSystemsOperation::SendLocalNotification
+            | CompilerSystemsOperation::WaitLocalNotification
+            | CompilerSystemsOperation::CompleteLocalNotification => {
+                return Err(CompileError::Tool(
+                    "x86 local-notification lowering is not available in this compiler stage"
+                        .into(),
+                ));
+            }
         }
     }
     encoder.complete()
@@ -1951,6 +1959,13 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
+                | CompilerSystemsTransition::SendLocalNotification { .. }
+                | CompilerSystemsTransition::BeginLocalNotificationWait { .. }
+                | CompilerSystemsTransition::ObserveLocalNotification { .. }
+                | CompilerSystemsTransition::EnterLocalNotificationInterrupt { .. }
+                | CompilerSystemsTransition::CompleteLocalNotificationInterrupt { .. }
+                | CompilerSystemsTransition::ResumeLocalNotificationInterrupt { .. }
+                | CompilerSystemsTransition::EndLocalNotificationWait { .. }
                 | CompilerSystemsTransition::EndAtomicWord
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }

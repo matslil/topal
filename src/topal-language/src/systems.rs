@@ -37,9 +37,10 @@ pub use topal_semantics::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
     SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -111,20 +112,23 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 2 {
+    if functions.len() != 3 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the initial systems artifact requires exactly its bootstrap and debug-break handlers",
+            "the initial systems artifact requires exactly its bootstrap, debug-break, and local-notification handlers",
         ));
     }
-    if root_entries.bootstrap == root_entries.debug_break {
+    if root_entries.bootstrap == root_entries.debug_break
+        || root_entries.bootstrap == root_entries.local_notification
+        || root_entries.debug_break == root_entries.local_notification
+    {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "bootstrap and debug-break entries require distinct handlers",
+            "bootstrap, debug-break, and local-notification entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -145,6 +149,15 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::DebugBreak,
         None,
     )?;
+    let local_notification = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "local-notification",
+        &root_entries.local_notification,
+        CompilerSystemsContextKind::LocalNotificationInterrupt,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -156,6 +169,10 @@ pub fn analyze_systems_for_compiler(
         debug_break: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::SynchronousExceptionDebugBreak,
             handler: debug_break,
+        },
+        local_notification: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ExternalInterruptLocalNotification,
+            handler: local_notification,
         },
     })
 }
@@ -260,6 +277,7 @@ struct ArtifactEntries {
     bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
+    local_notification: String,
 }
 
 fn parse_artifact_root(
@@ -303,7 +321,10 @@ fn parse_artifact_root(
             if bootstrap_storage.replace(descriptor).is_some() {
                 return Err(duplicate_artifact_field(source, label, label_text));
             }
-        } else if matches!(label_text, "bootstrap" | "debug-break") {
+        } else if matches!(
+            label_text,
+            "bootstrap" | "debug-break" | "local-notification"
+        ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
                 return Err(duplicate_artifact_field(source, label, label_text));
@@ -317,10 +338,11 @@ fn parse_artifact_root(
             ));
         }
     }
-    let (Some(bootstrap_storage), Some(bootstrap), Some(debug_break)) = (
+    let (Some(bootstrap_storage), Some(bootstrap), Some(debug_break), Some(local_notification)) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
         entries.remove("debug-break"),
+        entries.remove("local-notification"),
     ) else {
         return Err(invalid_entry_set(source, *span));
     };
@@ -331,6 +353,7 @@ fn parse_artifact_root(
         bootstrap_storage,
         bootstrap,
         debug_break,
+        local_notification,
     })
 }
 
@@ -340,7 +363,7 @@ fn artifact_field_label(source: &SourceText, field: &ProductField) -> Result<Spa
             source,
             "E-SYSTEMS-ENTRY-SET",
             field.value.span(),
-            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, and `debug-break` fields",
+            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, and `local-notification` fields",
         )
     })
 }
@@ -362,6 +385,7 @@ fn parse_entry_field(
     let expected_constructor = match label_text {
         "bootstrap" => "bootstrap-entry",
         "debug-break" => "synchronous-exception-entry",
+        "local-notification" => "external-interrupt-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -515,12 +539,20 @@ fn atomic_diagnostic(source: &SourceText, span: Span, message: impl Into<String>
     source_diagnostic(source, "E-SYSTEMS-ATOMIC", span, message)
 }
 
+fn local_interrupt_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-LOCAL-INTERRUPT", span, message)
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
         "E-SYSTEMS-ENTRY-SET",
         span,
-        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, and `debug-break` entries",
+        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, and `local-notification` entries",
     )
 }
 
@@ -546,6 +578,10 @@ fn analyze_handler(
     let (context_classifier, disposition_classifier) = match context {
         CompilerSystemsContextKind::Bootstrap => ("BootstrapContext", "BootstrapDisposition"),
         CompilerSystemsContextKind::DebugBreak => ("DebugBreakContext", "DebugBreakDisposition"),
+        CompilerSystemsContextKind::LocalNotificationInterrupt => (
+            "LocalNotificationInterruptContext",
+            "LocalNotificationInterruptDisposition",
+        ),
     };
     if *is_static
         || parameters.len() != 1
@@ -576,7 +612,12 @@ fn analyze_handler(
             .iter()
             .map(|operation| operation.semantic_identity().to_owned())
             .collect::<Vec<_>>();
-        effects.push(checked.disposition.semantic_identity().to_owned());
+        effects.push(
+            checked
+                .disposition
+                .semantic_identity(CompilerSystemsContextKind::Bootstrap)
+                .to_owned(),
+        );
         effects.sort();
         effects.dedup();
         return Ok(CompilerSystemsHandler {
@@ -586,6 +627,9 @@ fn analyze_handler(
             disposition: checked.disposition,
             effects,
         });
+    }
+    if context == CompilerSystemsContextKind::LocalNotificationInterrupt {
+        return analyze_local_notification_handler(source, source.slice(*name), body, context_name);
     }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
@@ -615,7 +659,7 @@ fn analyze_handler(
         .iter()
         .map(|operation| operation.semantic_identity().to_owned())
         .collect::<Vec<_>>();
-    effects.push(disposition.semantic_identity().to_owned());
+    effects.push(disposition.semantic_identity(context).to_owned());
     effects.sort();
     effects.dedup();
     Ok(CompilerSystemsHandler {
@@ -625,6 +669,98 @@ fn analyze_handler(
         disposition,
         effects,
     })
+}
+
+fn analyze_local_notification_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [complete, disposition] = body else {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "local-notification handler requires consuming completion followed by resume",
+        ));
+    };
+    let (completed, items, span) = affine_application_binding(source, complete, "completion")?;
+    let [receiver, local, notification, complete_operation] = items else {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            span,
+            "completion must bind `completed is context local notification complete`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, complete_operation, "complete")
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            span,
+            "completion must consume the live local-notification interrupt context",
+        ));
+    }
+    let completed_name = source.slice(completed);
+    let disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::LocalNotificationInterrupt,
+        completed_name,
+    )?;
+    if disposition != CompilerSystemsDisposition::Resume {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            statement_span(body.last().expect("two statements")),
+            "local-notification completion must end in resume",
+        ));
+    }
+    let operations = vec![CompilerSystemsOperation::CompleteLocalNotification];
+    let mut effects = vec![
+        SYSTEMS_LOCAL_NOTIFICATION_COMPLETE.to_owned(),
+        disposition
+            .semantic_identity(CompilerSystemsContextKind::LocalNotificationInterrupt)
+            .to_owned(),
+    ];
+    effects.sort();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::LocalNotificationInterrupt,
+        operations,
+        disposition,
+        effects,
+    })
+}
+
+fn affine_application_binding<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    operation: &str,
+) -> Result<(Span, &'a [Expression], Span), Diagnostic> {
+    match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => Ok((*name, items, *span)),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => Ok((*name, items, *span)),
+        _ => Err(local_interrupt_diagnostic(
+            source,
+            statement_span(statement),
+            format!("{operation} must use one unclassified affine binding"),
+        )),
+    }
 }
 
 include!("systems_boot_memory.rs");
@@ -1343,7 +1479,6 @@ fn parse_atomic_word_sequence(
         CompilerSystemsOperation::AtomicWordEnd,
     ];
     operations.extend(exchanged.success_operations);
-    operations.push(CompilerSystemsOperation::BootstrapRelease);
     Ok(CheckedAtomicSequence {
         operations,
         disposition: exchanged.success_disposition,
@@ -1573,11 +1708,20 @@ fn parse_atomic_exchanged_action(
         ));
     };
     let success_continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
-    let [atomic_console, memory_console, release, disposition] = success_continuation else {
+    let [
+        atomic_console,
+        memory_console,
+        release,
+        send,
+        wait,
+        interrupt_console,
+        disposition,
+    ] = success_continuation
+    else {
         return Err(atomic_diagnostic(
             source,
             true_action.span(),
-            "successful atomic load requires atomic and memory markers, region release, and final disposition after atomic end",
+            "successful atomic load requires atomic and memory markers, region release, one local-notification send/wait, interrupt marker, and final disposition after atomic end",
         ));
     };
     let atomic_marker = analyze_operation(
@@ -1602,11 +1746,31 @@ fn parse_atomic_exchanged_action(
         ));
     }
     parse_region_release(source, release, context_name, region_name)?;
+    let (pending_name, send_operation) = parse_local_notification_send(source, send, context_name)?;
+    let (resumed_name, wait_operation) =
+        parse_local_notification_wait(source, wait, &pending_name)?;
+    let interrupt_marker = analyze_operation(
+        source,
+        interrupt_console,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if interrupt_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_INTERRUPT_OK".into(),
+        })
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            statement_span(interrupt_console),
+            "local-notification wait must be followed by the exact interrupt success marker",
+        ));
+    }
     let success_disposition = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        &resumed_name,
     )?;
 
     let failure = action_block(source, false_action, "failed atomic load")?;
@@ -1645,9 +1809,76 @@ fn parse_atomic_exchanged_action(
         load_order,
         expected,
         load_failure_message,
-        success_operations: vec![atomic_marker, memory_marker],
+        success_operations: vec![
+            atomic_marker,
+            memory_marker,
+            CompilerSystemsOperation::BootstrapRelease,
+            send_operation,
+            wait_operation,
+            interrupt_marker,
+        ],
         success_disposition,
     })
+}
+
+fn parse_local_notification_send(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let (name, items, span) = affine_application_binding(source, statement, "send")?;
+    let [context, local, notification, send] = items else {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "send must bind `pending is context local notification send`",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, send, "send")
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "local-notification send must consume the current processor context",
+        ));
+    }
+    Ok((
+        source.slice(name).to_owned(),
+        CompilerSystemsOperation::SendLocalNotification,
+    ))
+}
+
+fn parse_local_notification_wait(
+    source: &SourceText,
+    statement: &Statement,
+    pending_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let (name, items, span) = affine_application_binding(source, statement, "wait")?;
+    let [pending, local, notification, wait] = items else {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "wait must bind `resumed is pending local notification wait`",
+        ));
+    };
+    if !identifier_is(source, pending, pending_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, wait, "wait")
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "local-notification wait must consume the matching pending session",
+        ));
+    }
+    Ok((
+        source.slice(name).to_owned(),
+        CompilerSystemsOperation::WaitLocalNotification,
+    ))
 }
 
 fn parse_atomic_load(
@@ -2023,8 +2254,11 @@ fn analyze_disposition(
             "a systems handler must end in one context-consuming disposition",
         ));
     };
-    if context == CompilerSystemsContextKind::DebugBreak
-        && let [receiver, resume] = items.as_slice()
+    if matches!(
+        context,
+        CompilerSystemsContextKind::DebugBreak
+            | CompilerSystemsContextKind::LocalNotificationInterrupt
+    ) && let [receiver, resume] = items.as_slice()
         && identifier_is(source, receiver, context_name)
         && identifier_is(source, resume, "resume")
     {
@@ -2161,6 +2395,8 @@ mod tests {
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
+                SYSTEMS_LOCAL_NOTIFICATION_SEND,
+                SYSTEMS_LOCAL_NOTIFICATION_WAIT,
                 SYSTEMS_DEBUG_BREAK,
                 SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
                 SYSTEMS_KERNEL_MAP,
@@ -2318,6 +2554,16 @@ mod tests {
                     text: "TOPAL_KERNEL_MEMORY_OK".into(),
                 },
                 CompilerSystemsTransition::ReleaseBootstrapRegion,
+                CompilerSystemsTransition::SendLocalNotification { event_identity: 1 },
+                CompilerSystemsTransition::BeginLocalNotificationWait { event_identity: 1 },
+                CompilerSystemsTransition::ObserveLocalNotification { event_identity: 1 },
+                CompilerSystemsTransition::EnterLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::CompleteLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::ResumeLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::EndLocalNotificationWait { event_identity: 1 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_INTERRUPT_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -2334,7 +2580,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 42);
+        assert_eq!(program.bootstrap.handler.operations.len(), 45);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -2349,6 +2595,8 @@ mod tests {
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
+                SYSTEMS_LOCAL_NOTIFICATION_SEND,
+                SYSTEMS_LOCAL_NOTIFICATION_WAIT,
                 SYSTEMS_DEBUG_BREAK,
                 SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
                 SYSTEMS_KERNEL_MAP,
@@ -2678,8 +2926,8 @@ mod tests {
         );
 
         let open_entries = SOURCE.replace(
-            "  debug-break is lang systems synchronous-exception-entry debug-break-handler\n",
-            "  debug-break is lang systems synchronous-exception-entry debug-break-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler\n",
+            "  local-notification is lang systems external-interrupt-entry local-notification-handler\n",
+            "  local-notification is lang systems external-interrupt-entry local-notification-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler\n",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -2769,4 +3017,5 @@ mod tests {
     include!("systems_translation_tests.rs");
     include!("systems_translation_edit_tests.rs");
     include!("systems_critical_tests.rs");
+    include!("systems_interrupt_tests.rs");
 }
