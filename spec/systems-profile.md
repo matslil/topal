@@ -360,6 +360,22 @@ Plain conflicting access to live atomic storage SHALL be invalid. Atomicity
 SHALL NOT grant access to overlapping storage, repair an invalid lifetime, or
 imply device/DMA atomicity.
 
+For the initial `atomic word` form, construction SHALL consume one live
+ordinary region and select one naturally aligned provider-width unsigned word
+wholly contained at the requested byte offset. The only admitted domain SHALL
+be `cpu-shared`. The whole region SHALL remain unavailable for plain access or
+release while the atomic location is live. `atomic end` SHALL consume the
+location only when no operation remains in flight, retain its final word
+contents, and return the same region identity and extent to plain ownership.
+
+Initial compare/exchange SHALL return `Exchanged previous` exactly when the
+observed value equals `expected`; that successful transition SHALL replace the
+value with `desired` at one point in `mo_l`. Otherwise it SHALL return
+`Observed actual` without modifying `l`. The source result SHALL be exhaustive,
+and every ordinary continuation SHALL end the location before region release.
+Source SHALL NOT observe a machine address, provider word spelling, register,
+instruction, exclusive-monitor state, or retry attempt.
+
 ### TOPAL-SYSTEMS-ORDER-001 — Atomic and visibility relations
 
 Atomic orders SHALL be:
@@ -377,6 +393,13 @@ Compare/exchange SHALL declare success and failure orders separately; a
 failure order SHALL be `AtomicOnly` or `Acquire`. A provider MAY strengthen an
 implementation order but SHALL NOT expose a result forbidden by the selected
 order.
+
+The initial atomic-word increment SHALL admit `AcquireRelease` success and
+`Acquire` failure for compare/exchange and `Acquire` for the following load.
+These orders apply only to CPU-shared normal memory. Target implementations MAY
+use one locked instruction, an architectural atomic extension, or a qualified
+exclusive-reservation loop provided the observable result and progress
+contract are preserved.
 
 CPU memory, device/MMIO, DMA ownership, cache maintenance, instruction
 synchronization, and translation maintenance SHALL be distinct relation

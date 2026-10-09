@@ -492,6 +492,49 @@ invariant holds for every transition. Non-atomic conflicting access remains a
 rejected race. Mixed access requires a proved ownership transition which ends
 all atomic access first.
 
+The initial source form specializes that lifecycle to one unsigned machine
+word in CPU-shared normal memory:
+
+```topal
+atomic is region atomic word create (
+  offset-bytes is 8,
+  initial-value is 41,
+  domain is cpu-shared
+)
+atomic compare exchange (
+  expected is 41,
+  desired is 42,
+  success-order is acquire-release,
+  failure-order is acquire
+)
+  Exchanged previous then {
+    observed : Nat is atomic load (order is acquire)
+    observed = 42
+      true then {
+        region is atomic end
+        restored bootstrap release region
+      }
+      false then {
+        region is atomic end
+        restored bootstrap release region
+        restored fatal "atomic load mismatch"
+      }
+  }
+  Observed actual then {
+    region is atomic end
+    restored bootstrap release region
+    restored fatal "atomic compare exchange lost"
+  }
+```
+
+`atomic word create` consumes the entire region even though only its selected
+word is the atomic location, so no plain alias remains usable. `atomic end`
+consumes the location, proves that no operation remains in flight, retains the
+final word contents, and returns that same region to plain ownership. The
+machine-word width is supplied by the qualified target; source cannot select
+an instruction width or address. The initial `cpu-shared` domain excludes
+MMIO, device, DMA, firmware, and user memory.
+
 Mutex, spin-style, sequence, reference-count, epoch/RCU, wait, and completion
 algorithms are libraries over atomic and critical-scope elements. The language
 does not standardize one universal lock.
