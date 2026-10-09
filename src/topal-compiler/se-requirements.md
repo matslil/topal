@@ -130,6 +130,20 @@ without exposing addresses, registers, encodings, or order implementation to
 source. Structural and pinned-QEMU evidence shall retain the locked operation,
 success/failure control flow, load, and ownership return.
 
+The first external-interrupt increment shall check exactly one local-
+notification handler, one affine send/wait lifecycle, one matching monotonic
+observation, consuming completion, external-interrupt resume, and restoration
+of the prior local mask state before bootstrap continuation. It shall reject
+missing or duplicate entries, wait without send, context use while pending,
+completion outside the handler, resume before completion, duplicate completion,
+and live notification authority at ordinary completion. The x86-64 provider
+shall privately install one interrupt gate, send one local-APIC self-
+notification, execute an interrupt-safe wait, complete the controller event,
+restore the interrupted register state, and return through the target interrupt
+mechanism. Structural and pinned-QEMU evidence shall retain every transition
+without exposing vectors, controller registers, frames, instructions, or mask
+bits to source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
