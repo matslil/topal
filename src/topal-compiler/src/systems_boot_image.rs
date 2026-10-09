@@ -12,11 +12,12 @@ use serde::{Deserialize, Serialize};
 use crate::artifact::sha256;
 use crate::{
     CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
-    X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+    X86_SYSTEMS_PROVIDER_REVISION,
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/2";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/3";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -40,7 +41,10 @@ const PAGE_TABLE_PD_ADDRESS: u64 = 0x0010_3000;
 const GDT_ADDRESS: u64 = 0x0010_4000;
 const IDT_ADDRESS: u64 = 0x0010_5000;
 const IDT_DESCRIPTOR_ADDRESS: u64 = 0x0010_6000;
-const TRANSITION_RESERVED_END: u64 = 0x0010_7000;
+const LOCAL_APIC_PD_ADDRESS: u64 = 0x0010_7000;
+const TRANSITION_RESERVED_END: u64 = 0x0010_8000;
+const LOCAL_APIC_PAGE_ADDRESS: u64 = 0xfee0_0000;
+const LOCAL_NOTIFICATION_VECTOR: usize = 0xf1;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
@@ -55,6 +59,7 @@ pub struct X86LinuxBootImageProvenance {
     pub kernel_minimum_address: u64,
     pub initial_stack_top: u64,
     pub identity_map_limit: u64,
+    pub local_apic_page_address: u64,
     pub target: String,
     pub board: String,
     pub machine_cpu: String,
@@ -64,6 +69,7 @@ pub struct X86LinuxBootImageProvenance {
     pub protected_payload_bytes: u64,
     pub kernel_entry: u64,
     pub debug_break_entry: u64,
+    pub local_notification_entry: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -119,8 +125,15 @@ pub fn generate_x86_64_linux_boot_image(
     }
     let debug_break_entry =
         required_executable_symbol(&file, &segments, X86_SYSTEMS_DEBUG_BREAK_ENTRY)?;
+    let local_notification_entry =
+        required_executable_symbol(&file, &segments, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)?;
     let mut protected = materialize_protected_payload(&segments)?;
-    install_transition_support(&mut protected, kernel_entry, debug_break_entry)?;
+    install_transition_support(
+        &mut protected,
+        kernel_entry,
+        debug_break_entry,
+        local_notification_entry,
+    )?;
     pad_to(&mut protected, 16);
 
     let protected_size = u32::try_from(protected.len()).map_err(|_| {
@@ -143,6 +156,7 @@ pub fn generate_x86_64_linux_boot_image(
             kernel_minimum_address: X86_KERNEL_MINIMUM_ADDRESS,
             initial_stack_top: X86_INITIAL_STACK_TOP,
             identity_map_limit: X86_INITIAL_IDENTITY_LIMIT,
+            local_apic_page_address: LOCAL_APIC_PAGE_ADDRESS,
             target: artifact.target.clone(),
             board: artifact.board.clone(),
             machine_cpu: artifact.machine_cpu.clone(),
@@ -152,6 +166,7 @@ pub fn generate_x86_64_linux_boot_image(
             protected_payload_bytes: u64::from(protected_size),
             kernel_entry,
             debug_break_entry,
+            local_notification_entry,
         },
     })
 }
@@ -364,6 +379,7 @@ fn install_transition_support(
     protected: &mut [u8],
     kernel_entry: u64,
     debug_break_entry: u64,
+    local_notification_entry: u64,
 ) -> Result<(), CompileError> {
     if X86_KERNEL_MINIMUM_ADDRESS < TRANSITION_RESERVED_END {
         return Err(CompileError::Tool(
@@ -379,7 +395,7 @@ fn install_transition_support(
     protected[..transition.len()].copy_from_slice(&transition);
     install_page_tables(protected)?;
     install_gdt(protected)?;
-    install_idt(protected, debug_break_entry)?;
+    install_idt(protected, debug_break_entry, local_notification_entry)?;
     Ok(())
 }
 
@@ -434,14 +450,23 @@ fn install_page_tables(protected: &mut [u8]) -> Result<(), CompileError> {
     let pml4 = payload_offset(PAGE_TABLE_PML4_ADDRESS, 4096, protected.len())?;
     let pdpt = payload_offset(PAGE_TABLE_PDPT_ADDRESS, 4096, protected.len())?;
     let pd = payload_offset(PAGE_TABLE_PD_ADDRESS, 4096, protected.len())?;
+    let apic_pd = payload_offset(LOCAL_APIC_PD_ADDRESS, 4096, protected.len())?;
     write_u64(protected, pml4, PAGE_TABLE_PDPT_ADDRESS | 0x3);
     write_u64(protected, pdpt, PAGE_TABLE_PD_ADDRESS | 0x3);
+    write_u64(protected, pdpt + 3 * 8, LOCAL_APIC_PD_ADDRESS | 0x3);
     for index in 0..512_usize {
         let physical = u64::try_from(index)
             .map_err(|_| CompileError::Tool("page-table index does not fit u64".into()))?
             * 0x20_0000;
         write_u64(protected, pd + index * 8, physical | 0x83);
     }
+    let apic_index = usize::try_from((LOCAL_APIC_PAGE_ADDRESS >> 21) & 0x1ff)
+        .map_err(|_| CompileError::Tool("local-APIC page index does not fit host size".into()))?;
+    write_u64(
+        protected,
+        apic_pd + apic_index * 8,
+        LOCAL_APIC_PAGE_ADDRESS | 0x9b,
+    );
     Ok(())
 }
 
@@ -459,7 +484,11 @@ fn install_gdt(protected: &mut [u8]) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn install_idt(protected: &mut [u8], debug_break_entry: u64) -> Result<(), CompileError> {
+fn install_idt(
+    protected: &mut [u8],
+    debug_break_entry: u64,
+    local_notification_entry: u64,
+) -> Result<(), CompileError> {
     let idt = payload_offset(IDT_ADDRESS, 4096, protected.len())?;
     let gate = idt + 3 * 16;
     write_u16(
@@ -482,6 +511,33 @@ fn install_idt(protected: &mut [u8], debug_break_entry: u64) -> Result<(), Compi
         gate + 8,
         u32::try_from(debug_break_entry >> 32)
             .map_err(|_| CompileError::Tool("debug entry high word does not fit u32".into()))?,
+    );
+    write_u32(protected, gate + 12, 0);
+
+    let gate = idt + LOCAL_NOTIFICATION_VECTOR * 16;
+    write_u16(
+        protected,
+        gate,
+        u16::try_from(local_notification_entry & 0xffff).map_err(|_| {
+            CompileError::Tool("local-notification entry low word does not fit u16".into())
+        })?,
+    );
+    write_u16(protected, gate + 2, 0x10);
+    protected[gate + 4] = 0;
+    protected[gate + 5] = 0x8e;
+    write_u16(
+        protected,
+        gate + 6,
+        u16::try_from((local_notification_entry >> 16) & 0xffff).map_err(|_| {
+            CompileError::Tool("local-notification entry middle word does not fit u16".into())
+        })?,
+    );
+    write_u32(
+        protected,
+        gate + 8,
+        u32::try_from(local_notification_entry >> 32).map_err(|_| {
+            CompileError::Tool("local-notification entry high word does not fit u32".into())
+        })?,
     );
     write_u32(protected, gate + 12, 0);
 
@@ -809,6 +865,41 @@ mod tests {
         );
         let gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap() + 3 * 16;
         assert_eq!(protected[gate + 5], 0x8f);
+        let local_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
+            + LOCAL_NOTIFICATION_VECTOR * 16;
+        assert_eq!(protected[local_gate + 5], 0x8e);
+        let pdpt =
+            usize::try_from(PAGE_TABLE_PDPT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(protected[pdpt + 24..pdpt + 32].try_into().unwrap()),
+            LOCAL_APIC_PD_ADDRESS | 3
+        );
+        let apic_pd =
+            usize::try_from(LOCAL_APIC_PD_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        let apic_index = usize::try_from((LOCAL_APIC_PAGE_ADDRESS >> 21) & 0x1ff).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(
+                protected[apic_pd + apic_index * 8..apic_pd + apic_index * 8 + 8]
+                    .try_into()
+                    .unwrap()
+            ),
+            LOCAL_APIC_PAGE_ADDRESS | 0x9b
+        );
+        assert_eq!(
+            generated.provenance.local_notification_entry,
+            u64::from(u16::from_le_bytes(
+                protected[local_gate..local_gate + 2].try_into().unwrap()
+            )) | (u64::from(u16::from_le_bytes(
+                protected[local_gate + 6..local_gate + 8]
+                    .try_into()
+                    .unwrap()
+            )) << 16)
+                | (u64::from(u32::from_le_bytes(
+                    protected[local_gate + 8..local_gate + 12]
+                        .try_into()
+                        .unwrap()
+                )) << 32)
+        );
         assert_eq!(generated.provenance.linked_kernel_sha256, sha256(&kernel));
         assert_eq!(
             generated.provenance.boot_image_sha256,
