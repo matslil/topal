@@ -194,6 +194,15 @@ RISC-V A-extension/LR-SC implementations from qualified target evidence. A
 fallback lock is permitted only when it satisfies context, progress, and
 recursion requirements. Source never selects the instruction strategy.
 
+The approved initial specialization consumes an entire ordinary region into
+one naturally aligned unsigned machine-word location at a checked offset in
+the `cpu-shared` domain. It admits compare/exchange with acquire-release
+success and acquire failure, an acquire load, and a consuming `atomic end`
+which returns the original region and retained contents to plain ownership.
+This whole-region transition deliberately prevents an overlapping plain alias
+even when bytes outside the word are not accessed. The exact source and
+provider contract is [TK-DEC-023](atomic-word-location.md).
+
 ## TK-ELEMENT-CRITICAL-001 — Scoped interrupt and preemption control
 
 Masking and preemption are scoped state transitions tied to the current CPU,

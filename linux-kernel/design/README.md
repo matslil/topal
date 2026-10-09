@@ -21,6 +21,7 @@ records, not this directory alone, define language meaning.
 - [Translation-space construction and activation contract](translation-space.md)
 - [Active translation-edit contract](active-translation-edit.md)
 - [Local-interrupt critical-scope contract](local-interrupt-critical-scope.md)
+- [Atomic-word location contract](atomic-word-location.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

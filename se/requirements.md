@@ -402,6 +402,17 @@ device, DMA, translation, cache, and instruction domains. Plain conflicting
 access shall remain a rejected race; masking one producer shall not imply
 exclusion of another.
 
+The first atomic-location increment shall consume one exclusively owned
+ordinary region into one aligned unsigned machine-word location in the
+`cpu-shared` domain. It shall admit compare/exchange with explicit
+`AcquireRelease` success and `Acquire` failure orders followed by an `Acquire`
+load, and shall require consuming `atomic end` before returning the original
+region for plain use or release. The word width and implementation strategy
+shall come from qualified target evidence. Source shall not observe an
+address, register, opcode, exclusive-monitor state, or retry loop, and the
+increment shall not claim MMIO, device, DMA, firmware, or user-memory
+atomicity.
+
 The initial local-maskable-interrupt scope shall consume and refine the
 current processor context, retain the exact prior interrupt state in opaque
 affine restoration authority, and require matching restoration before escape,
