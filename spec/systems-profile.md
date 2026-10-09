@@ -392,6 +392,20 @@ state. The token SHALL be consumed exactly once by the matching restoration or
 an admitted disposition transfer on every exit path. It SHALL NOT escape,
 suspend, cross a processor, or be restored out of nesting order.
 
+For the initial `local-maskable-interrupts` domain, `critical enter` SHALL
+consume the current execution context and produce a context refined to that
+domain plus opaque restoration authority for the exact immediately preceding
+state. `critical restore` SHALL consume that refined context and authority and
+produce the preceding context. A nested entry, where supported, SHALL allocate
+a distinct nesting identity, and restoration SHALL consume identities in
+last-in-first-out order. Completion, disposition, suspension, blocking, and
+processor transfer with a live critical context SHALL be rejected.
+
+Target interrupt flags, registers, controller masks, and instructions SHALL
+NOT be source-observable values. A provider SHALL restore exactly the state
+captured by the matching entry; it SHALL NOT unconditionally enable a domain
+which was disabled before entry.
+
 The exclusion established by a critical scope SHALL contain only the producers
 named by its domain. Masking local interrupts SHALL NOT establish exclusion
 from another processor, non-maskable event, device, or DMA agent. An operation

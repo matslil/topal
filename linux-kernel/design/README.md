@@ -20,6 +20,7 @@ records, not this directory alone, define language meaning.
 - [Opaque kernel-mapping contract](kernel-mapping.md)
 - [Translation-space construction and activation contract](translation-space.md)
 - [Active translation-edit contract](active-translation-edit.md)
+- [Local-interrupt critical-scope contract](local-interrupt-critical-scope.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

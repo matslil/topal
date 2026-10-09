@@ -503,6 +503,31 @@ transitions tied to one processor and domain. Entering returns a restoration
 token containing the exact previous state. Every exit path consumes it once;
 it cannot cross processors, suspend, escape, or restore out of nesting order.
 
+The initial local-interrupt form consumes the current execution context and
+returns a context refined to `local-maskable-interrupts`:
+
+```topal
+context critical enter (
+  domain is local-maskable-interrupts
+)
+  Ok critical then {
+    critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+    restored is critical restore
+    restored console write "continued"
+  }
+  Error failure then {
+    failure fatal "critical entry failed"
+  }
+```
+
+`critical restore` consumes the refined context and returns the context state
+that existed immediately before the matching entry. Nested scopes, when a
+provider admits them, restore in last-in-first-out order. Neither source nor
+the common semantic model can observe the saved flags, registers, masks, or
+instructions. A local-interrupt critical context cannot be used for an
+operation which may suspend or block, and it must be restored before control
+can escape its lexical continuation.
+
 Masking local interrupts does not exclude another processor, an NMI, DMA, or a
 device. An exclusion proof names the exact producers removed by the scope.
 Potentially blocking acquisition is invalid in interrupt and machine-critical

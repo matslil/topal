@@ -63,12 +63,19 @@ the architecture-independent affine builder/commit/activation model, a
 replacement x86-64 four-level root, structural CR3 evidence, and two
 deterministic pinned-QEMU runs.
 
-The latest Step 4 slice adds the approved
+An earlier Step 4 slice adds the approved
 [active translation-edit lifecycle](design/active-translation-edit.md). Its
 [implementation and qualification report](step-4-active-translation-edit.md)
 records exclusive provisional map/unmap transactions, an opaque x86-64 4 KiB
 mapping window, commit-time publication and invalidation, and two deterministic
 pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[local-interrupt critical scope](design/local-interrupt-critical-scope.md). Its
+[implementation and qualification report](step-4-local-interrupt-critical-scope.md)
+records the affine context refinement, exact prior-state restoration model,
+private x86 flags lowering, structural instruction checks, and two
+deterministic pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -157,6 +164,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 opaque kernel mapping](step-4-kernel-mapping.md)
 - [Step 4 translation-space activation](step-4-translation-space.md)
 - [Step 4 active translation edits](step-4-active-translation-edit.md)
+- [Step 4 local-interrupt critical scope](step-4-local-interrupt-critical-scope.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

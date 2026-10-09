@@ -64,31 +64,41 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                             Ok unmapped then {
                                                               unmapped console write "TOPAL_KERNEL_TRANSLATION_EDITED"
                                                               unmapped frames release removed-frames
-                                                              unmapped console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
-                                                              unmapped console write "TOPAL_KERNEL_BOOT"
-                                                              unmapped debug break
-                                                              unmapped console write "TOPAL_KERNEL_FAULT_RESUMED"
-                                                              unmapped bootstrap allocate (
-                                                                byte-count is 64,
-                                                                alignment-bytes is 8,
-                                                                placement is bootstrap-reclaimable
+                                                              unmapped critical enter (
+                                                                domain is local-maskable-interrupts
                                                               )
-                                                                Ok region then {
-                                                                  region byte store (offset-bytes is 0, value is 90)
-                                                                  observed : Nat is region byte load (offset-bytes is 0)
-                                                                  observed = 90
-                                                                    true then {
-                                                                      unmapped console write "TOPAL_KERNEL_MEMORY_OK"
-                                                                      unmapped bootstrap release region
-                                                                      unmapped fatal "toolchain gate complete"
+                                                                Ok critical then {
+                                                                  critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                  restored is critical restore
+                                                                  restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
+                                                                  restored console write "TOPAL_KERNEL_BOOT"
+                                                                  restored debug break
+                                                                  restored console write "TOPAL_KERNEL_FAULT_RESUMED"
+                                                                  restored bootstrap allocate (
+                                                                    byte-count is 64,
+                                                                    alignment-bytes is 8,
+                                                                    placement is bootstrap-reclaimable
+                                                                  )
+                                                                    Ok region then {
+                                                                      region byte store (offset-bytes is 0, value is 90)
+                                                                      observed : Nat is region byte load (offset-bytes is 0)
+                                                                      observed = 90
+                                                                        true then {
+                                                                          restored console write "TOPAL_KERNEL_MEMORY_OK"
+                                                                          restored bootstrap release region
+                                                                          restored fatal "toolchain gate complete"
+                                                                        }
+                                                                        false then {
+                                                                          restored bootstrap release region
+                                                                          restored fatal "toolchain gate memory mismatch"
+                                                                        }
                                                                     }
-                                                                    false then {
-                                                                      unmapped bootstrap release region
-                                                                      unmapped fatal "toolchain gate memory mismatch"
+                                                                    Error problem then {
+                                                                      restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                Error problem then {
-                                                                  unmapped fatal "toolchain gate allocation failed"
+                                                                Error failure then {
+                                                                  failure fatal "critical entry failed"
                                                                 }
                                                             }
                                                             Error failure then {
