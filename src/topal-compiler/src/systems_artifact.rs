@@ -1470,6 +1470,12 @@ fn encode_operations(
             CompilerSystemsOperation::CommitTranslationEdit { kind, .. } => {
                 encoder.commit_translation_edit(*kind)?;
             }
+            CompilerSystemsOperation::EnterCritical { .. }
+            | CompilerSystemsOperation::RestoreCritical { .. } => {
+                return Err(CompileError::Tool(
+                    "x86 root lowering does not yet admit critical scopes".into(),
+                ));
+            }
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
             CompilerSystemsOperation::BootstrapAllocate { .. } => {
@@ -1637,6 +1643,21 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     match kind {
                         CompilerTranslationEditKind::Map => "map",
                         CompilerTranslationEditKind::Unmap => "unmap",
+                    }
+                ),
+                CompilerSystemsTransition::EnterCritical {
+                    domain,
+                    nesting_identity,
+                }
+                | CompilerSystemsTransition::RestoreCritical {
+                    domain,
+                    nesting_identity,
+                } => format!(
+                    "{identity}:domain={}:nesting={nesting_identity}",
+                    match domain {
+                        topal_language::CompilerCriticalDomain::LocalMaskableInterrupts => {
+                            "local-maskable-interrupts"
+                        }
                     }
                 ),
                 CompilerSystemsTransition::StoreBootstrapByte {

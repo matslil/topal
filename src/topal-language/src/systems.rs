@@ -19,9 +19,9 @@ pub use topal_semantics::{
     BootstrapStoragePlacement as CompilerBootstrapStoragePlacement,
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
-    BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
-    KernelExecutionPolicy as CompilerKernelExecutionPolicy,
+    BootstrapStorageTransition as CompilerBootstrapStorageTransition,
+    CriticalDomain as CompilerCriticalDomain, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE,
+    INITIAL_SYSTEMS_TARGET, KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
@@ -30,12 +30,13 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
     SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -623,6 +624,7 @@ include!("systems_frames.rs");
 include!("systems_mapping.rs");
 include!("systems_translation.rs");
 include!("systems_translation_edit.rs");
+include!("systems_critical.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -1535,6 +1537,8 @@ mod tests {
             program.bootstrap.handler.effects,
             [
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_CRITICAL_ENTER,
+                SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -1635,6 +1639,17 @@ mod tests {
                     text: "TOPAL_KERNEL_TRANSLATION_EDITED".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::EnterCritical {
+                    domain: CompilerCriticalDomain::LocalMaskableInterrupts,
+                    nesting_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_INTERRUPTS_MASKED".into(),
+                },
+                CompilerSystemsTransition::RestoreCritical {
+                    domain: CompilerCriticalDomain::LocalMaskableInterrupts,
+                    nesting_identity: 1,
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
                 },
@@ -1682,11 +1697,13 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 34);
+        assert_eq!(program.bootstrap.handler.operations.len(), 37);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_CRITICAL_ENTER,
+                SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -1771,8 +1788,8 @@ mod tests {
             ),
             (
                 memory_source().replacen(
-                    "unmapped bootstrap release region",
-                    "unmapped console write \"not released\"",
+                    "restored bootstrap release region",
+                    "restored console write \"not released\"",
                     1,
                 ),
                 "E-SYSTEMS-STORAGE",
@@ -1780,7 +1797,7 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "unmapped fatal \"toolchain gate allocation failed\"",
+                    "restored fatal \"toolchain gate allocation failed\"",
                     "region byte load (offset-bytes is 0)",
                 ),
                 "E-SYSTEMS-DISPOSITION",
@@ -1835,7 +1852,7 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "unmapped console write \"TOPAL_KERNEL_BOOT\"",
+            "restored console write \"TOPAL_KERNEL_BOOT\"",
             "saved is translated",
         );
         assert_eq!(
@@ -1845,10 +1862,10 @@ mod tests {
             )
             .unwrap_err()
             .code,
-            "E-SYSTEMS-MAPPING"
+            "E-SYSTEMS-AFFINE-CONTEXT"
         );
 
-        let unknown = SOURCE.replace("unmapped debug break", "unmapped machine instruction");
+        let unknown = SOURCE.replace("restored debug break", "restored machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1887,7 +1904,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "unmapped console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "restored console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                     "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                 ),
                 "E-SYSTEMS-OPERATION",
@@ -2067,4 +2084,5 @@ mod tests {
     include!("systems_mapping_tests.rs");
     include!("systems_translation_tests.rs");
     include!("systems_translation_edit_tests.rs");
+    include!("systems_critical_tests.rs");
 }
