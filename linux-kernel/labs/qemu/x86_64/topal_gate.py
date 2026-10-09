@@ -31,6 +31,7 @@ MARKERS = (
     b"TOPAL_KERNEL_MEMORY_DESCRIBED",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
+    b"TOPAL_KERNEL_ATOMIC_OK",
     b"TOPAL_KERNEL_MEMORY_OK",
 )
 
@@ -215,7 +216,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/8",
+        "schema": "topal-kernel-toolchain-gate-qemu/9",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
