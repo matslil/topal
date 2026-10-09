@@ -19,6 +19,7 @@ records, not this directory alone, define language meaning.
 - [Affine physical-frame allocation contract](physical-frame-allocation.md)
 - [Opaque kernel-mapping contract](kernel-mapping.md)
 - [Translation-space construction and activation contract](translation-space.md)
+- [Active translation-edit contract](active-translation-edit.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

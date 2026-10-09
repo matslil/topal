@@ -9,12 +9,14 @@ use topal_language::compiler::{
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
     SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, validate_systems_program,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    validate_systems_program,
 };
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/5";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/6";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -32,6 +34,10 @@ pub enum X86SystemsLowering {
     SelectBootstrapTranslationBacking,
     BuildBootstrapEquivalentTranslation,
     ActivateTranslationRoot,
+    BeginActiveTranslationEdit,
+    StageActiveTranslationMap,
+    StageActiveTranslationUnmap,
+    CommitActiveTranslationEdit,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -67,6 +73,14 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.translation.build-bootstrap-equivalent/1"
             }
             Self::ActivateTranslationRoot => "topal.provider.x86_64.translation.activate-root/1",
+            Self::BeginActiveTranslationEdit => "topal.provider.x86_64.translation.edit.begin/1",
+            Self::StageActiveTranslationMap => {
+                "topal.provider.x86_64.translation.edit.map-kernel/1"
+            }
+            Self::StageActiveTranslationUnmap => {
+                "topal.provider.x86_64.translation.edit.unmap-kernel/1"
+            }
+            Self::CommitActiveTranslationEdit => "topal.provider.x86_64.translation.edit.commit/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -92,6 +106,7 @@ impl X86SystemsLowering {
             self,
             Self::PolledUart16550PortIo
                 | Self::ActivateTranslationRoot
+                | Self::CommitActiveTranslationEdit
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -203,6 +218,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_TRANSLATION_BEGIN => X86SystemsLowering::SelectBootstrapTranslationBacking,
         SYSTEMS_TRANSLATION_COMMIT => X86SystemsLowering::BuildBootstrapEquivalentTranslation,
         SYSTEMS_TRANSLATION_ACTIVATE => X86SystemsLowering::ActivateTranslationRoot,
+        SYSTEMS_TRANSLATION_EDIT_BEGIN => X86SystemsLowering::BeginActiveTranslationEdit,
+        SYSTEMS_TRANSLATION_EDIT_MAP => X86SystemsLowering::StageActiveTranslationMap,
+        SYSTEMS_TRANSLATION_EDIT_UNMAP => X86SystemsLowering::StageActiveTranslationUnmap,
+        SYSTEMS_TRANSLATION_EDIT_COMMIT => X86SystemsLowering::CommitActiveTranslationEdit,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -232,6 +251,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::SelectBootstrapTranslationBacking => SYSTEMS_TRANSLATION_BEGIN,
             X86SystemsLowering::BuildBootstrapEquivalentTranslation => SYSTEMS_TRANSLATION_COMMIT,
             X86SystemsLowering::ActivateTranslationRoot => SYSTEMS_TRANSLATION_ACTIVATE,
+            X86SystemsLowering::BeginActiveTranslationEdit => SYSTEMS_TRANSLATION_EDIT_BEGIN,
+            X86SystemsLowering::StageActiveTranslationMap => SYSTEMS_TRANSLATION_EDIT_MAP,
+            X86SystemsLowering::StageActiveTranslationUnmap => SYSTEMS_TRANSLATION_EDIT_UNMAP,
+            X86SystemsLowering::CommitActiveTranslationEdit => SYSTEMS_TRANSLATION_EDIT_COMMIT,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -279,7 +302,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 21);
+        assert_eq!(plan.operations.len(), 25);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -323,6 +346,22 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_TRANSLATION_ACTIVATE
                 && operation.lowering == X86SystemsLowering::ActivateTranslationRoot
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_BEGIN
+                && operation.lowering == X86SystemsLowering::BeginActiveTranslationEdit
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_MAP
+                && operation.lowering == X86SystemsLowering::StageActiveTranslationMap
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_UNMAP
+                && operation.lowering == X86SystemsLowering::StageActiveTranslationUnmap
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_COMMIT
+                && operation.lowering == X86SystemsLowering::CommitActiveTranslationEdit
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE

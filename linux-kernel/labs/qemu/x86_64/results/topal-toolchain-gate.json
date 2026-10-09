@@ -1,12 +1,12 @@
 {
-  "artifact_provenance_sha256": "7fc85c600790d7eed3e41ae576d5b40b82c7b2df0d18c879018a06b635c9e709",
-  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/5",
-  "boot_image_sha256": "39eeffec17e9eda29008e4e63edc1ccc6ef5271680000ffaaf01ceb1fc1acbac",
-  "boot_provenance_sha256": "123129808fa29d7b39526486c044ff260bfd04185fbd5a489ecd90b9a4f3ac0d",
+  "artifact_provenance_sha256": "b9f9f1ea58e8e37ea5c07b2f378cf67a7d75520ab2615e757d8b4d1e64ccbb06",
+  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/6",
+  "boot_image_sha256": "f43ff6a6f2e083813f6cf7070de55dbca73841f4ce01f9be3247d4f825691db6",
+  "boot_provenance_sha256": "1e6d8b30df3b74e6cb725b11b8296415bab31944037f594cd56c9d17031b334e",
   "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/2",
   "cpu": "qemu64-v1",
   "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
-  "linked_kernel_sha256": "6799d37e3daf32a27dfb4def70ae479955ecfd565a147b02211eef3ddf8910da",
+  "linked_kernel_sha256": "30fae0ed21aa5ad9bf056f02b9d3a7dab46120aa53a699d4c81373e611545f79",
   "machine": "pc-q35-10.2",
   "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
   "observations": {
@@ -14,6 +14,7 @@
       "TOPAL_KERNEL_FRAME_ALLOCATED",
       "TOPAL_KERNEL_FRAME_MAPPED",
       "TOPAL_KERNEL_TRANSLATION_ACTIVE",
+      "TOPAL_KERNEL_TRANSLATION_EDITED",
       "TOPAL_KERNEL_MEMORY_DESCRIBED",
       "TOPAL_KERNEL_BOOT",
       "TOPAL_KERNEL_FAULT_RESUMED",
@@ -22,12 +23,12 @@
     "qemu_running_after_markers": true,
     "result": "pass",
     "serial_quiescent_after_fatal_disposition": true,
-    "serial_sha256": "53250183afc70b5e3f09a5a792eeb825357c530dba48ce8153bc7ae96ed154c3",
-    "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK"
+    "serial_sha256": "2f18ea449a3a3c62c85bd6eb428c63253d499e72a7286427fdc9724593159855",
+    "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK"
   },
-  "provider": "topal.provider.x86_64-qemu-pc-q35/5",
+  "provider": "topal.provider.x86_64-qemu-pc-q35/6",
   "publication": "topalc-target-interface/1",
   "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-  "schema": "topal-kernel-toolchain-gate-qemu/6",
-  "source_sha256": "5ab07ce111032b4ed3838d961a1d722050c2179444cd0cbcb44d860c8358c18c"
+  "schema": "topal-kernel-toolchain-gate-qemu/7",
+  "source_sha256": "076f4480208c87f168067dcd8f4b9fb8864575579d0a621d3bd0301920e16988"
 }
