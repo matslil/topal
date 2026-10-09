@@ -13,7 +13,7 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/6";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/7";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -33,6 +33,10 @@ pub const X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL: &str =
     "topal_x86_systems_stage_active_translation_unmap";
 pub const X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL: &str =
     "topal_x86_systems_commit_active_translation_edit";
+pub const X86_SYSTEMS_CRITICAL_ENTER_SYMBOL: &str =
+    "topal_x86_systems_enter_local_interrupt_critical";
+pub const X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL: &str =
+    "topal_x86_systems_restore_local_interrupt_critical";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -130,6 +134,18 @@ pub fn generate_x86_64_systems_provider_object(
         &physical_frame_selector()?,
     );
     append_translation_functions(&mut object, text)?;
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
+        &critical_enter(),
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+        &critical_restore(),
+    );
     append_function(
         &mut object,
         text,
@@ -186,6 +202,32 @@ pub fn generate_x86_64_systems_provider_object(
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
     Ok(GeneratedSystemsProviderObject { plan, bytes })
+}
+
+fn critical_enter() -> Vec<u8> {
+    vec![
+        0x9c, // pushfq
+        0x58, // pop rax -- opaque exact prior flags token
+        0xfa, // cli
+        0xc3, // ret
+    ]
+}
+
+fn critical_restore() -> Vec<u8> {
+    vec![
+        0x40, 0xf6, 0xc7, 0x02, // test dil, 2 -- validate architectural fixed bit
+        0x74, 0x16, // jz failure
+        0xf7, 0xc7, 0x00, 0x02, 0x00, 0x00, // test edi, RFLAGS.IF
+        0x74, 0x07, // jz restore-disabled
+        0xfb, // sti
+        0xb8, 0x01, 0x00, 0x00, 0x00, // mov eax, 1
+        0xc3, // ret
+        0xfa, // restore-disabled: cli
+        0xb8, 0x01, 0x00, 0x00, 0x00, // mov eax, 1
+        0xc3, // ret
+        0x31, 0xc0, // failure: xor eax, eax
+        0xc3, // ret
+    ]
 }
 
 fn append_translation_functions(
@@ -838,6 +880,15 @@ mod tests {
             ("topal_x86_systems_debug_break", &[0xcc, 0xc3]),
             ("topal_x86_systems_interrupt_return", &[0x48, 0xcf]),
             ("topal_x86_systems_fatal", &[0xfa, 0xf4, 0xeb, 0xfd]),
+            (X86_SYSTEMS_CRITICAL_ENTER_SYMBOL, &[0x9c, 0x58, 0xfa, 0xc3]),
+            (
+                X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+                &[
+                    0x40, 0xf6, 0xc7, 0x02, 0x74, 0x16, 0xf7, 0xc7, 0x00, 0x02, 0x00, 0x00, 0x74,
+                    0x07, 0xfb, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3, 0xfa, 0xb8, 0x01, 0x00, 0x00,
+                    0x00, 0xc3, 0x31, 0xc0, 0xc3,
+                ],
+            ),
         ] {
             let symbol = file.symbol_by_name(name).unwrap();
             assert_eq!(symbol.size(), expected.len() as u64);

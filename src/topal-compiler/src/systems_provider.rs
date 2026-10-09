@@ -5,18 +5,18 @@ use topal_language::compiler::{
     SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    validate_systems_program,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
 };
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/6";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/7";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -38,6 +38,8 @@ pub enum X86SystemsLowering {
     StageActiveTranslationMap,
     StageActiveTranslationUnmap,
     CommitActiveTranslationEdit,
+    CaptureAndMaskLocalInterrupts,
+    RestoreLocalInterruptState,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -81,6 +83,12 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.translation.edit.unmap-kernel/1"
             }
             Self::CommitActiveTranslationEdit => "topal.provider.x86_64.translation.edit.commit/1",
+            Self::CaptureAndMaskLocalInterrupts => {
+                "topal.provider.x86_64.critical.local-interrupts.enter/1"
+            }
+            Self::RestoreLocalInterruptState => {
+                "topal.provider.x86_64.critical.local-interrupts.restore/1"
+            }
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -107,6 +115,8 @@ impl X86SystemsLowering {
             Self::PolledUart16550PortIo
                 | Self::ActivateTranslationRoot
                 | Self::CommitActiveTranslationEdit
+                | Self::CaptureAndMaskLocalInterrupts
+                | Self::RestoreLocalInterruptState
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -222,6 +232,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_TRANSLATION_EDIT_MAP => X86SystemsLowering::StageActiveTranslationMap,
         SYSTEMS_TRANSLATION_EDIT_UNMAP => X86SystemsLowering::StageActiveTranslationUnmap,
         SYSTEMS_TRANSLATION_EDIT_COMMIT => X86SystemsLowering::CommitActiveTranslationEdit,
+        SYSTEMS_CRITICAL_ENTER => X86SystemsLowering::CaptureAndMaskLocalInterrupts,
+        SYSTEMS_CRITICAL_RESTORE => X86SystemsLowering::RestoreLocalInterruptState,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -255,6 +267,8 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::StageActiveTranslationMap => SYSTEMS_TRANSLATION_EDIT_MAP,
             X86SystemsLowering::StageActiveTranslationUnmap => SYSTEMS_TRANSLATION_EDIT_UNMAP,
             X86SystemsLowering::CommitActiveTranslationEdit => SYSTEMS_TRANSLATION_EDIT_COMMIT,
+            X86SystemsLowering::CaptureAndMaskLocalInterrupts => SYSTEMS_CRITICAL_ENTER,
+            X86SystemsLowering::RestoreLocalInterruptState => SYSTEMS_CRITICAL_RESTORE,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -302,7 +316,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 25);
+        assert_eq!(plan.operations.len(), 27);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -362,6 +376,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_COMMIT
                 && operation.lowering == X86SystemsLowering::CommitActiveTranslationEdit
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_CRITICAL_ENTER
+                && operation.lowering == X86SystemsLowering::CaptureAndMaskLocalInterrupts
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_CRITICAL_RESTORE
+                && operation.lowering == X86SystemsLowering::RestoreLocalInterruptState
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
