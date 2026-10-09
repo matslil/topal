@@ -36,12 +36,16 @@ product, and binding syntax under the sealed `lang systems` namespace. A root
 SHALL construct exactly one `lang systems artifact` whose `bootstrap-storage`
 member is one `lang systems bounded-bootstrap-storage`, whose `bootstrap`
 member is one `lang systems bootstrap-entry`, and whose `debug-break` member is
-one `lang systems synchronous-exception-entry`. The storage constructor SHALL
+one `lang systems synchronous-exception-entry`, and whose
+`local-notification` member is one `lang systems external-interrupt-entry`.
+The storage constructor SHALL
 contain exactly positive `capacity-bytes` and `alignment-bytes` natural-number
 fields. Alignment SHALL be a power of two and SHALL NOT exceed capacity. The
 bootstrap entry SHALL have one handler from `BootstrapContext` to
 `BootstrapDisposition`; the debug-break entry SHALL have one handler from
-`DebugBreakContext` to `DebugBreakDisposition`.
+`DebugBreakContext` to `DebugBreakDisposition`; and the local-notification
+entry SHALL have one handler from `LocalNotificationInterruptContext` to
+`LocalNotificationInterruptDisposition`.
 
 The only admitted initial handler operations SHALL be context-qualified
 `console write`, `debug break`, `resume`, and `fatal`. Console write SHALL
@@ -181,6 +185,35 @@ that the complete obligation is otherwise satisfied.
 The initial profile SHALL admit exactly one local-notification handler and one
 send/wait event. It SHALL make no timer, bounded-latency, fairness, nested-entry,
 SMP-delivery, shared-device-routing, or scheduler-disposition guarantee.
+
+### TOPAL-SYSTEMS-MONOTONIC-CLOCK-001 — Monotonic-clock observation
+
+The initial systems profile SHALL provide one opaque provider-created
+`Clock InitialMonotonicClock` borrowed through each admitted processor context.
+`monotonic clock now` SHALL borrow that context and clock and SHALL return one
+immutable `Instant InitialMonotonicClock`. Neither authority SHALL be consumed
+or widened by observation.
+
+For clock identity `c`, its next observation identity `q`, and provider value
+`t`, a successful observation SHALL record
+`Observe(c,q,Instant(c,t))`. Observation identities SHALL increase in source
+order. An accepted value SHALL be greater than or equal to the preceding value
+accepted from `c`; equality SHALL be permitted. A decreasing value SHALL fail
+closed and SHALL NOT be clamped, replaced, or exposed as an accepted instant.
+
+Instants SHALL retain exact clock identity and SHALL NOT compare, subtract, or
+substitute across clocks. The provider SHALL own counter selection, scale,
+resolution, enablement, access, wrap extension, regression detection, and the
+target state required for monotonicity. Source SHALL NOT observe a counter
+address, register, instruction, width, frequency, calibration mechanism, or
+wrap state. The compiler SHALL NOT invent, predict, merge, duplicate, remove,
+or speculate a required clock observation.
+
+The initial executable slice SHALL admit exactly two observations after its
+local-notification wait and before its time-success marker. It SHALL make no
+wall-clock, deadline, timer-delivery, periodic-release, sleep, timeout,
+bounded-latency, rate-accuracy, SMP, suspend, migration, userspace-ABI, or
+real-time guarantee.
 
 ### TOPAL-SYSTEMS-MACHINE-001 — Closed machine-provider transition
 

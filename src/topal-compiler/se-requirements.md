@@ -144,6 +144,17 @@ mechanism. Structural and pinned-QEMU evidence shall retain every transition
 without exposing vectors, controller registers, frames, instructions, or mask
 bits to source.
 
+The first systems time increment shall check exactly two context-borrowing
+`now` observations returning `Instant InitialMonotonicClock` after the local-
+notification wait and before the time-success marker. It shall reject an
+unknown clock, wrong context or classifier, missing or extra observation, and
+misordered success. The x86-64 provider shall privately select and validate the
+pinned Q35 HPET, map its device page in initial and replacement translations,
+enable and read its 64-bit main counter, preserve monotonic wrap state, and
+fail closed on regression. Structural and pinned-QEMU evidence shall retain
+both reads, capability/period checks, state, and failure branches without
+exposing target representation to source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
