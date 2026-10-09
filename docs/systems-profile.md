@@ -52,22 +52,31 @@ debug-break-handler is fn (
 ) -> DebugBreakDisposition
   context resume
 
+local-notification-handler is fn (
+  context : LocalNotificationInterruptContext
+) -> LocalNotificationInterruptDisposition
+  completed is context local notification complete
+  completed resume
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096
   ),
   bootstrap is lang systems bootstrap-entry boot,
-  debug-break is lang systems synchronous-exception-entry debug-break-handler
+  debug-break is lang systems synchronous-exception-entry debug-break-handler,
+  local-notification is lang systems external-interrupt-entry
+    local-notification-handler
 )
 ```
 
-`BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`, and
-`DebugBreakDisposition` are sealed systems classifiers, not constructible
-ordinary values. `bootstrap-entry` specializes `SystemEntry Bootstrap`;
-`synchronous-exception-entry` specializes `SystemEntry
-SynchronousException` to the resumable debug-break cause used by the first
-machine qualification.
+`BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`,
+`DebugBreakDisposition`, `LocalNotificationInterruptContext`, and
+`LocalNotificationInterruptDisposition` are sealed systems classifiers, not
+constructible ordinary values. `bootstrap-entry` specializes `SystemEntry
+Bootstrap`; `synchronous-exception-entry` specializes `SystemEntry
+SynchronousException`; and `external-interrupt-entry` specializes the typed
+local-notification cause used by the first machine qualification.
 
 `context console write` borrows the board-provided console session and accepts
 a static text value in this first increment. `context debug break` is a
@@ -287,6 +296,39 @@ x86-64, a GIC software-generated interrupt on AArch64, or a supervisor software
 interrupt/IPI facility on RISC-V. Those mechanisms remain private provider
 evidence. The first executable profile admits one event and makes no timer,
 latency, fairness, nesting, SMP, device-routing, or scheduler claim.
+
+### Monotonic-clock observation
+
+The initial time specialization borrows one provider-created monotonic clock
+through the live processor context:
+
+```topal
+first : Instant InitialMonotonicClock is resumed monotonic clock now
+second : Instant InitialMonotonicClock is resumed monotonic clock now
+resumed console write "TOPAL_KERNEL_TIME_OK"
+```
+
+Each `now` returns an immutable instant retaining the exact clock identity and
+records a distinct external observation. Successive accepted observations from
+one clock are nondecreasing; equal instants are permitted. Instants from
+different clocks cannot compare, subtract, or substitute for one another.
+Observing the clock borrows rather than consumes the processor context and
+clock capability.
+
+The provider owns clock construction, discovery or fixed-board selection,
+counter access, scale and resolution, enablement, wrap extension, regression
+detection, and qualification across processor, suspend, migration, or
+frequency changes. Source cannot observe a register, address, instruction,
+counter width, frequency, calibration mechanism, or wrap state. The compiler
+cannot invent, predict, clamp, merge, duplicate, or remove a clock
+observation.
+
+The first x86-64 provider uses the pinned Q35 HPET and validates its 64-bit
+capability and period before accepting two observations. AArch64 generic
+counters and RISC-V time sources constrain the same clock identity and
+monotonic meaning without becoming source spellings. This increment makes no
+wall-clock, deadline, timer, periodic, sleep, timeout, latency, rate-accuracy,
+SMP, suspend, migration, userspace-ABI, or real-time guarantee.
 
 ## External observations and permitted choice
 

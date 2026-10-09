@@ -133,6 +133,14 @@ completion with live notification authority. Vectors, controller state,
 machine frames, acknowledgement encodings, wait instructions, and return
 instructions shall remain outside the common model.
 
+The first systems time increment shall model a provider-created monotonic clock
+with exact clock identity, source-ordered observation identities, immutable
+same-clock instants, and nondecreasing accepted values. It shall accept equal
+successive observations and reject decreasing observations, cross-clock
+comparison, invented or duplicate identities, and completion without the
+required observations. Counter representation, target access, scale,
+enablement, calibration, and wrap state shall remain outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine
