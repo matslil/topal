@@ -589,8 +589,15 @@ struct BootstrapAuthorityState {
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
-    local_notification_sent: bool,
-    local_notification_pending: bool,
+    local_notification: BootstrapLocalNotificationState,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapLocalNotificationState {
+    #[default]
+    Fresh,
+    Pending,
+    Completed,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -625,6 +632,9 @@ impl BootstrapAuthorityState {
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
         if self.observe_critical(operation)? {
+            return Ok(true);
+        }
+        if self.observe_local_notification(operation)? {
             return Ok(true);
         }
         match operation {
@@ -709,10 +719,25 @@ impl BootstrapAuthorityState {
             | SystemsOperation::CommitTranslationEdit { .. }) => {
                 self.observe_translation(operation)?;
             }
+            _ if !self.allocator_created => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES",
+                    "bootstrap operations require a frame-allocator context",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn observe_local_notification(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
             SystemsOperation::SendLocalNotification => {
                 if !self.allocator_created
-                    || self.local_notification_sent
-                    || self.local_notification_pending
+                    || self.local_notification != BootstrapLocalNotificationState::Fresh
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
@@ -720,28 +745,21 @@ impl BootstrapAuthorityState {
                         "local notification send requires one restored processor context and no pending event",
                     ));
                 }
-                self.local_notification_sent = true;
-                self.local_notification_pending = true;
+                self.local_notification = BootstrapLocalNotificationState::Pending;
             }
             SystemsOperation::WaitLocalNotification => {
-                if !self.local_notification_pending {
+                if self.local_notification != BootstrapLocalNotificationState::Pending {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-LOCAL-INTERRUPT",
                         "local notification wait requires the matching affine pending session",
                     ));
                 }
-                self.local_notification_pending = false;
+                self.local_notification = BootstrapLocalNotificationState::Completed;
             }
             SystemsOperation::CompleteLocalNotification => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-LOCAL-INTERRUPT",
                     "local notification completion is admitted only by its external-interrupt entry",
-                ));
-            }
-            _ if !self.allocator_created => {
-                return Err(SystemsModelError::new(
-                    "E-SYSTEMS-FRAMES",
-                    "bootstrap operations require a frame-allocator context",
                 ));
             }
             _ => return Ok(false),
@@ -977,7 +995,7 @@ impl BootstrapAuthorityState {
                 "bootstrap handler consumes its context while a translation update, inactive space, or edit remains live",
             ));
         }
-        if !self.local_notification_sent || self.local_notification_pending {
+        if self.local_notification != BootstrapLocalNotificationState::Completed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LOCAL-INTERRUPT-LIVE",
                 "bootstrap completion requires one completed local-notification send/wait lifecycle",
@@ -1087,94 +1105,69 @@ fn validate_bootstrap_storage_operations(
         if validate_atomic_operation(operation, &mut storage, &mut region, &mut atomic)? {
             continue;
         }
-        match operation {
-            SystemsOperation::BootstrapAllocate { request } => {
-                if region.is_some() {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-STORAGE-LIFETIME",
-                        "the initial executable slice admits one live bootstrap region",
-                    ));
-                }
-                region = Some(storage.allocate(*request).map_err(|code| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-STORAGE-REQUEST",
-                        format!("static bootstrap allocation cannot succeed: {code:?}"),
-                    )
-                })?);
-            }
-            SystemsOperation::BootstrapStoreByte {
-                offset_bytes,
-                value,
-            } => storage.store_byte(
-                region.as_ref().ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-STORAGE-LIFETIME",
-                        "bootstrap byte store requires one live region",
-                    )
-                })?,
-                *offset_bytes,
-                *value,
-            )?,
-            SystemsOperation::BootstrapLoadByteEquals { offset_bytes, .. } => {
-                let _ = storage.load_byte(
-                    region.as_ref().ok_or_else(|| {
-                        SystemsModelError::new(
-                            "E-SYSTEMS-STORAGE-LIFETIME",
-                            "bootstrap byte load requires one live region",
-                        )
-                    })?,
-                    *offset_bytes,
-                )?;
-            }
-            SystemsOperation::BootstrapRelease => {
-                let released = region.take().ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-STORAGE-LIFETIME",
-                        "bootstrap release requires one live region",
-                    )
-                })?;
-                storage.release(released)?;
-            }
-            SystemsOperation::DescribeBootMemory { .. }
-            | SystemsOperation::CreateFrameAllocator { .. }
-            | SystemsOperation::AllocatePhysicalFrames { .. }
-            | SystemsOperation::ReleasePhysicalFrames => {
-                unreachable!("authority operations continue above")
-            }
-            SystemsOperation::MapKernelFrames { .. }
-            | SystemsOperation::KernelMappingStoreByte { .. }
-            | SystemsOperation::KernelMappingLoadByteEquals { .. }
-            | SystemsOperation::UnmapKernelFrames => {
-                unreachable!("mapping authority operations continue above")
-            }
-            SystemsOperation::BeginTranslationUpdate { .. }
-            | SystemsOperation::CommitTranslationUpdate { .. }
-            | SystemsOperation::ActivateTranslationSpace { .. }
-            | SystemsOperation::BeginTranslationEdit { .. }
-            | SystemsOperation::MapTranslationFrames { .. }
-            | SystemsOperation::UnmapTranslationMapping
-            | SystemsOperation::CommitTranslationEdit { .. } => {
-                unreachable!("translation authority operations continue above")
-            }
-            SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
-                unreachable!("critical authority operations continue above")
-            }
-            SystemsOperation::SendLocalNotification
-            | SystemsOperation::WaitLocalNotification
-            | SystemsOperation::CompleteLocalNotification => {
-                unreachable!("local-notification authority operations continue above")
-            }
-            SystemsOperation::AtomicWordCreate { .. }
-            | SystemsOperation::AtomicCompareExchangeEquals { .. }
-            | SystemsOperation::AtomicLoadEquals { .. }
-            | SystemsOperation::AtomicWordEnd => {
-                unreachable!("atomic operations continue above")
-            }
-            SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
-        }
+        validate_bootstrap_storage_operation(operation, &mut storage, &mut region)?;
     }
     authority.complete()?;
     validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref())
+}
+
+fn validate_bootstrap_storage_operation(
+    operation: &SystemsOperation,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+) -> Result<(), SystemsModelError> {
+    match operation {
+        SystemsOperation::BootstrapAllocate { request } => {
+            if region.is_some() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-LIFETIME",
+                    "the initial executable slice admits one live bootstrap region",
+                ));
+            }
+            *region = Some(storage.allocate(*request).map_err(|code| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-REQUEST",
+                    format!("static bootstrap allocation cannot succeed: {code:?}"),
+                )
+            })?);
+        }
+        SystemsOperation::BootstrapStoreByte {
+            offset_bytes,
+            value,
+        } => storage.store_byte(
+            region.as_ref().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-LIFETIME",
+                    "bootstrap byte store requires one live region",
+                )
+            })?,
+            *offset_bytes,
+            *value,
+        )?,
+        SystemsOperation::BootstrapLoadByteEquals { offset_bytes, .. } => {
+            let _ = storage.load_byte(
+                region.as_ref().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-STORAGE-LIFETIME",
+                        "bootstrap byte load requires one live region",
+                    )
+                })?,
+                *offset_bytes,
+            )?;
+        }
+        SystemsOperation::BootstrapRelease => {
+            let released = region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-STORAGE-LIFETIME",
+                    "bootstrap release requires one live region",
+                )
+            })?;
+            storage.release(released)?;
+        }
+        SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
+        _ => unreachable!("authority or atomic operations continue above"),
+    }
+    Ok(())
 }
 
 fn validate_bootstrap_owned_completion(
@@ -1236,84 +1229,101 @@ pub fn model_systems_transitions(
         )? {
             continue;
         }
-        match operation {
-            SystemsOperation::DescribeBootMemory { .. } => {
-                transitions.push(SystemsTransition::DescribeBootMemory);
-            }
-            SystemsOperation::CreateFrameAllocator { .. } => {
-                transitions.push(SystemsTransition::CreateFrameAllocator);
-            }
-            SystemsOperation::AllocatePhysicalFrames { request, .. } => {
-                transitions.push(SystemsTransition::AllocatePhysicalFrames { request: *request });
-            }
-            SystemsOperation::ReleasePhysicalFrames => {
-                transitions.push(SystemsTransition::ReleasePhysicalFrames);
-            }
-            SystemsOperation::MapKernelFrames { request, .. } => {
-                transitions.push(SystemsTransition::MapKernelFrames { request: *request });
-            }
-            SystemsOperation::KernelMappingStoreByte {
-                offset_bytes,
-                value,
-            } => transitions.push(SystemsTransition::StoreKernelMappingByte {
-                offset_bytes: *offset_bytes,
-                value: *value,
-            }),
-            SystemsOperation::KernelMappingLoadByteEquals {
-                offset_bytes,
-                expected,
-                ..
-            } => transitions.push(SystemsTransition::LoadKernelMappingByte {
-                offset_bytes: *offset_bytes,
-                value: *expected,
-            }),
-            SystemsOperation::UnmapKernelFrames => {
-                transitions.push(SystemsTransition::UnmapKernelFrames);
-            }
-            SystemsOperation::BeginTranslationUpdate { request, .. } => {
-                transitions.push(SystemsTransition::BeginTranslationUpdate { request: *request });
-            }
-            SystemsOperation::CommitTranslationUpdate { .. } => {
-                transitions.push(SystemsTransition::CommitTranslationUpdate);
-            }
-            SystemsOperation::ActivateTranslationSpace { .. } => {
-                transitions.push(SystemsTransition::ActivateTranslationSpace);
-            }
-            SystemsOperation::BeginTranslationEdit { kind, .. } => {
-                transitions.push(SystemsTransition::BeginTranslationEdit { kind: *kind });
-            }
-            SystemsOperation::MapTranslationFrames { request, .. } => {
-                transitions.push(SystemsTransition::MapTranslationFrames { request: *request });
-            }
-            SystemsOperation::UnmapTranslationMapping => {
-                transitions.push(SystemsTransition::UnmapTranslationMapping);
-            }
-            SystemsOperation::CommitTranslationEdit { kind, .. } => {
-                transitions.push(SystemsTransition::CommitTranslationEdit { kind: *kind });
-            }
-            SystemsOperation::ConsoleWrite { text } => {
-                transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
-            }
-            SystemsOperation::DebugBreak => {
-                if model_debug_break(&program.debug_break.handler, &mut transitions) {
-                    return Ok(transitions);
-                }
-            }
-            _ => {
-                if model_bootstrap_storage_operation(
-                    operation,
-                    &mut storage,
-                    &mut region,
-                    &mut atomic,
-                    &mut transitions,
-                )? {
-                    return Ok(transitions);
-                }
-            }
+        if model_bootstrap_operation(
+            operation,
+            &program.debug_break.handler,
+            &mut storage,
+            &mut region,
+            &mut atomic,
+            &mut transitions,
+        )? {
+            return Ok(transitions);
         }
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+fn model_bootstrap_operation(
+    operation: &SystemsOperation,
+    debug_break_handler: &SystemsHandler,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    atomic: &mut Option<AtomicWordLocation>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::DescribeBootMemory { .. } => {
+            transitions.push(SystemsTransition::DescribeBootMemory);
+        }
+        SystemsOperation::CreateFrameAllocator { .. } => {
+            transitions.push(SystemsTransition::CreateFrameAllocator);
+        }
+        SystemsOperation::AllocatePhysicalFrames { request, .. } => {
+            transitions.push(SystemsTransition::AllocatePhysicalFrames { request: *request });
+        }
+        SystemsOperation::ReleasePhysicalFrames => {
+            transitions.push(SystemsTransition::ReleasePhysicalFrames);
+        }
+        SystemsOperation::MapKernelFrames { request, .. } => {
+            transitions.push(SystemsTransition::MapKernelFrames { request: *request });
+        }
+        SystemsOperation::KernelMappingStoreByte {
+            offset_bytes,
+            value,
+        } => transitions.push(SystemsTransition::StoreKernelMappingByte {
+            offset_bytes: *offset_bytes,
+            value: *value,
+        }),
+        SystemsOperation::KernelMappingLoadByteEquals {
+            offset_bytes,
+            expected,
+            ..
+        } => transitions.push(SystemsTransition::LoadKernelMappingByte {
+            offset_bytes: *offset_bytes,
+            value: *expected,
+        }),
+        SystemsOperation::UnmapKernelFrames => {
+            transitions.push(SystemsTransition::UnmapKernelFrames);
+        }
+        SystemsOperation::BeginTranslationUpdate { request, .. } => {
+            transitions.push(SystemsTransition::BeginTranslationUpdate { request: *request });
+        }
+        SystemsOperation::CommitTranslationUpdate { .. } => {
+            transitions.push(SystemsTransition::CommitTranslationUpdate);
+        }
+        SystemsOperation::ActivateTranslationSpace { .. } => {
+            transitions.push(SystemsTransition::ActivateTranslationSpace);
+        }
+        SystemsOperation::BeginTranslationEdit { kind, .. } => {
+            transitions.push(SystemsTransition::BeginTranslationEdit { kind: *kind });
+        }
+        SystemsOperation::MapTranslationFrames { request, .. } => {
+            transitions.push(SystemsTransition::MapTranslationFrames { request: *request });
+        }
+        SystemsOperation::UnmapTranslationMapping => {
+            transitions.push(SystemsTransition::UnmapTranslationMapping);
+        }
+        SystemsOperation::CommitTranslationEdit { kind, .. } => {
+            transitions.push(SystemsTransition::CommitTranslationEdit { kind: *kind });
+        }
+        SystemsOperation::ConsoleWrite { text } => {
+            transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
+        }
+        SystemsOperation::DebugBreak => {
+            return Ok(model_debug_break(debug_break_handler, transitions));
+        }
+        _ => {
+            return model_bootstrap_storage_operation(
+                operation,
+                storage,
+                region,
+                atomic,
+                transitions,
+            );
+        }
+    }
+    Ok(false)
 }
 
 fn model_local_notification_transition(

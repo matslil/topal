@@ -883,8 +883,15 @@ struct RootEncoder {
     bootstrap_region_offset: Option<u64>,
     atomic_word_offset: Option<u64>,
     local_notification: RootLocalNotificationState,
-    local_notification_handler: bool,
-    local_notification_required: bool,
+    role: RootRole,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootRole {
+    #[default]
+    Ordinary,
+    BootstrapWithLocalNotification,
+    LocalNotificationHandler,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1310,7 +1317,7 @@ impl RootEncoder {
                 "x86 root lowering ended with live critical restoration authority".into(),
             ));
         }
-        if self.local_notification_required
+        if self.role == RootRole::BootstrapWithLocalNotification
             && self.local_notification != RootLocalNotificationState::Completed
         {
             return Err(CompileError::Tool(
@@ -1577,7 +1584,7 @@ impl RootEncoder {
     }
 
     fn complete_local_notification(&mut self) -> Result<(), CompileError> {
-        if !self.local_notification_handler {
+        if self.role != RootRole::LocalNotificationHandler {
             return Err(CompileError::Tool(
                 "x86 local-notification completion is admitted only in its external entry".into(),
             ));
@@ -1757,7 +1764,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     };
 
     let mut bootstrap = RootEncoder {
-        local_notification_required: true,
+        role: RootRole::BootstrapWithLocalNotification,
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
@@ -1771,7 +1778,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     )?;
 
     let mut local_notification = RootEncoder {
-        local_notification_handler: true,
+        role: RootRole::LocalNotificationHandler,
         ..RootEncoder::default()
     };
     for register in SAVED_REGISTERS {
@@ -2435,6 +2442,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // The complete 55-transition artifact trace is one structural audit.
     fn publishes_one_closed_freestanding_artifact_directory() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
         let tools = LlvmTools::discover(None).unwrap();

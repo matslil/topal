@@ -77,12 +77,20 @@ records the affine context refinement, exact prior-state restoration model,
 private x86 flags lowering, structural instruction checks, and two
 deterministic pinned-QEMU runs.
 
-The latest Step 4 slice adds the approved
+An earlier Step 4 slice adds the approved
 [atomic-word location lifecycle](design/atomic-word-location.md). Its
 [implementation and qualification report](step-4-atomic-word-location.md)
 records the affine region transition, modification-order model, private x86
 locked compare/exchange and acquire load, structural instruction checks, and
 two deterministic pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[local-notification interrupt lifecycle](design/local-notification-interrupt.md).
+Its [implementation and qualification report](step-4-local-notification-interrupt.md)
+records the affine send/wait observation model, mandatory typed-entry
+completion, private x86-64 local-APIC delivery and EOI, generated interrupt
+gate and state preservation, structural inspection, and two deterministic
+pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -173,6 +181,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 active translation edits](step-4-active-translation-edit.md)
 - [Step 4 local-interrupt critical scope](step-4-local-interrupt-critical-scope.md)
 - [Step 4 atomic-word location](step-4-atomic-word-location.md)
+- [Step 4 local-notification interrupt](step-4-local-notification-interrupt.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
