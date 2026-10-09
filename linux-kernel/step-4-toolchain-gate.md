@@ -11,21 +11,25 @@ activates a replacement bootstrap-equivalent translation, commits and removes
 one opaque 4 KiB mapping through that active space, writes through the
 polling 16550 provider, enters and restores one affine local-interrupt critical
 scope, enters and resumes from the generated vector-3 handler,
-stores and reloads sentinels in kernel-owned memory, and reaches the
+stores and reloads sentinels in kernel-owned memory, consumes that ordinary
+region into one aligned atomic word, executes a locked compare/exchange and
+acquire load, returns the region to plain ownership, and reaches the
 nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OK
 ```
 
-After all nine ordered markers, QEMU remained running and the serial stream
+After all ten ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
 parent publication, exact local invalidation, fail-to-fatal branches, reserved image
 floor, flags capture, local interrupt disable, conditional exact restoration,
+aligned atomic initialization, locked 64-bit compare/exchange, acquire load,
+atomic success/failure branches, ownership return,
 fatal provider's interrupt-disable/halt loop, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
@@ -69,7 +73,7 @@ systems slice: bootstrap entry, polling console write, synchronous debug-break
 observation, context-preserving resume, checked bootstrap storage, one affine
 physical-frame mapping, one replacement translation space, one active
 map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
-and fatal
+one affine CPU-shared atomic-word lifecycle, and fatal
 disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
 gate does not claim general address-space management, interrupt entry or
@@ -85,6 +89,7 @@ packaging remains a separate adapter.
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,
 affine handoff and region checking, conservative range and byte-content
-reference models, deterministic typed provider, structural ELF and boot-image
+reference models, explicit atomic modification-order and mixed-access
+rejection, deterministic typed provider, structural ELF and boot-image
 inspection, exact machine identity, no guest devices beyond the serial port,
 content-addressed evidence, and continued fail-closed ordinary target selection.
