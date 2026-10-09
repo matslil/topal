@@ -14,13 +14,16 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerKernelMappingRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationUpdateRequest,
+    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
+    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
     SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
     SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, model_systems_transitions,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -31,11 +34,13 @@ use crate::{
     X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/5";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/5";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/6";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/6";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -44,7 +49,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 10] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 14] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
@@ -52,6 +57,10 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 10] = [
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
     X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -556,6 +565,10 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
         X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
         X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+        X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -606,6 +619,22 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (
             SYSTEMS_TRANSLATION_ACTIVATE,
             X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_EDIT_BEGIN,
+            X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_EDIT_MAP,
+            X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_EDIT_UNMAP,
+            X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+        ),
+        (
+            SYSTEMS_TRANSLATION_EDIT_COMMIT,
+            X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
         ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
@@ -664,6 +693,10 @@ enum ProviderSymbol {
     BeginTranslation,
     CommitTranslation,
     ActivateTranslation,
+    BeginTranslationEdit,
+    MapTranslationFrames,
+    UnmapTranslationMapping,
+    CommitTranslationEdit,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -679,6 +712,10 @@ impl ProviderSymbol {
             Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
             Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
             Self::ActivateTranslation => X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+            Self::BeginTranslationEdit => X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+            Self::MapTranslationFrames => X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+            Self::UnmapTranslationMapping => X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+            Self::CommitTranslationEdit => X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -695,6 +732,10 @@ impl ProviderSymbol {
             | Self::BeginTranslation
             | Self::CommitTranslation
             | Self::ActivateTranslation
+            | Self::BeginTranslationEdit
+            | Self::MapTranslationFrames
+            | Self::UnmapTranslationMapping
+            | Self::CommitTranslationEdit
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -766,6 +807,12 @@ enum RootTranslationState {
     Update,
     InactiveSpace,
     ReplacementActive,
+    MapEdit,
+    MapStaged,
+    MappedActive,
+    UnmapEdit,
+    UnmapStaged,
+    RemovedActive,
 }
 
 #[derive(Clone, Copy)]
@@ -775,6 +822,10 @@ struct ProviderSymbols {
     begin_translation: SymbolId,
     commit_translation: SymbolId,
     activate_translation: SymbolId,
+    begin_translation_edit: SymbolId,
+    map_translation_frames: SymbolId,
+    unmap_translation_mapping: SymbolId,
+    commit_translation_edit: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -784,6 +835,7 @@ struct ProviderSymbols {
 
 impl RootEncoder {
     fn describe_boot_memory(&mut self) -> Result<(), CompileError> {
+        self.bytes.extend_from_slice(&[0x49, 0x89, 0xf5]); // retain boot params in r13
         self.call_checked_bool(ProviderSymbol::DescribeBootMemory)
     }
 
@@ -813,6 +865,22 @@ impl RootEncoder {
                     .into(),
             ));
         }
+        match self.translation {
+            RootTranslationState::BootstrapActive => {
+                self.bytes
+                    .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
+            }
+            RootTranslationState::ReplacementActive => {
+                self.bytes
+                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x30, 0x00, 0x00]);
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 root lowering encountered frame allocation in an unavailable translation state".into(),
+                ));
+            }
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // rsi = retained boot params
         self.call(ProviderSymbol::AllocatePhysicalFrames);
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
@@ -851,7 +919,11 @@ impl RootEncoder {
         }
         let offset = u32::try_from(offset_bytes)
             .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
-        self.bytes.extend_from_slice(&[0xc6, 0x83]); // mov byte ptr [rbx+disp32], imm8
+        if self.translation == RootTranslationState::MappedActive {
+            self.bytes.extend_from_slice(&[0x41, 0xc6, 0x86]); // [r14+disp32]
+        } else {
+            self.bytes.extend_from_slice(&[0xc6, 0x83]); // [rbx+disp32]
+        }
         self.bytes.extend_from_slice(&offset.to_le_bytes());
         self.bytes.push(value);
         Ok(())
@@ -869,7 +941,11 @@ impl RootEncoder {
         }
         let offset = u32::try_from(offset_bytes)
             .map_err(|_| CompileError::Tool("kernel mapping offset exceeds u32".into()))?;
-        self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x83]); // movzx eax, [rbx+disp32]
+        if self.translation == RootTranslationState::MappedActive {
+            self.bytes.extend_from_slice(&[0x41, 0x0f, 0xb6, 0x86]); // [r14+disp32]
+        } else {
+            self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x83]); // [rbx+disp32]
+        }
         self.bytes.extend_from_slice(&offset.to_le_bytes());
         self.bytes.extend_from_slice(&[0x3c, expected]); // cmp al, imm8
         self.jump_to_fatal_if(0x85)
@@ -940,8 +1016,127 @@ impl RootEncoder {
         }
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // rdi = r12
         self.call_checked_bool(ProviderSymbol::ActivateTranslation)?;
+        self.bytes.extend_from_slice(&[0x4d, 0x89, 0xe7]); // retain active root in r15
         self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // consume inactive-space token
         self.translation = RootTranslationState::ReplacementActive;
+        Ok(())
+    }
+
+    fn begin_translation_edit(
+        &mut self,
+        kind: CompilerTranslationEditKind,
+    ) -> Result<(), CompileError> {
+        match kind {
+            CompilerTranslationEditKind::Map
+                if self.translation == RootTranslationState::ReplacementActive
+                    && self.physical_frames_live
+                    && !self.kernel_mapping_live =>
+            {
+                self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // payload in rdi
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // boot params in rsi
+                self.bytes.extend_from_slice(&[0x31, 0xd2]); // map kind
+                self.call(ProviderSymbol::BeginTranslationEdit);
+                self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+                self.jump_to_fatal_if(0x84)?;
+                self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // metadata in r12
+                self.translation = RootTranslationState::MapEdit;
+            }
+            CompilerTranslationEditKind::Unmap
+                if self.translation == RootTranslationState::MappedActive
+                    && self.kernel_mapping_live
+                    && !self.physical_frames_live =>
+            {
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]); // active root
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]); // mapping
+                self.bytes
+                    .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
+                self.call_checked_bool(ProviderSymbol::BeginTranslationEdit)?;
+                self.translation = RootTranslationState::UnmapEdit;
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 root lowering encountered translation edit begin without matching active authority".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn map_translation_frames(
+        &mut self,
+        request: CompilerTranslationMappingRequest,
+    ) -> Result<(), CompileError> {
+        if self.translation != RootTranslationState::MapEdit
+            || !self.physical_frames_live
+            || self.kernel_mapping_live
+            || request != CompilerTranslationMappingRequest::initial_read_write()
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires a map edit, live frame, and sealed active mapping policy".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // metadata PD
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // payload frame
+        self.call_checked_bool(ProviderSymbol::MapTranslationFrames)?;
+        self.physical_frames_live = false;
+        self.translation = RootTranslationState::MapStaged;
+        Ok(())
+    }
+
+    fn unmap_translation_mapping(&mut self) -> Result<(), CompileError> {
+        if self.translation != RootTranslationState::UnmapEdit
+            || !self.kernel_mapping_live
+            || self.physical_frames_live
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires an unmap edit and its live mapping".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]);
+        self.call_checked_bool(ProviderSymbol::UnmapTranslationMapping)?;
+        self.kernel_mapping_live = false;
+        self.translation = RootTranslationState::UnmapStaged;
+        Ok(())
+    }
+
+    fn commit_translation_edit(
+        &mut self,
+        kind: CompilerTranslationEditKind,
+    ) -> Result<(), CompileError> {
+        match kind {
+            CompilerTranslationEditKind::Map
+                if self.translation == RootTranslationState::MapStaged =>
+            {
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]);
+                self.bytes.extend_from_slice(&[0x31, 0xd2]);
+                self.call(ProviderSymbol::CommitTranslationEdit);
+                self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+                self.jump_to_fatal_if(0x84)?;
+                self.bytes.extend_from_slice(&[0x49, 0x89, 0xc6]); // opaque mapping
+                self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]);
+                self.kernel_mapping_live = true;
+                self.translation = RootTranslationState::MappedActive;
+            }
+            CompilerTranslationEditKind::Unmap
+                if self.translation == RootTranslationState::UnmapStaged =>
+            {
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]);
+                self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]);
+                self.bytes
+                    .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
+                self.call_checked_bool(ProviderSymbol::CommitTranslationEdit)?;
+                self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]);
+                self.physical_frames_live = true;
+                self.translation = RootTranslationState::RemovedActive;
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 root lowering encountered translation edit commit without a matching candidate".into(),
+                ));
+            }
+        }
         Ok(())
     }
 
@@ -1162,6 +1357,22 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ActivateTranslation,
         ),
+        begin_translation_edit: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::BeginTranslationEdit,
+        ),
+        map_translation_frames: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::MapTranslationFrames,
+        ),
+        unmap_translation_mapping: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::UnmapTranslationMapping,
+        ),
+        commit_translation_edit: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CommitTranslationEdit,
+        ),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -1247,6 +1458,18 @@ fn encode_operations(
             CompilerSystemsOperation::ActivateTranslationSpace { .. } => {
                 encoder.activate_translation()?;
             }
+            CompilerSystemsOperation::BeginTranslationEdit { kind, .. } => {
+                encoder.begin_translation_edit(*kind)?;
+            }
+            CompilerSystemsOperation::MapTranslationFrames { request, .. } => {
+                encoder.map_translation_frames(*request)?;
+            }
+            CompilerSystemsOperation::UnmapTranslationMapping => {
+                encoder.unmap_translation_mapping()?;
+            }
+            CompilerSystemsOperation::CommitTranslationEdit { kind, .. } => {
+                encoder.commit_translation_edit(*kind)?;
+            }
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
             CompilerSystemsOperation::BootstrapAllocate { .. } => {
@@ -1281,7 +1504,12 @@ fn encode_operations(
     }
     if matches!(
         encoder.translation,
-        RootTranslationState::Update | RootTranslationState::InactiveSpace
+        RootTranslationState::Update
+            | RootTranslationState::InactiveSpace
+            | RootTranslationState::MapEdit
+            | RootTranslationState::MapStaged
+            | RootTranslationState::UnmapEdit
+            | RootTranslationState::UnmapStaged
     ) {
         return Err(CompileError::Tool(
             "x86 root lowering ended with an incomplete translation lifecycle".into(),
@@ -1328,6 +1556,10 @@ fn append_root(
             ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
             ProviderSymbol::CommitTranslation => provider_symbols.commit_translation,
             ProviderSymbol::ActivateTranslation => provider_symbols.activate_translation,
+            ProviderSymbol::BeginTranslationEdit => provider_symbols.begin_translation_edit,
+            ProviderSymbol::MapTranslationFrames => provider_symbols.map_translation_frames,
+            ProviderSymbol::UnmapTranslationMapping => provider_symbols.unmap_translation_mapping,
+            ProviderSymbol::CommitTranslationEdit => provider_symbols.commit_translation_edit,
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -1391,11 +1623,22 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 CompilerSystemsTransition::MapKernelFrames { .. } => {
                     format!("{identity}:rights=read-write:execution=denied:memory-kind=normal")
                 }
+                CompilerSystemsTransition::MapTranslationFrames { .. } => format!(
+                    "{identity}:rights=read-write:execution=denied:memory-kind=normal:placement=provider-selected"
+                ),
                 CompilerSystemsTransition::BeginTranslationUpdate { .. } => {
                     format!(
                         "{identity}:template=bootstrap-equivalent:page-policy=provider-selected"
                     )
                 }
+                CompilerSystemsTransition::BeginTranslationEdit { kind }
+                | CompilerSystemsTransition::CommitTranslationEdit { kind } => format!(
+                    "{identity}:kind={}",
+                    match kind {
+                        CompilerTranslationEditKind::Map => "map",
+                        CompilerTranslationEditKind::Unmap => "unmap",
+                    }
+                ),
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -1419,6 +1662,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::UnmapKernelFrames
                 | CompilerSystemsTransition::CommitTranslationUpdate
                 | CompilerSystemsTransition::ActivateTranslationSpace
+                | CompilerSystemsTransition::UnmapTranslationMapping
                 | CompilerSystemsTransition::ObserveDebugBreak
                 | CompilerSystemsTransition::EnterDebugBreak
                 | CompilerSystemsTransition::ResumeDebugBreak
@@ -1494,6 +1738,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // Root dependencies, relocations, and access bytes form one structural audit.
     fn generated_root_has_only_typed_provider_dependencies() {
         // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-MACHINE-001.
         let root = generate_root_object(&program()).unwrap();
@@ -1514,7 +1759,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 195);
+        assert_eq!(relocation_targets.len(), 241);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1527,7 +1772,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            1
+            2
         );
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
@@ -1535,7 +1780,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            178
+            209
         );
         assert_eq!(
             relocation_targets
@@ -1549,7 +1794,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            8
+            16
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -1579,6 +1824,19 @@ mod tests {
             "root must load through the selected physical frame mapping"
         );
         assert!(
+            root_bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x41, 0xc6, 0x86, 0, 0, 0, 0, 60]),
+            "root must store through the committed active translation mapping"
+        );
+        assert!(
+            root_bytes.windows(12).any(|bytes| {
+                bytes[..8] == [0x41, 0x0f, 0xb6, 0x86, 0, 0, 0, 0]
+                    && bytes[8..12] == [0x3c, 60, 0x0f, 0x85]
+            }),
+            "root must load through the committed active translation mapping"
+        );
+        assert!(
             root_bytes.windows(15).any(|bytes| {
                 bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]
             }),
@@ -1593,6 +1851,8 @@ mod tests {
             X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
             X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
             X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+            X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
         ] {
             assert_eq!(
                 relocation_targets
@@ -1600,6 +1860,18 @@ mod tests {
                     .filter(|actual| **actual == target)
                     .count(),
                 1
+            );
+        }
+        for (target, expected) in [
+            (X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, 2),
+            (X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, 2),
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                expected
             );
         }
     }
@@ -1613,6 +1885,10 @@ mod tests {
                 "topal_x86_systems_begin_bootstrap_translation",
                 "topal_x86_systems_commit_bootstrap_translation",
                 "topal_x86_systems_activate_bootstrap_translation",
+                "topal_x86_systems_begin_active_translation_edit",
+                "topal_x86_systems_stage_active_translation_map",
+                "topal_x86_systems_stage_active_translation_unmap",
+                "topal_x86_systems_commit_active_translation_edit",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -1649,10 +1925,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 18);
+        assert_eq!(decoded.placements.len(), 22);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 28);
+        assert_eq!(decoded.semantic_trace.len(), 39);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -1669,24 +1945,35 @@ mod tests {
         assert_eq!(decoded.semantic_trace[13], SYSTEMS_TRANSLATION_COMMIT);
         assert_eq!(decoded.semantic_trace[14], SYSTEMS_TRANSLATION_ACTIVATE);
         assert!(decoded.semantic_trace[15].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[18], SYSTEMS_DEBUG_BREAK);
+        assert!(decoded.semantic_trace[16].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[17].starts_with(SYSTEMS_TRANSLATION_EDIT_BEGIN));
+        assert!(decoded.semantic_trace[18].starts_with(SYSTEMS_TRANSLATION_EDIT_MAP));
+        assert!(decoded.semantic_trace[19].starts_with(SYSTEMS_TRANSLATION_EDIT_COMMIT));
+        assert!(decoded.semantic_trace[20].starts_with(SYSTEMS_KERNEL_MAPPING_STORE_BYTE));
+        assert!(decoded.semantic_trace[21].starts_with(SYSTEMS_KERNEL_MAPPING_LOAD_BYTE));
+        assert!(decoded.semantic_trace[22].starts_with(SYSTEMS_TRANSLATION_EDIT_BEGIN));
+        assert_eq!(decoded.semantic_trace[23], SYSTEMS_TRANSLATION_EDIT_UNMAP);
+        assert!(decoded.semantic_trace[24].starts_with(SYSTEMS_TRANSLATION_EDIT_COMMIT));
+        assert!(decoded.semantic_trace[25].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[26], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[29], SYSTEMS_DEBUG_BREAK);
         assert_eq!(
-            decoded.semantic_trace[19],
+            decoded.semantic_trace[30],
             "topal.systems.entry.synchronous.debug-break/1"
         );
-        assert_eq!(decoded.semantic_trace[20], SYSTEMS_RESUME_DEBUG_BREAK);
-        assert!(decoded.semantic_trace[21].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[22].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[23].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
-        assert!(decoded.semantic_trace[24].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
-        assert!(decoded.semantic_trace[25].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[31], SYSTEMS_RESUME_DEBUG_BREAK);
+        assert!(decoded.semantic_trace[32].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[33].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[34].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
+        assert!(decoded.semantic_trace[35].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
+        assert!(decoded.semantic_trace[36].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[26],
+            decoded.semantic_trace[37],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[38].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
