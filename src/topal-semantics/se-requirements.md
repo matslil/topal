@@ -114,6 +114,15 @@ The model shall not expose target flags, registers, masks, or instructions and
 shall not claim exclusion of non-maskable events, other processors, devices,
 or DMA agents.
 
+The first atomic-location increment shall model one provider-width unsigned
+word whose construction consumes an exclusive ordinary region and whose end
+transition returns that same region. It shall retain location identity,
+alignment, domain, current value, and one modification order; distinguish
+successful from observed-failure compare/exchange; validate success and
+failure orders; and reject plain access, release, escape, or completion while
+the location is live. Machine addresses, instruction strategies, registers,
+and exclusive-monitor retries shall remain outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

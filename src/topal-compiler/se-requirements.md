@@ -118,6 +118,18 @@ exact state without exposing flags, registers, masks, or instructions to
 source. Structural and pinned-QEMU evidence shall retain both provider paths
 and ordered execution through the masked scope.
 
+The first atomic-location increment shall check one aligned machine word in a
+consumed bootstrap region, the sealed `cpu-shared` domain, explicit
+`acquire-release` success and `acquire` failure compare/exchange orders, an
+`acquire` load, exhaustive result branches, and consuming `atomic end` before
+region release. It shall reject aliases, unsupported orders or domains,
+out-of-bounds or misaligned words, duplicate end, and completion while the
+location is live. The x86-64 provider shall privately initialize the selected
+word, execute a locked compare/exchange, and perform the qualified acquire load
+without exposing addresses, registers, encodings, or order implementation to
+source. Structural and pinned-QEMU evidence shall retain the locked operation,
+success/failure control flow, load, and ownership return.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

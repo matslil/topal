@@ -84,9 +84,38 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                       observed : Nat is region byte load (offset-bytes is 0)
                                                                       observed = 90
                                                                         true then {
-                                                                          restored console write "TOPAL_KERNEL_MEMORY_OK"
-                                                                          restored bootstrap release region
-                                                                          restored fatal "toolchain gate complete"
+                                                                          atomic is region atomic word create (
+                                                                            offset-bytes is 8,
+                                                                            initial-value is 41,
+                                                                            domain is cpu-shared
+                                                                          )
+                                                                          atomic compare exchange (
+                                                                            expected is 41,
+                                                                            desired is 42,
+                                                                            success-order is acquire-release,
+                                                                            failure-order is acquire
+                                                                          )
+                                                                            Exchanged previous then {
+                                                                              atomic-observed : Nat is atomic load (order is acquire)
+                                                                              atomic-observed = 42
+                                                                                true then {
+                                                                                  region is atomic end
+                                                                                  restored console write "TOPAL_KERNEL_ATOMIC_OK"
+                                                                                  restored console write "TOPAL_KERNEL_MEMORY_OK"
+                                                                                  restored bootstrap release region
+                                                                                  restored fatal "toolchain gate complete"
+                                                                                }
+                                                                                false then {
+                                                                                  region is atomic end
+                                                                                  restored bootstrap release region
+                                                                                  restored fatal "atomic load mismatch"
+                                                                                }
+                                                                            }
+                                                                            Observed actual then {
+                                                                              region is atomic end
+                                                                              restored bootstrap release region
+                                                                              restored fatal "atomic compare exchange lost"
+                                                                            }
                                                                         }
                                                                         false then {
                                                                           restored bootstrap release region

@@ -13,7 +13,7 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/7";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/8";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -37,6 +37,10 @@ pub const X86_SYSTEMS_CRITICAL_ENTER_SYMBOL: &str =
     "topal_x86_systems_enter_local_interrupt_critical";
 pub const X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL: &str =
     "topal_x86_systems_restore_local_interrupt_critical";
+pub const X86_SYSTEMS_ATOMIC_CREATE_SYMBOL: &str = "topal_x86_systems_atomic_word_create";
+pub const X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL: &str =
+    "topal_x86_systems_atomic_word_compare_exchange";
+pub const X86_SYSTEMS_ATOMIC_LOAD_SYMBOL: &str = "topal_x86_systems_atomic_word_load_acquire";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -135,6 +139,7 @@ pub fn generate_x86_64_systems_provider_object(
     );
     append_translation_functions(&mut object, text)?;
     append_critical_functions(&mut object, text);
+    append_atomic_functions(&mut object, text);
     append_function(
         &mut object,
         text,
@@ -206,6 +211,64 @@ fn append_critical_functions(object: &mut Object<'_>, text: object::write::Secti
         X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
         &critical_restore(),
     );
+}
+
+fn append_atomic_functions(object: &mut Object<'_>, text: object::write::SectionId) {
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+        &atomic_word_create(),
+    );
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+        &atomic_word_compare_exchange(),
+    );
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
+        &atomic_word_load_acquire(),
+    );
+}
+
+fn atomic_word_create() -> Vec<u8> {
+    vec![
+        0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, // test rdi, 7
+        0x75, 0x09, // jnz failure
+        0x48, 0x89, 0x37, // mov [rdi], rsi
+        0xb8, 0x01, 0x00, 0x00, 0x00, // mov eax, 1
+        0xc3, // ret
+        0x31, 0xc0, // failure: xor eax, eax
+        0xc3, // ret
+    ]
+}
+
+fn atomic_word_compare_exchange() -> Vec<u8> {
+    vec![
+        0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, // test rdi, 7
+        0x75, 0x0f, // jnz failure
+        0x48, 0x89, 0xf0, // mov rax, rsi
+        0xf0, 0x48, 0x0f, 0xb1, 0x17, // lock cmpxchg [rdi], rdx
+        0x0f, 0x94, 0xc0, // sete al
+        0x0f, 0xb6, 0xc0, // movzx eax, al
+        0xc3, // ret
+        0x31, 0xc0, // failure: xor eax, eax
+        0xc3, // ret
+    ]
+}
+
+fn atomic_word_load_acquire() -> Vec<u8> {
+    vec![
+        0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, // test rdi, 7
+        0x75, 0x04, // jnz failure
+        0x48, 0x8b, 0x07, // mov rax, [rdi]
+        0xc3, // ret
+        0x31, 0xc0, // failure: xor eax, eax
+        0xc3, // ret
+    ]
 }
 
 fn critical_enter() -> Vec<u8> {
@@ -891,6 +954,28 @@ mod tests {
                     0x40, 0xf6, 0xc7, 0x02, 0x74, 0x16, 0xf7, 0xc7, 0x00, 0x02, 0x00, 0x00, 0x74,
                     0x07, 0xfb, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3, 0xfa, 0xb8, 0x01, 0x00, 0x00,
                     0x00, 0xc3, 0x31, 0xc0, 0xc3,
+                ],
+            ),
+            (
+                X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+                &[
+                    0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, 0x75, 0x09, 0x48, 0x89, 0x37, 0xb8,
+                    0x01, 0x00, 0x00, 0x00, 0xc3, 0x31, 0xc0, 0xc3,
+                ],
+            ),
+            (
+                X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+                &[
+                    0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, 0x75, 0x0f, 0x48, 0x89, 0xf0, 0xf0,
+                    0x48, 0x0f, 0xb1, 0x17, 0x0f, 0x94, 0xc0, 0x0f, 0xb6, 0xc0, 0xc3, 0x31, 0xc0,
+                    0xc3,
+                ],
+            ),
+            (
+                X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
+                &[
+                    0x48, 0xf7, 0xc7, 0x07, 0x00, 0x00, 0x00, 0x75, 0x04, 0x48, 0x8b, 0x07, 0xc3,
+                    0x31, 0xc0, 0xc3,
                 ],
             ),
         ] {

@@ -13,7 +13,9 @@ use topal_syntax::{
 };
 
 pub use topal_semantics::{
-    BootstrapRegion as CompilerBootstrapRegion,
+    AtomicCompareExchangeResult as CompilerAtomicCompareExchangeResult,
+    AtomicDomain as CompilerAtomicDomain, AtomicOrder as CompilerAtomicOrder,
+    AtomicWordRequest as CompilerAtomicWordRequest, BootstrapRegion as CompilerBootstrapRegion,
     BootstrapStorageDescriptor as CompilerBootstrapStorageDescriptor,
     BootstrapStorageErrorCode as CompilerBootstrapStorageErrorCode,
     BootstrapStoragePlacement as CompilerBootstrapStoragePlacement,
@@ -25,17 +27,19 @@ pub use topal_semantics::{
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
-    PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
-    SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+    SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
+    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -507,6 +511,10 @@ fn storage_diagnostic(source: &SourceText, span: Span, message: impl Into<String
     source_diagnostic(source, "E-SYSTEMS-STORAGE", span, message)
 }
 
+fn atomic_diagnostic(source: &SourceText, span: Span, message: impl Into<String>) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-ATOMIC", span, message)
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
@@ -778,9 +786,12 @@ fn analyze_bootstrap_region_actions(
         comparison,
         true_rule,
         false_rule,
-        context_name,
-        ok_binding,
-        &loaded_name,
+        RegionComparisonContext {
+            context_name,
+            region_name: ok_binding,
+            loaded_name: &loaded_name,
+            region_request: request,
+        },
     )?;
     for offset in [store_offset, load_offset] {
         if offset >= request.byte_count {
@@ -794,23 +805,21 @@ fn analyze_bootstrap_region_actions(
             ));
         }
     }
+    let mut operations = vec![
+        CompilerSystemsOperation::BootstrapAllocate { request },
+        CompilerSystemsOperation::BootstrapStoreByte {
+            offset_bytes: store_offset,
+            value,
+        },
+        CompilerSystemsOperation::BootstrapLoadByteEquals {
+            offset_bytes: load_offset,
+            expected: comparison.expected,
+            failure_message: comparison.failure_message,
+        },
+    ];
+    operations.extend(comparison.success_operations);
     Ok(CheckedBootstrapRegionDecision {
-        operations: vec![
-            CompilerSystemsOperation::BootstrapAllocate { request },
-            CompilerSystemsOperation::BootstrapStoreByte {
-                offset_bytes: store_offset,
-                value,
-            },
-            CompilerSystemsOperation::BootstrapLoadByteEquals {
-                offset_bytes: load_offset,
-                expected: comparison.expected,
-                failure_message: comparison.failure_message,
-            },
-            CompilerSystemsOperation::ConsoleWrite {
-                text: comparison.success_text,
-            },
-            CompilerSystemsOperation::BootstrapRelease,
-        ],
+        operations,
         disposition: comparison.success_disposition,
     })
 }
@@ -1137,9 +1146,17 @@ fn named_static_natural(
 
 struct CheckedRegionComparison {
     expected: u8,
-    success_text: String,
+    success_operations: Vec<CompilerSystemsOperation>,
     failure_message: String,
     success_disposition: CompilerSystemsDisposition,
+}
+
+#[derive(Clone, Copy)]
+struct RegionComparisonContext<'a> {
+    context_name: &'a str,
+    region_name: &'a str,
+    loaded_name: &'a str,
+    region_request: CompilerBootstrapStorageRequest,
 }
 
 fn parse_region_comparison(
@@ -1147,9 +1164,7 @@ fn parse_region_comparison(
     statement: &Statement,
     true_rule: &Statement,
     false_rule: &Statement,
-    context_name: &str,
-    region_name: &str,
-    loaded_name: &str,
+    context: RegionComparisonContext<'_>,
 ) -> Result<CheckedRegionComparison, Diagnostic> {
     let Statement::Expression(Expression::Application { items, .. }) = statement else {
         return Err(storage_diagnostic(
@@ -1173,7 +1188,7 @@ fn parse_region_comparison(
             "loaded byte decision subject must use equality with a static byte",
         ));
     };
-    if !identifier_is(source, loaded, loaded_name) {
+    if !identifier_is(source, loaded, context.loaded_name) {
         return Err(storage_diagnostic(
             source,
             loaded.span(),
@@ -1190,28 +1205,12 @@ fn parse_region_comparison(
     let true_action = parse_boolean_rule(source, true_rule, true)?;
     let false_action = parse_boolean_rule(source, false_rule, false)?;
     let true_statements = action_block(source, true_action, "successful byte comparison")?;
-    let [console, release, disposition] = true_statements else {
-        return Err(storage_diagnostic(
-            source,
-            true_action.span(),
-            "successful byte comparison requires console marker, region release, and final disposition",
-        ));
-    };
-    let CompilerSystemsOperation::ConsoleWrite { text } = analyze_operation(
+    let atomic = parse_atomic_word_sequence(
         source,
-        console,
-        CompilerSystemsContextKind::Bootstrap,
-        context_name,
-    )?
-    else {
-        unreachable!("only the console operation passes the success check")
-    };
-    parse_region_release(source, release, context_name, region_name)?;
-    let success_disposition = analyze_disposition(
-        source,
-        disposition,
-        CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        true_statements,
+        context.context_name,
+        context.region_name,
+        context.region_request,
     )?;
 
     let false_statements = action_block(source, false_action, "failed byte comparison")?;
@@ -1222,12 +1221,12 @@ fn parse_region_comparison(
             "failed byte comparison requires region release and fatal disposition",
         ));
     };
-    parse_region_release(source, release, context_name, region_name)?;
+    parse_region_release(source, release, context.context_name, context.region_name)?;
     let failure = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        context.context_name,
     )?;
     let CompilerSystemsDisposition::Fatal {
         message: failure_message,
@@ -1241,9 +1240,624 @@ fn parse_region_comparison(
     };
     Ok(CheckedRegionComparison {
         expected,
-        success_text: text,
+        success_operations: atomic.operations,
         failure_message,
+        success_disposition: atomic.disposition,
+    })
+}
+
+struct CheckedAtomicSequence {
+    operations: Vec<CompilerSystemsOperation>,
+    disposition: CompilerSystemsDisposition,
+}
+
+fn parse_atomic_word_sequence(
+    source: &SourceText,
+    statements: &[Statement],
+    context_name: &str,
+    region_name: &str,
+    region_request: CompilerBootstrapStorageRequest,
+) -> Result<CheckedAtomicSequence, Diagnostic> {
+    let [create] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            statements.first().map_or(Span::new(0, 0), statement_span),
+            "atomic word lifecycle requires create and exhaustive `Exchanged`/`Observed` compare/exchange actions",
+        ));
+    };
+    let (atomic_name, request, continuation) =
+        parse_atomic_word_create(source, create, region_name)?;
+    if request != CompilerAtomicWordRequest::initial()
+        || request.offset_bytes % 8 != 0
+        || request
+            .offset_bytes
+            .checked_add(8)
+            .is_none_or(|end| end > region_request.byte_count)
+    {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(create),
+            "the initial atomic word requires aligned offset 8, initial value 41, cpu-shared domain, and eight in-bounds bytes",
+        ));
+    }
+    let [
+        Statement::Expression(Expression::DecisionTable {
+            subject: compare_exchange,
+            rules,
+            span,
+        }),
+    ] = continuation
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(create),
+            "atomic creation must continue directly into one exhaustive compare/exchange decision",
+        ));
+    };
+    let (expected, desired, success_order, failure_order) =
+        parse_atomic_compare_exchange(source, compare_exchange, &atomic_name)?;
+    if (expected, desired, success_order, failure_order)
+        != (
+            41,
+            42,
+            CompilerAtomicOrder::AcquireRelease,
+            CompilerAtomicOrder::Acquire,
+        )
+    {
+        return Err(atomic_diagnostic(
+            source,
+            compare_exchange.span(),
+            "the initial compare/exchange requires expected 41, desired 42, acquire-release success, and acquire failure",
+        ));
+    }
+    let (exchanged_action, observed_action) = atomic_result_actions(source, rules, *span)?;
+    let exchanged = parse_atomic_exchanged_action(
+        source,
+        exchanged_action,
+        context_name,
+        region_name,
+        &atomic_name,
+    )?;
+    let compare_failure_message = parse_atomic_observed_action(
+        source,
+        observed_action,
+        context_name,
+        region_name,
+        &atomic_name,
+    )?;
+
+    let mut operations = vec![
+        CompilerSystemsOperation::AtomicWordCreate { request },
+        CompilerSystemsOperation::AtomicCompareExchangeEquals {
+            expected,
+            desired,
+            success_order,
+            failure_order,
+            failure_message: compare_failure_message,
+        },
+        CompilerSystemsOperation::AtomicLoadEquals {
+            order: exchanged.load_order,
+            expected: exchanged.expected,
+            failure_message: exchanged.load_failure_message,
+        },
+        CompilerSystemsOperation::AtomicWordEnd,
+    ];
+    operations.extend(exchanged.success_operations);
+    operations.push(CompilerSystemsOperation::BootstrapRelease);
+    Ok(CheckedAtomicSequence {
+        operations,
+        disposition: exchanged.success_disposition,
+    })
+}
+
+fn parse_atomic_observed_action(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<String, Diagnostic> {
+    let statements = action_block(source, action, "observed compare/exchange")?;
+    let [end] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires atomic end, region release, and fatal disposition",
+        ));
+    };
+    let continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [release, disposition] = continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires region release and fatal disposition after atomic end",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let CompilerSystemsDisposition::Fatal { message } = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(disposition),
+            "observed compare/exchange must enter the fatal disposition",
+        ));
+    };
+    Ok(message)
+}
+
+fn parse_atomic_word_create<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    region_name: &str,
+) -> Result<(String, CompilerAtomicWordRequest, &'a [Statement]), Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic creation must bind `atomic is region atomic word create (...)`",
+        ));
+    };
+    let [
+        region,
+        atomic,
+        word,
+        create,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic creation must bind `atomic is region atomic word create (...)`",
+        ));
+    };
+    if !identifier_is(source, region, region_name)
+        || !identifier_is(source, atomic, "atomic")
+        || !identifier_is(source, word, "word")
+        || !identifier_is(source, create, "create")
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic word creation must consume the live ordinary region",
+        ));
+    }
+    let offset_bytes = atomic_natural_field(source, fields, "offset-bytes")?;
+    let initial_value = atomic_natural_field(source, fields, "initial-value")?;
+    let domain = atomic_identity_field(source, fields, "domain", "cpu-shared")?;
+    if fields.len() != 3 {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic word creation requires exactly `offset-bytes`, `initial-value`, and `domain`",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerAtomicWordRequest {
+            offset_bytes,
+            initial_value,
+            domain: match domain.as_str() {
+                "cpu-shared" => CompilerAtomicDomain::CpuShared,
+                _ => unreachable!("identity helper checks the sealed domain"),
+            },
+        },
+        declarations,
+    ))
+}
+
+fn parse_atomic_compare_exchange(
+    source: &SourceText,
+    expression: &Expression,
+    atomic_name: &str,
+) -> Result<(u64, u64, CompilerAtomicOrder, CompilerAtomicOrder), Diagnostic> {
+    let Expression::Application { items, span } = expression else {
+        return Err(atomic_diagnostic(
+            source,
+            expression.span(),
+            "compare/exchange must use the live atomic location",
+        ));
+    };
+    let [
+        atomic,
+        compare,
+        exchange,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "compare/exchange must be `atomic compare exchange (...)`",
+        ));
+    };
+    if !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, compare, "compare")
+        || !identifier_is(source, exchange, "exchange")
+        || fields.len() != 4
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "compare/exchange requires the live atomic location and four named parameters",
+        ));
+    }
+    Ok((
+        atomic_natural_field(source, fields, "expected")?,
+        atomic_natural_field(source, fields, "desired")?,
+        atomic_order_field(source, fields, "success-order")?,
+        atomic_order_field(source, fields, "failure-order")?,
+    ))
+}
+
+fn atomic_result_actions<'a>(
+    source: &SourceText,
+    rules: &'a [DecisionRule],
+    span: Span,
+) -> Result<(&'a Expression, &'a Expression), Diagnostic> {
+    let [exchanged, observed] = rules else {
+        return Err(atomic_diagnostic(
+            source,
+            span,
+            "compare/exchange requires exactly one `Exchanged` and one `Observed` action",
+        ));
+    };
+    match (&exchanged.matcher, &observed.matcher) {
+        (
+            DecisionMatcher::Union {
+                alternative: exchanged_name,
+                ..
+            },
+            DecisionMatcher::Union {
+                alternative: observed_name,
+                ..
+            },
+        ) if source.slice(*exchanged_name) == "Exchanged"
+            && source.slice(*observed_name) == "Observed" =>
+        {
+            Ok((&exchanged.action, &observed.action))
+        }
+        _ => Err(atomic_diagnostic(
+            source,
+            span,
+            "compare/exchange actions must appear once in `Exchanged`, `Observed` order and bind the observed value",
+        )),
+    }
+}
+
+struct CheckedAtomicExchanged {
+    load_order: CompilerAtomicOrder,
+    expected: u64,
+    load_failure_message: String,
+    success_operations: Vec<CompilerSystemsOperation>,
+    success_disposition: CompilerSystemsDisposition,
+}
+
+fn parse_atomic_exchanged_action(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<CheckedAtomicExchanged, Diagnostic> {
+    let statements = action_block(source, action, "exchanged compare/exchange")?;
+    let [load, comparison, true_rule, false_rule] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "exchanged compare/exchange requires acquire load and exhaustive equality actions",
+        ));
+    };
+    let (loaded_name, load_order) = parse_atomic_load(source, load, atomic_name)?;
+    let expected = parse_atomic_equality(source, comparison, &loaded_name)?;
+    let true_action = parse_boolean_rule(source, true_rule, true)?;
+    let false_action = parse_boolean_rule(source, false_rule, false)?;
+
+    let success = action_block(source, true_action, "successful atomic load")?;
+    let [end] = success else {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load requires atomic end, atomic and memory markers, region release, and final disposition",
+        ));
+    };
+    let success_continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [atomic_console, memory_console, release, disposition] = success_continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load requires atomic and memory markers, region release, and final disposition after atomic end",
+        ));
+    };
+    let atomic_marker = analyze_operation(
+        source,
+        atomic_console,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    let memory_marker = analyze_operation(
+        source,
+        memory_console,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    if !matches!(atomic_marker, CompilerSystemsOperation::ConsoleWrite { .. })
+        || !matches!(memory_marker, CompilerSystemsOperation::ConsoleWrite { .. })
+    {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load markers must be console writes",
+        ));
+    }
+    parse_region_release(source, release, context_name, region_name)?;
+    let success_disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+
+    let failure = action_block(source, false_action, "failed atomic load")?;
+    let [end] = failure else {
+        return Err(atomic_diagnostic(
+            source,
+            false_action.span(),
+            "failed atomic load requires atomic end, region release, and fatal disposition",
+        ));
+    };
+    let failure_continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [release, disposition] = failure_continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            false_action.span(),
+            "failed atomic load requires region release and fatal disposition after atomic end",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let CompilerSystemsDisposition::Fatal {
+        message: load_failure_message,
+    } = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(disposition),
+            "failed atomic load must enter the fatal disposition",
+        ));
+    };
+    Ok(CheckedAtomicExchanged {
+        load_order,
+        expected,
+        load_failure_message,
+        success_operations: vec![atomic_marker, memory_marker],
         success_disposition,
+    })
+}
+
+fn parse_atomic_load(
+    source: &SourceText,
+    statement: &Statement,
+    atomic_name: &str,
+) -> Result<(String, CompilerAtomicOrder), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic load must bind its `Nat` result",
+        ));
+    };
+    let [atomic, load, Expression::Product { fields, .. }] = items.as_slice() else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load must be `observed : Nat is atomic load (order is acquire)`",
+        ));
+    };
+    if source.slice(*classifier) != "Nat"
+        || !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, load, "load")
+        || fields.len() != 1
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load requires the live location and one named order",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        atomic_order_field(source, fields, "order")?,
+    ))
+}
+
+fn parse_atomic_equality(
+    source: &SourceText,
+    statement: &Statement,
+    loaded_name: &str,
+) -> Result<u64, Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic load requires an exhaustive equality decision",
+        ));
+    };
+    let [
+        loaded,
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        expected,
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load decision must compare its binding with a static natural",
+        ));
+    };
+    if !identifier_is(source, loaded, loaded_name) {
+        return Err(atomic_diagnostic(
+            source,
+            loaded.span(),
+            "atomic comparison must use the immediately preceding load binding",
+        ));
+    }
+    parse_storage_natural(source, expected)
+}
+
+fn parse_atomic_end<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    atomic_name: &str,
+    region_name: &str,
+) -> Result<&'a [Statement], Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic lifecycle must return its region through `region is atomic end`",
+        ));
+    };
+    let [atomic, end] = items.as_slice() else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic lifecycle must return its region through `region is atomic end`",
+        ));
+    };
+    if source.slice(*name) != region_name
+        || !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, end, "end")
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic end must consume the live location and restore the original region binding",
+        ));
+    }
+    Ok(declarations)
+}
+
+fn atomic_natural_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+) -> Result<u64, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    parse_storage_natural(source, &field.value)
+}
+
+fn atomic_identity_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+    required: &str,
+) -> Result<String, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    let Expression::Identifier(value) = field.value else {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic parameter `{name}` must be a static identity"),
+        ));
+    };
+    let value = source.slice(value).to_owned();
+    if value != required {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic parameter `{name}` requires `{required}`"),
+        ));
+    }
+    Ok(value)
+}
+
+fn atomic_order_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+) -> Result<CompilerAtomicOrder, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    let Expression::Identifier(value) = field.value else {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic order `{name}` must be a static identity"),
+        ));
+    };
+    match source.slice(value) {
+        "atomic-only" => Ok(CompilerAtomicOrder::AtomicOnly),
+        "acquire" => Ok(CompilerAtomicOrder::Acquire),
+        "release" => Ok(CompilerAtomicOrder::Release),
+        "acquire-release" => Ok(CompilerAtomicOrder::AcquireRelease),
+        "sequential" => Ok(CompilerAtomicOrder::Sequential),
+        other => Err(atomic_diagnostic(
+            source,
+            value,
+            format!("unknown atomic order `{other}`"),
+        )),
+    }
+}
+
+fn unique_atomic_field<'a>(
+    source: &SourceText,
+    fields: &'a [ProductField],
+    name: &str,
+) -> Result<&'a ProductField, Diagnostic> {
+    let mut found = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(atomic_diagnostic(
+                source,
+                field.value.span(),
+                "atomic parameters must be named",
+            ));
+        };
+        if source.slice(label) == name && found.replace(field).is_some() {
+            return Err(atomic_diagnostic(
+                source,
+                label,
+                format!("atomic parameter `{name}` is duplicated"),
+            ));
+        }
+    }
+    found.ok_or_else(|| {
+        atomic_diagnostic(
+            source,
+            fields
+                .first()
+                .map_or(Span::new(0, 0), |field| field.value.span()),
+            format!("atomic operation requires `{name}`"),
+        )
     })
 }
 
@@ -1536,6 +2150,10 @@ mod tests {
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+                SYSTEMS_ATOMIC_WORD_CREATE,
+                SYSTEMS_ATOMIC_END,
+                SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
@@ -1677,6 +2295,25 @@ mod tests {
                     offset_bytes: 0,
                     value: 90,
                 },
+                CompilerSystemsTransition::CreateAtomicWord {
+                    request: CompilerAtomicWordRequest::initial(),
+                },
+                CompilerSystemsTransition::CompareExchangeAtomicWord {
+                    expected: 41,
+                    desired: 42,
+                    observed: 41,
+                    exchanged: true,
+                    success_order: CompilerAtomicOrder::AcquireRelease,
+                    failure_order: CompilerAtomicOrder::Acquire,
+                },
+                CompilerSystemsTransition::LoadAtomicWord {
+                    value: 42,
+                    order: CompilerAtomicOrder::Acquire,
+                },
+                CompilerSystemsTransition::EndAtomicWord,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ATOMIC_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_OK".into(),
                 },
@@ -1697,10 +2334,14 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 37);
+        assert_eq!(program.bootstrap.handler.operations.len(), 42);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+                SYSTEMS_ATOMIC_WORD_CREATE,
+                SYSTEMS_ATOMIC_END,
+                SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
@@ -1810,6 +2451,49 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_the_sealed_affine_atomic_word_lifecycle() {
+        // TOPAL-SYSTEMS-ATOMIC-001, TOPAL-SYSTEMS-ORDER-001,
+        // TOPAL-SYSTEMS-QUALIFY-001.
+        for (source, expected) in [
+            (
+                memory_source().replace("domain is cpu-shared", "domain is device"),
+                "requires `cpu-shared`",
+            ),
+            (
+                memory_source().replace("offset-bytes is 8", "offset-bytes is 9"),
+                "requires aligned offset 8",
+            ),
+            (
+                memory_source().replace(
+                    "success-order is acquire-release",
+                    "success-order is release",
+                ),
+                "initial compare/exchange requires",
+            ),
+            (
+                memory_source().replace("failure-order is acquire", "failure-order is release"),
+                "initial compare/exchange requires",
+            ),
+            (
+                memory_source().replacen("region is atomic end", "wrong-region is atomic end", 1),
+                "restore the original region binding",
+            ),
+            (
+                memory_source().replace("Observed actual then", "Exchanged actual then"),
+                "`Exchanged`, `Observed` order",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-ATOMIC");
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }
