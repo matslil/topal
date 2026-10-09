@@ -489,18 +489,8 @@ impl BootstrapAuthorityState {
         index: usize,
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
-        if !self.critical_stack.is_empty()
-            && !matches!(
-                operation,
-                SystemsOperation::ConsoleWrite { .. }
-                    | SystemsOperation::EnterCritical { .. }
-                    | SystemsOperation::RestoreCritical { .. }
-            )
-        {
-            return Err(SystemsModelError::new(
-                "E-SYSTEMS-CRITICAL",
-                "a local-interrupt critical context admits only nonblocking scoped operations and matching restoration",
-            ));
+        if self.observe_critical(operation)? {
+            return Ok(true);
         }
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
@@ -584,6 +574,35 @@ impl BootstrapAuthorityState {
             | SystemsOperation::CommitTranslationEdit { .. }) => {
                 self.observe_translation(operation)?;
             }
+            _ if !self.allocator_created => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES",
+                    "bootstrap operations require a frame-allocator context",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn observe_critical(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        if !self.critical_stack.is_empty()
+            && !matches!(
+                operation,
+                SystemsOperation::ConsoleWrite { .. }
+                    | SystemsOperation::EnterCritical { .. }
+                    | SystemsOperation::RestoreCritical { .. }
+            )
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CRITICAL",
+                "a local-interrupt critical context admits only nonblocking scoped operations and matching restoration",
+            ));
+        }
+        match operation {
             SystemsOperation::EnterCritical { domain, .. } => {
                 if !self.allocator_created || *domain != CriticalDomain::LocalMaskableInterrupts {
                     return Err(SystemsModelError::new(
@@ -608,12 +627,6 @@ impl BootstrapAuthorityState {
                         "critical scopes must restore their matching domain in last-in-first-out order",
                     ));
                 }
-            }
-            _ if !self.allocator_created => {
-                return Err(SystemsModelError::new(
-                    "E-SYSTEMS-FRAMES",
-                    "bootstrap operations require a frame-allocator context",
-                ));
             }
             _ => return Ok(false),
         }
@@ -912,13 +925,7 @@ pub fn model_systems_transitions(
     program: &SystemsProgram,
 ) -> Result<Vec<SystemsTransition>, SystemsModelError> {
     validate_systems_program(program)?;
-    let mut transitions = vec![
-        SystemsTransition::ProvisionBootstrapStorage {
-            capacity_bytes: program.bootstrap_storage.capacity_bytes,
-            alignment_bytes: program.bootstrap_storage.alignment_bytes,
-        },
-        SystemsTransition::EnterBootstrap,
-    ];
+    let mut transitions = initial_systems_transitions(program);
     let mut storage = BootstrapStorageState::new(
         program.bootstrap_storage.clone(),
         "systems-transition-model",
@@ -927,6 +934,14 @@ pub fn model_systems_transitions(
     let mut critical_stack = Vec::new();
     let mut next_critical_identity = 1_u64;
     for operation in &program.bootstrap.handler.operations {
+        if model_critical_transition(
+            operation,
+            &mut critical_stack,
+            &mut next_critical_identity,
+            &mut transitions,
+        )? {
+            continue;
+        }
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
                 transitions.push(SystemsTransition::DescribeBootMemory);
@@ -982,25 +997,6 @@ pub fn model_systems_transitions(
             SystemsOperation::CommitTranslationEdit { kind, .. } => {
                 transitions.push(SystemsTransition::CommitTranslationEdit { kind: *kind });
             }
-            SystemsOperation::EnterCritical { domain, .. } => {
-                let nesting_identity = next_critical_identity;
-                next_critical_identity += 1;
-                critical_stack.push((*domain, nesting_identity));
-                transitions.push(SystemsTransition::EnterCritical {
-                    domain: *domain,
-                    nesting_identity,
-                });
-            }
-            SystemsOperation::RestoreCritical { domain } => {
-                let (entered_domain, nesting_identity) = critical_stack
-                    .pop()
-                    .expect("validated critical restore has matching entry");
-                debug_assert_eq!(entered_domain, *domain);
-                transitions.push(SystemsTransition::RestoreCritical {
-                    domain: *domain,
-                    nesting_identity,
-                });
-            }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
             }
@@ -1027,6 +1023,55 @@ pub fn model_systems_transitions(
         });
     }
     Ok(transitions)
+}
+
+fn initial_systems_transitions(program: &SystemsProgram) -> Vec<SystemsTransition> {
+    vec![
+        SystemsTransition::ProvisionBootstrapStorage {
+            capacity_bytes: program.bootstrap_storage.capacity_bytes,
+            alignment_bytes: program.bootstrap_storage.alignment_bytes,
+        },
+        SystemsTransition::EnterBootstrap,
+    ]
+}
+
+fn model_critical_transition(
+    operation: &SystemsOperation,
+    critical_stack: &mut Vec<(CriticalDomain, u64)>,
+    next_nesting_identity: &mut u64,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::EnterCritical { domain, .. } => {
+            let nesting_identity = *next_nesting_identity;
+            *next_nesting_identity += 1;
+            critical_stack.push((*domain, nesting_identity));
+            transitions.push(SystemsTransition::EnterCritical {
+                domain: *domain,
+                nesting_identity,
+            });
+        }
+        SystemsOperation::RestoreCritical { domain } => {
+            let Some((entered_domain, nesting_identity)) = critical_stack.pop() else {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CRITICAL",
+                    "validated critical restoration lost its matching entry",
+                ));
+            };
+            if entered_domain != *domain {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CRITICAL",
+                    "validated critical restoration changed its domain",
+                ));
+            }
+            transitions.push(SystemsTransition::RestoreCritical {
+                domain: *domain,
+                nesting_identity,
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTransition>) -> bool {

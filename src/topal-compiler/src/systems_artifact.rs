@@ -20,11 +20,11 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, model_systems_transitions,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -814,7 +814,7 @@ struct RootEncoder {
     physical_frames_live: bool,
     kernel_mapping_live: bool,
     translation: RootTranslationState,
-    critical_scope_live: bool,
+    critical: RootCriticalState,
     bootstrap_region_offset: Option<u64>,
 }
 
@@ -831,6 +831,13 @@ enum RootTranslationState {
     UnmapEdit,
     UnmapStaged,
     RemovedActive,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootCriticalState {
+    #[default]
+    Restored,
+    Live,
 }
 
 #[derive(Clone, Copy)]
@@ -1162,7 +1169,7 @@ impl RootEncoder {
 
     fn enter_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
         if domain != CompilerCriticalDomain::LocalMaskableInterrupts
-            || self.critical_scope_live
+            || self.critical == RootCriticalState::Live
             || self.physical_frames_live
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::RemovedActive
@@ -1175,12 +1182,14 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // validate opaque token
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain token in r12
-        self.critical_scope_live = true;
+        self.critical = RootCriticalState::Live;
         Ok(())
     }
 
     fn restore_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
-        if domain != CompilerCriticalDomain::LocalMaskableInterrupts || !self.critical_scope_live {
+        if domain != CompilerCriticalDomain::LocalMaskableInterrupts
+            || self.critical != RootCriticalState::Live
+        {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered critical restoration without matching affine authority".into(),
             ));
@@ -1188,7 +1197,44 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // opaque token in rdi
         self.call_checked_bool(ProviderSymbol::RestoreCritical)?;
         self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // consume token
-        self.critical_scope_live = false;
+        self.critical = RootCriticalState::Restored;
+        Ok(())
+    }
+
+    fn complete(&self) -> Result<(), CompileError> {
+        if self.bootstrap_region_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live bootstrap region".into(),
+            ));
+        }
+        if self.physical_frames_live {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live physical-frame extent".into(),
+            ));
+        }
+        if self.kernel_mapping_live {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live kernel mapping".into(),
+            ));
+        }
+        if self.critical == RootCriticalState::Live {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with live critical restoration authority".into(),
+            ));
+        }
+        if matches!(
+            self.translation,
+            RootTranslationState::Update
+                | RootTranslationState::InactiveSpace
+                | RootTranslationState::MapEdit
+                | RootTranslationState::MapStaged
+                | RootTranslationState::UnmapEdit
+                | RootTranslationState::UnmapStaged
+        ) {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with an incomplete translation lifecycle".into(),
+            ));
+        }
         Ok(())
     }
 
@@ -1547,40 +1593,7 @@ fn encode_operations(
             CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
         }
     }
-    if encoder.bootstrap_region_offset.is_some() {
-        return Err(CompileError::Tool(
-            "x86 root lowering ended with a live bootstrap region".into(),
-        ));
-    }
-    if encoder.physical_frames_live {
-        return Err(CompileError::Tool(
-            "x86 root lowering ended with a live physical-frame extent".into(),
-        ));
-    }
-    if encoder.kernel_mapping_live {
-        return Err(CompileError::Tool(
-            "x86 root lowering ended with a live kernel mapping".into(),
-        ));
-    }
-    if encoder.critical_scope_live {
-        return Err(CompileError::Tool(
-            "x86 root lowering ended with live critical restoration authority".into(),
-        ));
-    }
-    if matches!(
-        encoder.translation,
-        RootTranslationState::Update
-            | RootTranslationState::InactiveSpace
-            | RootTranslationState::MapEdit
-            | RootTranslationState::MapStaged
-            | RootTranslationState::UnmapEdit
-            | RootTranslationState::UnmapStaged
-    ) {
-        return Err(CompileError::Tool(
-            "x86 root lowering ended with an incomplete translation lifecycle".into(),
-        ));
-    }
-    Ok(())
+    encoder.complete()
 }
 
 fn undefined_provider_symbol(object: &mut Object<'_>, symbol: ProviderSymbol) -> SymbolId {
