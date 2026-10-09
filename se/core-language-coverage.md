@@ -47,7 +47,7 @@ listed disposition or an individually recorded, authoritative deferral.
 | `spec/architecture-models.md` | 22 | 13 | `topal-semantics`, architecture package validator, compiler target providers | static, artifact, compiler-only | planned |
 | `spec/compiler.md` | 260 | 13 | `topal-compiler`, shared checked frontend, platform runtime | static, runtime, artifact, compiler-only | planned |
 | `spec/optimization-policy.md` | 12 | 13 | compiler implementation planner and optimization-policy engine | static, artifact, compiler-only | planned |
-| `spec/systems-profile.md` | 21 | 14 | `topal-semantics`, compiler systems checker, target providers and artifact publisher | static, runtime, artifact, platform-specific | planned |
+| `spec/systems-profile.md` | 22 | 14 | `topal-semantics`, compiler systems checker, target providers and artifact publisher | static, runtime, artifact, platform-specific | planned |
 
 ## Cross-tool evidence
 

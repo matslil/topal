@@ -13,23 +13,27 @@ polling 16550 provider, enters and restores one affine local-interrupt critical
 scope, enters and resumes from the generated vector-3 handler,
 stores and reloads sentinels in kernel-owned memory, consumes that ordinary
 region into one aligned atomic word, executes a locked compare/exchange and
-acquire load, returns the region to plain ownership, and reaches the
-nonreturning fatal provider.
+acquire load, returns the region to plain ownership, sends one local-APIC self-
+notification, enters its generated typed external-interrupt handler, completes
+the event, resumes the wait continuation, and reaches the nonreturning fatal
+provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OK
 ```
 
-After all ten ordered markers, QEMU remained running and the serial stream
+After all eleven ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
 parent publication, exact local invalidation, fail-to-fatal branches, reserved image
 floor, flags capture, local interrupt disable, conditional exact restoration,
 aligned atomic initialization, locked 64-bit compare/exchange, acquire load,
-atomic success/failure branches, ownership return,
+atomic success/failure branches, ownership return, private local-APIC
+translation, IDT gate, self-notification, completion-aware wait, EOI, saved
+entry state, and interrupt return,
 fatal provider's interrupt-disable/halt loop, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
@@ -73,12 +77,12 @@ systems slice: bootstrap entry, polling console write, synchronous debug-break
 observation, context-preserving resume, checked bootstrap storage, one affine
 physical-frame mapping, one replacement translation space, one active
 map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
-one affine CPU-shared atomic-word lifecycle, and fatal
-disposition. Both byte loads are retained
+one affine CPU-shared atomic-word lifecycle, one typed local-notification
+external-interrupt lifecycle, and fatal disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
-gate does not claim general address-space management, interrupt entry or
-controller management, ACPI/PCI
-discovery, SMP, time, virtio, a
+gate does not claim general address-space management, timer or shared-device
+interrupt routing, general controller management, ACPI/PCI discovery, SMP,
+time, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
 The ordinary `topalc` target registry and output path publish the qualified

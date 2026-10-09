@@ -70,28 +70,8 @@ pub fn analyze_systems_for_compiler(
     target: &CompilerSystemsTargetSelection,
 ) -> Result<CompilerSystemsProgram, Diagnostic> {
     validate_target(text, target)?;
-    let source = SourceText::new(text).map_err(|error| {
-        Diagnostic::error(error.code, 1, 1, error.message).with_source_span(error.span)
-    })?;
-    let lexed = lex(&source);
-    if let Some(error) = lexed.diagnostics.first() {
-        return Err(source_diagnostic(
-            &source,
-            error.code,
-            error.span,
-            error.message.clone(),
-        ));
-    }
-    let parsed = parse(&source, &lexed);
-    if let Some(error) = parsed.diagnostics.first() {
-        return Err(source_diagnostic(
-            &source,
-            error.code,
-            error.span,
-            error.message.clone(),
-        ));
-    }
-    let Some((selection, remaining)) = parsed.statements.split_first() else {
+    let (source, statements) = parse_systems_source(text)?;
+    let Some((selection, remaining)) = statements.split_first() else {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-CONTEXT",
@@ -175,6 +155,31 @@ pub fn analyze_systems_for_compiler(
             handler: local_notification,
         },
     })
+}
+
+fn parse_systems_source(text: &str) -> Result<(SourceText, Vec<Statement>), Diagnostic> {
+    let source = SourceText::new(text).map_err(|error| {
+        Diagnostic::error(error.code, 1, 1, error.message).with_source_span(error.span)
+    })?;
+    let lexed = lex(&source);
+    if let Some(error) = lexed.diagnostics.first() {
+        return Err(source_diagnostic(
+            &source,
+            error.code,
+            error.span,
+            error.message.clone(),
+        ));
+    }
+    let parsed = parse(&source, &lexed);
+    if let Some(error) = parsed.diagnostics.first() {
+        return Err(source_diagnostic(
+            &source,
+            error.code,
+            error.span,
+            error.message.clone(),
+        ));
+    }
+    Ok((source, parsed.statements))
 }
 
 fn analyze_named_handler(
@@ -605,28 +610,13 @@ fn analyze_handler(
     }
     let context_name = source.slice(parameters[0].name);
     if context == CompilerSystemsContextKind::Bootstrap {
-        let storage = bootstrap_storage.expect("bootstrap handler carries its storage descriptor");
-        let checked = analyze_boot_memory_decision(source, body, context_name, storage)?;
-        let mut effects = checked
-            .operations
-            .iter()
-            .map(|operation| operation.semantic_identity().to_owned())
-            .collect::<Vec<_>>();
-        effects.push(
-            checked
-                .disposition
-                .semantic_identity(CompilerSystemsContextKind::Bootstrap)
-                .to_owned(),
+        return analyze_bootstrap_handler(
+            source,
+            source.slice(*name),
+            body,
+            context_name,
+            bootstrap_storage.expect("bootstrap handler carries its storage descriptor"),
         );
-        effects.sort();
-        effects.dedup();
-        return Ok(CompilerSystemsHandler {
-            name: source.slice(*name).to_owned(),
-            context,
-            operations: checked.operations,
-            disposition: checked.disposition,
-            effects,
-        });
     }
     if context == CompilerSystemsContextKind::LocalNotificationInterrupt {
         return analyze_local_notification_handler(source, source.slice(*name), body, context_name);
@@ -667,6 +657,36 @@ fn analyze_handler(
         context,
         operations: checked_operations,
         disposition,
+        effects,
+    })
+}
+
+fn analyze_bootstrap_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let checked = analyze_boot_memory_decision(source, body, context_name, storage)?;
+    let mut effects = checked
+        .operations
+        .iter()
+        .map(|operation| operation.semantic_identity().to_owned())
+        .collect::<Vec<_>>();
+    effects.push(
+        checked
+            .disposition
+            .semantic_identity(CompilerSystemsContextKind::Bootstrap)
+            .to_owned(),
+    );
+    effects.sort();
+    effects.dedup();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::Bootstrap,
+        operations: checked.operations,
+        disposition: checked.disposition,
         effects,
     })
 }
@@ -1698,7 +1718,36 @@ fn parse_atomic_exchanged_action(
     let expected = parse_atomic_equality(source, comparison, &loaded_name)?;
     let true_action = parse_boolean_rule(source, true_rule, true)?;
     let false_action = parse_boolean_rule(source, false_rule, false)?;
+    let (success_operations, success_disposition) = parse_atomic_exchanged_success(
+        source,
+        true_action,
+        context_name,
+        region_name,
+        atomic_name,
+    )?;
+    let load_failure_message = parse_atomic_exchanged_failure(
+        source,
+        false_action,
+        context_name,
+        region_name,
+        atomic_name,
+    )?;
+    Ok(CheckedAtomicExchanged {
+        load_order,
+        expected,
+        load_failure_message,
+        success_operations,
+        success_disposition,
+    })
+}
 
+fn parse_atomic_exchanged_success(
+    source: &SourceText,
+    true_action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<(Vec<CompilerSystemsOperation>, CompilerSystemsDisposition), Diagnostic> {
     let success = action_block(source, true_action, "successful atomic load")?;
     let [end] = success else {
         return Err(atomic_diagnostic(
@@ -1772,7 +1821,26 @@ fn parse_atomic_exchanged_action(
         CompilerSystemsContextKind::Bootstrap,
         &resumed_name,
     )?;
+    Ok((
+        vec![
+            atomic_marker,
+            memory_marker,
+            CompilerSystemsOperation::BootstrapRelease,
+            send_operation,
+            wait_operation,
+            interrupt_marker,
+        ],
+        success_disposition,
+    ))
+}
 
+fn parse_atomic_exchanged_failure(
+    source: &SourceText,
+    false_action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<String, Diagnostic> {
     let failure = action_block(source, false_action, "failed atomic load")?;
     let [end] = failure else {
         return Err(atomic_diagnostic(
@@ -1805,20 +1873,7 @@ fn parse_atomic_exchanged_action(
             "failed atomic load must enter the fatal disposition",
         ));
     };
-    Ok(CheckedAtomicExchanged {
-        load_order,
-        expected,
-        load_failure_message,
-        success_operations: vec![
-            atomic_marker,
-            memory_marker,
-            CompilerSystemsOperation::BootstrapRelease,
-            send_operation,
-            wait_operation,
-            interrupt_marker,
-        ],
-        success_disposition,
-    })
+    Ok(load_failure_message)
 }
 
 fn parse_local_notification_send(
