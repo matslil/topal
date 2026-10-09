@@ -9,22 +9,24 @@ profile, validates the Linux E820 handoff and reserved bootstrap floor, selects
 and accesses an E820 frame through an opaque kernel mapping, constructs and
 activates a replacement bootstrap-equivalent translation, commits and removes
 one opaque 4 KiB mapping through that active space, writes through the
-polling 16550 provider, enters and resumes from the generated vector-3 handler,
+polling 16550 provider, enters and restores one affine local-interrupt critical
+scope, enters and resumes from the generated vector-3 handler,
 stores and reloads sentinels in kernel-owned memory, and reaches the
 nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
 ```
 
-After all eight ordered markers, QEMU remained running and the serial stream
+After all nine ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
 parent publication, exact local invalidation, fail-to-fatal branches, reserved image
-floor, fatal provider's interrupt-disable/halt loop, and the root's
+floor, flags capture, local interrupt disable, conditional exact restoration,
+fatal provider's interrupt-disable/halt loop, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
 activated and edited a replacement translation, accessed both an owned frame
@@ -66,10 +68,12 @@ This completes the repository's toolchain phase gate for the initial admitted
 systems slice: bootstrap entry, polling console write, synchronous debug-break
 observation, context-preserving resume, checked bootstrap storage, one affine
 physical-frame mapping, one replacement translation space, one active
-map/unmap edit transaction, and fatal
+map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
+and fatal
 disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
-gate does not claim general address-space management, general interrupts, ACPI/PCI
+gate does not claim general address-space management, interrupt entry or
+controller management, ACPI/PCI
 discovery, SMP, time, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
