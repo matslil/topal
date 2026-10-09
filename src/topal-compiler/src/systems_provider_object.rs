@@ -13,7 +13,7 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/5";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/6";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -25,6 +25,14 @@ pub const X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL: &str =
     "topal_x86_systems_commit_bootstrap_translation";
 pub const X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL: &str =
     "topal_x86_systems_activate_bootstrap_translation";
+pub const X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL: &str =
+    "topal_x86_systems_begin_active_translation_edit";
+pub const X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL: &str =
+    "topal_x86_systems_stage_active_translation_map";
+pub const X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL: &str =
+    "topal_x86_systems_stage_active_translation_unmap";
+pub const X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL: &str =
+    "topal_x86_systems_commit_active_translation_edit";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -197,6 +205,22 @@ fn append_translation_functions(
             X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
             translation_space_activator()?,
         ),
+        (
+            X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+            translation_edit_begin()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+            translation_edit_map()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+            translation_edit_unmap()?,
+        ),
+        (
+            X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
+            translation_edit_commit()?,
+        ),
     ] {
         append_encoded_function(object, text, name, &encoded);
     }
@@ -304,6 +328,12 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
 
 fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // test private allocation floor
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x85, 0xf6]); // test rsi, rsi
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0xf0, 0xff, 0x00]); // cmp rsi, 0x00fff000
@@ -328,9 +358,9 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x82, "fail");
     code.bytes(&[0x41, 0x83, 0xfa, 0x01]); // E820 RAM
     code.jump_if(0x85, "next");
-    code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x01]); // base >= 16 MiB
+    code.bytes(&[0x48, 0x39, 0xf8]); // base >= private floor
     code.jump_if(0x83, "base-ready");
-    code.bytes(&[0xb8, 0x00, 0x00, 0x00, 0x01]); // candidate = 16 MiB
+    code.bytes(&[0x48, 0x89, 0xf8]); // candidate = private floor
     code.bind("base-ready")?;
     code.bytes(&[0x48, 0x05, 0xff, 0x0f, 0x00, 0x00]); // align candidate up
     code.jump_if(0x82, "fail");
@@ -444,7 +474,165 @@ fn translation_space_activator() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x81, 0xff, 0x00, 0xd0, 0xff, 0x3f]);
     code.jump_if(0x87, "fail");
+    code.bytes(&[0xb9, 0x80, 0x00, 0x00, 0xc0]); // IA32_EFER
+    code.bytes(&[0x0f, 0x32]); // rdmsr
+    code.bytes(&[0x0d, 0x00, 0x08, 0x00, 0x00]); // enable NXE
+    code.bytes(&[0x0f, 0x30]); // wrmsr
     code.bytes(&[0x0f, 0x22, 0xdf]); // mov cr3, rdi
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_edit_begin() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x83, 0xfa, 0x01]); // unmap edit kind
+    code.jump_if(0x84, "unmap");
+    code.bytes(&[0x85, 0xd2]); // map edit kind is zero
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xff]); // payload frame
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xc7, 0x00, 0x10, 0x00, 0x00]); // metadata floor
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // boot params
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0xf0, 0xff, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]);
+    code.bytes(&[0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x81, 0xf9, 0x80, 0x00, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x8d, 0x96, 0xd0, 0x02, 0x00, 0x00]);
+
+    code.bind("loop")?;
+    code.bytes(&[0x48, 0x8b, 0x02]);
+    code.bytes(&[0x4c, 0x8b, 0x4a, 0x08]);
+    code.bytes(&[0x44, 0x8b, 0x52, 0x10]);
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "zero-length");
+    code.bytes(&[0x49, 0x89, 0xc3]);
+    code.bytes(&[0x4d, 0x01, 0xcb]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
+    code.jump_if(0x85, "next");
+    code.bytes(&[0x48, 0x39, 0xf8]);
+    code.jump_if(0x83, "base-ready");
+    code.bytes(&[0x48, 0x89, 0xf8]);
+    code.bind("base-ready")?;
+    code.bytes(&[0x48, 0x05, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x81, 0xe3, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x89, 0xc2]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x20, 0x00, 0x00]); // two pages
+    code.jump_if(0x82, "next");
+    code.bytes(&[0x4d, 0x39, 0xda]);
+    code.jump_if(0x87, "next");
+    code.bytes(&[0x48, 0x3d, 0x00, 0xe0, 0xff, 0x3f]);
+    code.jump_if(0x87, "next");
+    code.bytes(&[0xc3]);
+
+    code.bind("zero-length")?;
+    code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
+    code.jump_if(0x84, "fail");
+    code.bind("next")?;
+    code.bytes(&[0x48, 0x83, 0xc2, 0x14]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "loop");
+    code.jump("fail");
+
+    code.bind("unmap")?;
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_edit_map() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc6, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0xf8]); // retain PD
+    code.bytes(&[0x4c, 0x8d, 0x8f, 0x00, 0x10, 0x00, 0x00]); // PT
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x04, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // clear two pages
+    code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x83, 0xc8, 0x03]);
+    code.bytes(&[0x49, 0x89, 0x00]); // PD[0] -> PT
+    code.bytes(&[0x48, 0x89, 0xf0]);
+    code.bytes(&[0x48, 0xba, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]);
+    code.bytes(&[0x48, 0x09, 0xd0]);
+    code.bytes(&[0x49, 0x89, 0x01]); // PT[0] -> payload, writable and NX
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_edit_unmap() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0x08, 0x10, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn translation_edit_commit() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xfa, 0x01]);
+    code.jump_if(0x84, "unmap");
+    code.bytes(&[0x85, 0xd2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc6, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc8, 0x03]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x89, 0x87, 0x08, 0x10, 0x00, 0x00]); // publish PDPT[1]
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0xb8, 0x00, 0x00, 0x00, 0x40, 0xc3]); // opaque mapping VA
+
+    code.bind("unmap")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x48, 0xc7, 0x87, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x0f, 0x01, 0x3e]); // invlpg [rsi]
+    code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -634,6 +822,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // The complete sealed provider instruction audit remains co-located.
     fn emits_only_the_sealed_provider_instruction_sequences() {
         // TOPAL-SYSTEMS-MACHINE-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let generated = generated();
@@ -681,6 +870,10 @@ mod tests {
                 .windows(6)
                 .any(|bytes| bytes == [0x48, 0x3d, 0x00, 0xf0, 0xff, 0x3f]),
             "selector must constrain the returned page to bootstrap identity mappings"
+        );
+        assert!(
+            selector.windows(3).any(|bytes| bytes == [0x48, 0x39, 0xf8]),
+            "selector must apply its provider-private allocation floor"
         );
         assert_eq!(&selector[selector.len() - 3..], &[0x31, 0xc0, 0xc3]);
 
@@ -732,6 +925,70 @@ mod tests {
                 .windows(3)
                 .any(|bytes| bytes == [0x0f, 0x22, 0xdf]),
             "translation activation must retain the qualified CR3 transition"
+        );
+        assert!(
+            activator
+                .windows(5)
+                .any(|bytes| bytes == [0x0d, 0x00, 0x08, 0x00, 0x00]),
+            "translation activation must enable NX before admitting non-executable leaves"
+        );
+
+        let edit_begin = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(edit_begin.address()).unwrap();
+        let end = start + usize::try_from(edit_begin.size()).unwrap();
+        let edit_begin = &data[start..end];
+        assert!(
+            edit_begin
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x81, 0xc2, 0x00, 0x20, 0x00, 0x00]),
+            "map-edit begin must reserve two complete metadata pages"
+        );
+
+        let edit_map = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(edit_map.address()).unwrap();
+        let end = start + usize::try_from(edit_map.size()).unwrap();
+        let edit_map = &data[start..end];
+        assert!(
+            edit_map
+                .windows(10)
+                .any(|bytes| bytes == [0x48, 0xba, 0x03, 0, 0, 0, 0, 0, 0, 0x80]),
+            "staged leaf must be present, writable, and non-executable"
+        );
+
+        let edit_unmap = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(edit_unmap.address()).unwrap();
+        let end = start + usize::try_from(edit_unmap.size()).unwrap();
+        let edit_unmap = &data[start..end];
+        assert!(
+            edit_unmap
+                .windows(8)
+                .any(|bytes| bytes == [0x48, 0x83, 0xbf, 0x08, 0x10, 0, 0, 0]),
+            "unmap staging must validate the published parent entry"
+        );
+
+        let edit_commit = file
+            .symbol_by_name(X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(edit_commit.address()).unwrap();
+        let end = start + usize::try_from(edit_commit.size()).unwrap();
+        let edit_commit = &data[start..end];
+        assert!(
+            edit_commit
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x87, 0x08, 0x10, 0, 0]),
+            "map commit must publish PDPT[1] only after staging"
+        );
+        assert!(
+            edit_commit
+                .windows(3)
+                .any(|bytes| bytes == [0x0f, 0x01, 0x3e]),
+            "unmap commit must invalidate the private mapping before returning frames"
         );
     }
 }
