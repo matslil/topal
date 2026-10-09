@@ -134,18 +134,7 @@ pub fn generate_x86_64_systems_provider_object(
         &physical_frame_selector()?,
     );
     append_translation_functions(&mut object, text)?;
-    append_encoded_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
-        &critical_enter(),
-    );
-    append_encoded_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
-        &critical_restore(),
-    );
+    append_critical_functions(&mut object, text);
     append_function(
         &mut object,
         text,
@@ -202,6 +191,21 @@ pub fn generate_x86_64_systems_provider_object(
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
     Ok(GeneratedSystemsProviderObject { plan, bytes })
+}
+
+fn append_critical_functions(object: &mut Object<'_>, text: object::write::SectionId) {
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
+        &critical_enter(),
+    );
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+        &critical_restore(),
+    );
 }
 
 fn critical_enter() -> Vec<u8> {

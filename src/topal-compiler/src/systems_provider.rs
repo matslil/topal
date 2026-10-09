@@ -377,14 +377,7 @@ mod tests {
             operation.semantic_identity == SYSTEMS_TRANSLATION_EDIT_COMMIT
                 && operation.lowering == X86SystemsLowering::CommitActiveTranslationEdit
         }));
-        assert!(plan.operations.iter().any(|operation| {
-            operation.semantic_identity == SYSTEMS_CRITICAL_ENTER
-                && operation.lowering == X86SystemsLowering::CaptureAndMaskLocalInterrupts
-        }));
-        assert!(plan.operations.iter().any(|operation| {
-            operation.semantic_identity == SYSTEMS_CRITICAL_RESTORE
-                && operation.lowering == X86SystemsLowering::RestoreLocalInterruptState
-        }));
+        assert_critical_lowerings(&plan);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -408,6 +401,17 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE
                 && operation.lowering == X86SystemsLowering::PlainBootstrapRegionLoadByte
+        }));
+    }
+
+    fn assert_critical_lowerings(plan: &X86SystemsProviderPlan) {
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_CRITICAL_ENTER
+                && operation.lowering == X86SystemsLowering::CaptureAndMaskLocalInterrupts
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_CRITICAL_RESTORE
+                && operation.lowering == X86SystemsLowering::RestoreLocalInterruptState
         }));
     }
 
