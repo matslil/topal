@@ -152,6 +152,36 @@ portable schedule-equivalence requirement. These events SHALL NOT authorize a
 data race, arbitrary random choice, invented event, or removal, duplication,
 merging, or speculation of a required observation.
 
+### TOPAL-SYSTEMS-LOCAL-INTERRUPT-001 — Local-notification interrupt lifecycle
+
+`local notification send` SHALL consume one admitted processor context and
+produce one affine pending session with source identity `s`, the source's next
+monotonic event identity `q`, and the exact prior local maskable-interrupt
+state. The consumed context SHALL be invalid until the matching wait completes.
+A second send, ordinary use of the consumed context, escape, duplication, or
+ordinary completion while the session is live SHALL be rejected.
+
+`local notification wait` SHALL consume that pending session. Successful wait
+completion SHALL require, in order, `Observe(s,q)`, entry through the declared
+local-notification external-interrupt entry, consumption of its completion
+obligation, resumption of the interrupted continuation, and restoration of the
+recorded prior maskable-interrupt state. Another event SHALL NOT satisfy the
+wait. The provider MAY temporarily change local mask state inside the sealed
+wait transition but source SHALL NOT observe or retain that state.
+
+The external entry SHALL receive one affine
+`LocalNotificationInterruptContext(s,q)`. `local notification complete` SHALL
+consume it and produce one completed context admitting only the declared
+resume or fatal disposition. Resume before completion, completion outside the
+matching entry, duplicate completion, context escape, or ordinary return SHALL
+be rejected. Completion SHALL discharge the target acknowledgement or pending-
+state obligation; a zero-instruction completion SHALL require target evidence
+that the complete obligation is otherwise satisfied.
+
+The initial profile SHALL admit exactly one local-notification handler and one
+send/wait event. It SHALL make no timer, bounded-latency, fairness, nested-entry,
+SMP-delivery, shared-device-routing, or scheduler-disposition guarantee.
+
 ### TOPAL-SYSTEMS-MACHINE-001 — Closed machine-provider transition
 
 A machine-provider operation SHALL have a stable closed identity and specify:

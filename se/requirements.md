@@ -306,6 +306,14 @@ own physical frames, stacks, prologues, epilogues, security state, unwind data,
 and return mechanisms. Source handlers shall receive only context-legal
 capabilities and shall return one checked disposition.
 
+The initial external-interrupt increment shall consume one processor context
+into an affine local-notification send/wait session, admit only the matching
+provider-created entry event, require consuming completion authority before
+resume, restore the exact prior local maskable-interrupt state, and bind the
+send, observation, entry, completion, resumption, and wait result to one
+monotonic event identity. Vectors, controllers, frames, acknowledgement state,
+wait instructions, and machine return mechanisms shall not be source values.
+
 ## TOPAL-REQ-SYSTEMS-OBSERVATION-001 — Declared systems nondeterminism
 
 External events and concurrent winner selection shall be observable only

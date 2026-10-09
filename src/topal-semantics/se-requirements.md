@@ -123,6 +123,16 @@ failure orders; and reject plain access, release, escape, or completion while
 the location is live. Machine addresses, instruction strategies, registers,
 and exclusive-monitor retries shall remain outside the common model.
 
+The first external-interrupt increment shall model one affine local-
+notification session with a monotonic event identity, consuming send, matching
+observation and entry, mandatory completion, interrupted-context resumption,
+wait completion, and exact prior local mask-state restoration. It shall reject
+context use while pending, unmatched or duplicate events, resume before
+completion, completion outside the handler, duplicate completion, and ordinary
+completion with live notification authority. Vectors, controller state,
+machine frames, acknowledgement encodings, wait instructions, and return
+instructions shall remain outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

@@ -266,6 +266,28 @@ A disposition is accepted only after the checker proves that acknowledgement,
 resource, recovery, masking, preemption, and context-validation obligations are
 discharged. Source does not select a machine return instruction.
 
+### Local-notification external entry
+
+The initial external-interrupt specialization uses an affine local-notification
+session. Sending consumes the current processor context into one pending event;
+waiting consumes that event and returns a refined context only after the
+matching typed handler has completed the interrupt and resumed the interrupted
+continuation. The exact local maskable-interrupt state from before the send is
+restored when waiting completes.
+
+The handler receives one opaque `LocalNotificationInterruptContext`. It must
+consume that context through `local notification complete` before its
+`resume` disposition becomes legal. Source cannot observe or select the event's
+vector, controller, machine frame, acknowledgement mechanism, wait sequence,
+or return instruction. The source-local event identity is monotonic and binds
+send, observation, entry, completion, resumption, and wait completion.
+
+The common contract is implementable by a local-APIC self-notification on
+x86-64, a GIC software-generated interrupt on AArch64, or a supervisor software
+interrupt/IPI facility on RISC-V. Those mechanisms remain private provider
+evidence. The first executable profile admits one event and makes no timer,
+latency, fairness, nesting, SMP, device-routing, or scheduler claim.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
