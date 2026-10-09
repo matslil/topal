@@ -22,10 +22,11 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, model_systems_transitions,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -35,7 +36,9 @@ use crate::{
     X86_SYSTEMS_ATOMIC_LOAD_SYMBOL, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-    X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
+    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
@@ -43,19 +46,21 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/8";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/8";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/9";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/9";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
+pub const X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY: &str = "topal_x86_systems_local_notification_entry";
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 19] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 23] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
@@ -70,6 +75,9 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 19] = [
     X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
     X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -369,7 +377,10 @@ fn artifact_provenance(
         code_model: plan.code_model.into(),
         llvm_version: tools.version.clone(),
         entry_symbol: X86_SYSTEMS_KERNEL_ENTRY.into(),
-        exception_entries: vec![X86_SYSTEMS_DEBUG_BREAK_ENTRY.into()],
+        exception_entries: vec![
+            X86_SYSTEMS_DEBUG_BREAK_ENTRY.into(),
+            X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY.into(),
+        ],
         bootstrap_storage_capacity: plan.bootstrap_placement.capacity_bytes,
         bootstrap_storage_alignment: plan.bootstrap_placement.alignment_bytes,
         placements,
@@ -617,6 +628,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             "topal.systems.entry.synchronous.debug-break/1",
             X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         ),
+        (
+            "topal.systems.entry.external.local-notification/1",
+            X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+        ),
         (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
         (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
         (SYSTEMS_KERNEL_MAP, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
@@ -663,10 +678,26 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         ),
         (SYSTEMS_ATOMIC_LOAD, X86_SYSTEMS_ATOMIC_LOAD_SYMBOL),
         (SYSTEMS_ATOMIC_END, X86_SYSTEMS_KERNEL_ENTRY),
+        (
+            SYSTEMS_LOCAL_NOTIFICATION_SEND,
+            X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+        ),
+        (
+            SYSTEMS_LOCAL_NOTIFICATION_WAIT,
+            X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+        ),
+        (
+            SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+            X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+        ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
             SYSTEMS_RESUME_DEBUG_BREAK,
+            "topal_x86_systems_interrupt_return",
+        ),
+        (
+            SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             "topal_x86_systems_interrupt_return",
         ),
         (SYSTEMS_FATAL, "topal_x86_systems_fatal"),
@@ -729,6 +760,9 @@ enum ProviderSymbol {
     AtomicWordCreate,
     AtomicWordCompareExchange,
     AtomicWordLoad,
+    SendLocalNotification,
+    WaitLocalNotification,
+    CompleteLocalNotification,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -753,6 +787,9 @@ impl ProviderSymbol {
             Self::AtomicWordCreate => X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
             Self::AtomicWordCompareExchange => X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
             Self::AtomicWordLoad => X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
+            Self::SendLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+            Self::WaitLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+            Self::CompleteLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -778,6 +815,9 @@ impl ProviderSymbol {
             | Self::AtomicWordCreate
             | Self::AtomicWordCompareExchange
             | Self::AtomicWordLoad
+            | Self::SendLocalNotification
+            | Self::WaitLocalNotification
+            | Self::CompleteLocalNotification
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -842,6 +882,9 @@ struct RootEncoder {
     critical: RootCriticalState,
     bootstrap_region_offset: Option<u64>,
     atomic_word_offset: Option<u64>,
+    local_notification: RootLocalNotificationState,
+    local_notification_handler: bool,
+    local_notification_required: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -866,6 +909,14 @@ enum RootCriticalState {
     Live,
 }
 
+#[derive(Default, Eq, PartialEq)]
+enum RootLocalNotificationState {
+    #[default]
+    Idle,
+    Pending,
+    Completed,
+}
+
 #[derive(Clone, Copy)]
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
@@ -882,6 +933,9 @@ struct ProviderSymbols {
     atomic_word_create: SymbolId,
     atomic_word_compare_exchange: SymbolId,
     atomic_word_load: SymbolId,
+    send_local_notification: SymbolId,
+    wait_local_notification: SymbolId,
+    complete_local_notification: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -928,7 +982,7 @@ impl RootEncoder {
             }
             RootTranslationState::ReplacementActive => {
                 self.bytes
-                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x30, 0x00, 0x00]);
+                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x40, 0x00, 0x00]);
             }
             _ => {
                 return Err(CompileError::Tool(
@@ -1256,6 +1310,14 @@ impl RootEncoder {
                 "x86 root lowering ended with live critical restoration authority".into(),
             ));
         }
+        if self.local_notification_required
+            && self.local_notification != RootLocalNotificationState::Completed
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without completing its local-notification lifecycle"
+                    .into(),
+            ));
+        }
         if matches!(
             self.translation,
             RootTranslationState::Update
@@ -1485,6 +1547,46 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn send_local_notification(&mut self) -> Result<(), CompileError> {
+        if self.local_notification != RootLocalNotificationState::Idle
+            || self.bootstrap_region_offset.is_some()
+            || self.atomic_word_offset.is_some()
+            || self.critical != RootCriticalState::Restored
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires a restored context and no live bootstrap region before local-notification send".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(16)?;
+        self.call_checked_bool(ProviderSymbol::SendLocalNotification)?;
+        self.local_notification = RootLocalNotificationState::Pending;
+        Ok(())
+    }
+
+    fn wait_local_notification(&mut self) -> Result<(), CompileError> {
+        if self.local_notification != RootLocalNotificationState::Pending {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered local-notification wait without pending authority"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(16)?;
+        self.call_checked_bool(ProviderSymbol::WaitLocalNotification)?;
+        self.local_notification = RootLocalNotificationState::Completed;
+        Ok(())
+    }
+
+    fn complete_local_notification(&mut self) -> Result<(), CompileError> {
+        if !self.local_notification_handler {
+            return Err(CompileError::Tool(
+                "x86 local-notification completion is admitted only in its external entry".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(16)?;
+        self.call(ProviderSymbol::CompleteLocalNotification);
+        Ok(())
+    }
+
     fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
         self.rip_relative_storage(storage_offset, 0)
@@ -1573,9 +1675,22 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
                     | CompilerSystemsOperation::AtomicLoadEquals { .. }
                     | CompilerSystemsOperation::AtomicWordEnd
+                    | CompilerSystemsOperation::SendLocalNotification
+                    | CompilerSystemsOperation::WaitLocalNotification
                     | CompilerSystemsOperation::BootstrapRelease
             )
-        });
+        })
+        || program
+            .local_notification
+            .handler
+            .operations
+            .iter()
+            .any(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CompleteLocalNotification
+                )
+            });
     let symbols = ProviderSymbols {
         describe_boot_memory: undefined_provider_symbol(
             &mut object,
@@ -1621,6 +1736,18 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             ProviderSymbol::AtomicWordCompareExchange,
         ),
         atomic_word_load: undefined_provider_symbol(&mut object, ProviderSymbol::AtomicWordLoad),
+        send_local_notification: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::SendLocalNotification,
+        ),
+        wait_local_notification: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::WaitLocalNotification,
+        ),
+        complete_local_notification: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CompleteLocalNotification,
+        ),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -1629,7 +1756,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             .then(|| undefined_provider_symbol(&mut object, ProviderSymbol::BootstrapStorage)),
     };
 
-    let mut bootstrap = RootEncoder::default();
+    let mut bootstrap = RootEncoder {
+        local_notification_required: true,
+        ..RootEncoder::default()
+    };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
     bootstrap.jump(ProviderSymbol::Fatal);
     append_root(
@@ -1637,6 +1767,36 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         text,
         X86_SYSTEMS_KERNEL_ENTRY,
         &bootstrap,
+        symbols,
+    )?;
+
+    let mut local_notification = RootEncoder {
+        local_notification_handler: true,
+        ..RootEncoder::default()
+    };
+    for register in SAVED_REGISTERS {
+        local_notification.push(register);
+    }
+    encode_operations(
+        &mut local_notification,
+        &program.local_notification.handler.operations,
+    )?;
+    match program.local_notification.handler.disposition {
+        CompilerSystemsDisposition::Resume => {
+            for register in SAVED_REGISTERS.into_iter().rev() {
+                local_notification.pop(register);
+            }
+            local_notification.jump(ProviderSymbol::InterruptReturn);
+        }
+        CompilerSystemsDisposition::Fatal { .. } => {
+            local_notification.jump(ProviderSymbol::Fatal);
+        }
+    }
+    append_root(
+        &mut object,
+        text,
+        X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+        &local_notification,
         symbols,
     )?;
 
@@ -1758,13 +1918,10 @@ fn encode_operations(
             } => encoder.load_atomic_word_equals(*order, *expected)?,
             CompilerSystemsOperation::AtomicWordEnd => encoder.end_atomic_word()?,
             CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
-            CompilerSystemsOperation::SendLocalNotification
-            | CompilerSystemsOperation::WaitLocalNotification
-            | CompilerSystemsOperation::CompleteLocalNotification => {
-                return Err(CompileError::Tool(
-                    "x86 local-notification lowering is not available in this compiler stage"
-                        .into(),
-                ));
+            CompilerSystemsOperation::SendLocalNotification => encoder.send_local_notification()?,
+            CompilerSystemsOperation::WaitLocalNotification => encoder.wait_local_notification()?,
+            CompilerSystemsOperation::CompleteLocalNotification => {
+                encoder.complete_local_notification()?;
             }
         }
     }
@@ -1820,6 +1977,11 @@ fn append_root(
                 provider_symbols.atomic_word_compare_exchange
             }
             ProviderSymbol::AtomicWordLoad => provider_symbols.atomic_word_load,
+            ProviderSymbol::SendLocalNotification => provider_symbols.send_local_notification,
+            ProviderSymbol::WaitLocalNotification => provider_symbols.wait_local_notification,
+            ProviderSymbol::CompleteLocalNotification => {
+                provider_symbols.complete_local_notification
+            }
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -2060,7 +2222,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 306);
+        assert_eq!(relocation_targets.len(), 340);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -2068,6 +2230,19 @@ mod tests {
                 .count(),
             1
         );
+        for target in [
+            X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+            X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+            X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
         for target in [
             X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
             X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
@@ -2108,21 +2283,28 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            261
+            286
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            5
+            8
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            21
+            23
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == "topal_x86_systems_interrupt_return")
+                .count(),
+            2
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -2175,8 +2357,8 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            3,
-            "root must derive the opaque atomic location for create, compare/exchange, and load"
+            5,
+            "root must derive opaque storage for three atomic operations plus notification send/wait"
         );
         assert!(
             root_bytes
@@ -2186,6 +2368,10 @@ mod tests {
         );
         assert!(file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).is_some());
         assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
+        assert!(
+            file.symbol_by_name(X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)
+                .is_some()
+        );
     }
 
     fn assert_translation_relocations(relocation_targets: &[&str]) {
@@ -2236,6 +2422,9 @@ mod tests {
                 "topal_x86_systems_atomic_word_create",
                 "topal_x86_systems_atomic_word_compare_exchange",
                 "topal_x86_systems_atomic_word_load_acquire",
+                "topal_x86_systems_local_notification_send",
+                "topal_x86_systems_local_notification_wait",
+                "topal_x86_systems_local_notification_complete",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -2272,10 +2461,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 28);
+        assert_eq!(decoded.placements.len(), 33);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 47);
+        assert_eq!(decoded.semantic_trace.len(), 55);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -2328,7 +2517,24 @@ mod tests {
             decoded.semantic_trace[45],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[46].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[46].starts_with(SYSTEMS_LOCAL_NOTIFICATION_SEND));
+        assert!(decoded.semantic_trace[47].starts_with(SYSTEMS_LOCAL_NOTIFICATION_WAIT));
+        assert_eq!(
+            decoded.semantic_trace[48],
+            "topal.systems.observation.local-notification/1"
+        );
+        assert_eq!(
+            decoded.semantic_trace[49],
+            "topal.systems.entry.external.local-notification/1"
+        );
+        assert!(decoded.semantic_trace[50].starts_with(SYSTEMS_LOCAL_NOTIFICATION_COMPLETE));
+        assert_eq!(
+            decoded.semantic_trace[51],
+            SYSTEMS_RESUME_LOCAL_NOTIFICATION
+        );
+        assert!(decoded.semantic_trace[52].starts_with(SYSTEMS_LOCAL_NOTIFICATION_WAIT));
+        assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[54].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

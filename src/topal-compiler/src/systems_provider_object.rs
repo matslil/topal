@@ -13,7 +13,7 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/8";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/9";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -41,6 +41,12 @@ pub const X86_SYSTEMS_ATOMIC_CREATE_SYMBOL: &str = "topal_x86_systems_atomic_wor
 pub const X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL: &str =
     "topal_x86_systems_atomic_word_compare_exchange";
 pub const X86_SYSTEMS_ATOMIC_LOAD_SYMBOL: &str = "topal_x86_systems_atomic_word_load_acquire";
+pub const X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL: &str =
+    "topal_x86_systems_local_notification_send";
+pub const X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL: &str =
+    "topal_x86_systems_local_notification_wait";
+pub const X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL: &str =
+    "topal_x86_systems_local_notification_complete";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -140,6 +146,7 @@ pub fn generate_x86_64_systems_provider_object(
     append_translation_functions(&mut object, text)?;
     append_critical_functions(&mut object, text);
     append_atomic_functions(&mut object, text);
+    append_local_notification_functions(&mut object, text);
     append_function(
         &mut object,
         text,
@@ -232,6 +239,75 @@ fn append_atomic_functions(object: &mut Object<'_>, text: object::write::Section
         X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
         &atomic_word_load_acquire(),
     );
+}
+
+fn append_local_notification_functions(object: &mut Object<'_>, text: object::write::SectionId) {
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+        &local_notification_send(),
+    );
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+        &local_notification_wait(),
+    );
+    append_encoded_function(
+        object,
+        text,
+        X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+        &local_notification_complete(),
+    );
+}
+
+fn local_notification_send() -> Vec<u8> {
+    let mut code = Vec::new();
+    code.extend_from_slice(&[0x9c, 0x58]); // pushfq; pop rax
+    code.extend_from_slice(&[0xa9, 0x00, 0x02, 0x00, 0x00]); // test eax, IF
+    code.extend_from_slice(&[0x75, 0x41]); // initial profile requires IF clear
+    code.extend_from_slice(&[0xc6, 0x07, 0x00]); // completion flag = 0
+    code.extend_from_slice(&[0xb9, 0x1b, 0x00, 0x00, 0x00]); // IA32_APIC_BASE
+    code.extend_from_slice(&[0x0f, 0x32]); // rdmsr
+    code.extend_from_slice(&[0xa9, 0x00, 0x04, 0x00, 0x00]); // reject x2APIC mode
+    code.extend_from_slice(&[0x75, 0x30]);
+    code.extend_from_slice(&[0x0d, 0x00, 0x08, 0x00, 0x00]); // global APIC enable
+    code.extend_from_slice(&[0x0f, 0x30]); // wrmsr
+    code.extend_from_slice(&[0x48, 0xba]); // mov rdx, local APIC SVR
+    code.extend_from_slice(&0xfee0_00f0_u64.to_le_bytes());
+    code.extend_from_slice(&[0x8b, 0x02]); // mov eax, [rdx]
+    code.extend_from_slice(&[0x0d, 0x00, 0x01, 0x00, 0x00]); // software enable
+    code.extend_from_slice(&[0x89, 0x02]); // mov [rdx], eax
+    code.extend_from_slice(&[0x48, 0xba]); // mov rdx, local APIC ICR low
+    code.extend_from_slice(&0xfee0_0300_u64.to_le_bytes());
+    code.extend_from_slice(&[0xc7, 0x02]); // fixed, assert, edge, self shorthand
+    code.extend_from_slice(&0x0004_40f1_u32.to_le_bytes());
+    code.extend_from_slice(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.extend_from_slice(&[0x31, 0xc0, 0xc3]); // fail
+    code
+}
+
+fn local_notification_wait() -> Vec<u8> {
+    vec![
+        0xfb, // sti; the interrupt shadow covers the following hlt
+        0xf4, // hlt until an admitted external interrupt
+        0xfa, // restore the sealed prior disabled state
+        0x80, 0x3f, 0x01, // cmp byte ptr [rdi], 1
+        0x75, 0xf8, // wait again after an unrelated wake
+        0xc6, 0x07, 0x00, // consume completion flag
+        0xb8, 0x01, 0x00, 0x00, 0x00, // success
+        0xc3,
+    ]
+}
+
+fn local_notification_complete() -> Vec<u8> {
+    let mut code = Vec::new();
+    code.extend_from_slice(&[0x48, 0xb8]); // mov rax, local APIC EOI
+    code.extend_from_slice(&0xfee0_00b0_u64.to_le_bytes());
+    code.extend_from_slice(&[0xc7, 0x00, 0x00, 0x00, 0x00, 0x00]); // EOI = 0
+    code.extend_from_slice(&[0xc6, 0x07, 0x01, 0xc3]); // completion flag = 1; ret
+    code
 }
 
 fn atomic_word_create() -> Vec<u8> {
@@ -529,12 +605,12 @@ fn translation_backing_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x49, 0x81, 0xe3, 0x00, 0xf0, 0xff, 0xff]);
-    code.bytes(&[0x49, 0x89, 0xc2]); // end of 3 pages = candidate
-    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x30, 0x00, 0x00]);
+    code.bytes(&[0x49, 0x89, 0xc2]); // end of 4 pages = candidate
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x40, 0x00, 0x00]);
     code.jump_if(0x82, "next");
-    code.bytes(&[0x4d, 0x39, 0xda]); // candidate + 3 pages <= RAM end
+    code.bytes(&[0x4d, 0x39, 0xda]); // candidate + 4 pages <= RAM end
     code.jump_if(0x87, "next");
-    code.bytes(&[0x48, 0x3d, 0x00, 0xd0, 0xff, 0x3f]); // all backing below 1 GiB
+    code.bytes(&[0x48, 0x3d, 0x00, 0xc0, 0xff, 0x3f]); // all backing below 1 GiB
     code.jump_if(0x87, "next");
     code.bytes(&[0xc3]);
 
@@ -554,7 +630,7 @@ fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x49, 0x89, 0xf8]); // r8 = root
     code.bytes(&[0x31, 0xc0]); // zero value
-    code.bytes(&[0xb9, 0x00, 0x06, 0x00, 0x00]); // 1536 qwords
+    code.bytes(&[0xb9, 0x00, 0x08, 0x00, 0x00]); // 2048 qwords
     code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // cld; rep stosq
     code.bytes(&[0x4d, 0x8d, 0x88, 0x00, 0x10, 0x00, 0x00]); // pdpt
     code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x83, 0xc8, 0x03]);
@@ -562,6 +638,9 @@ fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4d, 0x8d, 0x88, 0x00, 0x20, 0x00, 0x00]); // pd
     code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x83, 0xc8, 0x03]);
     code.bytes(&[0x49, 0x89, 0x80, 0x00, 0x10, 0x00, 0x00]); // pdpt[0]
+    code.bytes(&[0x4d, 0x8d, 0x90, 0x00, 0x30, 0x00, 0x00]); // local APIC PD
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x83, 0xc8, 0x03]);
+    code.bytes(&[0x49, 0x89, 0x80, 0x18, 0x10, 0x00, 0x00]); // pdpt[3]
     code.bytes(&[0x49, 0x8d, 0xb8, 0x00, 0x20, 0x00, 0x00]);
     code.bytes(&[0x31, 0xc9]);
     code.bind("leaves")?;
@@ -570,6 +649,9 @@ fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x89, 0x04, 0xcf]);
     code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
     code.jump_if(0x85, "leaves");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fee0_009b_u64.to_le_bytes()); // APIC 2 MiB MMIO leaf
+    code.bytes(&[0x49, 0x89, 0x82, 0xb8, 0x0f, 0x00, 0x00]); // PDE[503]
     code.bytes(&[0x0f, 0xae, 0xf0]); // mfence publishes the inactive hierarchy
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.finish()
@@ -868,6 +950,17 @@ mod tests {
         generate_x86_64_systems_provider_object(&program).unwrap()
     }
 
+    fn symbol_bytes(file: &object::File<'_>, name: &str) -> Vec<u8> {
+        let symbol = file.symbol_by_name(name).unwrap();
+        let section = file
+            .section_by_index(symbol.section_index().unwrap())
+            .unwrap();
+        let data = section.data().unwrap();
+        let start = usize::try_from(symbol.address()).unwrap();
+        let end = start + usize::try_from(symbol.size()).unwrap();
+        data[start..end].to_vec()
+    }
+
     #[test]
     fn emits_a_closed_relocatable_elf64_provider_object() {
         // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001.
@@ -1027,13 +1120,13 @@ mod tests {
         assert!(
             translation_selector
                 .windows(7)
-                .any(|bytes| bytes == [0x49, 0x81, 0xc2, 0x00, 0x30, 0x00, 0x00]),
-            "translation backing selection must reserve three complete pages"
+                .any(|bytes| bytes == [0x49, 0x81, 0xc2, 0x00, 0x40, 0x00, 0x00]),
+            "translation backing selection must reserve four complete pages"
         );
         assert!(
             translation_selector
                 .windows(6)
-                .any(|bytes| { bytes == [0x48, 0x3d, 0x00, 0xd0, 0xff, 0x3f] })
+                .any(|bytes| { bytes == [0x48, 0x3d, 0x00, 0xc0, 0xff, 0x3f] })
         );
 
         let builder = file
@@ -1053,6 +1146,37 @@ mod tests {
                 .any(|bytes| bytes == [0x81, 0xf9, 0x00, 0x02, 0x00, 0x00])
         );
         assert!(builder.windows(3).any(|bytes| bytes == [0x0f, 0xae, 0xf0]));
+        assert!(
+            builder
+                .windows(8)
+                .any(|bytes| { bytes == 0x0000_0000_fee0_009b_u64.to_le_bytes() })
+        );
+        assert!(
+            builder
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x80, 0x18, 0x10, 0x00, 0x00]),
+            "replacement translation must publish the local-APIC directory through PDPT[3]"
+        );
+
+        let send = symbol_bytes(&file, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL);
+        assert!(send.windows(2).any(|bytes| bytes == [0x0f, 0x32]));
+        assert!(send.windows(2).any(|bytes| bytes == [0x0f, 0x30]));
+        assert!(
+            send.windows(8)
+                .any(|bytes| bytes == 0xfee0_0300_u64.to_le_bytes())
+        );
+        assert!(
+            send.windows(4)
+                .any(|bytes| bytes == 0x0004_40f1_u32.to_le_bytes())
+        );
+        let wait = symbol_bytes(&file, X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL);
+        assert!(wait.windows(3).any(|bytes| bytes == [0xfb, 0xf4, 0xfa]));
+        let complete = symbol_bytes(&file, X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL);
+        assert!(
+            complete
+                .windows(8)
+                .any(|bytes| bytes == 0xfee0_00b0_u64.to_le_bytes())
+        );
 
         let activator = file
             .symbol_by_name(X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL)
