@@ -13,27 +13,29 @@ use object::{
 };
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
-    CompilerCriticalDomain, CompilerKernelMappingRequest, CompilerSystemsDisposition,
-    CompilerSystemsOperation, CompilerSystemsProgram, CompilerSystemsTransition,
-    CompilerTranslationEditKind, CompilerTranslationMappingRequest,
-    CompilerTranslationUpdateRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    model_systems_transitions,
+    CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerCriticalDomain,
+    CompilerKernelMappingRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
+    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
+    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK,
+    SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
+    SYSTEMS_TRANSLATION_EDIT_UNMAP, model_systems_transitions,
 };
 
 use crate::artifact::sha256;
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
-    X86_SYSTEMS_BOOT_MEMORY_SYMBOL, X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION,
-    X86_SYSTEMS_CRITICAL_ENTER_SYMBOL, X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
-    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
-    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+    X86_SYSTEMS_ATOMIC_LOAD_SYMBOL, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
+    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
+    X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
@@ -41,8 +43,8 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/7";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/7";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/8";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/8";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -51,7 +53,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 16] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 19] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
@@ -65,6 +67,9 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 16] = [
     X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+    X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+    X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+    X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -217,6 +222,9 @@ fn publish_in_stage(
                     operation,
                     CompilerSystemsOperation::BootstrapStoreByte { .. }
                         | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
+                        | CompilerSystemsOperation::AtomicWordCreate { .. }
+                        | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
+                        | CompilerSystemsOperation::AtomicLoadEquals { .. }
                 )
             }),
     )?;
@@ -598,6 +606,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)] // The closed semantic-to-symbol placement ledger stays auditable together.
 fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, CompileError> {
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
@@ -647,6 +656,13 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             SYSTEMS_CRITICAL_RESTORE,
             X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
         ),
+        (SYSTEMS_ATOMIC_WORD_CREATE, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL),
+        (
+            SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+            X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+        ),
+        (SYSTEMS_ATOMIC_LOAD, X86_SYSTEMS_ATOMIC_LOAD_SYMBOL),
+        (SYSTEMS_ATOMIC_END, X86_SYSTEMS_KERNEL_ENTRY),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -710,6 +726,9 @@ enum ProviderSymbol {
     CommitTranslationEdit,
     EnterCritical,
     RestoreCritical,
+    AtomicWordCreate,
+    AtomicWordCompareExchange,
+    AtomicWordLoad,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -731,6 +750,9 @@ impl ProviderSymbol {
             Self::CommitTranslationEdit => X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
             Self::EnterCritical => X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
             Self::RestoreCritical => X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+            Self::AtomicWordCreate => X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+            Self::AtomicWordCompareExchange => X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+            Self::AtomicWordLoad => X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -753,6 +775,9 @@ impl ProviderSymbol {
             | Self::CommitTranslationEdit
             | Self::EnterCritical
             | Self::RestoreCritical
+            | Self::AtomicWordCreate
+            | Self::AtomicWordCompareExchange
+            | Self::AtomicWordLoad
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -816,6 +841,7 @@ struct RootEncoder {
     translation: RootTranslationState,
     critical: RootCriticalState,
     bootstrap_region_offset: Option<u64>,
+    atomic_word_offset: Option<u64>,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -853,6 +879,9 @@ struct ProviderSymbols {
     commit_translation_edit: SymbolId,
     enter_critical: SymbolId,
     restore_critical: SymbolId,
+    atomic_word_create: SymbolId,
+    atomic_word_compare_exchange: SymbolId,
+    atomic_word_load: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -1202,6 +1231,11 @@ impl RootEncoder {
     }
 
     fn complete(&self) -> Result<(), CompileError> {
+        if self.atomic_word_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live atomic word".into(),
+            ));
+        }
         if self.bootstrap_region_offset.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live bootstrap region".into(),
@@ -1318,6 +1352,11 @@ impl RootEncoder {
     }
 
     fn store_bootstrap_byte(&mut self, offset: u64, value: u8) -> Result<(), CompileError> {
+        if self.atomic_word_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering rejected plain access while an atomic word is live".into(),
+            ));
+        }
         let storage_offset = self.bootstrap_storage_offset(offset)?;
         self.bytes.extend_from_slice(&[0xc6, 0x05]);
         self.rip_relative_storage(storage_offset, 1)?;
@@ -1330,6 +1369,11 @@ impl RootEncoder {
         offset: u64,
         expected: u8,
     ) -> Result<(), CompileError> {
+        if self.atomic_word_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering rejected plain access while an atomic word is live".into(),
+            ));
+        }
         let storage_offset = self.bootstrap_storage_offset(offset)?;
         self.bytes.extend_from_slice(&[0x0f, 0xb6, 0x05]);
         self.rip_relative_storage(storage_offset, 0)?;
@@ -1348,12 +1392,102 @@ impl RootEncoder {
     }
 
     fn release_bootstrap_region(&mut self) -> Result<(), CompileError> {
+        if self.atomic_word_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering rejected region release while an atomic word is live".into(),
+            ));
+        }
         if self.bootstrap_region_offset.take().is_none() {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered release without a live bootstrap region".into(),
             ));
         }
         Ok(())
+    }
+
+    fn create_atomic_word(
+        &mut self,
+        request: CompilerAtomicWordRequest,
+    ) -> Result<(), CompileError> {
+        if request != CompilerAtomicWordRequest::initial() || self.atomic_word_offset.is_some() {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires one live atomic word with the sealed request".into(),
+            ));
+        }
+        let storage_offset = self.bootstrap_storage_offset(request.offset_bytes)?;
+        self.load_bootstrap_storage_address(storage_offset)?;
+        self.bytes.push(0xbe); // mov esi, imm32
+        let initial_value = u32::try_from(request.initial_value)
+            .map_err(|_| CompileError::Tool("atomic initial value exceeds x86 imm32".into()))?;
+        self.bytes.extend_from_slice(&initial_value.to_le_bytes());
+        self.call_checked_bool(ProviderSymbol::AtomicWordCreate)?;
+        self.atomic_word_offset = Some(request.offset_bytes);
+        Ok(())
+    }
+
+    fn compare_exchange_atomic_word(
+        &mut self,
+        expected: u64,
+        desired: u64,
+        success_order: CompilerAtomicOrder,
+        failure_order: CompilerAtomicOrder,
+    ) -> Result<(), CompileError> {
+        if self.atomic_word_offset != Some(8)
+            || (expected, desired, success_order, failure_order)
+                != (
+                    41,
+                    42,
+                    CompilerAtomicOrder::AcquireRelease,
+                    CompilerAtomicOrder::Acquire,
+                )
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires the sealed atomic compare/exchange".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(8)?;
+        self.bytes.push(0xbe); // mov esi, imm32
+        let expected = u32::try_from(expected)
+            .map_err(|_| CompileError::Tool("atomic expected value exceeds x86 imm32".into()))?;
+        self.bytes.extend_from_slice(&expected.to_le_bytes());
+        self.bytes.push(0xba); // mov edx, imm32
+        let desired = u32::try_from(desired)
+            .map_err(|_| CompileError::Tool("atomic desired value exceeds x86 imm32".into()))?;
+        self.bytes.extend_from_slice(&desired.to_le_bytes());
+        self.call_checked_bool(ProviderSymbol::AtomicWordCompareExchange)
+    }
+
+    fn load_atomic_word_equals(
+        &mut self,
+        order: CompilerAtomicOrder,
+        expected: u64,
+    ) -> Result<(), CompileError> {
+        if self.atomic_word_offset != Some(8)
+            || order != CompilerAtomicOrder::Acquire
+            || expected != 42
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering requires the sealed acquire atomic load".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(8)?;
+        self.call(ProviderSymbol::AtomicWordLoad);
+        self.bytes.extend_from_slice(&[0x48, 0x83, 0xf8, 0x2a]); // cmp rax, 42
+        self.jump_to_fatal_if(0x85)
+    }
+
+    fn end_atomic_word(&mut self) -> Result<(), CompileError> {
+        if self.atomic_word_offset.take() != Some(8) {
+            return Err(CompileError::Tool(
+                "x86 root lowering encountered atomic end without a live location".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
+        self.rip_relative_storage(storage_offset, 0)
     }
 
     fn bootstrap_storage_offset(&self, offset: u64) -> Result<u64, CompileError> {
@@ -1414,6 +1548,7 @@ const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8
     }
 }
 
+#[allow(clippy::too_many_lines)] // Every typed provider dependency is constructed in one closed root boundary.
 fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, CompileError> {
     generate_x86_64_systems_provider_object(program)?;
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
@@ -1434,6 +1569,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 CompilerSystemsOperation::BootstrapAllocate { .. }
                     | CompilerSystemsOperation::BootstrapStoreByte { .. }
                     | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
+                    | CompilerSystemsOperation::AtomicWordCreate { .. }
+                    | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
+                    | CompilerSystemsOperation::AtomicLoadEquals { .. }
+                    | CompilerSystemsOperation::AtomicWordEnd
                     | CompilerSystemsOperation::BootstrapRelease
             )
         });
@@ -1473,6 +1612,15 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         ),
         enter_critical: undefined_provider_symbol(&mut object, ProviderSymbol::EnterCritical),
         restore_critical: undefined_provider_symbol(&mut object, ProviderSymbol::RestoreCritical),
+        atomic_word_create: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AtomicWordCreate,
+        ),
+        atomic_word_compare_exchange: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AtomicWordCompareExchange,
+        ),
+        atomic_word_load: undefined_provider_symbol(&mut object, ProviderSymbol::AtomicWordLoad),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -1590,15 +1738,25 @@ fn encode_operations(
                 expected,
                 ..
             } => encoder.load_bootstrap_byte_equals(*offset_bytes, *expected)?,
-            CompilerSystemsOperation::AtomicWordCreate { .. }
-            | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
-            | CompilerSystemsOperation::AtomicLoadEquals { .. }
-            | CompilerSystemsOperation::AtomicWordEnd => {
-                return Err(CompileError::Tool(
-                    "checked atomic operations require the qualified x86-64 provider increment"
-                        .into(),
-                ));
+            CompilerSystemsOperation::AtomicWordCreate { request } => {
+                encoder.create_atomic_word(*request)?;
             }
+            CompilerSystemsOperation::AtomicCompareExchangeEquals {
+                expected,
+                desired,
+                success_order,
+                failure_order,
+                ..
+            } => encoder.compare_exchange_atomic_word(
+                *expected,
+                *desired,
+                *success_order,
+                *failure_order,
+            )?,
+            CompilerSystemsOperation::AtomicLoadEquals {
+                order, expected, ..
+            } => encoder.load_atomic_word_equals(*order, *expected)?,
+            CompilerSystemsOperation::AtomicWordEnd => encoder.end_atomic_word()?,
             CompilerSystemsOperation::BootstrapRelease => encoder.release_bootstrap_region()?,
         }
     }
@@ -1649,6 +1807,11 @@ fn append_root(
             ProviderSymbol::CommitTranslationEdit => provider_symbols.commit_translation_edit,
             ProviderSymbol::EnterCritical => provider_symbols.enter_critical,
             ProviderSymbol::RestoreCritical => provider_symbols.restore_critical,
+            ProviderSymbol::AtomicWordCreate => provider_symbols.atomic_word_create,
+            ProviderSymbol::AtomicWordCompareExchange => {
+                provider_symbols.atomic_word_compare_exchange
+            }
+            ProviderSymbol::AtomicWordLoad => provider_symbols.atomic_word_load,
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -1682,6 +1845,7 @@ fn append_root(
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)] // Exhaustive transition detail remains beside its canonical trace spelling.
 fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, CompileError> {
     let transitions = model_systems_transitions(program)
         .map_err(|error| CompileError::Tool(format!("invalid systems transition model: {error}")))?
@@ -1881,7 +2045,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 275);
+        assert_eq!(relocation_targets.len(), 306);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1889,6 +2053,19 @@ mod tests {
                 .count(),
             1
         );
+        for target in [
+            X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
+            X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
+            X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
         assert_eq!(
             relocation_targets
                 .iter()
@@ -1916,21 +2093,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            239
+            261
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            2
+            5
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            18
+            21
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
@@ -1977,6 +2154,20 @@ mod tests {
                 bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]
             }),
             "root must retain the real byte load and mismatch branch"
+        );
+        assert_eq!(
+            root_bytes
+                .windows(7)
+                .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
+                .count(),
+            3,
+            "root must derive the opaque atomic location for create, compare/exchange, and load"
+        );
+        assert!(
+            root_bytes
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x83, 0xf8, 0x2a]),
+            "root must retain the acquire-load confirmation"
         );
         assert!(file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).is_some());
         assert!(file.symbol_by_name(X86_SYSTEMS_DEBUG_BREAK_ENTRY).is_some());
@@ -2027,6 +2218,9 @@ mod tests {
                 "topal_x86_systems_commit_active_translation_edit",
                 "topal_x86_systems_enter_local_interrupt_critical",
                 "topal_x86_systems_restore_local_interrupt_critical",
+                "topal_x86_systems_atomic_word_create",
+                "topal_x86_systems_atomic_word_compare_exchange",
+                "topal_x86_systems_atomic_word_load_acquire",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -2063,10 +2257,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 24);
+        assert_eq!(decoded.placements.len(), 28);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 42);
+        assert_eq!(decoded.semantic_trace.len(), 47);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -2109,12 +2303,17 @@ mod tests {
         assert!(decoded.semantic_trace[36].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
         assert!(decoded.semantic_trace[37].starts_with(SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE));
         assert!(decoded.semantic_trace[38].starts_with(SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE));
-        assert!(decoded.semantic_trace[39].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[39].starts_with(SYSTEMS_ATOMIC_WORD_CREATE));
+        assert!(decoded.semantic_trace[40].starts_with(SYSTEMS_ATOMIC_COMPARE_EXCHANGE));
+        assert!(decoded.semantic_trace[41].starts_with(SYSTEMS_ATOMIC_LOAD));
+        assert_eq!(decoded.semantic_trace[42], SYSTEMS_ATOMIC_END);
+        assert!(decoded.semantic_trace[43].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[44].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[40],
+            decoded.semantic_trace[45],
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE
         );
-        assert!(decoded.semantic_trace[41].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[46].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

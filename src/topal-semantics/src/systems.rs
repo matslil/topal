@@ -863,6 +863,89 @@ impl BootstrapAuthorityState {
     }
 }
 
+fn validate_atomic_operation(
+    operation: &SystemsOperation,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    atomic: &mut Option<AtomicWordLocation>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::AtomicWordCreate { request } => {
+            if atomic.is_some() || *request != AtomicWordRequest::initial() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC",
+                    "the initial slice admits one live atomic word with the sealed request",
+                ));
+            }
+            let owned_region = region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-LIFETIME",
+                    "atomic word creation requires one exclusively owned ordinary region",
+                )
+            })?;
+            *atomic = Some(AtomicWordLocation::create(storage, owned_region, *request)?);
+        }
+        SystemsOperation::AtomicCompareExchangeEquals {
+            expected,
+            desired,
+            success_order,
+            failure_order,
+            ..
+        } => {
+            if (*expected, *desired, *success_order, *failure_order)
+                != (41, 42, AtomicOrder::AcquireRelease, AtomicOrder::Acquire)
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC",
+                    "the initial compare/exchange requires expected 41, desired 42, acquire-release success, and acquire failure",
+                ));
+            }
+            atomic
+                .as_mut()
+                .ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-ATOMIC-LIFETIME",
+                        "compare/exchange requires one live atomic word",
+                    )
+                })?
+                .compare_exchange(storage, *expected, *desired, *success_order, *failure_order)?;
+        }
+        SystemsOperation::AtomicLoadEquals { order, .. } => {
+            if *order != AtomicOrder::Acquire {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-ORDER",
+                    "the initial atomic load requires acquire order",
+                ));
+            }
+            atomic
+                .as_ref()
+                .ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-ATOMIC-LIFETIME",
+                        "atomic load requires one live atomic word",
+                    )
+                })?
+                .load(storage, *order)?;
+        }
+        SystemsOperation::AtomicWordEnd => {
+            let location = atomic.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-LIFETIME",
+                    "atomic end requires one live atomic word",
+                )
+            })?;
+            if region.replace(location.end()).is_some() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-LIFETIME",
+                    "atomic end cannot overwrite ordinary region ownership",
+                ));
+            }
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 fn validate_bootstrap_storage_operations(
     program: &SystemsProgram,
 ) -> Result<(), SystemsModelError> {
@@ -875,6 +958,9 @@ fn validate_bootstrap_storage_operations(
     let mut authority = BootstrapAuthorityState::default();
     for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
         if authority.observe(index, operation)? {
+            continue;
+        }
+        if validate_atomic_operation(operation, &mut storage, &mut region, &mut atomic)? {
             continue;
         }
         match operation {
@@ -916,87 +1002,6 @@ fn validate_bootstrap_storage_operations(
                     *offset_bytes,
                 )?;
             }
-            SystemsOperation::AtomicWordCreate { request } => {
-                if atomic.is_some() || *request != AtomicWordRequest::initial() {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC",
-                        "the initial slice admits one live atomic word with the sealed request",
-                    ));
-                }
-                let owned_region = region.take().ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-LIFETIME",
-                        "atomic word creation requires one exclusively owned ordinary region",
-                    )
-                })?;
-                atomic = Some(AtomicWordLocation::create(
-                    &mut storage,
-                    owned_region,
-                    *request,
-                )?);
-            }
-            SystemsOperation::AtomicCompareExchangeEquals {
-                expected,
-                desired,
-                success_order,
-                failure_order,
-                ..
-            } => {
-                if (*expected, *desired, *success_order, *failure_order)
-                    != (41, 42, AtomicOrder::AcquireRelease, AtomicOrder::Acquire)
-                {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC",
-                        "the initial compare/exchange requires expected 41, desired 42, acquire-release success, and acquire failure",
-                    ));
-                }
-                atomic
-                    .as_mut()
-                    .ok_or_else(|| {
-                        SystemsModelError::new(
-                            "E-SYSTEMS-ATOMIC-LIFETIME",
-                            "compare/exchange requires one live atomic word",
-                        )
-                    })?
-                    .compare_exchange(
-                        &mut storage,
-                        *expected,
-                        *desired,
-                        *success_order,
-                        *failure_order,
-                    )?;
-            }
-            SystemsOperation::AtomicLoadEquals { order, .. } => {
-                if *order != AtomicOrder::Acquire {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-ORDER",
-                        "the initial atomic load requires acquire order",
-                    ));
-                }
-                atomic
-                    .as_ref()
-                    .ok_or_else(|| {
-                        SystemsModelError::new(
-                            "E-SYSTEMS-ATOMIC-LIFETIME",
-                            "atomic load requires one live atomic word",
-                        )
-                    })?
-                    .load(&storage, *order)?;
-            }
-            SystemsOperation::AtomicWordEnd => {
-                let location = atomic.take().ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-LIFETIME",
-                        "atomic end requires one live atomic word",
-                    )
-                })?;
-                if region.replace(location.end()).is_some() {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-LIFETIME",
-                        "atomic end cannot overwrite ordinary region ownership",
-                    ));
-                }
-            }
             SystemsOperation::BootstrapRelease => {
                 let released = region.take().ok_or_else(|| {
                     SystemsModelError::new(
@@ -1030,10 +1035,23 @@ fn validate_bootstrap_storage_operations(
             SystemsOperation::EnterCritical { .. } | SystemsOperation::RestoreCritical { .. } => {
                 unreachable!("critical authority operations continue above")
             }
+            SystemsOperation::AtomicWordCreate { .. }
+            | SystemsOperation::AtomicCompareExchangeEquals { .. }
+            | SystemsOperation::AtomicLoadEquals { .. }
+            | SystemsOperation::AtomicWordEnd => {
+                unreachable!("atomic operations continue above")
+            }
             SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
     authority.complete()?;
+    validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref())
+}
+
+fn validate_bootstrap_owned_completion(
+    region: Option<&BootstrapRegion>,
+    atomic: Option<&AtomicWordLocation>,
+) -> Result<(), SystemsModelError> {
     if region.is_some() {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-STORAGE-LIVE",
@@ -1153,12 +1171,19 @@ pub fn model_systems_transitions(
             }
         }
     }
-    if let SystemsDisposition::Fatal { message } = &program.bootstrap.handler.disposition {
+    model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
+    Ok(transitions)
+}
+
+fn model_bootstrap_disposition(
+    disposition: &SystemsDisposition,
+    transitions: &mut Vec<SystemsTransition>,
+) {
+    if let SystemsDisposition::Fatal { message } = disposition {
         transitions.push(SystemsTransition::Fatal {
             message: message.clone(),
         });
     }
-    Ok(transitions)
 }
 
 fn initial_systems_transitions(program: &SystemsProgram) -> Vec<SystemsTransition> {
@@ -1232,6 +1257,99 @@ fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTran
     }
 }
 
+fn model_atomic_operation(
+    operation: &SystemsOperation,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    atomic: &mut Option<AtomicWordLocation>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<Option<bool>, SystemsModelError> {
+    match operation {
+        SystemsOperation::AtomicWordCreate { request } => {
+            let owned_region = region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-LIFETIME",
+                    "atomic word creation requires one live ordinary region",
+                )
+            })?;
+            *atomic = Some(AtomicWordLocation::create(storage, owned_region, *request)?);
+            transitions.push(SystemsTransition::CreateAtomicWord { request: *request });
+        }
+        SystemsOperation::AtomicCompareExchangeEquals {
+            expected,
+            desired,
+            success_order,
+            failure_order,
+            failure_message,
+        } => {
+            let outcome = atomic
+                .as_mut()
+                .ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-ATOMIC-LIFETIME",
+                        "compare/exchange requires one live atomic word",
+                    )
+                })?
+                .compare_exchange(storage, *expected, *desired, *success_order, *failure_order)?;
+            let (observed, exchanged) = match outcome {
+                AtomicCompareExchangeResult::Exchanged { previous } => (previous, true),
+                AtomicCompareExchangeResult::Observed { actual } => (actual, false),
+            };
+            transitions.push(SystemsTransition::CompareExchangeAtomicWord {
+                expected: *expected,
+                desired: *desired,
+                observed,
+                exchanged,
+                success_order: *success_order,
+                failure_order: *failure_order,
+            });
+            if !exchanged {
+                transitions.push(SystemsTransition::Fatal {
+                    message: failure_message.clone(),
+                });
+                return Ok(Some(true));
+            }
+        }
+        SystemsOperation::AtomicLoadEquals {
+            order,
+            expected,
+            failure_message,
+        } => {
+            let value = atomic
+                .as_ref()
+                .ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-ATOMIC-LIFETIME",
+                        "atomic load requires one live atomic word",
+                    )
+                })?
+                .load(storage, *order)?;
+            transitions.push(SystemsTransition::LoadAtomicWord {
+                value,
+                order: *order,
+            });
+            if value != *expected {
+                transitions.push(SystemsTransition::Fatal {
+                    message: failure_message.clone(),
+                });
+                return Ok(Some(true));
+            }
+        }
+        SystemsOperation::AtomicWordEnd => {
+            let location = atomic.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-ATOMIC-LIFETIME",
+                    "atomic end requires one live atomic word",
+                )
+            })?;
+            *region = Some(location.end());
+            transitions.push(SystemsTransition::EndAtomicWord);
+        }
+        _ => return Ok(None),
+    }
+    Ok(Some(false))
+}
+
 fn model_bootstrap_storage_operation(
     operation: &SystemsOperation,
     storage: &mut BootstrapStorageState,
@@ -1239,6 +1357,10 @@ fn model_bootstrap_storage_operation(
     atomic: &mut Option<AtomicWordLocation>,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
+    if let Some(terminal) = model_atomic_operation(operation, storage, region, atomic, transitions)?
+    {
+        return Ok(terminal);
+    }
     match operation {
         SystemsOperation::DescribeBootMemory { .. } => {
             unreachable!("boot-memory refinement is modeled by the caller")
@@ -1305,86 +1427,6 @@ fn model_bootstrap_storage_operation(
                 return Ok(true);
             }
         }
-        SystemsOperation::AtomicWordCreate { request } => {
-            let owned_region = region.take().ok_or_else(|| {
-                SystemsModelError::new(
-                    "E-SYSTEMS-ATOMIC-LIFETIME",
-                    "atomic word creation requires one live ordinary region",
-                )
-            })?;
-            *atomic = Some(AtomicWordLocation::create(storage, owned_region, *request)?);
-            transitions.push(SystemsTransition::CreateAtomicWord { request: *request });
-        }
-        SystemsOperation::AtomicCompareExchangeEquals {
-            expected,
-            desired,
-            success_order,
-            failure_order,
-            failure_message,
-        } => {
-            let outcome = atomic
-                .as_mut()
-                .ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-LIFETIME",
-                        "compare/exchange requires one live atomic word",
-                    )
-                })?
-                .compare_exchange(storage, *expected, *desired, *success_order, *failure_order)?;
-            let (observed, exchanged) = match outcome {
-                AtomicCompareExchangeResult::Exchanged { previous } => (previous, true),
-                AtomicCompareExchangeResult::Observed { actual } => (actual, false),
-            };
-            transitions.push(SystemsTransition::CompareExchangeAtomicWord {
-                expected: *expected,
-                desired: *desired,
-                observed,
-                exchanged,
-                success_order: *success_order,
-                failure_order: *failure_order,
-            });
-            if !exchanged {
-                transitions.push(SystemsTransition::Fatal {
-                    message: failure_message.clone(),
-                });
-                return Ok(true);
-            }
-        }
-        SystemsOperation::AtomicLoadEquals {
-            order,
-            expected,
-            failure_message,
-        } => {
-            let value = atomic
-                .as_ref()
-                .ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-ATOMIC-LIFETIME",
-                        "atomic load requires one live atomic word",
-                    )
-                })?
-                .load(storage, *order)?;
-            transitions.push(SystemsTransition::LoadAtomicWord {
-                value,
-                order: *order,
-            });
-            if value != *expected {
-                transitions.push(SystemsTransition::Fatal {
-                    message: failure_message.clone(),
-                });
-                return Ok(true);
-            }
-        }
-        SystemsOperation::AtomicWordEnd => {
-            let location = atomic.take().ok_or_else(|| {
-                SystemsModelError::new(
-                    "E-SYSTEMS-ATOMIC-LIFETIME",
-                    "atomic end requires one live atomic word",
-                )
-            })?;
-            *region = Some(location.end());
-            transitions.push(SystemsTransition::EndAtomicWord);
-        }
         SystemsOperation::BootstrapRelease => {
             storage.release(region.take().ok_or_else(|| {
                 SystemsModelError::new(
@@ -1396,6 +1438,12 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {
             unreachable!("non-storage operations are modeled by the caller")
+        }
+        SystemsOperation::AtomicWordCreate { .. }
+        | SystemsOperation::AtomicCompareExchangeEquals { .. }
+        | SystemsOperation::AtomicLoadEquals { .. }
+        | SystemsOperation::AtomicWordEnd => {
+            unreachable!("atomic operations are modeled above")
         }
     }
     Ok(false)

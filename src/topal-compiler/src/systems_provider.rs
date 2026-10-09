@@ -2,7 +2,8 @@
 
 use topal_language::compiler::{
     CompilerSystemsProgram, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
-    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
@@ -16,7 +17,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/7";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/8";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -40,6 +41,10 @@ pub enum X86SystemsLowering {
     CommitActiveTranslationEdit,
     CaptureAndMaskLocalInterrupts,
     RestoreLocalInterruptState,
+    InitializeAtomicWord,
+    LockedCompareExchangeWord,
+    LoadAtomicWordAcquire,
+    ConsumeAtomicWord,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -89,6 +94,12 @@ impl X86SystemsLowering {
             Self::RestoreLocalInterruptState => {
                 "topal.provider.x86_64.critical.local-interrupts.restore/1"
             }
+            Self::InitializeAtomicWord => "topal.provider.x86_64.atomic.word.initialize/1",
+            Self::LockedCompareExchangeWord => {
+                "topal.provider.x86_64.atomic.word.locked-compare-exchange/1"
+            }
+            Self::LoadAtomicWordAcquire => "topal.provider.x86_64.atomic.word.load-acquire/1",
+            Self::ConsumeAtomicWord => "topal.provider.x86_64.atomic.word.consume/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -234,6 +245,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_TRANSLATION_EDIT_COMMIT => X86SystemsLowering::CommitActiveTranslationEdit,
         SYSTEMS_CRITICAL_ENTER => X86SystemsLowering::CaptureAndMaskLocalInterrupts,
         SYSTEMS_CRITICAL_RESTORE => X86SystemsLowering::RestoreLocalInterruptState,
+        SYSTEMS_ATOMIC_WORD_CREATE => X86SystemsLowering::InitializeAtomicWord,
+        SYSTEMS_ATOMIC_COMPARE_EXCHANGE => X86SystemsLowering::LockedCompareExchangeWord,
+        SYSTEMS_ATOMIC_LOAD => X86SystemsLowering::LoadAtomicWordAcquire,
+        SYSTEMS_ATOMIC_END => X86SystemsLowering::ConsumeAtomicWord,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -269,6 +284,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::CommitActiveTranslationEdit => SYSTEMS_TRANSLATION_EDIT_COMMIT,
             X86SystemsLowering::CaptureAndMaskLocalInterrupts => SYSTEMS_CRITICAL_ENTER,
             X86SystemsLowering::RestoreLocalInterruptState => SYSTEMS_CRITICAL_RESTORE,
+            X86SystemsLowering::InitializeAtomicWord => SYSTEMS_ATOMIC_WORD_CREATE,
+            X86SystemsLowering::LockedCompareExchangeWord => SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+            X86SystemsLowering::LoadAtomicWordAcquire => SYSTEMS_ATOMIC_LOAD,
+            X86SystemsLowering::ConsumeAtomicWord => SYSTEMS_ATOMIC_END,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -316,7 +335,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 27);
+        assert_eq!(plan.operations.len(), 31);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -412,6 +431,22 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CRITICAL_RESTORE
                 && operation.lowering == X86SystemsLowering::RestoreLocalInterruptState
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_ATOMIC_WORD_CREATE
+                && operation.lowering == X86SystemsLowering::InitializeAtomicWord
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_ATOMIC_COMPARE_EXCHANGE
+                && operation.lowering == X86SystemsLowering::LockedCompareExchangeWord
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_ATOMIC_LOAD
+                && operation.lowering == X86SystemsLowering::LoadAtomicWordAcquire
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_ATOMIC_END
+                && operation.lowering == X86SystemsLowering::ConsumeAtomicWord
         }));
     }
 

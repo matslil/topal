@@ -786,10 +786,12 @@ fn analyze_bootstrap_region_actions(
         comparison,
         true_rule,
         false_rule,
-        context_name,
-        ok_binding,
-        &loaded_name,
-        request,
+        RegionComparisonContext {
+            context_name,
+            region_name: ok_binding,
+            loaded_name: &loaded_name,
+            region_request: request,
+        },
     )?;
     for offset in [store_offset, load_offset] {
         if offset >= request.byte_count {
@@ -1149,15 +1151,20 @@ struct CheckedRegionComparison {
     success_disposition: CompilerSystemsDisposition,
 }
 
+#[derive(Clone, Copy)]
+struct RegionComparisonContext<'a> {
+    context_name: &'a str,
+    region_name: &'a str,
+    loaded_name: &'a str,
+    region_request: CompilerBootstrapStorageRequest,
+}
+
 fn parse_region_comparison(
     source: &SourceText,
     statement: &Statement,
     true_rule: &Statement,
     false_rule: &Statement,
-    context_name: &str,
-    region_name: &str,
-    loaded_name: &str,
-    region_request: CompilerBootstrapStorageRequest,
+    context: RegionComparisonContext<'_>,
 ) -> Result<CheckedRegionComparison, Diagnostic> {
     let Statement::Expression(Expression::Application { items, .. }) = statement else {
         return Err(storage_diagnostic(
@@ -1181,7 +1188,7 @@ fn parse_region_comparison(
             "loaded byte decision subject must use equality with a static byte",
         ));
     };
-    if !identifier_is(source, loaded, loaded_name) {
+    if !identifier_is(source, loaded, context.loaded_name) {
         return Err(storage_diagnostic(
             source,
             loaded.span(),
@@ -1201,9 +1208,9 @@ fn parse_region_comparison(
     let atomic = parse_atomic_word_sequence(
         source,
         true_statements,
-        context_name,
-        region_name,
-        region_request,
+        context.context_name,
+        context.region_name,
+        context.region_request,
     )?;
 
     let false_statements = action_block(source, false_action, "failed byte comparison")?;
@@ -1214,12 +1221,12 @@ fn parse_region_comparison(
             "failed byte comparison requires region release and fatal disposition",
         ));
     };
-    parse_region_release(source, release, context_name, region_name)?;
+    parse_region_release(source, release, context.context_name, context.region_name)?;
     let failure = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        context.context_name,
     )?;
     let CompilerSystemsDisposition::Fatal {
         message: failure_message,
@@ -1311,39 +1318,13 @@ fn parse_atomic_word_sequence(
         region_name,
         &atomic_name,
     )?;
-    let observed_statements = action_block(source, observed_action, "observed compare/exchange")?;
-    let [end] = observed_statements else {
-        return Err(atomic_diagnostic(
-            source,
-            observed_action.span(),
-            "observed compare/exchange requires atomic end, region release, and fatal disposition",
-        ));
-    };
-    let observed_continuation = parse_atomic_end(source, end, &atomic_name, region_name)?;
-    let [release, disposition] = observed_continuation else {
-        return Err(atomic_diagnostic(
-            source,
-            observed_action.span(),
-            "observed compare/exchange requires region release and fatal disposition after atomic end",
-        ));
-    };
-    parse_region_release(source, release, context_name, region_name)?;
-    let observed_disposition = analyze_disposition(
+    let compare_failure_message = parse_atomic_observed_action(
         source,
-        disposition,
-        CompilerSystemsContextKind::Bootstrap,
+        observed_action,
         context_name,
+        region_name,
+        &atomic_name,
     )?;
-    let CompilerSystemsDisposition::Fatal {
-        message: compare_failure_message,
-    } = observed_disposition
-    else {
-        return Err(atomic_diagnostic(
-            source,
-            statement_span(disposition),
-            "observed compare/exchange must enter the fatal disposition",
-        ));
-    };
 
     let mut operations = vec![
         CompilerSystemsOperation::AtomicWordCreate { request },
@@ -1367,6 +1348,46 @@ fn parse_atomic_word_sequence(
         operations,
         disposition: exchanged.success_disposition,
     })
+}
+
+fn parse_atomic_observed_action(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<String, Diagnostic> {
+    let statements = action_block(source, action, "observed compare/exchange")?;
+    let [end] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires atomic end, region release, and fatal disposition",
+        ));
+    };
+    let continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [release, disposition] = continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires region release and fatal disposition after atomic end",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let CompilerSystemsDisposition::Fatal { message } = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(disposition),
+            "observed compare/exchange must enter the fatal disposition",
+        ));
+    };
+    Ok(message)
 }
 
 fn parse_atomic_word_create<'a>(
