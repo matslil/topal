@@ -118,8 +118,8 @@ SeaBIOS, machine, CPU, memory, topology, UUID, RTC, and serial-console profile.
 The focused gate intentionally attaches no root disk or network device because
 this kernel increment tests boot-memory handoff validation, privileged entry,
 console output, a resumable debug-break exception, checked kernel-owned-memory
-use, one completed local-notification interrupt, and the nonreturning fatal
-path rather than userspace.
+use, one completed local-notification interrupt, two HPET-backed monotonic-clock
+observations, and the nonreturning fatal path rather than userspace.
 
 From the repository root:
 
@@ -134,7 +134,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the eleven ordered serial markers. The generated real-mode adapter
+and waits for the twelve ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
