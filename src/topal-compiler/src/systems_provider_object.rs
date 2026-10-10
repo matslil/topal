@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/12";
+    "topal.provider-object.x86_64-qemu-pc-q35/13";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -291,12 +291,24 @@ fn context_transfer() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x7f, 0x18, 0x01]); // suspended
+    code.jump_if(0x84, "select-suspended");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x02]); // active cooperative caller
     code.jump_if(0x85, "fail");
     code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xc6, 0x47, 0x18, 0x02]); // active
+    code.bytes(&[0xc6, 0x47, 0x18, 0x01]); // worker becomes suspended
     code.bytes(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
-    code.bytes(&[0x48, 0x89, 0x27]); // suspend caller RSP
+    code.bytes(&[0x48, 0x89, 0x67, 0x08]); // suspend worker RSP
+    code.bytes(&[0x48, 0x8b, 0x27]); // select dispatcher RSP
+    code.bytes(&[
+        0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b, 0xc3,
+    ]);
+    code.bind("select-suspended")?;
+    code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x47, 0x18, 0x02]); // selected worker becomes active
+    code.bytes(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
+    code.bytes(&[0x48, 0x89, 0x27]); // suspend dispatcher RSP
     code.bytes(&[0x48, 0x8b, 0x67, 0x08]); // select worker RSP
     code.bytes(&[
         0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b, 0xc3,
@@ -1601,6 +1613,26 @@ mod tests {
                 .any(|bytes| bytes == [0x48, 0x8b, 0x67, 0x08]),
             "context transfer must select the provider-private worker stack pointer"
         );
+        assert!(
+            context_transfer
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x89, 0x67, 0x08]),
+            "cooperative handoff must suspend the running worker stack pointer"
+        );
+        assert!(
+            context_transfer
+                .windows(3)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x27]),
+            "cooperative handoff must select the suspended dispatcher stack pointer"
+        );
+        for state in [0x01, 0x02] {
+            assert!(
+                context_transfer
+                    .windows(4)
+                    .any(|bytes| bytes == [0xc6, 0x47, 0x18, state]),
+                "context transfer must publish both suspended and active states"
+            );
+        }
         let context_retire = symbol_bytes(&file, X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL);
         assert!(
             context_retire
