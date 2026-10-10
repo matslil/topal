@@ -213,6 +213,18 @@ context again. Structural and pinned-QEMU evidence shall prove this causal
 order without exposing interrupt frames, registers, stack pointers, vectors,
 routes, or scheduler selection to source.
 
+The one-shot completion increment shall check one fresh completion identity,
+matching affine wait and signal authority, one third disjoint 16 KiB worker
+stack, capacity-three FIFO selection, exact dispatcher registration, a
+block-first outcome, signal after terminal reclamation, awakened enqueue,
+resume immediately after the wait, all three context reclamations, and final
+completion and queue consumption. The source-owned create, signal, queue, and
+consume transitions shall add no provider-owned scheduler. The x86-64
+provider shall keep the completion worker's context record and stack layout
+private and lower only the checked opaque block/restore boundary. Structural
+and pinned-QEMU evidence shall prove blocking, intervening terminal execution,
+signalling, later source-selected resumption, retirement, and quiescence.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

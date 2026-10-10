@@ -43,12 +43,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/16")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/17")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/14")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/15")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/14",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/15",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -90,10 +90,13 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_TIME_OK",
                 "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
                 "TOPAL_KERNEL_DEADLINE_PREEMPTED",
+                "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
                 "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
                 "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
                 "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
                 "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+                "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+                "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
             ],
         )
         self.assertEqual(observations["result"], "pass")

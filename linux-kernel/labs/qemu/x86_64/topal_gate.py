@@ -37,10 +37,13 @@ MARKERS = (
     b"TOPAL_KERNEL_TIME_OK",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
     b"TOPAL_KERNEL_DEADLINE_PREEMPTED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
     b"TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
     b"TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
 )
 
 
@@ -224,7 +227,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/16",
+        "schema": "topal-kernel-toolchain-gate-qemu/17",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

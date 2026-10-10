@@ -8,12 +8,14 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -29,7 +31,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/14";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/15";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -70,6 +72,7 @@ pub enum X86SystemsLowering {
     CreateKernelContext,
     TransferKernelContextUntilDeadline,
     AwaitDeadlinePreemption,
+    BlockOneShotCompletion,
     PreemptCurrentKernelContext,
     TransferKernelContext,
     RetireKernelContext,
@@ -150,6 +153,9 @@ impl X86SystemsLowering {
             Self::AwaitDeadlinePreemption => {
                 "topal.provider.x86_64.context.await-deadline-preemption/1"
             }
+            Self::BlockOneShotCompletion => {
+                "topal.provider.x86_64.context.block-one-shot-completion/1"
+            }
             Self::PreemptCurrentKernelContext => "topal.provider.x86_64.context.preempt-current/1",
             Self::TransferKernelContext => "topal.provider.x86_64.context.transfer/1",
             Self::RetireKernelContext => "topal.provider.x86_64.context.retire/1",
@@ -193,6 +199,7 @@ impl X86SystemsLowering {
                 | Self::ResumeDeadline
                 | Self::TransferKernelContextUntilDeadline
                 | Self::AwaitDeadlinePreemption
+                | Self::BlockOneShotCompletion
                 | Self::PreemptCurrentKernelContext
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
@@ -258,6 +265,7 @@ pub fn plan_x86_64_systems_provider(
         .chain(&program.local_notification.handler.effects)
         .chain(&program.deadline_notification.handler.effects)
         .chain(&program.kernel_thread.handler.effects)
+        .chain(&program.completion_thread.handler.effects)
         .chain(&program.terminal_thread.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
@@ -277,6 +285,9 @@ pub fn plan_x86_64_systems_provider(
                 | SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE
                 | SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
                 | SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED
+                | SYSTEMS_KERNEL_COMPLETION_CREATE
+                | SYSTEMS_KERNEL_COMPLETION_SIGNAL
+                | SYSTEMS_KERNEL_COMPLETION_CONSUME
         )
     });
 
@@ -346,6 +357,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION => {
             X86SystemsLowering::AwaitDeadlinePreemption
         }
+        SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE => X86SystemsLowering::BlockOneShotCompletion,
         SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT => X86SystemsLowering::PreemptCurrentKernelContext,
         SYSTEMS_KERNEL_CONTEXT_TRANSFER => X86SystemsLowering::TransferKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RETIRE => X86SystemsLowering::RetireKernelContext,
@@ -408,6 +420,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::AwaitDeadlinePreemption => {
                 SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION
             }
+            X86SystemsLowering::BlockOneShotCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
             X86SystemsLowering::PreemptCurrentKernelContext => {
                 SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT
             }
@@ -461,13 +474,16 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 45);
+        assert_eq!(plan.operations.len(), 46);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+            SYSTEMS_KERNEL_COMPLETION_CREATE,
+            SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+            SYSTEMS_KERNEL_COMPLETION_CONSUME,
         ] {
             assert!(
                 plan.operations
@@ -656,6 +672,10 @@ mod tests {
             (
                 SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
                 X86SystemsLowering::AwaitDeadlinePreemption,
+            ),
+            (
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                X86SystemsLowering::BlockOneShotCompletion,
             ),
             (
                 SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
