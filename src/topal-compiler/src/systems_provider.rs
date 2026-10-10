@@ -16,10 +16,14 @@ use topal_language::compiler::{
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
 };
+use topal_language::compiler::{
+    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
+    SYSTEMS_RESUME_DEADLINE,
+};
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/10";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/11";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -52,6 +56,11 @@ pub enum X86SystemsLowering {
     CompleteLocalApicNotification,
     ResumeLocalNotification,
     ObserveHpetMonotonicClock,
+    ConstructHpetDeadline,
+    ArmHpetIoApicDeadline,
+    WaitForDeadline,
+    CompleteHpetIoApicDeadline,
+    ResumeDeadline,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -116,6 +125,11 @@ impl X86SystemsLowering {
             }
             Self::ResumeLocalNotification => "topal.provider.x86_64.interrupt.local-apic.resume/1",
             Self::ObserveHpetMonotonicClock => "topal.provider.x86_64.time.hpet-monotonic-now/1",
+            Self::ConstructHpetDeadline => "topal.provider.x86_64.time.hpet-deadline-after/1",
+            Self::ArmHpetIoApicDeadline => "topal.provider.x86_64.time.hpet-ioapic.arm/1",
+            Self::WaitForDeadline => "topal.provider.x86_64.time.hpet-ioapic.wait/1",
+            Self::CompleteHpetIoApicDeadline => "topal.provider.x86_64.time.hpet-ioapic.complete/1",
+            Self::ResumeDeadline => "topal.provider.x86_64.time.hpet-ioapic.resume/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -149,6 +163,10 @@ impl X86SystemsLowering {
                 | Self::CompleteLocalApicNotification
                 | Self::ResumeLocalNotification
                 | Self::ObserveHpetMonotonicClock
+                | Self::ArmHpetIoApicDeadline
+                | Self::WaitForDeadline
+                | Self::CompleteHpetIoApicDeadline
+                | Self::ResumeDeadline
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -211,6 +229,7 @@ pub fn plan_x86_64_systems_provider(
         .iter()
         .chain(&program.debug_break.handler.effects)
         .chain(&program.local_notification.handler.effects)
+        .chain(&program.deadline_notification.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
     semantic_identities.extend([
@@ -276,6 +295,11 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_LOCAL_NOTIFICATION_COMPLETE => X86SystemsLowering::CompleteLocalApicNotification,
         SYSTEMS_RESUME_LOCAL_NOTIFICATION => X86SystemsLowering::ResumeLocalNotification,
         SYSTEMS_MONOTONIC_CLOCK_NOW => X86SystemsLowering::ObserveHpetMonotonicClock,
+        SYSTEMS_DEADLINE_AFTER => X86SystemsLowering::ConstructHpetDeadline,
+        SYSTEMS_DEADLINE_ARM => X86SystemsLowering::ArmHpetIoApicDeadline,
+        SYSTEMS_DEADLINE_WAIT => X86SystemsLowering::WaitForDeadline,
+        SYSTEMS_DEADLINE_COMPLETE => X86SystemsLowering::CompleteHpetIoApicDeadline,
+        SYSTEMS_RESUME_DEADLINE => X86SystemsLowering::ResumeDeadline,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -322,6 +346,11 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::ResumeLocalNotification => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             X86SystemsLowering::ObserveHpetMonotonicClock => SYSTEMS_MONOTONIC_CLOCK_NOW,
+            X86SystemsLowering::ConstructHpetDeadline => SYSTEMS_DEADLINE_AFTER,
+            X86SystemsLowering::ArmHpetIoApicDeadline => SYSTEMS_DEADLINE_ARM,
+            X86SystemsLowering::WaitForDeadline => SYSTEMS_DEADLINE_WAIT,
+            X86SystemsLowering::CompleteHpetIoApicDeadline => SYSTEMS_DEADLINE_COMPLETE,
+            X86SystemsLowering::ResumeDeadline => SYSTEMS_RESUME_DEADLINE,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -369,7 +398,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 36);
+        assert_eq!(plan.operations.len(), 41);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -433,6 +462,7 @@ mod tests {
         assert_critical_lowerings(&plan);
         assert_local_notification_lowerings(&plan);
         assert_clock_lowering(&plan);
+        assert_deadline_lowerings(&plan);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -516,6 +546,29 @@ mod tests {
             operation.semantic_identity == SYSTEMS_MONOTONIC_CLOCK_NOW
                 && operation.lowering == X86SystemsLowering::ObserveHpetMonotonicClock
         }));
+    }
+
+    fn assert_deadline_lowerings(plan: &X86SystemsProviderPlan) {
+        for (semantic_identity, lowering) in [
+            (
+                SYSTEMS_DEADLINE_AFTER,
+                X86SystemsLowering::ConstructHpetDeadline,
+            ),
+            (
+                SYSTEMS_DEADLINE_ARM,
+                X86SystemsLowering::ArmHpetIoApicDeadline,
+            ),
+            (SYSTEMS_DEADLINE_WAIT, X86SystemsLowering::WaitForDeadline),
+            (
+                SYSTEMS_DEADLINE_COMPLETE,
+                X86SystemsLowering::CompleteHpetIoApicDeadline,
+            ),
+            (SYSTEMS_RESUME_DEADLINE, X86SystemsLowering::ResumeDeadline),
+        ] {
+            assert!(plan.operations.iter().any(|operation| {
+                operation.semantic_identity == semantic_identity && operation.lowering == lowering
+            }));
+        }
     }
 
     #[test]

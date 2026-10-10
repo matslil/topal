@@ -12,12 +12,12 @@ use serde::{Deserialize, Serialize};
 use crate::artifact::sha256;
 use crate::{
     CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
-    X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
-    X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/4";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/5";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -46,6 +46,7 @@ const TRANSITION_RESERVED_END: u64 = 0x0010_8000;
 const HPET_MMIO_LEAF_ADDRESS: u64 = 0xfec0_0000;
 const LOCAL_APIC_PAGE_ADDRESS: u64 = 0xfee0_0000;
 const LOCAL_NOTIFICATION_VECTOR: usize = 0xf1;
+const DEADLINE_VECTOR: usize = 0xf2;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
@@ -71,6 +72,7 @@ pub struct X86LinuxBootImageProvenance {
     pub kernel_entry: u64,
     pub debug_break_entry: u64,
     pub local_notification_entry: u64,
+    pub deadline_entry: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -128,12 +130,14 @@ pub fn generate_x86_64_linux_boot_image(
         required_executable_symbol(&file, &segments, X86_SYSTEMS_DEBUG_BREAK_ENTRY)?;
     let local_notification_entry =
         required_executable_symbol(&file, &segments, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)?;
+    let deadline_entry = required_executable_symbol(&file, &segments, X86_SYSTEMS_DEADLINE_ENTRY)?;
     let mut protected = materialize_protected_payload(&segments)?;
     install_transition_support(
         &mut protected,
         kernel_entry,
         debug_break_entry,
         local_notification_entry,
+        deadline_entry,
     )?;
     pad_to(&mut protected, 16);
 
@@ -168,6 +172,7 @@ pub fn generate_x86_64_linux_boot_image(
             kernel_entry,
             debug_break_entry,
             local_notification_entry,
+            deadline_entry,
         },
     })
 }
@@ -381,6 +386,7 @@ fn install_transition_support(
     kernel_entry: u64,
     debug_break_entry: u64,
     local_notification_entry: u64,
+    deadline_entry: u64,
 ) -> Result<(), CompileError> {
     if X86_KERNEL_MINIMUM_ADDRESS < TRANSITION_RESERVED_END {
         return Err(CompileError::Tool(
@@ -396,7 +402,12 @@ fn install_transition_support(
     protected[..transition.len()].copy_from_slice(&transition);
     install_page_tables(protected)?;
     install_gdt(protected)?;
-    install_idt(protected, debug_break_entry, local_notification_entry)?;
+    install_idt(
+        protected,
+        debug_break_entry,
+        local_notification_entry,
+        deadline_entry,
+    )?;
     Ok(())
 }
 
@@ -496,6 +507,7 @@ fn install_idt(
     protected: &mut [u8],
     debug_break_entry: u64,
     local_notification_entry: u64,
+    deadline_entry: u64,
 ) -> Result<(), CompileError> {
     let idt = payload_offset(IDT_ADDRESS, 4096, protected.len())?;
     let gate = idt + 3 * 16;
@@ -519,6 +531,31 @@ fn install_idt(
         gate + 8,
         u32::try_from(debug_break_entry >> 32)
             .map_err(|_| CompileError::Tool("debug entry high word does not fit u32".into()))?,
+    );
+    write_u32(protected, gate + 12, 0);
+
+    let gate = idt + DEADLINE_VECTOR * 16;
+    write_u16(
+        protected,
+        gate,
+        u16::try_from(deadline_entry & 0xffff)
+            .map_err(|_| CompileError::Tool("deadline entry low word does not fit u16".into()))?,
+    );
+    write_u16(protected, gate + 2, 0x10);
+    protected[gate + 4] = 0;
+    protected[gate + 5] = 0x8e;
+    write_u16(
+        protected,
+        gate + 6,
+        u16::try_from((deadline_entry >> 16) & 0xffff).map_err(|_| {
+            CompileError::Tool("deadline entry middle word does not fit u16".into())
+        })?,
+    );
+    write_u32(
+        protected,
+        gate + 8,
+        u32::try_from(deadline_entry >> 32)
+            .map_err(|_| CompileError::Tool("deadline entry high word does not fit u32".into()))?,
     );
     write_u32(protected, gate + 12, 0);
 
@@ -876,6 +913,9 @@ mod tests {
         let local_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
             + LOCAL_NOTIFICATION_VECTOR * 16;
         assert_eq!(protected[local_gate + 5], 0x8e);
+        let deadline_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
+            + DEADLINE_VECTOR * 16;
+        assert_eq!(protected[deadline_gate + 5], 0x8e);
         let pdpt =
             usize::try_from(PAGE_TABLE_PDPT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
         assert_eq!(
@@ -913,6 +953,23 @@ mod tests {
             )) << 16)
                 | (u64::from(u32::from_le_bytes(
                     protected[local_gate + 8..local_gate + 12]
+                        .try_into()
+                        .unwrap()
+                )) << 32)
+        );
+        assert_eq!(
+            generated.provenance.deadline_entry,
+            u64::from(u16::from_le_bytes(
+                protected[deadline_gate..deadline_gate + 2]
+                    .try_into()
+                    .unwrap()
+            )) | (u64::from(u16::from_le_bytes(
+                protected[deadline_gate + 6..deadline_gate + 8]
+                    .try_into()
+                    .unwrap()
+            )) << 16)
+                | (u64::from(u32::from_le_bytes(
+                    protected[deadline_gate + 8..deadline_gate + 12]
                         .try_into()
                         .unwrap()
                 )) << 32)
