@@ -57,6 +57,13 @@ require both terminal stacks to be reclaimed. It shall reject wrong entry
 protocol, repeated handoff, retirement with live obligations, wrong order, and
 completion with a live context.
 
+The bounded runnable-queue model shall own suspended contexts in exact FIFO
+order, retain queue and context obligations on full and empty results, and
+require empty consumption before disposition. The initial profile shall prove
+capacity two and cooperative/terminal/cooperative selection while negative
+tests cover zero capacity, full, empty, duplicate or mismatched ownership, and
+nonempty consumption.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
