@@ -470,6 +470,25 @@ migration, SMP, user contexts, general cancellation, extended-state switching,
 TLS/per-CPU switching, stack growth, and cross-transfer unwind remain
 unavailable.
 
+## TOPAL-REQ-SYSTEMS-CONTEXT-002 — Cooperative context handoff
+
+Context transfer shall support a symmetric cooperative handoff in which a
+later-resumed continuation receives exactly one affine suspended or retired
+peer outcome. A closed entry protocol may statically refine that outcome only
+when the checker proves the selected continuation's behavior. Retirement shall
+consume one running context and one matching suspended target, resume that
+target, and require consuming reclamation of the retired stack.
+
+The first executable extension shall construct two contexts from disjoint
+checked stacks and enforce this source-selected FIFO sequence: the cooperative
+worker hands back once, the terminal worker retires and is reclaimed, then the
+cooperative worker resumes, retires, and is reclaimed. Runnable selection
+shall remain ordinary source policy rather than provider behavior. The
+extension shall retain one processor and address space with local interrupts
+disabled and shall not imply preemption, blocking, priorities, dynamic run
+queues, cancellation, migration, SMP, user contexts, TLS/per-CPU switching,
+extended-state switching, stack growth, or cross-transfer unwind.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,
