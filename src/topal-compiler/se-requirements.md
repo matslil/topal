@@ -194,6 +194,14 @@ and pinned-QEMU evidence shall prove the handoff, intervening terminal worker,
 cooperative resumption, both retirements, and both reclamations without a
 provider-owned run queue.
 
+The bounded runnable-queue increment shall check capacity-two construction,
+cooperative then terminal enqueue, three FIFO dequeues, suspended cooperative
+re-enqueue, and empty consumption after both reclamations. Queue operations
+shall remain source-owned typestate: they may be erased when statically proven
+and shall add no provider symbol, call, relocation, instruction, or run queue.
+Artifact evidence shall retain every queue transition and prove the provider
+operation and undefined-dependency sets are unchanged.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

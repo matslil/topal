@@ -121,6 +121,13 @@ records two affine worker contexts, source-level FIFO selection, one suspended
 handoff, two terminal retirements and reclamations, a symmetric private x86-64
 stack switch, structural inspection, and two deterministic pinned-QEMU runs.
 
+The latest Step 4 slice adds the approved
+[bounded affine runnable queue](design/affine-runnable-queue.md). Its
+[implementation and qualification report](step-4-affine-runnable-queue.md)
+records a capacity-two source-owned FIFO, full/empty ownership semantics,
+provider-free queue lowering, a 99-transition artifact trace, and two
+deterministic pinned-QEMU runs with unchanged kernel and serial hashes.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -215,6 +222,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 one-shot deadline event](step-4-deadline-event.md)
 - [Step 4 kernel-context transfer](step-4-kernel-context-transfer.md)
 - [Step 4 cooperative context handoff](step-4-cooperative-context-handoff.md)
+- [Step 4 bounded affine runnable queue](step-4-affine-runnable-queue.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

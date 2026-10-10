@@ -684,6 +684,71 @@ mod tests {
     }
 
     #[test]
+    fn rejects_duplicate_and_mismatched_runnable_context_identities() {
+        // TOPAL-SYSTEMS-CONTEXT-003.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "runnable-queue-identity-negative",
+        )
+        .unwrap();
+        let mut protocol = SystemsKernelContextProtocol::initial();
+        let cooperative = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COOPERATIVE_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::CooperativeOnce,
+            )
+            .unwrap();
+        let mut duplicate = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::Terminal,
+            )
+            .unwrap();
+        duplicate.context_identity = cooperative.context_identity;
+        let queue = protocol.create_runnable_queue(2).unwrap();
+        let RunnableQueueEnqueueResult::Enqueued(queue) =
+            protocol.enqueue_runnable(queue, cooperative).unwrap()
+        else {
+            panic!("first enqueue must fit")
+        };
+        assert_eq!(
+            protocol
+                .enqueue_runnable(queue, duplicate)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "runnable-queue-foreign-negative",
+        )
+        .unwrap();
+        let mut protocol = SystemsKernelContextProtocol::initial();
+        let mut foreign = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::Terminal,
+            )
+            .unwrap();
+        foreign.processor_identity = "topal.systems.processor.other/1".into();
+        let queue = protocol.create_runnable_queue(2).unwrap();
+        assert_eq!(
+            protocol.enqueue_runnable(queue, foreign).unwrap_err().code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+    }
+
+    #[test]
     fn rejects_wrong_cooperative_outcome_and_live_retirement_obligations() {
         // TOPAL-SYSTEMS-CONTEXT-002.
         let mut storage = BootstrapStorageState::new(
