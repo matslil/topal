@@ -260,6 +260,18 @@ adapters use a separately validated semantic user-state view. Backend evidence
 proves the callee-saved, stack, extended-state, TLS/per-CPU, unwind, and address-
 space rules for the target.
 
+The approved initial specialization consumes one checked 16 KiB ordinary
+region into one same-processor suspended kernel-thread context. One transfer
+suspends the bootstrap caller, enters the worker on its owned stack, and permits
+terminal retirement only at a statically verified point with no live worker
+obligation. Retirement resumes exactly that caller; a consuming reclaim then
+returns the retired stack to its monotonic pool. The slice retains one address
+space and disabled local interrupts and excludes scheduler policy, preemption,
+multiple threads, migration, SMP, user contexts, general cancellation, extended
+state, TLS/per-CPU switching, stack growth, and cross-transfer unwinding. The
+exact source and provider contract is
+[TK-DEC-027](kernel-context-transfer.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults

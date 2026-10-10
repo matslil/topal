@@ -28,6 +28,7 @@ device on which an operation is authorized. Neither substitutes for the other.
 | user return | fast syscall return or general interrupt return | exception return | supervisor return | typed disposition; backend proves legal return path |
 | per-CPU base | segment-base facilities commonly used | thread-pointer/system-register choices | thread-pointer/CSR convention | semantic per-CPU location provider |
 | extended state | XSAVE-family feature-dependent state | FP/SIMD/SVE/SME feature-dependent state | FP/vector extension state | opaque feature-qualified context component |
+| suspended kernel context | stack position plus ABI/feature-qualified callee-saved state | `SP`, `x19`–`x30`, and qualified system state | `sp`, `ra`, `s0`–`s11`, and qualified system state | affine continuation owning a stack and provider-declared state policy |
 
 Consequences:
 
@@ -37,6 +38,12 @@ Consequences:
 - target return validation is mandatory; and
 - lazy/eager extended-state policy belongs to the scheduler provider, not the
   semantic user context.
+
+The initial context-transfer slice keeps one processor and address space and
+excludes extended state. This is a qualification boundary, not permission for
+portable source to assume the x86-64 callee-saved set. AArch64 and RISC-V can
+preserve the same suspend/resume ownership contract with different private
+frames and state sets.
 
 ## Translation and user access
 
@@ -142,4 +149,3 @@ A new common element is accepted only after:
 5. negative tests reject wrong context, authority, lifetime, scope, and target;
    and
 6. x86-64 artifact and QEMU evidence proves the first implementation.
-
