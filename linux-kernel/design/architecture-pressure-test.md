@@ -45,6 +45,12 @@ portable source to assume the x86-64 callee-saved set. AArch64 and RISC-V can
 preserve the same suspend/resume ownership contract with different private
 frames and state sets.
 
+The cooperative handoff extension does not change that target boundary.
+X86-64, AArch64, and RISC-V providers each preserve their qualified
+call-boundary state while the portable operation exchanges only opaque running
+and suspended identities. A provider-owned run queue is deliberately excluded:
+runnable selection remains architecture-independent Topal policy.
+
 ## Translation and user access
 
 | Concern | x86-64 | AArch64 | RISC-V | Design result |

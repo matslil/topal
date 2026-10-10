@@ -272,6 +272,14 @@ state, TLS/per-CPU switching, stack growth, and cross-transfer unwinding. The
 exact source and provider contract is
 [TK-DEC-027](kernel-context-transfer.md).
 
+The approved cooperative extension admits two independently owned suspended
+contexts and a symmetric handoff. A resumed transfer yields either the context
+which handed control back or a completed terminal context whose stack must be
+reclaimed. The initial executable profile statically refines those outcomes
+from two closed worker protocols and implements bounded FIFO selection in
+ordinary source. The provider performs no runnable selection. See
+[TK-DEC-028](cooperative-context-handoff.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults

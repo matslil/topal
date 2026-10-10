@@ -447,6 +447,23 @@ general yield or cancellation, multiple threads, migration, SMP, user
 contexts, extended-state switching, TLS/per-CPU switching, stack growth, and
 unwinding across transfer.
 
+The cooperative extension permits two disjoint suspended contexts and makes
+the transfer outcome explicit. A resumed continuation receives either the
+context which cooperatively handed control back or a completed terminal
+context requiring stack reclamation. Closed entry protocols may statically
+refine the outcome when the checker proves whether the selected continuation
+hands off or retires. `kernel context retire to target` resumes a matching
+suspended target and transfers ownership of the retiring stack to that
+target's completion value.
+
+The first executable dispatcher is a fixed FIFO sequence in ordinary Topal:
+one worker enters and hands back its suspended context, a second worker enters
+and retires, and the first worker is selected again and retires. The provider
+does not contain a run queue or selection policy. Both contexts stay on the
+initial processor and address space with local interrupts masked; preemption,
+blocking, dynamic runnable collections, migration, SMP, userspace, TLS,
+extended state, and stack growth remain excluded.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
@@ -775,6 +792,12 @@ suspended context. It applies the scheduler's per-CPU and address-space
 transition and resumes exactly one continuation. It is nonordinary control
 flow: it does not return as a normal function, although a later transfer may
 resume the old typed continuation point.
+
+A cooperative transfer may later resume that point with either an affine
+suspended context returned by the peer or an affine completed context for a
+peer which retired to it. Closed entry protocols may refine the result, but
+source cannot forge or reinterpret that refinement. Runnable selection is
+ordinary kernel policy and is not performed by the context provider.
 
 Source cannot inspect or construct register slots. Debugger and user-process
 ABI adapters use separate validated semantic state views.

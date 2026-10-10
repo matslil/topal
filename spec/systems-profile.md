@@ -593,6 +593,44 @@ floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
 unwinding across transfer. X86-64, AArch64, and RISC-V register and frame sets
 SHALL remain provider evidence rather than portable source meaning.
 
+### TOPAL-SYSTEMS-CONTEXT-002 — Cooperative context handoff
+
+A qualified cooperative transfer SHALL consume one running context and one
+matching suspended target. If the old continuation is later resumed, it SHALL
+receive exactly one affine outcome which restores its running authority and
+either returns the peer as suspended or owns the peer as terminal until
+reclamation. An outcome SHALL retain provider, processor, address-space,
+context, stack, entry, and continuation identities. Source SHALL NOT copy,
+forge, widen, or reinterpret an outcome.
+
+A closed entry protocol MAY statically refine the outcome when the checker can
+prove whether that selected continuation hands off or retires. A mismatch
+between the declared result classifier and the selected entry protocol SHALL
+be rejected. `kernel context retire to target` SHALL consume the running
+context and one matching suspended target at a transfer-safe point, mark the
+running context terminal, and resume exactly the target with a
+`CompletedKernelContextTransfer InitialProcessor`. Reclamation SHALL consume
+the completion and return the retired stack to its originating pool.
+
+The initial cooperative slice SHALL construct exactly two suspended contexts
+from disjoint 16 KiB, 16-byte-aligned, bootstrap-reclaimable regions. Its
+checked source order SHALL be cooperative-worker transfer and suspended
+handoff, terminal-worker transfer and retirement/reclamation, cooperative-
+worker resumption and retirement/reclamation, then bootstrap disposition with
+no live context. The cooperative worker SHALL hand off exactly once before
+retirement; the terminal worker SHALL retire on first entry. Target reuse,
+wrong order, overlapping stack ownership, wrong result refinement, retirement
+with a live obligation, and disposition with a live or unreclaimed context
+SHALL be rejected.
+
+Runnable selection SHALL remain source policy. The provider SHALL NOT own a
+run queue or select the next context. This slice SHALL retain one processor,
+one active address space, and disabled local maskable interrupts and SHALL NOT
+admit involuntary preemption, blocking, dynamic run queues, priority,
+timeslicing, cancellation, migration, SMP, user contexts, floating-point or
+vector ownership, TLS/per-CPU switching, stack growth, guard pages, or
+cross-transfer unwinding.
+
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 
 A device location SHALL bind its layout to one live device session, permitted
