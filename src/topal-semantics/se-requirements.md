@@ -72,6 +72,15 @@ restore the exact interrupted continuation only when source selects it again.
 It shall reject mismatched identities, wrong order, repeated take or restore,
 and completion with any live transfer obligation.
 
+The one-shot completion model shall create matching affine wait and signal
+endpoints with one fresh identity. It shall distinguish block-first from
+signal-first linearization, retain signal-first readiness, bind a blocked
+worker to its exact suspended dispatcher, and return only the matching
+awakened context for source-owned enqueue. It shall reject wrong completion,
+context, dispatcher, provider, processor, or address-space identity, repeated
+wait or signal, blocking with incompatible live obligations, and disposition
+with any live endpoint, blocked context, dispatcher, or completed state.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
