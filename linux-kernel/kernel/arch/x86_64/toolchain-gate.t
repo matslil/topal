@@ -133,14 +133,22 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                             stack is terminal-stack,
                                                                                             entry is terminal-thread
                                                                                           )
-                                                                                          yielded-worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context transfer cooperative-worker
+                                                                                          runnable : BoundedKernelRunnableQueue InitialProcessor is deadline-resumed kernel runnable queue create (capacity is 2)
+                                                                                          runnable kernel runnable enqueue cooperative-worker
+                                                                                          runnable kernel runnable enqueue terminal-worker
+                                                                                          selected-cooperative : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                          yielded-worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context transfer selected-cooperative
                                                                                           deadline-resumed console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED"
-                                                                                          terminal-completed : CompletedKernelContextTransfer InitialProcessor is deadline-resumed kernel context transfer terminal-worker
+                                                                                          runnable kernel runnable enqueue yielded-worker
+                                                                                          selected-terminal : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                          terminal-completed : CompletedKernelContextTransfer InitialProcessor is deadline-resumed kernel context transfer selected-terminal
                                                                                           deadline-resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
                                                                                           after-terminal is terminal-completed kernel context reclaim
-                                                                                            cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer yielded-worker
+                                                                                            selected-cooperative-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                            cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer selected-cooperative-final
                                                                                             after-terminal console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED"
                                                                                             context-resumed is cooperative-completed kernel context reclaim
+                                                                                              context-resumed kernel runnable queue consume empty runnable
                                                                                               context-resumed fatal "toolchain gate complete"
                                                                                         }
                                                                                         Error problem then {

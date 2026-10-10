@@ -633,8 +633,8 @@ cross-transfer unwinding.
 
 ### TOPAL-SYSTEMS-CONTEXT-003 — Bounded affine runnable queue
 
-A `BoundedKernelRunnableQueue P N` SHALL be an opaque affine FIFO with positive
-fixed capacity `N`. It SHALL own each enqueued `SuspendedKernelContext P` and
+A `BoundedKernelRunnableQueue P` SHALL be an opaque affine FIFO with retained
+positive fixed capacity. It SHALL own each enqueued `SuspendedKernelContext P` and
 retain the queue, provider, processor, active-address-space, context, and stack
 identities needed for later selection. It SHALL NOT expose or confer access to
 target context representation.

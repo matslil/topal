@@ -8,8 +8,8 @@ storage and selection remain portable scheduler policy.
 
 ## Portable source contract
 
-A `BoundedKernelRunnableQueue P N` is an opaque affine composite with a fixed
-positive capacity `N`. It owns every `SuspendedKernelContext P` enqueued in it
+A `BoundedKernelRunnableQueue P` is an opaque affine composite with a retained
+fixed positive capacity. It owns every `SuspendedKernelContext P` enqueued in it
 and retains the queue, provider, processor, and active-address-space identities
 needed to validate later selection. It exposes no register, stack, continuation,
 address, or target-layout representation.

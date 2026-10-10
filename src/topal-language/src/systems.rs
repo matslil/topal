@@ -39,12 +39,15 @@ pub use topal_semantics::{
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
     SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
     SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
-    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
-    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -2391,8 +2394,14 @@ fn analyze_kernel_context_decision(
     )?;
     let [
         create_terminal,
+        create_queue,
+        enqueue_cooperative,
+        enqueue_terminal,
+        dequeue_cooperative,
         handoff,
         handoff_marker_statement,
+        enqueue_yielded,
+        dequeue_terminal,
         transfer_terminal,
         terminal_marker_statement,
         reclaim_terminal,
@@ -2401,7 +2410,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_ok.span(),
-            "the FIFO dispatcher requires terminal create, cooperative handoff, terminal retirement, and reclamation",
+            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, both transfers, and reclamation",
         ));
     };
     let terminal_name = parse_kernel_context_create(
@@ -2411,11 +2420,16 @@ fn analyze_kernel_context_decision(
         &terminal_stack_name,
         "terminal-thread",
     )?;
+    let queue_name = parse_runnable_queue_create(source, create_queue, context_name)?;
+    parse_runnable_queue_enqueue(source, enqueue_cooperative, &queue_name, &cooperative_name)?;
+    parse_runnable_queue_enqueue(source, enqueue_terminal, &queue_name, &terminal_name)?;
+    let selected_cooperative =
+        parse_runnable_queue_dequeue(source, dequeue_cooperative, &queue_name)?;
     let yielded_name = parse_kernel_context_transfer(
         source,
         handoff,
         context_name,
-        &cooperative_name,
+        &selected_cooperative,
         "SuspendedKernelContext InitialProcessor",
     )?;
     let handoff_marker = analyze_operation(
@@ -2435,11 +2449,13 @@ fn analyze_kernel_context_decision(
             "the first cooperative transfer requires its exact suspended marker",
         ));
     }
+    parse_runnable_queue_enqueue(source, enqueue_yielded, &queue_name, &yielded_name)?;
+    let selected_terminal = parse_runnable_queue_dequeue(source, dequeue_terminal, &queue_name)?;
     let terminal_completed = parse_kernel_context_transfer(
         source,
         transfer_terminal,
         context_name,
-        &terminal_name,
+        &selected_terminal,
         "CompletedKernelContextTransfer InitialProcessor",
     )?;
     let terminal_marker = analyze_operation(
@@ -2462,6 +2478,7 @@ fn analyze_kernel_context_decision(
     let (after_terminal, after_terminal_statements) =
         parse_kernel_context_reclaim(source, reclaim_terminal, &terminal_completed)?;
     let [
+        dequeue_cooperative_final,
         transfer_cooperative,
         cooperative_marker_statement,
         reclaim_cooperative,
@@ -2470,14 +2487,16 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_terminal),
-            "terminal reclamation must continue by resuming and reclaiming the cooperative worker",
+            "terminal reclamation must dequeue, resume, and reclaim the cooperative worker",
         ));
     };
+    let selected_cooperative_final =
+        parse_runnable_queue_dequeue(source, dequeue_cooperative_final, &queue_name)?;
     let cooperative_completed = parse_kernel_context_transfer(
         source,
         transfer_cooperative,
         &after_terminal,
-        &yielded_name,
+        &selected_cooperative_final,
         "CompletedKernelContextTransfer InitialProcessor",
     )?;
     let cooperative_marker = analyze_operation(
@@ -2499,13 +2518,14 @@ fn analyze_kernel_context_decision(
     }
     let (resumed_name, continuation) =
         parse_kernel_context_reclaim(source, reclaim_cooperative, &cooperative_completed)?;
-    let [disposition] = continuation else {
+    let [consume_queue, disposition] = continuation else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_cooperative),
-            "cooperative reclamation must continue directly into the final disposition",
+            "cooperative reclamation must consume the empty runnable queue before final disposition",
         ));
     };
+    parse_runnable_queue_consume(source, consume_queue, &resumed_name, &queue_name)?;
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -2520,14 +2540,22 @@ fn analyze_kernel_context_decision(
                 request: terminal_request,
             },
             CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::CreateRunnableQueue { capacity: 2 },
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             handoff_marker,
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             terminal_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             cooperative_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
         ],
         disposition,
     })
@@ -2582,6 +2610,186 @@ fn parse_kernel_context_create(
         ));
     }
     Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_create(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable-queue creation must bind its exact bounded affine classifier",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        runnable,
+        queue,
+        create,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable-queue creation requires one named capacity",
+        ));
+    };
+    let [field] = fields.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "the initial runnable queue requires exactly `capacity is 2`",
+        ));
+    };
+    let capacity_is_two = field
+        .label
+        .is_some_and(|label| source.slice(label) == "capacity")
+        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "2");
+    if source.slice(*classifier) != "BoundedKernelRunnableQueue InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, queue, "queue")
+        || !identifier_is(source, create, "create")
+        || !capacity_is_two
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "the initial runnable queue requires its live context, capacity two, and exact bounded classifier",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_enqueue(
+    source: &SourceText,
+    statement: &Statement,
+    queue_name: &str,
+    context_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable enqueue must refine the affine queue in place",
+        ));
+    };
+    let [queue, kernel, runnable, enqueue, context] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable enqueue must consume one queue and one suspended context",
+        ));
+    };
+    if !identifier_is(source, queue, queue_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, enqueue, "enqueue")
+        || !identifier_is(source, context, context_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable enqueue must refine the queue and consume the selected suspended context",
+        ));
+    }
+    Ok(())
+}
+
+fn parse_runnable_queue_dequeue(
+    source: &SourceText,
+    statement: &Statement,
+    queue_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable dequeue must bind one suspended context",
+        ));
+    };
+    let [queue, kernel, runnable, dequeue] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable dequeue must consume the current queue state",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, queue, queue_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, dequeue, "dequeue")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable dequeue must select the FIFO head from the exact queue binding",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_consume(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    queue_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "empty runnable-queue consumption must be an explicit operation",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        runnable,
+        queue,
+        consume,
+        empty,
+        queue_value,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "empty runnable-queue consumption requires the live context and queue",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, queue, "queue")
+        || !identifier_is(source, consume, "consume")
+        || !identifier_is(source, empty, "empty")
+        || !identifier_is(source, queue_value, queue_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable-queue consumption requires the exact empty queue before disposition",
+        ));
+    }
+    Ok(())
 }
 
 fn kernel_context_create_fields(
@@ -3472,6 +3680,10 @@ mod tests {
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
@@ -3695,6 +3907,16 @@ mod tests {
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
+                CompilerSystemsTransition::CreateRunnableQueue { capacity: 2 },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 1,
@@ -3712,6 +3934,12 @@ mod tests {
                 CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
                 },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 2,
@@ -3734,6 +3962,9 @@ mod tests {
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 2,
                 },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 4,
@@ -3753,6 +3984,7 @@ mod tests {
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
                 },
+                CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -3769,7 +4001,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 64);
+        assert_eq!(program.bootstrap.handler.operations.len(), 72);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -3780,6 +4012,10 @@ mod tests {
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
