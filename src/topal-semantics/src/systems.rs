@@ -10,10 +10,12 @@ use crate::{
     SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
-    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, TranslationEditKind,
@@ -51,6 +53,7 @@ pub enum SystemsEntryKind {
     Bootstrap,
     SynchronousExceptionDebugBreak,
     ExternalInterruptLocalNotification,
+    ExternalInterruptDeadline,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,6 +61,7 @@ pub enum SystemsContextKind {
     Bootstrap,
     DebugBreak,
     LocalNotificationInterrupt,
+    DeadlineInterrupt,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -154,6 +158,12 @@ pub enum SystemsOperation {
     WaitLocalNotification,
     CompleteLocalNotification,
     ObserveMonotonicClock,
+    ConstructDeadline {
+        duration_nanoseconds: u64,
+    },
+    ArmDeadline,
+    WaitDeadline,
+    CompleteDeadline,
 }
 
 impl SystemsOperation {
@@ -191,6 +201,10 @@ impl SystemsOperation {
             Self::WaitLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_WAIT,
             Self::CompleteLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
             Self::ObserveMonotonicClock => SYSTEMS_MONOTONIC_CLOCK_NOW,
+            Self::ConstructDeadline { .. } => SYSTEMS_DEADLINE_AFTER,
+            Self::ArmDeadline => SYSTEMS_DEADLINE_ARM,
+            Self::WaitDeadline => SYSTEMS_DEADLINE_WAIT,
+            Self::CompleteDeadline => SYSTEMS_DEADLINE_COMPLETE,
         }
     }
 }
@@ -207,6 +221,9 @@ impl SystemsDisposition {
         match self {
             Self::Resume if matches!(context, SystemsContextKind::DebugBreak) => {
                 SYSTEMS_RESUME_DEBUG_BREAK
+            }
+            Self::Resume if matches!(context, SystemsContextKind::DeadlineInterrupt) => {
+                SYSTEMS_RESUME_DEADLINE
             }
             Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::Fatal { .. } => SYSTEMS_FATAL,
@@ -236,6 +253,7 @@ pub struct SystemsProgram {
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
     pub local_notification: SystemsEntry,
+    pub deadline_notification: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -315,6 +333,31 @@ pub enum SystemsTransition {
     },
     ObserveMonotonicClock {
         observation_identity: u64,
+    },
+    ConstructDeadline {
+        source_observation_identity: u64,
+        duration_nanoseconds: u64,
+    },
+    ArmDeadline {
+        event_identity: u64,
+    },
+    BeginDeadlineWait {
+        event_identity: u64,
+    },
+    ObserveDeadline {
+        event_identity: u64,
+    },
+    EnterDeadlineInterrupt {
+        event_identity: u64,
+    },
+    CompleteDeadlineInterrupt {
+        event_identity: u64,
+    },
+    ResumeDeadlineInterrupt {
+        event_identity: u64,
+    },
+    EndDeadlineWait {
+        event_identity: u64,
     },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
@@ -412,6 +455,13 @@ impl SystemsTransition {
             Self::CompleteLocalNotificationInterrupt { .. } => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
             Self::ResumeLocalNotificationInterrupt { .. } => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::ObserveMonotonicClock { .. } => SYSTEMS_MONOTONIC_CLOCK_NOW,
+            Self::ConstructDeadline { .. } => SYSTEMS_DEADLINE_AFTER,
+            Self::ArmDeadline { .. } => SYSTEMS_DEADLINE_ARM,
+            Self::BeginDeadlineWait { .. } | Self::EndDeadlineWait { .. } => SYSTEMS_DEADLINE_WAIT,
+            Self::ObserveDeadline { .. } => "topal.systems.observation.deadline/1",
+            Self::EnterDeadlineInterrupt { .. } => "topal.systems.entry.external.deadline/1",
+            Self::CompleteDeadlineInterrupt { .. } => SYSTEMS_DEADLINE_COMPLETE,
+            Self::ResumeDeadlineInterrupt { .. } => SYSTEMS_RESUME_DEADLINE,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -455,18 +505,29 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsEntryKind::ExternalInterruptLocalNotification,
         SystemsContextKind::LocalNotificationInterrupt,
     )?;
+    validate_entry(
+        &program.deadline_notification,
+        SystemsEntryKind::ExternalInterruptDeadline,
+        SystemsContextKind::DeadlineInterrupt,
+    )?;
     let names = [
         &program.bootstrap.handler.name,
         &program.debug_break.handler.name,
         &program.local_notification.handler.name,
+        &program.deadline_notification.handler.name,
     ];
-    if names[0] == names[1] || names[0] == names[2] || names[1] == names[2] {
+    if names
+        .iter()
+        .enumerate()
+        .any(|(index, name)| names.iter().skip(index + 1).any(|other| *name == *other))
+    {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, and local-notification entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, and deadline entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
+    validate_deadline_handler(&program.deadline_notification.handler)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -521,12 +582,21 @@ fn validate_entry(
                     | SystemsOperation::SendLocalNotification
                     | SystemsOperation::WaitLocalNotification
                     | SystemsOperation::ObserveMonotonicClock
+                    | SystemsOperation::ConstructDeadline { .. }
+                    | SystemsOperation::ArmDeadline
+                    | SystemsOperation::WaitDeadline
             );
             bootstrap_only
                 || (required_context == SystemsContextKind::DebugBreak
-                    && matches!(operation, SystemsOperation::CompleteLocalNotification))
+                    && matches!(
+                        operation,
+                        SystemsOperation::CompleteLocalNotification
+                            | SystemsOperation::CompleteDeadline
+                    ))
                 || (required_context == SystemsContextKind::LocalNotificationInterrupt
                     && !matches!(operation, SystemsOperation::CompleteLocalNotification))
+                || (required_context == SystemsContextKind::DeadlineInterrupt
+                    && !matches!(operation, SystemsOperation::CompleteDeadline))
         })
     {
         return Err(SystemsModelError::new(
@@ -542,6 +612,10 @@ fn validate_entry(
         )
         | (
             SystemsContextKind::LocalNotificationInterrupt,
+            SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
+        )
+        | (
+            SystemsContextKind::DeadlineInterrupt,
             SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
         ) => {}
         (SystemsContextKind::Bootstrap, SystemsDisposition::Resume) => {
@@ -588,6 +662,18 @@ fn validate_local_notification_handler(handler: &SystemsHandler) -> Result<(), S
     Ok(())
 }
 
+fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
+    if handler.operations != [SystemsOperation::CompleteDeadline]
+        || handler.disposition != SystemsDisposition::Resume
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-DEADLINE-EVENT",
+            "the deadline handler must consume completion authority before resume",
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Default)]
 struct BootstrapAuthorityState {
     memory_described: bool,
@@ -598,6 +684,7 @@ struct BootstrapAuthorityState {
     next_critical_identity: u64,
     local_notification: BootstrapLocalNotificationState,
     monotonic_clock_observations: u8,
+    deadline: BootstrapDeadlineState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -605,6 +692,15 @@ enum BootstrapLocalNotificationState {
     #[default]
     Fresh,
     Pending,
+    Completed,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapDeadlineState {
+    #[default]
+    Fresh,
+    Constructed,
+    Armed,
     Completed,
 }
 
@@ -644,6 +740,9 @@ impl BootstrapAuthorityState {
             return Ok(true);
         }
         if self.observe_local_notification(operation)? {
+            return Ok(true);
+        }
+        if self.observe_deadline(operation)? {
             return Ok(true);
         }
         match operation {
@@ -781,6 +880,56 @@ impl BootstrapAuthorityState {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-LOCAL-INTERRUPT",
                     "local notification completion is admitted only by its external-interrupt entry",
+                ));
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn observe_deadline(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
+            SystemsOperation::ConstructDeadline {
+                duration_nanoseconds,
+            } => {
+                if self.monotonic_clock_observations != 2
+                    || self.deadline != BootstrapDeadlineState::Fresh
+                    || *duration_nanoseconds != 1_000_000
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DEADLINE-EVENT",
+                        "the initial deadline must derive once from the second observation and exact duration 1[ms]",
+                    ));
+                }
+                self.deadline = BootstrapDeadlineState::Constructed;
+            }
+            SystemsOperation::ArmDeadline => {
+                if self.deadline != BootstrapDeadlineState::Constructed
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DEADLINE-EVENT",
+                        "deadline arm requires the restored context and one fresh same-clock deadline",
+                    ));
+                }
+                self.deadline = BootstrapDeadlineState::Armed;
+            }
+            SystemsOperation::WaitDeadline => {
+                if self.deadline != BootstrapDeadlineState::Armed {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DEADLINE-EVENT",
+                        "deadline wait requires the matching affine armed event",
+                    ));
+                }
+                self.deadline = BootstrapDeadlineState::Completed;
+            }
+            SystemsOperation::CompleteDeadline => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-DEADLINE-EVENT",
+                    "deadline completion is admitted only by its external-interrupt entry",
                 ));
             }
             _ => return Ok(false),
@@ -1028,6 +1177,12 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires exactly two monotonic-clock observations",
             ));
         }
+        if self.deadline != BootstrapDeadlineState::Completed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-DEADLINE-EVENT-LIVE",
+                "bootstrap completion requires one completed deadline arm/wait lifecycle",
+            ));
+        }
         Ok(())
     }
 }
@@ -1239,6 +1394,8 @@ pub fn model_systems_transitions(
         LocalNotificationProtocol::new("initial-local-notification-source");
     let mut pending_local_notification = None;
     let mut next_clock_observation_identity = 1_u64;
+    let mut deadline_state = BootstrapDeadlineState::Fresh;
+    let mut next_deadline_event_identity = 1_u64;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -1264,6 +1421,15 @@ pub fn model_systems_transitions(
         )? {
             continue;
         }
+        if model_deadline_transition(
+            operation,
+            &program.deadline_notification.handler,
+            &mut deadline_state,
+            &mut next_deadline_event_identity,
+            &mut transitions,
+        )? {
+            continue;
+        }
         if model_bootstrap_operation(
             operation,
             &program.debug_break.handler,
@@ -1277,6 +1443,70 @@ pub fn model_systems_transitions(
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+fn model_deadline_transition(
+    operation: &SystemsOperation,
+    handler: &SystemsHandler,
+    state: &mut BootstrapDeadlineState,
+    next_event_identity: &mut u64,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::ConstructDeadline {
+            duration_nanoseconds,
+        } => {
+            *state = BootstrapDeadlineState::Constructed;
+            transitions.push(SystemsTransition::ConstructDeadline {
+                source_observation_identity: 2,
+                duration_nanoseconds: *duration_nanoseconds,
+            });
+        }
+        SystemsOperation::ArmDeadline => {
+            let event_identity = *next_event_identity;
+            *next_event_identity = event_identity.checked_add(1).ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-DEADLINE-EVENT",
+                    "deadline-event identity exhausted",
+                )
+            })?;
+            *state = BootstrapDeadlineState::Armed;
+            transitions.push(SystemsTransition::ArmDeadline { event_identity });
+        }
+        SystemsOperation::WaitDeadline => {
+            let event_identity = (*next_event_identity).saturating_sub(1);
+            transitions.extend([
+                SystemsTransition::BeginDeadlineWait { event_identity },
+                SystemsTransition::ObserveDeadline { event_identity },
+                SystemsTransition::EnterDeadlineInterrupt { event_identity },
+            ]);
+            for handler_operation in &handler.operations {
+                if !matches!(handler_operation, SystemsOperation::CompleteDeadline) {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DEADLINE-EVENT",
+                        "deadline handler contains an operation outside its completion protocol",
+                    ));
+                }
+                transitions.push(SystemsTransition::CompleteDeadlineInterrupt { event_identity });
+            }
+            if handler.disposition != SystemsDisposition::Resume {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-DEADLINE-EVENT",
+                    "deadline handler must resume after completion",
+                ));
+            }
+            transitions.extend([
+                SystemsTransition::ResumeDeadlineInterrupt { event_identity },
+                SystemsTransition::EndDeadlineWait { event_identity },
+            ]);
+            *state = BootstrapDeadlineState::Completed;
+        }
+        SystemsOperation::CompleteDeadline => {
+            unreachable!("deadline completion is modeled inside the matching wait")
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn model_monotonic_clock_transition(
@@ -1667,6 +1897,12 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::ObserveMonotonicClock => {
             unreachable!("monotonic-clock observations are modeled by the caller")
         }
+        SystemsOperation::ConstructDeadline { .. }
+        | SystemsOperation::ArmDeadline
+        | SystemsOperation::WaitDeadline
+        | SystemsOperation::CompleteDeadline => {
+            unreachable!("deadline-event operations are modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -1756,6 +1992,9 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
+            SYSTEMS_DEADLINE_AFTER.into(),
+            SYSTEMS_DEADLINE_ARM.into(),
+            SYSTEMS_DEADLINE_WAIT.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
         ];
@@ -1765,6 +2004,11 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_COMPLETE.into(),
         ];
         local_notification_effects.sort();
+        let mut deadline_effects = vec![
+            SYSTEMS_RESUME_DEADLINE.into(),
+            SYSTEMS_DEADLINE_COMPLETE.into(),
+        ];
+        deadline_effects.sort();
         SystemsProgram {
             target,
             bootstrap_storage: BootstrapStorageDescriptor {
@@ -1791,6 +2035,11 @@ mod tests {
                         SystemsOperation::WaitLocalNotification,
                         SystemsOperation::ObserveMonotonicClock,
                         SystemsOperation::ObserveMonotonicClock,
+                        SystemsOperation::ConstructDeadline {
+                            duration_nanoseconds: 1_000_000,
+                        },
+                        SystemsOperation::ArmDeadline,
+                        SystemsOperation::WaitDeadline,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -1822,7 +2071,38 @@ mod tests {
                     effects: local_notification_effects,
                 },
             },
+            deadline_notification: SystemsEntry {
+                kind: SystemsEntryKind::ExternalInterruptDeadline,
+                handler: SystemsHandler {
+                    name: "deadline-notification".into(),
+                    context: SystemsContextKind::DeadlineInterrupt,
+                    operations: vec![SystemsOperation::CompleteDeadline],
+                    disposition: SystemsDisposition::Resume,
+                    effects: deadline_effects,
+                },
+            },
         }
+    }
+
+    fn refresh_bootstrap_effects(program: &mut SystemsProgram) {
+        let mut effects = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .map(|operation| operation.semantic_identity().to_owned())
+            .collect::<Vec<_>>();
+        effects.push(
+            program
+                .bootstrap
+                .handler
+                .disposition
+                .semantic_identity(SystemsContextKind::Bootstrap)
+                .to_owned(),
+        );
+        effects.sort();
+        effects.dedup();
+        program.bootstrap.handler.effects = effects;
     }
 
     #[test]
@@ -1857,6 +2137,17 @@ mod tests {
                 SystemsTransition::ObserveMonotonicClock {
                     observation_identity: 2,
                 },
+                SystemsTransition::ConstructDeadline {
+                    source_observation_identity: 2,
+                    duration_nanoseconds: 1_000_000,
+                },
+                SystemsTransition::ArmDeadline { event_identity: 1 },
+                SystemsTransition::BeginDeadlineWait { event_identity: 1 },
+                SystemsTransition::ObserveDeadline { event_identity: 1 },
+                SystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
+                SystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
+                SystemsTransition::ResumeDeadlineInterrupt { event_identity: 1 },
+                SystemsTransition::EndDeadlineWait { event_identity: 1 },
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -1884,6 +2175,20 @@ mod tests {
             .handler
             .effects
             .retain(|effect| effect != SYSTEMS_MONOTONIC_CLOCK_NOW);
+        live.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                SystemsOperation::ConstructDeadline { .. }
+                    | SystemsOperation::ArmDeadline
+                    | SystemsOperation::WaitDeadline
+            )
+        });
+        live.bootstrap.handler.effects.retain(|effect| {
+            !matches!(
+                effect.as_str(),
+                SYSTEMS_DEADLINE_AFTER | SYSTEMS_DEADLINE_ARM | SYSTEMS_DEADLINE_WAIT
+            )
+        });
         assert_eq!(
             validate_systems_program(&live).unwrap_err().code,
             "E-SYSTEMS-LOCAL-INTERRUPT-LIVE"
@@ -1914,7 +2219,16 @@ mod tests {
     fn monotonic_clock_requires_two_post_interrupt_observations() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001.
         let mut missing = program(SystemsDisposition::Resume);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                SystemsOperation::ConstructDeadline { .. }
+                    | SystemsOperation::ArmDeadline
+                    | SystemsOperation::WaitDeadline
+            )
+        });
         missing.bootstrap.handler.operations.pop();
+        refresh_bootstrap_effects(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-MONOTONIC-CLOCK-LIVE"
@@ -1937,6 +2251,35 @@ mod tests {
         assert_eq!(
             validate_systems_program(&extra).unwrap_err().code,
             "E-SYSTEMS-MONOTONIC-CLOCK"
+        );
+    }
+
+    #[test]
+    fn deadline_requires_exact_construction_arm_wait_and_completion() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-DEADLINE-EVENT-001.
+        let mut wrong_duration = program(SystemsDisposition::Resume);
+        wrong_duration.bootstrap.handler.operations[8] = SystemsOperation::ConstructDeadline {
+            duration_nanoseconds: 2_000_000,
+        };
+        assert_eq!(
+            validate_systems_program(&wrong_duration).unwrap_err().code,
+            "E-SYSTEMS-DEADLINE-EVENT"
+        );
+
+        let mut missing_wait = program(SystemsDisposition::Resume);
+        missing_wait.bootstrap.handler.operations.pop();
+        refresh_bootstrap_effects(&mut missing_wait);
+        assert_eq!(
+            validate_systems_program(&missing_wait).unwrap_err().code,
+            "E-SYSTEMS-DEADLINE-EVENT-LIVE"
+        );
+
+        let mut incomplete = program(SystemsDisposition::Resume);
+        incomplete.deadline_notification.handler.operations.clear();
+        incomplete.deadline_notification.handler.effects = vec![SYSTEMS_RESUME_DEADLINE.into()];
+        assert_eq!(
+            validate_systems_program(&incomplete).unwrap_err().code,
+            "E-SYSTEMS-DEADLINE-EVENT"
         );
     }
 
@@ -1966,20 +2309,7 @@ mod tests {
             },
             SystemsOperation::BootstrapRelease,
         ]);
-        program.bootstrap.handler.effects = vec![
-            SYSTEMS_BOOT_MEMORY_DESCRIBE.into(),
-            SYSTEMS_CONSOLE_WRITE.into(),
-            SYSTEMS_FATAL.into(),
-            SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
-            SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
-            SYSTEMS_DEBUG_BREAK.into(),
-            SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
-            SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE.into(),
-            SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE.into(),
-            SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
-            SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into(),
-            SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
-        ];
+        refresh_bootstrap_effects(&mut program);
         let transitions = model_systems_transitions(&program).unwrap();
         assert!(
             transitions.contains(&SystemsTransition::StoreBootstrapByte {
@@ -2010,11 +2340,17 @@ mod tests {
             .effects
             .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
         program.bootstrap.handler.effects.sort();
-        if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
-            &mut program.bootstrap.handler.operations[9]
-        {
-            *offset_bytes = 64;
-        }
+        let store = program
+            .bootstrap
+            .handler
+            .operations
+            .iter_mut()
+            .find(|operation| matches!(operation, SystemsOperation::BootstrapStoreByte { .. }))
+            .expect("test program contains a bootstrap store");
+        let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } = store else {
+            unreachable!("matching operation was selected")
+        };
+        *offset_bytes = 64;
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-STORAGE-BOUNDS"

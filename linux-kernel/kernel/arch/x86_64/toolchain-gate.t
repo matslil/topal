@@ -109,7 +109,11 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                   first : Instant InitialMonotonicClock is resumed monotonic clock now
                                                                                   second : Instant InitialMonotonicClock is resumed monotonic clock now
                                                                                   resumed console write "TOPAL_KERNEL_TIME_OK"
-                                                                                  resumed fatal "toolchain gate complete"
+                                                                                  deadline : Deadline InitialMonotonicClock is second deadline after 1[ms]
+                                                                                  armed : ArmedDeadline InitialMonotonicClock is resumed deadline notification arm deadline
+                                                                                  deadline-resumed is resumed deadline notification wait armed
+                                                                                  deadline-resumed console write "TOPAL_KERNEL_DEADLINE_OK"
+                                                                                  deadline-resumed fatal "toolchain gate complete"
                                                                                 }
                                                                                 false then {
                                                                                   region is atomic end
@@ -219,6 +223,12 @@ local-notification-handler is fn (
   completed is context local notification complete
   completed resume
 
+deadline-notification-handler is fn (
+  context : DeadlineInterruptContext InitialMonotonicClock
+) -> DeadlineInterruptDisposition InitialMonotonicClock
+  completed is context deadline notification complete
+  completed resume
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
@@ -226,5 +236,6 @@ lang systems artifact (
   ),
   bootstrap is lang systems bootstrap-entry boot,
   debug-break is lang systems synchronous-exception-entry debug-break-handler,
-  local-notification is lang systems external-interrupt-entry local-notification-handler
+  local-notification is lang systems external-interrupt-entry local-notification-handler,
+  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler
 )
