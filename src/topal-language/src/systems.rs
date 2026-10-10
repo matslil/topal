@@ -95,12 +95,12 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 5 {
+    if functions.len() != 6 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the initial systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, and kernel-thread handlers",
+            "the cooperative systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread handlers",
         ));
     }
     if root_entries.bootstrap == root_entries.debug_break
@@ -113,12 +113,17 @@ pub fn analyze_systems_for_compiler(
         || root_entries.local_notification == root_entries.kernel_thread
         || root_entries.deadline_notification == root_entries.kernel_thread
         || root_entries.bootstrap == root_entries.kernel_thread
+        || root_entries.bootstrap == root_entries.terminal_thread
+        || root_entries.debug_break == root_entries.terminal_thread
+        || root_entries.local_notification == root_entries.terminal_thread
+        || root_entries.deadline_notification == root_entries.terminal_thread
+        || root_entries.kernel_thread == root_entries.terminal_thread
     {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "bootstrap, debug-break, local-notification, deadline-notification, and kernel-thread entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -166,6 +171,15 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::KernelThread,
         None,
     )?;
+    let terminal_thread = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "terminal-thread",
+        &root_entries.terminal_thread,
+        CompilerSystemsContextKind::KernelThread,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -189,6 +203,10 @@ pub fn analyze_systems_for_compiler(
         kernel_thread: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
             handler: kernel_thread,
+        },
+        terminal_thread: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ResumedKernelThread,
+            handler: terminal_thread,
         },
     })
 }
@@ -321,6 +339,7 @@ struct ArtifactEntries {
     local_notification: String,
     deadline_notification: String,
     kernel_thread: String,
+    terminal_thread: String,
 }
 
 fn parse_artifact_root(
@@ -371,6 +390,7 @@ fn parse_artifact_root(
                 | "local-notification"
                 | "deadline-notification"
                 | "kernel-thread"
+                | "terminal-thread"
         ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
@@ -392,6 +412,7 @@ fn parse_artifact_root(
         Some(local_notification),
         Some(deadline_notification),
         Some(kernel_thread),
+        Some(terminal_thread),
     ) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
@@ -399,6 +420,7 @@ fn parse_artifact_root(
         entries.remove("local-notification"),
         entries.remove("deadline-notification"),
         entries.remove("kernel-thread"),
+        entries.remove("terminal-thread"),
     )
     else {
         return Err(invalid_entry_set(source, *span));
@@ -413,6 +435,7 @@ fn parse_artifact_root(
         local_notification,
         deadline_notification,
         kernel_thread,
+        terminal_thread,
     })
 }
 
@@ -422,7 +445,7 @@ fn artifact_field_label(source: &SourceText, field: &ProductField) -> Result<Spa
             source,
             "E-SYSTEMS-ENTRY-SET",
             field.value.span(),
-            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, and `kernel-thread` fields",
+            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, `kernel-thread`, and `terminal-thread` fields",
         )
     })
 }
@@ -446,7 +469,7 @@ fn parse_entry_field(
         "debug-break" => "synchronous-exception-entry",
         "local-notification" => "external-interrupt-entry",
         "deadline-notification" => "external-interrupt-entry",
-        "kernel-thread" => "resumed-thread-entry",
+        "kernel-thread" | "terminal-thread" => "resumed-thread-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -633,7 +656,7 @@ fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
         source,
         "E-SYSTEMS-ENTRY-SET",
         span,
-        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, and `kernel-thread` entries",
+        "the cooperative systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, `kernel-thread`, and `terminal-thread` entries",
     )
 }
 
@@ -791,32 +814,103 @@ fn analyze_kernel_thread_handler(
             ),
         ));
     }
-    let [marker, retirement] = body else {
+    let terminal = name == "terminal-thread-handler";
+    let cooperative = name == "kernel-thread-handler";
+    if !terminal && !cooperative {
         return Err(kernel_context_diagnostic(
             source,
             span,
-            "the initial kernel thread must write its entry marker and retire to its caller",
-        ));
-    };
-    let context_name = source.slice(parameters[0].name);
-    let caller_name = source.slice(parameters[1].name);
-    let marker = analyze_operation(
-        source,
-        marker,
-        CompilerSystemsContextKind::KernelThread,
-        context_name,
-    )?;
-    if marker
-        != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
-        })
-    {
-        return Err(kernel_context_diagnostic(
-            source,
-            statement_span(body.first().expect("two statements")),
-            "the initial kernel thread requires the exact context-entry marker",
+            "the cooperative profile requires `kernel-thread-handler` and `terminal-thread-handler`",
         ));
     }
+    let context_name = source.slice(parameters[0].name);
+    let caller_name = source.slice(parameters[1].name);
+    let (_marker, retirement, returned_caller, operations) = if cooperative {
+        let [marker, handoff, resumed_marker, retirement] = body else {
+            return Err(kernel_context_diagnostic(
+                source,
+                span,
+                "the cooperative kernel thread must enter, hand back once, resume, and retire",
+            ));
+        };
+        let returned_caller = parse_kernel_context_transfer(
+            source,
+            handoff,
+            context_name,
+            caller_name,
+            "SuspendedKernelContext InitialProcessor",
+        )?;
+        let entered = analyze_operation(
+            source,
+            marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if entered
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(marker),
+                "the cooperative kernel thread requires its exact entry marker",
+            ));
+        }
+        let resumed = analyze_operation(
+            source,
+            resumed_marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if resumed
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(resumed_marker),
+                "the cooperative kernel thread requires its exact resumed marker",
+            ));
+        }
+        (
+            marker,
+            retirement,
+            returned_caller,
+            vec![
+                entered,
+                CompilerSystemsOperation::TransferKernelContext,
+                resumed,
+            ],
+        )
+    } else {
+        let [marker, retirement] = body else {
+            return Err(kernel_context_diagnostic(
+                source,
+                span,
+                "the terminal kernel thread must write its entry marker and retire",
+            ));
+        };
+        let entered = analyze_operation(
+            source,
+            marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if entered
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(marker),
+                "the terminal kernel thread requires its exact entry marker",
+            ));
+        }
+        (marker, retirement, caller_name.to_owned(), vec![entered])
+    };
     let Statement::Expression(Expression::Application {
         items,
         span: retirement_span,
@@ -840,7 +934,7 @@ fn analyze_kernel_thread_handler(
         || !identifier_is(source, context_word, "context")
         || !identifier_is(source, retire, "retire")
         || !identifier_is(source, to, "to")
-        || !identifier_is(source, caller, caller_name)
+        || !identifier_is(source, caller, &returned_caller)
     {
         return Err(kernel_context_diagnostic(
             source,
@@ -848,15 +942,20 @@ fn analyze_kernel_thread_handler(
             "kernel-thread retirement must consume its live context and matching suspended caller",
         ));
     }
+    let mut effects = vec![
+        SYSTEMS_CONSOLE_WRITE.to_owned(),
+        SYSTEMS_KERNEL_CONTEXT_RETIRE.to_owned(),
+    ];
+    if cooperative {
+        effects.push(SYSTEMS_KERNEL_CONTEXT_TRANSFER.to_owned());
+        effects.sort();
+    }
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::KernelThread,
-        operations: vec![marker],
+        operations,
         disposition: CompilerSystemsDisposition::RetireKernelContextToCaller,
-        effects: vec![
-            SYSTEMS_CONSOLE_WRITE.to_owned(),
-            SYSTEMS_KERNEL_CONTEXT_RETIRE.to_owned(),
-        ],
+        effects,
     })
 }
 
@@ -1428,6 +1527,35 @@ fn result_actions<'a>(
         ));
     };
     Ok((binding, ok, error))
+}
+
+fn raw_result_action<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    expected: &str,
+) -> Result<(String, &'a Expression), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "nested context allocation requires explicit `Ok` and `Error` actions",
+        ));
+    };
+    let [constructor, Expression::Identifier(binding), then, action] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "nested context allocation action must bind its result before `then`",
+        ));
+    };
+    if !identifier_is(source, constructor, expected) || !identifier_is(source, then, "then") {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            format!("nested context allocation requires the `{expected}` action in order"),
+        ));
+    }
+    Ok((source.slice(*binding).to_owned(), action))
 }
 
 fn parse_region_store(
@@ -2208,40 +2336,174 @@ fn analyze_kernel_context_decision(
         ));
     };
     let statements = action_block(source, ok_action, "kernel-context stack allocation")?;
-    let [create, transfer, marker_statement, reclaim] = statements else {
+    let [
+        create_cooperative,
+        terminal_subject_statement,
+        terminal_ok_statement,
+        terminal_error_statement,
+    ] = statements
+    else {
         return Err(kernel_context_diagnostic(
             source,
             ok_action.span(),
-            "kernel-context success requires create, transfer, resumed marker, reclaim, and final disposition",
+            "cooperative context success requires the first create followed by the second stack allocation",
         ));
     };
-    let worker_name = parse_kernel_context_create(source, create, context_name, &stack_name)?;
-    let completed_name =
-        parse_kernel_context_transfer(source, transfer, context_name, &worker_name)?;
-    let marker = analyze_operation(
+    let cooperative_name = parse_kernel_context_create(
         source,
-        marker_statement,
+        create_cooperative,
+        context_name,
+        &stack_name,
+        "kernel-thread",
+    )?;
+    let Statement::Expression(terminal_subject) = terminal_subject_statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(terminal_subject_statement),
+            "cooperative context creation must be followed by the terminal stack allocation",
+        ));
+    };
+    let terminal_request =
+        parse_bootstrap_allocation(source, terminal_subject, context_name, storage)?;
+    if terminal_request != request {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_subject.span(),
+            "both cooperative contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+        ));
+    }
+    let (terminal_stack_name, terminal_ok) =
+        raw_result_action(source, terminal_ok_statement, "Ok")?;
+    let (_, terminal_error) = raw_result_action(source, terminal_error_statement, "Error")?;
+    let CompilerSystemsDisposition::Fatal { .. } =
+        action_disposition(source, terminal_error, context_name)?
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_error.span(),
+            "terminal stack allocation failure must enter the fatal disposition",
+        ));
+    };
+    let terminal_statements = action_block(
+        source,
+        terminal_ok,
+        "terminal kernel-context stack allocation",
+    )?;
+    let [
+        create_terminal,
+        handoff,
+        handoff_marker_statement,
+        transfer_terminal,
+        terminal_marker_statement,
+        reclaim_terminal,
+    ] = terminal_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_ok.span(),
+            "the FIFO dispatcher requires terminal create, cooperative handoff, terminal retirement, and reclamation",
+        ));
+    };
+    let terminal_name = parse_kernel_context_create(
+        source,
+        create_terminal,
+        context_name,
+        &terminal_stack_name,
+        "terminal-thread",
+    )?;
+    let yielded_name = parse_kernel_context_transfer(
+        source,
+        handoff,
+        context_name,
+        &cooperative_name,
+        "SuspendedKernelContext InitialProcessor",
+    )?;
+    let handoff_marker = analyze_operation(
+        source,
+        handoff_marker_statement,
         CompilerSystemsContextKind::Bootstrap,
         context_name,
     )?;
-    if marker
+    if handoff_marker
         != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
         })
     {
         return Err(kernel_context_diagnostic(
             source,
-            statement_span(marker_statement),
-            "kernel-context transfer must be followed by the exact resumed-caller marker",
+            statement_span(handoff_marker_statement),
+            "the first cooperative transfer requires its exact suspended marker",
+        ));
+    }
+    let terminal_completed = parse_kernel_context_transfer(
+        source,
+        transfer_terminal,
+        context_name,
+        &terminal_name,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let terminal_marker = analyze_operation(
+        source,
+        terminal_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    if terminal_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(terminal_marker_statement),
+            "terminal retirement requires its exact marker",
+        ));
+    }
+    let (after_terminal, after_terminal_statements) =
+        parse_kernel_context_reclaim(source, reclaim_terminal, &terminal_completed)?;
+    let [
+        transfer_cooperative,
+        cooperative_marker_statement,
+        reclaim_cooperative,
+    ] = after_terminal_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(reclaim_terminal),
+            "terminal reclamation must continue by resuming and reclaiming the cooperative worker",
+        ));
+    };
+    let cooperative_completed = parse_kernel_context_transfer(
+        source,
+        transfer_cooperative,
+        &after_terminal,
+        &yielded_name,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let cooperative_marker = analyze_operation(
+        source,
+        cooperative_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &after_terminal,
+    )?;
+    if cooperative_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(cooperative_marker_statement),
+            "cooperative retirement requires its exact marker",
         ));
     }
     let (resumed_name, continuation) =
-        parse_kernel_context_reclaim(source, reclaim, &completed_name)?;
+        parse_kernel_context_reclaim(source, reclaim_cooperative, &cooperative_completed)?;
     let [disposition] = continuation else {
         return Err(kernel_context_diagnostic(
             source,
-            statement_span(reclaim),
-            "kernel-context reclaim must continue directly into the final disposition",
+            statement_span(reclaim_cooperative),
+            "cooperative reclamation must continue directly into the final disposition",
         ));
     };
     let disposition = analyze_disposition(
@@ -2254,8 +2516,17 @@ fn analyze_kernel_context_decision(
         operations: vec![
             CompilerSystemsOperation::BootstrapAllocate { request },
             CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::BootstrapAllocate {
+                request: terminal_request,
+            },
+            CompilerSystemsOperation::CreateKernelContext,
             CompilerSystemsOperation::TransferKernelContext,
-            marker,
+            handoff_marker,
+            CompilerSystemsOperation::TransferKernelContext,
+            terminal_marker,
+            CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::TransferKernelContext,
+            cooperative_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
         ],
         disposition,
@@ -2267,6 +2538,7 @@ fn parse_kernel_context_create(
     statement: &Statement,
     context_name: &str,
     stack_name: &str,
+    entry_name: &str,
 ) -> Result<String, Diagnostic> {
     let Statement::Binding {
         name,
@@ -2299,12 +2571,14 @@ fn parse_kernel_context_create(
         || !identifier_is(source, kernel, "kernel")
         || !identifier_is(source, context_word, "context")
         || !identifier_is(source, create, "create")
-        || !kernel_context_create_fields(source, fields, stack_name)?
+        || !kernel_context_create_fields(source, fields, stack_name, entry_name)?
     {
         return Err(kernel_context_diagnostic(
             source,
             *span,
-            "kernel-context creation requires the live context, allocated stack, and typed `kernel-thread` entry",
+            format!(
+                "kernel-context creation requires the live context, allocated stack, and typed `{entry_name}` entry"
+            ),
         ));
     }
     Ok(source.slice(*name).to_owned())
@@ -2314,6 +2588,7 @@ fn kernel_context_create_fields(
     source: &SourceText,
     fields: &[ProductField],
     stack_name: &str,
+    entry_name: &str,
 ) -> Result<bool, Diagnostic> {
     let mut stack = None;
     let mut entry = None;
@@ -2329,7 +2604,7 @@ fn kernel_context_create_fields(
     }
     Ok(
         matches!(stack, Some(value) if identifier_is(source, value, stack_name))
-            && matches!(entry, Some(value) if identifier_is(source, value, "kernel-thread")),
+            && matches!(entry, Some(value) if identifier_is(source, value, entry_name)),
     )
 }
 
@@ -2338,6 +2613,7 @@ fn parse_kernel_context_transfer(
     statement: &Statement,
     context_name: &str,
     worker_name: &str,
+    result_classifier: &str,
 ) -> Result<String, Diagnostic> {
     let Statement::Binding {
         name,
@@ -2348,7 +2624,7 @@ fn parse_kernel_context_transfer(
         return Err(kernel_context_diagnostic(
             source,
             statement_span(statement),
-            "kernel-context transfer must bind `CompletedKernelContextTransfer InitialProcessor`",
+            format!("kernel-context transfer must bind `{result_classifier}`"),
         ));
     };
     let [context, kernel, context_word, transfer, worker] = items.as_slice() else {
@@ -2358,7 +2634,7 @@ fn parse_kernel_context_transfer(
             "kernel-context transfer must consume one suspended context",
         ));
     };
-    if source.slice(*classifier) != "CompletedKernelContextTransfer InitialProcessor"
+    if source.slice(*classifier) != result_classifier
         || !identifier_is(source, context, context_name)
         || !identifier_is(source, kernel, "kernel")
         || !identifier_is(source, context_word, "context")
@@ -3409,6 +3685,16 @@ mod tests {
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 1,
                 },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::CreateKernelContext {
+                    context_identity: 2,
+                },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 1,
@@ -3417,15 +3703,52 @@ mod tests {
                     context_identity: 1,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
                 },
-                CompilerSystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 1,
-                    caller_identity: 1,
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 0,
+                    caller_identity: 2,
                 },
                 CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::EnterKernelThread {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+                },
+                CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 1,
+                    caller_identity: 4,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 1,
+                    caller_identity: 4,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
@@ -3446,7 +3769,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 57);
+        assert_eq!(program.bootstrap.handler.operations.len(), 64);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

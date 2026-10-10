@@ -266,6 +266,7 @@ pub struct SystemsProgram {
     pub local_notification: SystemsEntry,
     pub deadline_notification: SystemsEntry,
     pub kernel_thread: SystemsEntry,
+    pub terminal_thread: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -553,12 +554,18 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsEntryKind::ResumedKernelThread,
         SystemsContextKind::KernelThread,
     )?;
+    validate_entry(
+        &program.terminal_thread,
+        SystemsEntryKind::ResumedKernelThread,
+        SystemsContextKind::KernelThread,
+    )?;
     let names = [
         &program.bootstrap.handler.name,
         &program.debug_break.handler.name,
         &program.local_notification.handler.name,
         &program.deadline_notification.handler.name,
         &program.kernel_thread.handler.name,
+        &program.terminal_thread.handler.name,
     ];
     if names
         .iter()
@@ -567,12 +574,13 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, local-notification, deadline, and kernel-thread entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline, cooperative-thread, and terminal-thread entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
     validate_deadline_handler(&program.deadline_notification.handler)?;
-    validate_kernel_thread_handler(&program.kernel_thread.handler)?;
+    validate_kernel_thread_handler(&program.kernel_thread.handler, false)?;
+    validate_kernel_thread_handler(&program.terminal_thread.handler, true)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -631,10 +639,11 @@ fn validate_entry(
                     | SystemsOperation::ArmDeadline
                     | SystemsOperation::WaitDeadline
                     | SystemsOperation::CreateKernelContext
-                    | SystemsOperation::TransferKernelContext
                     | SystemsOperation::ReclaimKernelContext
             );
             bootstrap_only
+                || (required_context != SystemsContextKind::KernelThread
+                    && matches!(operation, SystemsOperation::TransferKernelContext))
                 || (required_context == SystemsContextKind::DebugBreak
                     && matches!(
                         operation,
@@ -646,7 +655,11 @@ fn validate_entry(
                 || (required_context == SystemsContextKind::DeadlineInterrupt
                     && !matches!(operation, SystemsOperation::CompleteDeadline))
                 || (required_context == SystemsContextKind::KernelThread
-                    && !matches!(operation, SystemsOperation::ConsoleWrite { .. }))
+                    && !matches!(
+                        operation,
+                        SystemsOperation::ConsoleWrite { .. }
+                            | SystemsOperation::TransferKernelContext
+                    ))
         })
     {
         return Err(SystemsModelError::new(
@@ -733,16 +746,31 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
     Ok(())
 }
 
-fn validate_kernel_thread_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
-    if handler.operations
-        != [SystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+fn validate_kernel_thread_handler(
+    handler: &SystemsHandler,
+    terminal: bool,
+) -> Result<(), SystemsModelError> {
+    let expected = if terminal {
+        vec![SystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
         }]
+    } else {
+        vec![
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+            },
+            SystemsOperation::TransferKernelContext,
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+            },
+        ]
+    };
+    if handler.operations != expected
         || handler.disposition != SystemsDisposition::RetireKernelContextToCaller
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-CONTEXT-TRANSFER",
-            "the initial kernel thread must write its entry marker and retire to its caller",
+            "cooperative and terminal kernel-thread handlers must implement their exact handoff protocols",
         ));
     }
     Ok(())
@@ -783,8 +811,12 @@ enum BootstrapDeadlineState {
 enum BootstrapKernelContextState {
     #[default]
     Fresh,
-    Suspended,
-    Completed,
+    CooperativeCreated,
+    BothSuspended,
+    CooperativeYielded,
+    TerminalCompleted,
+    TerminalReclaimed,
+    CooperativeCompleted,
     Reclaimed,
 }
 
@@ -1079,35 +1111,68 @@ impl BootstrapAuthorityState {
         match operation {
             SystemsOperation::CreateKernelContext => {
                 if self.deadline != BootstrapDeadlineState::Completed
-                    || self.kernel_context != BootstrapKernelContextState::Fresh
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context creation requires the completed deadline lifecycle, one restored processor context, and no prior worker",
+                        "kernel-context creation requires the completed deadline lifecycle and one restored processor context",
                     ));
                 }
-                self.kernel_context = BootstrapKernelContextState::Suspended;
+                self.kernel_context = match self.kernel_context {
+                    BootstrapKernelContextState::Fresh => {
+                        BootstrapKernelContextState::CooperativeCreated
+                    }
+                    BootstrapKernelContextState::CooperativeCreated => {
+                        BootstrapKernelContextState::BothSuspended
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-CONTEXT-TRANSFER",
+                            "the cooperative profile creates exactly two contexts before dispatch",
+                        ));
+                    }
+                };
             }
             SystemsOperation::TransferKernelContext => {
-                if self.kernel_context != BootstrapKernelContextState::Suspended
-                    || !self.critical_stack.is_empty()
-                {
+                if !self.critical_stack.is_empty() {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context transfer requires one matching suspended worker and no live critical scope",
+                        "kernel-context transfer requires no live critical scope",
                     ));
                 }
-                self.kernel_context = BootstrapKernelContextState::Completed;
+                self.kernel_context = match self.kernel_context {
+                    BootstrapKernelContextState::BothSuspended => {
+                        BootstrapKernelContextState::CooperativeYielded
+                    }
+                    BootstrapKernelContextState::CooperativeYielded => {
+                        BootstrapKernelContextState::TerminalCompleted
+                    }
+                    BootstrapKernelContextState::TerminalReclaimed => {
+                        BootstrapKernelContextState::CooperativeCompleted
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-CONTEXT-TRANSFER",
+                            "kernel-context transfers must follow cooperative, terminal, cooperative FIFO order",
+                        ));
+                    }
+                };
             }
             SystemsOperation::ReclaimKernelContext => {
-                if self.kernel_context != BootstrapKernelContextState::Completed {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context reclaim requires the matching completed transfer",
-                    ));
-                }
-                self.kernel_context = BootstrapKernelContextState::Reclaimed;
+                self.kernel_context = match self.kernel_context {
+                    BootstrapKernelContextState::TerminalCompleted => {
+                        BootstrapKernelContextState::TerminalReclaimed
+                    }
+                    BootstrapKernelContextState::CooperativeCompleted => {
+                        BootstrapKernelContextState::Reclaimed
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-CONTEXT-TRANSFER",
+                            "kernel-context reclaim requires the matching completed transfer",
+                        ));
+                    }
+                };
             }
             _ => return Ok(false),
         }
@@ -1315,7 +1380,7 @@ impl BootstrapAuthorityState {
         if self.kernel_context != BootstrapKernelContextState::Reclaimed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
-                "bootstrap completion requires one transferred, retired, resumed, and reclaimed kernel context",
+                "bootstrap completion requires both cooperative contexts to retire and be reclaimed",
             ));
         }
         Ok(())
@@ -1413,7 +1478,7 @@ fn validate_bootstrap_storage_operations(
         "systems-program-validation",
     )?;
     let mut region: Option<BootstrapRegion> = None;
-    let mut context_stack: Option<BootstrapRegion> = None;
+    let mut context_stacks: Vec<BootstrapRegion> = Vec::new();
     let mut atomic: Option<AtomicWordLocation> = None;
     let mut authority = BootstrapAuthorityState::default();
     for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
@@ -1422,7 +1487,8 @@ fn validate_bootstrap_storage_operations(
             operation,
             &mut storage,
             &mut region,
-            &mut context_stack,
+            &mut context_stacks,
+            &authority.kernel_context,
         )? {
             continue;
         }
@@ -1435,14 +1501,15 @@ fn validate_bootstrap_storage_operations(
         validate_bootstrap_storage_operation(operation, &mut storage, &mut region)?;
     }
     authority.complete()?;
-    validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref(), context_stack.as_ref())
+    validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref(), &context_stacks)
 }
 
 fn validate_kernel_context_storage_operation(
     operation: &SystemsOperation,
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
-    context_stack: &mut Option<BootstrapRegion>,
+    context_stacks: &mut Vec<BootstrapRegion>,
+    state: &BootstrapKernelContextState,
 ) -> Result<bool, SystemsModelError> {
     match operation {
         SystemsOperation::CreateKernelContext => {
@@ -1455,16 +1522,16 @@ fn validate_kernel_context_storage_operation(
             if stack.byte_count() != 16_384
                 || stack.alignment_bytes() != 16
                 || stack.placement() != crate::BootstrapStoragePlacement::BootstrapReclaimable
-                || context_stack.replace(stack).is_some()
             {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
                     "the initial kernel context requires one 16 KiB, 16-byte-aligned bootstrap-reclaimable stack",
                 ));
             }
+            context_stacks.push(stack);
         }
         SystemsOperation::TransferKernelContext => {
-            if context_stack.is_none() {
+            if context_stacks.is_empty() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
                     "kernel-context transfer requires one live suspended context stack",
@@ -1472,12 +1539,23 @@ fn validate_kernel_context_storage_operation(
             }
         }
         SystemsOperation::ReclaimKernelContext => {
-            storage.release(context_stack.take().ok_or_else(|| {
-                SystemsModelError::new(
+            let index = match state {
+                BootstrapKernelContextState::TerminalReclaimed => 1,
+                BootstrapKernelContextState::Reclaimed => 0,
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context reclaim requires one completed context stack",
+                    ));
+                }
+            };
+            if context_stacks.len() <= index {
+                return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context reclaim requires one completed context stack",
-                )
-            })?)?;
+                    "kernel-context reclaim requires its owned context stack",
+                ));
+            }
+            storage.release(context_stacks.remove(index))?;
         }
         _ => return Ok(false),
     }
@@ -1546,7 +1624,7 @@ fn validate_bootstrap_storage_operation(
 fn validate_bootstrap_owned_completion(
     region: Option<&BootstrapRegion>,
     atomic: Option<&AtomicWordLocation>,
-    context_stack: Option<&BootstrapRegion>,
+    context_stacks: &[BootstrapRegion],
 ) -> Result<(), SystemsModelError> {
     if region.is_some() {
         return Err(SystemsModelError::new(
@@ -1560,7 +1638,7 @@ fn validate_bootstrap_owned_completion(
             "bootstrap handler consumes its context while an atomic location remains live",
         ));
     }
-    if context_stack.is_some() {
+    if !context_stacks.is_empty() {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
             "bootstrap handler consumes its context while a suspended or completed kernel context remains live",
@@ -1586,7 +1664,7 @@ pub fn model_systems_transitions(
     )?;
     let mut region: Option<BootstrapRegion> = None;
     let mut atomic: Option<AtomicWordLocation> = None;
-    let mut context_stack: Option<BootstrapRegion> = None;
+    let mut context_stacks: Vec<BootstrapRegion> = Vec::new();
     let mut critical_stack = Vec::new();
     let mut next_critical_identity = 1_u64;
     let mut local_notification =
@@ -1633,9 +1711,10 @@ pub fn model_systems_transitions(
         if model_kernel_context_transition(
             operation,
             &program.kernel_thread.handler,
+            &program.terminal_thread.handler,
             &mut storage,
             &mut region,
-            &mut context_stack,
+            &mut context_stacks,
             &mut kernel_context_state,
             &mut transitions,
         )? {
@@ -1659,78 +1738,150 @@ pub fn model_systems_transitions(
 #[allow(clippy::too_many_arguments)]
 fn model_kernel_context_transition(
     operation: &SystemsOperation,
-    handler: &SystemsHandler,
+    cooperative_handler: &SystemsHandler,
+    terminal_handler: &SystemsHandler,
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
-    context_stack: &mut Option<BootstrapRegion>,
+    context_stacks: &mut Vec<BootstrapRegion>,
     state: &mut BootstrapKernelContextState,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
         SystemsOperation::CreateKernelContext => {
-            *context_stack = Some(region.take().ok_or_else(|| {
+            context_stacks.push(region.take().ok_or_else(|| {
                 SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
                     "kernel-context model requires one live stack region",
                 )
             })?);
-            *state = BootstrapKernelContextState::Suspended;
-            transitions.push(SystemsTransition::CreateKernelContext {
-                context_identity: 1,
-            });
-        }
-        SystemsOperation::TransferKernelContext => {
-            if context_stack.is_none() || *state != BootstrapKernelContextState::Suspended {
-                return Err(SystemsModelError::new(
-                    "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires one matching suspended worker",
-                ));
-            }
-            transitions.extend([
-                SystemsTransition::TransferKernelContext {
-                    context_identity: 1,
-                    caller_identity: 1,
-                },
-                SystemsTransition::EnterKernelThread {
-                    context_identity: 1,
-                },
-            ]);
-            for handler_operation in &handler.operations {
-                let SystemsOperation::ConsoleWrite { text } = handler_operation else {
+            let context_identity = context_stacks.len() as u64;
+            *state = match *state {
+                BootstrapKernelContextState::Fresh => {
+                    BootstrapKernelContextState::CooperativeCreated
+                }
+                BootstrapKernelContextState::CooperativeCreated => {
+                    BootstrapKernelContextState::BothSuspended
+                }
+                _ => {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-thread model admits only its entry marker before retirement",
+                        "kernel-context model creates exactly two worker contexts",
+                    ));
+                }
+            };
+            transitions.push(SystemsTransition::CreateKernelContext { context_identity });
+        }
+        SystemsOperation::TransferKernelContext => match *state {
+            BootstrapKernelContextState::BothSuspended => {
+                let [
+                    SystemsOperation::ConsoleWrite { text: entered },
+                    SystemsOperation::TransferKernelContext,
+                    SystemsOperation::ConsoleWrite { .. },
+                ] = cooperative_handler.operations.as_slice()
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "cooperative handler must enter, hand back once, and resume",
                     ));
                 };
-                transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
+                transitions.extend([
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 1,
+                        caller_identity: 1,
+                    },
+                    SystemsTransition::EnterKernelThread {
+                        context_identity: 1,
+                    },
+                    SystemsTransition::ConsoleWrite {
+                        text: entered.clone(),
+                    },
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 0,
+                        caller_identity: 2,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
+                ]);
+                *state = BootstrapKernelContextState::CooperativeYielded;
             }
-            if handler.disposition != SystemsDisposition::RetireKernelContextToCaller {
+            BootstrapKernelContextState::CooperativeYielded => {
+                let [SystemsOperation::ConsoleWrite { text }] =
+                    terminal_handler.operations.as_slice()
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "terminal handler must write its entry marker before retirement",
+                    ));
+                };
+                transitions.extend([
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 2,
+                        caller_identity: 3,
+                    },
+                    SystemsTransition::EnterKernelThread {
+                        context_identity: 2,
+                    },
+                    SystemsTransition::ConsoleWrite { text: text.clone() },
+                    SystemsTransition::RetireKernelContextToCaller {
+                        context_identity: 2,
+                        caller_identity: 3,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                ]);
+                *state = BootstrapKernelContextState::TerminalCompleted;
+            }
+            BootstrapKernelContextState::TerminalReclaimed => {
+                let [_, _, SystemsOperation::ConsoleWrite { text }] =
+                    cooperative_handler.operations.as_slice()
+                else {
+                    unreachable!("validated cooperative handler shape")
+                };
+                transitions.extend([
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 1,
+                        caller_identity: 4,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                    SystemsTransition::ConsoleWrite { text: text.clone() },
+                    SystemsTransition::RetireKernelContextToCaller {
+                        context_identity: 1,
+                        caller_identity: 4,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                ]);
+                *state = BootstrapKernelContextState::CooperativeCompleted;
+            }
+            _ => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel thread must retire to its suspended caller",
+                    "kernel-context model requires cooperative, terminal, cooperative FIFO order",
                 ));
             }
-            transitions.extend([
-                SystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 1,
-                    caller_identity: 1,
-                },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
-            ]);
-            *state = BootstrapKernelContextState::Completed;
-        }
+        },
         SystemsOperation::ReclaimKernelContext => {
-            let stack = context_stack.take().ok_or_else(|| {
-                SystemsModelError::new(
+            let (stack_index, context_identity, next_state) = match *state {
+                BootstrapKernelContextState::TerminalCompleted => {
+                    (1, 2, BootstrapKernelContextState::TerminalReclaimed)
+                }
+                BootstrapKernelContextState::CooperativeCompleted => {
+                    (0, 1, BootstrapKernelContextState::Reclaimed)
+                }
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context reclaim requires one completed worker stack",
+                    ));
+                }
+            };
+            if context_stacks.len() <= stack_index {
+                return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context reclaim requires one completed worker stack",
-                )
-            })?;
+                    "kernel-context reclaim lost its owned worker stack",
+                ));
+            }
+            let stack = context_stacks.remove(stack_index);
             storage.release(stack)?;
-            *state = BootstrapKernelContextState::Reclaimed;
-            transitions.push(SystemsTransition::ReclaimKernelContext {
-                context_identity: 1,
-            });
+            *state = next_state;
+            transitions.push(SystemsTransition::ReclaimKernelContext { context_identity });
         }
         _ => return Ok(false),
     }
@@ -2315,9 +2466,15 @@ mod tests {
         deadline_effects.sort();
         let mut kernel_thread_effects = vec![
             SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];
         kernel_thread_effects.sort();
+        let mut terminal_thread_effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
+        ];
+        terminal_thread_effects.sort();
         SystemsProgram {
             target,
             bootstrap_storage: BootstrapStorageDescriptor {
@@ -2357,9 +2514,26 @@ mod tests {
                             },
                         },
                         SystemsOperation::CreateKernelContext,
+                        SystemsOperation::BootstrapAllocate {
+                            request: BootstrapStorageRequest {
+                                byte_count: 16_384,
+                                alignment_bytes: 16,
+                                placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                            },
+                        },
+                        SystemsOperation::CreateKernelContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
-                            text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                        },
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+                        },
+                        SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
                     ],
@@ -2408,11 +2582,29 @@ mod tests {
                 handler: SystemsHandler {
                     name: "kernel-thread".into(),
                     context: SystemsContextKind::KernelThread,
-                    operations: vec![SystemsOperation::ConsoleWrite {
-                        text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
-                    }],
+                    operations: vec![
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                        },
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                        },
+                    ],
                     disposition: SystemsDisposition::RetireKernelContextToCaller,
                     effects: kernel_thread_effects,
+                },
+            },
+            terminal_thread: SystemsEntry {
+                kind: SystemsEntryKind::ResumedKernelThread,
+                handler: SystemsHandler {
+                    name: "terminal-thread".into(),
+                    context: SystemsContextKind::KernelThread,
+                    operations: vec![SystemsOperation::ConsoleWrite {
+                        text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+                    }],
+                    disposition: SystemsDisposition::RetireKernelContextToCaller,
+                    effects: terminal_thread_effects,
                 },
             },
         }
@@ -2449,7 +2641,7 @@ mod tests {
                 | SystemsOperation::TransferKernelContext
                 | SystemsOperation::ReclaimKernelContext => false,
                 SystemsOperation::ConsoleWrite { text }
-                    if text == "TOPAL_KERNEL_CONTEXT_RESUMED" =>
+                    if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
                 {
                     false
                 }
@@ -2514,6 +2706,16 @@ mod tests {
                 SystemsTransition::CreateKernelContext {
                     context_identity: 1,
                 },
+                SystemsTransition::AllocateBootstrapRegion {
+                    request: BootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                SystemsTransition::CreateKernelContext {
+                    context_identity: 2,
+                },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 1,
@@ -2522,15 +2724,52 @@ mod tests {
                     context_identity: 1,
                 },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
                 },
-                SystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 1,
-                    caller_identity: 1,
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 0,
+                    caller_identity: 2,
                 },
                 SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 3,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 2,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+                },
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 3,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+                },
+                SystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 1,
+                    caller_identity: 4,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                },
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 1,
+                    caller_identity: 4,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
@@ -2688,11 +2927,18 @@ mod tests {
     fn kernel_context_requires_create_transfer_retirement_and_reclaim() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-CONTEXT-001.
         let mut missing_reclaim = program(SystemsDisposition::Resume);
+        let final_reclaim = missing_reclaim
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .rposition(|operation| matches!(operation, SystemsOperation::ReclaimKernelContext))
+            .unwrap();
         missing_reclaim
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::ReclaimKernelContext));
+            .remove(final_reclaim);
         refresh_bootstrap_effects(&mut missing_reclaim);
         assert_eq!(
             validate_systems_program(&missing_reclaim).unwrap_err().code,
@@ -2731,6 +2977,7 @@ mod tests {
             text: "wrong".into(),
         };
         wrong_handler.kernel_thread.handler.effects = vec![
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];
