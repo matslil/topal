@@ -202,6 +202,17 @@ and shall add no provider symbol, call, relocation, instruction, or run queue.
 Artifact evidence shall retain every queue transition and prove the provider
 operation and undefined-dependency sets are unchanged.
 
+The deadline-preemption increment shall check one atomic
+context/deadline/dispatcher binding, one sealed worker preemption region, one
+preempting deadline disposition, affine extraction and re-enqueue of the
+interrupted worker, and later restoration before retirement and reclamation.
+The x86-64 provider shall privately arm the qualified event, retain the saved
+interrupt continuation in the bound context, restore the exact dispatcher,
+and resume through the retained interrupt return only after source selects that
+context again. Structural and pinned-QEMU evidence shall prove this causal
+order without exposing interrupt frames, registers, stack pointers, vectors,
+routes, or scheduler selection to source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

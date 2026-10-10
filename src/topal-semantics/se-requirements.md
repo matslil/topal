@@ -64,6 +64,14 @@ capacity two and cooperative/terminal/cooperative selection while negative
 tests cover zero capacity, full, empty, duplicate or mismatched ownership, and
 nonempty consumption.
 
+The deadline-preemption model shall bind one selected suspended context, one
+same-clock deadline event, and one exact dispatcher. It shall produce an affine
+preempted-transfer result only after event completion and dispatcher
+resumption, permit its suspended context to be taken once and re-enqueued, and
+restore the exact interrupted continuation only when source selects it again.
+It shall reject mismatched identities, wrong order, repeated take or restore,
+and completion with any live transfer obligation.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
