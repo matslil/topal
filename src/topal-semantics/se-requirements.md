@@ -50,6 +50,13 @@ operation. It shall reject forgery, wrong context, escaped affine resources,
 invalid state transitions, insufficient ordering, plain/atomic conflicts, and
 unsupported providers deterministically.
 
+The cooperative context model shall retain two disjoint stack and context
+identities, distinguish the first suspended handoff from terminal retirement,
+enforce source-selected cooperative/terminal/cooperative FIFO order, and
+require both terminal stacks to be reclaimed. It shall reject wrong entry
+protocol, repeated handoff, retirement with live obligations, wrong order, and
+completion with a live context.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target

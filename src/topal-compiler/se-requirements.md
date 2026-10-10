@@ -184,6 +184,16 @@ evidence shall retain entry on the distinct stack and caller resumption without
 exposing registers, stack pointers, frame layouts, continuation addresses, or
 instructions to source.
 
+The cooperative context increment shall check two disjoint 16 KiB stacks, one
+handoff-once entry, one terminal entry, statically refined suspended and
+retired results, source-selected cooperative/terminal/cooperative FIFO order,
+and consuming reclamation of both stacks. The x86-64 provider shall keep two
+private context records, save either dispatcher or worker state according to
+the opaque transfer state, and generate both typed worker roots. Structural
+and pinned-QEMU evidence shall prove the handoff, intervening terminal worker,
+cooperative resumption, both retirements, and both reclamations without a
+provider-owned run queue.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
