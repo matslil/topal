@@ -23,10 +23,11 @@ use topal_language::compiler::{
     SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
     SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
-    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, model_systems_transitions,
+    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    model_systems_transitions,
 };
 
 use crate::artifact::sha256;
@@ -37,8 +38,8 @@ use crate::{
     X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
-    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
-    X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+    X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
@@ -46,8 +47,8 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/9";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/9";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/10";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/10";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -57,7 +58,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 23] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 24] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -78,6 +79,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 23] = [
     X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+    X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -594,6 +596,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
         X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
         X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
+        X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -690,6 +693,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
             X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
         ),
+        (
+            SYSTEMS_MONOTONIC_CLOCK_NOW,
+            X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+        ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -763,6 +770,7 @@ enum ProviderSymbol {
     SendLocalNotification,
     WaitLocalNotification,
     CompleteLocalNotification,
+    ObserveMonotonicClock,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -790,6 +798,7 @@ impl ProviderSymbol {
             Self::SendLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
             Self::WaitLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
             Self::CompleteLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+            Self::ObserveMonotonicClock => X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -818,6 +827,7 @@ impl ProviderSymbol {
             | Self::SendLocalNotification
             | Self::WaitLocalNotification
             | Self::CompleteLocalNotification
+            | Self::ObserveMonotonicClock
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -883,6 +893,7 @@ struct RootEncoder {
     bootstrap_region_offset: Option<u64>,
     atomic_word_offset: Option<u64>,
     local_notification: RootLocalNotificationState,
+    monotonic_observations: u8,
     role: RootRole,
 }
 
@@ -943,6 +954,7 @@ struct ProviderSymbols {
     send_local_notification: SymbolId,
     wait_local_notification: SymbolId,
     complete_local_notification: SymbolId,
+    observe_monotonic_clock: SymbolId,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -1325,6 +1337,12 @@ impl RootEncoder {
                     .into(),
             ));
         }
+        if self.role == RootRole::BootstrapWithLocalNotification && self.monotonic_observations != 2
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without exactly two monotonic-clock observations".into(),
+            ));
+        }
         if matches!(
             self.translation,
             RootTranslationState::Update
@@ -1594,6 +1612,23 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn observe_monotonic_clock(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.local_notification != RootLocalNotificationState::Completed
+            || self.monotonic_observations >= 2
+        {
+            return Err(CompileError::Tool(
+                "x86 monotonic-clock observation requires the completed local-notification lifecycle and its sealed two-read sequence".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(24)?;
+        self.call(ProviderSymbol::ObserveMonotonicClock);
+        self.bytes.extend_from_slice(&[0x85, 0xc9]); // test provider status in ecx
+        self.jump_to_fatal_if(0x84)?;
+        self.monotonic_observations += 1;
+        Ok(())
+    }
+
     fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
         self.rip_relative_storage(storage_offset, 0)
@@ -1684,6 +1719,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::AtomicWordEnd
                     | CompilerSystemsOperation::SendLocalNotification
                     | CompilerSystemsOperation::WaitLocalNotification
+                    | CompilerSystemsOperation::ObserveMonotonicClock
                     | CompilerSystemsOperation::BootstrapRelease
             )
         })
@@ -1754,6 +1790,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         complete_local_notification: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::CompleteLocalNotification,
+        ),
+        observe_monotonic_clock: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ObserveMonotonicClock,
         ),
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
@@ -1930,6 +1970,9 @@ fn encode_operations(
             CompilerSystemsOperation::CompleteLocalNotification => {
                 encoder.complete_local_notification()?;
             }
+            CompilerSystemsOperation::ObserveMonotonicClock => {
+                encoder.observe_monotonic_clock()?;
+            }
         }
     }
     encoder.complete()
@@ -1989,6 +2032,7 @@ fn append_root(
             ProviderSymbol::CompleteLocalNotification => {
                 provider_symbols.complete_local_notification
             }
+            ProviderSymbol::ObserveMonotonicClock => provider_symbols.observe_monotonic_clock,
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -2135,6 +2179,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::CompleteLocalNotificationInterrupt { .. }
                 | CompilerSystemsTransition::ResumeLocalNotificationInterrupt { .. }
                 | CompilerSystemsTransition::EndLocalNotificationWait { .. }
+                | CompilerSystemsTransition::ObserveMonotonicClock { .. }
                 | CompilerSystemsTransition::EndAtomicWord
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }
@@ -2229,7 +2274,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 340);
+        assert_eq!(relocation_targets.len(), 366);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -2250,6 +2295,13 @@ mod tests {
                 1
             );
         }
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL)
+                .count(),
+            2
+        );
         for target in [
             X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
             X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
@@ -2290,21 +2342,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            286
+            306
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            8
+            10
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            23
+            25
         );
         assert_eq!(
             relocation_targets
@@ -2364,8 +2416,8 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            5,
-            "root must derive opaque storage for three atomic operations plus notification send/wait"
+            7,
+            "root must derive opaque storage for three atomic operations, notification send/wait, and two clock observations"
         );
         assert!(
             root_bytes
@@ -2432,6 +2484,7 @@ mod tests {
                 "topal_x86_systems_local_notification_send",
                 "topal_x86_systems_local_notification_wait",
                 "topal_x86_systems_local_notification_complete",
+                "topal_x86_systems_monotonic_clock_now",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -2442,7 +2495,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)] // The complete 55-transition artifact trace is one structural audit.
+    #[allow(clippy::too_many_lines)] // The complete 58-transition artifact trace is one structural audit.
     fn publishes_one_closed_freestanding_artifact_directory() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
         let tools = LlvmTools::discover(None).unwrap();
@@ -2469,10 +2522,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 33);
+        assert_eq!(decoded.placements.len(), 34);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 55);
+        assert_eq!(decoded.semantic_trace.len(), 58);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -2542,7 +2595,10 @@ mod tests {
         );
         assert!(decoded.semantic_trace[52].starts_with(SYSTEMS_LOCAL_NOTIFICATION_WAIT));
         assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[54].starts_with(SYSTEMS_FATAL));
+        assert_eq!(decoded.semantic_trace[54], SYSTEMS_MONOTONIC_CLOCK_NOW);
+        assert_eq!(decoded.semantic_trace[55], SYSTEMS_MONOTONIC_CLOCK_NOW);
+        assert!(decoded.semantic_trace[56].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

@@ -322,6 +322,15 @@ typed results, ordering constraints, and trace identities. Portable code shall
 remain deterministic absent such an input or effect. Compilers shall not
 invent, discard, merge, or speculate a required observation.
 
+The initial systems time increment shall borrow one qualified provider-created
+monotonic clock through an admitted processor context. Each `now` shall return
+an immutable instant retaining that exact clock identity and shall record a
+distinct ordered observation. Accepted observations from one clock shall not
+decrease. Counter representation, address, register, instruction, frequency,
+calibration, enablement, and wrap state shall remain provider-private; wall
+clock, timer delivery, deadlines, periodic release, suspend, migration, SMP,
+and physical timing guarantees remain unavailable.
+
 ## TOPAL-REQ-SYSTEMS-MACHINE-001 — Sealed semantic machine providers
 
 Privileged operations shall be closed provider functions whose semantic state

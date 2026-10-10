@@ -23,6 +23,7 @@ records, not this directory alone, define language meaning.
 - [Local-interrupt critical-scope contract](local-interrupt-critical-scope.md)
 - [Atomic-word location contract](atomic-word-location.md)
 - [Local-notification interrupt contract](local-notification-interrupt.md)
+- [Monotonic-clock observation contract](monotonic-clock-observation.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

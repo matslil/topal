@@ -13,7 +13,8 @@ use crate::{
     plan_x86_64_systems_provider,
 };
 
-pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str = "topal.provider-object.x86_64-qemu-pc-q35/9";
+pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
+    "topal.provider-object.x86_64-qemu-pc-q35/10";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -47,6 +48,7 @@ pub const X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL: &str =
     "topal_x86_systems_local_notification_wait";
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL: &str =
     "topal_x86_systems_local_notification_complete";
+pub const X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL: &str = "topal_x86_systems_monotonic_clock_now";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -147,6 +149,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_critical_functions(&mut object, text);
     append_atomic_functions(&mut object, text);
     append_local_notification_functions(&mut object, text);
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+        &monotonic_clock_now()?,
+    );
     append_function(
         &mut object,
         text,
@@ -308,6 +316,56 @@ fn local_notification_complete() -> Vec<u8> {
     code.extend_from_slice(&[0xc7, 0x00, 0x00, 0x00, 0x00, 0x00]); // EOI = 0
     code.extend_from_slice(&[0xc6, 0x07, 0x01, 0xc3]); // completion flag = 1; ret
     code
+}
+
+fn monotonic_clock_now() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // test provider-private state address
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x40, 0xf6, 0xc7, 0x07]); // test dil, 7
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0xb8]); // r8 = HPET MMIO base
+    code.bytes(&0x0000_0000_fed0_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x8b, 0x00]); // general capabilities
+    code.bytes(&[0xa9, 0x00, 0x20, 0x00, 0x00]); // require a 64-bit main counter
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x89, 0xc2, 0x48, 0xc1, 0xea, 0x20]);
+    code.bytes(&[0x81, 0xfa, 0x80, 0x96, 0x98, 0x00]); // Q35 HPET: 10 ns period
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x40, 0x10]); // general configuration
+    code.bytes(&[0x48, 0x83, 0xc8, 0x01]); // enable main counter
+    code.bytes(&[0x49, 0x89, 0x40, 0x10]);
+    code.bytes(&[0x49, 0x8b, 0x80, 0xf0, 0x00, 0x00, 0x00]); // raw counter
+    code.bytes(&[0x80, 0x7f, 0x10, 0x00]); // initialized?
+    code.jump_if(0x85, "subsequent");
+    code.bytes(&[0x48, 0x89, 0x07]); // retain raw low word
+    code.bytes(&[0x31, 0xd2]); // first epoch is zero
+    code.bytes(&[0x48, 0x89, 0x57, 0x08]);
+    code.bytes(&[0xc6, 0x47, 0x10, 0x01]);
+    code.jump("success");
+
+    code.bind("subsequent")?;
+    code.bytes(&[0x48, 0x8b, 0x57, 0x08]); // retained wrap epoch
+    code.bytes(&[0x48, 0x3b, 0x07]); // unsigned raw >= previous raw
+    code.jump_if(0x83, "retain");
+    code.bytes(&[0x4c, 0x8b, 0x0f]); // a decrease is only a qualified boundary wrap
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0xc000_0000_0000_0000_u64.to_le_bytes());
+    code.bytes(&[0x4d, 0x39, 0xd1]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x4000_0000_0000_0000_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x48, 0x83, 0xc2, 0x01]); // extend a 64-bit wrap
+    code.jump_if(0x82, "fail");
+    code.bind("retain")?;
+    code.bytes(&[0x48, 0x89, 0x07, 0x48, 0x89, 0x57, 0x08]);
+    code.bind("success")?;
+    code.bytes(&[0xb9, 0x01, 0x00, 0x00, 0x00, 0xc3]); // rcx = success
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc9, 0xc3]);
+    code.finish()
 }
 
 fn atomic_word_create() -> Vec<u8> {
@@ -649,6 +707,9 @@ fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x89, 0x04, 0xcf]);
     code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
     code.jump_if(0x85, "leaves");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fec0_009b_u64.to_le_bytes()); // HPET 2 MiB MMIO leaf
+    code.bytes(&[0x49, 0x89, 0x82, 0xb0, 0x0f, 0x00, 0x00]); // PDE[502]
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&0x0000_0000_fee0_009b_u64.to_le_bytes()); // APIC 2 MiB MMIO leaf
     code.bytes(&[0x49, 0x89, 0x82, 0xb8, 0x0f, 0x00, 0x00]); // PDE[503]
@@ -1149,6 +1210,11 @@ mod tests {
         assert!(
             builder
                 .windows(8)
+                .any(|bytes| { bytes == 0x0000_0000_fec0_009b_u64.to_le_bytes() })
+        );
+        assert!(
+            builder
+                .windows(8)
                 .any(|bytes| { bytes == 0x0000_0000_fee0_009b_u64.to_le_bytes() })
         );
         assert!(
@@ -1176,6 +1242,32 @@ mod tests {
             complete
                 .windows(8)
                 .any(|bytes| bytes == 0xfee0_00b0_u64.to_le_bytes())
+        );
+        let clock = symbol_bytes(&file, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL);
+        assert!(
+            clock
+                .windows(8)
+                .any(|bytes| bytes == 0x0000_0000_fed0_0000_u64.to_le_bytes())
+        );
+        assert!(
+            clock
+                .windows(6)
+                .any(|bytes| bytes == [0x81, 0xfa, 0x80, 0x96, 0x98, 0x00])
+        );
+        assert!(
+            clock
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x8b, 0x80, 0xf0, 0, 0, 0])
+        );
+        assert!(
+            clock
+                .windows(8)
+                .any(|bytes| bytes == 0xc000_0000_0000_0000_u64.to_le_bytes())
+        );
+        assert!(
+            clock
+                .windows(8)
+                .any(|bytes| bytes == 0x4000_0000_0000_0000_u64.to_le_bytes())
         );
 
         let activator = file
