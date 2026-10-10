@@ -135,12 +135,14 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the thirteen ordered serial markers. The generated real-mode adapter
+and waits for the fifteen ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
 provider's one-frame selector succeeds, and the root establishes and releases
-its affine extent. The harness
+its affine extent. The final two markers prove that the generated root transfers
+onto a distinct kernel-thread stack, retires back to the exact suspended caller,
+and reclaims the completed stack authority. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
