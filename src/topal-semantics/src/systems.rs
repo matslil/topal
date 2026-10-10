@@ -12,14 +12,15 @@ use crate::{
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, TranslationEditKind,
-    TranslationMappingRequest, TranslationUpdateRequest,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
+    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -54,6 +55,7 @@ pub enum SystemsEntryKind {
     SynchronousExceptionDebugBreak,
     ExternalInterruptLocalNotification,
     ExternalInterruptDeadline,
+    ResumedKernelThread,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -62,6 +64,7 @@ pub enum SystemsContextKind {
     DebugBreak,
     LocalNotificationInterrupt,
     DeadlineInterrupt,
+    KernelThread,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -164,6 +167,9 @@ pub enum SystemsOperation {
     ArmDeadline,
     WaitDeadline,
     CompleteDeadline,
+    CreateKernelContext,
+    TransferKernelContext,
+    ReclaimKernelContext,
 }
 
 impl SystemsOperation {
@@ -205,6 +211,9 @@ impl SystemsOperation {
             Self::ArmDeadline => SYSTEMS_DEADLINE_ARM,
             Self::WaitDeadline => SYSTEMS_DEADLINE_WAIT,
             Self::CompleteDeadline => SYSTEMS_DEADLINE_COMPLETE,
+            Self::CreateKernelContext => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
         }
     }
 }
@@ -212,6 +221,7 @@ impl SystemsOperation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsDisposition {
     Resume,
+    RetireKernelContextToCaller,
     Fatal { message: String },
 }
 
@@ -226,6 +236,7 @@ impl SystemsDisposition {
                 SYSTEMS_RESUME_DEADLINE
             }
             Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+            Self::RetireKernelContextToCaller => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
     }
@@ -254,6 +265,7 @@ pub struct SystemsProgram {
     pub debug_break: SystemsEntry,
     pub local_notification: SystemsEntry,
     pub deadline_notification: SystemsEntry,
+    pub kernel_thread: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -359,6 +371,26 @@ pub enum SystemsTransition {
     EndDeadlineWait {
         event_identity: u64,
     },
+    CreateKernelContext {
+        context_identity: u64,
+    },
+    TransferKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+    },
+    EnterKernelThread {
+        context_identity: u64,
+    },
+    RetireKernelContextToCaller {
+        context_identity: u64,
+        caller_identity: u64,
+    },
+    ResumeKernelContextCaller {
+        caller_identity: u64,
+    },
+    ReclaimKernelContext {
+        context_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -462,6 +494,12 @@ impl SystemsTransition {
             Self::EnterDeadlineInterrupt { .. } => "topal.systems.entry.external.deadline/1",
             Self::CompleteDeadlineInterrupt { .. } => SYSTEMS_DEADLINE_COMPLETE,
             Self::ResumeDeadlineInterrupt { .. } => SYSTEMS_RESUME_DEADLINE,
+            Self::CreateKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::TransferKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            Self::EnterKernelThread { .. } => SYSTEMS_KERNEL_THREAD_ENTRY,
+            Self::RetireKernelContextToCaller { .. } => SYSTEMS_KERNEL_CONTEXT_RETIRE,
+            Self::ResumeKernelContextCaller { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -510,11 +548,17 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsEntryKind::ExternalInterruptDeadline,
         SystemsContextKind::DeadlineInterrupt,
     )?;
+    validate_entry(
+        &program.kernel_thread,
+        SystemsEntryKind::ResumedKernelThread,
+        SystemsContextKind::KernelThread,
+    )?;
     let names = [
         &program.bootstrap.handler.name,
         &program.debug_break.handler.name,
         &program.local_notification.handler.name,
         &program.deadline_notification.handler.name,
+        &program.kernel_thread.handler.name,
     ];
     if names
         .iter()
@@ -523,11 +567,12 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, local-notification, and deadline entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline, and kernel-thread entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
     validate_deadline_handler(&program.deadline_notification.handler)?;
+    validate_kernel_thread_handler(&program.kernel_thread.handler)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -585,6 +630,9 @@ fn validate_entry(
                     | SystemsOperation::ConstructDeadline { .. }
                     | SystemsOperation::ArmDeadline
                     | SystemsOperation::WaitDeadline
+                    | SystemsOperation::CreateKernelContext
+                    | SystemsOperation::TransferKernelContext
+                    | SystemsOperation::ReclaimKernelContext
             );
             bootstrap_only
                 || (required_context == SystemsContextKind::DebugBreak
@@ -597,6 +645,8 @@ fn validate_entry(
                     && !matches!(operation, SystemsOperation::CompleteLocalNotification))
                 || (required_context == SystemsContextKind::DeadlineInterrupt
                     && !matches!(operation, SystemsOperation::CompleteDeadline))
+                || (required_context == SystemsContextKind::KernelThread
+                    && !matches!(operation, SystemsOperation::ConsoleWrite { .. }))
         })
     {
         return Err(SystemsModelError::new(
@@ -617,8 +667,17 @@ fn validate_entry(
         | (
             SystemsContextKind::DeadlineInterrupt,
             SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
-        ) => {}
-        (SystemsContextKind::Bootstrap, SystemsDisposition::Resume) => {
+        )
+        | (SystemsContextKind::KernelThread, SystemsDisposition::RetireKernelContextToCaller) => {}
+        (SystemsContextKind::Bootstrap, SystemsDisposition::Resume)
+        | (
+            SystemsContextKind::Bootstrap
+            | SystemsContextKind::DebugBreak
+            | SystemsContextKind::LocalNotificationInterrupt
+            | SystemsContextKind::DeadlineInterrupt,
+            SystemsDisposition::RetireKernelContextToCaller,
+        )
+        | (SystemsContextKind::KernelThread, _) => {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DISPOSITION",
                 "resume is admitted only by a live resumable special-entry context",
@@ -674,6 +733,21 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
     Ok(())
 }
 
+fn validate_kernel_thread_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
+    if handler.operations
+        != [SystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+        }]
+        || handler.disposition != SystemsDisposition::RetireKernelContextToCaller
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-CONTEXT-TRANSFER",
+            "the initial kernel thread must write its entry marker and retire to its caller",
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Default)]
 struct BootstrapAuthorityState {
     memory_described: bool,
@@ -685,6 +759,7 @@ struct BootstrapAuthorityState {
     local_notification: BootstrapLocalNotificationState,
     monotonic_clock_observations: u8,
     deadline: BootstrapDeadlineState,
+    kernel_context: BootstrapKernelContextState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -702,6 +777,15 @@ enum BootstrapDeadlineState {
     Constructed,
     Armed,
     Completed,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapKernelContextState {
+    #[default]
+    Fresh,
+    Suspended,
+    Completed,
+    Reclaimed,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -743,6 +827,9 @@ impl BootstrapAuthorityState {
             return Ok(true);
         }
         if self.observe_deadline(operation)? {
+            return Ok(true);
+        }
+        if self.observe_kernel_context(operation)? {
             return Ok(true);
         }
         match operation {
@@ -985,6 +1072,48 @@ impl BootstrapAuthorityState {
         Ok(true)
     }
 
+    fn observe_kernel_context(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
+            SystemsOperation::CreateKernelContext => {
+                if self.deadline != BootstrapDeadlineState::Completed
+                    || self.kernel_context != BootstrapKernelContextState::Fresh
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context creation requires the completed deadline lifecycle, one restored processor context, and no prior worker",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::Suspended;
+            }
+            SystemsOperation::TransferKernelContext => {
+                if self.kernel_context != BootstrapKernelContextState::Suspended
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context transfer requires one matching suspended worker and no live critical scope",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::Completed;
+            }
+            SystemsOperation::ReclaimKernelContext => {
+                if self.kernel_context != BootstrapKernelContextState::Completed {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context reclaim requires the matching completed transfer",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::Reclaimed;
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
     fn observe_translation(
         &mut self,
         operation: &SystemsOperation,
@@ -1183,6 +1312,12 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires one completed deadline arm/wait lifecycle",
             ));
         }
+        if self.kernel_context != BootstrapKernelContextState::Reclaimed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
+                "bootstrap completion requires one transferred, retired, resumed, and reclaimed kernel context",
+            ));
+        }
         Ok(())
     }
 }
@@ -1278,10 +1413,20 @@ fn validate_bootstrap_storage_operations(
         "systems-program-validation",
     )?;
     let mut region: Option<BootstrapRegion> = None;
+    let mut context_stack: Option<BootstrapRegion> = None;
     let mut atomic: Option<AtomicWordLocation> = None;
     let mut authority = BootstrapAuthorityState::default();
     for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
-        if authority.observe(index, operation)? {
+        let authority_operation = authority.observe(index, operation)?;
+        if validate_kernel_context_storage_operation(
+            operation,
+            &mut storage,
+            &mut region,
+            &mut context_stack,
+        )? {
+            continue;
+        }
+        if authority_operation {
             continue;
         }
         if validate_atomic_operation(operation, &mut storage, &mut region, &mut atomic)? {
@@ -1290,7 +1435,53 @@ fn validate_bootstrap_storage_operations(
         validate_bootstrap_storage_operation(operation, &mut storage, &mut region)?;
     }
     authority.complete()?;
-    validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref())
+    validate_bootstrap_owned_completion(region.as_ref(), atomic.as_ref(), context_stack.as_ref())
+}
+
+fn validate_kernel_context_storage_operation(
+    operation: &SystemsOperation,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    context_stack: &mut Option<BootstrapRegion>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::CreateKernelContext => {
+            let stack = region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context creation requires one live exclusive stack region",
+                )
+            })?;
+            if stack.byte_count() != 16_384
+                || stack.alignment_bytes() != 16
+                || stack.placement() != crate::BootstrapStoragePlacement::BootstrapReclaimable
+                || context_stack.replace(stack).is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "the initial kernel context requires one 16 KiB, 16-byte-aligned bootstrap-reclaimable stack",
+                ));
+            }
+        }
+        SystemsOperation::TransferKernelContext => {
+            if context_stack.is_none() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context transfer requires one live suspended context stack",
+                ));
+            }
+        }
+        SystemsOperation::ReclaimKernelContext => {
+            storage.release(context_stack.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context reclaim requires one completed context stack",
+                )
+            })?)?;
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn validate_bootstrap_storage_operation(
@@ -1355,6 +1546,7 @@ fn validate_bootstrap_storage_operation(
 fn validate_bootstrap_owned_completion(
     region: Option<&BootstrapRegion>,
     atomic: Option<&AtomicWordLocation>,
+    context_stack: Option<&BootstrapRegion>,
 ) -> Result<(), SystemsModelError> {
     if region.is_some() {
         return Err(SystemsModelError::new(
@@ -1366,6 +1558,12 @@ fn validate_bootstrap_owned_completion(
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ATOMIC-LIVE",
             "bootstrap handler consumes its context while an atomic location remains live",
+        ));
+    }
+    if context_stack.is_some() {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
+            "bootstrap handler consumes its context while a suspended or completed kernel context remains live",
         ));
     }
     Ok(())
@@ -1388,6 +1586,7 @@ pub fn model_systems_transitions(
     )?;
     let mut region: Option<BootstrapRegion> = None;
     let mut atomic: Option<AtomicWordLocation> = None;
+    let mut context_stack: Option<BootstrapRegion> = None;
     let mut critical_stack = Vec::new();
     let mut next_critical_identity = 1_u64;
     let mut local_notification =
@@ -1396,6 +1595,7 @@ pub fn model_systems_transitions(
     let mut next_clock_observation_identity = 1_u64;
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
+    let mut kernel_context_state = BootstrapKernelContextState::Fresh;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -1430,6 +1630,17 @@ pub fn model_systems_transitions(
         )? {
             continue;
         }
+        if model_kernel_context_transition(
+            operation,
+            &program.kernel_thread.handler,
+            &mut storage,
+            &mut region,
+            &mut context_stack,
+            &mut kernel_context_state,
+            &mut transitions,
+        )? {
+            continue;
+        }
         if model_bootstrap_operation(
             operation,
             &program.debug_break.handler,
@@ -1443,6 +1654,87 @@ pub fn model_systems_transitions(
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn model_kernel_context_transition(
+    operation: &SystemsOperation,
+    handler: &SystemsHandler,
+    storage: &mut BootstrapStorageState,
+    region: &mut Option<BootstrapRegion>,
+    context_stack: &mut Option<BootstrapRegion>,
+    state: &mut BootstrapKernelContextState,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::CreateKernelContext => {
+            *context_stack = Some(region.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context model requires one live stack region",
+                )
+            })?);
+            *state = BootstrapKernelContextState::Suspended;
+            transitions.push(SystemsTransition::CreateKernelContext {
+                context_identity: 1,
+            });
+        }
+        SystemsOperation::TransferKernelContext => {
+            if context_stack.is_none() || *state != BootstrapKernelContextState::Suspended {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context model requires one matching suspended worker",
+                ));
+            }
+            transitions.extend([
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 1,
+                },
+            ]);
+            for handler_operation in &handler.operations {
+                let SystemsOperation::ConsoleWrite { text } = handler_operation else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-thread model admits only its entry marker before retirement",
+                    ));
+                };
+                transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
+            }
+            if handler.disposition != SystemsDisposition::RetireKernelContextToCaller {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel thread must retire to its suspended caller",
+                ));
+            }
+            transitions.extend([
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
+            ]);
+            *state = BootstrapKernelContextState::Completed;
+        }
+        SystemsOperation::ReclaimKernelContext => {
+            let stack = context_stack.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context reclaim requires one completed worker stack",
+                )
+            })?;
+            storage.release(stack)?;
+            *state = BootstrapKernelContextState::Reclaimed;
+            transitions.push(SystemsTransition::ReclaimKernelContext {
+                context_identity: 1,
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn model_deadline_transition(
@@ -1757,6 +2049,9 @@ fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTran
             });
             true
         }
+        SystemsDisposition::RetireKernelContextToCaller => {
+            unreachable!("debug-break validation rejects kernel-thread retirement")
+        }
     }
 }
 
@@ -1903,6 +2198,11 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CompleteDeadline => {
             unreachable!("deadline-event operations are modeled by the caller")
         }
+        SystemsOperation::CreateKernelContext
+        | SystemsOperation::TransferKernelContext
+        | SystemsOperation::ReclaimKernelContext => {
+            unreachable!("kernel-context operations are modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -1997,6 +2297,10 @@ mod tests {
             SYSTEMS_DEADLINE_WAIT.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
+            SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
+            SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
+            SYSTEMS_KERNEL_CONTEXT_RECLAIM.into(),
         ];
         bootstrap_effects.sort();
         let mut local_notification_effects = vec![
@@ -2009,6 +2313,11 @@ mod tests {
             SYSTEMS_DEADLINE_COMPLETE.into(),
         ];
         deadline_effects.sort();
+        let mut kernel_thread_effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
+        ];
+        kernel_thread_effects.sort();
         SystemsProgram {
             target,
             bootstrap_storage: BootstrapStorageDescriptor {
@@ -2040,6 +2349,19 @@ mod tests {
                         },
                         SystemsOperation::ArmDeadline,
                         SystemsOperation::WaitDeadline,
+                        SystemsOperation::BootstrapAllocate {
+                            request: BootstrapStorageRequest {
+                                byte_count: 16_384,
+                                alignment_bytes: 16,
+                                placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                            },
+                        },
+                        SystemsOperation::CreateKernelContext,
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+                        },
+                        SystemsOperation::ReclaimKernelContext,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -2081,6 +2403,18 @@ mod tests {
                     effects: deadline_effects,
                 },
             },
+            kernel_thread: SystemsEntry {
+                kind: SystemsEntryKind::ResumedKernelThread,
+                handler: SystemsHandler {
+                    name: "kernel-thread".into(),
+                    context: SystemsContextKind::KernelThread,
+                    operations: vec![SystemsOperation::ConsoleWrite {
+                        text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+                    }],
+                    disposition: SystemsDisposition::RetireKernelContextToCaller,
+                    effects: kernel_thread_effects,
+                },
+            },
         }
     }
 
@@ -2103,6 +2437,28 @@ mod tests {
         effects.sort();
         effects.dedup();
         program.bootstrap.handler.effects = effects;
+    }
+
+    fn remove_context_lifecycle(program: &mut SystemsProgram) {
+        program
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| match operation {
+                SystemsOperation::CreateKernelContext
+                | SystemsOperation::TransferKernelContext
+                | SystemsOperation::ReclaimKernelContext => false,
+                SystemsOperation::ConsoleWrite { text }
+                    if text == "TOPAL_KERNEL_CONTEXT_RESUMED" =>
+                {
+                    false
+                }
+                SystemsOperation::BootstrapAllocate { request } if request.byte_count == 16_384 => {
+                    false
+                }
+                _ => true,
+            });
+        refresh_bootstrap_effects(program);
     }
 
     #[test]
@@ -2148,6 +2504,37 @@ mod tests {
                 SystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
                 SystemsTransition::ResumeDeadlineInterrupt { event_identity: 1 },
                 SystemsTransition::EndDeadlineWait { event_identity: 1 },
+                SystemsTransition::AllocateBootstrapRegion {
+                    request: BootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                SystemsTransition::CreateKernelContext {
+                    context_identity: 1,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 1,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_ENTERED".into(),
+                },
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_RESUMED".into(),
+                },
+                SystemsTransition::ReclaimKernelContext {
+                    context_identity: 1,
+                },
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -2159,6 +2546,7 @@ mod tests {
     fn local_notification_requires_matching_wait_completion_and_resume() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-LOCAL-INTERRUPT-001.
         let mut live = program(SystemsDisposition::Resume);
+        remove_context_lifecycle(&mut live);
         live.bootstrap
             .handler
             .operations
@@ -2219,6 +2607,7 @@ mod tests {
     fn monotonic_clock_requires_two_post_interrupt_observations() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001.
         let mut missing = program(SystemsDisposition::Resume);
+        remove_context_lifecycle(&mut missing);
         missing.bootstrap.handler.operations.retain(|operation| {
             !matches!(
                 operation,
@@ -2227,7 +2616,14 @@ mod tests {
                     | SystemsOperation::WaitDeadline
             )
         });
-        missing.bootstrap.handler.operations.pop();
+        let observation = missing
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .rposition(|operation| matches!(operation, SystemsOperation::ObserveMonotonicClock))
+            .unwrap();
+        missing.bootstrap.handler.operations.remove(observation);
         refresh_bootstrap_effects(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -2267,7 +2663,12 @@ mod tests {
         );
 
         let mut missing_wait = program(SystemsDisposition::Resume);
-        missing_wait.bootstrap.handler.operations.pop();
+        remove_context_lifecycle(&mut missing_wait);
+        missing_wait
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::WaitDeadline));
         refresh_bootstrap_effects(&mut missing_wait);
         assert_eq!(
             validate_systems_program(&missing_wait).unwrap_err().code,
@@ -2280,6 +2681,62 @@ mod tests {
         assert_eq!(
             validate_systems_program(&incomplete).unwrap_err().code,
             "E-SYSTEMS-DEADLINE-EVENT"
+        );
+    }
+
+    #[test]
+    fn kernel_context_requires_create_transfer_retirement_and_reclaim() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-CONTEXT-001.
+        let mut missing_reclaim = program(SystemsDisposition::Resume);
+        missing_reclaim
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::ReclaimKernelContext));
+        refresh_bootstrap_effects(&mut missing_reclaim);
+        assert_eq!(
+            validate_systems_program(&missing_reclaim).unwrap_err().code,
+            "E-SYSTEMS-CONTEXT-TRANSFER-LIVE"
+        );
+
+        let mut transfer_before_create = program(SystemsDisposition::Resume);
+        let create = transfer_before_create
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::CreateKernelContext))
+            .unwrap();
+        let transfer = transfer_before_create
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::TransferKernelContext))
+            .unwrap();
+        transfer_before_create
+            .bootstrap
+            .handler
+            .operations
+            .swap(create, transfer);
+        assert_eq!(
+            validate_systems_program(&transfer_before_create)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+
+        let mut wrong_handler = program(SystemsDisposition::Resume);
+        wrong_handler.kernel_thread.handler.operations[0] = SystemsOperation::ConsoleWrite {
+            text: "wrong".into(),
+        };
+        wrong_handler.kernel_thread.handler.effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
+        ];
+        assert_eq!(
+            validate_systems_program(&wrong_handler).unwrap_err().code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
         );
     }
 
