@@ -25,6 +25,7 @@ records, not this directory alone, define language meaning.
 - [Local-notification interrupt contract](local-notification-interrupt.md)
 - [Monotonic-clock observation contract](monotonic-clock-observation.md)
 - [One-shot deadline-event contract](deadline-event.md)
+- [Kernel-context transfer contract](kernel-context-transfer.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -151,6 +151,17 @@ escaped, or incomplete lifecycles. Timer, comparator, routing, vector,
 controller, acknowledgement, wait, frame, and return mechanics shall remain
 outside the common model.
 
+The first context-transfer increment shall model consuming one checked
+exclusive region into one suspended initial kernel context, consuming transfer
+of the running bootstrap context to that worker, terminal retirement only with
+no live worker obligation, exact caller resumption, and consuming reclamation
+of the retired worker and stack. It shall retain processor, stack, thread,
+entry, address-space, and extended-state-policy identities and reject wrong-
+processor, wrong-entry, duplicate, escaped, use-after-transfer, incomplete, or
+ordinary-return lifecycles. Register sets, stack pointers, frame layouts,
+continuation addresses, and save/restore instructions shall remain outside the
+common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

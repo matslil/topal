@@ -40,6 +40,8 @@ one `lang systems synchronous-exception-entry`, and whose
 `local-notification` member is one `lang systems external-interrupt-entry`.
 It SHALL also contain exactly one `deadline-notification` member constructed as
 one `lang systems external-interrupt-entry`.
+It SHALL also contain exactly one `kernel-thread` member constructed as one
+`lang systems resumed-thread-entry`.
 The storage constructor SHALL
 contain exactly positive `capacity-bytes` and `alignment-bytes` natural-number
 fields. Alignment SHALL be a power of two and SHALL NOT exceed capacity. The
@@ -49,11 +51,15 @@ bootstrap entry SHALL have one handler from `BootstrapContext` to
 entry SHALL have one handler from `LocalNotificationInterruptContext` to
 `LocalNotificationInterruptDisposition`; and the deadline-notification entry
 SHALL have one handler from `DeadlineInterruptContext InitialMonotonicClock` to
-`DeadlineInterruptDisposition InitialMonotonicClock`.
+`DeadlineInterruptDisposition InitialMonotonicClock`; and the kernel-thread
+entry SHALL have one handler accepting `KernelThreadContext InitialProcessor`
+and `SuspendedKernelContext InitialProcessor` and producing
+`KernelThreadDisposition InitialProcessor`.
 
 The only admitted initial handler operations SHALL be context-qualified
 `console write`, `debug break`, local-notification completion,
-deadline-notification completion, `resume`, and `fatal`. Console write SHALL
+deadline-notification completion, kernel-context terminal retirement, `resume`,
+and `fatal`. Console write SHALL
 borrow the live board console capability and this increment SHALL accept only a
 static text value. Debug break SHALL borrow the bootstrap context and declare
 one synchronous debug-break observation. Resume SHALL consume one live
@@ -552,6 +558,40 @@ address-space transition, and resume exactly one continuation. It SHALL be
 nonordinary control flow and SHALL NOT expose register slots, stack pointers,
 or continuation instruction addresses to source. User/debug state SHALL use a
 separate validated semantic view.
+
+The initial executable slice SHALL construct exactly one
+`SuspendedKernelContext InitialProcessor` by borrowing the admitted running
+context and consuming one 16 KiB, 16-byte-aligned, bootstrap-reclaimable
+ordinary region plus the static `kernel-thread` entry. Construction SHALL NOT
+run the entry. The suspended context SHALL retain the originating pool,
+region, processor, thread, address-space, entry, and extended-state-policy
+identities without exposing their target representation.
+
+The initial `kernel context transfer` SHALL consume the bootstrap running
+context and that suspended context, suspend the caller at one typed
+continuation, retain the active address-space identity, and resume the worker
+on `InitialProcessor`. Local maskable interrupts SHALL be disabled at the
+transfer boundary. The worker entry SHALL receive its running context and the
+affine suspended caller.
+
+`kernel context retire to caller` SHALL be a terminal worker disposition. It
+SHALL be legal only with no live region, mapping, frame, atomic, critical,
+interrupt, recovery, or cleanup obligation. It SHALL consume the worker and
+suspended caller, mark the worker terminal, and resume exactly that caller.
+The caller SHALL receive one affine `CompletedKernelContextTransfer
+InitialProcessor` owning its restored running authority and the retired
+worker's stack. `kernel context reclaim` SHALL consume that completion, return
+the stack region to its originating monotonic pool, and produce the resumed
+caller context. Use after transfer, duplicate transfer, wrong-processor or
+wrong-entry use, retirement with a live obligation, ordinary worker return,
+and disposition with a live suspended or completed context SHALL be rejected.
+
+This slice SHALL NOT admit involuntary preemption, scheduler policy, run
+queues, priority, timeslicing, blocking, general yield, arbitrary cancellation,
+multiple threads, migration, SMP, address-space switching, user contexts,
+floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
+unwinding across transfer. X86-64, AArch64, and RISC-V register and frame sets
+SHALL remain provider evidence rather than portable source meaning.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

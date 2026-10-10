@@ -64,6 +64,13 @@ deadline-notification-handler is fn (
   completed is context deadline notification complete
   completed resume
 
+kernel-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_ENTERED"
+  context kernel context retire to caller
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
@@ -74,7 +81,8 @@ lang systems artifact (
   local-notification is lang systems external-interrupt-entry
     local-notification-handler,
   deadline-notification is lang systems external-interrupt-entry
-    deadline-notification-handler
+    deadline-notification-handler,
+  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler
 )
 ```
 
@@ -85,7 +93,11 @@ lang systems artifact (
 constructible ordinary values. `bootstrap-entry` specializes `SystemEntry
 Bootstrap`; `synchronous-exception-entry` specializes `SystemEntry
 SynchronousException`; and `external-interrupt-entry` specializes the typed
-local-notification cause used by the first machine qualification.
+local-notification and deadline causes used by the first machine
+qualification. `KernelThreadContext P`, `SuspendedKernelContext P`,
+`CompletedKernelContextTransfer P`, and `KernelThreadDisposition P` are sealed
+affine classifiers, and `resumed-thread-entry` specializes `SystemEntry
+ResumeThread`.
 
 `context console write` borrows the board-provided console session and accepts
 a static text value in this first increment. `context debug break` is a
@@ -374,6 +386,66 @@ interrupt. The first slice admits one `1[ms]` deadline and excludes
 cancellation, rearming, periodic release, scheduler integration, bounded
 latency, rate accuracy, SMP delivery, suspend/migration guarantees, and a
 userspace timer ABI.
+
+### Kernel-context transfer
+
+The initial scheduler-foundation specialization constructs one suspended
+kernel context from one checked exclusive region and one static typed entry:
+
+```topal
+deadline-resumed bootstrap allocate (
+  byte-count is 16384,
+  alignment-bytes is 16,
+  placement is bootstrap-reclaimable
+)
+  Ok stack-region then {
+    worker : SuspendedKernelContext InitialProcessor is
+      deadline-resumed kernel context create (
+        stack is stack-region,
+        entry is kernel-thread
+      )
+    completed : CompletedKernelContextTransfer InitialProcessor is
+      deadline-resumed kernel context transfer worker
+    completed console write "TOPAL_KERNEL_CONTEXT_RESUMED"
+    context-resumed is completed kernel context reclaim
+    context-resumed fatal "toolchain gate complete"
+  }
+  Error problem then {
+    deadline-resumed fatal "kernel context stack allocation failed"
+  }
+```
+
+`kernel context create` borrows the running context and consumes the complete
+stack region into one affine `SuspendedKernelContext InitialProcessor` without
+running its entry. The suspended context owns the stack, saved target state,
+thread identity, active address-space relationship, and declared extended-
+state policy. Source cannot inspect, copy, serialize, widen, or derive an
+address from it.
+
+`kernel context transfer` consumes the running caller and the suspended worker,
+suspends the caller at a typed continuation point, and resumes the worker. It
+is nonordinary control flow. The worker receives its running context and the
+affine suspended caller. Its terminal `kernel context retire to caller`
+disposition is admitted only when the checker proves that the worker has no
+live resource, critical, interrupt, recovery, or cleanup obligation. The
+disposition consumes both contexts, marks the worker terminal, and resumes
+exactly that caller.
+
+The caller resumes with one `CompletedKernelContextTransfer` owning its running
+authority and the retired worker's stack. It may borrow the running console
+capability. `kernel context reclaim` consumes the completion, returns the stack
+to its originating monotonic pool, and yields the resumed caller context. This
+closed terminal operation is not general cancellation.
+
+The x86-64 provider privately constructs and switches a callee-saved frame;
+AArch64 and RISC-V providers use their own qualified state sets. The common
+contract exposes no stack pointer, register, frame layout, continuation
+address, or save/restore instruction. The first slice stays on
+`InitialProcessor`, retains one address space, requires local interrupts masked
+at transfer, and excludes preemption, scheduler policy, run queues, blocking,
+general yield or cancellation, multiple threads, migration, SMP, user
+contexts, extended-state switching, TLS/per-CPU switching, stack growth, and
+unwinding across transfer.
 
 ## External observations and permitted choice
 
