@@ -11,6 +11,8 @@ use topal_language::compiler::{
     SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_CONTEXT_CREATE,
     SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
     SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
@@ -251,6 +253,15 @@ pub fn plan_x86_64_systems_provider(
     ]);
     semantic_identities.sort_unstable();
     semantic_identities.dedup();
+    semantic_identities.retain(|identity| {
+        !matches!(
+            *identity,
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE
+                | SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE
+                | SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE
+                | SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
+        )
+    });
 
     let operations = semantic_identities
         .into_iter()
@@ -418,6 +429,19 @@ mod tests {
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
         assert_eq!(plan.operations.len(), 45);
+        for source_only in [
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+        ] {
+            assert!(
+                plan.operations
+                    .iter()
+                    .all(|operation| operation.semantic_identity != source_only),
+                "source-owned runnable queue must not gain a provider lowering"
+            );
+        }
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820

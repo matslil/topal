@@ -15,6 +15,8 @@ use crate::{
     SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_CONTEXT_CREATE,
     SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
     SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -168,8 +170,14 @@ pub enum SystemsOperation {
     WaitDeadline,
     CompleteDeadline,
     CreateKernelContext,
+    CreateRunnableQueue {
+        capacity: usize,
+    },
+    EnqueueRunnableContext,
+    DequeueRunnableContext,
     TransferKernelContext,
     ReclaimKernelContext,
+    ConsumeEmptyRunnableQueue,
 }
 
 impl SystemsOperation {
@@ -212,8 +220,12 @@ impl SystemsOperation {
             Self::WaitDeadline => SYSTEMS_DEADLINE_WAIT,
             Self::CompleteDeadline => SYSTEMS_DEADLINE_COMPLETE,
             Self::CreateKernelContext => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+            Self::EnqueueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+            Self::DequeueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             Self::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
         }
     }
 }
@@ -375,6 +387,15 @@ pub enum SystemsTransition {
     CreateKernelContext {
         context_identity: u64,
     },
+    CreateRunnableQueue {
+        capacity: usize,
+    },
+    EnqueueRunnableContext {
+        context_identity: u64,
+    },
+    DequeueRunnableContext {
+        context_identity: u64,
+    },
     TransferKernelContext {
         context_identity: u64,
         caller_identity: u64,
@@ -392,6 +413,7 @@ pub enum SystemsTransition {
     ReclaimKernelContext {
         context_identity: u64,
     },
+    ConsumeEmptyRunnableQueue,
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -496,11 +518,15 @@ impl SystemsTransition {
             Self::CompleteDeadlineInterrupt { .. } => SYSTEMS_DEADLINE_COMPLETE,
             Self::ResumeDeadlineInterrupt { .. } => SYSTEMS_RESUME_DEADLINE,
             Self::CreateKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+            Self::EnqueueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+            Self::DequeueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             Self::TransferKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::EnterKernelThread { .. } => SYSTEMS_KERNEL_THREAD_ENTRY,
             Self::RetireKernelContextToCaller { .. } => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             Self::ResumeKernelContextCaller { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -639,7 +665,11 @@ fn validate_entry(
                     | SystemsOperation::ArmDeadline
                     | SystemsOperation::WaitDeadline
                     | SystemsOperation::CreateKernelContext
+                    | SystemsOperation::CreateRunnableQueue { .. }
+                    | SystemsOperation::EnqueueRunnableContext
+                    | SystemsOperation::DequeueRunnableContext
                     | SystemsOperation::ReclaimKernelContext
+                    | SystemsOperation::ConsumeEmptyRunnableQueue
             );
             bootstrap_only
                 || (required_context != SystemsContextKind::KernelThread
@@ -813,11 +843,19 @@ enum BootstrapKernelContextState {
     Fresh,
     CooperativeCreated,
     BothSuspended,
+    QueueCreated,
+    CooperativeEnqueued,
+    BothEnqueued,
+    CooperativeDequeued,
     CooperativeYielded,
+    HandoffEnqueued,
+    TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
+    CooperativeDequeuedAgain,
     CooperativeCompleted,
     Reclaimed,
+    QueueConsumed,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1141,19 +1179,68 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.kernel_context = match self.kernel_context {
-                    BootstrapKernelContextState::BothSuspended => {
+                    BootstrapKernelContextState::CooperativeDequeued => {
                         BootstrapKernelContextState::CooperativeYielded
                     }
-                    BootstrapKernelContextState::CooperativeYielded => {
+                    BootstrapKernelContextState::TerminalDequeued => {
                         BootstrapKernelContextState::TerminalCompleted
                     }
-                    BootstrapKernelContextState::TerminalReclaimed => {
+                    BootstrapKernelContextState::CooperativeDequeuedAgain => {
                         BootstrapKernelContextState::CooperativeCompleted
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
                             "kernel-context transfers must follow cooperative, terminal, cooperative FIFO order",
+                        ));
+                    }
+                };
+            }
+            SystemsOperation::CreateRunnableQueue { capacity } => {
+                if self.kernel_context != BootstrapKernelContextState::BothSuspended
+                    || *capacity != 2
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "the initial runnable queue requires both suspended contexts and capacity two",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::QueueCreated;
+            }
+            SystemsOperation::EnqueueRunnableContext => {
+                self.kernel_context = match self.kernel_context {
+                    BootstrapKernelContextState::QueueCreated => {
+                        BootstrapKernelContextState::CooperativeEnqueued
+                    }
+                    BootstrapKernelContextState::CooperativeEnqueued => {
+                        BootstrapKernelContextState::BothEnqueued
+                    }
+                    BootstrapKernelContextState::CooperativeYielded => {
+                        BootstrapKernelContextState::HandoffEnqueued
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-CONTEXT-TRANSFER",
+                            "runnable enqueue must preserve cooperative, terminal, cooperative FIFO order",
+                        ));
+                    }
+                };
+            }
+            SystemsOperation::DequeueRunnableContext => {
+                self.kernel_context = match self.kernel_context {
+                    BootstrapKernelContextState::BothEnqueued => {
+                        BootstrapKernelContextState::CooperativeDequeued
+                    }
+                    BootstrapKernelContextState::HandoffEnqueued => {
+                        BootstrapKernelContextState::TerminalDequeued
+                    }
+                    BootstrapKernelContextState::TerminalReclaimed => {
+                        BootstrapKernelContextState::CooperativeDequeuedAgain
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-CONTEXT-TRANSFER",
+                            "runnable dequeue must select cooperative, terminal, cooperative FIFO order",
                         ));
                     }
                 };
@@ -1173,6 +1260,15 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
+            }
+            SystemsOperation::ConsumeEmptyRunnableQueue => {
+                if self.kernel_context != BootstrapKernelContextState::Reclaimed {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "runnable queue consumption requires an empty queue and both reclaimed contexts",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::QueueConsumed;
             }
             _ => return Ok(false),
         }
@@ -1377,10 +1473,10 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires one completed deadline arm/wait lifecycle",
             ));
         }
-        if self.kernel_context != BootstrapKernelContextState::Reclaimed {
+        if self.kernel_context != BootstrapKernelContextState::QueueConsumed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
-                "bootstrap completion requires both cooperative contexts to retire and be reclaimed",
+                "bootstrap completion requires both cooperative contexts to be reclaimed and the runnable queue consumed empty",
             ));
         }
         Ok(())
@@ -1538,6 +1634,10 @@ fn validate_kernel_context_storage_operation(
                 ));
             }
         }
+        SystemsOperation::CreateRunnableQueue { .. }
+        | SystemsOperation::EnqueueRunnableContext
+        | SystemsOperation::DequeueRunnableContext
+        | SystemsOperation::ConsumeEmptyRunnableQueue => {}
         SystemsOperation::ReclaimKernelContext => {
             let index = match state {
                 BootstrapKernelContextState::TerminalReclaimed => 1,
@@ -1771,8 +1871,62 @@ fn model_kernel_context_transition(
             };
             transitions.push(SystemsTransition::CreateKernelContext { context_identity });
         }
+        SystemsOperation::CreateRunnableQueue { capacity } => {
+            if *state != BootstrapKernelContextState::BothSuspended || *capacity != 2 {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context model requires capacity two after creating both workers",
+                ));
+            }
+            *state = BootstrapKernelContextState::QueueCreated;
+            transitions.push(SystemsTransition::CreateRunnableQueue {
+                capacity: *capacity,
+            });
+        }
+        SystemsOperation::EnqueueRunnableContext => {
+            let (context_identity, next_state) = match *state {
+                BootstrapKernelContextState::QueueCreated => {
+                    (1, BootstrapKernelContextState::CooperativeEnqueued)
+                }
+                BootstrapKernelContextState::CooperativeEnqueued => {
+                    (2, BootstrapKernelContextState::BothEnqueued)
+                }
+                BootstrapKernelContextState::CooperativeYielded => {
+                    (1, BootstrapKernelContextState::HandoffEnqueued)
+                }
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context model enqueue violates runnable FIFO ownership",
+                    ));
+                }
+            };
+            *state = next_state;
+            transitions.push(SystemsTransition::EnqueueRunnableContext { context_identity });
+        }
+        SystemsOperation::DequeueRunnableContext => {
+            let (context_identity, next_state) = match *state {
+                BootstrapKernelContextState::BothEnqueued => {
+                    (1, BootstrapKernelContextState::CooperativeDequeued)
+                }
+                BootstrapKernelContextState::HandoffEnqueued => {
+                    (2, BootstrapKernelContextState::TerminalDequeued)
+                }
+                BootstrapKernelContextState::TerminalReclaimed => {
+                    (1, BootstrapKernelContextState::CooperativeDequeuedAgain)
+                }
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "kernel-context model dequeue violates runnable FIFO ownership",
+                    ));
+                }
+            };
+            *state = next_state;
+            transitions.push(SystemsTransition::DequeueRunnableContext { context_identity });
+        }
         SystemsOperation::TransferKernelContext => match *state {
-            BootstrapKernelContextState::BothSuspended => {
+            BootstrapKernelContextState::CooperativeDequeued => {
                 let [
                     SystemsOperation::ConsoleWrite { text: entered },
                     SystemsOperation::TransferKernelContext,
@@ -1803,7 +1957,7 @@ fn model_kernel_context_transition(
                 ]);
                 *state = BootstrapKernelContextState::CooperativeYielded;
             }
-            BootstrapKernelContextState::CooperativeYielded => {
+            BootstrapKernelContextState::TerminalDequeued => {
                 let [SystemsOperation::ConsoleWrite { text }] =
                     terminal_handler.operations.as_slice()
                 else {
@@ -1829,7 +1983,7 @@ fn model_kernel_context_transition(
                 ]);
                 *state = BootstrapKernelContextState::TerminalCompleted;
             }
-            BootstrapKernelContextState::TerminalReclaimed => {
+            BootstrapKernelContextState::CooperativeDequeuedAgain => {
                 let [_, _, SystemsOperation::ConsoleWrite { text }] =
                     cooperative_handler.operations.as_slice()
                 else {
@@ -1882,6 +2036,16 @@ fn model_kernel_context_transition(
             storage.release(stack)?;
             *state = next_state;
             transitions.push(SystemsTransition::ReclaimKernelContext { context_identity });
+        }
+        SystemsOperation::ConsumeEmptyRunnableQueue => {
+            if *state != BootstrapKernelContextState::Reclaimed {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-context model consumes only an empty queue after both reclamations",
+                ));
+            }
+            *state = BootstrapKernelContextState::QueueConsumed;
+            transitions.push(SystemsTransition::ConsumeEmptyRunnableQueue);
         }
         _ => return Ok(false),
     }
@@ -2350,8 +2514,12 @@ fn model_bootstrap_storage_operation(
             unreachable!("deadline-event operations are modeled by the caller")
         }
         SystemsOperation::CreateKernelContext
+        | SystemsOperation::CreateRunnableQueue { .. }
+        | SystemsOperation::EnqueueRunnableContext
+        | SystemsOperation::DequeueRunnableContext
         | SystemsOperation::TransferKernelContext
-        | SystemsOperation::ReclaimKernelContext => {
+        | SystemsOperation::ReclaimKernelContext
+        | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
@@ -2452,6 +2620,10 @@ mod tests {
             SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
             SYSTEMS_KERNEL_CONTEXT_RECLAIM.into(),
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE.into(),
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE.into(),
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE.into(),
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
         ];
         bootstrap_effects.sort();
         let mut local_notification_effects = vec![
@@ -2522,20 +2694,28 @@ mod tests {
                             },
                         },
                         SystemsOperation::CreateKernelContext,
+                        SystemsOperation::CreateRunnableQueue { capacity: 2 },
+                        SystemsOperation::EnqueueRunnableContext,
+                        SystemsOperation::EnqueueRunnableContext,
+                        SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
                         },
+                        SystemsOperation::EnqueueRunnableContext,
+                        SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::ConsumeEmptyRunnableQueue,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -2638,8 +2818,12 @@ mod tests {
             .operations
             .retain(|operation| match operation {
                 SystemsOperation::CreateKernelContext
+                | SystemsOperation::CreateRunnableQueue { .. }
+                | SystemsOperation::EnqueueRunnableContext
+                | SystemsOperation::DequeueRunnableContext
                 | SystemsOperation::TransferKernelContext
-                | SystemsOperation::ReclaimKernelContext => false,
+                | SystemsOperation::ReclaimKernelContext
+                | SystemsOperation::ConsumeEmptyRunnableQueue => false,
                 SystemsOperation::ConsoleWrite { text }
                     if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
                 {
@@ -2716,6 +2900,16 @@ mod tests {
                 SystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
+                SystemsTransition::CreateRunnableQueue { capacity: 2 },
+                SystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                SystemsTransition::EnqueueRunnableContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 1,
@@ -2733,6 +2927,12 @@ mod tests {
                 SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                },
+                SystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
                 },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 2,
@@ -2755,6 +2955,9 @@ mod tests {
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 2,
                 },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
                     caller_identity: 4,
@@ -2774,6 +2977,7 @@ mod tests {
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
                 },
+                SystemsTransition::ConsumeEmptyRunnableQueue,
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -2939,6 +3143,11 @@ mod tests {
             .handler
             .operations
             .remove(final_reclaim);
+        missing_reclaim
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::ConsumeEmptyRunnableQueue));
         refresh_bootstrap_effects(&mut missing_reclaim);
         assert_eq!(
             validate_systems_program(&missing_reclaim).unwrap_err().code,

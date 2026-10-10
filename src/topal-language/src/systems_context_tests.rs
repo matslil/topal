@@ -1,6 +1,7 @@
 #[test]
 fn requires_typed_affine_kernel_context_round_trip() {
-    // TOPAL-SYSTEMS-CONTEXT-001.
+    // TOPAL-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-CONTEXT-002,
+    // TOPAL-SYSTEMS-CONTEXT-003.
     let program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -69,10 +70,21 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "deadline-resumed kernel context transfer cooperative-worker",
+                "deadline-resumed kernel context transfer selected-cooperative",
                 "deadline-resumed kernel context transfer other",
             ),
             "matching suspended context",
+        ),
+        (
+            SOURCE.replace("capacity is 2", "capacity is 3"),
+            "capacity two",
+        ),
+        (
+            SOURCE.replace(
+                "runnable kernel runnable enqueue cooperative-worker",
+                "runnable kernel runnable enqueue terminal-worker",
+            ),
+            "selected suspended context",
         ),
         (
             SOURCE.replace(
@@ -87,6 +99,13 @@ fn requires_typed_affine_kernel_context_round_trip() {
                 "context-resumed is other kernel context reclaim",
             ),
             "matching completed transfer",
+        ),
+        (
+            SOURCE.replace(
+                "context-resumed kernel runnable queue consume empty runnable",
+                "context-resumed kernel runnable queue consume empty other",
+            ),
+            "exact empty queue",
         ),
     ] {
         let error = analyze_systems_for_compiler(

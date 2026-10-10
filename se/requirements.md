@@ -489,6 +489,23 @@ disabled and shall not imply preemption, blocking, priorities, dynamic run
 queues, cancellation, migration, SMP, user contexts, TLS/per-CPU switching,
 extended-state switching, stack growth, or cross-transfer unwind.
 
+## TOPAL-REQ-SYSTEMS-CONTEXT-003 — Bounded affine runnable queue
+
+Scheduler source shall be able to own suspended kernel contexts in a bounded
+affine FIFO without transferring runnable selection to a machine provider.
+Enqueue and dequeue shall consume their prior queue state, preserve exact FIFO
+order, and return every ownership obligation on full or empty results. The
+queue shall reject duplicate, terminal, completed, wrong-processor,
+wrong-provider, or wrong-address-space entries and shall be consumed empty
+before disposition.
+
+The first executable queue shall have capacity two, enqueue the cooperative
+then terminal workers, re-enqueue the cooperative suspended handoff at the
+tail, and therefore select cooperative, terminal, cooperative. It shall reclaim
+both retired stacks and consume the empty queue. Its storage shall be fixed
+before dispatch and shall not imply dynamic allocation, preemption, blocking,
+wakeup, priority, timeslicing, cancellation, migration, or SMP.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,

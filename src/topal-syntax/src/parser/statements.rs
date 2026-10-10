@@ -1318,6 +1318,7 @@ impl Parser<'_> {
             self.source.slice(first.span),
             "ArmedDeadline"
                 | "Bag"
+                | "BoundedKernelRunnableQueue"
                 | "CompletedKernelContextTransfer"
                 | "Deadline"
                 | "DeadlineInterruptContext"
