@@ -12,16 +12,31 @@ fn requires_typed_affine_kernel_context_round_trip() {
     );
     assert_eq!(
         program.kernel_thread.handler.effects,
+        [
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            SYSTEMS_CONSOLE_WRITE,
+            SYSTEMS_KERNEL_CONTEXT_RETIRE,
+        ]
+    );
+    assert_eq!(
+        program.terminal_thread.handler.effects,
         [SYSTEMS_CONSOLE_WRITE, SYSTEMS_KERNEL_CONTEXT_RETIRE]
     );
 
     for (source, expected) in [
         (
             SOURCE.replace(
-                "  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler\n",
+                "  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler,\n",
                 "",
             ),
             "kernel-thread",
+        ),
+        (
+            SOURCE.replace(
+                "  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler\n",
+                "",
+            ),
+            "terminal-thread",
         ),
         (
             SOURCE.replace(
@@ -32,14 +47,14 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "context console write \"TOPAL_KERNEL_CONTEXT_ENTERED\"",
+                "context console write \"TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED\"",
                 "context console write \"TOPAL_KERNEL_CONTEXT_EARLY\"",
             ),
-            "exact context-entry marker",
+            "exact entry marker",
         ),
         (
             SOURCE.replace(
-                "context kernel context retire to caller",
+                "context kernel context retire to dispatcher",
                 "context kernel context retire to other",
             ),
             "matching suspended caller",
@@ -54,21 +69,21 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "deadline-resumed kernel context transfer worker",
+                "deadline-resumed kernel context transfer cooperative-worker",
                 "deadline-resumed kernel context transfer other",
             ),
             "matching suspended context",
         ),
         (
             SOURCE.replace(
-                "deadline-resumed console write \"TOPAL_KERNEL_CONTEXT_RESUMED\"",
+                "deadline-resumed console write \"TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED\"",
                 "deadline-resumed console write \"TOPAL_KERNEL_CONTEXT_EARLY\"",
             ),
-            "exact resumed-caller marker",
+            "exact suspended marker",
         ),
         (
             SOURCE.replace(
-                "context-resumed is completed kernel context reclaim",
+                "context-resumed is cooperative-completed kernel context reclaim",
                 "context-resumed is other kernel context reclaim",
             ),
             "matching completed transfer",

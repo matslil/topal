@@ -118,18 +118,37 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                     alignment-bytes is 16,
                                                                                     placement is bootstrap-reclaimable
                                                                                   )
-                                                                                    Ok stack-region then {
-                                                                                      worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context create (
-                                                                                        stack is stack-region,
+                                                                                    Ok cooperative-stack then {
+                                                                                      cooperative-worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context create (
+                                                                                        stack is cooperative-stack,
                                                                                         entry is kernel-thread
                                                                                       )
-                                                                                      completed : CompletedKernelContextTransfer InitialProcessor is deadline-resumed kernel context transfer worker
-                                                                                      deadline-resumed console write "TOPAL_KERNEL_CONTEXT_RESUMED"
-                                                                                      context-resumed is completed kernel context reclaim
-                                                                                      context-resumed fatal "toolchain gate complete"
+                                                                                      deadline-resumed bootstrap allocate (
+                                                                                        byte-count is 16384,
+                                                                                        alignment-bytes is 16,
+                                                                                        placement is bootstrap-reclaimable
+                                                                                      )
+                                                                                        Ok terminal-stack then {
+                                                                                          terminal-worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context create (
+                                                                                            stack is terminal-stack,
+                                                                                            entry is terminal-thread
+                                                                                          )
+                                                                                          yielded-worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context transfer cooperative-worker
+                                                                                          deadline-resumed console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED"
+                                                                                          terminal-completed : CompletedKernelContextTransfer InitialProcessor is deadline-resumed kernel context transfer terminal-worker
+                                                                                          deadline-resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
+                                                                                          after-terminal is terminal-completed kernel context reclaim
+                                                                                            cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer yielded-worker
+                                                                                            after-terminal console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED"
+                                                                                            context-resumed is cooperative-completed kernel context reclaim
+                                                                                              context-resumed fatal "toolchain gate complete"
+                                                                                        }
+                                                                                        Error problem then {
+                                                                                          deadline-resumed fatal "terminal context stack allocation failed"
+                                                                                        }
                                                                                     }
                                                                                     Error problem then {
-                                                                                      deadline-resumed fatal "kernel context stack allocation failed"
+                                                                                      deadline-resumed fatal "cooperative context stack allocation failed"
                                                                                     }
                                                                                 }
                                                                                 false then {
@@ -250,7 +269,16 @@ kernel-thread-handler is fn (
   context : KernelThreadContext InitialProcessor,
   caller : SuspendedKernelContext InitialProcessor
 ) -> KernelThreadDisposition InitialProcessor
-  context console write "TOPAL_KERNEL_CONTEXT_ENTERED"
+  context console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED"
+  dispatcher : SuspendedKernelContext InitialProcessor is context kernel context transfer caller
+  context console write "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED"
+  context kernel context retire to dispatcher
+
+terminal-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED"
   context kernel context retire to caller
 
 lang systems artifact (
@@ -262,5 +290,6 @@ lang systems artifact (
   debug-break is lang systems synchronous-exception-entry debug-break-handler,
   local-notification is lang systems external-interrupt-entry local-notification-handler,
   deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,
-  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler
+  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler,
+  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler
 )
