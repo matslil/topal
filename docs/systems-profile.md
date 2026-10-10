@@ -464,6 +464,24 @@ initial processor and address space with local interrupts masked; preemption,
 blocking, dynamic runnable collections, migration, SMP, userspace, TLS,
 extended state, and stack growth remain excluded.
 
+The bounded runnable-queue extension replaces those fixed variables with an
+ordinary affine FIFO value. Its fixed capacity is established before dispatch;
+enqueue consumes a queue and suspended context, while dequeue consumes a queue
+and returns its oldest context plus the remaining queue. Full and empty results
+retain every input obligation, and statically refined success requires proof
+of the exact occupancy history. Queued contexts must share processor, provider,
+and address-space identity. A nonempty queue cannot be dropped or cross final
+disposition, and a running, retired, or completed context cannot be enqueued.
+
+The initial queue has capacity two. It enqueues cooperative then terminal,
+dequeues cooperative, re-enqueues its suspended handoff at the tail, then
+dequeues terminal and cooperative in that order. Both retired stacks are
+reclaimed and the empty queue is consumed before fatal disposition. Queue
+representation may be erased or lowered as a fixed aggregate, but runnable
+selection remains source policy and no machine provider owns a run queue.
+Unbounded or dynamically allocated queues, preemption, blocking, wakeup,
+priorities, timeslicing, cancellation, migration, and SMP remain excluded.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

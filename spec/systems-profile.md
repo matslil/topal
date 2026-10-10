@@ -631,6 +631,37 @@ timeslicing, cancellation, migration, SMP, user contexts, floating-point or
 vector ownership, TLS/per-CPU switching, stack growth, guard pages, or
 cross-transfer unwinding.
 
+### TOPAL-SYSTEMS-CONTEXT-003 — Bounded affine runnable queue
+
+A `BoundedKernelRunnableQueue P N` SHALL be an opaque affine FIFO with positive
+fixed capacity `N`. It SHALL own each enqueued `SuspendedKernelContext P` and
+retain the queue, provider, processor, active-address-space, context, and stack
+identities needed for later selection. It SHALL NOT expose or confer access to
+target context representation.
+
+Enqueue SHALL consume the prior queue and one suspended context. Success SHALL
+place that context at the tail; a full result SHALL return the unchanged queue
+and context without copying or loss. Dequeue SHALL consume the prior queue. A
+ready result SHALL return the oldest context and remaining queue; an empty
+result SHALL return the unchanged queue. Static refinement of either result
+SHALL require proof of the exact capacity and occupancy history.
+
+A queue SHALL reject a running, retired, completed, duplicate,
+wrong-processor, wrong-provider, or wrong-address-space context. Copying,
+serialization, use after consumption, dropping a nonempty queue, and final
+disposition with a live queue or queued context SHALL be rejected. Consuming
+an empty queue SHALL discharge its final obligation.
+
+The initial executable queue SHALL have capacity two. It SHALL enqueue the
+cooperative context followed by the terminal context, dequeue the cooperative
+context, enqueue its suspended handoff at the tail, then dequeue terminal and
+cooperative in that order. Both terminal outcomes SHALL be reclaimed and the
+empty queue SHALL be consumed before bootstrap disposition. The queue SHALL be
+ordinary source policy and SHALL introduce no provider queue operation. This
+slice SHALL NOT admit unbounded or dynamically allocated runnable storage,
+preemption, blocking, wakeup, priorities, timeslicing, cancellation, migration,
+SMP, or multiple address spaces.
+
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 
 A device location SHALL bind its layout to one live device session, permitted

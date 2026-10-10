@@ -51,6 +51,12 @@ call-boundary state while the portable operation exchanges only opaque running
 and suspended identities. A provider-owned run queue is deliberately excluded:
 runnable selection remains architecture-independent Topal policy.
 
+The bounded runnable queue likewise has no target-specific operation. Its
+affine FIFO ownership contract is identical for x86-64, AArch64, and RISC-V;
+only the opaque suspended values selected from it reach each architecture's
+context provider. A compiler may choose different fixed aggregate layouts, but
+capacity, order, identity, and move-only observations must remain unchanged.
+
 ## Translation and user access
 
 | Concern | x86-64 | AArch64 | RISC-V | Design result |
