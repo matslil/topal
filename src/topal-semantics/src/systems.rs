@@ -5,9 +5,10 @@ use std::fmt;
 use crate::{
     AtomicCompareExchangeResult, AtomicOrder, AtomicWordLocation, AtomicWordRequest,
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    CriticalDomain, KernelMappingRequest, LocalInterruptMaskState, LocalNotificationProtocol,
-    PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
-    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    CompletedUserExecution, CriticalDomain, KernelMappingRequest, LocalInterruptMaskState,
+    LocalNotificationProtocol, PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+    SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
@@ -27,6 +28,9 @@ use crate::{
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
+    SYSTEMS_USER_TERMINATE, SuspendedUserContext, SystemsUserExecutionProtocol,
     TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
 };
 
@@ -63,6 +67,7 @@ pub enum SystemsEntryKind {
     ExternalInterruptLocalNotification,
     ExternalInterruptDeadline,
     ResumedKernelThread,
+    UserSyscall,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -72,6 +77,7 @@ pub enum SystemsContextKind {
     LocalNotificationInterrupt,
     DeadlineInterrupt,
     KernelThread,
+    UserSyscall,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -191,6 +197,11 @@ pub enum SystemsOperation {
     ReclaimKernelContext,
     ConsumeKernelCompletion,
     ConsumeEmptyRunnableQueue,
+    PrepareUserProbe {
+        process_identity: u64,
+    },
+    EnterUserContext,
+    CompleteUserExecution,
 }
 
 impl SystemsOperation {
@@ -249,6 +260,9 @@ impl SystemsOperation {
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+            Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
+            Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
         }
     }
 }
@@ -258,7 +272,13 @@ pub enum SystemsDisposition {
     Resume,
     PreemptKernelContext,
     RetireKernelContextToCaller,
-    Fatal { message: String },
+    DispatchInitialUserSyscall {
+        getpid_result: u64,
+        exit_group_status: u64,
+    },
+    Fatal {
+        message: String,
+    },
 }
 
 impl SystemsDisposition {
@@ -274,6 +294,7 @@ impl SystemsDisposition {
             Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::PreemptKernelContext => SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
             Self::RetireKernelContextToCaller => SYSTEMS_KERNEL_CONTEXT_RETIRE,
+            Self::DispatchInitialUserSyscall { .. } => SYSTEMS_USER_SYSCALL_DISPATCH,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
     }
@@ -305,6 +326,7 @@ pub struct SystemsProgram {
     pub kernel_thread: SystemsEntry,
     pub completion_thread: SystemsEntry,
     pub terminal_thread: SystemsEntry,
+    pub user_syscall: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -498,6 +520,34 @@ pub enum SystemsTransition {
     ConsumeKernelCompletion {
         completion_identity: u64,
     },
+    PrepareUserProbe {
+        process_identity: u64,
+        probe_identity: u64,
+    },
+    EnterUserExecution {
+        process_identity: u64,
+        kernel_continuation_identity: u64,
+    },
+    EnterUserSyscall {
+        entry_identity: u64,
+        number: u64,
+        arguments: [u64; 6],
+    },
+    ReturnToUser {
+        entry_identity: u64,
+        result: u64,
+    },
+    TerminateUser {
+        entry_identity: u64,
+        status: u64,
+    },
+    ResumeUserKernelContinuation {
+        kernel_continuation_identity: u64,
+        status: u64,
+    },
+    CompleteUserExecution {
+        process_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -631,6 +681,13 @@ impl SystemsTransition {
             Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             Self::ConsumeKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CONSUME,
+            Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
+            Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
+            Self::ReturnToUser { .. } => SYSTEMS_USER_SYSCALL_RETURN,
+            Self::TerminateUser { .. } => SYSTEMS_USER_TERMINATE,
+            Self::ResumeUserKernelContinuation { .. } => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::CompleteUserExecution { .. } => SYSTEMS_USER_CONTEXT_COMPLETE,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -694,6 +751,11 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsEntryKind::ResumedKernelThread,
         SystemsContextKind::KernelThread,
     )?;
+    validate_entry(
+        &program.user_syscall,
+        SystemsEntryKind::UserSyscall,
+        SystemsContextKind::UserSyscall,
+    )?;
     let names = [
         &program.bootstrap.handler.name,
         &program.debug_break.handler.name,
@@ -702,6 +764,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         &program.kernel_thread.handler.name,
         &program.completion_thread.handler.name,
         &program.terminal_thread.handler.name,
+        &program.user_syscall.handler.name,
     ];
     if names
         .iter()
@@ -710,7 +773,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, local-notification, deadline, preemptible-thread, completion-thread, and terminal-thread entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline, preemptible-thread, completion-thread, terminal-thread, and user-syscall entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
@@ -727,6 +790,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         &program.terminal_thread.handler,
         KernelThreadProfile::Terminal,
     )?;
+    validate_user_syscall_handler(&program.user_syscall.handler)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -796,6 +860,9 @@ fn validate_entry(
                     | SystemsOperation::ReclaimKernelContext
                     | SystemsOperation::ConsumeKernelCompletion
                     | SystemsOperation::ConsumeEmptyRunnableQueue
+                    | SystemsOperation::PrepareUserProbe { .. }
+                    | SystemsOperation::EnterUserContext
+                    | SystemsOperation::CompleteUserExecution
             );
             bootstrap_only
                 || (required_context != SystemsContextKind::KernelThread
@@ -818,6 +885,8 @@ fn validate_entry(
                             | SystemsOperation::AwaitDeadlinePreemption
                             | SystemsOperation::AwaitKernelCompletion
                     ))
+                || (required_context == SystemsContextKind::UserSyscall
+                    && !entry.handler.operations.is_empty())
         })
     {
         return Err(SystemsModelError::new(
@@ -840,22 +909,38 @@ fn validate_entry(
             SystemsDisposition::PreemptKernelContext | SystemsDisposition::Fatal { .. },
         )
         | (SystemsContextKind::KernelThread, SystemsDisposition::RetireKernelContextToCaller) => {}
+        (
+            SystemsContextKind::UserSyscall,
+            SystemsDisposition::DispatchInitialUserSyscall { .. },
+        ) => {}
         (SystemsContextKind::Bootstrap, SystemsDisposition::Resume)
         | (
             SystemsContextKind::Bootstrap
             | SystemsContextKind::DebugBreak
             | SystemsContextKind::LocalNotificationInterrupt
-            | SystemsContextKind::DeadlineInterrupt,
+            | SystemsContextKind::DeadlineInterrupt
+            | SystemsContextKind::UserSyscall,
             SystemsDisposition::RetireKernelContextToCaller,
         )
         | (
             SystemsContextKind::Bootstrap
             | SystemsContextKind::DebugBreak
             | SystemsContextKind::LocalNotificationInterrupt
-            | SystemsContextKind::KernelThread,
+            | SystemsContextKind::KernelThread
+            | SystemsContextKind::UserSyscall,
             SystemsDisposition::PreemptKernelContext,
         )
         | (SystemsContextKind::DeadlineInterrupt, SystemsDisposition::Resume)
+        | (SystemsContextKind::UserSyscall, SystemsDisposition::Resume)
+        | (SystemsContextKind::UserSyscall, SystemsDisposition::Fatal { .. })
+        | (
+            SystemsContextKind::Bootstrap
+            | SystemsContextKind::DebugBreak
+            | SystemsContextKind::LocalNotificationInterrupt
+            | SystemsContextKind::DeadlineInterrupt
+            | SystemsContextKind::KernelThread,
+            SystemsDisposition::DispatchInitialUserSyscall { .. },
+        )
         | (SystemsContextKind::KernelThread, _) => {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DISPOSITION",
@@ -910,6 +995,22 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
         return Err(SystemsModelError::new(
             "E-SYSTEMS-DEADLINE-EVENT",
             "the deadline handler must consume completion authority before preempting the bound context",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
+    if !handler.operations.is_empty()
+        || handler.disposition
+            != (SystemsDisposition::DispatchInitialUserSyscall {
+                getpid_result: 1,
+                exit_group_status: 0,
+            })
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-USER-CONTEXT",
+            "the initial user-syscall handler must dispatch getpid result one and exit_group status zero",
         ));
     }
     Ok(())
@@ -973,6 +1074,7 @@ struct BootstrapAuthorityState {
     deadline: BootstrapDeadlineState,
     kernel_context: BootstrapKernelContextState,
     kernel_completion: BootstrapKernelCompletionState,
+    user_execution: BootstrapUserExecutionState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1034,6 +1136,15 @@ enum BootstrapKernelCompletionState {
 }
 
 #[derive(Default, Eq, PartialEq)]
+enum BootstrapUserExecutionState {
+    #[default]
+    Fresh,
+    Prepared,
+    Completed,
+    Consumed,
+}
+
+#[derive(Default, Eq, PartialEq)]
 enum BootstrapMemoryOwnership {
     #[default]
     None,
@@ -1075,6 +1186,9 @@ impl BootstrapAuthorityState {
             return Ok(true);
         }
         if self.observe_kernel_context(operation)? {
+            return Ok(true);
+        }
+        if self.observe_user_execution(operation)? {
             return Ok(true);
         }
         match operation {
@@ -1543,6 +1657,50 @@ impl BootstrapAuthorityState {
         Ok(true)
     }
 
+    fn observe_user_execution(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
+            SystemsOperation::PrepareUserProbe { process_identity } => {
+                if self.kernel_context != BootstrapKernelContextState::QueueConsumed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Consumed
+                    || self.user_execution != BootstrapUserExecutionState::Fresh
+                    || *process_identity != 1
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe preparation requires completed kernel-context cleanup, PID one, and no live critical scope",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Prepared;
+            }
+            SystemsOperation::EnterUserContext => {
+                if self.user_execution != BootstrapUserExecutionState::Prepared
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry requires the exact prepared probe and restored kernel context",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Completed;
+            }
+            SystemsOperation::CompleteUserExecution => {
+                if self.user_execution != BootstrapUserExecutionState::Completed {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user completion requires terminal exit_group restoration",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Consumed;
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
     fn observe_translation(
         &mut self,
         operation: &SystemsOperation,
@@ -1751,6 +1909,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
                 "bootstrap completion requires the one-shot completion state to be consumed",
+            ));
+        }
+        if self.user_execution != BootstrapUserExecutionState::Consumed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-USER-CONTEXT-LIVE",
+                "bootstrap completion requires one consumed getpid/exit_group user execution",
             ));
         }
         Ok(())
@@ -1997,6 +2161,9 @@ fn validate_bootstrap_storage_operation(
             storage.release(released)?;
         }
         SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
+        SystemsOperation::PrepareUserProbe { .. }
+        | SystemsOperation::EnterUserContext
+        | SystemsOperation::CompleteUserExecution => {}
         _ => unreachable!("authority or atomic operations continue above"),
     }
     Ok(())
@@ -2055,6 +2222,9 @@ pub fn model_systems_transitions(
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
+    let mut user_protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+    let mut suspended_user: Option<SuspendedUserContext> = None;
+    let mut completed_user: Option<CompletedUserExecution> = None;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -2105,6 +2275,16 @@ pub fn model_systems_transitions(
         )? {
             continue;
         }
+        if model_user_execution_transition(
+            operation,
+            &program.user_syscall.handler,
+            &mut user_protocol,
+            &mut suspended_user,
+            &mut completed_user,
+            &mut transitions,
+        )? {
+            continue;
+        }
         if model_bootstrap_operation(
             operation,
             &program.debug_break.handler,
@@ -2118,6 +2298,97 @@ pub fn model_systems_transitions(
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+fn model_user_execution_transition(
+    operation: &SystemsOperation,
+    handler: &SystemsHandler,
+    protocol: &mut SystemsUserExecutionProtocol,
+    suspended: &mut Option<SuspendedUserContext>,
+    completed: &mut Option<CompletedUserExecution>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::PrepareUserProbe { process_identity } => {
+            if suspended.is_some() || completed.is_some() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user model admits exactly one live probe lifecycle",
+                ));
+            }
+            *suspended = Some(protocol.prepare_probe(*process_identity)?);
+            transitions.push(SystemsTransition::PrepareUserProbe {
+                process_identity: *process_identity,
+                probe_identity: 1,
+            });
+        }
+        SystemsOperation::EnterUserContext => {
+            let suspended_context = suspended.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user entry model requires one prepared suspended context",
+                )
+            })?;
+            let active = protocol.enter(suspended_context)?;
+            transitions.push(SystemsTransition::EnterUserExecution {
+                process_identity: 1,
+                kernel_continuation_identity: 1,
+            });
+            let SystemsDisposition::DispatchInitialUserSyscall {
+                getpid_result,
+                exit_group_status,
+            } = handler.disposition
+            else {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user entry model requires the checked initial syscall dispatcher",
+                ));
+            };
+            let getpid = protocol.enter_syscall(active, crate::LINUX_X86_64_GETPID, [0; 6])?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 1,
+                number: crate::LINUX_X86_64_GETPID,
+                arguments: [0; 6],
+            });
+            let active = protocol.return_getpid(getpid, getpid_result)?;
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 1,
+                result: getpid_result,
+            });
+            let exit = protocol.enter_syscall(
+                active,
+                crate::LINUX_X86_64_EXIT_GROUP,
+                [exit_group_status, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 2,
+                number: crate::LINUX_X86_64_EXIT_GROUP,
+                arguments: [exit_group_status, 0, 0, 0, 0, 0],
+            });
+            *completed = Some(protocol.terminate_exit_group(exit, exit_group_status)?);
+            transitions.push(SystemsTransition::TerminateUser {
+                entry_identity: 2,
+                status: exit_group_status,
+            });
+            transitions.push(SystemsTransition::ResumeUserKernelContinuation {
+                kernel_continuation_identity: 1,
+                status: exit_group_status,
+            });
+        }
+        SystemsOperation::CompleteUserExecution => {
+            let summary = protocol.complete(completed.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user completion model requires terminal user execution",
+                )
+            })?)?;
+            transitions.push(SystemsTransition::CompleteUserExecution {
+                process_identity: summary.process_identity,
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2833,6 +3104,9 @@ fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTran
         SystemsDisposition::PreemptKernelContext => {
             unreachable!("debug-break validation rejects kernel-context preemption")
         }
+        SystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            unreachable!("debug-break validation rejects user-syscall dispatch")
+        }
     }
 }
 
@@ -2996,6 +3270,11 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
         }
+        SystemsOperation::PrepareUserProbe { .. }
+        | SystemsOperation::EnterUserContext
+        | SystemsOperation::CompleteUserExecution => {
+            unreachable!("user-execution operations are modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -3102,6 +3381,9 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
+            SYSTEMS_USER_CONTEXT_PREPARE.into(),
+            SYSTEMS_USER_CONTEXT_ENTER.into(),
+            SYSTEMS_USER_CONTEXT_COMPLETE.into(),
         ];
         bootstrap_effects.sort();
         let mut local_notification_effects = vec![
@@ -3220,6 +3502,11 @@ mod tests {
                         SystemsOperation::ReclaimKernelContext,
                         SystemsOperation::ConsumeKernelCompletion,
                         SystemsOperation::ConsumeEmptyRunnableQueue,
+                        SystemsOperation::PrepareUserProbe {
+                            process_identity: 1,
+                        },
+                        SystemsOperation::EnterUserContext,
+                        SystemsOperation::CompleteUserExecution,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -3309,6 +3596,19 @@ mod tests {
                     effects: terminal_thread_effects,
                 },
             },
+            user_syscall: SystemsEntry {
+                kind: SystemsEntryKind::UserSyscall,
+                handler: SystemsHandler {
+                    name: "user-syscall".into(),
+                    context: SystemsContextKind::UserSyscall,
+                    operations: Vec::new(),
+                    disposition: SystemsDisposition::DispatchInitialUserSyscall {
+                        getpid_result: 1,
+                        exit_group_status: 0,
+                    },
+                    effects: vec![SYSTEMS_USER_SYSCALL_DISPATCH.into()],
+                },
+            },
         }
     }
 
@@ -3351,7 +3651,10 @@ mod tests {
                 | SystemsOperation::TransferKernelContext
                 | SystemsOperation::ReclaimKernelContext
                 | SystemsOperation::ConsumeKernelCompletion
-                | SystemsOperation::ConsumeEmptyRunnableQueue => false,
+                | SystemsOperation::ConsumeEmptyRunnableQueue
+                | SystemsOperation::PrepareUserProbe { .. }
+                | SystemsOperation::EnterUserContext
+                | SystemsOperation::CompleteUserExecution => false,
                 SystemsOperation::ConsoleWrite { text }
                     if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
                 {
@@ -3593,6 +3896,39 @@ mod tests {
                     completion_identity: 1,
                 },
                 SystemsTransition::ConsumeEmptyRunnableQueue,
+                SystemsTransition::PrepareUserProbe {
+                    process_identity: 1,
+                    probe_identity: 1,
+                },
+                SystemsTransition::EnterUserExecution {
+                    process_identity: 1,
+                    kernel_continuation_identity: 1,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 1,
+                    number: 39,
+                    arguments: [0; 6],
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 1,
+                    result: 1,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 2,
+                    number: 231,
+                    arguments: [0; 6],
+                },
+                SystemsTransition::TerminateUser {
+                    entry_identity: 2,
+                    status: 0,
+                },
+                SystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity: 1,
+                    status: 0,
+                },
+                SystemsTransition::CompleteUserExecution {
+                    process_identity: 1,
+                },
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -3765,6 +4101,9 @@ mod tests {
                     operation,
                     SystemsOperation::ConsumeKernelCompletion
                         | SystemsOperation::ConsumeEmptyRunnableQueue
+                        | SystemsOperation::PrepareUserProbe { .. }
+                        | SystemsOperation::EnterUserContext
+                        | SystemsOperation::CompleteUserExecution
                 )
             });
         refresh_bootstrap_effects(&mut missing_reclaim);

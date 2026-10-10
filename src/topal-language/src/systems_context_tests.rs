@@ -2,7 +2,7 @@
 fn requires_typed_affine_kernel_context_round_trip() {
     // TOPAL-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-CONTEXT-002,
     // TOPAL-SYSTEMS-CONTEXT-003, TOPAL-SYSTEMS-CONTEXT-004,
-    // TOPAL-SYSTEMS-CONTEXT-005.
+    // TOPAL-SYSTEMS-CONTEXT-005, TOPAL-SYSTEMS-CONTEXT-006.
     let program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -32,6 +32,14 @@ fn requires_typed_affine_kernel_context_round_trip() {
         program.terminal_thread.handler.effects,
         [SYSTEMS_CONSOLE_WRITE, SYSTEMS_KERNEL_CONTEXT_RETIRE]
     );
+    assert_eq!(
+        program.user_syscall.kind,
+        CompilerSystemsEntryKind::UserSyscall
+    );
+    assert_eq!(
+        program.user_syscall.handler.effects,
+        [SYSTEMS_USER_SYSCALL_DISPATCH]
+    );
 
     for (source, expected) in [
         (
@@ -43,7 +51,7 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler\n",
+                "  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler,\n",
                 "",
             ),
             "terminal-thread",
@@ -143,5 +151,45 @@ fn requires_typed_affine_kernel_context_round_trip() {
             error.message
         );
         assert!(error.message.contains(expected), "{}", error.message);
+    }
+}
+
+#[test]
+fn requires_exact_affine_user_syscall_round_trip() {
+    // TOPAL-SYSTEMS-CONTEXT-006 negative conformance.
+    for (source, expected_code) in [
+        (
+            SOURCE.replace(
+                "  user-syscall is lang systems user-syscall-entry user-syscall-handler\n",
+                "",
+            ),
+            "E-SYSTEMS-ENTRY-SET",
+        ),
+        (
+            SOURCE.replace("process-identity is 1", "process-identity is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("getpid-result is 1", "getpid-result is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "completion-resumed user context enter user-probe",
+                "completion-resumed user context enter other-probe",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("context : InitialUserSyscallContext", "context : OtherContext"),
+            "E-SYSTEMS-HANDLER",
+        ),
+    ] {
+        let error = analyze_systems_for_compiler(
+            &source,
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap_err();
+        assert_eq!(error.code, expected_code, "{}", error.message);
     }
 }

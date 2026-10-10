@@ -168,6 +168,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                   completion-resumed is completion-completed kernel context reclaim
                                                                                                     completion-resumed kernel completion consume one-shot
                                                                                                     completion-resumed kernel runnable queue consume empty runnable
+                                                                                                    user-probe is completion-resumed user probe prepare (process-identity is 1)
+                                                                                                    user-completed is completion-resumed user context enter user-probe
+                                                                                                    completion-resumed user execution complete user-completed
                                                                                                     completion-resumed fatal "toolchain gate complete"
                                                                                             }
                                                                                             Error problem then {
@@ -321,6 +324,11 @@ terminal-thread-handler is fn (
   context console write "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED"
   context kernel context retire to caller
 
+user-syscall-handler is fn (
+  context : InitialUserSyscallContext
+) -> InitialUserSyscallDisposition
+  context linux syscall dispatch (getpid-result is 1, exit-group-status is 0)
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
@@ -332,5 +340,6 @@ lang systems artifact (
   deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,
   kernel-thread is lang systems resumed-thread-entry kernel-thread-handler,
   completion-thread is lang systems resumed-thread-entry completion-thread-handler,
-  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler
+  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler,
+  user-syscall is lang systems user-syscall-entry user-syscall-handler
 )

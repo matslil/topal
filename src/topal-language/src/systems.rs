@@ -51,7 +51,8 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -102,12 +103,12 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 7 {
+    if functions.len() != 8 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, preemptible, completion-blocking, and terminal handlers",
+            "the systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, preemptible, completion-blocking, terminal, and user-syscall handlers",
         ));
     }
     if root_entries.bootstrap == root_entries.debug_break
@@ -131,12 +132,19 @@ pub fn analyze_systems_for_compiler(
         || root_entries.deadline_notification == root_entries.terminal_thread
         || root_entries.completion_thread == root_entries.terminal_thread
         || root_entries.kernel_thread == root_entries.terminal_thread
+        || root_entries.bootstrap == root_entries.user_syscall
+        || root_entries.debug_break == root_entries.user_syscall
+        || root_entries.local_notification == root_entries.user_syscall
+        || root_entries.deadline_notification == root_entries.user_syscall
+        || root_entries.kernel_thread == root_entries.user_syscall
+        || root_entries.completion_thread == root_entries.user_syscall
+        || root_entries.terminal_thread == root_entries.user_syscall
     {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "all seven initial systems entries require distinct handlers",
+            "all eight initial systems entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -202,6 +210,15 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::KernelThread,
         None,
     )?;
+    let user_syscall = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "user-syscall",
+        &root_entries.user_syscall,
+        CompilerSystemsContextKind::UserSyscall,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -233,6 +250,10 @@ pub fn analyze_systems_for_compiler(
         terminal_thread: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
             handler: terminal_thread,
+        },
+        user_syscall: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::UserSyscall,
+            handler: user_syscall,
         },
     })
 }
@@ -367,6 +388,7 @@ struct ArtifactEntries {
     kernel_thread: String,
     completion_thread: String,
     terminal_thread: String,
+    user_syscall: String,
 }
 
 fn parse_artifact_root(
@@ -419,6 +441,7 @@ fn parse_artifact_root(
                 | "kernel-thread"
                 | "completion-thread"
                 | "terminal-thread"
+                | "user-syscall"
         ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
@@ -442,6 +465,7 @@ fn parse_artifact_root(
         Some(kernel_thread),
         Some(completion_thread),
         Some(terminal_thread),
+        Some(user_syscall),
     ) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
@@ -451,6 +475,7 @@ fn parse_artifact_root(
         entries.remove("kernel-thread"),
         entries.remove("completion-thread"),
         entries.remove("terminal-thread"),
+        entries.remove("user-syscall"),
     )
     else {
         return Err(invalid_entry_set(source, *span));
@@ -467,6 +492,7 @@ fn parse_artifact_root(
         kernel_thread,
         completion_thread,
         terminal_thread,
+        user_syscall,
     })
 }
 
@@ -501,6 +527,7 @@ fn parse_entry_field(
         "local-notification" => "external-interrupt-entry",
         "deadline-notification" => "external-interrupt-entry",
         "kernel-thread" | "completion-thread" | "terminal-thread" => "resumed-thread-entry",
+        "user-syscall" => "user-syscall-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -682,6 +709,36 @@ fn kernel_context_diagnostic(
     source_diagnostic(source, "E-SYSTEMS-CONTEXT-TRANSFER", span, message)
 }
 
+fn user_context_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-USER-CONTEXT", span, message)
+}
+
+fn field_natural(
+    source: &SourceText,
+    field: &ProductField,
+    expected_label: &str,
+) -> Result<u64, Diagnostic> {
+    let Some(label) = field.label else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires named `{expected_label}`"),
+        ));
+    };
+    if source.slice(label) != expected_label {
+        return Err(user_context_diagnostic(
+            source,
+            label,
+            format!("user syscall dispatch requires `{expected_label}` in source order"),
+        ));
+    }
+    parse_storage_natural(source, &field.value)
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
@@ -734,6 +791,9 @@ fn analyze_handler(
             "DeadlineInterruptContext InitialMonotonicClock",
             "DeadlineInterruptDisposition InitialMonotonicClock",
         ),
+        CompilerSystemsContextKind::UserSyscall => {
+            ("InitialUserSyscallContext", "InitialUserSyscallDisposition")
+        }
         CompilerSystemsContextKind::KernelThread => unreachable!("handled above"),
     };
     if *is_static
@@ -772,6 +832,9 @@ fn analyze_handler(
     if context == CompilerSystemsContextKind::DeadlineInterrupt {
         return analyze_deadline_handler(source, source.slice(*name), body, context_name);
     }
+    if context == CompilerSystemsContextKind::UserSyscall {
+        return analyze_user_syscall_handler(source, source.slice(*name), body, context_name);
+    }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
             source,
@@ -809,6 +872,60 @@ fn analyze_handler(
         operations: checked_operations,
         disposition,
         effects,
+    })
+}
+
+fn analyze_user_syscall_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [Statement::Expression(Expression::Application { items, span })] = body else {
+        return Err(user_context_diagnostic(
+            source,
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "the initial user-syscall handler requires one exhaustive sealed dispatch disposition",
+        ));
+    };
+    let [
+        receiver,
+        linux,
+        syscall,
+        dispatch,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user syscall dispatch must be `context linux syscall dispatch (getpid-result is 1, exit-group-status is 0)`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, linux, "linux")
+        || !identifier_is(source, syscall, "syscall")
+        || !identifier_is(source, dispatch, "dispatch")
+        || fields.len() != 2
+        || field_natural(source, &fields[0], "getpid-result")? != 1
+        || field_natural(source, &fields[1], "exit-group-status")? != 0
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user syscall dispatch must exhaustively return PID one and terminate exit_group with status zero",
+        ));
+    }
+    let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
+        getpid_result: 1,
+        exit_group_status: 0,
+    };
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::UserSyscall,
+        operations: Vec::new(),
+        effects: vec![SYSTEMS_USER_SYSCALL_DISPATCH.to_owned()],
+        disposition,
     })
 }
 
@@ -2673,11 +2790,19 @@ fn analyze_kernel_context_decision(
     }
     let (completion_resumed, completion_continuation) =
         parse_kernel_context_reclaim(source, reclaim_completion, &completion_completed)?;
-    let [consume_completion, consume_queue, disposition] = completion_continuation else {
+    let [
+        consume_completion,
+        consume_queue,
+        prepare_user,
+        enter_user,
+        complete_user,
+        disposition,
+    ] = completion_continuation
+    else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_completion),
-            "completion-worker reclamation must consume completion and empty queue before disposition",
+            "completion-worker reclamation must consume completion and empty queue, complete one user syscall round trip, then reach disposition",
         ));
     };
     parse_kernel_completion_consume(
@@ -2687,6 +2812,10 @@ fn analyze_kernel_context_decision(
         &completion_name,
     )?;
     parse_runnable_queue_consume(source, consume_queue, &completion_resumed, &queue_name)?;
+    let user_probe = parse_user_probe_prepare(source, prepare_user, &completion_resumed)?;
+    let user_completed =
+        parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -2733,6 +2862,11 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::ReclaimKernelContext,
             CompilerSystemsOperation::ConsumeKernelCompletion,
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
+            CompilerSystemsOperation::PrepareUserProbe {
+                process_identity: 1,
+            },
+            CompilerSystemsOperation::EnterUserContext,
+            CompilerSystemsOperation::CompleteUserExecution,
         ],
         disposition,
     })
@@ -2787,6 +2921,128 @@ fn parse_kernel_context_create(
         ));
     }
     Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_probe_prepare(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user probe preparation must bind one classified suspended user context",
+        ));
+    };
+    let [
+        receiver,
+        user,
+        probe,
+        prepare,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user probe preparation must use the sealed process-identity request",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, probe, "probe")
+        || !identifier_is(source, prepare, "prepare")
+        || fields.len() != 1
+        || field_natural(source, &fields[0], "process-identity")? != 1
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial suspended user probe requires process identity one and exact processor, address-space, thread, and ABI classifiers",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_context_enter(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    probe_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user entry must bind one classified completed user execution",
+        ));
+    };
+    let [receiver, user, context_word, enter, probe] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user entry must be `context user context enter probe`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, enter, "enter")
+        || !identifier_is(source, probe, probe_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user entry must consume the exact suspended probe and preserve all identities",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_execution_complete(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    completed_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user execution completion must consume the terminal result",
+        ));
+    };
+    let [receiver, user, execution, complete, completed] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user completion must be `context user execution complete completed`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, execution, "execution")
+        || !identifier_is(source, complete, "complete")
+        || !identifier_is(source, completed, completed_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user completion must consume the exact terminal execution result",
+        ));
+    }
+    Ok(())
 }
 
 fn parse_kernel_completion_create(
@@ -4091,6 +4347,9 @@ mod tests {
                 SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_USER_CONTEXT_COMPLETE,
+                SYSTEMS_USER_CONTEXT_ENTER,
+                SYSTEMS_USER_CONTEXT_PREPARE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
@@ -4473,6 +4732,39 @@ mod tests {
                     completion_identity: 1,
                 },
                 CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
+                CompilerSystemsTransition::PrepareUserProbe {
+                    process_identity: 1,
+                    probe_identity: 1,
+                },
+                CompilerSystemsTransition::EnterUserExecution {
+                    process_identity: 1,
+                    kernel_continuation_identity: 1,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 1,
+                    number: 39,
+                    arguments: [0; 6],
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 1,
+                    result: 1,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 2,
+                    number: 231,
+                    arguments: [0; 6],
+                },
+                CompilerSystemsTransition::TerminateUser {
+                    entry_identity: 2,
+                    status: 0,
+                },
+                CompilerSystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity: 1,
+                    status: 0,
+                },
+                CompilerSystemsTransition::CompleteUserExecution {
+                    process_identity: 1,
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -4489,7 +4781,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 83);
+        assert_eq!(program.bootstrap.handler.operations.len(), 86);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -4511,6 +4803,9 @@ mod tests {
                 SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_USER_CONTEXT_COMPLETE,
+                SYSTEMS_USER_CONTEXT_ENTER,
+                SYSTEMS_USER_CONTEXT_PREPARE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,

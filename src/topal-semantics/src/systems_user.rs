@@ -5,6 +5,8 @@ use crate::SystemsModelError;
 pub const SYSTEMS_USER_CONTEXT_PREPARE: &str = "topal.systems.context.user.probe.prepare/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
 pub const SYSTEMS_USER_SYSCALL_ENTRY: &str = "topal.systems.entry.user-syscall/1";
+pub const SYSTEMS_USER_SYSCALL_DISPATCH: &str =
+    "topal.systems.disposition.user-syscall.dispatch-initial/1";
 pub const SYSTEMS_USER_SYSCALL_RETURN: &str = "topal.systems.disposition.user-syscall.return/1";
 pub const SYSTEMS_USER_TERMINATE: &str = "topal.systems.disposition.user-syscall.terminate/1";
 pub const SYSTEMS_USER_CONTEXT_COMPLETE: &str = "topal.systems.context.user.complete/1";
