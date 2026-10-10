@@ -36,8 +36,12 @@ MARKERS = (
     b"TOPAL_KERNEL_INTERRUPT_OK",
     b"TOPAL_KERNEL_TIME_OK",
     b"TOPAL_KERNEL_DEADLINE_OK",
-    b"TOPAL_KERNEL_CONTEXT_ENTERED",
-    b"TOPAL_KERNEL_CONTEXT_RESUMED",
+    b"TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED",
+    b"TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED",
+    b"TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+    b"TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+    b"TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED",
+    b"TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED",
 )
 
 
@@ -221,7 +225,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/13",
+        "schema": "topal-kernel-toolchain-gate-qemu/14",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

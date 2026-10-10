@@ -114,6 +114,13 @@ exact suspended-caller resumption, private x86-64 callee-saved state, a
 separate worker stack, structural inspection, and two deterministic pinned-QEMU
 runs.
 
+The current Step 4 slice adds the approved
+[cooperative context handoff](design/cooperative-context-handoff.md). Its
+[implementation and qualification report](step-4-cooperative-context-handoff.md)
+records two affine worker contexts, source-level FIFO selection, one suspended
+handoff, two terminal retirements and reclamations, a symmetric private x86-64
+stack switch, structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -206,6 +213,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 local-notification interrupt](step-4-local-notification-interrupt.md)
 - [Step 4 monotonic-clock observation](step-4-monotonic-clock-observation.md)
 - [Step 4 one-shot deadline event](step-4-deadline-event.md)
+- [Step 4 kernel-context transfer](step-4-kernel-context-transfer.md)
+- [Step 4 cooperative context handoff](step-4-cooperative-context-handoff.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
