@@ -741,6 +741,44 @@ waiter, and one signal and SHALL NOT admit multiple waiters, repeated signals,
 predicate wait queues, spurious wakeups, timeouts, cancellation, process
 signals, priority ordering, cross-processor wakeup, SMP, or user contexts.
 
+### TOPAL-SYSTEMS-CONTEXT-006 — Affine user execution and syscall round trip
+
+`ValidatedUserState A B` SHALL be opaque affine authority for one legal user
+continuation in address space `A` under ABI personality `B`. A
+`SuspendedUserContext P A T B` SHALL additionally retain processor `P` and
+thread `T`. Source SHALL NOT inspect, construct, copy, serialize, or reinterpret
+their instruction, stack, status, register, descriptor, privilege, frame, or
+return representation.
+
+Entering user execution SHALL consume one running kernel context and one
+matching suspended user context. A syscall SHALL produce exactly one affine
+`UserSyscallContext P A T B I` with fresh entry identity `I`. Its accessors
+SHALL expose the ABI syscall number and six arguments only as untrusted
+semantic machine words. The handler SHALL consume it through exactly one
+closed disposition: `ReturnToUser(result)` SHALL encode one ABI result,
+revalidate, and resume only the captured user continuation;
+`TerminateUser(status)` SHALL consume that continuation and restore only its
+registered kernel continuation with terminal status.
+
+The backend SHALL own privilege transition, kernel entry stack, saved target
+state, speculation/security sequence, result placement, return validation, and
+legal fast or general return mechanics. A provider SHALL NOT select a syscall,
+invent a result, expose its frame, or own Linux dispatch policy. Wrong
+processor, address-space, thread, ABI, entry, or continuation identity;
+duplicate entry or disposition; return after termination; and disposition with
+a live syscall context SHALL be rejected.
+
+The initial executable x86-64 profile SHALL create one process/thread and one
+generated ring-3 probe in fixed validated RX and RW/NX user mappings. The probe
+SHALL invoke native Linux syscall 39 (`getpid`), verify the source-owned PID
+result after one return to user mode, and invoke syscall 231 (`exit_group`)
+with status zero. Termination SHALL restore the exact registered kernel
+continuation. The probe SHALL be qualification evidence, not an executable
+format or loader. ELF, dynamic linking, pointer-bearing syscalls, user copy,
+user faults, signals, restart, seccomp, audit, ptrace, TLS, extended state,
+fork/clone, multiple processes or threads, user preemption, migration, SMP,
+and the complete syscall table SHALL remain unavailable.
+
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 
 A device location SHALL bind its layout to one live device session, permitted

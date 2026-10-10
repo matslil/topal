@@ -29,6 +29,7 @@ device on which an operation is authorized. Neither substitutes for the other.
 | per-CPU base | segment-base facilities commonly used | thread-pointer/system-register choices | thread-pointer/CSR convention | semantic per-CPU location provider |
 | extended state | XSAVE-family feature-dependent state | FP/SIMD/SVE/SME feature-dependent state | FP/vector extension state | opaque feature-qualified context component |
 | suspended kernel context | stack position plus ABI/feature-qualified callee-saved state | `SP`, `x19`–`x30`, and qualified system state | `sp`, `ra`, `s0`–`s11`, and qualified system state | affine continuation owning a stack and provider-declared state policy |
+| user syscall | `SYSCALL` with native x86-64 argument/result ABI | `SVC` with selected AArch64 ABI | `ECALL` with selected RISC-V ABI | typed entry exposes semantic number/arguments, not registers |
 
 Consequences:
 
@@ -64,6 +65,15 @@ return state, and RISC-V supervisor trap state stay provider-private. Each
 provider must prove that the target binding precedes delivery enablement and
 that later dispatch restores the exact interrupted continuation; none may
 select or store the runnable queue.
+
+User execution likewise retains processor, address-space, thread, ABI, and
+continuation identity without exposing a target frame. X86-64 `SYSCALL`,
+AArch64 `SVC`, and RISC-V `ECALL` can all produce the same typed semantic
+request even though their registers and entry mechanics differ. A
+`ReturnToUser` disposition requires target-specific validation and may choose
+a fast or general return privately; `TerminateUser` restores only the exact
+registered kernel continuation. Linux syscall-number meaning remains in the
+selected personality rather than the common machine provider.
 
 ## Translation and user access
 

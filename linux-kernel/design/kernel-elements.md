@@ -302,6 +302,15 @@ dispatcher and signalling yields a suspended context for source-owned enqueue.
 The provider performs no runnable selection. See
 [TK-DEC-031](one-shot-kernel-completion.md).
 
+The approved user-execution extension keeps validated semantic user state
+separate from scheduler and target register frames. Entering one affine user
+context may produce a typed syscall entry whose number and six arguments are
+untrusted ABI words. Source owns dispatch and must consume the entry by either
+returning one encoded result to the exact revalidated continuation or
+terminating that user context and restoring its registered kernel
+continuation. The backend owns privilege, stack, saved-state, security, and
+return mechanics. See [TK-DEC-032](user-syscall-roundtrip.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults

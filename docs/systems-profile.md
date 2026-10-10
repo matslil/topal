@@ -521,6 +521,32 @@ signal on one processor and address space. Multiple waiters, repeated signals,
 timeouts, cancellation, process signals, priority wakeups, cross-processor
 wakeups, SMP, and user contexts remain excluded.
 
+### User execution and syscall entry
+
+A validated user state is an opaque affine semantic continuation tied to one
+user address space and ABI personality. It proves executable user entry,
+writable non-executable stack state, and target return invariants without
+exposing instruction addresses, stack pointers, registers, descriptor values,
+privilege numbers, entry frames, or return instructions. A suspended user
+context additionally retains its processor and thread identity.
+
+Entering user execution consumes the running kernel context and the exact
+suspended user context. A syscall creates an affine typed entry whose accessors
+expose the ABI syscall number and six arguments as untrusted semantic machine
+words. Kernel source owns dispatch. It must consume that entry by either
+returning one ABI result to the exact revalidated user continuation or
+terminating the user context and restoring its registered kernel
+continuation. Neither path is an ordinary function return.
+
+The backend owns privilege transition, kernel entry stack, saved state,
+security sequence, result placement, return validation, and selection of a
+legal fast or general return mechanism. The provider cannot select a syscall
+or invent its result. The first x86-64 qualification uses a generated ring-3
+probe with real Linux `getpid` and `exit_group` numbers. The probe and its fixed
+RX and RW/NX mappings are physical evidence, not an application format or ELF
+loader. Pointer-bearing syscalls, user-copy recovery, faults, signals, restart,
+TLS, multiple threads, user preemption, migration, and SMP remain excluded.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

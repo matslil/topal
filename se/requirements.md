@@ -543,6 +543,29 @@ one-shot completion before disposition. It shall not imply multiple waiters,
 repeated signals, arbitrary predicate waits, timeouts, cancellation, process
 signals, priorities, cross-processor wakeup, SMP, or user contexts.
 
+## TOPAL-REQ-SYSTEMS-CONTEXT-006 — Affine user execution and syscall round trip
+
+The systems profile shall represent validated user state as opaque affine
+authority tied to processor, address-space, thread, and ABI identities. Entering
+user execution shall consume the running kernel context and one matching
+suspended user context. A user syscall shall create one affine typed entry that
+exposes an untrusted semantic syscall number and six arguments without exposing
+register slots or a target frame.
+
+Kernel source shall own dispatch and consume each entry by returning one ABI
+result to the exact revalidated user continuation or by terminating that user
+context and restoring its exact registered kernel continuation. The provider
+shall own privilege, stack, saved-state, security, result-placement, and return
+mechanics but shall not select a syscall or invent a result.
+
+The first executable x86-64 profile shall use one generated ring-3 probe and
+the pinned Linux `getpid` and `exit_group` numbers. It shall verify one
+user-to-kernel-to-user return followed by terminal restoration with status
+zero. Fixed probe mappings shall be qualification evidence only. ELF loading,
+pointer-bearing syscalls, user-copy recovery, user faults, signals, restart,
+TLS, multiple processes or threads, user preemption, migration, SMP, and the
+complete syscall table remain unavailable.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,
