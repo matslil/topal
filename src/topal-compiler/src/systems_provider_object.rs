@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/11";
+    "topal.provider-object.x86_64-qemu-pc-q35/12";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -53,6 +53,10 @@ pub const X86_SYSTEMS_DEADLINE_AFTER_SYMBOL: &str = "topal_x86_systems_deadline_
 pub const X86_SYSTEMS_DEADLINE_ARM_SYMBOL: &str = "topal_x86_systems_deadline_arm";
 pub const X86_SYSTEMS_DEADLINE_WAIT_SYMBOL: &str = "topal_x86_systems_deadline_wait";
 pub const X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL: &str = "topal_x86_systems_deadline_complete";
+pub const X86_SYSTEMS_CONTEXT_CREATE_SYMBOL: &str = "topal_x86_systems_context_create";
+pub const X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL: &str = "topal_x86_systems_context_transfer";
+pub const X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL: &str = "topal_x86_systems_context_retire";
+pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_reclaim";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -160,6 +164,7 @@ pub fn generate_x86_64_systems_provider_object(
         &monotonic_clock_now()?,
     );
     append_deadline_functions(&mut object, text)?;
+    append_context_functions(&mut object, text)?;
     append_function(
         &mut object,
         text,
@@ -231,6 +236,106 @@ fn append_deadline_functions(
         append_encoded_function(object, text, name, &encoded);
     }
     Ok(())
+}
+
+fn append_context_functions(
+    object: &mut Object<'_>,
+    text: object::write::SectionId,
+) -> Result<(), CompileError> {
+    for (name, encoded) in [
+        (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, context_create()?),
+        (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, context_transfer()?),
+        (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, context_retire()?),
+        (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, context_reclaim()?),
+    ] {
+        append_encoded_function(object, text, name, &encoded);
+    }
+    Ok(())
+}
+
+fn context_create() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // provider-private context state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // stack base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x40, 0xf6, 0xc6, 0x0f]); // 16-byte aligned stack
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x40, 0x00, 0x00]); // 16 KiB
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xc9]); // typed entry address
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x00]); // fresh state
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0x77, 0x10]); // retain stack base
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x01, 0xd0]); // stack end
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x83, 0xe8, 0x40]); // initial saved RSP
+    code.bytes(&[0x45, 0x31, 0xc0]); // zero callee-saved register images
+    for displacement in [0_u8, 8, 16, 24, 32, 40] {
+        code.bytes(&[0x4c, 0x89, 0x40, displacement]);
+    }
+    code.bytes(&[0x48, 0x89, 0x48, 0x30]); // synthetic return enters worker
+    code.bytes(&[0x48, 0x89, 0x47, 0x08]); // suspended worker RSP
+    code.bytes(&[0xc6, 0x47, 0x18, 0x01]); // suspended
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn context_transfer() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x01]); // suspended
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x47, 0x18, 0x02]); // active
+    code.bytes(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
+    code.bytes(&[0x48, 0x89, 0x27]); // suspend caller RSP
+    code.bytes(&[0x48, 0x8b, 0x67, 0x08]); // select worker RSP
+    code.bytes(&[
+        0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b, 0xc3,
+    ]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn context_retire() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x02]); // active
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x47, 0x18, 0x03]); // completed
+    code.bytes(&[0x48, 0x8b, 0x27]); // resume exact caller RSP
+    code.bytes(&[0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn context_reclaim() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x03]); // completed
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xc7, 0x07, 0, 0, 0, 0]); // consume caller RSP
+    code.bytes(&[0x48, 0xc7, 0x47, 0x08, 0, 0, 0, 0]); // consume worker RSP
+    code.bytes(&[0xc6, 0x47, 0x18, 0x04]); // reclaimed
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
 }
 
 fn append_critical_functions(object: &mut Object<'_>, text: object::write::SectionId) {
@@ -1469,6 +1574,51 @@ mod tests {
             deadline_complete
                 .windows(8)
                 .any(|bytes| bytes == 0x0000_0000_fee0_00b0_u64.to_le_bytes())
+        );
+        let context_create = symbol_bytes(&file, X86_SYSTEMS_CONTEXT_CREATE_SYMBOL);
+        assert!(
+            context_create
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x81, 0xfa, 0x00, 0x40, 0x00, 0x00]),
+            "context creation must validate the exact 16 KiB stack extent"
+        );
+        assert!(
+            context_create
+                .windows(4)
+                .any(|bytes| bytes == [0xc6, 0x47, 0x18, 0x01]),
+            "context creation must publish exactly one suspended worker"
+        );
+        let context_transfer = symbol_bytes(&file, X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL);
+        assert!(
+            context_transfer.windows(10).any(|bytes| {
+                bytes == [0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]
+            }),
+            "context transfer must save the x86-64 callee-saved continuation"
+        );
+        assert!(
+            context_transfer
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x67, 0x08]),
+            "context transfer must select the provider-private worker stack pointer"
+        );
+        let context_retire = symbol_bytes(&file, X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL);
+        assert!(
+            context_retire
+                .windows(4)
+                .any(|bytes| bytes == [0xc6, 0x47, 0x18, 0x03])
+        );
+        assert!(
+            context_retire
+                .windows(3)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x27]),
+            "retirement must resume the exact saved caller stack pointer"
+        );
+        let context_reclaim = symbol_bytes(&file, X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL);
+        assert!(
+            context_reclaim
+                .windows(4)
+                .any(|bytes| bytes == [0xc6, 0x47, 0x18, 0x04]),
+            "reclaim must terminally consume the completed context state"
         );
 
         let activator = file

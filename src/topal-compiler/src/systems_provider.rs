@@ -8,9 +8,10 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
@@ -23,7 +24,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/11";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/12";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -61,6 +62,10 @@ pub enum X86SystemsLowering {
     WaitForDeadline,
     CompleteHpetIoApicDeadline,
     ResumeDeadline,
+    CreateKernelContext,
+    TransferKernelContext,
+    RetireKernelContext,
+    ReclaimKernelContext,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -130,6 +135,10 @@ impl X86SystemsLowering {
             Self::WaitForDeadline => "topal.provider.x86_64.time.hpet-ioapic.wait/1",
             Self::CompleteHpetIoApicDeadline => "topal.provider.x86_64.time.hpet-ioapic.complete/1",
             Self::ResumeDeadline => "topal.provider.x86_64.time.hpet-ioapic.resume/1",
+            Self::CreateKernelContext => "topal.provider.x86_64.context.create/1",
+            Self::TransferKernelContext => "topal.provider.x86_64.context.transfer/1",
+            Self::RetireKernelContext => "topal.provider.x86_64.context.retire/1",
+            Self::ReclaimKernelContext => "topal.provider.x86_64.context.reclaim/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -230,6 +239,7 @@ pub fn plan_x86_64_systems_provider(
         .chain(&program.debug_break.handler.effects)
         .chain(&program.local_notification.handler.effects)
         .chain(&program.deadline_notification.handler.effects)
+        .chain(&program.kernel_thread.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
     semantic_identities.extend([
@@ -300,6 +310,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_DEADLINE_WAIT => X86SystemsLowering::WaitForDeadline,
         SYSTEMS_DEADLINE_COMPLETE => X86SystemsLowering::CompleteHpetIoApicDeadline,
         SYSTEMS_RESUME_DEADLINE => X86SystemsLowering::ResumeDeadline,
+        SYSTEMS_KERNEL_CONTEXT_CREATE => X86SystemsLowering::CreateKernelContext,
+        SYSTEMS_KERNEL_CONTEXT_TRANSFER => X86SystemsLowering::TransferKernelContext,
+        SYSTEMS_KERNEL_CONTEXT_RETIRE => X86SystemsLowering::RetireKernelContext,
+        SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -351,6 +365,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::WaitForDeadline => SYSTEMS_DEADLINE_WAIT,
             X86SystemsLowering::CompleteHpetIoApicDeadline => SYSTEMS_DEADLINE_COMPLETE,
             X86SystemsLowering::ResumeDeadline => SYSTEMS_RESUME_DEADLINE,
+            X86SystemsLowering::CreateKernelContext => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            X86SystemsLowering::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            X86SystemsLowering::RetireKernelContext => SYSTEMS_KERNEL_CONTEXT_RETIRE,
+            X86SystemsLowering::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -398,7 +416,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 41);
+        assert_eq!(plan.operations.len(), 45);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -463,6 +481,7 @@ mod tests {
         assert_local_notification_lowerings(&plan);
         assert_clock_lowering(&plan);
         assert_deadline_lowerings(&plan);
+        assert_context_lowerings(&plan);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -564,6 +583,31 @@ mod tests {
                 X86SystemsLowering::CompleteHpetIoApicDeadline,
             ),
             (SYSTEMS_RESUME_DEADLINE, X86SystemsLowering::ResumeDeadline),
+        ] {
+            assert!(plan.operations.iter().any(|operation| {
+                operation.semantic_identity == semantic_identity && operation.lowering == lowering
+            }));
+        }
+    }
+
+    fn assert_context_lowerings(plan: &X86SystemsProviderPlan) {
+        for (semantic_identity, lowering) in [
+            (
+                SYSTEMS_KERNEL_CONTEXT_CREATE,
+                X86SystemsLowering::CreateKernelContext,
+            ),
+            (
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                X86SystemsLowering::TransferKernelContext,
+            ),
+            (
+                SYSTEMS_KERNEL_CONTEXT_RETIRE,
+                X86SystemsLowering::RetireKernelContext,
+            ),
+            (
+                SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+                X86SystemsLowering::ReclaimKernelContext,
+            ),
         ] {
             assert!(plan.operations.iter().any(|operation| {
                 operation.semantic_identity == semantic_identity && operation.lowering == lowering

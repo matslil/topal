@@ -13,16 +13,18 @@ use object::{
 };
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
-    CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerCriticalDomain,
-    CompilerKernelMappingRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
-    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
-    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
-    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
-    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_MAP,
+    CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerBootstrapStoragePlacement,
+    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerKernelMappingRequest,
+    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
+    CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
+    CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
+    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP,
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
     SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
@@ -37,7 +39,9 @@ use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
     X86_SYSTEMS_ATOMIC_LOAD_SYMBOL, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
+    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+    X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+    X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
     X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
@@ -51,23 +55,25 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/11";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/11";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/12";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/12";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY: &str = "topal_x86_systems_local_notification_entry";
 pub const X86_SYSTEMS_DEADLINE_ENTRY: &str = "topal_x86_systems_deadline_entry";
+pub const X86_SYSTEMS_KERNEL_THREAD_ENTRY: &str = "topal_x86_systems_kernel_thread_entry";
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 29] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 34] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_DEADLINE_ENTRY,
+    X86_SYSTEMS_KERNEL_THREAD_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
@@ -90,6 +96,10 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 29] = [
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
     X86_SYSTEMS_DEADLINE_WAIT_SYMBOL,
     X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
+    X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+    X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+    X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+    X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -596,6 +606,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
     for symbol in [
         X86_SYSTEMS_KERNEL_ENTRY,
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,
+        X86_SYSTEMS_KERNEL_THREAD_ENTRY,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
@@ -608,6 +619,10 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
         X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL,
         X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+        X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+        X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+        X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+        X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -645,6 +660,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (
             "topal.systems.entry.external.local-notification/1",
             X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+        ),
+        (
+            "topal.systems.entry.resumed.kernel-thread/1",
+            X86_SYSTEMS_KERNEL_THREAD_ENTRY,
         ),
         (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
         (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
@@ -718,6 +737,22 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (
             SYSTEMS_RESUME_DEADLINE,
             "topal_x86_systems_interrupt_return",
+        ),
+        (
+            SYSTEMS_KERNEL_CONTEXT_CREATE,
+            X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+        ),
+        (
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+        ),
+        (
+            SYSTEMS_KERNEL_CONTEXT_RETIRE,
+            X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+        ),
+        (
+            SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
         ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
@@ -797,6 +832,11 @@ enum ProviderSymbol {
     ArmDeadline,
     WaitDeadline,
     CompleteDeadline,
+    CreateKernelContext,
+    TransferKernelContext,
+    RetireKernelContext,
+    ReclaimKernelContext,
+    KernelThreadEntry,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -829,6 +869,11 @@ impl ProviderSymbol {
             Self::ArmDeadline => X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
             Self::WaitDeadline => X86_SYSTEMS_DEADLINE_WAIT_SYMBOL,
             Self::CompleteDeadline => X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
+            Self::CreateKernelContext => X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+            Self::TransferKernelContext => X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+            Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+            Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+            Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -862,6 +907,11 @@ impl ProviderSymbol {
             | Self::ArmDeadline
             | Self::WaitDeadline
             | Self::CompleteDeadline
+            | Self::CreateKernelContext
+            | Self::TransferKernelContext
+            | Self::RetireKernelContext
+            | Self::ReclaimKernelContext
+            | Self::KernelThreadEntry
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -929,6 +979,9 @@ struct RootEncoder {
     local_notification: RootLocalNotificationState,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
+    kernel_context: RootKernelContextState,
+    bootstrap_next_offset: u64,
+    context_stack_offset: Option<u64>,
     role: RootRole,
 }
 
@@ -939,6 +992,7 @@ enum RootRole {
     BootstrapWithLocalNotification,
     LocalNotificationHandler,
     DeadlineHandler,
+    KernelThreadHandler,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -980,6 +1034,15 @@ enum RootDeadlineState {
     Completed,
 }
 
+#[derive(Default, Eq, PartialEq)]
+enum RootKernelContextState {
+    #[default]
+    Fresh,
+    Suspended,
+    Completed,
+    Reclaimed,
+}
+
 #[derive(Clone, Copy)]
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
@@ -1004,6 +1067,11 @@ struct ProviderSymbols {
     arm_deadline: SymbolId,
     wait_deadline: SymbolId,
     complete_deadline: SymbolId,
+    create_kernel_context: SymbolId,
+    transfer_kernel_context: SymbolId,
+    retire_kernel_context: SymbolId,
+    reclaim_kernel_context: SymbolId,
+    kernel_thread_entry: Option<SymbolId>,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -1399,6 +1467,14 @@ impl RootEncoder {
                 "x86 root lowering ended without completing its deadline lifecycle".into(),
             ));
         }
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && self.kernel_context != RootKernelContextState::Reclaimed
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without completing and reclaiming its kernel-context transfer"
+                    .into(),
+            ));
+        }
         if matches!(
             self.translation,
             RootTranslationState::Update
@@ -1485,12 +1561,34 @@ impl RootEncoder {
         self.bytes.push(opcode);
     }
 
-    fn allocate_bootstrap_region(&mut self) -> Result<(), CompileError> {
-        if self.bootstrap_region_offset.replace(0).is_some() {
+    fn allocate_bootstrap_region(
+        &mut self,
+        request: CompilerBootstrapStorageRequest,
+    ) -> Result<(), CompileError> {
+        if self.bootstrap_region_offset.is_some()
+            || request.placement != CompilerBootstrapStoragePlacement::BootstrapReclaimable
+            || !matches!(
+                (request.byte_count, request.alignment_bytes),
+                (64, 8) | (16_384, 16)
+            )
+        {
             return Err(CompileError::Tool(
-                "x86 root lowering encountered overlapping bootstrap regions".into(),
+                "x86 root lowering encountered an overlapping or unsealed bootstrap region".into(),
             ));
         }
+        let mask = request.alignment_bytes - 1;
+        let mut offset = self
+            .bootstrap_next_offset
+            .checked_add(mask)
+            .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?
+            & !mask;
+        if request.byte_count == 16_384 {
+            offset = offset.max(4096); // provider-private event state occupies the low page
+        }
+        self.bootstrap_next_offset = offset
+            .checked_add(request.byte_count)
+            .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?;
+        self.bootstrap_region_offset = Some(offset);
         Ok(())
     }
 
@@ -1741,6 +1839,72 @@ impl RootEncoder {
         self.call_checked_bool(ProviderSymbol::CompleteDeadline)
     }
 
+    fn create_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.deadline != RootDeadlineState::Completed
+            || self.kernel_context != RootKernelContextState::Fresh
+            || self.bootstrap_region_offset != Some(4096)
+        {
+            return Err(CompileError::Tool(
+                "x86 kernel-context creation requires the completed deadline path and its sealed stack region"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?; // provider-private context state
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // lea rsi, stack
+        self.rip_relative_storage(4096, 0)?;
+        self.bytes
+            .extend_from_slice(&[0xba, 0x00, 0x40, 0x00, 0x00]); // 16 KiB
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x0d]); // lea rcx, worker entry
+        self.rip_relative_symbol(ProviderSymbol::KernelThreadEntry, 0)?;
+        self.call_checked_bool(ProviderSymbol::CreateKernelContext)?;
+        self.context_stack_offset = self.bootstrap_region_offset.take();
+        self.kernel_context = RootKernelContextState::Suspended;
+        Ok(())
+    }
+
+    fn transfer_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::Suspended
+            || self.context_stack_offset != Some(4096)
+        {
+            return Err(CompileError::Tool(
+                "x86 kernel-context transfer requires one matching suspended worker".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?;
+        self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
+        self.kernel_context = RootKernelContextState::Completed;
+        Ok(())
+    }
+
+    fn retire_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::KernelThreadHandler {
+            return Err(CompileError::Tool(
+                "x86 kernel-context retirement is admitted only in its resumed entry".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?;
+        self.jump(ProviderSymbol::RetireKernelContext);
+        Ok(())
+    }
+
+    fn reclaim_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::Completed
+            || self.context_stack_offset != Some(4096)
+        {
+            return Err(CompileError::Tool(
+                "x86 kernel-context reclaim requires one completed transfer".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?;
+        self.call_checked_bool(ProviderSymbol::ReclaimKernelContext)?;
+        self.context_stack_offset = None;
+        self.kernel_context = RootKernelContextState::Reclaimed;
+        Ok(())
+    }
+
     fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
         self.rip_relative_storage(storage_offset, 0)
@@ -1771,6 +1935,24 @@ impl RootEncoder {
             })?,
             target: ProviderSymbol::BootstrapStorage,
             addend: storage_offset - 4 - trailing_bytes,
+            kind: RelocationKind::Relative,
+            encoding: RelocationEncoding::X86RipRelative,
+        });
+        self.bytes.extend_from_slice(&[0; 4]);
+        Ok(())
+    }
+
+    fn rip_relative_symbol(
+        &mut self,
+        target: ProviderSymbol,
+        trailing_bytes: i64,
+    ) -> Result<(), CompileError> {
+        self.relocations.push(PendingRelocation {
+            offset: u64::try_from(self.bytes.len()).map_err(|_| {
+                CompileError::Tool("generated root relocation offset exceeds u64".into())
+            })?,
+            target,
+            addend: -4 - trailing_bytes,
             kind: RelocationKind::Relative,
             encoding: RelocationEncoding::X86RipRelative,
         });
@@ -1855,7 +2037,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             .operations
             .iter()
             .any(|operation| matches!(operation, CompilerSystemsOperation::CompleteDeadline));
-    let symbols = ProviderSymbols {
+    let mut symbols = ProviderSymbols {
         describe_boot_memory: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::DescribeBootMemory,
@@ -1923,6 +2105,23 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         arm_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::ArmDeadline),
         wait_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::WaitDeadline),
         complete_deadline: undefined_provider_symbol(&mut object, ProviderSymbol::CompleteDeadline),
+        create_kernel_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CreateKernelContext,
+        ),
+        transfer_kernel_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::TransferKernelContext,
+        ),
+        retire_kernel_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RetireKernelContext,
+        ),
+        reclaim_kernel_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReclaimKernelContext,
+        ),
+        kernel_thread_entry: None,
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -1930,6 +2129,34 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         bootstrap_storage: uses_bootstrap_storage
             .then(|| undefined_provider_symbol(&mut object, ProviderSymbol::BootstrapStorage)),
     };
+
+    let mut kernel_thread = RootEncoder {
+        role: RootRole::KernelThreadHandler,
+        ..RootEncoder::default()
+    };
+    encode_operations(
+        &mut kernel_thread,
+        &program.kernel_thread.handler.operations,
+    )?;
+    match program.kernel_thread.handler.disposition {
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            kernel_thread.retire_kernel_context()?;
+        }
+        CompilerSystemsDisposition::Fatal { .. } => kernel_thread.jump(ProviderSymbol::Fatal),
+        CompilerSystemsDisposition::Resume => {
+            return Err(CompileError::Tool(
+                "x86 kernel-thread root cannot resume as an interrupt entry".into(),
+            ));
+        }
+    }
+    let kernel_thread_entry = append_root(
+        &mut object,
+        text,
+        X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+        &kernel_thread,
+        symbols,
+    )?;
+    symbols.kernel_thread_entry = Some(kernel_thread_entry);
 
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
@@ -1964,6 +2191,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             deadline.jump(ProviderSymbol::InterruptReturn);
         }
         CompilerSystemsDisposition::Fatal { .. } => deadline.jump(ProviderSymbol::Fatal),
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            return Err(CompileError::Tool(
+                "x86 deadline entry cannot retire a kernel context".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -1994,6 +2226,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::Fatal { .. } => {
             local_notification.jump(ProviderSymbol::Fatal);
         }
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            return Err(CompileError::Tool(
+                "x86 local-notification entry cannot retire a kernel context".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2016,6 +2253,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             debug_break.jump(ProviderSymbol::InterruptReturn);
         }
         CompilerSystemsDisposition::Fatal { .. } => debug_break.jump(ProviderSymbol::Fatal),
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            return Err(CompileError::Tool(
+                "x86 debug-break entry cannot retire a kernel context".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2089,8 +2331,8 @@ fn encode_operations(
             }
             CompilerSystemsOperation::ConsoleWrite { text } => encoder.console_write(text),
             CompilerSystemsOperation::DebugBreak => encoder.call(ProviderSymbol::DebugBreak),
-            CompilerSystemsOperation::BootstrapAllocate { .. } => {
-                encoder.allocate_bootstrap_region()?;
+            CompilerSystemsOperation::BootstrapAllocate { request } => {
+                encoder.allocate_bootstrap_region(*request)?;
             }
             CompilerSystemsOperation::BootstrapStoreByte {
                 offset_bytes,
@@ -2135,6 +2377,9 @@ fn encode_operations(
             CompilerSystemsOperation::ArmDeadline => encoder.arm_deadline()?,
             CompilerSystemsOperation::WaitDeadline => encoder.wait_deadline()?,
             CompilerSystemsOperation::CompleteDeadline => encoder.complete_deadline()?,
+            CompilerSystemsOperation::CreateKernelContext => encoder.create_kernel_context()?,
+            CompilerSystemsOperation::TransferKernelContext => encoder.transfer_kernel_context()?,
+            CompilerSystemsOperation::ReclaimKernelContext => encoder.reclaim_kernel_context()?,
         }
     }
     encoder.complete()
@@ -2159,9 +2404,9 @@ fn append_root(
     name: &str,
     encoded: &RootEncoder,
     provider_symbols: ProviderSymbols,
-) -> Result<(), CompileError> {
+) -> Result<SymbolId, CompileError> {
     let start = object.append_section_data(section, &encoded.bytes, 16);
-    object.add_symbol(Symbol {
+    let root_symbol = object.add_symbol(Symbol {
         name: name.as_bytes().to_vec(),
         value: start,
         size: encoded.bytes.len() as u64,
@@ -2199,6 +2444,17 @@ fn append_root(
             ProviderSymbol::ArmDeadline => provider_symbols.arm_deadline,
             ProviderSymbol::WaitDeadline => provider_symbols.wait_deadline,
             ProviderSymbol::CompleteDeadline => provider_symbols.complete_deadline,
+            ProviderSymbol::CreateKernelContext => provider_symbols.create_kernel_context,
+            ProviderSymbol::TransferKernelContext => provider_symbols.transfer_kernel_context,
+            ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
+            ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
+            ProviderSymbol::KernelThreadEntry => {
+                provider_symbols.kernel_thread_entry.ok_or_else(|| {
+                    CompileError::Tool(
+                        "x86 bootstrap root references an unplaced kernel-thread entry".into(),
+                    )
+                })?
+            }
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -2229,7 +2485,7 @@ fn append_root(
                 CompileError::Tool(format!("cannot encode systems root relocation: {error}"))
             })?;
     }
-    Ok(())
+    Ok(root_symbol)
 }
 
 #[allow(clippy::too_many_lines)] // Exhaustive transition detail remains beside its canonical trace spelling.
@@ -2317,6 +2573,24 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:source-observation={source_observation_identity}:duration-nanoseconds={duration_nanoseconds}"
                 ),
+                CompilerSystemsTransition::CreateKernelContext { context_identity }
+                | CompilerSystemsTransition::EnterKernelThread { context_identity }
+                | CompilerSystemsTransition::ReclaimKernelContext { context_identity } => {
+                    format!("{identity}:context={context_identity}")
+                }
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity,
+                    caller_identity,
+                }
+                | CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity,
+                    caller_identity,
+                } => format!(
+                    "{identity}:context={context_identity}:caller={caller_identity}"
+                ),
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity } => {
+                    format!("{identity}:caller={caller_identity}")
+                }
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -2455,7 +2729,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 403);
+        assert_eq!(relocation_targets.len(), 472);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -2498,6 +2772,27 @@ mod tests {
             );
         }
         for target in [
+            X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+            X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+            X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
+            X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .count(),
+            1
+        );
+        for target in [
             X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
             X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL,
             X86_SYSTEMS_ATOMIC_LOAD_SYMBOL,
@@ -2537,21 +2832,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            330
+            386
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            14
+            19
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            29
+            32
         );
         assert_eq!(
             relocation_targets
@@ -2611,7 +2906,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            10,
+            13,
             "root must derive opaque storage for atomic, notification, clock, and deadline operations"
         );
         assert!(
@@ -2627,6 +2922,10 @@ mod tests {
                 .is_some()
         );
         assert!(file.symbol_by_name(X86_SYSTEMS_DEADLINE_ENTRY).is_some());
+        assert!(
+            file.symbol_by_name(X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .is_some()
+        );
     }
 
     fn assert_translation_relocations(relocation_targets: &[&str]) {
@@ -2685,6 +2984,10 @@ mod tests {
                 "topal_x86_systems_deadline_arm",
                 "topal_x86_systems_deadline_wait",
                 "topal_x86_systems_deadline_complete",
+                "topal_x86_systems_context_create",
+                "topal_x86_systems_context_transfer",
+                "topal_x86_systems_context_retire",
+                "topal_x86_systems_context_reclaim",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -2695,7 +2998,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)] // The complete 67-transition artifact trace is one structural audit.
+    #[allow(clippy::too_many_lines)] // The complete transition artifact trace is one structural audit.
     fn publishes_one_closed_freestanding_artifact_directory() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
         let tools = LlvmTools::discover(None).unwrap();
@@ -2722,10 +3025,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 39);
+        assert_eq!(decoded.placements.len(), 44);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 67);
+        assert_eq!(decoded.semantic_trace.len(), 76);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -2813,7 +3116,18 @@ mod tests {
         assert_eq!(decoded.semantic_trace[63], SYSTEMS_RESUME_DEADLINE);
         assert_eq!(decoded.semantic_trace[64], SYSTEMS_DEADLINE_WAIT);
         assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(
+            decoded.semantic_trace[69].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+        );
+        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
