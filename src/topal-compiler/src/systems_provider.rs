@@ -11,15 +11,15 @@ use topal_language::compiler::{
     SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
     SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
 };
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/9";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/10";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -51,6 +51,7 @@ pub enum X86SystemsLowering {
     WaitForLocalNotification,
     CompleteLocalApicNotification,
     ResumeLocalNotification,
+    ObserveHpetMonotonicClock,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -114,6 +115,7 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.interrupt.local-apic.complete/1"
             }
             Self::ResumeLocalNotification => "topal.provider.x86_64.interrupt.local-apic.resume/1",
+            Self::ObserveHpetMonotonicClock => "topal.provider.x86_64.time.hpet-monotonic-now/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -146,6 +148,7 @@ impl X86SystemsLowering {
                 | Self::WaitForLocalNotification
                 | Self::CompleteLocalApicNotification
                 | Self::ResumeLocalNotification
+                | Self::ObserveHpetMonotonicClock
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -272,6 +275,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_LOCAL_NOTIFICATION_WAIT => X86SystemsLowering::WaitForLocalNotification,
         SYSTEMS_LOCAL_NOTIFICATION_COMPLETE => X86SystemsLowering::CompleteLocalApicNotification,
         SYSTEMS_RESUME_LOCAL_NOTIFICATION => X86SystemsLowering::ResumeLocalNotification,
+        SYSTEMS_MONOTONIC_CLOCK_NOW => X86SystemsLowering::ObserveHpetMonotonicClock,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -317,6 +321,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
                 SYSTEMS_LOCAL_NOTIFICATION_COMPLETE
             }
             X86SystemsLowering::ResumeLocalNotification => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+            X86SystemsLowering::ObserveHpetMonotonicClock => SYSTEMS_MONOTONIC_CLOCK_NOW,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -364,7 +369,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 35);
+        assert_eq!(plan.operations.len(), 36);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -427,6 +432,7 @@ mod tests {
         }));
         assert_critical_lowerings(&plan);
         assert_local_notification_lowerings(&plan);
+        assert_clock_lowering(&plan);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -503,6 +509,13 @@ mod tests {
                 operation.semantic_identity == semantic_identity && operation.lowering == lowering
             }));
         }
+    }
+
+    fn assert_clock_lowering(plan: &X86SystemsProviderPlan) {
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_MONOTONIC_CLOCK_NOW
+                && operation.lowering == X86SystemsLowering::ObserveHpetMonotonicClock
+        }));
     }
 
     #[test]

@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/3";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/4";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -43,6 +43,7 @@ const IDT_ADDRESS: u64 = 0x0010_5000;
 const IDT_DESCRIPTOR_ADDRESS: u64 = 0x0010_6000;
 const LOCAL_APIC_PD_ADDRESS: u64 = 0x0010_7000;
 const TRANSITION_RESERVED_END: u64 = 0x0010_8000;
+const HPET_MMIO_LEAF_ADDRESS: u64 = 0xfec0_0000;
 const LOCAL_APIC_PAGE_ADDRESS: u64 = 0xfee0_0000;
 const LOCAL_NOTIFICATION_VECTOR: usize = 0xf1;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
@@ -462,6 +463,13 @@ fn install_page_tables(protected: &mut [u8]) -> Result<(), CompileError> {
     }
     let apic_index = usize::try_from((LOCAL_APIC_PAGE_ADDRESS >> 21) & 0x1ff)
         .map_err(|_| CompileError::Tool("local-APIC page index does not fit host size".into()))?;
+    let hpet_index = usize::try_from((HPET_MMIO_LEAF_ADDRESS >> 21) & 0x1ff)
+        .map_err(|_| CompileError::Tool("HPET page index does not fit host size".into()))?;
+    write_u64(
+        protected,
+        apic_pd + hpet_index * 8,
+        HPET_MMIO_LEAF_ADDRESS | 0x9b,
+    );
     write_u64(
         protected,
         apic_pd + apic_index * 8,
@@ -876,6 +884,15 @@ mod tests {
         );
         let apic_pd =
             usize::try_from(LOCAL_APIC_PD_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        let hpet_index = usize::try_from((HPET_MMIO_LEAF_ADDRESS >> 21) & 0x1ff).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(
+                protected[apic_pd + hpet_index * 8..apic_pd + hpet_index * 8 + 8]
+                    .try_into()
+                    .unwrap()
+            ),
+            HPET_MMIO_LEAF_ADDRESS | 0x9b
+        );
         let apic_index = usize::try_from((LOCAL_APIC_PAGE_ADDRESS >> 21) & 0x1ff).unwrap();
         assert_eq!(
             u64::from_le_bytes(
