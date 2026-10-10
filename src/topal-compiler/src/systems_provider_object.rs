@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/13";
+    "topal.provider-object.x86_64-qemu-pc-q35/14";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -55,6 +55,10 @@ pub const X86_SYSTEMS_DEADLINE_WAIT_SYMBOL: &str = "topal_x86_systems_deadline_w
 pub const X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL: &str = "topal_x86_systems_deadline_complete";
 pub const X86_SYSTEMS_CONTEXT_CREATE_SYMBOL: &str = "topal_x86_systems_context_create";
 pub const X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL: &str = "topal_x86_systems_context_transfer";
+pub const X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL: &str =
+    "topal_x86_systems_context_await_deadline_preemption";
+pub const X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL: &str =
+    "topal_x86_systems_context_preempt_current";
 pub const X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL: &str = "topal_x86_systems_context_retire";
 pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_reclaim";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
@@ -245,6 +249,14 @@ fn append_context_functions(
     for (name, encoded) in [
         (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, context_create()?),
         (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, context_transfer()?),
+        (
+            X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL,
+            context_await_deadline_preemption()?,
+        ),
+        (
+            X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
+            context_preempt_current()?,
+        ),
         (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, context_retire()?),
         (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, context_reclaim()?),
     ] {
@@ -310,6 +322,42 @@ fn context_transfer() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
     code.bytes(&[0x48, 0x89, 0x27]); // suspend dispatcher RSP
     code.bytes(&[0x48, 0x8b, 0x67, 0x08]); // select worker RSP
+    code.bytes(&[
+        0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b, 0xc3,
+    ]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn context_await_deadline_preemption() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x02]); // active worker
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xfb, 0xf4, 0xfa]); // sti; hlt; restore sealed IF=0 state
+    code.bytes(&[0x80, 0x7f, 0x18, 0x02]); // restored only by redispatch
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0xfa, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn context_preempt_current() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x18, 0x02]); // active worker
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x9c, 0x58, 0xa9, 0x00, 0x02, 0x00, 0x00]); // require IF=0
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x47, 0x18, 0x01]); // interrupted worker becomes suspended
+    code.bytes(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
+    code.bytes(&[0x48, 0x89, 0x67, 0x08]); // retain interrupt-handler RSP
+    code.bytes(&[0x48, 0x8b, 0x27]); // restore exact dispatcher RSP
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]); // complete transfer call
     code.bytes(&[
         0x41, 0x5f, 0x41, 0x5e, 0x41, 0x5d, 0x41, 0x5c, 0x5d, 0x5b, 0xc3,
     ]);

@@ -36,6 +36,8 @@ use topal_language::compiler::{
 
 #[cfg(test)]
 use topal_language::compiler::{
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
 };
@@ -45,7 +47,8 @@ use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
     X86_SYSTEMS_ATOMIC_LOAD_SYMBOL, X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
-    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
+    X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION, X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL,
+    X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
@@ -75,7 +78,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 35] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 37] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -106,6 +109,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 35] = [
     X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
     X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
     X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+    X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL,
+    X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
     X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
     "topal_x86_systems_uart16550_write",
@@ -847,6 +852,8 @@ enum ProviderSymbol {
     CompleteDeadline,
     CreateKernelContext,
     TransferKernelContext,
+    AwaitDeadlinePreemption,
+    PreemptCurrentKernelContext,
     RetireKernelContext,
     ReclaimKernelContext,
     KernelThreadEntry,
@@ -885,6 +892,8 @@ impl ProviderSymbol {
             Self::CompleteDeadline => X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
             Self::CreateKernelContext => X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
             Self::TransferKernelContext => X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
+            Self::AwaitDeadlinePreemption => X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL,
+            Self::PreemptCurrentKernelContext => X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
             Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
             Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
@@ -924,6 +933,8 @@ impl ProviderSymbol {
             | Self::CompleteDeadline
             | Self::CreateKernelContext
             | Self::TransferKernelContext
+            | Self::AwaitDeadlinePreemption
+            | Self::PreemptCurrentKernelContext
             | Self::RetireKernelContext
             | Self::ReclaimKernelContext
             | Self::KernelThreadEntry
@@ -1062,6 +1073,7 @@ enum RootKernelContextState {
     BothEnqueued,
     CooperativeDequeued,
     CooperativeYielded,
+    PreemptedTaken,
     HandoffEnqueued,
     TerminalDequeued,
     TerminalCompleted,
@@ -1098,6 +1110,8 @@ struct ProviderSymbols {
     complete_deadline: SymbolId,
     create_kernel_context: SymbolId,
     transfer_kernel_context: SymbolId,
+    await_deadline_preemption: SymbolId,
+    preempt_current_kernel_context: SymbolId,
     retire_kernel_context: SymbolId,
     reclaim_kernel_context: SymbolId,
     kernel_thread_entry: Option<SymbolId>,
@@ -1876,10 +1890,10 @@ impl RootEncoder {
 
     fn create_kernel_context(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.deadline != RootDeadlineState::Completed
+            || self.deadline != RootDeadlineState::Constructed
         {
             return Err(CompileError::Tool(
-                "x86 kernel-context creation requires the completed deadline path and its sealed stack region"
+                "x86 kernel-context creation requires one constructed deadline and its sealed stack region"
                     .into(),
             ));
         }
@@ -1956,6 +1970,60 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn transfer_kernel_context_until_deadline(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::CooperativeDequeued
+            || self.context_stack_offsets != [Some(4096), Some(20_480)]
+            || self.deadline != RootDeadlineState::Constructed
+            || self.critical != RootCriticalState::Restored
+        {
+            return Err(CompileError::Tool(
+                "x86 deadline-bound transfer requires the first selected worker, constructed deadline, and restored processor context".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(24)?;
+        self.call_checked_bool(ProviderSymbol::ArmDeadline)?;
+        self.deadline = RootDeadlineState::Armed;
+        self.load_bootstrap_storage_address(80)?;
+        self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
+        self.deadline = RootDeadlineState::Completed;
+        self.kernel_context = RootKernelContextState::CooperativeYielded;
+        Ok(())
+    }
+
+    fn await_deadline_preemption(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::CooperativeKernelThreadHandler {
+            return Err(CompileError::Tool(
+                "x86 deadline-preemption await is admitted only in its bound worker".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?;
+        self.call_checked_bool(ProviderSymbol::AwaitDeadlinePreemption)
+    }
+
+    fn take_preempted_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::CooperativeYielded
+            || self.deadline != RootDeadlineState::Completed
+        {
+            return Err(CompileError::Tool(
+                "x86 preempted-context take requires the completed bound deadline transfer".into(),
+            ));
+        }
+        self.kernel_context = RootKernelContextState::PreemptedTaken;
+        Ok(())
+    }
+
+    fn preempt_current_kernel_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::DeadlineHandler {
+            return Err(CompileError::Tool(
+                "x86 deadline preemption is admitted only in its external entry".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(80)?;
+        self.call_checked_bool(ProviderSymbol::PreemptCurrentKernelContext)
+    }
+
     fn create_runnable_queue(&mut self, capacity: usize) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.kernel_context != RootKernelContextState::BothSuspended
@@ -1973,7 +2041,7 @@ impl RootEncoder {
         self.kernel_context = match self.kernel_context {
             RootKernelContextState::QueueCreated => RootKernelContextState::CooperativeEnqueued,
             RootKernelContextState::CooperativeEnqueued => RootKernelContextState::BothEnqueued,
-            RootKernelContextState::CooperativeYielded => RootKernelContextState::HandoffEnqueued,
+            RootKernelContextState::PreemptedTaken => RootKernelContextState::HandoffEnqueued,
             _ => {
                 return Err(CompileError::Tool(
                     "x86 root runnable enqueue violates cooperative, terminal, cooperative FIFO ownership"
@@ -2264,6 +2332,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::TransferKernelContext,
         ),
+        await_deadline_preemption: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AwaitDeadlinePreemption,
+        ),
+        preempt_current_kernel_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PreemptCurrentKernelContext,
+        ),
         retire_kernel_context: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RetireKernelContext,
@@ -2300,6 +2376,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 kernel-thread root cannot resume as an interrupt entry".into(),
             ));
         }
+        CompilerSystemsDisposition::PreemptKernelContext => {
+            return Err(CompileError::Tool(
+                "x86 kernel-thread root cannot preempt itself as a deadline entry".into(),
+            ));
+        }
     }
     let kernel_thread_entry = append_root(
         &mut object,
@@ -2326,6 +2407,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::Resume => {
             return Err(CompileError::Tool(
                 "x86 terminal-thread root cannot resume as an interrupt entry".into(),
+            ));
+        }
+        CompilerSystemsDisposition::PreemptKernelContext => {
+            return Err(CompileError::Tool(
+                "x86 terminal-thread root cannot preempt a kernel context".into(),
             ));
         }
     }
@@ -2371,6 +2457,13 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             deadline.jump(ProviderSymbol::InterruptReturn);
         }
         CompilerSystemsDisposition::Fatal { .. } => deadline.jump(ProviderSymbol::Fatal),
+        CompilerSystemsDisposition::PreemptKernelContext => {
+            deadline.preempt_current_kernel_context()?;
+            for register in SAVED_REGISTERS.into_iter().rev() {
+                deadline.pop(register);
+            }
+            deadline.jump(ProviderSymbol::InterruptReturn);
+        }
         CompilerSystemsDisposition::RetireKernelContextToCaller => {
             return Err(CompileError::Tool(
                 "x86 deadline entry cannot retire a kernel context".into(),
@@ -2411,6 +2504,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 local-notification entry cannot retire a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::PreemptKernelContext => {
+            return Err(CompileError::Tool(
+                "x86 local-notification entry cannot preempt a kernel context".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2436,6 +2534,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::RetireKernelContextToCaller => {
             return Err(CompileError::Tool(
                 "x86 debug-break entry cannot retire a kernel context".into(),
+            ));
+        }
+        CompilerSystemsDisposition::PreemptKernelContext => {
+            return Err(CompileError::Tool(
+                "x86 debug-break entry cannot preempt a kernel context".into(),
             ));
         }
     }
@@ -2567,7 +2670,16 @@ fn encode_operations(
             CompilerSystemsOperation::DequeueRunnableContext => {
                 encoder.dequeue_runnable_context()?;
             }
+            CompilerSystemsOperation::TransferKernelContextUntilDeadline => {
+                encoder.transfer_kernel_context_until_deadline()?;
+            }
+            CompilerSystemsOperation::TakePreemptedKernelContext => {
+                encoder.take_preempted_kernel_context()?;
+            }
             CompilerSystemsOperation::TransferKernelContext => encoder.transfer_kernel_context()?,
+            CompilerSystemsOperation::AwaitDeadlinePreemption => {
+                encoder.await_deadline_preemption()?;
+            }
             CompilerSystemsOperation::ReclaimKernelContext => encoder.reclaim_kernel_context()?,
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue => {
                 encoder.consume_empty_runnable_queue()?;
@@ -2638,6 +2750,10 @@ fn append_root(
             ProviderSymbol::CompleteDeadline => provider_symbols.complete_deadline,
             ProviderSymbol::CreateKernelContext => provider_symbols.create_kernel_context,
             ProviderSymbol::TransferKernelContext => provider_symbols.transfer_kernel_context,
+            ProviderSymbol::AwaitDeadlinePreemption => provider_symbols.await_deadline_preemption,
+            ProviderSymbol::PreemptCurrentKernelContext => {
+                provider_symbols.preempt_current_kernel_context
+            }
             ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
             ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
             ProviderSymbol::KernelThreadEntry => {
@@ -2794,7 +2910,34 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:context={context_identity}:caller={caller_identity}"
                 ),
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity } => {
+                CompilerSystemsTransition::TransferKernelContextUntilDeadline {
+                    context_identity,
+                    caller_identity,
+                    event_identity,
+                }
+                | CompilerSystemsTransition::PreemptKernelContext {
+                    context_identity,
+                    caller_identity,
+                    event_identity,
+                }
+                | CompilerSystemsTransition::RestorePreemptedKernelContext {
+                    context_identity,
+                    caller_identity,
+                    event_identity,
+                } => format!(
+                    "{identity}:context={context_identity}:caller={caller_identity}:event={event_identity}"
+                ),
+                CompilerSystemsTransition::AwaitDeadlinePreemption { context_identity } => {
+                    format!("{identity}:context={context_identity}")
+                }
+                CompilerSystemsTransition::TakePreemptedKernelContext {
+                    context_identity,
+                    event_identity,
+                } => format!(
+                    "{identity}:context={context_identity}:event={event_identity}"
+                ),
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity }
+                | CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity } => {
                     format!("{identity}:caller={caller_identity}")
                 }
                 CompilerSystemsTransition::StoreBootstrapByte {
@@ -2896,10 +3039,9 @@ mod tests {
     use topal_language::compiler::{
         CompilerSystemsTargetSelection, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
         SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-        SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-        SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-        SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEADLINE,
-        analyze_systems_for_compiler,
+        SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_RELEASE,
+        SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+        SYSTEMS_KERNEL_UNMAP, analyze_systems_for_compiler,
     };
 
     use super::*;
@@ -2936,7 +3078,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 671);
+        assert_eq!(relocation_targets.len(), 636);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -2967,7 +3109,6 @@ mod tests {
         for target in [
             X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
             X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
-            X86_SYSTEMS_DEADLINE_WAIT_SYMBOL,
             X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
         ] {
             assert_eq!(
@@ -2980,7 +3121,9 @@ mod tests {
         }
         for (target, expected) in [
             (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, 2),
-            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 4),
+            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 3),
+            (X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL, 1),
+            (X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL, 1),
             (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, 2),
             (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, 2),
         ] {
@@ -3046,7 +3189,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            566
+            531
         );
         assert_eq!(
             relocation_targets
@@ -3120,8 +3263,8 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            17,
-            "root must derive opaque storage for atomic, notification, clock, and deadline operations"
+            16,
+            "root must derive opaque storage for atomic, notification, clock, deadline, and context operations"
         );
         assert!(
             root_bytes
@@ -3204,6 +3347,8 @@ mod tests {
                 "topal_x86_systems_deadline_complete",
                 "topal_x86_systems_context_create",
                 "topal_x86_systems_context_transfer",
+                "topal_x86_systems_context_await_deadline_preemption",
+                "topal_x86_systems_context_preempt_current",
                 "topal_x86_systems_context_retire",
                 "topal_x86_systems_context_reclaim",
                 "topal_x86_systems_uart16550_write",
@@ -3246,7 +3391,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 45);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 99);
+        assert_eq!(decoded.semantic_trace.len(), 97);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -3320,60 +3465,65 @@ mod tests {
         assert_eq!(decoded.semantic_trace[55], SYSTEMS_MONOTONIC_CLOCK_NOW);
         assert!(decoded.semantic_trace[56].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_DEADLINE_AFTER));
-        assert_eq!(decoded.semantic_trace[58], SYSTEMS_DEADLINE_ARM);
-        assert_eq!(decoded.semantic_trace[59], SYSTEMS_DEADLINE_WAIT);
+        assert!(decoded.semantic_trace[58].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[61].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
+        assert!(decoded.semantic_trace[63].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[64].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert_eq!(decoded.semantic_trace[66], SYSTEMS_DEADLINE_ARM);
+        assert!(
+            decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
+        );
+        assert!(
+            decoded.semantic_trace[68].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+        );
+        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(
+            decoded.semantic_trace[70]
+                .starts_with(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION)
+        );
         assert_eq!(
-            decoded.semantic_trace[60],
+            decoded.semantic_trace[71],
             "topal.systems.observation.deadline/1"
         );
         assert_eq!(
-            decoded.semantic_trace[61],
+            decoded.semantic_trace[72],
             "topal.systems.entry.external.deadline/1"
         );
-        assert_eq!(decoded.semantic_trace[62], SYSTEMS_DEADLINE_COMPLETE);
-        assert_eq!(decoded.semantic_trace[63], SYSTEMS_RESUME_DEADLINE);
-        assert_eq!(decoded.semantic_trace[64], SYSTEMS_DEADLINE_WAIT);
-        assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
-        assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert_eq!(decoded.semantic_trace[73], SYSTEMS_DEADLINE_COMPLETE);
+        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT));
         assert!(
-            decoded.semantic_trace[75].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[75].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
         );
-        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED));
+        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
         assert!(
-            decoded.semantic_trace[83].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[81].starts_with("topal.systems.entry.resumed.kernel-thread/1")
         );
-        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
         assert_eq!(
-            decoded.semantic_trace[97],
+            decoded.semantic_trace[95],
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
         );
-        assert!(decoded.semantic_trace[98].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
