@@ -55,25 +55,27 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/12";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/12";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/13";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/13";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY: &str = "topal_x86_systems_local_notification_entry";
 pub const X86_SYSTEMS_DEADLINE_ENTRY: &str = "topal_x86_systems_deadline_entry";
 pub const X86_SYSTEMS_KERNEL_THREAD_ENTRY: &str = "topal_x86_systems_kernel_thread_entry";
+pub const X86_SYSTEMS_TERMINAL_THREAD_ENTRY: &str = "topal_x86_systems_terminal_thread_entry";
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 34] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 35] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_DEADLINE_ENTRY,
     X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+    X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
@@ -607,6 +609,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_KERNEL_ENTRY,
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+        X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
@@ -664,6 +667,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (
             "topal.systems.entry.resumed.kernel-thread/1",
             X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+        ),
+        (
+            "topal.systems.entry.resumed.terminal-thread/1",
+            X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
         ),
         (SYSTEMS_BOOT_MEMORY_DESCRIBE, X86_SYSTEMS_BOOT_MEMORY_SYMBOL),
         (SYSTEMS_FRAMES_ALLOCATE, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL),
@@ -837,6 +844,7 @@ enum ProviderSymbol {
     RetireKernelContext,
     ReclaimKernelContext,
     KernelThreadEntry,
+    TerminalThreadEntry,
     Uart16550Write,
     DebugBreak,
     InterruptReturn,
@@ -874,6 +882,7 @@ impl ProviderSymbol {
             Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
             Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+            Self::TerminalThreadEntry => X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
             Self::InterruptReturn => "topal_x86_systems_interrupt_return",
@@ -912,6 +921,7 @@ impl ProviderSymbol {
             | Self::RetireKernelContext
             | Self::ReclaimKernelContext
             | Self::KernelThreadEntry
+            | Self::TerminalThreadEntry
             | Self::Uart16550Write
             | Self::DebugBreak
             | Self::InterruptReturn
@@ -981,7 +991,7 @@ struct RootEncoder {
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
     bootstrap_next_offset: u64,
-    context_stack_offset: Option<u64>,
+    context_stack_offsets: [Option<u64>; 2],
     role: RootRole,
 }
 
@@ -992,7 +1002,8 @@ enum RootRole {
     BootstrapWithLocalNotification,
     LocalNotificationHandler,
     DeadlineHandler,
-    KernelThreadHandler,
+    CooperativeKernelThreadHandler,
+    TerminalKernelThreadHandler,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1038,8 +1049,12 @@ enum RootDeadlineState {
 enum RootKernelContextState {
     #[default]
     Fresh,
-    Suspended,
-    Completed,
+    CooperativeCreated,
+    BothSuspended,
+    CooperativeYielded,
+    TerminalCompleted,
+    TerminalReclaimed,
+    CooperativeCompleted,
     Reclaimed,
 }
 
@@ -1072,6 +1087,7 @@ struct ProviderSymbols {
     retire_kernel_context: SymbolId,
     reclaim_kernel_context: SymbolId,
     kernel_thread_entry: Option<SymbolId>,
+    terminal_thread_entry: Option<SymbolId>,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
     interrupt_return: SymbolId,
@@ -1475,6 +1491,11 @@ impl RootEncoder {
                     .into(),
             ));
         }
+        if self.context_stack_offsets != [None, None] {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live cooperative context stack".into(),
+            ));
+        }
         if matches!(
             self.translation,
             RootTranslationState::Update
@@ -1842,66 +1863,127 @@ impl RootEncoder {
     fn create_kernel_context(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.deadline != RootDeadlineState::Completed
-            || self.kernel_context != RootKernelContextState::Fresh
-            || self.bootstrap_region_offset != Some(4096)
         {
             return Err(CompileError::Tool(
                 "x86 kernel-context creation requires the completed deadline path and its sealed stack region"
                     .into(),
             ));
         }
-        self.load_bootstrap_storage_address(80)?; // provider-private context state
+        let (index, state_offset, stack_offset, entry) = match self.kernel_context {
+            RootKernelContextState::Fresh if self.bootstrap_region_offset == Some(4096) => {
+                (0, 80, 4096, ProviderSymbol::KernelThreadEntry)
+            }
+            RootKernelContextState::CooperativeCreated
+                if self.bootstrap_region_offset == Some(20_480) =>
+            {
+                (1, 112, 20_480, ProviderSymbol::TerminalThreadEntry)
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 cooperative profile creates exactly two contexts from its sealed disjoint stacks"
+                        .into(),
+                ));
+            }
+        };
+        self.load_bootstrap_storage_address(state_offset)?;
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // lea rsi, stack
-        self.rip_relative_storage(4096, 0)?;
+        self.rip_relative_storage(stack_offset, 0)?;
         self.bytes
             .extend_from_slice(&[0xba, 0x00, 0x40, 0x00, 0x00]); // 16 KiB
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x0d]); // lea rcx, worker entry
-        self.rip_relative_symbol(ProviderSymbol::KernelThreadEntry, 0)?;
+        self.rip_relative_symbol(entry, 0)?;
         self.call_checked_bool(ProviderSymbol::CreateKernelContext)?;
-        self.context_stack_offset = self.bootstrap_region_offset.take();
-        self.kernel_context = RootKernelContextState::Suspended;
+        self.context_stack_offsets[index] = self.bootstrap_region_offset.take();
+        self.kernel_context = if index == 0 {
+            RootKernelContextState::CooperativeCreated
+        } else {
+            RootKernelContextState::BothSuspended
+        };
         Ok(())
     }
 
     fn transfer_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::Suspended
-            || self.context_stack_offset != Some(4096)
-        {
+        if self.role == RootRole::CooperativeKernelThreadHandler {
+            self.load_bootstrap_storage_address(80)?;
+            self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
+            return Ok(());
+        }
+        if self.role != RootRole::BootstrapWithLocalNotification {
             return Err(CompileError::Tool(
-                "x86 kernel-context transfer requires one matching suspended worker".into(),
+                "x86 cooperative transfer requires the dispatcher or cooperative worker".into(),
             ));
         }
-        self.load_bootstrap_storage_address(80)?;
+        let (state_offset, next_state) = match self.kernel_context {
+            RootKernelContextState::BothSuspended
+                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
+            {
+                (80, RootKernelContextState::CooperativeYielded)
+            }
+            RootKernelContextState::CooperativeYielded
+                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
+            {
+                (112, RootKernelContextState::TerminalCompleted)
+            }
+            RootKernelContextState::TerminalReclaimed
+                if self.context_stack_offsets == [Some(4096), None] =>
+            {
+                (80, RootKernelContextState::CooperativeCompleted)
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 kernel-context transfers must follow cooperative, terminal, cooperative FIFO order"
+                        .into(),
+                ));
+            }
+        };
+        self.load_bootstrap_storage_address(state_offset)?;
         self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
-        self.kernel_context = RootKernelContextState::Completed;
+        self.kernel_context = next_state;
         Ok(())
     }
 
     fn retire_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::KernelThreadHandler {
-            return Err(CompileError::Tool(
-                "x86 kernel-context retirement is admitted only in its resumed entry".into(),
-            ));
-        }
-        self.load_bootstrap_storage_address(80)?;
+        let state_offset = match self.role {
+            RootRole::CooperativeKernelThreadHandler => 80,
+            RootRole::TerminalKernelThreadHandler => 112,
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 kernel-context retirement is admitted only in a resumed entry".into(),
+                ));
+            }
+        };
+        self.load_bootstrap_storage_address(state_offset)?;
         self.jump(ProviderSymbol::RetireKernelContext);
         Ok(())
     }
 
     fn reclaim_kernel_context(&mut self) -> Result<(), CompileError> {
-        if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::Completed
-            || self.context_stack_offset != Some(4096)
-        {
+        if self.role != RootRole::BootstrapWithLocalNotification {
             return Err(CompileError::Tool(
                 "x86 kernel-context reclaim requires one completed transfer".into(),
             ));
         }
-        self.load_bootstrap_storage_address(80)?;
+        let (index, state_offset, next_state) = match self.kernel_context {
+            RootKernelContextState::TerminalCompleted
+                if self.context_stack_offsets[1] == Some(20_480) =>
+            {
+                (1, 112, RootKernelContextState::TerminalReclaimed)
+            }
+            RootKernelContextState::CooperativeCompleted
+                if self.context_stack_offsets[0] == Some(4096) =>
+            {
+                (0, 80, RootKernelContextState::Reclaimed)
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 kernel-context reclaim requires the next completed FIFO context".into(),
+                ));
+            }
+        };
+        self.load_bootstrap_storage_address(state_offset)?;
         self.call_checked_bool(ProviderSymbol::ReclaimKernelContext)?;
-        self.context_stack_offset = None;
-        self.kernel_context = RootKernelContextState::Reclaimed;
+        self.context_stack_offsets[index] = None;
+        self.kernel_context = next_state;
         Ok(())
     }
 
@@ -2122,6 +2204,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             ProviderSymbol::ReclaimKernelContext,
         ),
         kernel_thread_entry: None,
+        terminal_thread_entry: None,
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
         interrupt_return: undefined_provider_symbol(&mut object, ProviderSymbol::InterruptReturn),
@@ -2131,7 +2214,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     };
 
     let mut kernel_thread = RootEncoder {
-        role: RootRole::KernelThreadHandler,
+        role: RootRole::CooperativeKernelThreadHandler,
         ..RootEncoder::default()
     };
     encode_operations(
@@ -2157,6 +2240,34 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         symbols,
     )?;
     symbols.kernel_thread_entry = Some(kernel_thread_entry);
+
+    let mut terminal_thread = RootEncoder {
+        role: RootRole::TerminalKernelThreadHandler,
+        ..RootEncoder::default()
+    };
+    encode_operations(
+        &mut terminal_thread,
+        &program.terminal_thread.handler.operations,
+    )?;
+    match program.terminal_thread.handler.disposition {
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            terminal_thread.retire_kernel_context()?;
+        }
+        CompilerSystemsDisposition::Fatal { .. } => terminal_thread.jump(ProviderSymbol::Fatal),
+        CompilerSystemsDisposition::Resume => {
+            return Err(CompileError::Tool(
+                "x86 terminal-thread root cannot resume as an interrupt entry".into(),
+            ));
+        }
+    }
+    let terminal_thread_entry = append_root(
+        &mut object,
+        text,
+        X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
+        &terminal_thread,
+        symbols,
+    )?;
+    symbols.terminal_thread_entry = Some(terminal_thread_entry);
 
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
@@ -2455,6 +2566,13 @@ fn append_root(
                     )
                 })?
             }
+            ProviderSymbol::TerminalThreadEntry => {
+                provider_symbols.terminal_thread_entry.ok_or_else(|| {
+                    CompileError::Tool(
+                        "x86 bootstrap root references an unplaced terminal-thread entry".into(),
+                    )
+                })?
+            }
             ProviderSymbol::Uart16550Write => provider_symbols.uart16550_write,
             ProviderSymbol::DebugBreak => provider_symbols.debug_break,
             ProviderSymbol::InterruptReturn => provider_symbols.interrupt_return,
@@ -2729,7 +2847,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 472);
+        assert_eq!(relocation_targets.len(), 671);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -2771,24 +2889,31 @@ mod tests {
                 1
             );
         }
-        for target in [
-            X86_SYSTEMS_CONTEXT_CREATE_SYMBOL,
-            X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
-            X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
-            X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+        for (target, expected) in [
+            (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, 2),
+            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 4),
+            (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, 2),
+            (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, 2),
         ] {
             assert_eq!(
                 relocation_targets
                     .iter()
                     .filter(|actual| **actual == target)
                     .count(),
-                1
+                expected
             );
         }
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_TERMINAL_THREAD_ENTRY)
                 .count(),
             1
         );
@@ -2832,21 +2957,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            386
+            566
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            19
+            26
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            32
+            37
         );
         assert_eq!(
             relocation_targets
@@ -2906,7 +3031,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            13,
+            17,
             "root must derive opaque storage for atomic, notification, clock, and deadline operations"
         );
         assert!(
@@ -2924,6 +3049,10 @@ mod tests {
         assert!(file.symbol_by_name(X86_SYSTEMS_DEADLINE_ENTRY).is_some());
         assert!(
             file.symbol_by_name(X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .is_some()
+        );
+        assert!(
+            file.symbol_by_name(X86_SYSTEMS_TERMINAL_THREAD_ENTRY)
                 .is_some()
         );
     }
@@ -3025,10 +3154,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 44);
+        assert_eq!(decoded.placements.len(), 45);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 76);
+        assert_eq!(decoded.semantic_trace.len(), 91);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -3118,16 +3247,33 @@ mod tests {
         assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
         assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
         assert!(
-            decoded.semantic_trace[69].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[71].starts_with("topal.systems.entry.resumed.kernel-thread/1")
         );
-        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(
+            decoded.semantic_trace[77].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+        );
+        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
