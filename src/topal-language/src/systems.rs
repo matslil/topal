@@ -38,10 +38,11 @@ pub use topal_semantics::{
     SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
     SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
     SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -550,6 +551,14 @@ fn local_interrupt_diagnostic(
     message: impl Into<String>,
 ) -> Diagnostic {
     source_diagnostic(source, "E-SYSTEMS-LOCAL-INTERRUPT", span, message)
+}
+
+fn monotonic_clock_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-MONOTONIC-CLOCK", span, message)
 }
 
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
@@ -1741,6 +1750,7 @@ fn parse_atomic_exchanged_action(
     })
 }
 
+#[allow(clippy::too_many_lines)] // The sealed atomic-to-interrupt-to-clock success path is audited together.
 fn parse_atomic_exchanged_success(
     source: &SourceText,
     true_action: &Expression,
@@ -1764,13 +1774,16 @@ fn parse_atomic_exchanged_success(
         send,
         wait,
         interrupt_console,
+        first_clock,
+        second_clock,
+        time_console,
         disposition,
     ] = success_continuation
     else {
         return Err(atomic_diagnostic(
             source,
             true_action.span(),
-            "successful atomic load requires atomic and memory markers, region release, one local-notification send/wait, interrupt marker, and final disposition after atomic end",
+            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, time marker, and final disposition after atomic end",
         ));
     };
     let atomic_marker = analyze_operation(
@@ -1815,6 +1828,34 @@ fn parse_atomic_exchanged_success(
             "local-notification wait must be followed by the exact interrupt success marker",
         ));
     }
+    let (first_name, first_clock_operation) =
+        parse_monotonic_clock_now(source, first_clock, &resumed_name)?;
+    let (second_name, second_clock_operation) =
+        parse_monotonic_clock_now(source, second_clock, &resumed_name)?;
+    if first_name == second_name {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(second_clock),
+            "monotonic-clock observations require distinct instant bindings",
+        ));
+    }
+    let time_marker = analyze_operation(
+        source,
+        time_console,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if time_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_TIME_OK".into(),
+        })
+    {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(time_console),
+            "the two clock observations must be followed by the exact time success marker",
+        ));
+    }
     let success_disposition = analyze_disposition(
         source,
         disposition,
@@ -1829,8 +1870,53 @@ fn parse_atomic_exchanged_success(
             send_operation,
             wait_operation,
             interrupt_marker,
+            first_clock_operation,
+            second_clock_operation,
+            time_marker,
         ],
         success_disposition,
+    ))
+}
+
+fn parse_monotonic_clock_now(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(statement),
+            "clock observation must bind `Instant InitialMonotonicClock`",
+        ));
+    };
+    let [context, monotonic, clock, now] = items.as_slice() else {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            *span,
+            "clock observation must be `instant : Instant InitialMonotonicClock is context monotonic clock now`",
+        ));
+    };
+    if source.slice(*classifier) != "Instant InitialMonotonicClock"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, monotonic, "monotonic")
+        || !identifier_is(source, clock, "clock")
+        || !identifier_is(source, now, "now")
+    {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            *span,
+            "clock observation requires the resumed context and initial monotonic clock classifier",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerSystemsOperation::ObserveMonotonicClock,
     ))
 }
 
@@ -2423,7 +2509,7 @@ mod tests {
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
         // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001,
-        // TOPAL-SYSTEMS-FRAMES-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001.
         let program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -2462,6 +2548,7 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
                 SYSTEMS_TRANSLATION_COMMIT,
@@ -2619,6 +2706,15 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_INTERRUPT_OK".into(),
                 },
+                CompilerSystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 1,
+                },
+                CompilerSystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 2,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TIME_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -2635,7 +2731,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 45);
+        assert_eq!(program.bootstrap.handler.operations.len(), 48);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -2662,6 +2758,7 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
                 SYSTEMS_TRANSLATION_COMMIT,
@@ -3073,4 +3170,5 @@ mod tests {
     include!("systems_translation_edit_tests.rs");
     include!("systems_critical_tests.rs");
     include!("systems_interrupt_tests.rs");
+    include!("systems_clock_tests.rs");
 }

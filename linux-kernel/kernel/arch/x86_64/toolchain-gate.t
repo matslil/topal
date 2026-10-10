@@ -106,6 +106,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                   pending is restored local notification send
                                                                                   resumed is pending local notification wait
                                                                                   resumed console write "TOPAL_KERNEL_INTERRUPT_OK"
+                                                                                  first : Instant InitialMonotonicClock is resumed monotonic clock now
+                                                                                  second : Instant InitialMonotonicClock is resumed monotonic clock now
+                                                                                  resumed console write "TOPAL_KERNEL_TIME_OK"
                                                                                   resumed fatal "toolchain gate complete"
                                                                                 }
                                                                                 false then {

@@ -13,7 +13,7 @@ use crate::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
     SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
     SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
-    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT,
+    SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, TranslationEditKind,
@@ -153,6 +153,7 @@ pub enum SystemsOperation {
     SendLocalNotification,
     WaitLocalNotification,
     CompleteLocalNotification,
+    ObserveMonotonicClock,
 }
 
 impl SystemsOperation {
@@ -189,6 +190,7 @@ impl SystemsOperation {
             Self::SendLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_SEND,
             Self::WaitLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_WAIT,
             Self::CompleteLocalNotification => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
+            Self::ObserveMonotonicClock => SYSTEMS_MONOTONIC_CLOCK_NOW,
         }
     }
 }
@@ -311,6 +313,9 @@ pub enum SystemsTransition {
     EndLocalNotificationWait {
         event_identity: u64,
     },
+    ObserveMonotonicClock {
+        observation_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -406,6 +411,7 @@ impl SystemsTransition {
             }
             Self::CompleteLocalNotificationInterrupt { .. } => SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
             Self::ResumeLocalNotificationInterrupt { .. } => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+            Self::ObserveMonotonicClock { .. } => SYSTEMS_MONOTONIC_CLOCK_NOW,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -514,6 +520,7 @@ fn validate_entry(
                     | SystemsOperation::BootstrapRelease
                     | SystemsOperation::SendLocalNotification
                     | SystemsOperation::WaitLocalNotification
+                    | SystemsOperation::ObserveMonotonicClock
             );
             bootstrap_only
                 || (required_context == SystemsContextKind::DebugBreak
@@ -590,6 +597,7 @@ struct BootstrapAuthorityState {
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
     local_notification: BootstrapLocalNotificationState,
+    monotonic_clock_observations: u8,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -626,6 +634,7 @@ enum BootstrapTranslationState {
 }
 
 impl BootstrapAuthorityState {
+    #[allow(clippy::too_many_lines)] // The sealed bootstrap transition order is audited together.
     fn observe(
         &mut self,
         index: usize,
@@ -718,6 +727,18 @@ impl BootstrapAuthorityState {
             | SystemsOperation::UnmapTranslationMapping
             | SystemsOperation::CommitTranslationEdit { .. }) => {
                 self.observe_translation(operation)?;
+            }
+            SystemsOperation::ObserveMonotonicClock => {
+                if self.local_notification != BootstrapLocalNotificationState::Completed
+                    || self.monotonic_clock_observations >= 2
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MONOTONIC-CLOCK",
+                        "monotonic-clock observation requires the resumed context and admits exactly two initial observations",
+                    ));
+                }
+                self.monotonic_clock_observations += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -1001,6 +1022,12 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires one completed local-notification send/wait lifecycle",
             ));
         }
+        if self.monotonic_clock_observations != 2 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-MONOTONIC-CLOCK-LIVE",
+                "bootstrap completion requires exactly two monotonic-clock observations",
+            ));
+        }
         Ok(())
     }
 }
@@ -1211,6 +1238,7 @@ pub fn model_systems_transitions(
     let mut local_notification =
         LocalNotificationProtocol::new("initial-local-notification-source");
     let mut pending_local_notification = None;
+    let mut next_clock_observation_identity = 1_u64;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -1229,6 +1257,13 @@ pub fn model_systems_transitions(
         )? {
             continue;
         }
+        if model_monotonic_clock_transition(
+            operation,
+            &mut next_clock_observation_identity,
+            &mut transitions,
+        )? {
+            continue;
+        }
         if model_bootstrap_operation(
             operation,
             &program.debug_break.handler,
@@ -1242,6 +1277,27 @@ pub fn model_systems_transitions(
     }
     model_bootstrap_disposition(&program.bootstrap.handler.disposition, &mut transitions);
     Ok(transitions)
+}
+
+fn model_monotonic_clock_transition(
+    operation: &SystemsOperation,
+    next_observation_identity: &mut u64,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    if !matches!(operation, SystemsOperation::ObserveMonotonicClock) {
+        return Ok(false);
+    }
+    let observation_identity = *next_observation_identity;
+    *next_observation_identity = observation_identity.checked_add(1).ok_or_else(|| {
+        SystemsModelError::new(
+            "E-SYSTEMS-MONOTONIC-CLOCK",
+            "monotonic-clock observation identity exhausted",
+        )
+    })?;
+    transitions.push(SystemsTransition::ObserveMonotonicClock {
+        observation_identity,
+    });
+    Ok(true)
 }
 
 fn model_bootstrap_operation(
@@ -1608,6 +1664,9 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CompleteLocalNotification => {
             unreachable!("local-notification operations are modeled by the caller")
         }
+        SystemsOperation::ObserveMonotonicClock => {
+            unreachable!("monotonic-clock observations are modeled by the caller")
+        }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
                 SystemsModelError::new(
@@ -1696,6 +1755,7 @@ mod tests {
             SYSTEMS_FATAL.into(),
             SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
+            SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
         ];
@@ -1729,6 +1789,8 @@ mod tests {
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
                         SystemsOperation::WaitLocalNotification,
+                        SystemsOperation::ObserveMonotonicClock,
+                        SystemsOperation::ObserveMonotonicClock,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -1789,6 +1851,12 @@ mod tests {
                 SystemsTransition::CompleteLocalNotificationInterrupt { event_identity: 1 },
                 SystemsTransition::ResumeLocalNotificationInterrupt { event_identity: 1 },
                 SystemsTransition::EndLocalNotificationWait { event_identity: 1 },
+                SystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 1,
+                },
+                SystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 2,
+                },
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -1808,6 +1876,14 @@ mod tests {
             .handler
             .effects
             .retain(|effect| effect != SYSTEMS_LOCAL_NOTIFICATION_WAIT);
+        live.bootstrap
+            .handler
+            .operations
+            .retain(|operation| !matches!(operation, SystemsOperation::ObserveMonotonicClock));
+        live.bootstrap
+            .handler
+            .effects
+            .retain(|effect| effect != SYSTEMS_MONOTONIC_CLOCK_NOW);
         assert_eq!(
             validate_systems_program(&live).unwrap_err().code,
             "E-SYSTEMS-LOCAL-INTERRUPT-LIVE"
@@ -1831,6 +1907,36 @@ mod tests {
         assert_eq!(
             validate_systems_program(&incomplete).unwrap_err().code,
             "E-SYSTEMS-LOCAL-INTERRUPT"
+        );
+    }
+
+    #[test]
+    fn monotonic_clock_requires_two_post_interrupt_observations() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001.
+        let mut missing = program(SystemsDisposition::Resume);
+        missing.bootstrap.handler.operations.pop();
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-MONOTONIC-CLOCK-LIVE"
+        );
+
+        let mut early = program(SystemsDisposition::Resume);
+        let observation = early.bootstrap.handler.operations.remove(6);
+        early.bootstrap.handler.operations.insert(4, observation);
+        assert_eq!(
+            validate_systems_program(&early).unwrap_err().code,
+            "E-SYSTEMS-MONOTONIC-CLOCK"
+        );
+
+        let mut extra = program(SystemsDisposition::Resume);
+        extra
+            .bootstrap
+            .handler
+            .operations
+            .push(SystemsOperation::ObserveMonotonicClock);
+        assert_eq!(
+            validate_systems_program(&extra).unwrap_err().code,
+            "E-SYSTEMS-MONOTONIC-CLOCK"
         );
     }
 
@@ -1872,6 +1978,7 @@ mod tests {
             SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into(),
+            SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
         ];
         let transitions = model_systems_transitions(&program).unwrap();
         assert!(
@@ -1904,7 +2011,7 @@ mod tests {
             .push(SYSTEMS_BOOTSTRAP_STORAGE_RELEASE.into());
         program.bootstrap.handler.effects.sort();
         if let SystemsOperation::BootstrapStoreByte { offset_bytes, .. } =
-            &mut program.bootstrap.handler.operations[7]
+            &mut program.bootstrap.handler.operations[9]
         {
             *offset_bytes = 64;
         }
