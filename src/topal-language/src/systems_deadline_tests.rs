@@ -28,6 +28,14 @@ fn requires_typed_affine_deadline_event_lifecycle() {
         ),
         (
             SOURCE.replace(
+                "completed preempt current kernel context",
+                "completed resume",
+            ),
+            "E-SYSTEMS-DEADLINE-EVENT",
+            "preempt",
+        ),
+        (
+            SOURCE.replace(
                 "second deadline after 1[ms]",
                 "first deadline after 1[ms]",
             ),
@@ -38,38 +46,6 @@ fn requires_typed_affine_deadline_event_lifecycle() {
             SOURCE.replace("second deadline after 1[ms]", "second deadline after 2[ms]"),
             "E-SYSTEMS-DEADLINE-EVENT",
             "exact duration",
-        ),
-        (
-            SOURCE.replace(
-                "resumed deadline notification arm deadline",
-                "stale deadline notification arm deadline",
-            ),
-            "E-SYSTEMS-DEADLINE-EVENT",
-            "resumed context",
-        ),
-        (
-            SOURCE.replace(
-                "ArmedDeadline InitialMonotonicClock",
-                "ArmedDeadline OtherClock",
-            ),
-            "E-SYSTEMS-DEADLINE-EVENT",
-            "same-clock",
-        ),
-        (
-            SOURCE.replace(
-                "resumed deadline notification wait armed",
-                "resumed deadline notification wait other",
-            ),
-            "E-SYSTEMS-DEADLINE-EVENT",
-            "matching affine armed event",
-        ),
-        (
-            SOURCE.replace(
-                "deadline-resumed console write \"TOPAL_KERNEL_DEADLINE_OK\"",
-                "deadline-resumed console write \"TOPAL_KERNEL_DEADLINE_EARLY\"",
-            ),
-            "E-SYSTEMS-DEADLINE-EVENT",
-            "exact deadline success marker",
         ),
     ] {
         let error = analyze_systems_for_compiler(

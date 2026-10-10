@@ -1,7 +1,7 @@
 #[test]
 fn requires_typed_affine_kernel_context_round_trip() {
     // TOPAL-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-CONTEXT-002,
-    // TOPAL-SYSTEMS-CONTEXT-003.
+    // TOPAL-SYSTEMS-CONTEXT-003, TOPAL-SYSTEMS-CONTEXT-004.
     let program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -14,7 +14,7 @@ fn requires_typed_affine_kernel_context_round_trip() {
     assert_eq!(
         program.kernel_thread.handler.effects,
         [
-            SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
             SYSTEMS_CONSOLE_WRITE,
             SYSTEMS_KERNEL_CONTEXT_RETIRE,
         ]
@@ -48,14 +48,14 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "context console write \"TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED\"",
+                "context console write \"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED\"",
                 "context console write \"TOPAL_KERNEL_CONTEXT_EARLY\"",
             ),
             "exact entry marker",
         ),
         (
             SOURCE.replace(
-                "context kernel context retire to dispatcher",
+                "context kernel context retire to caller",
                 "context kernel context retire to other",
             ),
             "matching suspended caller",
@@ -70,10 +70,10 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "deadline-resumed kernel context transfer selected-cooperative",
-                "deadline-resumed kernel context transfer other",
+                "resumed kernel context transfer selected-cooperative until deadline",
+                "resumed kernel context transfer other until deadline",
             ),
-            "matching suspended context",
+            "FIFO-selected context",
         ),
         (
             SOURCE.replace("capacity is 2", "capacity is 3"),
@@ -88,10 +88,24 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "deadline-resumed console write \"TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED\"",
-                "deadline-resumed console write \"TOPAL_KERNEL_CONTEXT_EARLY\"",
+                "resumed console write \"TOPAL_KERNEL_DEADLINE_PREEMPTED\"",
+                "resumed console write \"TOPAL_KERNEL_CONTEXT_EARLY\"",
             ),
-            "exact suspended marker",
+            "exact success marker",
+        ),
+        (
+            SOURCE.replace(
+                "selected-cooperative until deadline",
+                "selected-cooperative until other-deadline",
+            ),
+            "exact deadline",
+        ),
+        (
+            SOURCE.replace(
+                "preempted kernel context take preempted",
+                "other kernel context take preempted",
+            ),
+            "exact completed outcome",
         ),
         (
             SOURCE.replace(

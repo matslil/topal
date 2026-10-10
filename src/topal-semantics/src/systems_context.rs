@@ -2,7 +2,10 @@
 
 use std::collections::VecDeque;
 
-use crate::{BootstrapRegion, BootstrapStoragePlacement, SystemsModelError};
+use crate::{
+    ArmedDeadline, BootstrapRegion, BootstrapStoragePlacement, CompletedDeadlineInterrupt,
+    DeadlineEventDelivery, SystemsModelError,
+};
 
 pub const SYSTEMS_KERNEL_CONTEXT_CREATE: &str = "topal.systems.context.kernel.create/2";
 pub const SYSTEMS_KERNEL_CONTEXT_TRANSFER: &str = "topal.systems.context.kernel.transfer/2";
@@ -18,6 +21,14 @@ pub const SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE: &str =
     "topal.systems.context.kernel.runnable-queue.dequeue/1";
 pub const SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME: &str =
     "topal.systems.context.kernel.runnable-queue.consume-empty/1";
+pub const SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE: &str =
+    "topal.systems.context.kernel.transfer-until-deadline/3";
+pub const SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION: &str =
+    "topal.systems.context.kernel.await-deadline-preemption/1";
+pub const SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT: &str =
+    "topal.systems.disposition.kernel-context-preempt-current/1";
+pub const SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED: &str =
+    "topal.systems.context.kernel.take-preempted/1";
 
 pub const INITIAL_PROCESSOR_IDENTITY: &str = "topal.systems.processor.initial/1";
 pub const INITIAL_ADDRESS_SPACE_IDENTITY: &str = "topal.systems.address-space.initial-kernel/1";
@@ -25,12 +36,15 @@ pub const INITIAL_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.initial/1";
 pub const COOPERATIVE_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.cooperative/1";
+pub const DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY: &str =
+    "topal.systems.entry.resumed.kernel-thread.deadline-preemptible/1";
 pub const TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.terminal/1";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KernelContextEntryProtocol {
     CooperativeOnce,
+    DeadlinePreemptedOnce,
     Terminal,
 }
 
@@ -68,6 +82,21 @@ pub struct CompletedKernelContextTransfer {
     entry_protocol: KernelContextEntryProtocol,
     stack: BootstrapRegion,
     caller_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct ActiveDeadlinePreemptibleTransfer {
+    suspended: SuspendedKernelContext,
+    caller_identity: u64,
+    event_identity: u64,
+    scheduled: crate::Instant,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct PreemptedKernelContextTransfer {
+    suspended: SuspendedKernelContext,
+    caller_identity: u64,
+    delivery: DeadlineEventDelivery,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -309,6 +338,89 @@ impl SystemsKernelContextProtocol {
         })
     }
 
+    /// Bind one suspended context and armed deadline to the exact dispatcher.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for an identity mismatch or a context whose
+    /// closed entry protocol does not admit deadline preemption.
+    pub fn transfer_until_deadline(
+        &mut self,
+        suspended: SuspendedKernelContext,
+        armed: &ArmedDeadline,
+    ) -> Result<ActiveDeadlinePreemptibleTransfer, SystemsModelError> {
+        self.validate_identity(
+            &suspended.provider_identity,
+            &suspended.processor_identity,
+            &suspended.address_space_identity,
+            &suspended.entry_identity,
+        )?;
+        if suspended.entry_protocol != KernelContextEntryProtocol::DeadlinePreemptedOnce
+            || suspended.activation_count != 0
+        {
+            return Err(context_error(
+                "deadline-preemptible transfer requires one fresh closed preemptible context",
+            ));
+        }
+        let caller_identity = self.next_caller_identity;
+        self.next_caller_identity = caller_identity
+            .checked_add(1)
+            .ok_or_else(|| context_error("suspended-caller identity exhausted"))?;
+        Ok(ActiveDeadlinePreemptibleTransfer {
+            suspended,
+            caller_identity,
+            event_identity: armed.event_identity(),
+            scheduled: armed.scheduled(),
+        })
+    }
+
+    /// Consume matching completed delivery and capture the interrupted worker.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless event identity and absolute schedule
+    /// match the active dispatcher binding exactly.
+    pub fn preempt_current(
+        &self,
+        mut active: ActiveDeadlinePreemptibleTransfer,
+        completed: CompletedDeadlineInterrupt,
+    ) -> Result<PreemptedKernelContextTransfer, SystemsModelError> {
+        let delivery = completed.delivery();
+        if delivery.event_identity != active.event_identity
+            || delivery.scheduled != active.scheduled
+        {
+            return Err(context_error(
+                "deadline preemption requires the completed event bound to the active transfer",
+            ));
+        }
+        active.suspended.activation_count = 1;
+        Ok(PreemptedKernelContextTransfer {
+            suspended: active.suspended,
+            caller_identity: active.caller_identity,
+            delivery,
+        })
+    }
+
+    /// Consume a preempted outcome into the source-owned suspended worker.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for an outcome from another context
+    /// provider, processor, or address space.
+    pub fn take_preempted(
+        &self,
+        preempted: PreemptedKernelContextTransfer,
+    ) -> Result<(SuspendedKernelContext, DeadlineEventDelivery), SystemsModelError> {
+        self.validate_identity(
+            &preempted.suspended.provider_identity,
+            &preempted.suspended.processor_identity,
+            &preempted.suspended.address_space_identity,
+            &preempted.suspended.entry_identity,
+        )?;
+        let _caller_identity = preempted.caller_identity;
+        Ok((preempted.suspended, preempted.delivery))
+    }
+
     /// Retire the running worker and resume exactly its suspended caller.
     ///
     /// # Errors
@@ -370,6 +482,7 @@ impl SystemsKernelContextProtocol {
                 Ok(KernelContextTransferOutcome::Suspended(suspended))
             }
             (KernelContextEntryProtocol::CooperativeOnce, 1)
+            | (KernelContextEntryProtocol::DeadlinePreemptedOnce, 1)
             | (KernelContextEntryProtocol::Terminal, 0) => {
                 if live_obligations != 0 {
                     return Err(context_error(
@@ -391,6 +504,12 @@ impl SystemsKernelContextProtocol {
             }
             (KernelContextEntryProtocol::CooperativeOnce, _) => Err(context_error(
                 "cooperative kernel context may hand back exactly once before retirement",
+            )),
+            (KernelContextEntryProtocol::DeadlinePreemptedOnce, 0) => Err(context_error(
+                "a fresh deadline-preemptible context requires transfer until deadline",
+            )),
+            (KernelContextEntryProtocol::DeadlinePreemptedOnce, _) => Err(context_error(
+                "deadline-preemptible kernel context may be preempted exactly once before retirement",
             )),
             (KernelContextEntryProtocol::Terminal, _) => Err(context_error(
                 "terminal kernel context cannot be selected after retirement",
@@ -431,6 +550,7 @@ impl SystemsKernelContextProtocol {
     ) -> Result<(), SystemsModelError> {
         let valid_entry = entry_identity == self.entry_identity
             || entry_identity == COOPERATIVE_KERNEL_THREAD_ENTRY_IDENTITY
+            || entry_identity == DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY
             || entry_identity == TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY;
         if provider_identity != self.provider_identity
             || self.provider_identity != "topal.systems.context-provider.initial/1"
@@ -623,6 +743,135 @@ mod tests {
         storage.release(cooperative_stack).unwrap();
         protocol.consume_empty_runnable_queue(queue).unwrap();
         storage.complete_bootstrap().unwrap();
+    }
+
+    #[test]
+    fn preempts_and_restores_one_deadline_bound_context() {
+        // TOPAL-SYSTEMS-CONTEXT-004.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "deadline-preemptible-context-test",
+        )
+        .unwrap();
+        let mut contexts = SystemsKernelContextProtocol::initial();
+        let worker = contexts
+            .create_with_protocol(
+                stack(&mut storage),
+                DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::DeadlinePreemptedOnce,
+            )
+            .unwrap();
+        let mut deadlines = crate::SystemsDeadlineProtocol::new(crate::ClockIdentity(1));
+        let deadline = deadlines
+            .deadline_after(
+                crate::Instant {
+                    clock: crate::ClockIdentity(1),
+                    ticks: 10,
+                },
+                crate::Duration(5),
+            )
+            .unwrap();
+        let armed = deadlines.arm(deadline).unwrap();
+        let active = contexts.transfer_until_deadline(worker, &armed).unwrap();
+        let interrupt = deadlines
+            .deliver(
+                armed,
+                crate::Instant {
+                    clock: crate::ClockIdentity(1),
+                    ticks: 17,
+                },
+            )
+            .unwrap();
+        let preempted = contexts
+            .preempt_current(active, deadlines.complete(interrupt))
+            .unwrap();
+        let (worker, delivery) = contexts.take_preempted(preempted).unwrap();
+        assert_eq!(delivery.event_identity, 1);
+        assert_eq!(delivery.scheduled.ticks, 15);
+        assert_eq!(delivery.observed.ticks, 17);
+
+        let KernelContextTransferOutcome::Retired(completed) =
+            contexts.dispatch(worker, 0).unwrap()
+        else {
+            panic!("redispatched preempted worker must retire")
+        };
+        let (_, stack) = contexts.reclaim(completed).unwrap();
+        storage.release(stack).unwrap();
+        storage.complete_bootstrap().unwrap();
+    }
+
+    #[test]
+    fn rejects_unbound_or_mismatched_deadline_preemption() {
+        // TOPAL-SYSTEMS-CONTEXT-004.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "deadline-preemption-negative",
+        )
+        .unwrap();
+        let mut contexts = SystemsKernelContextProtocol::initial();
+        let fresh = contexts
+            .create_with_protocol(
+                stack(&mut storage),
+                DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::DeadlinePreemptedOnce,
+            )
+            .unwrap();
+        assert_eq!(
+            contexts.dispatch(fresh, 0).unwrap_err().code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+
+        let worker = contexts
+            .create_with_protocol(
+                stack(&mut storage),
+                DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::DeadlinePreemptedOnce,
+            )
+            .unwrap();
+        let mut deadlines = crate::SystemsDeadlineProtocol::new(crate::ClockIdentity(1));
+        let first = deadlines
+            .deadline_after(
+                crate::Instant {
+                    clock: crate::ClockIdentity(1),
+                    ticks: 10,
+                },
+                crate::Duration(5),
+            )
+            .unwrap();
+        let first = deadlines.arm(first).unwrap();
+        let active = contexts.transfer_until_deadline(worker, &first).unwrap();
+        let second = deadlines
+            .deadline_after(
+                crate::Instant {
+                    clock: crate::ClockIdentity(1),
+                    ticks: 20,
+                },
+                crate::Duration(5),
+            )
+            .unwrap();
+        let second = deadlines.arm(second).unwrap();
+        let mismatched = deadlines
+            .deliver(
+                second,
+                crate::Instant {
+                    clock: crate::ClockIdentity(1),
+                    ticks: 25,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            contexts
+                .preempt_current(active, deadlines.complete(mismatched))
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
     }
 
     #[test]

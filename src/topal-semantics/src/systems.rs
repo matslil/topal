@@ -12,8 +12,11 @@ use crate::{
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -175,7 +178,10 @@ pub enum SystemsOperation {
     },
     EnqueueRunnableContext,
     DequeueRunnableContext,
+    TransferKernelContextUntilDeadline,
+    TakePreemptedKernelContext,
     TransferKernelContext,
+    AwaitDeadlinePreemption,
     ReclaimKernelContext,
     ConsumeEmptyRunnableQueue,
 }
@@ -223,7 +229,12 @@ impl SystemsOperation {
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+            Self::TransferKernelContextUntilDeadline => {
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
+            }
+            Self::TakePreemptedKernelContext => SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
             Self::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            Self::AwaitDeadlinePreemption => SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
         }
@@ -233,6 +244,7 @@ impl SystemsOperation {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsDisposition {
     Resume,
+    PreemptKernelContext,
     RetireKernelContextToCaller,
     Fatal { message: String },
 }
@@ -248,6 +260,7 @@ impl SystemsDisposition {
                 SYSTEMS_RESUME_DEADLINE
             }
             Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+            Self::PreemptKernelContext => SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
             Self::RetireKernelContextToCaller => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
@@ -381,6 +394,14 @@ pub enum SystemsTransition {
     ResumeDeadlineInterrupt {
         event_identity: u64,
     },
+    PreemptKernelContext {
+        event_identity: u64,
+        context_identity: u64,
+        caller_identity: u64,
+    },
+    ResumePreemptionDispatcher {
+        caller_identity: u64,
+    },
     EndDeadlineWait {
         event_identity: u64,
     },
@@ -399,6 +420,23 @@ pub enum SystemsTransition {
     TransferKernelContext {
         context_identity: u64,
         caller_identity: u64,
+    },
+    TransferKernelContextUntilDeadline {
+        context_identity: u64,
+        caller_identity: u64,
+        event_identity: u64,
+    },
+    AwaitDeadlinePreemption {
+        context_identity: u64,
+    },
+    TakePreemptedKernelContext {
+        context_identity: u64,
+        event_identity: u64,
+    },
+    RestorePreemptedKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+        event_identity: u64,
     },
     EnterKernelThread {
         context_identity: u64,
@@ -517,11 +555,23 @@ impl SystemsTransition {
             Self::EnterDeadlineInterrupt { .. } => "topal.systems.entry.external.deadline/1",
             Self::CompleteDeadlineInterrupt { .. } => SYSTEMS_DEADLINE_COMPLETE,
             Self::ResumeDeadlineInterrupt { .. } => SYSTEMS_RESUME_DEADLINE,
+            Self::PreemptKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+            Self::ResumePreemptionDispatcher { .. } => {
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
+            }
             Self::CreateKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_CREATE,
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             Self::TransferKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+            Self::TransferKernelContextUntilDeadline { .. } => {
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
+            }
+            Self::AwaitDeadlinePreemption { .. } => {
+                SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION
+            }
+            Self::TakePreemptedKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+            Self::RestorePreemptedKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::EnterKernelThread { .. } => SYSTEMS_KERNEL_THREAD_ENTRY,
             Self::RetireKernelContextToCaller { .. } => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             Self::ResumeKernelContextCaller { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
@@ -668,6 +718,8 @@ fn validate_entry(
                     | SystemsOperation::CreateRunnableQueue { .. }
                     | SystemsOperation::EnqueueRunnableContext
                     | SystemsOperation::DequeueRunnableContext
+                    | SystemsOperation::TransferKernelContextUntilDeadline
+                    | SystemsOperation::TakePreemptedKernelContext
                     | SystemsOperation::ReclaimKernelContext
                     | SystemsOperation::ConsumeEmptyRunnableQueue
             );
@@ -689,6 +741,7 @@ fn validate_entry(
                         operation,
                         SystemsOperation::ConsoleWrite { .. }
                             | SystemsOperation::TransferKernelContext
+                            | SystemsOperation::AwaitDeadlinePreemption
                     ))
         })
     {
@@ -709,7 +762,7 @@ fn validate_entry(
         )
         | (
             SystemsContextKind::DeadlineInterrupt,
-            SystemsDisposition::Resume | SystemsDisposition::Fatal { .. },
+            SystemsDisposition::PreemptKernelContext | SystemsDisposition::Fatal { .. },
         )
         | (SystemsContextKind::KernelThread, SystemsDisposition::RetireKernelContextToCaller) => {}
         (SystemsContextKind::Bootstrap, SystemsDisposition::Resume)
@@ -720,6 +773,14 @@ fn validate_entry(
             | SystemsContextKind::DeadlineInterrupt,
             SystemsDisposition::RetireKernelContextToCaller,
         )
+        | (
+            SystemsContextKind::Bootstrap
+            | SystemsContextKind::DebugBreak
+            | SystemsContextKind::LocalNotificationInterrupt
+            | SystemsContextKind::KernelThread,
+            SystemsDisposition::PreemptKernelContext,
+        )
+        | (SystemsContextKind::DeadlineInterrupt, SystemsDisposition::Resume)
         | (SystemsContextKind::KernelThread, _) => {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DISPOSITION",
@@ -766,11 +827,11 @@ fn validate_local_notification_handler(handler: &SystemsHandler) -> Result<(), S
 
 fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
     if handler.operations != [SystemsOperation::CompleteDeadline]
-        || handler.disposition != SystemsDisposition::Resume
+        || handler.disposition != SystemsDisposition::PreemptKernelContext
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-DEADLINE-EVENT",
-            "the deadline handler must consume completion authority before resume",
+            "the deadline handler must consume completion authority before preempting the bound context",
         ));
     }
     Ok(())
@@ -787,11 +848,11 @@ fn validate_kernel_thread_handler(
     } else {
         vec![
             SystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
             },
-            SystemsOperation::TransferKernelContext,
+            SystemsOperation::AwaitDeadlinePreemption,
             SystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
             },
         ]
     };
@@ -800,7 +861,7 @@ fn validate_kernel_thread_handler(
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-CONTEXT-TRANSFER",
-            "cooperative and terminal kernel-thread handlers must implement their exact handoff protocols",
+            "preemptible and terminal kernel-thread handlers must implement their exact transfer protocols",
         ));
     }
     Ok(())
@@ -841,19 +902,20 @@ enum BootstrapDeadlineState {
 enum BootstrapKernelContextState {
     #[default]
     Fresh,
-    CooperativeCreated,
+    PreemptibleCreated,
     BothSuspended,
     QueueCreated,
-    CooperativeEnqueued,
+    PreemptibleEnqueued,
     BothEnqueued,
-    CooperativeDequeued,
-    CooperativeYielded,
-    HandoffEnqueued,
+    PreemptibleDequeued,
+    PreemptedOutcome,
+    PreemptedTaken,
+    PreemptedEnqueued,
     TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
-    CooperativeDequeuedAgain,
-    CooperativeCompleted,
+    PreemptibleDequeuedAgain,
+    PreemptibleCompleted,
     Reclaimed,
     QueueConsumed,
 }
@@ -1148,25 +1210,25 @@ impl BootstrapAuthorityState {
     ) -> Result<bool, SystemsModelError> {
         match operation {
             SystemsOperation::CreateKernelContext => {
-                if self.deadline != BootstrapDeadlineState::Completed
+                if self.deadline != BootstrapDeadlineState::Constructed
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context creation requires the completed deadline lifecycle and one restored processor context",
+                        "kernel-context creation requires one constructed deadline and restored processor context",
                     ));
                 }
                 self.kernel_context = match self.kernel_context {
                     BootstrapKernelContextState::Fresh => {
-                        BootstrapKernelContextState::CooperativeCreated
+                        BootstrapKernelContextState::PreemptibleCreated
                     }
-                    BootstrapKernelContextState::CooperativeCreated => {
+                    BootstrapKernelContextState::PreemptibleCreated => {
                         BootstrapKernelContextState::BothSuspended
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "the cooperative profile creates exactly two contexts before dispatch",
+                            "the deadline-preemption profile creates exactly two contexts before dispatch",
                         ));
                     }
                 };
@@ -1179,22 +1241,43 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.kernel_context = match self.kernel_context {
-                    BootstrapKernelContextState::CooperativeDequeued => {
-                        BootstrapKernelContextState::CooperativeYielded
-                    }
                     BootstrapKernelContextState::TerminalDequeued => {
                         BootstrapKernelContextState::TerminalCompleted
                     }
-                    BootstrapKernelContextState::CooperativeDequeuedAgain => {
-                        BootstrapKernelContextState::CooperativeCompleted
+                    BootstrapKernelContextState::PreemptibleDequeuedAgain => {
+                        BootstrapKernelContextState::PreemptibleCompleted
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "kernel-context transfers must follow cooperative, terminal, cooperative FIFO order",
+                            "ordinary kernel-context transfers must follow terminal then preemptible redispatch order",
                         ));
                     }
                 };
+            }
+            SystemsOperation::TransferKernelContextUntilDeadline => {
+                if !self.critical_stack.is_empty()
+                    || self.deadline != BootstrapDeadlineState::Constructed
+                    || self.kernel_context != BootstrapKernelContextState::PreemptibleDequeued
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "deadline-preemptible transfer requires the first FIFO context, constructed deadline, and no critical scope",
+                    ));
+                }
+                self.deadline = BootstrapDeadlineState::Completed;
+                self.kernel_context = BootstrapKernelContextState::PreemptedOutcome;
+            }
+            SystemsOperation::TakePreemptedKernelContext => {
+                if self.kernel_context != BootstrapKernelContextState::PreemptedOutcome
+                    || self.deadline != BootstrapDeadlineState::Completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "taking a preempted context requires the matching completed deadline transfer",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::PreemptedTaken;
             }
             SystemsOperation::CreateRunnableQueue { capacity } => {
                 if self.kernel_context != BootstrapKernelContextState::BothSuspended
@@ -1210,18 +1293,18 @@ impl BootstrapAuthorityState {
             SystemsOperation::EnqueueRunnableContext => {
                 self.kernel_context = match self.kernel_context {
                     BootstrapKernelContextState::QueueCreated => {
-                        BootstrapKernelContextState::CooperativeEnqueued
+                        BootstrapKernelContextState::PreemptibleEnqueued
                     }
-                    BootstrapKernelContextState::CooperativeEnqueued => {
+                    BootstrapKernelContextState::PreemptibleEnqueued => {
                         BootstrapKernelContextState::BothEnqueued
                     }
-                    BootstrapKernelContextState::CooperativeYielded => {
-                        BootstrapKernelContextState::HandoffEnqueued
+                    BootstrapKernelContextState::PreemptedTaken => {
+                        BootstrapKernelContextState::PreemptedEnqueued
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable enqueue must preserve cooperative, terminal, cooperative FIFO order",
+                            "runnable enqueue must preserve preemptible, terminal, preemptible FIFO order",
                         ));
                     }
                 };
@@ -1229,18 +1312,18 @@ impl BootstrapAuthorityState {
             SystemsOperation::DequeueRunnableContext => {
                 self.kernel_context = match self.kernel_context {
                     BootstrapKernelContextState::BothEnqueued => {
-                        BootstrapKernelContextState::CooperativeDequeued
+                        BootstrapKernelContextState::PreemptibleDequeued
                     }
-                    BootstrapKernelContextState::HandoffEnqueued => {
+                    BootstrapKernelContextState::PreemptedEnqueued => {
                         BootstrapKernelContextState::TerminalDequeued
                     }
                     BootstrapKernelContextState::TerminalReclaimed => {
-                        BootstrapKernelContextState::CooperativeDequeuedAgain
+                        BootstrapKernelContextState::PreemptibleDequeuedAgain
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable dequeue must select cooperative, terminal, cooperative FIFO order",
+                            "runnable dequeue must select preemptible, terminal, preemptible FIFO order",
                         ));
                     }
                 };
@@ -1250,7 +1333,7 @@ impl BootstrapAuthorityState {
                     BootstrapKernelContextState::TerminalCompleted => {
                         BootstrapKernelContextState::TerminalReclaimed
                     }
-                    BootstrapKernelContextState::CooperativeCompleted => {
+                    BootstrapKernelContextState::PreemptibleCompleted => {
                         BootstrapKernelContextState::Reclaimed
                     }
                     _ => {
@@ -1476,7 +1559,7 @@ impl BootstrapAuthorityState {
         if self.kernel_context != BootstrapKernelContextState::QueueConsumed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
-                "bootstrap completion requires both cooperative contexts to be reclaimed and the runnable queue consumed empty",
+                "bootstrap completion requires both worker contexts to be reclaimed and the runnable queue consumed empty",
             ));
         }
         Ok(())
@@ -1626,7 +1709,8 @@ fn validate_kernel_context_storage_operation(
             }
             context_stacks.push(stack);
         }
-        SystemsOperation::TransferKernelContext => {
+        SystemsOperation::TransferKernelContext
+        | SystemsOperation::TransferKernelContextUntilDeadline => {
             if context_stacks.is_empty() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
@@ -1637,6 +1721,7 @@ fn validate_kernel_context_storage_operation(
         SystemsOperation::CreateRunnableQueue { .. }
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
+        | SystemsOperation::TakePreemptedKernelContext
         | SystemsOperation::ConsumeEmptyRunnableQueue => {}
         SystemsOperation::ReclaimKernelContext => {
             let index = match state {
@@ -1812,10 +1897,13 @@ pub fn model_systems_transitions(
             operation,
             &program.kernel_thread.handler,
             &program.terminal_thread.handler,
+            &program.deadline_notification.handler,
             &mut storage,
             &mut region,
             &mut context_stacks,
             &mut kernel_context_state,
+            &mut deadline_state,
+            &mut next_deadline_event_identity,
             &mut transitions,
         )? {
             continue;
@@ -1838,12 +1926,15 @@ pub fn model_systems_transitions(
 #[allow(clippy::too_many_arguments)]
 fn model_kernel_context_transition(
     operation: &SystemsOperation,
-    cooperative_handler: &SystemsHandler,
+    preemptible_handler: &SystemsHandler,
     terminal_handler: &SystemsHandler,
+    deadline_handler: &SystemsHandler,
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
     context_stacks: &mut Vec<BootstrapRegion>,
     state: &mut BootstrapKernelContextState,
+    deadline_state: &mut BootstrapDeadlineState,
+    next_deadline_event_identity: &mut u64,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
@@ -1857,9 +1948,9 @@ fn model_kernel_context_transition(
             let context_identity = context_stacks.len() as u64;
             *state = match *state {
                 BootstrapKernelContextState::Fresh => {
-                    BootstrapKernelContextState::CooperativeCreated
+                    BootstrapKernelContextState::PreemptibleCreated
                 }
-                BootstrapKernelContextState::CooperativeCreated => {
+                BootstrapKernelContextState::PreemptibleCreated => {
                     BootstrapKernelContextState::BothSuspended
                 }
                 _ => {
@@ -1886,13 +1977,13 @@ fn model_kernel_context_transition(
         SystemsOperation::EnqueueRunnableContext => {
             let (context_identity, next_state) = match *state {
                 BootstrapKernelContextState::QueueCreated => {
-                    (1, BootstrapKernelContextState::CooperativeEnqueued)
+                    (1, BootstrapKernelContextState::PreemptibleEnqueued)
                 }
-                BootstrapKernelContextState::CooperativeEnqueued => {
+                BootstrapKernelContextState::PreemptibleEnqueued => {
                     (2, BootstrapKernelContextState::BothEnqueued)
                 }
-                BootstrapKernelContextState::CooperativeYielded => {
-                    (1, BootstrapKernelContextState::HandoffEnqueued)
+                BootstrapKernelContextState::PreemptedTaken => {
+                    (1, BootstrapKernelContextState::PreemptedEnqueued)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1907,13 +1998,13 @@ fn model_kernel_context_transition(
         SystemsOperation::DequeueRunnableContext => {
             let (context_identity, next_state) = match *state {
                 BootstrapKernelContextState::BothEnqueued => {
-                    (1, BootstrapKernelContextState::CooperativeDequeued)
+                    (1, BootstrapKernelContextState::PreemptibleDequeued)
                 }
-                BootstrapKernelContextState::HandoffEnqueued => {
+                BootstrapKernelContextState::PreemptedEnqueued => {
                     (2, BootstrapKernelContextState::TerminalDequeued)
                 }
                 BootstrapKernelContextState::TerminalReclaimed => {
-                    (1, BootstrapKernelContextState::CooperativeDequeuedAgain)
+                    (1, BootstrapKernelContextState::PreemptibleDequeuedAgain)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1925,38 +2016,86 @@ fn model_kernel_context_transition(
             *state = next_state;
             transitions.push(SystemsTransition::DequeueRunnableContext { context_identity });
         }
-        SystemsOperation::TransferKernelContext => match *state {
-            BootstrapKernelContextState::CooperativeDequeued => {
-                let [
-                    SystemsOperation::ConsoleWrite { text: entered },
-                    SystemsOperation::TransferKernelContext,
-                    SystemsOperation::ConsoleWrite { .. },
-                ] = cooperative_handler.operations.as_slice()
-                else {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "cooperative handler must enter, hand back once, and resume",
-                    ));
-                };
-                transitions.extend([
-                    SystemsTransition::TransferKernelContext {
-                        context_identity: 1,
-                        caller_identity: 1,
-                    },
-                    SystemsTransition::EnterKernelThread {
-                        context_identity: 1,
-                    },
-                    SystemsTransition::ConsoleWrite {
-                        text: entered.clone(),
-                    },
-                    SystemsTransition::TransferKernelContext {
-                        context_identity: 0,
-                        caller_identity: 2,
-                    },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
-                ]);
-                *state = BootstrapKernelContextState::CooperativeYielded;
+        SystemsOperation::TransferKernelContextUntilDeadline => {
+            if *state != BootstrapKernelContextState::PreemptibleDequeued
+                || *deadline_state != BootstrapDeadlineState::Constructed
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "deadline-preemptible model transfer requires the first selected context and constructed deadline",
+                ));
             }
+            let [
+                SystemsOperation::ConsoleWrite { text: entered },
+                SystemsOperation::AwaitDeadlinePreemption,
+                SystemsOperation::ConsoleWrite { .. },
+            ] = preemptible_handler.operations.as_slice()
+            else {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "preemptible handler must enter, await matching preemption, and resume",
+                ));
+            };
+            if deadline_handler.operations != [SystemsOperation::CompleteDeadline]
+                || deadline_handler.disposition != SystemsDisposition::PreemptKernelContext
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-DEADLINE-EVENT",
+                    "deadline-preemption handler must complete and preempt the bound context",
+                ));
+            }
+            let event_identity = *next_deadline_event_identity;
+            *next_deadline_event_identity = event_identity.checked_add(1).ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-DEADLINE-EVENT",
+                    "deadline-event identity exhausted",
+                )
+            })?;
+            transitions.extend([
+                SystemsTransition::ArmDeadline { event_identity },
+                SystemsTransition::TransferKernelContextUntilDeadline {
+                    context_identity: 1,
+                    caller_identity: 1,
+                    event_identity,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 1,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: entered.clone(),
+                },
+                SystemsTransition::AwaitDeadlinePreemption {
+                    context_identity: 1,
+                },
+                SystemsTransition::ObserveDeadline { event_identity },
+                SystemsTransition::EnterDeadlineInterrupt { event_identity },
+                SystemsTransition::CompleteDeadlineInterrupt { event_identity },
+                SystemsTransition::PreemptKernelContext {
+                    event_identity,
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::ResumePreemptionDispatcher { caller_identity: 1 },
+            ]);
+            *deadline_state = BootstrapDeadlineState::Completed;
+            *state = BootstrapKernelContextState::PreemptedOutcome;
+        }
+        SystemsOperation::TakePreemptedKernelContext => {
+            if *state != BootstrapKernelContextState::PreemptedOutcome
+                || *deadline_state != BootstrapDeadlineState::Completed
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "taking the preempted model context requires its completed event outcome",
+                ));
+            }
+            transitions.push(SystemsTransition::TakePreemptedKernelContext {
+                context_identity: 1,
+                event_identity: next_deadline_event_identity.saturating_sub(1),
+            });
+            *state = BootstrapKernelContextState::PreemptedTaken;
+        }
+        SystemsOperation::TransferKernelContext => match *state {
             BootstrapKernelContextState::TerminalDequeued => {
                 let [SystemsOperation::ConsoleWrite { text }] =
                     terminal_handler.operations.as_slice()
@@ -1969,7 +2108,7 @@ fn model_kernel_context_transition(
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
                         context_identity: 2,
-                        caller_identity: 3,
+                        caller_identity: 2,
                     },
                     SystemsTransition::EnterKernelThread {
                         context_identity: 2,
@@ -1977,37 +2116,41 @@ fn model_kernel_context_transition(
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
                         context_identity: 2,
-                        caller_identity: 3,
+                        caller_identity: 2,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
                 ]);
                 *state = BootstrapKernelContextState::TerminalCompleted;
             }
-            BootstrapKernelContextState::CooperativeDequeuedAgain => {
+            BootstrapKernelContextState::PreemptibleDequeuedAgain => {
                 let [_, _, SystemsOperation::ConsoleWrite { text }] =
-                    cooperative_handler.operations.as_slice()
+                    preemptible_handler.operations.as_slice()
                 else {
-                    unreachable!("validated cooperative handler shape")
+                    unreachable!("validated preemptible handler shape")
                 };
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
                         context_identity: 1,
-                        caller_identity: 4,
+                        caller_identity: 3,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                    SystemsTransition::RestorePreemptedKernelContext {
+                        context_identity: 1,
+                        caller_identity: 3,
+                        event_identity: next_deadline_event_identity.saturating_sub(1),
+                    },
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
                         context_identity: 1,
-                        caller_identity: 4,
+                        caller_identity: 3,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 ]);
-                *state = BootstrapKernelContextState::CooperativeCompleted;
+                *state = BootstrapKernelContextState::PreemptibleCompleted;
             }
             _ => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires cooperative, terminal, cooperative FIFO order",
+                    "kernel-context model requires preemptible, terminal, preemptible FIFO order",
                 ));
             }
         },
@@ -2016,7 +2159,7 @@ fn model_kernel_context_transition(
                 BootstrapKernelContextState::TerminalCompleted => {
                     (1, 2, BootstrapKernelContextState::TerminalReclaimed)
                 }
-                BootstrapKernelContextState::CooperativeCompleted => {
+                BootstrapKernelContextState::PreemptibleCompleted => {
                     (0, 1, BootstrapKernelContextState::Reclaimed)
                 }
                 _ => {
@@ -2367,6 +2510,9 @@ fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTran
         SystemsDisposition::RetireKernelContextToCaller => {
             unreachable!("debug-break validation rejects kernel-thread retirement")
         }
+        SystemsDisposition::PreemptKernelContext => {
+            unreachable!("debug-break validation rejects kernel-context preemption")
+        }
     }
 }
 
@@ -2517,7 +2663,10 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CreateRunnableQueue { .. }
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
+        | SystemsOperation::TransferKernelContextUntilDeadline
+        | SystemsOperation::TakePreemptedKernelContext
         | SystemsOperation::TransferKernelContext
+        | SystemsOperation::AwaitDeadlinePreemption
         | SystemsOperation::ReclaimKernelContext
         | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
@@ -2612,13 +2761,13 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
             SYSTEMS_DEADLINE_AFTER.into(),
-            SYSTEMS_DEADLINE_ARM.into(),
-            SYSTEMS_DEADLINE_WAIT.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
             SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
+            SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE.into(),
+            SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED.into(),
             SYSTEMS_KERNEL_CONTEXT_RECLAIM.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE.into(),
@@ -2632,13 +2781,13 @@ mod tests {
         ];
         local_notification_effects.sort();
         let mut deadline_effects = vec![
-            SYSTEMS_RESUME_DEADLINE.into(),
             SYSTEMS_DEADLINE_COMPLETE.into(),
+            SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT.into(),
         ];
         deadline_effects.sort();
         let mut kernel_thread_effects = vec![
             SYSTEMS_CONSOLE_WRITE.into(),
-            SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
+            SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];
         kernel_thread_effects.sort();
@@ -2676,8 +2825,6 @@ mod tests {
                         SystemsOperation::ConstructDeadline {
                             duration_nanoseconds: 1_000_000,
                         },
-                        SystemsOperation::ArmDeadline,
-                        SystemsOperation::WaitDeadline,
                         SystemsOperation::BootstrapAllocate {
                             request: BootstrapStorageRequest {
                                 byte_count: 16_384,
@@ -2698,9 +2845,10 @@ mod tests {
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
-                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::TransferKernelContextUntilDeadline,
+                        SystemsOperation::TakePreemptedKernelContext,
                         SystemsOperation::ConsoleWrite {
-                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                            text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
                         },
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
@@ -2712,7 +2860,7 @@ mod tests {
                         SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
-                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
+                            text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
                         SystemsOperation::ConsumeEmptyRunnableQueue,
@@ -2753,7 +2901,7 @@ mod tests {
                     name: "deadline-notification".into(),
                     context: SystemsContextKind::DeadlineInterrupt,
                     operations: vec![SystemsOperation::CompleteDeadline],
-                    disposition: SystemsDisposition::Resume,
+                    disposition: SystemsDisposition::PreemptKernelContext,
                     effects: deadline_effects,
                 },
             },
@@ -2764,11 +2912,11 @@ mod tests {
                     context: SystemsContextKind::KernelThread,
                     operations: vec![
                         SystemsOperation::ConsoleWrite {
-                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                            text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
                         },
-                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::AwaitDeadlinePreemption,
                         SystemsOperation::ConsoleWrite {
-                            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                            text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
                         },
                     ],
                     disposition: SystemsDisposition::RetireKernelContextToCaller,
@@ -2821,6 +2969,8 @@ mod tests {
                 | SystemsOperation::CreateRunnableQueue { .. }
                 | SystemsOperation::EnqueueRunnableContext
                 | SystemsOperation::DequeueRunnableContext
+                | SystemsOperation::TransferKernelContextUntilDeadline
+                | SystemsOperation::TakePreemptedKernelContext
                 | SystemsOperation::TransferKernelContext
                 | SystemsOperation::ReclaimKernelContext
                 | SystemsOperation::ConsumeEmptyRunnableQueue => false,
@@ -2873,13 +3023,6 @@ mod tests {
                     source_observation_identity: 2,
                     duration_nanoseconds: 1_000_000,
                 },
-                SystemsTransition::ArmDeadline { event_identity: 1 },
-                SystemsTransition::BeginDeadlineWait { event_identity: 1 },
-                SystemsTransition::ObserveDeadline { event_identity: 1 },
-                SystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
-                SystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
-                SystemsTransition::ResumeDeadlineInterrupt { event_identity: 1 },
-                SystemsTransition::EndDeadlineWait { event_identity: 1 },
                 SystemsTransition::AllocateBootstrapRegion {
                     request: BootstrapStorageRequest {
                         byte_count: 16_384,
@@ -2910,23 +3053,36 @@ mod tests {
                 SystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
                 },
-                SystemsTransition::TransferKernelContext {
+                SystemsTransition::ArmDeadline { event_identity: 1 },
+                SystemsTransition::TransferKernelContextUntilDeadline {
                     context_identity: 1,
                     caller_identity: 1,
+                    event_identity: 1,
                 },
                 SystemsTransition::EnterKernelThread {
                     context_identity: 1,
                 },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
                 },
-                SystemsTransition::TransferKernelContext {
-                    context_identity: 0,
-                    caller_identity: 2,
+                SystemsTransition::AwaitDeadlinePreemption {
+                    context_identity: 1,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
+                SystemsTransition::ObserveDeadline { event_identity: 1 },
+                SystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
+                SystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
+                SystemsTransition::PreemptKernelContext {
+                    event_identity: 1,
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                SystemsTransition::ResumePreemptionDispatcher { caller_identity: 1 },
+                SystemsTransition::TakePreemptedKernelContext {
+                    context_identity: 1,
+                    event_identity: 1,
+                },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                    text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
                 },
                 SystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
@@ -2936,7 +3092,7 @@ mod tests {
                 },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 2,
-                    caller_identity: 3,
+                    caller_identity: 2,
                 },
                 SystemsTransition::EnterKernelThread {
                     context_identity: 2,
@@ -2946,9 +3102,9 @@ mod tests {
                 },
                 SystemsTransition::RetireKernelContextToCaller {
                     context_identity: 2,
-                    caller_identity: 3,
+                    caller_identity: 2,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
@@ -2960,19 +3116,23 @@ mod tests {
                 },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 4,
+                    caller_identity: 3,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                SystemsTransition::RestorePreemptedKernelContext {
+                    context_identity: 1,
+                    caller_identity: 3,
+                    event_identity: 1,
+                },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
                 },
                 SystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 4,
+                    caller_identity: 3,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 SystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
@@ -3094,8 +3254,9 @@ mod tests {
     }
 
     #[test]
-    fn deadline_requires_exact_construction_arm_wait_and_completion() {
-        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-DEADLINE-EVENT-001.
+    fn deadline_requires_exact_construction_preemption_and_completion() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-DEADLINE-EVENT-001,
+        // TOPAL-SYSTEMS-CONTEXT-004.
         let mut wrong_duration = program(SystemsDisposition::Resume);
         wrong_duration.bootstrap.handler.operations[8] = SystemsOperation::ConstructDeadline {
             duration_nanoseconds: 2_000_000,
@@ -3105,22 +3266,19 @@ mod tests {
             "E-SYSTEMS-DEADLINE-EVENT"
         );
 
-        let mut missing_wait = program(SystemsDisposition::Resume);
-        remove_context_lifecycle(&mut missing_wait);
-        missing_wait
-            .bootstrap
-            .handler
-            .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::WaitDeadline));
-        refresh_bootstrap_effects(&mut missing_wait);
+        let mut missing_preemption = program(SystemsDisposition::Resume);
+        remove_context_lifecycle(&mut missing_preemption);
         assert_eq!(
-            validate_systems_program(&missing_wait).unwrap_err().code,
+            validate_systems_program(&missing_preemption)
+                .unwrap_err()
+                .code,
             "E-SYSTEMS-DEADLINE-EVENT-LIVE"
         );
 
         let mut incomplete = program(SystemsDisposition::Resume);
         incomplete.deadline_notification.handler.operations.clear();
-        incomplete.deadline_notification.handler.effects = vec![SYSTEMS_RESUME_DEADLINE.into()];
+        incomplete.deadline_notification.handler.effects =
+            vec![SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT.into()];
         assert_eq!(
             validate_systems_program(&incomplete).unwrap_err().code,
             "E-SYSTEMS-DEADLINE-EVENT"
@@ -3168,6 +3326,19 @@ mod tests {
             .operations
             .iter()
             .position(|operation| matches!(operation, SystemsOperation::TransferKernelContext))
+            .or_else(|| {
+                transfer_before_create
+                    .bootstrap
+                    .handler
+                    .operations
+                    .iter()
+                    .position(|operation| {
+                        matches!(
+                            operation,
+                            SystemsOperation::TransferKernelContextUntilDeadline
+                        )
+                    })
+            })
             .unwrap();
         transfer_before_create
             .bootstrap
@@ -3186,7 +3357,7 @@ mod tests {
             text: "wrong".into(),
         };
         wrong_handler.kernel_thread.handler.effects = vec![
-            SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
+            SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.into(),
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];

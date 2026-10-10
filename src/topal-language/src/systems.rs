@@ -37,12 +37,14 @@ pub use topal_semantics::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -829,20 +831,13 @@ fn analyze_kernel_thread_handler(
     let context_name = source.slice(parameters[0].name);
     let caller_name = source.slice(parameters[1].name);
     let (_marker, retirement, returned_caller, operations) = if cooperative {
-        let [marker, handoff, resumed_marker, retirement] = body else {
+        let [marker, await_preemption, resumed_marker, retirement] = body else {
             return Err(kernel_context_diagnostic(
                 source,
                 span,
-                "the cooperative kernel thread must enter, hand back once, resume, and retire",
+                "the deadline-preemptible kernel thread must enter, await preemption, resume, and retire",
             ));
         };
-        let returned_caller = parse_kernel_context_transfer(
-            source,
-            handoff,
-            context_name,
-            caller_name,
-            "SuspendedKernelContext InitialProcessor",
-        )?;
         let entered = analyze_operation(
             source,
             marker,
@@ -851,13 +846,27 @@ fn analyze_kernel_thread_handler(
         )?;
         if entered
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(marker),
-                "the cooperative kernel thread requires its exact entry marker",
+                "the deadline-preemptible kernel thread requires its exact entry marker",
+            ));
+        }
+        let await_preemption_span = statement_span(await_preemption);
+        let await_preemption = analyze_operation(
+            source,
+            await_preemption,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if await_preemption != CompilerSystemsOperation::AwaitDeadlinePreemption {
+            return Err(kernel_context_diagnostic(
+                source,
+                await_preemption_span,
+                "the deadline-preemptible kernel thread requires its sealed preemption region",
             ));
         }
         let resumed = analyze_operation(
@@ -868,24 +877,20 @@ fn analyze_kernel_thread_handler(
         )?;
         if resumed
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(resumed_marker),
-                "the cooperative kernel thread requires its exact resumed marker",
+                "the deadline-preemptible kernel thread requires its exact resumed marker",
             ));
         }
         (
             marker,
             retirement,
-            returned_caller,
-            vec![
-                entered,
-                CompilerSystemsOperation::TransferKernelContext,
-                resumed,
-            ],
+            caller_name.to_owned(),
+            vec![entered, await_preemption, resumed],
         )
     } else {
         let [marker, retirement] = body else {
@@ -950,7 +955,7 @@ fn analyze_kernel_thread_handler(
         SYSTEMS_KERNEL_CONTEXT_RETIRE.to_owned(),
     ];
     if cooperative {
-        effects.push(SYSTEMS_KERNEL_CONTEXT_TRANSFER.to_owned());
+        effects.push(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.to_owned());
         effects.sort();
     }
     Ok(CompilerSystemsHandler {
@@ -1069,7 +1074,7 @@ fn analyze_deadline_handler(
         return Err(deadline_diagnostic(
             source,
             body.first().map_or(Span::new(0, 0), statement_span),
-            "deadline handler requires consuming completion followed by resume",
+            "deadline handler requires consuming completion followed by bound-context preemption",
         ));
     };
     let (completed, items, span) = affine_application_binding(source, complete, "completion")?;
@@ -1098,17 +1103,17 @@ fn analyze_deadline_handler(
         CompilerSystemsContextKind::DeadlineInterrupt,
         completed_name,
     )?;
-    if disposition != CompilerSystemsDisposition::Resume {
+    if disposition != CompilerSystemsDisposition::PreemptKernelContext {
         return Err(deadline_diagnostic(
             source,
             statement_span(body.last().expect("two statements")),
-            "deadline completion must end in resume",
+            "deadline completion must preempt the bound kernel context",
         ));
     }
     let operations = vec![CompilerSystemsOperation::CompleteDeadline];
     let mut effects = vec![
         SYSTEMS_DEADLINE_COMPLETE.to_owned(),
-        SYSTEMS_RESUME_DEADLINE.to_owned(),
+        SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT.to_owned(),
     ];
     effects.sort();
     Ok(CompilerSystemsHandler {
@@ -2171,16 +2176,13 @@ fn parse_atomic_exchanged_success(
         second_clock,
         time_console,
         deadline,
-        arm,
-        deadline_wait,
-        deadline_console,
         context_decision,
     ] = success_continuation
     else {
         return Err(atomic_diagnostic(
             source,
             true_action.span(),
-            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, one deadline lifecycle, one kernel-context round trip, and final disposition after atomic end",
+            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, one deadline-preemptible context lifecycle, and final disposition after atomic end",
         ));
     };
     let atomic_marker = analyze_operation(
@@ -2254,29 +2256,13 @@ fn parse_atomic_exchanged_success(
         ));
     }
     let (deadline_name, deadline_operation) = parse_deadline_after(source, deadline, &second_name)?;
-    let (armed_name, arm_operation) =
-        parse_deadline_arm(source, arm, &resumed_name, &deadline_name)?;
-    let (deadline_resumed_name, deadline_wait_operation) =
-        parse_deadline_wait(source, deadline_wait, &resumed_name, &armed_name)?;
-    let deadline_marker = analyze_operation(
+    let checked_context = analyze_kernel_context_decision(
         source,
-        deadline_console,
-        CompilerSystemsContextKind::Bootstrap,
-        &deadline_resumed_name,
+        context_decision,
+        &resumed_name,
+        &deadline_name,
+        storage,
     )?;
-    if deadline_marker
-        != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_DEADLINE_OK".into(),
-        })
-    {
-        return Err(deadline_diagnostic(
-            source,
-            statement_span(deadline_console),
-            "deadline wait must be followed by the exact deadline success marker",
-        ));
-    }
-    let checked_context =
-        analyze_kernel_context_decision(source, context_decision, &deadline_resumed_name, storage)?;
     let mut operations = vec![
         atomic_marker,
         memory_marker,
@@ -2288,9 +2274,6 @@ fn parse_atomic_exchanged_success(
         second_clock_operation,
         time_marker,
         deadline_operation,
-        arm_operation,
-        deadline_wait_operation,
-        deadline_marker,
     ];
     operations.extend(checked_context.operations);
     Ok((operations, checked_context.disposition))
@@ -2300,6 +2283,7 @@ fn analyze_kernel_context_decision(
     source: &SourceText,
     statement: &Statement,
     context_name: &str,
+    deadline_name: &str,
     storage: &CompilerBootstrapStorageDescriptor,
 ) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
     let Statement::Expression(Expression::DecisionTable {
@@ -2398,9 +2382,10 @@ fn analyze_kernel_context_decision(
         enqueue_cooperative,
         enqueue_terminal,
         dequeue_cooperative,
-        handoff,
-        handoff_marker_statement,
-        enqueue_yielded,
+        preemptible_transfer,
+        take_preempted,
+        preemption_marker_statement,
+        enqueue_preempted,
         dequeue_terminal,
         transfer_terminal,
         terminal_marker_statement,
@@ -2410,7 +2395,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_ok.span(),
-            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, both transfers, and reclamation",
+            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, deadline preemption, both retirement transfers, and reclamation",
         ));
     };
     let terminal_name = parse_kernel_context_create(
@@ -2425,31 +2410,33 @@ fn analyze_kernel_context_decision(
     parse_runnable_queue_enqueue(source, enqueue_terminal, &queue_name, &terminal_name)?;
     let selected_cooperative =
         parse_runnable_queue_dequeue(source, dequeue_cooperative, &queue_name)?;
-    let yielded_name = parse_kernel_context_transfer(
+    let preempted_name = parse_kernel_context_transfer_until_deadline(
         source,
-        handoff,
+        preemptible_transfer,
         context_name,
         &selected_cooperative,
-        "SuspendedKernelContext InitialProcessor",
+        deadline_name,
     )?;
-    let handoff_marker = analyze_operation(
+    let preempted_worker =
+        parse_take_preempted_kernel_context(source, take_preempted, &preempted_name)?;
+    let preemption_marker = analyze_operation(
         source,
-        handoff_marker_statement,
+        preemption_marker_statement,
         CompilerSystemsContextKind::Bootstrap,
         context_name,
     )?;
-    if handoff_marker
+    if preemption_marker
         != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+            text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
         })
     {
         return Err(kernel_context_diagnostic(
             source,
-            statement_span(handoff_marker_statement),
-            "the first cooperative transfer requires its exact suspended marker",
+            statement_span(preemption_marker_statement),
+            "the deadline-preemptible transfer requires its exact success marker",
         ));
     }
-    parse_runnable_queue_enqueue(source, enqueue_yielded, &queue_name, &yielded_name)?;
+    parse_runnable_queue_enqueue(source, enqueue_preempted, &queue_name, &preempted_worker)?;
     let selected_terminal = parse_runnable_queue_dequeue(source, dequeue_terminal, &queue_name)?;
     let terminal_completed = parse_kernel_context_transfer(
         source,
@@ -2487,7 +2474,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_terminal),
-            "terminal reclamation must dequeue, resume, and reclaim the cooperative worker",
+            "terminal reclamation must dequeue, restore, and reclaim the preempted worker",
         ));
     };
     let selected_cooperative_final =
@@ -2507,13 +2494,13 @@ fn analyze_kernel_context_decision(
     )?;
     if cooperative_marker
         != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
+            text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
         })
     {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(cooperative_marker_statement),
-            "cooperative retirement requires its exact marker",
+            "preemptible-worker retirement requires its exact marker",
         ));
     }
     let (resumed_name, continuation) =
@@ -2544,8 +2531,9 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContext,
-            handoff_marker,
+            CompilerSystemsOperation::TransferKernelContextUntilDeadline,
+            CompilerSystemsOperation::TakePreemptedKernelContext,
+            preemption_marker,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
@@ -2858,6 +2846,100 @@ fn parse_kernel_context_transfer(
     Ok(source.slice(*name).to_owned())
 }
 
+fn parse_kernel_context_transfer_until_deadline(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    worker_name: &str,
+    deadline_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "deadline-preemptible transfer must bind its exact affine outcome",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        context_word,
+        transfer,
+        worker,
+        until,
+        deadline,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "deadline-preemptible transfer must consume one selected context and deadline",
+        ));
+    };
+    if source.slice(*classifier)
+        != "PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, transfer, "transfer")
+        || !identifier_is(source, worker, worker_name)
+        || !identifier_is(source, until, "until")
+        || !identifier_is(source, deadline, deadline_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "deadline-preemptible transfer requires the live dispatcher, FIFO-selected context, and exact deadline",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_take_preempted_kernel_context(
+    source: &SourceText,
+    statement: &Statement,
+    preempted_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "taking a preempted outcome must bind one suspended kernel context",
+        ));
+    };
+    let [receiver, kernel, context_word, take, preempted] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "taking a preempted outcome must consume the exact affine result",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, receiver, preempted_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, take, "take")
+        || !identifier_is(source, preempted, "preempted")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "taking preemption requires the exact completed outcome before runnable enqueue",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
 fn parse_kernel_context_reclaim<'a>(
     source: &SourceText,
     statement: &'a Statement,
@@ -2945,82 +3027,6 @@ fn parse_deadline_after(
         CompilerSystemsOperation::ConstructDeadline {
             duration_nanoseconds: 1_000_000,
         },
-    ))
-}
-
-fn parse_deadline_arm(
-    source: &SourceText,
-    statement: &Statement,
-    context_name: &str,
-    deadline_name: &str,
-) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
-    let Statement::Binding {
-        name,
-        classifier: Some(classifier),
-        value: Expression::Application { items, span },
-    } = statement
-    else {
-        return Err(deadline_diagnostic(
-            source,
-            statement_span(statement),
-            "deadline arm must bind `ArmedDeadline InitialMonotonicClock`",
-        ));
-    };
-    let [context, deadline, notification, arm, value] = items.as_slice() else {
-        return Err(deadline_diagnostic(
-            source,
-            *span,
-            "deadline arm must consume one same-clock deadline",
-        ));
-    };
-    if source.slice(*classifier) != "ArmedDeadline InitialMonotonicClock"
-        || !identifier_is(source, context, context_name)
-        || !identifier_is(source, deadline, "deadline")
-        || !identifier_is(source, notification, "notification")
-        || !identifier_is(source, arm, "arm")
-        || !identifier_is(source, value, deadline_name)
-    {
-        return Err(deadline_diagnostic(
-            source,
-            *span,
-            "deadline arm requires the resumed context and its affine same-clock deadline",
-        ));
-    }
-    Ok((
-        source.slice(*name).to_owned(),
-        CompilerSystemsOperation::ArmDeadline,
-    ))
-}
-
-fn parse_deadline_wait(
-    source: &SourceText,
-    statement: &Statement,
-    context_name: &str,
-    armed_name: &str,
-) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
-    let (name, items, span) = affine_application_binding(source, statement, "deadline wait")?;
-    let [context, deadline, notification, wait, armed] = items else {
-        return Err(deadline_diagnostic(
-            source,
-            span,
-            "deadline wait must consume one affine armed event",
-        ));
-    };
-    if !identifier_is(source, context, context_name)
-        || !identifier_is(source, deadline, "deadline")
-        || !identifier_is(source, notification, "notification")
-        || !identifier_is(source, wait, "wait")
-        || !identifier_is(source, armed, armed_name)
-    {
-        return Err(deadline_diagnostic(
-            source,
-            span,
-            "deadline wait requires the resumed context and matching affine armed event",
-        ));
-    }
-    Ok((
-        source.slice(name).to_owned(),
-        CompilerSystemsOperation::WaitDeadline,
     ))
 }
 
@@ -3519,6 +3525,24 @@ fn analyze_operation(
     {
         return Ok(CompilerSystemsOperation::DebugBreak);
     }
+    if context == CompilerSystemsContextKind::KernelThread
+        && let [
+            receiver,
+            kernel,
+            context_word,
+            await_word,
+            deadline,
+            preemption,
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, context_word, "context")
+        && identifier_is(source, await_word, "await")
+        && identifier_is(source, deadline, "deadline")
+        && identifier_is(source, preemption, "preemption")
+    {
+        return Ok(CompilerSystemsOperation::AwaitDeadlinePreemption);
+    }
     Err(source_diagnostic(
         source,
         "E-SYSTEMS-OPERATION",
@@ -3551,6 +3575,16 @@ fn analyze_disposition(
         && identifier_is(source, resume, "resume")
     {
         return Ok(CompilerSystemsDisposition::Resume);
+    }
+    if context == CompilerSystemsContextKind::DeadlineInterrupt
+        && let [receiver, preempt, current, kernel, context_word] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, preempt, "preempt")
+        && identifier_is(source, current, "current")
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, context_word, "context")
+    {
+        return Ok(CompilerSystemsDisposition::PreemptKernelContext);
     }
     if let [receiver, fatal, Expression::String(message)] = items.as_slice()
         && identifier_is(source, receiver, context_name)
@@ -3684,6 +3718,8 @@ mod tests {
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+                SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
@@ -3704,8 +3740,6 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
                 SYSTEMS_DEADLINE_AFTER,
-                SYSTEMS_DEADLINE_ARM,
-                SYSTEMS_DEADLINE_WAIT,
                 SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
@@ -3877,16 +3911,6 @@ mod tests {
                     source_observation_identity: 2,
                     duration_nanoseconds: 1_000_000,
                 },
-                CompilerSystemsTransition::ArmDeadline { event_identity: 1 },
-                CompilerSystemsTransition::BeginDeadlineWait { event_identity: 1 },
-                CompilerSystemsTransition::ObserveDeadline { event_identity: 1 },
-                CompilerSystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
-                CompilerSystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
-                CompilerSystemsTransition::ResumeDeadlineInterrupt { event_identity: 1 },
-                CompilerSystemsTransition::EndDeadlineWait { event_identity: 1 },
-                CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_DEADLINE_OK".into(),
-                },
                 CompilerSystemsTransition::AllocateBootstrapRegion {
                     request: CompilerBootstrapStorageRequest {
                         byte_count: 16_384,
@@ -3917,23 +3941,36 @@ mod tests {
                 CompilerSystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
                 },
-                CompilerSystemsTransition::TransferKernelContext {
+                CompilerSystemsTransition::ArmDeadline { event_identity: 1 },
+                CompilerSystemsTransition::TransferKernelContextUntilDeadline {
                     context_identity: 1,
                     caller_identity: 1,
+                    event_identity: 1,
                 },
                 CompilerSystemsTransition::EnterKernelThread {
                     context_identity: 1,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_ENTERED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
                 },
-                CompilerSystemsTransition::TransferKernelContext {
-                    context_identity: 0,
-                    caller_identity: 2,
+                CompilerSystemsTransition::AwaitDeadlinePreemption {
+                    context_identity: 1,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 1 },
+                CompilerSystemsTransition::ObserveDeadline { event_identity: 1 },
+                CompilerSystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::PreemptKernelContext {
+                    event_identity: 1,
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity: 1 },
+                CompilerSystemsTransition::TakePreemptedKernelContext {
+                    context_identity: 1,
+                    event_identity: 1,
+                },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_SUSPENDED".into(),
+                    text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
                 },
                 CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
@@ -3943,7 +3980,7 @@ mod tests {
                 },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 2,
-                    caller_identity: 3,
+                    caller_identity: 2,
                 },
                 CompilerSystemsTransition::EnterKernelThread {
                     context_identity: 2,
@@ -3953,9 +3990,9 @@ mod tests {
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
                     context_identity: 2,
-                    caller_identity: 3,
+                    caller_identity: 2,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
@@ -3967,19 +4004,23 @@ mod tests {
                 },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 4,
+                    caller_identity: 3,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                CompilerSystemsTransition::RestorePreemptedKernelContext {
+                    context_identity: 1,
+                    caller_identity: 3,
+                    event_identity: 1,
+                },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RESUMED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 4,
+                    caller_identity: 3,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_CONTEXT_COOPERATIVE_RETIRED".into(),
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
@@ -4001,7 +4042,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 72);
+        assert_eq!(program.bootstrap.handler.operations.len(), 70);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -4016,6 +4057,8 @@ mod tests {
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+                SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
@@ -4036,8 +4079,6 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
                 SYSTEMS_DEADLINE_AFTER,
-                SYSTEMS_DEADLINE_ARM,
-                SYSTEMS_DEADLINE_WAIT,
                 SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,

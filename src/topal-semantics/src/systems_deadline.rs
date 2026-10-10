@@ -31,6 +31,25 @@ pub struct CompletedDeadlineInterrupt {
     delivery: DeadlineEventDelivery,
 }
 
+impl ArmedDeadline {
+    #[must_use]
+    pub(crate) const fn event_identity(&self) -> u64 {
+        self.event_identity
+    }
+
+    #[must_use]
+    pub(crate) const fn scheduled(&self) -> Instant {
+        self.scheduled
+    }
+}
+
+impl CompletedDeadlineInterrupt {
+    #[must_use]
+    pub(crate) const fn delivery(&self) -> DeadlineEventDelivery {
+        self.delivery
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsDeadlineProtocol {
     clock: ClockIdentity,

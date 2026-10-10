@@ -1287,6 +1287,11 @@ impl Parser<'_> {
                 result.end.max(closing.span.end),
             ));
         }
+        if self.source.slice(first.span) == "PreemptedKernelContextTransfer" {
+            let _processor = self.generator_classifier()?;
+            let clock = self.generator_classifier()?;
+            return Some(Span::new(first.span.start, clock.end));
+        }
         if matches!(
             self.source.slice(first.span),
             "Array" | "Map" | "Result" | "Record"
