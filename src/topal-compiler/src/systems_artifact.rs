@@ -34,6 +34,12 @@ use topal_language::compiler::{
     model_systems_transitions,
 };
 
+#[cfg(test)]
+use topal_language::compiler::{
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+};
+
 use crate::artifact::sha256;
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
@@ -55,8 +61,8 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/13";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/13";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/14";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/14";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1051,11 +1057,19 @@ enum RootKernelContextState {
     Fresh,
     CooperativeCreated,
     BothSuspended,
+    QueueCreated,
+    CooperativeEnqueued,
+    BothEnqueued,
+    CooperativeDequeued,
     CooperativeYielded,
+    HandoffEnqueued,
+    TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
+    CooperativeDequeuedAgain,
     CooperativeCompleted,
     Reclaimed,
+    QueueConsumed,
 }
 
 #[derive(Clone, Copy)]
@@ -1484,10 +1498,10 @@ impl RootEncoder {
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
-            && self.kernel_context != RootKernelContextState::Reclaimed
+            && self.kernel_context != RootKernelContextState::QueueConsumed
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without completing and reclaiming its kernel-context transfer"
+                "x86 root lowering ended without reclaiming both contexts and consuming its runnable queue"
                     .into(),
             ));
         }
@@ -1914,17 +1928,17 @@ impl RootEncoder {
             ));
         }
         let (state_offset, next_state) = match self.kernel_context {
-            RootKernelContextState::BothSuspended
+            RootKernelContextState::CooperativeDequeued
                 if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
             {
                 (80, RootKernelContextState::CooperativeYielded)
             }
-            RootKernelContextState::CooperativeYielded
+            RootKernelContextState::TerminalDequeued
                 if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
             {
                 (112, RootKernelContextState::TerminalCompleted)
             }
-            RootKernelContextState::TerminalReclaimed
+            RootKernelContextState::CooperativeDequeuedAgain
                 if self.context_stack_offsets == [Some(4096), None] =>
             {
                 (80, RootKernelContextState::CooperativeCompleted)
@@ -1939,6 +1953,61 @@ impl RootEncoder {
         self.load_bootstrap_storage_address(state_offset)?;
         self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
         self.kernel_context = next_state;
+        Ok(())
+    }
+
+    fn create_runnable_queue(&mut self, capacity: usize) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::BothSuspended
+            || capacity != 2
+        {
+            return Err(CompileError::Tool(
+                "x86 root runnable queue requires both suspended contexts and capacity two".into(),
+            ));
+        }
+        self.kernel_context = RootKernelContextState::QueueCreated;
+        Ok(())
+    }
+
+    fn enqueue_runnable_context(&mut self) -> Result<(), CompileError> {
+        self.kernel_context = match self.kernel_context {
+            RootKernelContextState::QueueCreated => RootKernelContextState::CooperativeEnqueued,
+            RootKernelContextState::CooperativeEnqueued => RootKernelContextState::BothEnqueued,
+            RootKernelContextState::CooperativeYielded => RootKernelContextState::HandoffEnqueued,
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 root runnable enqueue violates cooperative, terminal, cooperative FIFO ownership"
+                        .into(),
+                ));
+            }
+        };
+        Ok(())
+    }
+
+    fn dequeue_runnable_context(&mut self) -> Result<(), CompileError> {
+        self.kernel_context = match self.kernel_context {
+            RootKernelContextState::BothEnqueued => RootKernelContextState::CooperativeDequeued,
+            RootKernelContextState::HandoffEnqueued => RootKernelContextState::TerminalDequeued,
+            RootKernelContextState::TerminalReclaimed => {
+                RootKernelContextState::CooperativeDequeuedAgain
+            }
+            _ => {
+                return Err(CompileError::Tool(
+                    "x86 root runnable dequeue violates cooperative, terminal, cooperative FIFO ownership"
+                        .into(),
+                ));
+            }
+        };
+        Ok(())
+    }
+
+    fn consume_empty_runnable_queue(&mut self) -> Result<(), CompileError> {
+        if self.kernel_context != RootKernelContextState::Reclaimed {
+            return Err(CompileError::Tool(
+                "x86 root runnable queue must be empty after both context reclamations".into(),
+            ));
+        }
+        self.kernel_context = RootKernelContextState::QueueConsumed;
         Ok(())
     }
 
@@ -2489,8 +2558,20 @@ fn encode_operations(
             CompilerSystemsOperation::WaitDeadline => encoder.wait_deadline()?,
             CompilerSystemsOperation::CompleteDeadline => encoder.complete_deadline()?,
             CompilerSystemsOperation::CreateKernelContext => encoder.create_kernel_context()?,
+            CompilerSystemsOperation::CreateRunnableQueue { capacity } => {
+                encoder.create_runnable_queue(*capacity)?;
+            }
+            CompilerSystemsOperation::EnqueueRunnableContext => {
+                encoder.enqueue_runnable_context()?;
+            }
+            CompilerSystemsOperation::DequeueRunnableContext => {
+                encoder.dequeue_runnable_context()?;
+            }
             CompilerSystemsOperation::TransferKernelContext => encoder.transfer_kernel_context()?,
             CompilerSystemsOperation::ReclaimKernelContext => encoder.reclaim_kernel_context()?,
+            CompilerSystemsOperation::ConsumeEmptyRunnableQueue => {
+                encoder.consume_empty_runnable_queue()?;
+            }
         }
     }
     encoder.complete()
@@ -2696,6 +2777,13 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ReclaimKernelContext { context_identity } => {
                     format!("{identity}:context={context_identity}")
                 }
+                CompilerSystemsTransition::CreateRunnableQueue { capacity } => {
+                    format!("{identity}:capacity={capacity}")
+                }
+                CompilerSystemsTransition::EnqueueRunnableContext { context_identity }
+                | CompilerSystemsTransition::DequeueRunnableContext { context_identity } => {
+                    format!("{identity}:context={context_identity}")
+                }
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity,
                     caller_identity,
@@ -2752,6 +2840,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ResumeDeadlineInterrupt { .. }
                 | CompilerSystemsTransition::EndDeadlineWait { .. }
                 | CompilerSystemsTransition::EndAtomicWord
+                | CompilerSystemsTransition::ConsumeEmptyRunnableQueue
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }
         })
@@ -3157,7 +3246,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 45);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 91);
+        assert_eq!(decoded.semantic_trace.len(), 99);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -3249,31 +3338,42 @@ mod tests {
         assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
         assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
         assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(
-            decoded.semantic_trace[71].starts_with("topal.systems.entry.resumed.kernel-thread/1")
-        );
-        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[70].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
+        assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[72].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
         assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
         assert!(
-            decoded.semantic_trace[77].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[75].starts_with("topal.systems.entry.resumed.kernel-thread/1")
         );
-        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(
+            decoded.semantic_trace[83].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+        );
+        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert_eq!(
+            decoded.semantic_trace[97],
+            SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
+        );
+        assert!(decoded.semantic_trace[98].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();
