@@ -280,6 +280,13 @@ from two closed worker protocols and implements bounded FIFO selection in
 ordinary source. The provider performs no runnable selection. See
 [TK-DEC-028](cooperative-context-handoff.md).
 
+The approved runnable-queue extension makes that source policy reusable. A
+fixed-capacity affine FIFO owns its suspended contexts, returns ownership on
+full or empty results, selects only the oldest context, and must be consumed
+empty before disposition. It is an ordinary checked Topal composite rather
+than a provider operation; provider-specific context state remains opaque. See
+[TK-DEC-029](affine-runnable-queue.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults
