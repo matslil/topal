@@ -24,7 +24,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/12";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/13";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -240,6 +240,7 @@ pub fn plan_x86_64_systems_provider(
         .chain(&program.local_notification.handler.effects)
         .chain(&program.deadline_notification.handler.effects)
         .chain(&program.kernel_thread.handler.effects)
+        .chain(&program.terminal_thread.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
     semantic_identities.extend([
