@@ -38,6 +38,8 @@ member is one `lang systems bounded-bootstrap-storage`, whose `bootstrap`
 member is one `lang systems bootstrap-entry`, and whose `debug-break` member is
 one `lang systems synchronous-exception-entry`, and whose
 `local-notification` member is one `lang systems external-interrupt-entry`.
+It SHALL also contain exactly one `deadline-notification` member constructed as
+one `lang systems external-interrupt-entry`.
 The storage constructor SHALL
 contain exactly positive `capacity-bytes` and `alignment-bytes` natural-number
 fields. Alignment SHALL be a power of two and SHALL NOT exceed capacity. The
@@ -45,14 +47,17 @@ bootstrap entry SHALL have one handler from `BootstrapContext` to
 `BootstrapDisposition`; the debug-break entry SHALL have one handler from
 `DebugBreakContext` to `DebugBreakDisposition`; and the local-notification
 entry SHALL have one handler from `LocalNotificationInterruptContext` to
-`LocalNotificationInterruptDisposition`.
+`LocalNotificationInterruptDisposition`; and the deadline-notification entry
+SHALL have one handler from `DeadlineInterruptContext InitialMonotonicClock` to
+`DeadlineInterruptDisposition InitialMonotonicClock`.
 
 The only admitted initial handler operations SHALL be context-qualified
-`console write`, `debug break`, `resume`, and `fatal`. Console write SHALL
+`console write`, `debug break`, local-notification completion,
+deadline-notification completion, `resume`, and `fatal`. Console write SHALL
 borrow the live board console capability and this increment SHALL accept only a
 static text value. Debug break SHALL borrow the bootstrap context and declare
 one synchronous debug-break observation. Resume SHALL consume one live
-debug-break context and resume exactly its interrupted continuation. Fatal
+completed entry context and resume exactly its interrupted continuation. Fatal
 SHALL consume its live entry context and SHALL NOT return.
 
 Every handler SHALL end in one disposition admitted by its context. The
@@ -211,9 +216,46 @@ or speculate a required clock observation.
 
 The initial executable slice SHALL admit exactly two observations after its
 local-notification wait and before its time-success marker. It SHALL make no
-wall-clock, deadline, timer-delivery, periodic-release, sleep, timeout,
+wall-clock, periodic-release, sleep, timeout,
 bounded-latency, rate-accuracy, SMP, suspend, migration, userspace-ABI, or
 real-time guarantee.
+
+### TOPAL-SYSTEMS-DEADLINE-EVENT-001 — One-shot deadline event
+
+Constructing `Deadline c` from `Instant c` and an exact positive `Duration`
+SHALL preserve the absolute same-clock instant and SHALL fail on range
+overflow. It SHALL NOT observe the clock. A deadline from another clock SHALL
+NOT substitute, arm, or satisfy the event.
+
+`deadline notification arm` SHALL borrow one admitted processor context,
+consume one deadline, and produce one affine `ArmedDeadline c` with one new
+monotonic event identity `q`. The deadline, armed event, and temporarily
+consumed context SHALL NOT be duplicated, escaped, or used by another event.
+`deadline notification wait` SHALL consume the armed event and return the
+processor context only after the matching observation, typed entry, consuming
+completion, and resumption have occurred.
+
+Delivery SHALL record `DeadlineEvent(c,q,scheduled,observed)`, where scheduled
+is the deadline's instant and observed is one newly accepted `Instant c`.
+Observed SHALL be greater than or equal to scheduled. Late delivery SHALL
+retain both values. If the deadline is already expired when armed, the event
+SHALL become immediately deliverable against the original scheduled instant;
+the provider SHALL NOT restart the relative duration.
+
+The entry SHALL receive one affine `DeadlineInterruptContext(c,q,scheduled,
+observed)`. `deadline notification complete` SHALL consume that context and
+produce one completed context admitting only resume or fatal disposition.
+Resume before completion, completion outside the matching entry, duplicate
+completion, an early observation, or ordinary completion with a live deadline
+authority SHALL be rejected.
+
+The initial executable slice SHALL admit exactly one deadline constructed from
+the second qualified monotonic observation and `1[ms]`, one arm/wait lifecycle,
+and one declared handler. Comparator, timer, route, vector, controller,
+acknowledgement, wait, frame, and return representation SHALL remain private to
+the provider. Cancellation, rearming, periodic release, scheduler integration,
+multiple outstanding events, bounded latency, rate accuracy, SMP delivery,
+suspend/migration guarantees, and userspace timer ABI SHALL remain unavailable.
 
 ### TOPAL-SYSTEMS-MACHINE-001 — Closed machine-provider transition
 

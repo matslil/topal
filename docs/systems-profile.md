@@ -58,6 +58,12 @@ local-notification-handler is fn (
   completed is context local notification complete
   completed resume
 
+deadline-notification-handler is fn (
+  context : DeadlineInterruptContext InitialMonotonicClock
+) -> DeadlineInterruptDisposition InitialMonotonicClock
+  completed is context deadline notification complete
+  completed resume
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
@@ -66,13 +72,16 @@ lang systems artifact (
   bootstrap is lang systems bootstrap-entry boot,
   debug-break is lang systems synchronous-exception-entry debug-break-handler,
   local-notification is lang systems external-interrupt-entry
-    local-notification-handler
+    local-notification-handler,
+  deadline-notification is lang systems external-interrupt-entry
+    deadline-notification-handler
 )
 ```
 
 `BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`,
-`DebugBreakDisposition`, `LocalNotificationInterruptContext`, and
-`LocalNotificationInterruptDisposition` are sealed systems classifiers, not
+`DebugBreakDisposition`, `LocalNotificationInterruptContext`,
+`LocalNotificationInterruptDisposition`, `DeadlineInterruptContext C`, and
+`DeadlineInterruptDisposition C` are sealed systems classifiers, not
 constructible ordinary values. `bootstrap-entry` specializes `SystemEntry
 Bootstrap`; `synchronous-exception-entry` specializes `SystemEntry
 SynchronousException`; and `external-interrupt-entry` specializes the typed
@@ -327,8 +336,44 @@ The first x86-64 provider uses the pinned Q35 HPET and validates its 64-bit
 capability and period before accepting two observations. AArch64 generic
 counters and RISC-V time sources constrain the same clock identity and
 monotonic meaning without becoming source spellings. This increment makes no
-wall-clock, deadline, timer, periodic, sleep, timeout, latency, rate-accuracy,
-SMP, suspend, migration, userspace-ABI, or real-time guarantee.
+wall-clock, periodic, sleep, timeout, latency, rate-accuracy, SMP, suspend,
+migration, userspace-ABI, or real-time guarantee.
+
+### One-shot deadline event
+
+An absolute deadline retains the identity of the instant from which it is
+constructed. The initial specialization constructs exactly one `Deadline
+InitialMonotonicClock` from `second` and the exact duration `1[ms]`, then uses
+one affine event:
+
+```topal
+deadline : Deadline InitialMonotonicClock is second deadline after 1[ms]
+armed : ArmedDeadline InitialMonotonicClock is
+  resumed deadline notification arm deadline
+resumed is resumed deadline notification wait armed
+resumed console write "TOPAL_KERNEL_DEADLINE_OK"
+```
+
+Arming borrows the live processor context, consumes the deadline, and produces
+an `ArmedDeadline` which cannot be copied, escaped, or reused. Waiting consumes
+the armed event and temporarily consumes the processor context. The context is
+returned only after the matching typed entry has completed and resumed.
+
+Delivery records the scheduled deadline and a distinct observed instant from
+the same clock. It may be late but cannot precede the deadline. An already-
+expired absolute deadline becomes immediately deliverable and does not restart
+the original duration. The handler must consume its affine
+`DeadlineInterruptContext` through `deadline notification complete` before
+resume is legal.
+
+The portable contract names neither a timer nor an interrupt mechanism. The
+initial x86-64 provider uses a one-shot Q35 HPET comparator and I/O-APIC route;
+an AArch64 provider can use a generic-timer compare and GIC PPI, while a RISC-V
+provider can use `stimecmp` or SBI timer delivery and the supervisor timer
+interrupt. The first slice admits one `1[ms]` deadline and excludes
+cancellation, rearming, periodic release, scheduler integration, bounded
+latency, rate accuracy, SMP delivery, suspend/migration guarantees, and a
+userspace timer ABI.
 
 ## External observations and permitted choice
 

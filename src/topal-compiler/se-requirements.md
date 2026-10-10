@@ -155,6 +155,20 @@ fail closed on regression. Structural and pinned-QEMU evidence shall retain
 both reads, capability/period checks, state, and failure branches without
 exposing target representation to source.
 
+The first deadline-event increment shall check exactly one deadline formed
+from the second qualified clock observation and `1[ms]`, one affine arm/wait
+lifecycle, one matching typed handler, consuming completion, and resumption
+before the deadline-success marker. It shall reject wrong-clock values, early
+delivery, missing or duplicate operations, resume before completion, context
+use while waiting, and live deadline authority at ordinary completion. The
+x86-64 provider shall privately program one Q35 HPET comparator in one-shot
+mode, route its event through the I/O APIC, enter a generated interrupt gate,
+observe the same HPET clock no earlier than the scheduled instant, acknowledge
+the event, and return through the target interrupt mechanism. Structural and
+pinned-QEMU evidence shall retain each transition without exposing comparator,
+route, vector, controller, frame, instruction, or acknowledgement details to
+source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

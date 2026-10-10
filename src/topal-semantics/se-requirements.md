@@ -141,6 +141,16 @@ comparison, invented or duplicate identities, and completion without the
 required observations. Counter representation, target access, scale,
 enablement, calibration, and wrap state shall remain outside the common model.
 
+The first deadline-event increment shall model construction from one exact
+same-clock instant and duration, one affine arm/wait lifecycle, one delivery
+observation no earlier than the scheduled instant, mandatory matching entry
+completion, resumption, and processor-context return. It shall retain both
+scheduled and observed instants, admit late and already-expired delivery without
+restarting the interval, and reject wrong-clock, early, duplicate, unmatched,
+escaped, or incomplete lifecycles. Timer, comparator, routing, vector,
+controller, acknowledgement, wait, frame, and return mechanics shall remain
+outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

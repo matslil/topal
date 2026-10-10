@@ -24,10 +24,12 @@ records, not this directory alone, define language meaning.
 - [Atomic-word location contract](atomic-word-location.md)
 - [Local-notification interrupt contract](local-notification-interrupt.md)
 - [Monotonic-clock observation contract](monotonic-clock-observation.md)
+- [One-shot deadline-event contract](deadline-event.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
-The semantic proposal was approved in the project discussion after PR #790.
+The base semantic proposal was approved in the project discussion after PR
+#790; subsequent resolved decision records carry their own recorded approval.
 It is adopted through `docs/systems-profile.md`, the `TOPAL-REQ-SYSTEMS-*`
 requirements, and `spec/systems-profile.md`. The approved profile adds no new
 grammar; its sealed vocabulary uses ordinary Topal construction syntax.

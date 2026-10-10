@@ -97,6 +97,14 @@ these declared observations or protocol results. Differential tests compare
 the set and constraints of Linux-permitted outcomes rather than requiring one
 fixed interleaving.
 
+An absolute one-shot deadline is one such protocol. Its affine arm/wait
+lifecycle binds the scheduled same-clock instant, delivery observation, typed
+entry, mandatory completion, resumption, and result to one event identity.
+Delivery may be late but never earlier than the deadline; an already-expired
+deadline becomes immediately deliverable without restarting a relative
+interval. Timer devices, routes, vectors, and acknowledgements remain provider
+facts.
+
 ## TK-ELEMENT-MACHINE-001 — Sealed machine-provider operations
 
 Privileged operations are closed typed provider interfaces, not a universal

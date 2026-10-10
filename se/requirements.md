@@ -328,8 +328,19 @@ an immutable instant retaining that exact clock identity and shall record a
 distinct ordered observation. Accepted observations from one clock shall not
 decrease. Counter representation, address, register, instruction, frequency,
 calibration, enablement, and wrap state shall remain provider-private; wall
-clock, timer delivery, deadlines, periodic release, suspend, migration, SMP,
-and physical timing guarantees remain unavailable.
+clock, periodic release, suspend, migration, SMP, and physical timing
+guarantees remain unavailable.
+
+The initial deadline increment shall construct one same-clock absolute
+deadline from an instant and exact duration, consume it into one affine armed
+event, and return the temporarily consumed processor context only after the
+matching typed entry completes and resumes. Delivery shall record scheduled and
+observed same-clock instants and shall never precede the deadline; late and
+already-expired delivery shall preserve the original absolute deadline.
+Comparator, route, vector, controller, acknowledgement, and wait mechanics
+shall remain provider-private. Cancellation, periodic release, scheduler
+integration, bounded latency, SMP delivery, suspend/migration behavior, and
+userspace timer ABI remain unavailable.
 
 ## TOPAL-REQ-SYSTEMS-MACHINE-001 — Sealed semantic machine providers
 
