@@ -1973,6 +1973,14 @@ fn encode_operations(
             CompilerSystemsOperation::ObserveMonotonicClock => {
                 encoder.observe_monotonic_clock()?;
             }
+            CompilerSystemsOperation::ConstructDeadline { .. }
+            | CompilerSystemsOperation::ArmDeadline
+            | CompilerSystemsOperation::WaitDeadline
+            | CompilerSystemsOperation::CompleteDeadline => {
+                return Err(CompileError::Tool(
+                    "checked deadline events require the qualified x86 deadline lowering".into(),
+                ));
+            }
         }
     }
     encoder.complete()
@@ -2145,6 +2153,12 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 CompilerSystemsTransition::LoadAtomicWord { value, order } => {
                     format!("{identity}:value={value}:order={order:?}")
                 }
+                CompilerSystemsTransition::ConstructDeadline {
+                    source_observation_identity,
+                    duration_nanoseconds,
+                } => format!(
+                    "{identity}:source-observation={source_observation_identity}:duration-nanoseconds={duration_nanoseconds}"
+                ),
                 CompilerSystemsTransition::StoreBootstrapByte {
                     offset_bytes,
                     value,
@@ -2180,6 +2194,13 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ResumeLocalNotificationInterrupt { .. }
                 | CompilerSystemsTransition::EndLocalNotificationWait { .. }
                 | CompilerSystemsTransition::ObserveMonotonicClock { .. }
+                | CompilerSystemsTransition::ArmDeadline { .. }
+                | CompilerSystemsTransition::BeginDeadlineWait { .. }
+                | CompilerSystemsTransition::ObserveDeadline { .. }
+                | CompilerSystemsTransition::EnterDeadlineInterrupt { .. }
+                | CompilerSystemsTransition::CompleteDeadlineInterrupt { .. }
+                | CompilerSystemsTransition::ResumeDeadlineInterrupt { .. }
+                | CompilerSystemsTransition::EndDeadlineWait { .. }
                 | CompilerSystemsTransition::EndAtomicWord
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }

@@ -34,14 +34,15 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
     SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -93,23 +94,26 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 3 {
+    if functions.len() != 4 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the initial systems artifact requires exactly its bootstrap, debug-break, and local-notification handlers",
+            "the initial systems artifact requires exactly its bootstrap, debug-break, local-notification, and deadline-notification handlers",
         ));
     }
     if root_entries.bootstrap == root_entries.debug_break
         || root_entries.bootstrap == root_entries.local_notification
+        || root_entries.bootstrap == root_entries.deadline_notification
         || root_entries.debug_break == root_entries.local_notification
+        || root_entries.debug_break == root_entries.deadline_notification
+        || root_entries.local_notification == root_entries.deadline_notification
     {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "bootstrap, debug-break, and local-notification entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, and deadline-notification entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -139,6 +143,15 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::LocalNotificationInterrupt,
         None,
     )?;
+    let deadline_notification = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "deadline-notification",
+        &root_entries.deadline_notification,
+        CompilerSystemsContextKind::DeadlineInterrupt,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -154,6 +167,10 @@ pub fn analyze_systems_for_compiler(
         local_notification: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ExternalInterruptLocalNotification,
             handler: local_notification,
+        },
+        deadline_notification: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ExternalInterruptDeadline,
+            handler: deadline_notification,
         },
     })
 }
@@ -284,6 +301,7 @@ struct ArtifactEntries {
     bootstrap: String,
     debug_break: String,
     local_notification: String,
+    deadline_notification: String,
 }
 
 fn parse_artifact_root(
@@ -329,7 +347,7 @@ fn parse_artifact_root(
             }
         } else if matches!(
             label_text,
-            "bootstrap" | "debug-break" | "local-notification"
+            "bootstrap" | "debug-break" | "local-notification" | "deadline-notification"
         ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
@@ -344,12 +362,20 @@ fn parse_artifact_root(
             ));
         }
     }
-    let (Some(bootstrap_storage), Some(bootstrap), Some(debug_break), Some(local_notification)) = (
+    let (
+        Some(bootstrap_storage),
+        Some(bootstrap),
+        Some(debug_break),
+        Some(local_notification),
+        Some(deadline_notification),
+    ) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
         entries.remove("debug-break"),
         entries.remove("local-notification"),
-    ) else {
+        entries.remove("deadline-notification"),
+    )
+    else {
         return Err(invalid_entry_set(source, *span));
     };
     if !entries.is_empty() {
@@ -360,6 +386,7 @@ fn parse_artifact_root(
         bootstrap,
         debug_break,
         local_notification,
+        deadline_notification,
     })
 }
 
@@ -369,7 +396,7 @@ fn artifact_field_label(source: &SourceText, field: &ProductField) -> Result<Spa
             source,
             "E-SYSTEMS-ENTRY-SET",
             field.value.span(),
-            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, and `local-notification` fields",
+            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, and `deadline-notification` fields",
         )
     })
 }
@@ -392,6 +419,7 @@ fn parse_entry_field(
         "bootstrap" => "bootstrap-entry",
         "debug-break" => "synchronous-exception-entry",
         "local-notification" => "external-interrupt-entry",
+        "deadline-notification" => "external-interrupt-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -561,12 +589,16 @@ fn monotonic_clock_diagnostic(
     source_diagnostic(source, "E-SYSTEMS-MONOTONIC-CLOCK", span, message)
 }
 
+fn deadline_diagnostic(source: &SourceText, span: Span, message: impl Into<String>) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-DEADLINE-EVENT", span, message)
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
         "E-SYSTEMS-ENTRY-SET",
         span,
-        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, and `local-notification` entries",
+        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, and `deadline-notification` entries",
     )
 }
 
@@ -595,6 +627,10 @@ fn analyze_handler(
         CompilerSystemsContextKind::LocalNotificationInterrupt => (
             "LocalNotificationInterruptContext",
             "LocalNotificationInterruptDisposition",
+        ),
+        CompilerSystemsContextKind::DeadlineInterrupt => (
+            "DeadlineInterruptContext InitialMonotonicClock",
+            "DeadlineInterruptDisposition InitialMonotonicClock",
         ),
     };
     if *is_static
@@ -629,6 +665,9 @@ fn analyze_handler(
     }
     if context == CompilerSystemsContextKind::LocalNotificationInterrupt {
         return analyze_local_notification_handler(source, source.slice(*name), body, context_name);
+    }
+    if context == CompilerSystemsContextKind::DeadlineInterrupt {
+        return analyze_deadline_handler(source, source.slice(*name), body, context_name);
     }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
@@ -761,6 +800,67 @@ fn analyze_local_notification_handler(
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::LocalNotificationInterrupt,
+        operations,
+        disposition,
+        effects,
+    })
+}
+
+fn analyze_deadline_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [complete, disposition] = body else {
+        return Err(deadline_diagnostic(
+            source,
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "deadline handler requires consuming completion followed by resume",
+        ));
+    };
+    let (completed, items, span) = affine_application_binding(source, complete, "completion")?;
+    let [receiver, deadline, notification, complete_operation] = items else {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "completion must bind `completed is context deadline notification complete`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, complete_operation, "complete")
+    {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "completion must consume the live deadline interrupt context",
+        ));
+    }
+    let completed_name = source.slice(completed);
+    let disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::DeadlineInterrupt,
+        completed_name,
+    )?;
+    if disposition != CompilerSystemsDisposition::Resume {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(body.last().expect("two statements")),
+            "deadline completion must end in resume",
+        ));
+    }
+    let operations = vec![CompilerSystemsOperation::CompleteDeadline];
+    let mut effects = vec![
+        SYSTEMS_DEADLINE_COMPLETE.to_owned(),
+        SYSTEMS_RESUME_DEADLINE.to_owned(),
+    ];
+    effects.sort();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::DeadlineInterrupt,
         operations,
         disposition,
         effects,
@@ -1750,7 +1850,7 @@ fn parse_atomic_exchanged_action(
     })
 }
 
-#[allow(clippy::too_many_lines)] // The sealed atomic-to-interrupt-to-clock success path is audited together.
+#[allow(clippy::too_many_lines)] // The sealed atomic-to-interrupt-to-deadline success path is audited together.
 fn parse_atomic_exchanged_success(
     source: &SourceText,
     true_action: &Expression,
@@ -1777,13 +1877,17 @@ fn parse_atomic_exchanged_success(
         first_clock,
         second_clock,
         time_console,
+        deadline,
+        arm,
+        deadline_wait,
+        deadline_console,
         disposition,
     ] = success_continuation
     else {
         return Err(atomic_diagnostic(
             source,
             true_action.span(),
-            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, time marker, and final disposition after atomic end",
+            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, one deadline lifecycle, and final disposition after atomic end",
         ));
     };
     let atomic_marker = analyze_operation(
@@ -1856,11 +1960,33 @@ fn parse_atomic_exchanged_success(
             "the two clock observations must be followed by the exact time success marker",
         ));
     }
+    let (deadline_name, deadline_operation) = parse_deadline_after(source, deadline, &second_name)?;
+    let (armed_name, arm_operation) =
+        parse_deadline_arm(source, arm, &resumed_name, &deadline_name)?;
+    let (deadline_resumed_name, deadline_wait_operation) =
+        parse_deadline_wait(source, deadline_wait, &resumed_name, &armed_name)?;
+    let deadline_marker = analyze_operation(
+        source,
+        deadline_console,
+        CompilerSystemsContextKind::Bootstrap,
+        &deadline_resumed_name,
+    )?;
+    if deadline_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_DEADLINE_OK".into(),
+        })
+    {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(deadline_console),
+            "deadline wait must be followed by the exact deadline success marker",
+        ));
+    }
     let success_disposition = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        &resumed_name,
+        &deadline_resumed_name,
     )?;
     Ok((
         vec![
@@ -1873,8 +1999,139 @@ fn parse_atomic_exchanged_success(
             first_clock_operation,
             second_clock_operation,
             time_marker,
+            deadline_operation,
+            arm_operation,
+            deadline_wait_operation,
+            deadline_marker,
         ],
         success_disposition,
+    ))
+}
+
+fn parse_deadline_after(
+    source: &SourceText,
+    statement: &Statement,
+    instant_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(statement),
+            "deadline construction must bind `Deadline InitialMonotonicClock`",
+        ));
+    };
+    let [
+        instant,
+        deadline,
+        after,
+        Expression::Measured { value, unit, .. },
+    ] = items.as_slice()
+    else {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "deadline construction must be `deadline : Deadline InitialMonotonicClock is instant deadline after 1[ms]`",
+        ));
+    };
+    if source.slice(*classifier) != "Deadline InitialMonotonicClock"
+        || !identifier_is(source, instant, instant_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, after, "after")
+        || source.slice(*value) != "1"
+        || source.slice(*unit) != "ms"
+    {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "the initial deadline must derive from the second observation and exact duration 1[ms]",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerSystemsOperation::ConstructDeadline {
+            duration_nanoseconds: 1_000_000,
+        },
+    ))
+}
+
+fn parse_deadline_arm(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    deadline_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(statement),
+            "deadline arm must bind `ArmedDeadline InitialMonotonicClock`",
+        ));
+    };
+    let [context, deadline, notification, arm, value] = items.as_slice() else {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "deadline arm must consume one same-clock deadline",
+        ));
+    };
+    if source.slice(*classifier) != "ArmedDeadline InitialMonotonicClock"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, arm, "arm")
+        || !identifier_is(source, value, deadline_name)
+    {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "deadline arm requires the resumed context and its affine same-clock deadline",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerSystemsOperation::ArmDeadline,
+    ))
+}
+
+fn parse_deadline_wait(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    armed_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let (name, items, span) = affine_application_binding(source, statement, "deadline wait")?;
+    let [context, deadline, notification, wait, armed] = items else {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "deadline wait must consume one affine armed event",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, wait, "wait")
+        || !identifier_is(source, armed, armed_name)
+    {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "deadline wait requires the resumed context and matching affine armed event",
+        ));
+    }
+    Ok((
+        source.slice(name).to_owned(),
+        CompilerSystemsOperation::WaitDeadline,
     ))
 }
 
@@ -2399,6 +2656,7 @@ fn analyze_disposition(
         context,
         CompilerSystemsContextKind::DebugBreak
             | CompilerSystemsContextKind::LocalNotificationInterrupt
+            | CompilerSystemsContextKind::DeadlineInterrupt
     ) && let [receiver, resume] = items.as_slice()
         && identifier_is(source, receiver, context_name)
         && identifier_is(source, resume, "resume")
@@ -2509,7 +2767,8 @@ mod tests {
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
         // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001,
-        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001,
+        // TOPAL-SYSTEMS-DEADLINE-EVENT-001.
         let program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -2548,6 +2807,9 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_DEADLINE_AFTER,
+                SYSTEMS_DEADLINE_ARM,
+                SYSTEMS_DEADLINE_WAIT,
                 SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
@@ -2715,6 +2977,20 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_TIME_OK".into(),
                 },
+                CompilerSystemsTransition::ConstructDeadline {
+                    source_observation_identity: 2,
+                    duration_nanoseconds: 1_000_000,
+                },
+                CompilerSystemsTransition::ArmDeadline { event_identity: 1 },
+                CompilerSystemsTransition::BeginDeadlineWait { event_identity: 1 },
+                CompilerSystemsTransition::ObserveDeadline { event_identity: 1 },
+                CompilerSystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::ResumeDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::EndDeadlineWait { event_identity: 1 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_DEADLINE_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -2731,7 +3007,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 48);
+        assert_eq!(program.bootstrap.handler.operations.len(), 52);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -2758,6 +3034,9 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_DEADLINE_AFTER,
+                SYSTEMS_DEADLINE_ARM,
+                SYSTEMS_DEADLINE_WAIT,
                 SYSTEMS_MONOTONIC_CLOCK_NOW,
                 SYSTEMS_TRANSLATION_ACTIVATE,
                 SYSTEMS_TRANSLATION_BEGIN,
@@ -3078,8 +3357,8 @@ mod tests {
         );
 
         let open_entries = SOURCE.replace(
-            "  local-notification is lang systems external-interrupt-entry local-notification-handler\n",
-            "  local-notification is lang systems external-interrupt-entry local-notification-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler\n",
+            "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler\n",
+            "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler\n",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -3171,4 +3450,5 @@ mod tests {
     include!("systems_critical_tests.rs");
     include!("systems_interrupt_tests.rs");
     include!("systems_clock_tests.rs");
+    include!("systems_deadline_tests.rs");
 }

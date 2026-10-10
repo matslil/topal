@@ -4,7 +4,7 @@ fn requires_typed_local_notification_entry_completion_and_wait() {
     for (source, code, expected) in [
         (
             SOURCE.replace(
-                "  local-notification is lang systems external-interrupt-entry local-notification-handler\n",
+                "  local-notification is lang systems external-interrupt-entry local-notification-handler,\n",
                 "",
             ),
             "E-SYSTEMS-ENTRY-SET",
