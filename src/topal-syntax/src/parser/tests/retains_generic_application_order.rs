@@ -616,6 +616,23 @@ fn parses_classified_binding() {
 }
 
 #[test]
+fn parses_clock_typed_instant_binding() {
+    let source = SourceText::new(
+        "observed : Instant InitialMonotonicClock is context monotonic clock now",
+    )
+    .unwrap();
+    let parsed = parse(&source, &lex(&source));
+    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    let Statement::Binding { classifier, .. } = parsed.statements[0] else {
+        panic!("expected binding");
+    };
+    assert_eq!(
+        source.slice(classifier.unwrap()),
+        "Instant InitialMonotonicClock"
+    );
+}
+
+#[test]
 fn parses_named_generator_declaration() {
     let source = SourceText::new(
             "once is generator ( initial : Character )\n  yields Character\n  resumes Unit\n  -> Unit\n\n  _ is yield initial\n  ()",

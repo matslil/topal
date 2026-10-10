@@ -1684,6 +1684,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::AtomicWordEnd
                     | CompilerSystemsOperation::SendLocalNotification
                     | CompilerSystemsOperation::WaitLocalNotification
+                    | CompilerSystemsOperation::ObserveMonotonicClock
                     | CompilerSystemsOperation::BootstrapRelease
             )
         })
@@ -1930,6 +1931,11 @@ fn encode_operations(
             CompilerSystemsOperation::CompleteLocalNotification => {
                 encoder.complete_local_notification()?;
             }
+            CompilerSystemsOperation::ObserveMonotonicClock => {
+                return Err(CompileError::Tool(
+                    "x86 monotonic-clock lowering is not available in this compiler stage".into(),
+                ));
+            }
         }
     }
     encoder.complete()
@@ -2135,6 +2141,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::CompleteLocalNotificationInterrupt { .. }
                 | CompilerSystemsTransition::ResumeLocalNotificationInterrupt { .. }
                 | CompilerSystemsTransition::EndLocalNotificationWait { .. }
+                | CompilerSystemsTransition::ObserveMonotonicClock { .. }
                 | CompilerSystemsTransition::EndAtomicWord
                 | CompilerSystemsTransition::ReleaseBootstrapRegion => identity.into(),
             }

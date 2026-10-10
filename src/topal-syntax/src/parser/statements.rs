@@ -1316,7 +1316,7 @@ impl Parser<'_> {
         }
         if matches!(
             self.source.slice(first.span),
-            "Bag" | "List" | "Optional" | "Range" | "Set"
+            "Bag" | "Instant" | "List" | "Optional" | "Range" | "Set"
         ) {
             let payload = self.generator_classifier()?;
             return Some(Span::new(first.span.start, payload.end));
