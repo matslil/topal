@@ -99,12 +99,20 @@ records the same-clock nondecreasing observation model, private Q35 HPET
 provider, initial and replacement MMIO mappings, structural inspection, and
 two deterministic pinned-QEMU runs.
 
-The latest Step 4 slice adds the approved
+An earlier Step 4 slice adds the approved
 [one-shot deadline event](design/deadline-event.md). Its
 [implementation and qualification report](step-4-deadline-event.md) records
 same-clock absolute-deadline semantics, affine arm/wait/completion, a private
 Q35 HPET comparator and I/O APIC route, generated typed entry, structural
 inspection, and two deterministic pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[kernel-context transfer](design/kernel-context-transfer.md). Its
+[implementation and qualification report](step-4-kernel-context-transfer.md)
+records affine continuation and stack ownership, terminal worker retirement,
+exact suspended-caller resumption, private x86-64 callee-saved state, a
+separate worker stack, structural inspection, and two deterministic pinned-QEMU
+runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline

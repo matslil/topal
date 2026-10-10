@@ -19,15 +19,17 @@ the event, resumes the wait continuation, performs two accepted observations
 of the provider-created monotonic clock, constructs and arms one absolute
 one-shot deadline, enters its generated HPET/I/O-APIC-backed typed handler no
 earlier than the deadline, completes the event, resumes its waiting
-continuation, and reaches the nonreturning fatal provider.
+continuation, constructs and selects one suspended kernel-thread continuation
+on a separate stack, terminally retires it to the exact bootstrap caller,
+reclaims the completed stack, and reaches the nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_DEADLINE_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_DEADLINE_OKTOPAL_KERNEL_CONTEXT_ENTEREDTOPAL_KERNEL_CONTEXT_RESUMED
 ```
 
-After all thirteen ordered markers, QEMU remained running and the serial stream
+After all fifteen ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
@@ -43,7 +45,9 @@ state, both fail-to-fatal clock edges, exact deadline-tick construction, HPET
 timer and route capability checks, legacy-PIC masking, I/O APIC route and IDT
 gate, comparator programming, no-early completion check, HPET status clear,
 local-APIC EOI, saved deadline-entry state, and interrupt return, the fatal
-provider's interrupt-disable/halt loop, and the root's
+provider's interrupt-disable/halt loop, provider-private worker-stack
+construction, callee-saved continuation switch, exact caller-stack restore,
+terminal context reclamation, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
 activated and edited a replacement translation, accessed both an owned frame
@@ -88,12 +92,14 @@ physical-frame mapping, one replacement translation space, one active
 map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
 one affine CPU-shared atomic-word lifecycle, one typed local-notification
 external-interrupt lifecycle, two same-clock monotonic observations, one typed
-one-shot deadline lifecycle, and fatal disposition. Both byte loads are retained
+one-shot deadline lifecycle, one affine kernel-context round trip, and fatal
+disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
 gate does not claim general address-space management, general timer or
 shared-device interrupt routing, general controller management, ACPI/PCI
 discovery, SMP, multiple deadlines, cancellation, periodic or wall-clock
-behavior, userspace clock publication, virtio, a
+behavior, preemption, scheduling, task migration, extended context state,
+userspace clock publication, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
 The ordinary `topalc` target registry and output path publish the qualified
