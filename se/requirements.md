@@ -527,6 +527,22 @@ and single-address-space and shall not imply cancellation, rearming, periodic
 timeslices, priority, blocking, wakeup, nested preemption, migration, SMP, user
 contexts, or extended-state switching.
 
+## TOPAL-REQ-SYSTEMS-CONTEXT-005 — One-shot affine kernel completion
+
+Scheduler source shall be able to create one completion with matching affine
+wait and signal endpoints, dispatch one worker which may block once, receive
+that exact blocked context at its registered dispatcher, signal it, enqueue the
+resulting suspended context, and later resume immediately after the block.
+Signal-before-wait readiness shall persist so that no matching wakeup is lost.
+
+Every transition shall retain processor, provider, address-space, completion,
+context, stack, and continuation identity. Runnable selection shall remain
+source policy. The initial executable profile shall run blocking, terminal,
+awakened order and consume both contexts, the empty runnable queue, and the
+one-shot completion before disposition. It shall not imply multiple waiters,
+repeated signals, arbitrary predicate waits, timeouts, cancellation, process
+signals, priorities, cross-processor wakeup, SMP, or user contexts.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,

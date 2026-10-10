@@ -95,6 +95,12 @@ relations, not opcodes. Progress classification is separate: an LL/SC loop may
 meet a different progress bound from a single architectural RMW under
 contention or interruption.
 
+The first blocking contract is therefore a one-shot completion rather than a
+portable halt instruction. It linearizes persistent readiness against blocked
+context publication, returns the same affine blocked/already-complete outcome
+on every target, and leaves low-power waiting, mask state, and context-frame
+representation to each provider.
+
 ## Devices, DMA, and addressed I/O
 
 | Concern | x86-64 | AArch64 | RISC-V | Design result |

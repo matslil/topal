@@ -506,6 +506,21 @@ on one processor and address space. It excludes cancellation, rearming,
 periodic ticks, general timeslices, priority, blocking, wakeup, nested
 preemption, migration, SMP, userspace, and extended-state switching.
 
+The one-shot kernel-completion extension introduces matching affine wait and
+signal endpoints. A worker may consume its wait endpoint to block once while a
+transfer has already registered the exact dispatcher. If blocking wins, that
+dispatcher receives an opaque blocked-context outcome. Consuming the matching
+signal endpoint then yields the suspended worker for source-owned enqueue; a
+later transfer resumes immediately after the block operation.
+
+Completion readiness is persistent. If signalling wins before the block
+linearizes, the worker observes completion and does not sleep. This explicit
+blocked-or-already-complete choice prevents a lost wakeup without defining a
+general predicate wait queue. The initial profile admits one waiter and one
+signal on one processor and address space. Multiple waiters, repeated signals,
+timeouts, cancellation, process signals, priority wakeups, cross-processor
+wakeups, SMP, and user contexts remain excluded.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

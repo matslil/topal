@@ -295,6 +295,13 @@ suspended value. Source owns dequeue and re-enqueue policy; the provider owns
 only exact interrupt-state capture and continuation transfer. See
 [TK-DEC-030](deadline-preemptible-context-transfer.md).
 
+The approved blocking extension uses a one-shot affine kernel completion with
+separate wait and signal endpoints. Signal readiness persists when it wins
+before the wait; otherwise the exact blocked context returns to its registered
+dispatcher and signalling yields a suspended context for source-owned enqueue.
+The provider performs no runnable selection. See
+[TK-DEC-031](one-shot-kernel-completion.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults

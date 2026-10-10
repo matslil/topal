@@ -29,6 +29,7 @@ records, not this directory alone, define language meaning.
 - [Cooperative kernel-context handoff contract](cooperative-context-handoff.md)
 - [Bounded affine runnable-queue contract](affine-runnable-queue.md)
 - [Deadline-preemptible kernel-context transfer contract](deadline-preemptible-context-transfer.md)
+- [One-shot affine kernel-completion contract](one-shot-kernel-completion.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

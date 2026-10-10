@@ -711,6 +711,36 @@ cross-transfer unwinding. Target interrupt frames, register sets, mask state,
 stack-switch instructions, and interrupt-return mechanics SHALL remain
 provider evidence.
 
+### TOPAL-SYSTEMS-CONTEXT-005 — One-shot affine kernel completion
+
+A one-shot `KernelCompletion P I` SHALL create exactly one affine wait endpoint
+and one affine signal endpoint with matching fresh identity `I`. Neither
+endpoint SHALL be copied, forged, serialized, substituted across processor,
+provider, address-space, or completion identities, or survive completion.
+
+A completion-bound transfer SHALL register the dispatcher's exact suspended
+continuation before its selected worker may consume the wait endpoint. The
+block and signal transitions SHALL have one declared linearization order. If
+blocking linearizes first, the provider SHALL capture the exact worker as one
+opaque `BlockedKernelContextTransfer P I` and resume only the registered
+dispatcher. Consuming that outcome with the matching signal endpoint SHALL
+produce one `SuspendedKernelContext P` for source-owned enqueue. Later transfer
+to that context SHALL resume immediately after the block operation.
+
+If signalling linearizes first, readiness SHALL persist and the matching block
+operation SHALL complete without sleeping. Repeated wait, repeated signal,
+wrong identity, wrong dispatcher, dropped blocked state, enqueue before wake,
+and disposition with a live endpoint or blocked context SHALL be rejected.
+The provider SHALL NOT select a runnable context or own a run queue.
+
+The initial executable profile SHALL statically refine the block-first branch,
+run and reclaim the terminal context, signal and enqueue the blocked worker,
+then resume, retire, and reclaim it before consuming the empty runnable queue
+and completion. It SHALL retain one processor, one active address space, one
+waiter, and one signal and SHALL NOT admit multiple waiters, repeated signals,
+predicate wait queues, spurious wakeups, timeouts, cancellation, process
+signals, priority ordering, cross-processor wakeup, SMP, or user contexts.
+
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 
 A device location SHALL bind its layout to one live device session, permitted
