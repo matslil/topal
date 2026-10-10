@@ -4,7 +4,7 @@ fn requires_typed_affine_deadline_event_lifecycle() {
     for (source, code, expected) in [
         (
             SOURCE.replace(
-                "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler\n",
+                "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,\n",
                 "",
             ),
             "E-SYSTEMS-ENTRY-SET",

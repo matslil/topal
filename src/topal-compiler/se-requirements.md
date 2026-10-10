@@ -169,6 +169,21 @@ pinned-QEMU evidence shall retain each transition without exposing comparator,
 route, vector, controller, frame, instruction, or acknowledgement details to
 source.
 
+The first context-transfer increment shall check exactly one 16 KiB,
+16-byte-aligned bootstrap-reclaimable stack region, one static resumed-thread
+entry, one affine suspended worker, one caller-to-worker transfer, terminal
+retirement with no live worker obligations, exact caller resumption, and one
+consuming stack reclamation before fatal disposition. It shall reject wrong
+processor or entry, unsupported stack policy, duplicate or missing transition,
+ordinary worker return, live obligations at retirement, and disposition with a
+live suspended or completed context. The x86-64 provider shall privately build
+an initial stack frame, save and restore the qualified callee-saved state and
+stack position with local interrupts disabled, retain the active address space,
+and resume the generated typed continuation. Structural and pinned-QEMU
+evidence shall retain entry on the distinct stack and caller resumption without
+exposing registers, stack pointers, frame layouts, continuation addresses, or
+instructions to source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

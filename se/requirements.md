@@ -456,6 +456,20 @@ operation may consume one running context and resume one validated suspended
 context. Register slots and machine continuation addresses shall not be source
 values, and transfer shall not be modeled as an ordinary returning call.
 
+The initial context-transfer increment shall consume one checked exclusive
+kernel-owned region into one suspended context for a static typed kernel-thread
+entry on `InitialProcessor`. One transfer shall suspend the bootstrap caller,
+run that entry on the new stack, permit terminal retirement only at a
+statically verified point with no live obligations, resume exactly the caller,
+and require consuming reclamation of the retired context and stack before
+bootstrap disposition. The active address space shall remain unchanged and
+local maskable interrupts shall be disabled across transfer. Registers, stack
+pointers, frame layouts, continuation addresses, and save/restore instructions
+shall remain provider-private. Preemption, scheduler policy, multiple threads,
+migration, SMP, user contexts, general cancellation, extended-state switching,
+TLS/per-CPU switching, stack growth, and cross-transfer unwind remain
+unavailable.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,
