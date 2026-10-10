@@ -662,6 +662,55 @@ slice SHALL NOT admit unbounded or dynamically allocated runnable storage,
 preemption, blocking, wakeup, priorities, timeslicing, cancellation, migration,
 SMP, or multiple address spaces.
 
+### TOPAL-SYSTEMS-CONTEXT-004 — Deadline-preemptible context transfer
+
+`kernel context transfer until deadline` SHALL consume one running dispatcher
+context, one matching suspended kernel context, and one same-provider
+`Deadline c`. Before interrupt delivery is admitted, it SHALL atomically bind
+the dispatcher's exact suspended continuation as the sole preemption target
+and arm one fresh event. The binding SHALL retain processor, provider,
+address-space, clock, event, context, stack, and continuation identities. An
+already-expired deadline SHALL become deliverable only after the target is
+bound.
+
+After consuming the matching deadline completion obligation,
+`preempt current kernel context` SHALL consume the running selected context,
+capture its exact interrupted continuation as one opaque suspended context,
+and resume only the registered dispatcher. The dispatcher SHALL receive one
+affine `PreemptedKernelContextTransfer P C` which restores its running
+authority and owns that suspended context plus scheduled and observed delivery
+evidence. Consuming the outcome SHALL return the suspended context for
+source-owned enqueue. The outcome SHALL NOT be copied, dropped, forged,
+widened, or reinterpreted as cooperative or terminal completion.
+
+Preemption without a matching active transfer, before completion, for a wrong
+clock, event, processor, provider, address space, context, or continuation, or
+after resolution SHALL be rejected. The handler SHALL NOT inspect the
+interrupted frame, access a runnable queue, choose another context, redirect
+the disposition, or resume normally after selecting preemption. Later transfer
+to the suspended target SHALL restore the exact interrupted machine
+continuation and frozen affine source obligations. Before that restoration,
+the provider SHALL bind the newly suspended dispatcher as the target's current
+return continuation; terminal retirement SHALL NOT refer to the dispatcher
+binding consumed by the earlier preemption.
+
+The initial executable profile SHALL use one one-shot deadline to preempt the
+first context selected from the capacity-two queue, enqueue that suspended
+context at the tail, retire and reclaim the terminal context, then restore,
+retire, and reclaim the preempted context before consuming the empty queue.
+The first worker's sealed `kernel context await deadline preemption` operation
+SHALL NOT return on initial entry. Matching deadline preemption SHALL suspend
+it, and only later source-selected transfer to that exact context SHALL restore
+the interrupted continuation and complete the operation. This operation SHALL
+NOT define a general wait, sleep, blocking, or wakeup protocol.
+It SHALL retain one processor and active address space and SHALL NOT admit
+cancellation, rearming, periodic ticks, general timeslices, priority,
+blocking, wakeup, nested preemption, migration, SMP, user contexts,
+floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
+cross-transfer unwinding. Target interrupt frames, register sets, mask state,
+stack-switch instructions, and interrupt-return mechanics SHALL remain
+provider evidence.
+
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 
 A device location SHALL bind its layout to one live device session, permitted

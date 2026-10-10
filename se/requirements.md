@@ -506,6 +506,27 @@ both retired stacks and consume the empty queue. Its storage shall be fixed
 before dispatch and shall not imply dynamic allocation, preemption, blocking,
 wakeup, priority, timeslicing, cancellation, migration, or SMP.
 
+## TOPAL-REQ-SYSTEMS-CONTEXT-004 — Deadline-preemptible context transfer
+
+Scheduler source shall be able to dispatch one selected suspended kernel
+context until one matching absolute deadline. The operation shall establish
+the exact dispatcher continuation and event binding before admitting delivery.
+After typed event completion, a preemption disposition shall capture the
+interrupted target as an opaque suspended context and resume only that
+dispatcher. The returned affine outcome shall retain processor, provider,
+address-space, clock, event, context, stack, and continuation identities.
+
+The provider shall save and restore target-specific interrupted state but
+shall neither inspect nor select the runnable queue. The first executable
+profile shall preempt one closed worker, re-enqueue it at the source-owned FIFO
+tail, run and reclaim the terminal worker, then restore, retire, and reclaim
+the preempted worker. Its sealed preemption test region shall complete only
+after matching preemption and later source-selected redispatch; it shall not be
+a general wait or sleep operation. The profile shall remain single-processor
+and single-address-space and shall not imply cancellation, rearming, periodic
+timeslices, priority, blocking, wakeup, nested preemption, migration, SMP, user
+contexts, or extended-state switching.
+
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
 Device locations shall bind layouts to legal access widths, side effects,
