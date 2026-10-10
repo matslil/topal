@@ -116,6 +116,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                     placement is bootstrap-reclaimable
                                                                                   )
                                                                                     Ok cooperative-stack then {
+                                                                                      one-shot : KernelCompletion InitialProcessor is resumed kernel completion create
                                                                                       cooperative-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
                                                                                         stack is cooperative-stack,
                                                                                         entry is kernel-thread
@@ -125,32 +126,56 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                         alignment-bytes is 16,
                                                                                         placement is bootstrap-reclaimable
                                                                                       )
-                                                                                        Ok terminal-stack then {
-                                                                                          terminal-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
-                                                                                            stack is terminal-stack,
-                                                                                            entry is terminal-thread
+                                                                                        Ok completion-stack then {
+                                                                                          completion-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
+                                                                                            stack is completion-stack,
+                                                                                            entry is completion-thread
                                                                                           )
-                                                                                          runnable : BoundedKernelRunnableQueue InitialProcessor is resumed kernel runnable queue create (capacity is 2)
-                                                                                          runnable kernel runnable enqueue cooperative-worker
-                                                                                          runnable kernel runnable enqueue terminal-worker
-                                                                                          selected-cooperative : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                          preempted : PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock is resumed kernel context transfer selected-cooperative until deadline
-                                                                                          preempted-worker : SuspendedKernelContext InitialProcessor is preempted kernel context take preempted
-                                                                                          resumed console write "TOPAL_KERNEL_DEADLINE_PREEMPTED"
-                                                                                          runnable kernel runnable enqueue preempted-worker
-                                                                                          selected-terminal : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                          terminal-completed : CompletedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-terminal
-                                                                                          resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
-                                                                                          after-terminal is terminal-completed kernel context reclaim
-                                                                                            selected-cooperative-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                            cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer selected-cooperative-final
-                                                                                            after-terminal console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED"
-                                                                                            context-resumed is cooperative-completed kernel context reclaim
-                                                                                              context-resumed kernel runnable queue consume empty runnable
-                                                                                              context-resumed fatal "toolchain gate complete"
+                                                                                          resumed bootstrap allocate (
+                                                                                            byte-count is 16384,
+                                                                                            alignment-bytes is 16,
+                                                                                            placement is bootstrap-reclaimable
+                                                                                          )
+                                                                                            Ok terminal-stack then {
+                                                                                              terminal-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
+                                                                                                stack is terminal-stack,
+                                                                                                entry is terminal-thread
+                                                                                              )
+                                                                                              runnable : BoundedKernelRunnableQueue InitialProcessor is resumed kernel runnable queue create (capacity is 3)
+                                                                                              runnable kernel runnable enqueue cooperative-worker
+                                                                                              runnable kernel runnable enqueue completion-worker
+                                                                                              runnable kernel runnable enqueue terminal-worker
+                                                                                              selected-cooperative : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              preempted : PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock is resumed kernel context transfer selected-cooperative until deadline
+                                                                                              preempted-worker : SuspendedKernelContext InitialProcessor is preempted kernel context take preempted
+                                                                                              resumed console write "TOPAL_KERNEL_DEADLINE_PREEMPTED"
+                                                                                              runnable kernel runnable enqueue preempted-worker
+                                                                                              selected-completion : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              blocked-completion : BlockedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-completion until one-shot
+                                                                                              selected-terminal : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              terminal-completed : CompletedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-terminal
+                                                                                              resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
+                                                                                              after-terminal is terminal-completed kernel context reclaim
+                                                                                                awakened-completion : SuspendedKernelContext InitialProcessor is blocked-completion kernel completion signal one-shot
+                                                                                                runnable kernel runnable enqueue awakened-completion
+                                                                                                selected-cooperative-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                                cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer selected-cooperative-final
+                                                                                                after-terminal console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED"
+                                                                                                context-resumed is cooperative-completed kernel context reclaim
+                                                                                                  selected-completion-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                                  completion-completed : CompletedKernelContextTransfer InitialProcessor is context-resumed kernel context transfer selected-completion-final
+                                                                                                  context-resumed console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED"
+                                                                                                  completion-resumed is completion-completed kernel context reclaim
+                                                                                                    completion-resumed kernel completion consume one-shot
+                                                                                                    completion-resumed kernel runnable queue consume empty runnable
+                                                                                                    completion-resumed fatal "toolchain gate complete"
+                                                                                            }
+                                                                                            Error problem then {
+                                                                                              resumed fatal "terminal context stack allocation failed"
+                                                                                            }
                                                                                         }
                                                                                         Error problem then {
-                                                                                          resumed fatal "terminal context stack allocation failed"
+                                                                                          resumed fatal "completion context stack allocation failed"
                                                                                         }
                                                                                     }
                                                                                     Error problem then {
@@ -280,6 +305,15 @@ kernel-thread-handler is fn (
   context console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED"
   context kernel context retire to caller
 
+completion-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED"
+  context kernel completion await
+  context console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED"
+  context kernel context retire to caller
+
 terminal-thread-handler is fn (
   context : KernelThreadContext InitialProcessor,
   caller : SuspendedKernelContext InitialProcessor
@@ -297,5 +331,6 @@ lang systems artifact (
   local-notification is lang systems external-interrupt-entry local-notification-handler,
   deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,
   kernel-thread is lang systems resumed-thread-entry kernel-thread-handler,
+  completion-thread is lang systems resumed-thread-entry completion-thread-handler,
   terminal-thread is lang systems resumed-thread-entry terminal-thread-handler
 )

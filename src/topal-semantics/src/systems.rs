@@ -12,12 +12,14 @@ use crate::{
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
@@ -173,16 +175,21 @@ pub enum SystemsOperation {
     WaitDeadline,
     CompleteDeadline,
     CreateKernelContext,
+    CreateKernelCompletion,
     CreateRunnableQueue {
         capacity: usize,
     },
     EnqueueRunnableContext,
     DequeueRunnableContext,
     TransferKernelContextUntilDeadline,
+    TransferKernelContextUntilCompletion,
     TakePreemptedKernelContext,
     TransferKernelContext,
     AwaitDeadlinePreemption,
+    AwaitKernelCompletion,
+    SignalBlockedKernelCompletion,
     ReclaimKernelContext,
+    ConsumeKernelCompletion,
     ConsumeEmptyRunnableQueue,
 }
 
@@ -226,16 +233,21 @@ impl SystemsOperation {
             Self::WaitDeadline => SYSTEMS_DEADLINE_WAIT,
             Self::CompleteDeadline => SYSTEMS_DEADLINE_COMPLETE,
             Self::CreateKernelContext => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CREATE,
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             Self::TransferKernelContextUntilDeadline => {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
+            Self::TransferKernelContextUntilCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
             Self::TakePreemptedKernelContext => SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
             Self::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::AwaitDeadlinePreemption => SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+            Self::AwaitKernelCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+            Self::SignalBlockedKernelCompletion => SYSTEMS_KERNEL_COMPLETION_SIGNAL,
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            Self::ConsumeKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
         }
     }
@@ -291,6 +303,7 @@ pub struct SystemsProgram {
     pub local_notification: SystemsEntry,
     pub deadline_notification: SystemsEntry,
     pub kernel_thread: SystemsEntry,
+    pub completion_thread: SystemsEntry,
     pub terminal_thread: SystemsEntry,
 }
 
@@ -408,6 +421,9 @@ pub enum SystemsTransition {
     CreateKernelContext {
         context_identity: u64,
     },
+    CreateKernelCompletion {
+        completion_identity: u64,
+    },
     CreateRunnableQueue {
         capacity: usize,
     },
@@ -425,6 +441,33 @@ pub enum SystemsTransition {
         context_identity: u64,
         caller_identity: u64,
         event_identity: u64,
+    },
+    TransferKernelContextUntilCompletion {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    AwaitKernelCompletion {
+        context_identity: u64,
+        completion_identity: u64,
+    },
+    BlockKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    ResumeCompletionDispatcher {
+        caller_identity: u64,
+    },
+    SignalBlockedKernelCompletion {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    RestoreBlockedKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
     },
     AwaitDeadlinePreemption {
         context_identity: u64,
@@ -452,6 +495,9 @@ pub enum SystemsTransition {
         context_identity: u64,
     },
     ConsumeEmptyRunnableQueue,
+    ConsumeKernelCompletion {
+        completion_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -560,6 +606,7 @@ impl SystemsTransition {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
             Self::CreateKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CREATE,
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
@@ -567,6 +614,12 @@ impl SystemsTransition {
             Self::TransferKernelContextUntilDeadline { .. } => {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
+            Self::TransferKernelContextUntilCompletion { .. }
+            | Self::AwaitKernelCompletion { .. }
+            | Self::BlockKernelContext { .. }
+            | Self::ResumeCompletionDispatcher { .. } => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+            Self::SignalBlockedKernelCompletion { .. }
+            | Self::RestoreBlockedKernelContext { .. } => SYSTEMS_KERNEL_COMPLETION_SIGNAL,
             Self::AwaitDeadlinePreemption { .. } => {
                 SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION
             }
@@ -577,6 +630,7 @@ impl SystemsTransition {
             Self::ResumeKernelContextCaller { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+            Self::ConsumeKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -631,6 +685,11 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsContextKind::KernelThread,
     )?;
     validate_entry(
+        &program.completion_thread,
+        SystemsEntryKind::ResumedKernelThread,
+        SystemsContextKind::KernelThread,
+    )?;
+    validate_entry(
         &program.terminal_thread,
         SystemsEntryKind::ResumedKernelThread,
         SystemsContextKind::KernelThread,
@@ -641,6 +700,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         &program.local_notification.handler.name,
         &program.deadline_notification.handler.name,
         &program.kernel_thread.handler.name,
+        &program.completion_thread.handler.name,
         &program.terminal_thread.handler.name,
     ];
     if names
@@ -650,13 +710,23 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, local-notification, deadline, cooperative-thread, and terminal-thread entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline, preemptible-thread, completion-thread, and terminal-thread entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
     validate_deadline_handler(&program.deadline_notification.handler)?;
-    validate_kernel_thread_handler(&program.kernel_thread.handler, false)?;
-    validate_kernel_thread_handler(&program.terminal_thread.handler, true)?;
+    validate_kernel_thread_handler(
+        &program.kernel_thread.handler,
+        KernelThreadProfile::Preemptible,
+    )?;
+    validate_kernel_thread_handler(
+        &program.completion_thread.handler,
+        KernelThreadProfile::CompletionBlocking,
+    )?;
+    validate_kernel_thread_handler(
+        &program.terminal_thread.handler,
+        KernelThreadProfile::Terminal,
+    )?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -715,12 +785,16 @@ fn validate_entry(
                     | SystemsOperation::ArmDeadline
                     | SystemsOperation::WaitDeadline
                     | SystemsOperation::CreateKernelContext
+                    | SystemsOperation::CreateKernelCompletion
                     | SystemsOperation::CreateRunnableQueue { .. }
                     | SystemsOperation::EnqueueRunnableContext
                     | SystemsOperation::DequeueRunnableContext
                     | SystemsOperation::TransferKernelContextUntilDeadline
+                    | SystemsOperation::TransferKernelContextUntilCompletion
                     | SystemsOperation::TakePreemptedKernelContext
+                    | SystemsOperation::SignalBlockedKernelCompletion
                     | SystemsOperation::ReclaimKernelContext
+                    | SystemsOperation::ConsumeKernelCompletion
                     | SystemsOperation::ConsumeEmptyRunnableQueue
             );
             bootstrap_only
@@ -742,6 +816,7 @@ fn validate_entry(
                         SystemsOperation::ConsoleWrite { .. }
                             | SystemsOperation::TransferKernelContext
                             | SystemsOperation::AwaitDeadlinePreemption
+                            | SystemsOperation::AwaitKernelCompletion
                     ))
         })
     {
@@ -807,7 +882,10 @@ fn validate_entry(
     if entry.handler.effects != expected_effects {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-EFFECTS",
-            "systems handler effects must equal its sorted, deduplicated semantic identities",
+            format!(
+                "systems handler `{}` effects must equal its sorted, deduplicated semantic identities",
+                entry.handler.name
+            ),
         ));
     }
     Ok(())
@@ -837,16 +915,19 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum KernelThreadProfile {
+    Preemptible,
+    CompletionBlocking,
+    Terminal,
+}
+
 fn validate_kernel_thread_handler(
     handler: &SystemsHandler,
-    terminal: bool,
+    profile: KernelThreadProfile,
 ) -> Result<(), SystemsModelError> {
-    let expected = if terminal {
-        vec![SystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
-        }]
-    } else {
-        vec![
+    let expected = match profile {
+        KernelThreadProfile::Preemptible => vec![
             SystemsOperation::ConsoleWrite {
                 text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
             },
@@ -854,14 +935,26 @@ fn validate_kernel_thread_handler(
             SystemsOperation::ConsoleWrite {
                 text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
             },
-        ]
+        ],
+        KernelThreadProfile::CompletionBlocking => vec![
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+            },
+            SystemsOperation::AwaitKernelCompletion,
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+            },
+        ],
+        KernelThreadProfile::Terminal => vec![SystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+        }],
     };
     if handler.operations != expected
         || handler.disposition != SystemsDisposition::RetireKernelContextToCaller
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-CONTEXT-TRANSFER",
-            "preemptible and terminal kernel-thread handlers must implement their exact transfer protocols",
+            "preemptible, completion-blocking, and terminal kernel-thread handlers must implement their exact transfer protocols",
         ));
     }
     Ok(())
@@ -879,6 +972,7 @@ struct BootstrapAuthorityState {
     monotonic_clock_observations: u8,
     deadline: BootstrapDeadlineState,
     kernel_context: BootstrapKernelContextState,
+    kernel_completion: BootstrapKernelCompletionState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -903,21 +997,40 @@ enum BootstrapKernelContextState {
     #[default]
     Fresh,
     PreemptibleCreated,
-    BothSuspended,
+    CompletionCreated,
+    AllSuspended,
     QueueCreated,
     PreemptibleEnqueued,
-    BothEnqueued,
+    CompletionEnqueued,
+    AllEnqueued,
     PreemptibleDequeued,
     PreemptedOutcome,
     PreemptedTaken,
     PreemptedEnqueued,
+    CompletionDequeued,
+    CompletionBlocked,
     TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
+    CompletionSignaled,
+    CompletionEnqueuedAgain,
     PreemptibleDequeuedAgain,
     PreemptibleCompleted,
-    Reclaimed,
+    PreemptibleReclaimed,
+    CompletionDequeuedAgain,
+    CompletionCompleted,
+    CompletionReclaimed,
     QueueConsumed,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapKernelCompletionState {
+    #[default]
+    Fresh,
+    Created,
+    Blocked,
+    Signaled,
+    Consumed,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1209,6 +1322,19 @@ impl BootstrapAuthorityState {
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
         match operation {
+            SystemsOperation::CreateKernelCompletion => {
+                if self.deadline != BootstrapDeadlineState::Constructed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Fresh
+                    || self.kernel_context != BootstrapKernelContextState::Fresh
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "one-shot completion creation requires the restored dispatcher before worker creation",
+                    ));
+                }
+                self.kernel_completion = BootstrapKernelCompletionState::Created;
+            }
             SystemsOperation::CreateKernelContext => {
                 if self.deadline != BootstrapDeadlineState::Constructed
                     || !self.critical_stack.is_empty()
@@ -1223,12 +1349,15 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::PreemptibleCreated
                     }
                     BootstrapKernelContextState::PreemptibleCreated => {
-                        BootstrapKernelContextState::BothSuspended
+                        BootstrapKernelContextState::CompletionCreated
+                    }
+                    BootstrapKernelContextState::CompletionCreated => {
+                        BootstrapKernelContextState::AllSuspended
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "the deadline-preemption profile creates exactly two contexts before dispatch",
+                            "the completion profile creates exactly three contexts before dispatch",
                         ));
                     }
                 };
@@ -1247,10 +1376,13 @@ impl BootstrapAuthorityState {
                     BootstrapKernelContextState::PreemptibleDequeuedAgain => {
                         BootstrapKernelContextState::PreemptibleCompleted
                     }
+                    BootstrapKernelContextState::CompletionDequeuedAgain => {
+                        BootstrapKernelContextState::CompletionCompleted
+                    }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "ordinary kernel-context transfers must follow terminal then preemptible redispatch order",
+                            "ordinary kernel-context transfers must follow terminal, preemptible, then awakened-completion redispatch order",
                         ));
                     }
                 };
@@ -1279,13 +1411,38 @@ impl BootstrapAuthorityState {
                 }
                 self.kernel_context = BootstrapKernelContextState::PreemptedTaken;
             }
-            SystemsOperation::CreateRunnableQueue { capacity } => {
-                if self.kernel_context != BootstrapKernelContextState::BothSuspended
-                    || *capacity != 2
+            SystemsOperation::TransferKernelContextUntilCompletion => {
+                if !self.critical_stack.is_empty()
+                    || self.kernel_context != BootstrapKernelContextState::CompletionDequeued
+                    || self.kernel_completion != BootstrapKernelCompletionState::Created
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "the initial runnable queue requires both suspended contexts and capacity two",
+                        "completion-bound transfer requires the selected fresh block-once worker and restored dispatcher",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::CompletionBlocked;
+                self.kernel_completion = BootstrapKernelCompletionState::Blocked;
+            }
+            SystemsOperation::SignalBlockedKernelCompletion => {
+                if self.kernel_context != BootstrapKernelContextState::TerminalReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Blocked
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "completion signal requires the matching blocked worker after terminal reclamation",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::CompletionSignaled;
+                self.kernel_completion = BootstrapKernelCompletionState::Signaled;
+            }
+            SystemsOperation::CreateRunnableQueue { capacity } => {
+                if self.kernel_context != BootstrapKernelContextState::AllSuspended
+                    || *capacity != 3
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "the initial runnable queue requires all three suspended contexts and capacity three",
                     ));
                 }
                 self.kernel_context = BootstrapKernelContextState::QueueCreated;
@@ -1296,34 +1453,46 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::PreemptibleEnqueued
                     }
                     BootstrapKernelContextState::PreemptibleEnqueued => {
-                        BootstrapKernelContextState::BothEnqueued
+                        BootstrapKernelContextState::CompletionEnqueued
+                    }
+                    BootstrapKernelContextState::CompletionEnqueued => {
+                        BootstrapKernelContextState::AllEnqueued
                     }
                     BootstrapKernelContextState::PreemptedTaken => {
                         BootstrapKernelContextState::PreemptedEnqueued
                     }
+                    BootstrapKernelContextState::CompletionSignaled => {
+                        BootstrapKernelContextState::CompletionEnqueuedAgain
+                    }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable enqueue must preserve preemptible, terminal, preemptible FIFO order",
+                            "runnable enqueue must preserve preemptible, completion, terminal, preemptible, completion FIFO order",
                         ));
                     }
                 };
             }
             SystemsOperation::DequeueRunnableContext => {
                 self.kernel_context = match self.kernel_context {
-                    BootstrapKernelContextState::BothEnqueued => {
+                    BootstrapKernelContextState::AllEnqueued => {
                         BootstrapKernelContextState::PreemptibleDequeued
                     }
                     BootstrapKernelContextState::PreemptedEnqueued => {
+                        BootstrapKernelContextState::CompletionDequeued
+                    }
+                    BootstrapKernelContextState::CompletionBlocked => {
                         BootstrapKernelContextState::TerminalDequeued
                     }
-                    BootstrapKernelContextState::TerminalReclaimed => {
+                    BootstrapKernelContextState::CompletionEnqueuedAgain => {
                         BootstrapKernelContextState::PreemptibleDequeuedAgain
+                    }
+                    BootstrapKernelContextState::PreemptibleReclaimed => {
+                        BootstrapKernelContextState::CompletionDequeuedAgain
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable dequeue must select preemptible, terminal, preemptible FIFO order",
+                            "runnable dequeue must select preemptible, completion, terminal, preemptible, completion FIFO order",
                         ));
                     }
                 };
@@ -1334,7 +1503,10 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::TerminalReclaimed
                     }
                     BootstrapKernelContextState::PreemptibleCompleted => {
-                        BootstrapKernelContextState::Reclaimed
+                        BootstrapKernelContextState::PreemptibleReclaimed
+                    }
+                    BootstrapKernelContextState::CompletionCompleted => {
+                        BootstrapKernelContextState::CompletionReclaimed
                     }
                     _ => {
                         return Err(SystemsModelError::new(
@@ -1345,13 +1517,26 @@ impl BootstrapAuthorityState {
                 };
             }
             SystemsOperation::ConsumeEmptyRunnableQueue => {
-                if self.kernel_context != BootstrapKernelContextState::Reclaimed {
+                if self.kernel_context != BootstrapKernelContextState::CompletionReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Consumed
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "runnable queue consumption requires an empty queue and both reclaimed contexts",
+                        "runnable queue consumption requires an empty queue, three reclaimed contexts, and consumed completion",
                     ));
                 }
                 self.kernel_context = BootstrapKernelContextState::QueueConsumed;
+            }
+            SystemsOperation::ConsumeKernelCompletion => {
+                if self.kernel_context != BootstrapKernelContextState::CompletionReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Signaled
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "one-shot completion consumption requires its awakened worker to be reclaimed",
+                    ));
+                }
+                self.kernel_completion = BootstrapKernelCompletionState::Consumed;
             }
             _ => return Ok(false),
         }
@@ -1559,7 +1744,13 @@ impl BootstrapAuthorityState {
         if self.kernel_context != BootstrapKernelContextState::QueueConsumed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
-                "bootstrap completion requires both worker contexts to be reclaimed and the runnable queue consumed empty",
+                "bootstrap completion requires all worker contexts to be reclaimed and the runnable queue consumed empty",
+            ));
+        }
+        if self.kernel_completion != BootstrapKernelCompletionState::Consumed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
+                "bootstrap completion requires the one-shot completion state to be consumed",
             ));
         }
         Ok(())
@@ -1691,6 +1882,7 @@ fn validate_kernel_context_storage_operation(
     state: &BootstrapKernelContextState,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::CreateKernelCompletion => {}
         SystemsOperation::CreateKernelContext => {
             let stack = region.take().ok_or_else(|| {
                 SystemsModelError::new(
@@ -1710,7 +1902,8 @@ fn validate_kernel_context_storage_operation(
             context_stacks.push(stack);
         }
         SystemsOperation::TransferKernelContext
-        | SystemsOperation::TransferKernelContextUntilDeadline => {
+        | SystemsOperation::TransferKernelContextUntilDeadline
+        | SystemsOperation::TransferKernelContextUntilCompletion => {
             if context_stacks.is_empty() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
@@ -1722,11 +1915,14 @@ fn validate_kernel_context_storage_operation(
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
         | SystemsOperation::TakePreemptedKernelContext
+        | SystemsOperation::SignalBlockedKernelCompletion
+        | SystemsOperation::ConsumeKernelCompletion
         | SystemsOperation::ConsumeEmptyRunnableQueue => {}
         SystemsOperation::ReclaimKernelContext => {
             let index = match state {
-                BootstrapKernelContextState::TerminalReclaimed => 1,
-                BootstrapKernelContextState::Reclaimed => 0,
+                BootstrapKernelContextState::TerminalReclaimed => 2,
+                BootstrapKernelContextState::PreemptibleReclaimed
+                | BootstrapKernelContextState::CompletionReclaimed => 0,
                 _ => {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
@@ -1896,6 +2092,7 @@ pub fn model_systems_transitions(
         if model_kernel_context_transition(
             operation,
             &program.kernel_thread.handler,
+            &program.completion_thread.handler,
             &program.terminal_thread.handler,
             &program.deadline_notification.handler,
             &mut storage,
@@ -1927,6 +2124,7 @@ pub fn model_systems_transitions(
 fn model_kernel_context_transition(
     operation: &SystemsOperation,
     preemptible_handler: &SystemsHandler,
+    completion_handler: &SystemsHandler,
     terminal_handler: &SystemsHandler,
     deadline_handler: &SystemsHandler,
     storage: &mut BootstrapStorageState,
@@ -1938,6 +2136,17 @@ fn model_kernel_context_transition(
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::CreateKernelCompletion => {
+            if *state != BootstrapKernelContextState::Fresh {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-completion model creates exactly one completion before workers",
+                ));
+            }
+            transitions.push(SystemsTransition::CreateKernelCompletion {
+                completion_identity: 1,
+            });
+        }
         SystemsOperation::CreateKernelContext => {
             context_stacks.push(region.take().ok_or_else(|| {
                 SystemsModelError::new(
@@ -1951,22 +2160,25 @@ fn model_kernel_context_transition(
                     BootstrapKernelContextState::PreemptibleCreated
                 }
                 BootstrapKernelContextState::PreemptibleCreated => {
-                    BootstrapKernelContextState::BothSuspended
+                    BootstrapKernelContextState::CompletionCreated
+                }
+                BootstrapKernelContextState::CompletionCreated => {
+                    BootstrapKernelContextState::AllSuspended
                 }
                 _ => {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context model creates exactly two worker contexts",
+                        "kernel-context model creates exactly three worker contexts",
                     ));
                 }
             };
             transitions.push(SystemsTransition::CreateKernelContext { context_identity });
         }
         SystemsOperation::CreateRunnableQueue { capacity } => {
-            if *state != BootstrapKernelContextState::BothSuspended || *capacity != 2 {
+            if *state != BootstrapKernelContextState::AllSuspended || *capacity != 3 {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires capacity two after creating both workers",
+                    "kernel-context model requires capacity three after creating all workers",
                 ));
             }
             *state = BootstrapKernelContextState::QueueCreated;
@@ -1980,10 +2192,16 @@ fn model_kernel_context_transition(
                     (1, BootstrapKernelContextState::PreemptibleEnqueued)
                 }
                 BootstrapKernelContextState::PreemptibleEnqueued => {
-                    (2, BootstrapKernelContextState::BothEnqueued)
+                    (2, BootstrapKernelContextState::CompletionEnqueued)
+                }
+                BootstrapKernelContextState::CompletionEnqueued => {
+                    (3, BootstrapKernelContextState::AllEnqueued)
                 }
                 BootstrapKernelContextState::PreemptedTaken => {
                     (1, BootstrapKernelContextState::PreemptedEnqueued)
+                }
+                BootstrapKernelContextState::CompletionSignaled => {
+                    (2, BootstrapKernelContextState::CompletionEnqueuedAgain)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1997,14 +2215,20 @@ fn model_kernel_context_transition(
         }
         SystemsOperation::DequeueRunnableContext => {
             let (context_identity, next_state) = match *state {
-                BootstrapKernelContextState::BothEnqueued => {
+                BootstrapKernelContextState::AllEnqueued => {
                     (1, BootstrapKernelContextState::PreemptibleDequeued)
                 }
                 BootstrapKernelContextState::PreemptedEnqueued => {
-                    (2, BootstrapKernelContextState::TerminalDequeued)
+                    (2, BootstrapKernelContextState::CompletionDequeued)
                 }
-                BootstrapKernelContextState::TerminalReclaimed => {
+                BootstrapKernelContextState::CompletionBlocked => {
+                    (3, BootstrapKernelContextState::TerminalDequeued)
+                }
+                BootstrapKernelContextState::CompletionEnqueuedAgain => {
                     (1, BootstrapKernelContextState::PreemptibleDequeuedAgain)
+                }
+                BootstrapKernelContextState::PreemptibleReclaimed => {
+                    (2, BootstrapKernelContextState::CompletionDequeuedAgain)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -2095,6 +2319,63 @@ fn model_kernel_context_transition(
             });
             *state = BootstrapKernelContextState::PreemptedTaken;
         }
+        SystemsOperation::TransferKernelContextUntilCompletion => {
+            if *state != BootstrapKernelContextState::CompletionDequeued {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion-bound model transfer requires the selected block-once worker",
+                ));
+            }
+            let [
+                SystemsOperation::ConsoleWrite { text: entered },
+                SystemsOperation::AwaitKernelCompletion,
+                SystemsOperation::ConsoleWrite { .. },
+            ] = completion_handler.operations.as_slice()
+            else {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion worker must enter, await its one-shot completion, and resume",
+                ));
+            };
+            transitions.extend([
+                SystemsTransition::TransferKernelContextUntilCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 2,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: entered.clone(),
+                },
+                SystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+            ]);
+            *state = BootstrapKernelContextState::CompletionBlocked;
+        }
+        SystemsOperation::SignalBlockedKernelCompletion => {
+            if *state != BootstrapKernelContextState::TerminalReclaimed {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion signal requires the blocked worker after terminal reclamation",
+                ));
+            }
+            transitions.push(SystemsTransition::SignalBlockedKernelCompletion {
+                context_identity: 2,
+                caller_identity: 2,
+                completion_identity: 1,
+            });
+            *state = BootstrapKernelContextState::CompletionSignaled;
+        }
         SystemsOperation::TransferKernelContext => match *state {
             BootstrapKernelContextState::TerminalDequeued => {
                 let [SystemsOperation::ConsoleWrite { text }] =
@@ -2107,18 +2388,18 @@ fn model_kernel_context_transition(
                 };
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
-                        context_identity: 2,
-                        caller_identity: 2,
+                        context_identity: 3,
+                        caller_identity: 3,
                     },
                     SystemsTransition::EnterKernelThread {
-                        context_identity: 2,
+                        context_identity: 3,
                     },
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
-                        context_identity: 2,
-                        caller_identity: 2,
+                        context_identity: 3,
+                        caller_identity: 3,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 ]);
                 *state = BootstrapKernelContextState::TerminalCompleted;
             }
@@ -2131,36 +2412,64 @@ fn model_kernel_context_transition(
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                     },
                     SystemsTransition::RestorePreemptedKernelContext {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                         event_identity: next_deadline_event_identity.saturating_sub(1),
                     },
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 ]);
                 *state = BootstrapKernelContextState::PreemptibleCompleted;
+            }
+            BootstrapKernelContextState::CompletionDequeuedAgain => {
+                let [_, _, SystemsOperation::ConsoleWrite { text }] =
+                    completion_handler.operations.as_slice()
+                else {
+                    unreachable!("validated completion handler shape")
+                };
+                transitions.extend([
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 2,
+                        caller_identity: 5,
+                    },
+                    SystemsTransition::RestoreBlockedKernelContext {
+                        context_identity: 2,
+                        caller_identity: 5,
+                        completion_identity: 1,
+                    },
+                    SystemsTransition::ConsoleWrite { text: text.clone() },
+                    SystemsTransition::RetireKernelContextToCaller {
+                        context_identity: 2,
+                        caller_identity: 5,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                ]);
+                *state = BootstrapKernelContextState::CompletionCompleted;
             }
             _ => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires preemptible, terminal, preemptible FIFO order",
+                    "kernel-context model requires preemptible, completion, terminal, preemptible, completion FIFO order",
                 ));
             }
         },
         SystemsOperation::ReclaimKernelContext => {
             let (stack_index, context_identity, next_state) = match *state {
                 BootstrapKernelContextState::TerminalCompleted => {
-                    (1, 2, BootstrapKernelContextState::TerminalReclaimed)
+                    (2, 3, BootstrapKernelContextState::TerminalReclaimed)
                 }
                 BootstrapKernelContextState::PreemptibleCompleted => {
-                    (0, 1, BootstrapKernelContextState::Reclaimed)
+                    (0, 1, BootstrapKernelContextState::PreemptibleReclaimed)
+                }
+                BootstrapKernelContextState::CompletionCompleted => {
+                    (0, 2, BootstrapKernelContextState::CompletionReclaimed)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -2181,14 +2490,25 @@ fn model_kernel_context_transition(
             transitions.push(SystemsTransition::ReclaimKernelContext { context_identity });
         }
         SystemsOperation::ConsumeEmptyRunnableQueue => {
-            if *state != BootstrapKernelContextState::Reclaimed {
+            if *state != BootstrapKernelContextState::CompletionReclaimed {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model consumes only an empty queue after both reclamations",
+                    "kernel-context model consumes only an empty queue after all three reclamations",
                 ));
             }
             *state = BootstrapKernelContextState::QueueConsumed;
             transitions.push(SystemsTransition::ConsumeEmptyRunnableQueue);
+        }
+        SystemsOperation::ConsumeKernelCompletion => {
+            if *state != BootstrapKernelContextState::CompletionReclaimed {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-completion model consumes completion only after awakened worker reclamation",
+                ));
+            }
+            transitions.push(SystemsTransition::ConsumeKernelCompletion {
+                completion_identity: 1,
+            });
         }
         _ => return Ok(false),
     }
@@ -2660,14 +2980,19 @@ fn model_bootstrap_storage_operation(
             unreachable!("deadline-event operations are modeled by the caller")
         }
         SystemsOperation::CreateKernelContext
+        | SystemsOperation::CreateKernelCompletion
         | SystemsOperation::CreateRunnableQueue { .. }
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
         | SystemsOperation::TransferKernelContextUntilDeadline
+        | SystemsOperation::TransferKernelContextUntilCompletion
         | SystemsOperation::TakePreemptedKernelContext
         | SystemsOperation::TransferKernelContext
         | SystemsOperation::AwaitDeadlinePreemption
+        | SystemsOperation::AwaitKernelCompletion
+        | SystemsOperation::SignalBlockedKernelCompletion
         | SystemsOperation::ReclaimKernelContext
+        | SystemsOperation::ConsumeKernelCompletion
         | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
         }
@@ -2765,6 +3090,10 @@ mod tests {
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
             SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
+            SYSTEMS_KERNEL_COMPLETION_CREATE.into(),
+            SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.into(),
+            SYSTEMS_KERNEL_COMPLETION_SIGNAL.into(),
+            SYSTEMS_KERNEL_COMPLETION_CONSUME.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE.into(),
             SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED.into(),
@@ -2791,6 +3120,12 @@ mod tests {
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];
         kernel_thread_effects.sort();
+        let mut completion_thread_effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.into(),
+            SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
+        ];
+        completion_thread_effects.sort();
         let mut terminal_thread_effects = vec![
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
@@ -2825,6 +3160,7 @@ mod tests {
                         SystemsOperation::ConstructDeadline {
                             duration_nanoseconds: 1_000_000,
                         },
+                        SystemsOperation::CreateKernelCompletion,
                         SystemsOperation::BootstrapAllocate {
                             request: BootstrapStorageRequest {
                                 byte_count: 16_384,
@@ -2841,7 +3177,16 @@ mod tests {
                             },
                         },
                         SystemsOperation::CreateKernelContext,
-                        SystemsOperation::CreateRunnableQueue { capacity: 2 },
+                        SystemsOperation::BootstrapAllocate {
+                            request: BootstrapStorageRequest {
+                                byte_count: 16_384,
+                                alignment_bytes: 16,
+                                placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                            },
+                        },
+                        SystemsOperation::CreateKernelContext,
+                        SystemsOperation::CreateRunnableQueue { capacity: 3 },
+                        SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
@@ -2852,17 +3197,28 @@ mod tests {
                         },
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
+                        SystemsOperation::TransferKernelContextUntilCompletion,
+                        SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::SignalBlockedKernelCompletion,
+                        SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::DequeueRunnableContext,
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                        },
+                        SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::ConsumeKernelCompletion,
                         SystemsOperation::ConsumeEmptyRunnableQueue,
                     ],
                     disposition: SystemsDisposition::Fatal {
@@ -2923,6 +3279,24 @@ mod tests {
                     effects: kernel_thread_effects,
                 },
             },
+            completion_thread: SystemsEntry {
+                kind: SystemsEntryKind::ResumedKernelThread,
+                handler: SystemsHandler {
+                    name: "completion-thread".into(),
+                    context: SystemsContextKind::KernelThread,
+                    operations: vec![
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                        },
+                        SystemsOperation::AwaitKernelCompletion,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                        },
+                    ],
+                    disposition: SystemsDisposition::RetireKernelContextToCaller,
+                    effects: completion_thread_effects,
+                },
+            },
             terminal_thread: SystemsEntry {
                 kind: SystemsEntryKind::ResumedKernelThread,
                 handler: SystemsHandler {
@@ -2966,13 +3340,17 @@ mod tests {
             .operations
             .retain(|operation| match operation {
                 SystemsOperation::CreateKernelContext
+                | SystemsOperation::CreateKernelCompletion
                 | SystemsOperation::CreateRunnableQueue { .. }
                 | SystemsOperation::EnqueueRunnableContext
                 | SystemsOperation::DequeueRunnableContext
                 | SystemsOperation::TransferKernelContextUntilDeadline
+                | SystemsOperation::TransferKernelContextUntilCompletion
                 | SystemsOperation::TakePreemptedKernelContext
+                | SystemsOperation::SignalBlockedKernelCompletion
                 | SystemsOperation::TransferKernelContext
                 | SystemsOperation::ReclaimKernelContext
+                | SystemsOperation::ConsumeKernelCompletion
                 | SystemsOperation::ConsumeEmptyRunnableQueue => false,
                 SystemsOperation::ConsoleWrite { text }
                     if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
@@ -3023,6 +3401,9 @@ mod tests {
                     source_observation_identity: 2,
                     duration_nanoseconds: 1_000_000,
                 },
+                SystemsTransition::CreateKernelCompletion {
+                    completion_identity: 1,
+                },
                 SystemsTransition::AllocateBootstrapRegion {
                     request: BootstrapStorageRequest {
                         byte_count: 16_384,
@@ -3043,12 +3424,25 @@ mod tests {
                 SystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
-                SystemsTransition::CreateRunnableQueue { capacity: 2 },
+                SystemsTransition::AllocateBootstrapRegion {
+                    request: BootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                SystemsTransition::CreateKernelContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::CreateRunnableQueue { capacity: 3 },
                 SystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
                 },
                 SystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
+                },
+                SystemsTransition::EnqueueRunnableContext {
+                    context_identity: 3,
                 },
                 SystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
@@ -3090,25 +3484,57 @@ mod tests {
                 SystemsTransition::DequeueRunnableContext {
                     context_identity: 2,
                 },
-                SystemsTransition::TransferKernelContext {
+                SystemsTransition::TransferKernelContextUntilCompletion {
                     context_identity: 2,
                     caller_identity: 2,
+                    completion_identity: 1,
                 },
                 SystemsTransition::EnterKernelThread {
                     context_identity: 2,
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                },
+                SystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 3,
+                    caller_identity: 3,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 3,
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
                 },
                 SystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 2,
-                    caller_identity: 2,
+                    context_identity: 3,
+                    caller_identity: 3,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::SignalBlockedKernelCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
                 },
                 SystemsTransition::DequeueRunnableContext {
@@ -3116,11 +3542,11 @@ mod tests {
                 },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
                 SystemsTransition::RestorePreemptedKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                     event_identity: 1,
                 },
                 SystemsTransition::ConsoleWrite {
@@ -3128,14 +3554,43 @@ mod tests {
                 },
                 SystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
+                },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                SystemsTransition::RestoreBlockedKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                },
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                },
+                SystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::ConsumeKernelCompletion {
+                    completion_identity: 1,
                 },
                 SystemsTransition::ConsumeEmptyRunnableQueue,
                 SystemsTransition::Fatal {
@@ -3305,7 +3760,13 @@ mod tests {
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::ConsumeEmptyRunnableQueue));
+            .retain(|operation| {
+                !matches!(
+                    operation,
+                    SystemsOperation::ConsumeKernelCompletion
+                        | SystemsOperation::ConsumeEmptyRunnableQueue
+                )
+            });
         refresh_bootstrap_effects(&mut missing_reclaim);
         assert_eq!(
             validate_systems_program(&missing_reclaim).unwrap_err().code,

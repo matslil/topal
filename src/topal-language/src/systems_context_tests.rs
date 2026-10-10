@@ -1,7 +1,8 @@
 #[test]
 fn requires_typed_affine_kernel_context_round_trip() {
     // TOPAL-SYSTEMS-CONTEXT-001, TOPAL-SYSTEMS-CONTEXT-002,
-    // TOPAL-SYSTEMS-CONTEXT-003, TOPAL-SYSTEMS-CONTEXT-004.
+    // TOPAL-SYSTEMS-CONTEXT-003, TOPAL-SYSTEMS-CONTEXT-004,
+    // TOPAL-SYSTEMS-CONTEXT-005.
     let program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -15,6 +16,14 @@ fn requires_typed_affine_kernel_context_round_trip() {
         program.kernel_thread.handler.effects,
         [
             SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+            SYSTEMS_CONSOLE_WRITE,
+            SYSTEMS_KERNEL_CONTEXT_RETIRE,
+        ]
+    );
+    assert_eq!(
+        program.completion_thread.handler.effects,
+        [
+            SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
             SYSTEMS_CONSOLE_WRITE,
             SYSTEMS_KERNEL_CONTEXT_RETIRE,
         ]
@@ -76,8 +85,8 @@ fn requires_typed_affine_kernel_context_round_trip() {
             "FIFO-selected context",
         ),
         (
-            SOURCE.replace("capacity is 2", "capacity is 3"),
-            "capacity two",
+            SOURCE.replace("capacity is 3", "capacity is 2"),
+            "capacity three",
         ),
         (
             SOURCE.replace(
@@ -116,8 +125,8 @@ fn requires_typed_affine_kernel_context_round_trip() {
         ),
         (
             SOURCE.replace(
-                "context-resumed kernel runnable queue consume empty runnable",
-                "context-resumed kernel runnable queue consume empty other",
+                "completion-resumed kernel runnable queue consume empty runnable",
+                "completion-resumed kernel runnable queue consume empty other",
             ),
             "exact empty queue",
         ),

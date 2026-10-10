@@ -37,6 +37,8 @@ pub use topal_semantics::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
     SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
@@ -100,12 +102,12 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 6 {
+    if functions.len() != 7 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the cooperative systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread handlers",
+            "the systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, preemptible, completion-blocking, and terminal handlers",
         ));
     }
     if root_entries.bootstrap == root_entries.debug_break
@@ -117,18 +119,24 @@ pub fn analyze_systems_for_compiler(
         || root_entries.local_notification == root_entries.deadline_notification
         || root_entries.local_notification == root_entries.kernel_thread
         || root_entries.deadline_notification == root_entries.kernel_thread
+        || root_entries.bootstrap == root_entries.completion_thread
+        || root_entries.debug_break == root_entries.completion_thread
+        || root_entries.local_notification == root_entries.completion_thread
+        || root_entries.deadline_notification == root_entries.completion_thread
+        || root_entries.kernel_thread == root_entries.completion_thread
         || root_entries.bootstrap == root_entries.kernel_thread
         || root_entries.bootstrap == root_entries.terminal_thread
         || root_entries.debug_break == root_entries.terminal_thread
         || root_entries.local_notification == root_entries.terminal_thread
         || root_entries.deadline_notification == root_entries.terminal_thread
+        || root_entries.completion_thread == root_entries.terminal_thread
         || root_entries.kernel_thread == root_entries.terminal_thread
     {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread entries require distinct handlers",
+            "all seven initial systems entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -185,6 +193,15 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::KernelThread,
         None,
     )?;
+    let completion_thread = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "completion-thread",
+        &root_entries.completion_thread,
+        CompilerSystemsContextKind::KernelThread,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -208,6 +225,10 @@ pub fn analyze_systems_for_compiler(
         kernel_thread: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
             handler: kernel_thread,
+        },
+        completion_thread: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ResumedKernelThread,
+            handler: completion_thread,
         },
         terminal_thread: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
@@ -344,6 +365,7 @@ struct ArtifactEntries {
     local_notification: String,
     deadline_notification: String,
     kernel_thread: String,
+    completion_thread: String,
     terminal_thread: String,
 }
 
@@ -395,6 +417,7 @@ fn parse_artifact_root(
                 | "local-notification"
                 | "deadline-notification"
                 | "kernel-thread"
+                | "completion-thread"
                 | "terminal-thread"
         ) {
             let handler = parse_entry_field(source, field, label_text)?;
@@ -417,6 +440,7 @@ fn parse_artifact_root(
         Some(local_notification),
         Some(deadline_notification),
         Some(kernel_thread),
+        Some(completion_thread),
         Some(terminal_thread),
     ) = (
         bootstrap_storage,
@@ -425,6 +449,7 @@ fn parse_artifact_root(
         entries.remove("local-notification"),
         entries.remove("deadline-notification"),
         entries.remove("kernel-thread"),
+        entries.remove("completion-thread"),
         entries.remove("terminal-thread"),
     )
     else {
@@ -440,6 +465,7 @@ fn parse_artifact_root(
         local_notification,
         deadline_notification,
         kernel_thread,
+        completion_thread,
         terminal_thread,
     })
 }
@@ -474,7 +500,7 @@ fn parse_entry_field(
         "debug-break" => "synchronous-exception-entry",
         "local-notification" => "external-interrupt-entry",
         "deadline-notification" => "external-interrupt-entry",
-        "kernel-thread" | "terminal-thread" => "resumed-thread-entry",
+        "kernel-thread" | "completion-thread" | "terminal-thread" => "resumed-thread-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -821,21 +847,22 @@ fn analyze_kernel_thread_handler(
     }
     let terminal = name == "terminal-thread-handler";
     let cooperative = name == "kernel-thread-handler";
-    if !terminal && !cooperative {
+    let completion_blocking = name == "completion-thread-handler";
+    if !terminal && !cooperative && !completion_blocking {
         return Err(kernel_context_diagnostic(
             source,
             span,
-            "the cooperative profile requires `kernel-thread-handler` and `terminal-thread-handler`",
+            "the profile requires its preemptible, completion-blocking, and terminal thread handlers",
         ));
     }
     let context_name = source.slice(parameters[0].name);
     let caller_name = source.slice(parameters[1].name);
-    let (_marker, retirement, returned_caller, operations) = if cooperative {
-        let [marker, await_preemption, resumed_marker, retirement] = body else {
+    let (_marker, retirement, returned_caller, operations) = if cooperative || completion_blocking {
+        let [marker, await_operation, resumed_marker, retirement] = body else {
             return Err(kernel_context_diagnostic(
                 source,
                 span,
-                "the deadline-preemptible kernel thread must enter, await preemption, resume, and retire",
+                "a suspendable kernel thread must enter, await its exact event, resume, and retire",
             ));
         };
         let entered = analyze_operation(
@@ -844,29 +871,39 @@ fn analyze_kernel_thread_handler(
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
+        let expected_entered = if cooperative {
+            "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED"
+        } else {
+            "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED"
+        };
         if entered
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
+                text: expected_entered.into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(marker),
-                "the deadline-preemptible kernel thread requires its exact entry marker",
+                "the suspendable kernel thread requires its exact entry marker",
             ));
         }
-        let await_preemption_span = statement_span(await_preemption);
-        let await_preemption = analyze_operation(
+        let await_operation_span = statement_span(await_operation);
+        let await_operation = analyze_operation(
             source,
-            await_preemption,
+            await_operation,
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
-        if await_preemption != CompilerSystemsOperation::AwaitDeadlinePreemption {
+        let expected_await = if cooperative {
+            CompilerSystemsOperation::AwaitDeadlinePreemption
+        } else {
+            CompilerSystemsOperation::AwaitKernelCompletion
+        };
+        if await_operation != expected_await {
             return Err(kernel_context_diagnostic(
                 source,
-                await_preemption_span,
-                "the deadline-preemptible kernel thread requires its sealed preemption region",
+                await_operation_span,
+                "the suspendable kernel thread requires its sealed wait operation",
             ));
         }
         let resumed = analyze_operation(
@@ -875,22 +912,27 @@ fn analyze_kernel_thread_handler(
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
+        let expected_resumed = if cooperative {
+            "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED"
+        } else {
+            "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED"
+        };
         if resumed
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
+                text: expected_resumed.into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(resumed_marker),
-                "the deadline-preemptible kernel thread requires its exact resumed marker",
+                "the suspendable kernel thread requires its exact resumed marker",
             ));
         }
         (
             marker,
             retirement,
             caller_name.to_owned(),
-            vec![entered, await_preemption, resumed],
+            vec![entered, await_operation, resumed],
         )
     } else {
         let [marker, retirement] = body else {
@@ -956,8 +998,10 @@ fn analyze_kernel_thread_handler(
     ];
     if cooperative {
         effects.push(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.to_owned());
-        effects.sort();
+    } else if completion_blocking {
+        effects.push(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.to_owned());
     }
+    effects.sort();
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::KernelThread,
@@ -2324,18 +2368,20 @@ fn analyze_kernel_context_decision(
     };
     let statements = action_block(source, ok_action, "kernel-context stack allocation")?;
     let [
+        create_completion,
         create_cooperative,
-        terminal_subject_statement,
-        terminal_ok_statement,
-        terminal_error_statement,
+        completion_subject_statement,
+        completion_ok_statement,
+        completion_error_statement,
     ] = statements
     else {
         return Err(kernel_context_diagnostic(
             source,
             ok_action.span(),
-            "cooperative context success requires the first create followed by the second stack allocation",
+            "context success requires completion creation, the preemptible worker, and the completion-worker stack allocation",
         ));
     };
+    let completion_name = parse_kernel_completion_create(source, create_completion, context_name)?;
     let cooperative_name = parse_kernel_context_create(
         source,
         create_cooperative,
@@ -2343,11 +2389,64 @@ fn analyze_kernel_context_decision(
         &stack_name,
         "kernel-thread",
     )?;
+    let Statement::Expression(completion_subject) = completion_subject_statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(completion_subject_statement),
+            "preemptible context creation must be followed by the completion-worker stack allocation",
+        ));
+    };
+    let completion_request =
+        parse_bootstrap_allocation(source, completion_subject, context_name, storage)?;
+    if completion_request != request {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_subject.span(),
+            "all worker contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+        ));
+    }
+    let (completion_stack_name, completion_ok) =
+        raw_result_action(source, completion_ok_statement, "Ok")?;
+    let (_, completion_error) = raw_result_action(source, completion_error_statement, "Error")?;
+    let CompilerSystemsDisposition::Fatal { .. } =
+        action_disposition(source, completion_error, context_name)?
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_error.span(),
+            "completion-worker stack allocation failure must enter the fatal disposition",
+        ));
+    };
+    let completion_statements = action_block(
+        source,
+        completion_ok,
+        "completion kernel-context stack allocation",
+    )?;
+    let [
+        create_completion_worker,
+        terminal_subject_statement,
+        terminal_ok_statement,
+        terminal_error_statement,
+    ] = completion_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_ok.span(),
+            "completion context success requires its create followed by the terminal stack allocation",
+        ));
+    };
+    let completion_worker_name = parse_kernel_context_create(
+        source,
+        create_completion_worker,
+        context_name,
+        &completion_stack_name,
+        "completion-thread",
+    )?;
     let Statement::Expression(terminal_subject) = terminal_subject_statement else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(terminal_subject_statement),
-            "cooperative context creation must be followed by the terminal stack allocation",
+            "completion context creation must be followed by the terminal stack allocation",
         ));
     };
     let terminal_request =
@@ -2356,7 +2455,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_subject.span(),
-            "both cooperative contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+            "all worker contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
         ));
     }
     let (terminal_stack_name, terminal_ok) =
@@ -2371,21 +2470,20 @@ fn analyze_kernel_context_decision(
             "terminal stack allocation failure must enter the fatal disposition",
         ));
     };
-    let terminal_statements = action_block(
-        source,
-        terminal_ok,
-        "terminal kernel-context stack allocation",
-    )?;
+    let terminal_statements = action_block(source, terminal_ok, "terminal stack allocation")?;
     let [
         create_terminal,
         create_queue,
         enqueue_cooperative,
+        enqueue_completion,
         enqueue_terminal,
         dequeue_cooperative,
         preemptible_transfer,
         take_preempted,
         preemption_marker_statement,
         enqueue_preempted,
+        dequeue_completion,
+        transfer_completion_until_signal,
         dequeue_terminal,
         transfer_terminal,
         terminal_marker_statement,
@@ -2395,7 +2493,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_ok.span(),
-            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, deadline preemption, both retirement transfers, and reclamation",
+            "the FIFO dispatcher requires three workers, deadline preemption, completion blocking, exact source order, retirement, and reclamation",
         ));
     };
     let terminal_name = parse_kernel_context_create(
@@ -2407,6 +2505,12 @@ fn analyze_kernel_context_decision(
     )?;
     let queue_name = parse_runnable_queue_create(source, create_queue, context_name)?;
     parse_runnable_queue_enqueue(source, enqueue_cooperative, &queue_name, &cooperative_name)?;
+    parse_runnable_queue_enqueue(
+        source,
+        enqueue_completion,
+        &queue_name,
+        &completion_worker_name,
+    )?;
     parse_runnable_queue_enqueue(source, enqueue_terminal, &queue_name, &terminal_name)?;
     let selected_cooperative =
         parse_runnable_queue_dequeue(source, dequeue_cooperative, &queue_name)?;
@@ -2437,6 +2541,15 @@ fn analyze_kernel_context_decision(
         ));
     }
     parse_runnable_queue_enqueue(source, enqueue_preempted, &queue_name, &preempted_worker)?;
+    let selected_completion =
+        parse_runnable_queue_dequeue(source, dequeue_completion, &queue_name)?;
+    let blocked_completion = parse_kernel_context_transfer_until_completion(
+        source,
+        transfer_completion_until_signal,
+        context_name,
+        &selected_completion,
+        &completion_name,
+    )?;
     let selected_terminal = parse_runnable_queue_dequeue(source, dequeue_terminal, &queue_name)?;
     let terminal_completed = parse_kernel_context_transfer(
         source,
@@ -2465,6 +2578,8 @@ fn analyze_kernel_context_decision(
     let (after_terminal, after_terminal_statements) =
         parse_kernel_context_reclaim(source, reclaim_terminal, &terminal_completed)?;
     let [
+        signal_completion,
+        enqueue_completion,
         dequeue_cooperative_final,
         transfer_cooperative,
         cooperative_marker_statement,
@@ -2474,9 +2589,21 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_terminal),
-            "terminal reclamation must dequeue, restore, and reclaim the preempted worker",
+            "terminal reclamation must signal and enqueue the blocked worker before restoring the preempted worker",
         ));
     };
+    let awakened_completion = parse_signal_blocked_kernel_completion(
+        source,
+        signal_completion,
+        &blocked_completion,
+        &completion_name,
+    )?;
+    parse_runnable_queue_enqueue(
+        source,
+        enqueue_completion,
+        &queue_name,
+        &awakened_completion,
+    )?;
     let selected_cooperative_final =
         parse_runnable_queue_dequeue(source, dequeue_cooperative_final, &queue_name)?;
     let cooperative_completed = parse_kernel_context_transfer(
@@ -2505,29 +2632,82 @@ fn analyze_kernel_context_decision(
     }
     let (resumed_name, continuation) =
         parse_kernel_context_reclaim(source, reclaim_cooperative, &cooperative_completed)?;
-    let [consume_queue, disposition] = continuation else {
+    let [
+        dequeue_completion_final,
+        transfer_completion,
+        completion_marker_statement,
+        reclaim_completion,
+    ] = continuation
+    else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_cooperative),
-            "cooperative reclamation must consume the empty runnable queue before final disposition",
+            "preemptible reclamation must resume and reclaim the awakened completion worker",
         ));
     };
-    parse_runnable_queue_consume(source, consume_queue, &resumed_name, &queue_name)?;
+    let selected_completion_final =
+        parse_runnable_queue_dequeue(source, dequeue_completion_final, &queue_name)?;
+    let completion_completed = parse_kernel_context_transfer(
+        source,
+        transfer_completion,
+        &resumed_name,
+        &selected_completion_final,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let completion_marker = analyze_operation(
+        source,
+        completion_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if completion_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(completion_marker_statement),
+            "completion-worker retirement requires its exact marker",
+        ));
+    }
+    let (completion_resumed, completion_continuation) =
+        parse_kernel_context_reclaim(source, reclaim_completion, &completion_completed)?;
+    let [consume_completion, consume_queue, disposition] = completion_continuation else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(reclaim_completion),
+            "completion-worker reclamation must consume completion and empty queue before disposition",
+        ));
+    };
+    parse_kernel_completion_consume(
+        source,
+        consume_completion,
+        &completion_resumed,
+        &completion_name,
+    )?;
+    parse_runnable_queue_consume(source, consume_queue, &completion_resumed, &queue_name)?;
     let disposition = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        &resumed_name,
+        &completion_resumed,
     )?;
     Ok(CheckedBootstrapRegionDecision {
         operations: vec![
             CompilerSystemsOperation::BootstrapAllocate { request },
+            CompilerSystemsOperation::CreateKernelCompletion,
+            CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::BootstrapAllocate {
+                request: completion_request,
+            },
             CompilerSystemsOperation::CreateKernelContext,
             CompilerSystemsOperation::BootstrapAllocate {
                 request: terminal_request,
             },
             CompilerSystemsOperation::CreateKernelContext,
-            CompilerSystemsOperation::CreateRunnableQueue { capacity: 2 },
+            CompilerSystemsOperation::CreateRunnableQueue { capacity: 3 },
+            CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
@@ -2536,13 +2716,22 @@ fn analyze_kernel_context_decision(
             preemption_marker,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContextUntilCompletion,
+            CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             terminal_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::SignalBlockedKernelCompletion,
+            CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             cooperative_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContext,
+            completion_marker,
+            CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::ConsumeKernelCompletion,
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
         ],
         disposition,
@@ -2600,6 +2789,174 @@ fn parse_kernel_context_create(
     Ok(source.slice(*name).to_owned())
 }
 
+fn parse_kernel_completion_create(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "kernel-completion creation must bind its affine one-shot state",
+        ));
+    };
+    let [context, kernel, completion, create] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-completion creation requires its live dispatcher",
+        ));
+    };
+    if source.slice(*classifier) != "KernelCompletion InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, create, "create")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-completion creation requires the exact affine classifier and live dispatcher",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_context_transfer_until_completion(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    worker_name: &str,
+    completion_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completion-bound transfer must bind its exact blocked outcome",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        context_word,
+        transfer,
+        worker,
+        until,
+        completion,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion-bound transfer requires a selected worker and one-shot completion",
+        ));
+    };
+    if source.slice(*classifier) != "BlockedKernelContextTransfer InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, transfer, "transfer")
+        || !identifier_is(source, worker, worker_name)
+        || !identifier_is(source, until, "until")
+        || !identifier_is(source, completion, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion-bound transfer requires the exact dispatcher, selected worker, and completion identity",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_signal_blocked_kernel_completion(
+    source: &SourceText,
+    statement: &Statement,
+    blocked_name: &str,
+    completion_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completion signal must bind the exact awakened suspended context",
+        ));
+    };
+    let [blocked, kernel, completion, signal, completion_value] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion signal must consume the blocked outcome and matching signal endpoint",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, blocked, blocked_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, signal, "signal")
+        || !identifier_is(source, completion_value, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion signal requires the matching blocked context and one-shot completion",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_completion_consume(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    completion_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completed one-shot state must be consumed before disposition",
+        ));
+    };
+    let [context, kernel, completion, consume, completion_value] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion consumption requires the live dispatcher and completed state",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, consume, "consume")
+        || !identifier_is(source, completion_value, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion consumption requires the exact completed one-shot identity",
+        ));
+    }
+    Ok(())
+}
+
 fn parse_runnable_queue_create(
     source: &SourceText,
     statement: &Statement,
@@ -2636,25 +2993,25 @@ fn parse_runnable_queue_create(
         return Err(kernel_context_diagnostic(
             source,
             *span,
-            "the initial runnable queue requires exactly `capacity is 2`",
+            "the initial runnable queue requires exactly `capacity is 3`",
         ));
     };
-    let capacity_is_two = field
+    let capacity_is_three = field
         .label
         .is_some_and(|label| source.slice(label) == "capacity")
-        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "2");
+        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "3");
     if source.slice(*classifier) != "BoundedKernelRunnableQueue InitialProcessor"
         || !identifier_is(source, context, context_name)
         || !identifier_is(source, kernel, "kernel")
         || !identifier_is(source, runnable, "runnable")
         || !identifier_is(source, queue, "queue")
         || !identifier_is(source, create, "create")
-        || !capacity_is_two
+        || !capacity_is_three
     {
         return Err(kernel_context_diagnostic(
             source,
             *span,
-            "the initial runnable queue requires its live context, capacity two, and exact bounded classifier",
+            "the initial runnable queue requires its live context, capacity three, and exact bounded classifier",
         ));
     }
     Ok(source.slice(*name).to_owned())
@@ -3543,6 +3900,15 @@ fn analyze_operation(
     {
         return Ok(CompilerSystemsOperation::AwaitDeadlinePreemption);
     }
+    if context == CompilerSystemsContextKind::KernelThread
+        && let [receiver, kernel, completion, await_word] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, completion, "completion")
+        && identifier_is(source, await_word, "await")
+    {
+        return Ok(CompilerSystemsOperation::AwaitKernelCompletion);
+    }
     Err(source_diagnostic(
         source,
         "E-SYSTEMS-OPERATION",
@@ -3712,6 +4078,10 @@ mod tests {
                 SYSTEMS_ATOMIC_END,
                 SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                SYSTEMS_KERNEL_COMPLETION_CONSUME,
+                SYSTEMS_KERNEL_COMPLETION_CREATE,
+                SYSTEMS_KERNEL_COMPLETION_SIGNAL,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
@@ -3918,6 +4288,9 @@ mod tests {
                         placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
                     },
                 },
+                CompilerSystemsTransition::CreateKernelCompletion {
+                    completion_identity: 1,
+                },
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 1,
                 },
@@ -3931,12 +4304,25 @@ mod tests {
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
-                CompilerSystemsTransition::CreateRunnableQueue { capacity: 2 },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::CreateKernelContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::CreateRunnableQueue { capacity: 3 },
                 CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
                 },
                 CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 3,
                 },
                 CompilerSystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
@@ -3978,25 +4364,57 @@ mod tests {
                 CompilerSystemsTransition::DequeueRunnableContext {
                     context_identity: 2,
                 },
-                CompilerSystemsTransition::TransferKernelContext {
+                CompilerSystemsTransition::TransferKernelContextUntilCompletion {
                     context_identity: 2,
                     caller_identity: 2,
+                    completion_identity: 1,
                 },
                 CompilerSystemsTransition::EnterKernelThread {
                     context_identity: 2,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                },
+                CompilerSystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 3,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::EnterKernelThread {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 2,
-                    caller_identity: 2,
+                    context_identity: 3,
+                    caller_identity: 3,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::SignalBlockedKernelCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
                 },
                 CompilerSystemsTransition::DequeueRunnableContext {
@@ -4004,11 +4422,11 @@ mod tests {
                 },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
                 CompilerSystemsTransition::RestorePreemptedKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                     event_identity: 1,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -4016,14 +4434,43 @@ mod tests {
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                CompilerSystemsTransition::RestoreBlockedKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                },
+                CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::ConsumeKernelCompletion {
+                    completion_identity: 1,
                 },
                 CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
                 CompilerSystemsTransition::Fatal {
@@ -4042,7 +4489,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 70);
+        assert_eq!(program.bootstrap.handler.operations.len(), 83);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -4051,6 +4498,10 @@ mod tests {
                 SYSTEMS_ATOMIC_END,
                 SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                SYSTEMS_KERNEL_COMPLETION_CONSUME,
+                SYSTEMS_KERNEL_COMPLETION_CREATE,
+                SYSTEMS_KERNEL_COMPLETION_SIGNAL,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
