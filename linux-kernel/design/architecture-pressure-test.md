@@ -57,6 +57,14 @@ only the opaque suspended values selected from it reach each architecture's
 context provider. A compiler may choose different fixed aggregate layouts, but
 capacity, order, identity, and move-only observations must remain unchanged.
 
+Deadline preemption binds the same portable identities on every target: the
+selected context, event, processor, address space, and exact dispatcher
+continuation. X86-64 interrupt frames and interrupt return, AArch64 exception
+return state, and RISC-V supervisor trap state stay provider-private. Each
+provider must prove that the target binding precedes delivery enablement and
+that later dispatch restores the exact interrupted continuation; none may
+select or store the runnable queue.
+
 ## Translation and user access
 
 | Concern | x86-64 | AArch64 | RISC-V | Design result |

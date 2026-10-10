@@ -287,6 +287,14 @@ empty before disposition. It is an ordinary checked Topal composite rather
 than a provider operation; provider-specific context state remains opaque. See
 [TK-DEC-029](affine-runnable-queue.md).
 
+The approved deadline-preemption extension atomically binds one selected
+context, one absolute deadline, and the dispatcher's exact suspended
+continuation before admitting interrupt delivery. Matching typed completion
+may return the interrupted context to that dispatcher as an opaque affine
+suspended value. Source owns dequeue and re-enqueue policy; the provider owns
+only exact interrupt-state capture and continuation transfer. See
+[TK-DEC-030](deadline-preemptible-context-transfer.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults
