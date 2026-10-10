@@ -16,16 +16,18 @@ region into one aligned atomic word, executes a locked compare/exchange and
 acquire load, returns the region to plain ownership, sends one local-APIC self-
 notification, enters its generated typed external-interrupt handler, completes
 the event, resumes the wait continuation, performs two accepted observations
-of the provider-created monotonic clock, and reaches the nonreturning fatal
-provider.
+of the provider-created monotonic clock, constructs and arms one absolute
+one-shot deadline, enters its generated HPET/I/O-APIC-backed typed handler no
+earlier than the deadline, completes the event, resumes its waiting
+continuation, and reaches the nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_DEADLINE_OK
 ```
 
-After all twelve ordered markers, QEMU remained running and the serial stream
+After all thirteen ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
@@ -37,8 +39,11 @@ translation, IDT gate, self-notification, completion-aware wait, EOI, saved
 entry state, and interrupt return,
 private HPET translation, 64-bit capability and pinned-period validation,
 main-counter enablement, two counter observations, private wrap/regression
-state, both fail-to-fatal clock edges, the fatal provider's interrupt-disable/
-halt loop, and the root's
+state, both fail-to-fatal clock edges, exact deadline-tick construction, HPET
+timer and route capability checks, legacy-PIC masking, I/O APIC route and IDT
+gate, comparator programming, no-early completion check, HPET status clear,
+local-APIC EOI, saved deadline-entry state, and interrupt return, the fatal
+provider's interrupt-disable/halt loop, and the root's
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
 activated and edited a replacement translation, accessed both an owned frame
@@ -82,13 +87,13 @@ observation, context-preserving resume, checked bootstrap storage, one affine
 physical-frame mapping, one replacement translation space, one active
 map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
 one affine CPU-shared atomic-word lifecycle, one typed local-notification
-external-interrupt lifecycle, two same-clock monotonic observations, and fatal
-disposition. Both byte loads are retained
+external-interrupt lifecycle, two same-clock monotonic observations, one typed
+one-shot deadline lifecycle, and fatal disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
-gate does not claim general address-space management, timer or shared-device
-interrupt routing, general controller management, ACPI/PCI discovery, SMP,
-timer delivery, deadline/periodic/wall-clock behavior, userspace clock
-publication, virtio, a
+gate does not claim general address-space management, general timer or
+shared-device interrupt routing, general controller management, ACPI/PCI
+discovery, SMP, multiple deadlines, cancellation, periodic or wall-clock
+behavior, userspace clock publication, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
 The ordinary `topalc` target registry and output path publish the qualified
