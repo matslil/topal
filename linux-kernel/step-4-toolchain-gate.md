@@ -16,20 +16,24 @@ region into one aligned atomic word, executes a locked compare/exchange and
 acquire load, returns the region to plain ownership, sends one local-APIC self-
 notification, enters its generated typed external-interrupt handler, completes
 the event, resumes the wait continuation, performs two accepted observations
-of the provider-created monotonic clock, constructs and arms one absolute
-one-shot deadline, enters its generated HPET/I/O-APIC-backed typed handler no
-earlier than the deadline, completes the event, resumes its waiting
-continuation, constructs and selects one suspended kernel-thread continuation
-on a separate stack, terminally retires it to the exact bootstrap caller,
-reclaims the completed stack, and reaches the nonreturning fatal provider.
+of the provider-created monotonic clock, constructs one absolute one-shot
+deadline, creates two suspended kernel contexts, and selects the first through
+a deadline-bound transfer. The worker enters a sealed wait region; the
+HPET/I/O-APIC event enters its typed handler no earlier than the deadline,
+completes, suspends the interrupted worker, and restores the exact dispatcher.
+Source re-enqueues that worker behind the terminal context, runs and reclaims
+the terminal context, then redispatches the interrupted context. The retained
+handler frame returns to the interrupted instruction, the worker resumes and
+retires, both stacks and the empty queue are consumed, and the root reaches the
+nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_DEADLINE_OKTOPAL_KERNEL_CONTEXT_ENTEREDTOPAL_KERNEL_CONTEXT_RESUMED
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTEREDTOPAL_KERNEL_DEADLINE_PREEMPTEDTOPAL_KERNEL_CONTEXT_TERMINAL_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_RETIREDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMEDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED
 ```
 
-After all fifteen ordered markers, QEMU remained running and the serial stream
+After all eighteen ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
 of the bounded E820 validators and selectors, replacement page-table
 zeroing/population, CR3 activation, private leaf construction, commit-time
@@ -44,10 +48,10 @@ main-counter enablement, two counter observations, private wrap/regression
 state, both fail-to-fatal clock edges, exact deadline-tick construction, HPET
 timer and route capability checks, legacy-PIC masking, I/O APIC route and IDT
 gate, comparator programming, no-early completion check, HPET status clear,
-local-APIC EOI, saved deadline-entry state, and interrupt return, the fatal
-provider's interrupt-disable/halt loop, provider-private worker-stack
-construction, callee-saved continuation switch, exact caller-stack restore,
-terminal context reclamation, and the root's
+local-APIC EOI, saved deadline-entry state, provider-private worker-stack
+construction, callee-saved continuation switching, interrupt-frame retention,
+exact dispatcher restore, later interrupt return, both context reclamations,
+and the root's source-owned queue order and
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
 activated and edited a replacement translation, accessed both an owned frame
@@ -92,13 +96,14 @@ physical-frame mapping, one replacement translation space, one active
 map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
 one affine CPU-shared atomic-word lifecycle, one typed local-notification
 external-interrupt lifecycle, two same-clock monotonic observations, one typed
-one-shot deadline lifecycle, one affine kernel-context round trip, and fatal
+deadline-preemptible context transfer, an intervening terminal context,
+two affine context reclamations, empty queue consumption, and fatal
 disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
 gate does not claim general address-space management, general timer or
 shared-device interrupt routing, general controller management, ACPI/PCI
 discovery, SMP, multiple deadlines, cancellation, periodic or wall-clock
-behavior, preemption, scheduling, task migration, extended context state,
+behavior, general blocking or scheduling, task migration, extended context state,
 userspace clock publication, virtio, a
 userspace ABI, containers, or hosted virtualization.
 

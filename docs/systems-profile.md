@@ -482,6 +482,30 @@ selection remains source policy and no machine provider owns a run queue.
 Unbounded or dynamically allocated queues, preemption, blocking, wakeup,
 priorities, timeslicing, cancellation, migration, and SMP remain excluded.
 
+The deadline-preemptible transfer extension combines one selected suspended
+kernel context and one absolute deadline in a single nonordinary dispatch.
+Before the provider admits interrupt delivery, it atomically registers the
+dispatcher's exact suspended continuation as the sole target and arms the
+event. Matching typed completion may choose `preempt current kernel context`;
+that disposition captures the interrupted worker as an opaque suspended
+context and resumes only the registered dispatcher. The dispatcher receives
+an affine preempted outcome and may re-enqueue that worker using the ordinary
+bounded runnable queue.
+
+The initial worker uses one sealed `kernel context await deadline preemption`
+test region. It cannot return on first entry: matching delivery first preempts
+the worker, and only a later source-selected transfer restores the interrupted
+continuation and completes the region. This makes physical preemption
+deterministic without defining a general wait or sleep operation.
+
+Later dispatch restores the exact interrupted continuation and its frozen
+affine obligations. Target interrupt frames, status fields, stack switching,
+and return instructions remain provider-private, while dequeue and re-enqueue
+remain source policy. The initial profile admits one deadline-preempted worker
+on one processor and address space. It excludes cancellation, rearming,
+periodic ticks, general timeslices, priority, blocking, wakeup, nested
+preemption, migration, SMP, userspace, and extended-state switching.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
