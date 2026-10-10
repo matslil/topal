@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/10";
+    "topal.provider-object.x86_64-qemu-pc-q35/11";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -49,6 +49,10 @@ pub const X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL: &str =
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL: &str =
     "topal_x86_systems_local_notification_complete";
 pub const X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL: &str = "topal_x86_systems_monotonic_clock_now";
+pub const X86_SYSTEMS_DEADLINE_AFTER_SYMBOL: &str = "topal_x86_systems_deadline_after";
+pub const X86_SYSTEMS_DEADLINE_ARM_SYMBOL: &str = "topal_x86_systems_deadline_arm";
+pub const X86_SYSTEMS_DEADLINE_WAIT_SYMBOL: &str = "topal_x86_systems_deadline_wait";
+pub const X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL: &str = "topal_x86_systems_deadline_complete";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -155,6 +159,7 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
         &monotonic_clock_now()?,
     );
+    append_deadline_functions(&mut object, text)?;
     append_function(
         &mut object,
         text,
@@ -211,6 +216,21 @@ pub fn generate_x86_64_systems_provider_object(
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
     Ok(GeneratedSystemsProviderObject { plan, bytes })
+}
+
+fn append_deadline_functions(
+    object: &mut Object<'_>,
+    text: object::write::SectionId,
+) -> Result<(), CompileError> {
+    for (name, encoded) in [
+        (X86_SYSTEMS_DEADLINE_AFTER_SYMBOL, deadline_after()?),
+        (X86_SYSTEMS_DEADLINE_ARM_SYMBOL, deadline_arm()?),
+        (X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, deadline_wait()),
+        (X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL, deadline_complete()?),
+    ] {
+        append_encoded_function(object, text, name, &encoded);
+    }
+    Ok(())
 }
 
 fn append_critical_functions(object: &mut Object<'_>, text: object::write::SectionId) {
@@ -365,6 +385,133 @@ fn monotonic_clock_now() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xb9, 0x01, 0x00, 0x00, 0x00, 0xc3]); // rcx = success
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc9, 0xc3]);
+    code.finish()
+}
+
+fn deadline_after() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // private clock/deadline state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x40, 0xf6, 0xc7, 0x07]); // 8-byte aligned
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0x7f, 0x10, 0x01]); // clock initialized
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x07]); // last accepted raw counter
+    code.bytes(&[0x48, 0x8b, 0x57, 0x08]); // wrap epoch
+    code.bytes(&[0x48, 0x05]);
+    code.bytes(&100_000_u32.to_le_bytes()); // 1 ms at the validated 10 ns period
+    code.bytes(&[0x48, 0x83, 0xd2, 0x00]); // extend carry into epoch
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x89, 0x47, 0x18]); // scheduled raw
+    code.bytes(&[0x48, 0x89, 0x57, 0x20]); // scheduled epoch
+    code.bytes(&[0xc6, 0x47, 0x28, 0x01]); // constructed
+    code.bytes(&[0xc6, 0x47, 0x29, 0x00]); // not completed
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn deadline_arm() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x40, 0xf6, 0xc7, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0x7f, 0x28, 0x01]); // exactly one constructed event
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x9c, 0x58]); // require the sealed prior IF=0 state
+    code.bytes(&[0xa9, 0x00, 0x02, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]); // mask both legacy PICs
+    code.bytes(&[0x49, 0xb8]);
+    code.bytes(&0x0000_0000_fed0_0000_u64.to_le_bytes()); // HPET
+    code.bytes(&[0x49, 0x8b, 0x00]); // capabilities
+    code.bytes(&[0xa9, 0x00, 0x20, 0x00, 0x00]); // 64-bit main counter
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x89, 0xc2, 0x48, 0xc1, 0xea, 0x20]);
+    code.bytes(&[0x81, 0xfa, 0x80, 0x96, 0x98, 0x00]); // 10 ns period
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x90, 0x00, 0x01, 0x00, 0x00]); // timer 0 config/cap
+    code.bytes(&[0x48, 0xc1, 0xea, 0x20]);
+    code.bytes(&[0xf7, 0xc2, 0x04, 0x00, 0x00, 0x00]); // route 2 capability
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x8b, 0x47, 0x20]); // scheduled epoch
+    code.bytes(&[0x48, 0x3b, 0x47, 0x08]); // same current epoch in initial slice
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x88, 0xf0, 0x00, 0x00, 0x00]); // current raw
+    code.bytes(&[0x48, 0x8b, 0x47, 0x18]); // scheduled raw
+    code.bytes(&[0x48, 0x39, 0xc1]);
+    code.jump_if(0x83, "immediate"); // current >= scheduled
+
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x0000_0000_fec0_0000_u64.to_le_bytes()); // I/O APIC
+    code.bytes(&[0x41, 0xc7, 0x01, 0x14, 0x00, 0x00, 0x00]); // redirection low 2
+    code.bytes(&[0x41, 0xc7, 0x41, 0x10]);
+    code.bytes(&0x0001_00f2_u32.to_le_bytes()); // masked, fixed vector f2
+    code.bytes(&[0x41, 0xc7, 0x01, 0x15, 0x00, 0x00, 0x00]); // redirection high 2
+    code.bytes(&[0x41, 0xc7, 0x41, 0x10, 0x00, 0x00, 0x00, 0x00]); // APIC ID 0
+    code.bytes(&[0x41, 0xc7, 0x80, 0x00, 0x01, 0x00, 0x00]);
+    code.bytes(&0x0000_0400_u32.to_le_bytes()); // edge, one-shot, route 2, disabled
+    code.bytes(&[0x49, 0x89, 0x80, 0x08, 0x01, 0x00, 0x00]); // comparator
+    code.bytes(&[0x49, 0x8b, 0x50, 0x10]);
+    code.bytes(&[0x48, 0x83, 0xca, 0x01]); // enable HPET globally
+    code.bytes(&[0x49, 0x89, 0x50, 0x10]);
+    code.bytes(&[0x41, 0xc7, 0x01, 0x14, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x41, 0xc7, 0x41, 0x10]);
+    code.bytes(&0x0000_00f2_u32.to_le_bytes()); // unmask route
+    code.bytes(&[0x41, 0xc7, 0x80, 0x00, 0x01, 0x00, 0x00]);
+    code.bytes(&0x0000_0404_u32.to_le_bytes()); // enable timer interrupt
+    code.jump("armed");
+
+    code.bind("immediate")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fee0_0300_u64.to_le_bytes()); // local APIC ICR low
+    code.bytes(&[0xc7, 0x00]);
+    code.bytes(&0x0004_40f2_u32.to_le_bytes()); // fixed self notification
+
+    code.bind("armed")?;
+    code.bytes(&[0xc6, 0x47, 0x29, 0x00]);
+    code.bytes(&[0xc6, 0x47, 0x28, 0x02]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn deadline_wait() -> Vec<u8> {
+    vec![
+        0xfb, 0xf4, 0xfa, // sti; hlt; restore sealed prior IF=0 state
+        0x80, 0x7f, 0x29, 0x01, // completion flag
+        0x75, 0xf7, // unrelated wake: wait again
+        0xc6, 0x47, 0x29, 0x00, // consume completion flag
+        0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3,
+    ]
+}
+
+fn deadline_complete() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x7f, 0x28, 0x02]); // armed
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0xb8]);
+    code.bytes(&0x0000_0000_fed0_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x8b, 0x80, 0xf0, 0x00, 0x00, 0x00]); // observed raw
+    code.bytes(&[0x48, 0x3b, 0x47, 0x18]); // no earlier than scheduled
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x89, 0x47, 0x30]); // retain observed raw
+    code.bytes(&[0x41, 0x81, 0xa0, 0x00, 0x01, 0x00, 0x00]);
+    code.bytes(&0xffff_fffb_u32.to_le_bytes()); // disable timer 0 interrupt
+    code.bytes(&[0x41, 0xc7, 0x40, 0x20, 0x01, 0x00, 0x00, 0x00]); // clear status
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fee0_00b0_u64.to_le_bytes());
+    code.bytes(&[0xc7, 0x00, 0x00, 0x00, 0x00, 0x00]); // local APIC EOI
+    code.bytes(&[0xc6, 0x47, 0x28, 0x03]); // completed
+    code.bytes(&[0xc6, 0x47, 0x29, 0x01]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
 }
 
@@ -1268,6 +1415,60 @@ mod tests {
             clock
                 .windows(8)
                 .any(|bytes| bytes == 0x4000_0000_0000_0000_u64.to_le_bytes())
+        );
+        let deadline_after = symbol_bytes(&file, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL);
+        assert!(
+            deadline_after
+                .windows(4)
+                .any(|bytes| bytes == 100_000_u32.to_le_bytes()),
+            "deadline construction must add exactly one millisecond of validated HPET ticks"
+        );
+        let deadline_arm = symbol_bytes(&file, X86_SYSTEMS_DEADLINE_ARM_SYMBOL);
+        for address in [
+            0x0000_0000_fed0_0000_u64,
+            0x0000_0000_fec0_0000_u64,
+            0x0000_0000_fee0_0300_u64,
+        ] {
+            assert!(
+                deadline_arm
+                    .windows(8)
+                    .any(|bytes| bytes == address.to_le_bytes())
+            );
+        }
+        assert!(
+            deadline_arm
+                .windows(4)
+                .any(|bytes| bytes == 0x0000_0404_u32.to_le_bytes()),
+            "deadline arm must select one-shot timer 0 delivery on Q35 route 2"
+        );
+        assert!(
+            deadline_arm
+                .windows(4)
+                .any(|bytes| bytes == 0x0004_40f2_u32.to_le_bytes()),
+            "an already-expired deadline must become immediately deliverable"
+        );
+        assert!(
+            deadline_arm
+                .windows(6)
+                .any(|bytes| bytes == [0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]),
+            "deadline wait must mask unrelated legacy PIC delivery"
+        );
+        let deadline_wait = symbol_bytes(&file, X86_SYSTEMS_DEADLINE_WAIT_SYMBOL);
+        assert!(
+            deadline_wait
+                .windows(3)
+                .any(|bytes| bytes == [0xfb, 0xf4, 0xfa])
+        );
+        let deadline_complete = symbol_bytes(&file, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL);
+        assert!(
+            deadline_complete
+                .windows(8)
+                .any(|bytes| bytes == 0x0000_0000_fed0_0000_u64.to_le_bytes())
+        );
+        assert!(
+            deadline_complete
+                .windows(8)
+                .any(|bytes| bytes == 0x0000_0000_fee0_00b0_u64.to_le_bytes())
         );
 
         let activator = file
