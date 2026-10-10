@@ -1318,14 +1318,18 @@ impl Parser<'_> {
             self.source.slice(first.span),
             "ArmedDeadline"
                 | "Bag"
+                | "CompletedKernelContextTransfer"
                 | "Deadline"
                 | "DeadlineInterruptContext"
                 | "DeadlineInterruptDisposition"
                 | "Instant"
+                | "KernelThreadContext"
+                | "KernelThreadDisposition"
                 | "List"
                 | "Optional"
                 | "Range"
                 | "Set"
+                | "SuspendedKernelContext"
         ) {
             let payload = self.generator_classifier()?;
             return Some(Span::new(first.span.start, payload.end));

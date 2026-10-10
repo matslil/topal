@@ -113,7 +113,24 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                   armed : ArmedDeadline InitialMonotonicClock is resumed deadline notification arm deadline
                                                                                   deadline-resumed is resumed deadline notification wait armed
                                                                                   deadline-resumed console write "TOPAL_KERNEL_DEADLINE_OK"
-                                                                                  deadline-resumed fatal "toolchain gate complete"
+                                                                                  deadline-resumed bootstrap allocate (
+                                                                                    byte-count is 16384,
+                                                                                    alignment-bytes is 16,
+                                                                                    placement is bootstrap-reclaimable
+                                                                                  )
+                                                                                    Ok stack-region then {
+                                                                                      worker : SuspendedKernelContext InitialProcessor is deadline-resumed kernel context create (
+                                                                                        stack is stack-region,
+                                                                                        entry is kernel-thread
+                                                                                      )
+                                                                                      completed : CompletedKernelContextTransfer InitialProcessor is deadline-resumed kernel context transfer worker
+                                                                                      deadline-resumed console write "TOPAL_KERNEL_CONTEXT_RESUMED"
+                                                                                      context-resumed is completed kernel context reclaim
+                                                                                      context-resumed fatal "toolchain gate complete"
+                                                                                    }
+                                                                                    Error problem then {
+                                                                                      deadline-resumed fatal "kernel context stack allocation failed"
+                                                                                    }
                                                                                 }
                                                                                 false then {
                                                                                   region is atomic end
@@ -229,6 +246,13 @@ deadline-notification-handler is fn (
   completed is context deadline notification complete
   completed resume
 
+kernel-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_ENTERED"
+  context kernel context retire to caller
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
@@ -237,5 +261,6 @@ lang systems artifact (
   bootstrap is lang systems bootstrap-entry boot,
   debug-break is lang systems synchronous-exception-entry debug-break-handler,
   local-notification is lang systems external-interrupt-entry local-notification-handler,
-  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler
+  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,
+  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler
 )
