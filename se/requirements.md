@@ -500,6 +500,17 @@ early, or late emission shall fail closed. The marker shall expose no mapping
 identity, address, permission representation, or target mechanism and shall
 not imply that the image can enter user execution.
 
+The bounded execution-residency qualification shall preserve the finalized
+RO/X code and RO/NX data mappings across preparation, entry, syscall and fault
+handling, exit, and exact kernel-continuation restoration of the sealed user
+probe. The probe shall not access or execute either constructed mapping.
+Source shall emit exactly one `TOPAL_KERNEL_USER_IMAGE_RETAINED` marker after
+return and before data-first teardown, and shall complete or reclaim the
+address space only after both mappings are revoked and their extents released.
+Construction placements shall not alias probe code, stack, transfer
+candidates, or deliberate fault guards. Early teardown, mutation, missing or
+early witness, or completion with either mapping live shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

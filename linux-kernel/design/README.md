@@ -45,6 +45,7 @@ records, not this directory alone, define language meaning.
 - [Sealed immutable user-mapping roles](user-mapping-image-roles.md)
 - [Bounded resident user-image mappings](resident-user-image-mappings.md)
 - [Resident user-image readiness witness](resident-user-image-readiness.md)
+- [Bounded user-image execution residency](user-image-execution-residency.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

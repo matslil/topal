@@ -473,6 +473,28 @@ encoding, page-table representation, or target completion mechanism and SHALL
 NOT imply readiness for user entry or constitute an application-image or
 loader interface.
 
+The bounded execution-residency refinement SHALL preserve the exact
+generation-one `ExecutableCodeMapping` and generation-two
+`ImmutableDataMapping` across preparation, entry, syscall dispatch, contained
+user-copy faults, terminal exit, and kernel-continuation restoration of the
+sealed initial probe. Probe execution SHALL borrow but SHALL NOT consume,
+duplicate, transfer, mutate, access, or execute either mapping.
+
+After the probe returns, source SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` console observation while both finalized
+mappings remain live. Source SHALL then unmap and release immutable data before
+unmapping and releasing executable code. User-execution completion and address-
+space reclaim SHALL require both mappings absent and both returned extents
+released.
+
+The provider SHALL prove that construction placements do not alias probe code,
+stack, user-transfer candidates, or the deliberate fault-guard range. Entry
+without both roles, teardown before exact return, mutation or substitution
+during execution, missing or early retained-image observation, completion with
+either mapping live, and recoverable exit with live construction authority
+SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
+contents or define a loader or general process-image interface.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

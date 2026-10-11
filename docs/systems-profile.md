@@ -623,6 +623,16 @@ mapping or access authority and exposes no address, permission encoding, or
 target representation. It is a bounded physical witness, not an application
 image, loader, or transfer into user execution.
 
+The bounded execution-residency refinement preserves both finalized mapping
+owners while the existing sealed user probe is prepared, entered, services its
+fixed syscall and fault-recovery sequence, exits, and returns to the exact
+kernel continuation. The probe does not access or execute constructed image
+contents. After return, source emits the exact
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` marker while both mappings remain live,
+then revokes and releases data before code and only afterward completes and
+reclaims the address space. Provider-private construction placements cannot
+alias probe code, stack, transfer candidates, or its deliberate fault guard.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
