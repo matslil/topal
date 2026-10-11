@@ -55,9 +55,9 @@ pub use topal_semantics::{
     SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -2956,7 +2956,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping publication must be followed by store, load, and unmap",
+            "user mapping publication must be followed by store, protect, load, and unmap",
         ));
     };
     let (stored_scratch, store_continuation) = parse_user_mapping_refinement(
@@ -2973,18 +2973,38 @@ fn analyze_kernel_context_decision(
         store_continuation,
         "store",
     )?;
-    let [load_mapping, scratch_after_load @ ..] = after_store else {
+    let [protect_mapping, scratch_after_protect @ ..] = after_store else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping store must be followed by load and unmap",
+            "user mapping store must be followed by protect, load, and unmap",
+        ));
+    };
+    let (protected_scratch, protect_continuation) = parse_user_mapping_protection(
+        source,
+        protect_mapping,
+        &completion_resumed,
+        &stored_scratch,
+    )?;
+    let after_protect = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_protect,
+        protect_continuation,
+        "protect",
+    )?;
+    let [load_mapping, scratch_after_load @ ..] = after_protect else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "protected user mapping must be loaded before unmap",
         ));
     };
     let (verified_scratch, load_continuation) = parse_user_mapping_refinement(
         source,
         load_mapping,
         &completion_resumed,
-        &stored_scratch,
+        &protected_scratch,
         "load",
     )?;
     let after_load = select_user_mapping_continuation(
@@ -3040,7 +3060,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "second user mapping publication must be followed by store, load, and unmap",
+            "second user mapping publication must be followed by store, protect, load, and unmap",
         ));
     };
     let (stored_scratch_again, store_again_continuation) = parse_user_mapping_refinement(
@@ -3057,18 +3077,38 @@ fn analyze_kernel_context_decision(
         store_again_continuation,
         "second store",
     )?;
-    let [load_mapping_again, after_second_load @ ..] = after_second_store else {
+    let [protect_mapping_again, after_second_protect @ ..] = after_second_store else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second user mapping store must be followed by load and unmap",
+            "second user mapping store must be followed by protect, load, and unmap",
+        ));
+    };
+    let (protected_scratch_again, protect_again_continuation) = parse_user_mapping_protection(
+        source,
+        protect_mapping_again,
+        &completion_resumed,
+        &stored_scratch_again,
+    )?;
+    let after_second_protect = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_protect,
+        protect_again_continuation,
+        "second protect",
+    )?;
+    let [load_mapping_again, after_second_load @ ..] = after_second_protect else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second protected user mapping must be loaded before unmap",
         ));
     };
     let (verified_scratch_again, load_again_continuation) = parse_user_mapping_refinement(
         source,
         load_mapping_again,
         &completion_resumed,
-        &stored_scratch_again,
+        &protected_scratch_again,
         "load",
     )?;
     let after_second_load = select_user_mapping_continuation(
@@ -3325,10 +3365,12 @@ fn analyze_kernel_context_decision(
             },
             CompilerSystemsOperation::MapUserAddressSpace,
             CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::MapUserAddressSpace,
             CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -3631,6 +3673,56 @@ fn parse_user_mapping_refinement<'a>(
             source,
             *span,
             format!("user mapping {operation} requires the exact preceding mapping refinement"),
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_protection<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping protection must bind its read-only affine refinement",
+            ));
+        }
+    };
+    let [receiver, user, mapping, protect, read, only, stored_mapping] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping protection requires the exact stored mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, protect, "protect")
+        || !identifier_is(source, read, "read")
+        || !identifier_is(source, only, "only")
+        || !identifier_is(source, stored_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping protect read only requires the exact stored mapping refinement",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -5288,6 +5380,7 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -5689,6 +5782,9 @@ mod tests {
                 CompilerSystemsTransition::StoreUserMappingByte {
                     mapping_identity: 1,
                 },
+                CompilerSystemsTransition::ProtectUserMappingReadOnly {
+                    mapping_identity: 1,
+                },
                 CompilerSystemsTransition::LoadUserMappingByte {
                     mapping_identity: 1,
                 },
@@ -5701,6 +5797,9 @@ mod tests {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::ProtectUserMappingReadOnly {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::LoadUserMappingByte {
@@ -5876,7 +5975,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 109);
+        assert_eq!(program.bootstrap.handler.operations.len(), 111);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -5920,6 +6019,7 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,

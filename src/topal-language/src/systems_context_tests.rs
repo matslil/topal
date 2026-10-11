@@ -239,8 +239,15 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
+                "user mapping protect read only stored-scratch",
+                "user mapping protect read only mapped-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "user mapping load byte protected-scratch",
                 "user mapping load byte stored-scratch",
-                "user mapping load byte mapped-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
@@ -263,6 +270,13 @@ fn requires_exact_affine_user_syscall_round_trip() {
             SOURCE.replace(
                 "user mapping store byte mapped-scratch-again",
                 "user mapping store byte mapped-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "user mapping protect read only stored-scratch-again",
+                "user mapping protect read only stored-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

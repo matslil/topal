@@ -195,7 +195,8 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                 layout is probe-guard
                                                                                                               )
                                                                                                               stored-scratch is completion-resumed user mapping store byte mapped-scratch
-                                                                                                              verified-scratch is completion-resumed user mapping load byte stored-scratch
+                                                                                                              protected-scratch is completion-resumed user mapping protect read only stored-scratch
+                                                                                                              verified-scratch is completion-resumed user mapping load byte protected-scratch
                                                                                                               returned-scratch is completion-resumed user address space unmap (
                                                                                                                 address-space is user-space,
                                                                                                                 mapping is verified-scratch
@@ -206,7 +207,8 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                 layout is probe-guard
                                                                                                               )
                                                                                                               stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
-                                                                                                              verified-scratch-again is completion-resumed user mapping load byte stored-scratch-again
+                                                                                                              protected-scratch-again is completion-resumed user mapping protect read only stored-scratch-again
+                                                                                                              verified-scratch-again is completion-resumed user mapping load byte protected-scratch-again
                                                                                                               returned-scratch-again is completion-resumed user address space unmap (
                                                                                                                 address-space is user-space,
                                                                                                                 mapping is verified-scratch-again
