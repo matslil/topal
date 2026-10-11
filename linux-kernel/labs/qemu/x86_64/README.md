@@ -156,7 +156,9 @@ input-direction zero-duration `nanosleep` transfers, issues `exit_group(0)`,
 and restores the exact kernel continuation. The last marker additionally
 requires the allocator-backed user code, stack, and leaf-table extent to have
 its mappings revoked, its three relevant virtual locations invalidated, its
-exact affine ownership returned, and the extent released by source. The harness
+opaque address-space state reclaimed, its exact affine ownership returned, and
+the extent released by source. Construction, user-context binding, revocation,
+and reclaim are separate checked operations in the artifact trace. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,

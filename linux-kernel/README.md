@@ -184,6 +184,13 @@ code/stack/translation roles, complete mapping revocation, exact extent return
 and release, and two deterministic pinned-QEMU runs. It changes only the
 systems profile and does not change the core language.
 
+The next systems-only refinement separates that backing into an
+[opaque user-address-space lifecycle](design/opaque-user-address-space.md).
+Its [implementation and qualification report](step-4-opaque-user-address-space.md)
+records distinct preparation, context binding, revocation, reclaim, and release
+transitions; split x86-64 provider operations; and two deterministic pinned-
+QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -286,6 +293,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 fault-contained `copy_to_user` and `uname`](step-4-user-copy-to-uname.md)
 - [Step 4 fault-contained `copy_from_user` and zero-duration `nanosleep`](step-4-user-copy-from-timespec.md)
 - [Step 4 allocator-backed user probe](step-4-allocator-backed-user-probe.md)
+- [Step 4 opaque user-address-space lifecycle](step-4-opaque-user-address-space.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
