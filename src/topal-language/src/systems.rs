@@ -2902,18 +2902,79 @@ fn analyze_kernel_context_decision(
         &completion_resumed,
         &user_frames,
     )?;
-    let [prepare_user, address_space_rest @ ..] = address_space_continuation else {
+    let (scratch_subject, scratch_frames, scratch_success, _scratch_problem, scratch_failure, _) =
+        result_sequence(
+            source,
+            address_space_continuation,
+            "disjoint frame allocation",
+        )?;
+    let scratch_request =
+        parse_physical_frame_allocation(source, scratch_subject, &completion_resumed)?;
+    if scratch_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            scratch_subject.span(),
+            "the disjoint live-extent probe requires exactly one frame aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: scratch_failure_message,
+    } = action_disposition(source, scratch_failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            scratch_failure.span(),
+            "disjoint frame allocation failure must preserve the allocator context and enter `fatal`",
+        ));
+    };
+    let scratch_statements =
+        action_block(source, scratch_success, "disjoint frame allocation success")?;
+    let [
+        release_scratch,
+        disjoint_marker_statement,
+        prepare_user,
+        scratch_rest @ ..,
+    ] = scratch_statements
+    else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "prepared user address space must be consumed by one affine user-probe scope",
+            "disjoint frame allocation success must release its exact extent, publish its marker, and consume the prepared user address space",
         ));
     };
+    parse_physical_frame_release(
+        source,
+        release_scratch,
+        &completion_resumed,
+        &scratch_frames,
+    )?;
+    let disjoint_marker = analyze_operation(
+        source,
+        disjoint_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if disjoint_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(disjoint_marker_statement),
+            "disjoint frame release requires its exact marker",
+        ));
+    }
     let (user_probe, probe_continuation) =
         parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_space)?;
-    let user_continuation = match (address_space_rest.is_empty(), probe_continuation.is_empty()) {
+    let user_continuation = match (scratch_rest.is_empty(), probe_continuation.is_empty()) {
         (true, false) => probe_continuation,
-        (false, true) => address_space_rest,
+        (false, true) => scratch_rest,
         _ => {
             return Err(user_context_diagnostic(
                 source,
@@ -3075,6 +3136,12 @@ fn analyze_kernel_context_decision(
                 failure_message: backing_failure,
             },
             CompilerSystemsOperation::PrepareUserAddressSpace,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: scratch_request,
+                failure_message: scratch_failure_message,
+            },
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            disjoint_marker,
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
             },
@@ -5152,6 +5219,16 @@ mod tests {
                 CompilerSystemsTransition::PrepareUserAddressSpace {
                     address_space_identity: 1,
                 },
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                },
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -5311,7 +5388,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 97);
+        assert_eq!(program.bootstrap.handler.operations.len(), 100);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

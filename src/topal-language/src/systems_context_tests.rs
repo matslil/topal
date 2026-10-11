@@ -219,6 +219,24 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            replace_last(SOURCE, "frame-count is 1", "frame-count is 2"),
+            "E-SYSTEMS-FRAMES",
+        ),
+        (
+            SOURCE.replace(
+                "completion-resumed frames release scratch-frame",
+                "completion-resumed frames release other-scratch",
+            ),
+            "E-SYSTEMS-FRAMES",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_FRAME_DISJOINT_OK",
+                "TOPAL_KERNEL_FRAME_DISJOINT_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "completion-resumed frames release returned-frames",
                 "completion-resumed frames release user-frames",
@@ -251,4 +269,9 @@ fn requires_exact_affine_user_syscall_round_trip() {
         .unwrap_err();
         assert_eq!(error.code, expected_code, "{}", error.message);
     }
+}
+
+fn replace_last(source: &str, from: &str, to: &str) -> String {
+    let (prefix, suffix) = source.rsplit_once(from).expect("fixture contains probe text");
+    format!("{prefix}{to}{suffix}")
 }

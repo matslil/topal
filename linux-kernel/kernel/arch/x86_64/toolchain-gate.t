@@ -184,19 +184,30 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                           backing is user-frames,
                                                                                                           layout is initial-probe
                                                                                                         )
-                                                                                                          user-probe is completion-resumed user probe prepare (
-                                                                                                            process-identity is 1,
-                                                                                                            address-space is user-space
+                                                                                                          completion-resumed frames allocate (
+                                                                                                            frame-count is 1,
+                                                                                                            alignment-frames is 1
                                                                                                           )
-                                                                                                          user-completed is completion-resumed user context enter user-probe
-                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
-                                                                                                          revoked-space is completion-resumed user execution complete user-completed
-                                                                                                          returned-frames is completion-resumed user address space reclaim revoked-space
-                                                                                                          completion-resumed frames release returned-frames
-                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
-                                                                                                          completion-resumed fatal "toolchain gate complete"
+                                                                                                            Ok scratch-frame then {
+                                                                                                              completion-resumed frames release scratch-frame
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
+                                                                                                              user-probe is completion-resumed user probe prepare (
+                                                                                                                process-identity is 1,
+                                                                                                                address-space is user-space
+                                                                                                              )
+                                                                                                              user-completed is completion-resumed user context enter user-probe
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                              revoked-space is completion-resumed user execution complete user-completed
+                                                                                                              returned-frames is completion-resumed user address space reclaim revoked-space
+                                                                                                              completion-resumed frames release returned-frames
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                              completion-resumed fatal "toolchain gate complete"
+                                                                                                            }
+                                                                                                            Error problem then {
+                                                                                                              completion-resumed fatal "disjoint frame allocation failed"
+                                                                                                            }
                                                                                                       }
                                                                                                       Error problem then {
                                                                                                         completion-resumed fatal "user backing allocation failed"
