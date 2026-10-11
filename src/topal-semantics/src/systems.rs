@@ -31,6 +31,7 @@ use crate::{
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
     SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
     SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE,
@@ -202,11 +203,13 @@ pub enum SystemsOperation {
     ReclaimKernelContext,
     ConsumeKernelCompletion,
     ConsumeEmptyRunnableQueue,
+    PrepareUserAddressSpace,
     PrepareUserProbe {
         process_identity: u64,
     },
     EnterUserContext,
     CompleteUserExecution,
+    ReclaimUserAddressSpace,
     CopyInitialUnameToUser,
     CopyInitialTimespecFromUser,
 }
@@ -267,9 +270,11 @@ impl SystemsOperation {
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+            Self::PrepareUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
+            Self::ReclaimUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
             Self::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
             Self::CopyInitialTimespecFromUser => SYSTEMS_USER_COPY_FROM,
         }
@@ -538,6 +543,9 @@ pub enum SystemsTransition {
     ConsumeKernelCompletion {
         completion_identity: u64,
     },
+    PrepareUserAddressSpace {
+        address_space_identity: u64,
+    },
     PrepareUserProbe {
         process_identity: u64,
         probe_identity: u64,
@@ -593,6 +601,9 @@ pub enum SystemsTransition {
     },
     CompleteUserExecution {
         process_identity: u64,
+    },
+    ReclaimUserAddressSpace {
+        address_space_identity: u64,
     },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
@@ -727,6 +738,7 @@ impl SystemsTransition {
             Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             Self::ConsumeKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CONSUME,
+            Self::PrepareUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
             Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
@@ -740,6 +752,7 @@ impl SystemsTransition {
             Self::TerminateUser { .. } => SYSTEMS_USER_TERMINATE,
             Self::ResumeUserKernelContinuation { .. } => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution { .. } => SYSTEMS_USER_CONTEXT_COMPLETE,
+            Self::ReclaimUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -912,9 +925,11 @@ fn validate_entry(
                     | SystemsOperation::ReclaimKernelContext
                     | SystemsOperation::ConsumeKernelCompletion
                     | SystemsOperation::ConsumeEmptyRunnableQueue
+                    | SystemsOperation::PrepareUserAddressSpace
                     | SystemsOperation::PrepareUserProbe { .. }
                     | SystemsOperation::EnterUserContext
                     | SystemsOperation::CompleteUserExecution
+                    | SystemsOperation::ReclaimUserAddressSpace
             );
             bootstrap_only
                 || (required_context != SystemsContextKind::KernelThread
@@ -1208,8 +1223,10 @@ enum BootstrapKernelCompletionState {
 enum BootstrapUserExecutionState {
     #[default]
     Fresh,
+    AddressSpacePrepared(PhysicalFrameRequest),
     Prepared(PhysicalFrameRequest),
     Completed(PhysicalFrameRequest),
+    Revoked(PhysicalFrameRequest),
     Consumed,
 }
 
@@ -1748,23 +1765,39 @@ impl BootstrapAuthorityState {
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
         match operation {
-            SystemsOperation::PrepareUserProbe { process_identity } => {
+            SystemsOperation::PrepareUserAddressSpace => {
                 if self.kernel_context != BootstrapKernelContextState::QueueConsumed
                     || self.kernel_completion != BootstrapKernelCompletionState::Consumed
                     || self.user_execution != BootstrapUserExecutionState::Fresh
                     || self.memory_ownership
                         != BootstrapMemoryOwnership::Frames(INITIAL_MULTI_FRAME_REQUEST)
-                    || *process_identity != 1
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user probe preparation requires completed kernel-context cleanup, PID one, its exact three-frame backing, and no live critical scope",
+                        "user-address-space preparation requires completed kernel-context cleanup, its exact three-frame backing, and no live critical scope",
                     ));
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::None;
                 self.user_execution =
-                    BootstrapUserExecutionState::Prepared(INITIAL_MULTI_FRAME_REQUEST);
+                    BootstrapUserExecutionState::AddressSpacePrepared(INITIAL_MULTI_FRAME_REQUEST);
+            }
+            SystemsOperation::PrepareUserProbe { process_identity } => {
+                let BootstrapUserExecutionState::AddressSpacePrepared(backing) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe preparation requires the exact prepared user address space",
+                    ));
+                };
+                if *process_identity != 1 || !self.critical_stack.is_empty() {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe preparation requires PID one, the exact prepared address space, and no live critical scope",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Prepared(backing);
             }
             SystemsOperation::EnterUserContext => {
                 let BootstrapUserExecutionState::Prepared(backing) = self.user_execution else {
@@ -1786,6 +1819,15 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user completion requires terminal exit_group restoration",
+                    ));
+                };
+                self.user_execution = BootstrapUserExecutionState::Revoked(backing);
+            }
+            SystemsOperation::ReclaimUserAddressSpace => {
+                let BootstrapUserExecutionState::Revoked(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user-address-space reclaim requires the exact revoked address space",
                     ));
                 };
                 self.user_execution = BootstrapUserExecutionState::Consumed;
@@ -2283,9 +2325,11 @@ fn validate_bootstrap_storage_operation(
             storage.release(released)?;
         }
         SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
-        SystemsOperation::PrepareUserProbe { .. }
+        SystemsOperation::PrepareUserAddressSpace
+        | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
-        | SystemsOperation::CompleteUserExecution => {}
+        | SystemsOperation::CompleteUserExecution
+        | SystemsOperation::ReclaimUserAddressSpace => {}
         _ => unreachable!("authority or atomic operations continue above"),
     }
     Ok(())
@@ -2431,6 +2475,11 @@ fn model_user_execution_transition(
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::PrepareUserAddressSpace => {
+            transitions.push(SystemsTransition::PrepareUserAddressSpace {
+                address_space_identity: 1,
+            });
+        }
         SystemsOperation::PrepareUserProbe { process_identity } => {
             if suspended.is_some() || completed.is_some() {
                 return Err(SystemsModelError::new(
@@ -2711,6 +2760,11 @@ fn model_user_execution_transition(
             })?)?;
             transitions.push(SystemsTransition::CompleteUserExecution {
                 process_identity: summary.process_identity,
+            });
+        }
+        SystemsOperation::ReclaimUserAddressSpace => {
+            transitions.push(SystemsTransition::ReclaimUserAddressSpace {
+                address_space_identity: 1,
             });
         }
         _ => return Ok(false),
@@ -3597,9 +3651,11 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
         }
-        SystemsOperation::PrepareUserProbe { .. }
+        SystemsOperation::PrepareUserAddressSpace
+        | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution
+        | SystemsOperation::ReclaimUserAddressSpace
         | SystemsOperation::CopyInitialUnameToUser
         | SystemsOperation::CopyInitialTimespecFromUser => {
             unreachable!("user-execution operations are modeled by the caller")

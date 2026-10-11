@@ -211,6 +211,14 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("layout is initial-probe", "layout is other-layout"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("address-space is user-space", "address-space is other-space"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "completion-resumed frames release returned-frames",
                 "completion-resumed frames release user-frames",
@@ -219,8 +227,15 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "returned-frames is completion-resumed user execution complete user-completed",
+                "revoked-space is completion-resumed user execution complete user-completed",
                 "completion-resumed user execution complete user-completed",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "returned-frames is completion-resumed user address space reclaim revoked-space",
+                "returned-frames is completion-resumed user address space reclaim other-space",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

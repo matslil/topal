@@ -3,6 +3,10 @@
 use crate::SystemsModelError;
 
 pub const SYSTEMS_USER_CONTEXT_PREPARE: &str = "topal.systems.context.user.probe.prepare/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_PREPARE: &str =
+    "topal.systems.memory.user-address-space.prepare/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_RECLAIM: &str =
+    "topal.systems.memory.user-address-space.reclaim/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
 pub const SYSTEMS_USER_SYSCALL_ENTRY: &str = "topal.systems.entry.user-syscall/1";
 pub const SYSTEMS_USER_SYSCALL_DISPATCH: &str =

@@ -51,6 +51,7 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
     SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
     SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
@@ -2888,21 +2889,46 @@ fn analyze_kernel_context_decision(
         ));
     };
     let user_statements = action_block(source, success, "user backing allocation success")?;
-    let [prepare_user] = user_statements else {
+    let [prepare_address_space] = user_statements else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "user backing success must begin with one affine user-probe preparation scope",
+            "user backing success must begin with one affine user-address-space preparation scope",
         ));
     };
-    let (user_probe, user_continuation) =
-        parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_frames)?;
+    let (user_space, address_space_continuation) = parse_user_address_space_prepare(
+        source,
+        prepare_address_space,
+        &completion_resumed,
+        &user_frames,
+    )?;
+    let [prepare_user, address_space_rest @ ..] = address_space_continuation else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "prepared user address space must be consumed by one affine user-probe scope",
+        ));
+    };
+    let (user_probe, probe_continuation) =
+        parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_space)?;
+    let user_continuation = match (address_space_rest.is_empty(), probe_continuation.is_empty()) {
+        (true, false) => probe_continuation,
+        (false, true) => address_space_rest,
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                span,
+                "prepared user address space must transfer exactly one continuation into its user probe",
+            ));
+        }
+    };
     let [
         enter_user,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
         complete_user,
+        reclaim_user_space,
         release_user_frames,
         backing_marker_statement,
         disposition,
@@ -2911,7 +2937,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user probe preparation must enter, complete, release, publish its marker, and reach disposition",
+            "user probe preparation must enter, revoke, reclaim, release, publish its marker, and reach disposition",
         ));
     };
     let user_completed =
@@ -2967,8 +2993,14 @@ fn analyze_kernel_context_decision(
             "user syscall round trip requires its exact marker",
         ));
     }
-    let returned_frames =
+    let revoked_space =
         parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
+    let returned_frames = parse_user_address_space_reclaim(
+        source,
+        reclaim_user_space,
+        &completion_resumed,
+        &revoked_space,
+    )?;
     parse_physical_frame_release(
         source,
         release_user_frames,
@@ -3042,6 +3074,7 @@ fn analyze_kernel_context_decision(
                 request: backing_request,
                 failure_message: backing_failure,
             },
+            CompilerSystemsOperation::PrepareUserAddressSpace,
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
             },
@@ -3050,6 +3083,7 @@ fn analyze_kernel_context_decision(
             user_copy_from_marker,
             user_marker,
             CompilerSystemsOperation::CompleteUserExecution,
+            CompilerSystemsOperation::ReclaimUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             backing_marker,
         ],
@@ -3108,7 +3142,7 @@ fn parse_kernel_context_create(
     Ok(source.slice(*name).to_owned())
 }
 
-fn parse_user_probe_prepare<'a>(
+fn parse_user_address_space_prepare<'a>(
     source: &SourceText,
     statement: &'a Statement,
     context_name: &str,
@@ -3124,8 +3158,101 @@ fn parse_user_probe_prepare<'a>(
         return Err(user_context_diagnostic(
             source,
             statement_span(statement),
-            "user probe preparation must bind one classified suspended user context",
+            "user-address-space preparation must bind one opaque affine space",
         ));
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        prepare,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space preparation requires named `backing` and `layout` parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, prepare, "prepare")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user address space requires the exact three-frame backing and sealed initial-probe layout",
+        ));
+    }
+    let mut backing = None;
+    let mut layout = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user-address-space preparation parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user-address-space preparation values must use the live backing and sealed layout identity",
+            ));
+        };
+        match source.slice(label) {
+            "backing" => backing = Some(source.slice(value)),
+            "layout" => layout = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user-address-space preparation parameter",
+                ));
+            }
+        }
+    }
+    if backing != Some(backing_name) || layout != Some("initial-probe") {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user address space requires the exact three-frame backing and sealed initial-probe layout",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_probe_prepare<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user probe preparation must bind one classified suspended user context",
+            ));
+        }
     };
     let [
         receiver,
@@ -3154,7 +3281,7 @@ fn parse_user_probe_prepare<'a>(
         ));
     }
     let mut process_identity = None;
-    let mut backing = None;
+    let mut address_space = None;
     for field in fields {
         let Some(label) = field.label else {
             return Err(user_context_diagnostic(
@@ -3167,15 +3294,15 @@ fn parse_user_probe_prepare<'a>(
             "process-identity" => {
                 process_identity = Some(parse_storage_natural(source, &field.value)?);
             }
-            "backing" => {
+            "address-space" => {
                 let Expression::Identifier(name) = field.value else {
                     return Err(user_context_diagnostic(
                         source,
                         field.value.span(),
-                        "user probe backing must be the live affine frame extent",
+                        "user probe address space must be the live opaque prepared space",
                     ));
                 };
-                backing = Some(source.slice(name));
+                address_space = Some(source.slice(name));
             }
             _ => {
                 return Err(user_context_diagnostic(
@@ -3186,11 +3313,11 @@ fn parse_user_probe_prepare<'a>(
             }
         }
     }
-    if process_identity != Some(1) || backing != Some(backing_name) {
+    if process_identity != Some(1) || address_space != Some(address_space_name) {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "the initial suspended user probe requires process identity one and its exact three-frame backing extent",
+            "the initial suspended user probe requires process identity one and its exact prepared address space",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -3271,6 +3398,47 @@ fn parse_user_execution_complete(
             source,
             *span,
             "user completion must consume the exact terminal execution result",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_address_space_reclaim(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    revoked_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user-address-space reclaim must bind the returned affine frame extent",
+        ));
+    };
+    let [receiver, user, address, space, reclaim, revoked] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space reclaim must consume one revoked space",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, reclaim, "reclaim")
+        || !identifier_is(source, revoked, revoked_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space reclaim must consume the exact revoked space",
         ));
     }
     Ok(source.slice(*name).to_owned())
@@ -4595,6 +4763,8 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -4979,6 +5149,9 @@ mod tests {
                         alignment_frames: 1,
                     },
                 },
+                CompilerSystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity: 1,
+                },
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -5115,6 +5288,9 @@ mod tests {
                 CompilerSystemsTransition::CompleteUserExecution {
                     process_identity: 1,
                 },
+                CompilerSystemsTransition::ReclaimUserAddressSpace {
+                    address_space_identity: 1,
+                },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
@@ -5135,7 +5311,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 95);
+        assert_eq!(program.bootstrap.handler.operations.len(), 97);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -5174,6 +5350,8 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,

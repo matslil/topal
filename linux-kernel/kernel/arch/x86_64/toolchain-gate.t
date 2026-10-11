@@ -180,18 +180,23 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                       alignment-frames is 1
                                                                                                     )
                                                                                                       Ok user-frames then {
-                                                                                                        user-probe is completion-resumed user probe prepare (
-                                                                                                          process-identity is 1,
-                                                                                                          backing is user-frames
+                                                                                                        user-space is completion-resumed user address space prepare (
+                                                                                                          backing is user-frames,
+                                                                                                          layout is initial-probe
                                                                                                         )
-                                                                                                        user-completed is completion-resumed user context enter user-probe
-                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
-                                                                                                        returned-frames is completion-resumed user execution complete user-completed
-                                                                                                        completion-resumed frames release returned-frames
-                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
-                                                                                                        completion-resumed fatal "toolchain gate complete"
+                                                                                                          user-probe is completion-resumed user probe prepare (
+                                                                                                            process-identity is 1,
+                                                                                                            address-space is user-space
+                                                                                                          )
+                                                                                                          user-completed is completion-resumed user context enter user-probe
+                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                          revoked-space is completion-resumed user execution complete user-completed
+                                                                                                          returned-frames is completion-resumed user address space reclaim revoked-space
+                                                                                                          completion-resumed frames release returned-frames
+                                                                                                          completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                          completion-resumed fatal "toolchain gate complete"
                                                                                                       }
                                                                                                       Error problem then {
                                                                                                         completion-resumed fatal "user backing allocation failed"
