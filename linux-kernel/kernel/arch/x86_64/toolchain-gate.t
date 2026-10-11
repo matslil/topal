@@ -64,12 +64,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                             Ok unmapped then {
                                                               unmapped console write "TOPAL_KERNEL_TRANSLATION_EDITED"
                                                               unmapped frames release removed-frames
-                                                              unmapped critical enter (
-                                                                domain is local-maskable-interrupts
+                                                              unmapped frames allocate (
+                                                                frame-count is 3,
+                                                                alignment-frames is 1
                                                               )
-                                                                Ok critical then {
-                                                                  critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
-                                                                  restored is critical restore
+                                                                Ok frame-extent then {
+                                                                  unmapped console write "TOPAL_KERNEL_FRAME_EXTENT_OK"
+                                                                  unmapped frames release frame-extent
+                                                                  unmapped critical enter (
+                                                                    domain is local-maskable-interrupts
+                                                                  )
+                                                                    Ok critical then {
+                                                                      critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                      restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
@@ -209,8 +216,12 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                       restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                Error failure then {
-                                                                  failure fatal "critical entry failed"
+                                                                    Error failure then {
+                                                                      failure fatal "critical entry failed"
+                                                                    }
+                                                                }
+                                                                Error problem then {
+                                                                  unmapped fatal "multi-frame allocation failed"
                                                                 }
                                                             }
                                                             Error failure then {

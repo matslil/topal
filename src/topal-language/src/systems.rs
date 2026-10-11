@@ -4571,6 +4571,16 @@ mod tests {
                     text: "TOPAL_KERNEL_TRANSLATION_EDITED".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 3,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_EXTENT_OK".into(),
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::EnterCritical {
                     domain: CompilerCriticalDomain::LocalMaskableInterrupts,
                     nesting_identity: 1,
@@ -4999,7 +5009,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 89);
+        assert_eq!(program.bootstrap.handler.operations.len(), 92);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -5311,14 +5321,24 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replace("frame-count is 1", "frame-count is 2"),
+                SOURCE.replacen("frame-count is 1", "frame-count is 2", 1),
                 "E-SYSTEMS-FRAMES",
-                "exactly one frame",
+                "only one or three frames",
+            ),
+            (
+                SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
+                "E-SYSTEMS-FRAMES",
+                "initial kernel-mapping probe requires exactly one frame",
+            ),
+            (
+                SOURCE.replace("frame-count is 3", "frame-count is 2"),
+                "E-SYSTEMS-FRAMES",
+                "only one or three frames",
             ),
             (
                 SOURCE.replace("alignment-frames is 1", "alignment-frames is 2"),
                 "E-SYSTEMS-FRAMES",
-                "aligned to one frame",
+                "unit alignment",
             ),
             (
                 SOURCE.replace(
