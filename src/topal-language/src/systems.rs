@@ -3167,8 +3167,11 @@ fn analyze_kernel_context_decision(
         seal_again_continuation,
         "second immutable-data seal",
     )?;
-    let [image_ready_marker_statement, unmap_mapping_again, after_second_unmap @ ..] =
-        after_second_seal
+    let [
+        image_ready_marker_statement,
+        unmap_mapping_again,
+        after_second_unmap @ ..,
+    ] = after_second_seal
     else {
         return Err(user_context_diagnostic(
             source,

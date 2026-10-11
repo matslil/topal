@@ -2028,9 +2028,7 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::MappingImmutableData(backing, generation);
                 self.memory_ownership = BootstrapMemoryOwnership::None;
             }
-            SystemsOperation::ConsoleWrite { text }
-                if text == "TOPAL_KERNEL_USER_IMAGE_READY" =>
-            {
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_IMAGE_READY" => {
                 if self.user_execution
                     != BootstrapUserExecutionState::MappingImmutableData(
                         INITIAL_MULTI_FRAME_REQUEST,

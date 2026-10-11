@@ -169,8 +169,10 @@ generations and clear writable authority before each load. It then promotes
 the first verified RO/NX mapping to role-specific RO/X code with target
 invalidation and retains it while a separately allocated, disjoint frame is
 mapped at the sealed data location. The second mapping remains RO/NX when it
-is sealed as immutable data, so both role owners coexist before data-first and
-code-second revocation return their exact frames. The harness
+is sealed as immutable data. The intervening
+`TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
+coexist, before data-first and code-second revocation return their exact
+frames. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
