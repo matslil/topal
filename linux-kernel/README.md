@@ -221,6 +221,14 @@ records fresh opaque identities, complete inter-generation revocation,
 provider-state reset, exact final frame return, and two deterministic pinned-
 QEMU runs without changing core-language meaning.
 
+The current systems-only refinement adds
+[affine user-mapping permission tightening](design/user-mapping-permission-tightening.md)
+to both generations. Its
+[implementation and qualification report](step-4-user-mapping-permission-tightening.md)
+records the stored-to-protected ownership transition, provider-private x86-64
+RW-to-RO publication and invalidation, structural inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -328,6 +336,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 sealed user-mapping round trip](step-4-sealed-user-mapping-round-trip.md)
 - [Step 4 affine user-mapping lifecycle](step-4-affine-user-mapping-lifecycle.md)
 - [Step 4 sequential user-mapping generations](step-4-sequential-user-mapping-generations.md)
+- [Step 4 user-mapping permission tightening](step-4-user-mapping-permission-tightening.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
