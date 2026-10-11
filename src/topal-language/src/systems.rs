@@ -3008,12 +3008,96 @@ fn analyze_kernel_context_decision(
         &user_space,
         &verified_scratch,
     )?;
-    let scratch_continuation = select_user_mapping_continuation(
+    let after_first_unmap = select_user_mapping_continuation(
         source,
         span,
         scratch_after_unmap,
         unmap_continuation,
         "unmap",
+    )?;
+    let [map_mapping_again, after_second_map @ ..] = after_first_unmap else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "the returned user-mapping extent must enter one fresh mapping generation",
+        ));
+    };
+    let (mapped_scratch_again, map_again_continuation) = parse_user_address_space_map(
+        source,
+        map_mapping_again,
+        &completion_resumed,
+        &user_space,
+        &returned_scratch,
+    )?;
+    let after_second_map = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_map,
+        map_again_continuation,
+        "second map",
+    )?;
+    let [store_mapping_again, after_second_store @ ..] = after_second_map else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping publication must be followed by store, load, and unmap",
+        ));
+    };
+    let (stored_scratch_again, store_again_continuation) = parse_user_mapping_refinement(
+        source,
+        store_mapping_again,
+        &completion_resumed,
+        &mapped_scratch_again,
+        "store",
+    )?;
+    let after_second_store = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_store,
+        store_again_continuation,
+        "second store",
+    )?;
+    let [load_mapping_again, after_second_load @ ..] = after_second_store else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping store must be followed by load and unmap",
+        ));
+    };
+    let (verified_scratch_again, load_again_continuation) = parse_user_mapping_refinement(
+        source,
+        load_mapping_again,
+        &completion_resumed,
+        &stored_scratch_again,
+        "load",
+    )?;
+    let after_second_load = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_load,
+        load_again_continuation,
+        "second load",
+    )?;
+    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_load else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping load must be followed by unmap",
+        ));
+    };
+    let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_mapping_again,
+        &completion_resumed,
+        &user_space,
+        &verified_scratch_again,
+    )?;
+    let scratch_continuation = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_unmap,
+        unmap_again_continuation,
+        "second unmap",
     )?;
     let [
         release_scratch,
@@ -3033,7 +3117,7 @@ fn analyze_kernel_context_decision(
         source,
         release_scratch,
         &completion_resumed,
-        &returned_scratch,
+        &returned_scratch_again,
     )?;
     let mapping_marker = analyze_operation(
         source,

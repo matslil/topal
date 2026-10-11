@@ -250,10 +250,28 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "completion-resumed frames release returned-scratch",
+                "completion-resumed frames release returned-scratch-again",
                 "completion-resumed frames release other-scratch",
             ),
             "E-SYSTEMS-FRAMES",
+        ),
+        (
+            SOURCE.replace("backing is returned-scratch", "backing is scratch-frame"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "user mapping store byte mapped-scratch-again",
+                "user mapping store byte mapped-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "mapping is verified-scratch-again",
+                "mapping is verified-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(

@@ -200,7 +200,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                 address-space is user-space,
                                                                                                                 mapping is verified-scratch
                                                                                                               )
-                                                                                                              completion-resumed frames release returned-scratch
+                                                                                                              mapped-scratch-again is completion-resumed user address space map (
+                                                                                                                address-space is user-space,
+                                                                                                                backing is returned-scratch,
+                                                                                                                layout is probe-guard
+                                                                                                              )
+                                                                                                              stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
+                                                                                                              verified-scratch-again is completion-resumed user mapping load byte stored-scratch-again
+                                                                                                              returned-scratch-again is completion-resumed user address space unmap (
+                                                                                                                address-space is user-space,
+                                                                                                                mapping is verified-scratch-again
+                                                                                                              )
+                                                                                                              completion-resumed frames release returned-scratch-again
                                                                                                               completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
                                                                                                               completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
                                                                                                               user-probe is completion-resumed user probe prepare (
