@@ -482,6 +482,16 @@ data generation, data sealing of the code generation, unclassified unmap,
 write-authority restoration, or W+X authority shall fail closed. Both roles
 shall remain opaque and shall be revoked before frame return.
 
+The bounded resident-image refinement shall allocate distinct one-frame code
+and data extents, retain finalized executable-code ownership while constructing
+immutable data, and prove both mappings coexist with pairwise-disjoint backing
+and sealed placements. Data unmap and release shall precede code unmap and
+release; user preparation shall require both mappings absent. A third mapping,
+backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
+release while mapped, or recoverable disposition with either mapping live shall
+fail closed. Provider-private placement and revocation mechanics shall remain
+unobservable.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

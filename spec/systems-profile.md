@@ -442,6 +442,22 @@ cross-role substitution, unclassified unmap, write-authority restoration, and
 W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
 permission representation, or target validation mechanism.
 
+The bounded resident-image refinement SHALL consume two separately allocated
+one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
+`ExecutableCodeMapping` SHALL remain live while the data mapping advances to
+`ImmutableDataMapping`; the provider SHALL prove the address-space backing and
+both mapping extents are pairwise disjoint. The two finalized mappings SHALL
+coexist with RO/X and RO/NX authority respectively.
+
+Source SHALL unmap and release immutable data before unmapping and releasing
+executable code. Each unmap SHALL revoke only its exact mapping, complete the
+target-required observation boundary, and return its exact original extent.
+User-context preparation SHALL require both mappings revoked and both extents
+released. A third mapping, backing reuse, swapped placement or role, cross-role
+unmap, code-first teardown, release while mapped, or recoverable exit with live
+construction authority SHALL be invalid. This refinement SHALL NOT constitute
+a general mapping collection, layout API, application image, or loader.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

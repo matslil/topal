@@ -43,6 +43,7 @@ records, not this directory alone, define language meaning.
 - [Affine user-mapping permission tightening](user-mapping-permission-tightening.md)
 - [Affine user-mapping executable promotion](user-mapping-executable-promotion.md)
 - [Sealed immutable user-mapping roles](user-mapping-image-roles.md)
+- [Bounded resident user-image mappings](resident-user-image-mappings.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

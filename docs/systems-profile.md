@@ -606,6 +606,14 @@ returns an opaque immutable-data refinement after the provider proves the
 completed read-only, non-executable authority is unchanged. Code and data
 refinements are distinct and cannot be substituted at unmap.
 
+The bounded residency refinement replaces sequential backing reuse with two
+separately allocated disjoint extents and sealed `probe-code` and `probe-data`
+placements. Executable code remains mapped while immutable data is built, so
+both role-specific affine refinements coexist. Source then unmaps and releases
+data before unmapping and releasing code. User preparation requires both
+mappings revoked and both returned extents released. This is exactly a two-
+mapping construction proof, not a general mapping collection or image loader.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
