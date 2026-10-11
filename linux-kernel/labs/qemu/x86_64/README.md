@@ -165,10 +165,11 @@ by release of that frame before user-context binding. The preceding
 `TOPAL_KERNEL_USER_MAPPING_OK` marker requires the provider to map that frame
 RW/NX at the sealed guard location, return distinct affine map, stored,
 read-only protected, and verified refinements through two fresh sequential
-generations, clear writable authority before each load, then promote verified
-RO/NX contents to RO/X without restoring write authority and complete target
-invalidation before revoking each leaf through a separate unmap operation and
-returning the exact frame. The harness
+generations and clear writable authority before each load. It then promotes
+the first verified RO/NX mapping to role-specific RO/X code with target
+invalidation, while separately proving that the second mapping remains RO/NX
+before sealing it as immutable data. Each role-specific refinement is revoked
+through a separate unmap operation that returns the exact frame. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,

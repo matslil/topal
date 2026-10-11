@@ -236,6 +236,14 @@ records the stored-to-protected ownership transition, provider-private x86-64
 RW-to-RO publication and invalidation, structural inspection, and two
 deterministic pinned-QEMU runs without changing core-language meaning.
 
+The following systems-only refinement assigns
+[sealed immutable code and data roles](design/user-mapping-image-roles.md) to
+the two verified generations. Its
+[implementation and qualification report](step-4-user-mapping-image-roles.md)
+records disjoint RO/X code and RO/NX data refinements, role-specific x86-64
+validation, structural inspection, and two deterministic pinned-QEMU runs
+without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -345,6 +353,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 sequential user-mapping generations](step-4-sequential-user-mapping-generations.md)
 - [Step 4 user-mapping permission tightening](step-4-user-mapping-permission-tightening.md)
 - [Step 4 user-mapping executable promotion](step-4-user-mapping-executable-promotion.md)
+- [Step 4 sealed user-mapping roles](step-4-user-mapping-image-roles.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
