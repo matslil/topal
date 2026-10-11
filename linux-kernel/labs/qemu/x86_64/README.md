@@ -138,12 +138,15 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 24 ordered serial markers. The generated real-mode adapter
+and waits for the 25 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
-provider's one-frame selector succeeds, and the root establishes and releases
-its affine extent. The final context markers prove that the deadline interrupts
+provider's initial one-frame selector succeeds, and the root establishes and
+releases its affine extent. The later `TOPAL_KERNEL_FRAME_EXTENT_OK` marker is
+reachable only after the same provider proves that a complete static
+three-frame extent lies in one E820 RAM run and the root releases it as a
+whole. The final context markers prove that the deadline interrupts
 the worker in its sealed region, the handler returns to the exact dispatcher,
 source runs the terminal and completion workers in the checked order, and
 redispatch resumes then retires both suspended workers. The final user marker

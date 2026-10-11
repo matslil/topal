@@ -49,6 +49,14 @@ The following Step 4 slice adds the approved
 the architecture-neutral ownership model, sealed one-frame x86 provider
 lowering, structural artifact checks, and two deterministic pinned-QEMU runs.
 
+The later [bounded multi-frame refinement](design/bounded-multi-frame-extent.md)
+qualifies one static contiguous three-frame request while retaining a single
+indivisible affine extent. Its
+[implementation and qualification report](step-4-bounded-multi-frame-extent.md)
+records exact request-shape checking, complete-extent E820 selection, and two
+deterministic pinned-QEMU runs without admitting dynamic or simultaneous
+extents.
+
 The next Step 4 slice adds the approved
 [opaque kernel mapping](design/kernel-mapping.md). Its
 [implementation and qualification report](step-4-kernel-mapping.md) records
@@ -252,6 +260,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 ordinary compiler systems publication](step-4-compiler-publication.md)
 - [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Step 4 affine physical-frame allocation](step-4-frame-allocation.md)
+- [Step 4 bounded multi-frame extent](step-4-bounded-multi-frame-extent.md)
 - [Step 4 opaque kernel mapping](step-4-kernel-mapping.md)
 - [Step 4 translation-space activation](step-4-translation-space.md)
 - [Step 4 active translation edits](step-4-active-translation-edit.md)
