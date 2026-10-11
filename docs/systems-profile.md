@@ -583,6 +583,14 @@ refinement from the first generation survives. Source releases the extent and
 prepares user execution only after the second unmap. This remains a bounded
 two-generation qualification, not simultaneous mapping or image policy.
 
+Each admitted generation then tightens its populated mapping before
+verification. `user mapping protect read only` consumes the stored RW/NX
+refinement and returns an opaque read-only/NX refinement only after write
+authority is revoked and target translation completion finishes. Load consumes
+that protected refinement. Protection preserves identity, placement, contents,
+user accessibility, and non-executable policy; it cannot widen authority or
+expose target permission representation.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

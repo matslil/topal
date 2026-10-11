@@ -457,6 +457,14 @@ release between generations, a third generation, or user-context binding
 before the second release shall fail closed. Simultaneous mappings and
 persistent image policy remain excluded.
 
+The affine user-mapping permission refinement shall require each stored RW/NX
+generation to pass through a distinct read-only/NX refinement before load and
+verification. Protection shall preserve mapping, address-space, and backing
+identity and contents, remove only write authority, and complete target stale-
+translation revocation before success. Store after protection, load from stale
+writable authority, permission widening, skipped protection, or recoverable
+failure after update publication shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

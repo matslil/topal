@@ -396,6 +396,22 @@ preparation before final release SHALL be invalid. The refinement SHALL expose
 no address or descriptor value and SHALL NOT constitute a general user-mapping
 or image-construction API.
 
+The permission-tightening refinement SHALL insert `user mapping protect read
+only` between store and load in each admitted generation. The operation SHALL
+consume `StoredUserMapping` and SHALL produce a `ProtectedUserMapping` with the
+same provider, address-space, mapping, backing, placement, memory-kind,
+user-access, non-executable, and content identities but without write
+authority. Revocation of writable authority and target translation completion
+SHALL precede observable success. Load SHALL consume only that protected
+refinement.
+
+Store through protected authority, load or unmap through a stale stored
+refinement, skipped or duplicate protection, permission widening, executable
+authority, identity substitution, and recoverable failure after permission
+publication begins SHALL be invalid. The initial profile SHALL admit only the
+sealed RW/NX-to-RO/NX transition and SHALL expose no permission bit or
+invalidation mechanism.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
