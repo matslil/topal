@@ -1213,15 +1213,25 @@ enum BootstrapUserExecutionState {
     Consumed,
 }
 
-#[derive(Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 enum BootstrapMemoryOwnership {
     #[default]
     None,
-    Frames,
-    Mapping,
-    ProvisionalMapping,
-    ProvisionalFrames,
+    Frames(PhysicalFrameRequest),
+    Mapping(PhysicalFrameRequest),
+    ProvisionalMapping(PhysicalFrameRequest),
+    ProvisionalFrames(PhysicalFrameRequest),
 }
+
+const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 1,
+    alignment_frames: 1,
+};
+
+const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 3,
+    alignment_frames: 1,
+};
 
 #[derive(Default, Eq, PartialEq)]
 enum BootstrapTranslationState {
@@ -1282,19 +1292,20 @@ impl BootstrapAuthorityState {
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
                 if !self.allocator_created
                     || self.memory_ownership != BootstrapMemoryOwnership::None
-                    || request.frame_count == 0
-                    || request.alignment_frames == 0
-                    || !request.alignment_frames.is_power_of_two()
+                    || !matches!(
+                        *request,
+                        INITIAL_SINGLE_FRAME_REQUEST | INITIAL_MULTI_FRAME_REQUEST
+                    )
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
-                        "physical-frame allocation requires one allocator, a valid request, and no live extent",
+                        "physical-frame allocation requires one allocator, an admitted static extent shape, and no live extent",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(*request);
             }
             SystemsOperation::ReleasePhysicalFrames => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Frames {
+                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Frames(_)) {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "physical-frame release requires one live extent",
@@ -1303,19 +1314,25 @@ impl BootstrapAuthorityState {
                 self.memory_ownership = BootstrapMemoryOwnership::None;
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Frames
+                let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MAPPING",
+                        "kernel mapping requires one live single-frame extent and the sealed mapping policy",
+                    ));
+                };
+                if frame_request != INITIAL_SINGLE_FRAME_REQUEST
                     || *request != KernelMappingRequest::initial_read_write()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
-                        "kernel mapping requires one live extent and the sealed mapping policy",
+                        "kernel mapping requires one live single-frame extent and the sealed mapping policy",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Mapping;
+                self.memory_ownership = BootstrapMemoryOwnership::Mapping(frame_request);
             }
             SystemsOperation::KernelMappingStoreByte { offset_bytes, .. }
             | SystemsOperation::KernelMappingLoadByteEquals { offset_bytes, .. } => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Mapping
+                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Mapping(_))
                     || *offset_bytes >= 4096
                 {
                     return Err(SystemsModelError::new(
@@ -1325,13 +1342,13 @@ impl BootstrapAuthorityState {
                 }
             }
             SystemsOperation::UnmapKernelFrames => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Mapping {
+                let BootstrapMemoryOwnership::Mapping(frame_request) = self.memory_ownership else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
                         "kernel unmap requires one live mapping",
                     ));
-                }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                };
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(frame_request);
             }
             operation @ (SystemsOperation::BeginTranslationUpdate { .. }
             | SystemsOperation::CommitTranslationUpdate { .. }
@@ -1825,13 +1842,17 @@ impl BootstrapAuthorityState {
             SystemsOperation::BeginTranslationEdit { kind, .. } => match kind {
                 TranslationEditKind::Map
                     if self.translation == BootstrapTranslationState::ReplacementActive
-                        && self.memory_ownership == BootstrapMemoryOwnership::Frames =>
+                        && self.memory_ownership
+                            == BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST) =>
                 {
                     self.translation = BootstrapTranslationState::MapEdit;
                 }
                 TranslationEditKind::Unmap
                     if self.translation == BootstrapTranslationState::MappedActive
-                        && self.memory_ownership == BootstrapMemoryOwnership::Mapping =>
+                        && matches!(
+                            self.memory_ownership,
+                            BootstrapMemoryOwnership::Mapping(_)
+                        ) =>
                 {
                     self.translation = BootstrapTranslationState::UnmapEdit;
                 }
@@ -1843,8 +1864,14 @@ impl BootstrapAuthorityState {
                 }
             },
             SystemsOperation::MapTranslationFrames { request, .. } => {
+                let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION-EDIT",
+                        "translation edit map requires the sealed policy, map edit, and live extent",
+                    ));
+                };
                 if self.translation != BootstrapTranslationState::MapEdit
-                    || self.memory_ownership != BootstrapMemoryOwnership::Frames
+                    || frame_request != INITIAL_SINGLE_FRAME_REQUEST
                     || *request != TranslationMappingRequest::initial_read_write()
                 {
                     return Err(SystemsModelError::new(
@@ -1853,35 +1880,52 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.translation = BootstrapTranslationState::MapStaged;
-                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalMapping;
+                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalMapping(frame_request);
             }
             SystemsOperation::UnmapTranslationMapping => {
-                if self.translation != BootstrapTranslationState::UnmapEdit
-                    || self.memory_ownership != BootstrapMemoryOwnership::Mapping
-                {
+                let BootstrapMemoryOwnership::Mapping(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION-EDIT",
+                        "translation edit unmap requires the matching edit and live mapping",
+                    ));
+                };
+                if self.translation != BootstrapTranslationState::UnmapEdit {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-TRANSLATION-EDIT",
                         "translation edit unmap requires the matching edit and live mapping",
                     ));
                 }
                 self.translation = BootstrapTranslationState::UnmapStaged;
-                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalFrames;
+                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalFrames(frame_request);
             }
             SystemsOperation::CommitTranslationEdit { kind, .. } => match kind {
                 TranslationEditKind::Map
-                    if self.translation == BootstrapTranslationState::MapStaged
-                        && self.memory_ownership
-                            == BootstrapMemoryOwnership::ProvisionalMapping =>
+                    if self.translation == BootstrapTranslationState::MapStaged =>
                 {
+                    let BootstrapMemoryOwnership::ProvisionalMapping(frame_request) =
+                        self.memory_ownership
+                    else {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-TRANSLATION-EDIT",
+                            "translation edit commit requires one complete matching candidate",
+                        ));
+                    };
                     self.translation = BootstrapTranslationState::MappedActive;
-                    self.memory_ownership = BootstrapMemoryOwnership::Mapping;
+                    self.memory_ownership = BootstrapMemoryOwnership::Mapping(frame_request);
                 }
                 TranslationEditKind::Unmap
-                    if self.translation == BootstrapTranslationState::UnmapStaged
-                        && self.memory_ownership == BootstrapMemoryOwnership::ProvisionalFrames =>
+                    if self.translation == BootstrapTranslationState::UnmapStaged =>
                 {
+                    let BootstrapMemoryOwnership::ProvisionalFrames(frame_request) =
+                        self.memory_ownership
+                    else {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-TRANSLATION-EDIT",
+                            "translation edit commit requires one complete matching candidate",
+                        ));
+                    };
                     self.translation = BootstrapTranslationState::RemovedActive;
-                    self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                    self.memory_ownership = BootstrapMemoryOwnership::Frames(frame_request);
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1916,20 +1960,20 @@ impl BootstrapAuthorityState {
         }
         match self.memory_ownership {
             BootstrapMemoryOwnership::None => {}
-            BootstrapMemoryOwnership::Frames => {
+            BootstrapMemoryOwnership::Frames(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
                     "bootstrap handler consumes its context while a physical-frame extent remains live",
                 ));
             }
-            BootstrapMemoryOwnership::Mapping => {
+            BootstrapMemoryOwnership::Mapping(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-MAPPING-LIVE",
                     "bootstrap handler consumes its context while a kernel mapping remains live",
                 ));
             }
-            BootstrapMemoryOwnership::ProvisionalMapping
-            | BootstrapMemoryOwnership::ProvisionalFrames => {
+            BootstrapMemoryOwnership::ProvisionalMapping(_)
+            | BootstrapMemoryOwnership::ProvisionalFrames(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-TRANSLATION-EDIT-LIVE",
                     "bootstrap handler consumes its context while a translation edit candidate remains live",
@@ -4676,7 +4720,7 @@ mod tests {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001.
         let mut program = program(SystemsDisposition::Resume);
         let request = PhysicalFrameRequest {
-            frame_count: 1,
+            frame_count: 3,
             alignment_frames: 1,
         };
         program.bootstrap.handler.operations.splice(
@@ -4698,6 +4742,32 @@ mod tests {
         let transitions = model_systems_transitions(&program).unwrap();
         assert!(transitions.contains(&SystemsTransition::AllocatePhysicalFrames { request }));
         assert!(transitions.contains(&SystemsTransition::ReleasePhysicalFrames));
+
+        let mut unsupported = program.clone();
+        let SystemsOperation::AllocatePhysicalFrames { request, .. } =
+            &mut unsupported.bootstrap.handler.operations[2]
+        else {
+            unreachable!("test inserted the allocation at index two")
+        };
+        request.frame_count = 2;
+        assert_eq!(
+            validate_systems_program(&unsupported).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+
+        let mut mapped = program.clone();
+        mapped.bootstrap.handler.operations.insert(
+            3,
+            SystemsOperation::MapKernelFrames {
+                request: KernelMappingRequest::initial_read_write(),
+                failure_message: "mapping failed".into(),
+            },
+        );
+        refresh_bootstrap_effects(&mut mapped);
+        assert_eq!(
+            validate_systems_program(&mapped).unwrap_err().code,
+            "E-SYSTEMS-MAPPING"
+        );
 
         program
             .bootstrap
