@@ -811,8 +811,17 @@ processor, address-space, thread, ABI, entry, or continuation identity;
 duplicate entry or disposition; return after termination; and disposition with
 a live syscall context SHALL be rejected.
 
+Initial user-state preparation SHALL consume exactly one live three-frame
+`PhysicalFrameExtent` into its `SuspendedUserContext`. That user context SHALL
+exclusively own the complete extent through every entry, syscall return, and
+terminal transition. Terminal completion SHALL revoke all mappings derived
+from the extent, satisfy the provider translation-invalidation contract, and
+return exactly the original indivisible extent. Release, splitting, access,
+reuse, or disposition while user execution owns the extent SHALL be invalid.
+
 The initial executable x86-64 profile SHALL create one process/thread and one
-generated ring-3 probe in fixed validated RX and RW/NX user mappings. The probe
+generated ring-3 probe in allocator-backed validated RX and RW/NX user
+mappings. The probe
 SHALL invoke native Linux syscall 39 (`getpid`), verify the source-owned PID
 result after one return to user mode, exercise syscall 63 (`uname`) through the
 separately specified initial `copy_to_user` success and fault paths, exercise

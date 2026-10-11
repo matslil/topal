@@ -39,9 +39,12 @@ invent a result, or own Linux dispatch policy.
 ## First executable profile
 
 The initial x86-64 profile creates one process/thread identity and one sealed
-qualification-only user probe. The provider publishes one fixed read-only,
-executable user page and one writable, non-executable user stack in a validated
-user address space. The probe performs native Linux x86-64 syscall `39`
+qualification-only user probe. Preparation consumes one allocator-owned
+three-frame extent and assigns sealed code, stack, and leaf-translation roles.
+The provider publishes one read-only executable user page and one writable,
+non-executable user stack in a validated user address space; terminal
+completion revokes those mappings and returns the exact whole extent for
+release. The probe performs native Linux x86-64 syscall `39`
 (`getpid`), verifies that the returned value is the source-owned initial PID,
 and then performs syscall `231` (`exit_group`) with status zero. A mismatch
 terminates with a distinct nonzero status.
@@ -91,6 +94,6 @@ This increment does not add arbitrary ELF loading, dynamic linking, executable
 replacement, pointer-bearing syscalls, user-copy recovery, user page faults,
 signals, restart, seccomp, audit, ptrace, TLS, extended state, fork/clone,
 multiple processes or threads, preemption while in user mode, migration, SMP,
-or a complete syscall table. The fixed mappings and probe are qualification
-evidence only and grant no source access to target addresses or instructions.
-
+or a complete syscall table. The sealed virtual placements and probe are
+qualification evidence only and grant no source access to target addresses or
+instructions.

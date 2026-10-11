@@ -386,6 +386,15 @@ remain fatal. Nonzero sleep, remainder output, interruption, restart,
 arbitrary layouts and extents, concurrent mapping changes, general UTS
 namespaces, and core-language exception handling remain unavailable.
 
+The initial allocator-backed user-execution refinement shall consume one
+qualified three-frame physical extent into the suspended user context. The
+provider shall use only that extent for the executable page, non-executable
+stack, and user leaf-translation backing; fixed hidden physical user pages are
+forbidden. Terminal completion shall revoke and invalidate every derived user
+mapping and return the exact indivisible extent before source release. Source
+shall observe no physical or virtual address, PTE layout, or target return
+state.
+
 An entered bootstrap context shall refine through one exhaustive, affine
 boot-memory transition. A qualified provider shall validate its opaque native
 handoff; conservatively normalize overlapping source ranges; retain source
