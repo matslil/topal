@@ -50,6 +50,11 @@ const INITIAL_USER_BACKING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest 
     alignment_frames: 1,
 };
 
+const INITIAL_USER_MAPPING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 1,
+    alignment_frames: 1,
+};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UserProbeStage {
     AwaitingGetpid,
@@ -73,6 +78,22 @@ pub struct PreparedUserAddressSpace {
     provider_identity: String,
     address_space_identity: u64,
     backing: PhysicalFrameRequest,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum UserMappingStage {
+    Live,
+    Stored,
+    Verified,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct UserMapping {
+    provider_identity: String,
+    address_space_identity: u64,
+    mapping_identity: u64,
+    backing: PhysicalFrameRequest,
+    stage: UserMappingStage,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -257,6 +278,7 @@ pub struct SystemsUserExecutionProtocol {
     abi_identity: String,
     next_probe_identity: u64,
     next_address_space_identity: u64,
+    next_mapping_identity: u64,
     next_kernel_continuation_identity: u64,
     next_entry_identity: u64,
     next_transfer_identity: u64,
@@ -272,6 +294,7 @@ impl SystemsUserExecutionProtocol {
             abi_identity: LINUX_X86_64_ABI_IDENTITY.into(),
             next_probe_identity: 1,
             next_address_space_identity: 1,
+            next_mapping_identity: 1,
             next_kernel_continuation_identity: 1,
             next_entry_identity: 1,
             next_transfer_identity: 1,
@@ -302,6 +325,105 @@ impl SystemsUserExecutionProtocol {
             address_space_identity,
             backing,
         })
+    }
+
+    /// Consume one disjoint frame into the sealed user mapping.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for the wrong provider, backing shape, or
+    /// exhausted mapping identity.
+    pub fn map_user_frame(
+        &mut self,
+        address_space: &PreparedUserAddressSpace,
+        backing: PhysicalFrameRequest,
+    ) -> Result<UserMapping, SystemsModelError> {
+        if address_space.provider_identity != self.provider_identity
+            || backing != INITIAL_USER_MAPPING_REQUEST
+        {
+            return Err(user_error(
+                "the initial user mapping requires its prepared address space and exact one-frame backing",
+            ));
+        }
+        let mapping_identity = self.next_mapping_identity;
+        self.next_mapping_identity = mapping_identity
+            .checked_add(1)
+            .ok_or_else(|| user_error("user-mapping identity exhausted"))?;
+        Ok(UserMapping {
+            provider_identity: self.provider_identity.clone(),
+            address_space_identity: address_space.address_space_identity,
+            mapping_identity,
+            backing,
+            stage: UserMappingStage::Live,
+        })
+    }
+
+    /// Consume a live mapping into its fixed-byte stored refinement.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless the mapping is the exact live
+    /// provider-owned refinement.
+    pub fn store_user_mapping_byte(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Live)?;
+        mapping.stage = UserMappingStage::Stored;
+        Ok(mapping)
+    }
+
+    /// Consume a stored mapping into its fixed-byte verified refinement.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless the mapping is the exact stored
+    /// provider-owned refinement.
+    pub fn load_user_mapping_byte(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Stored)?;
+        mapping.stage = UserMappingStage::Verified;
+        Ok(mapping)
+    }
+
+    /// Consume a verified mapping and return its exact original frame extent.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a wrong address space, provider, or
+    /// mapping refinement.
+    pub fn unmap_user_frame(
+        &self,
+        address_space: &PreparedUserAddressSpace,
+        mapping: UserMapping,
+    ) -> Result<PhysicalFrameRequest, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        if address_space.provider_identity != self.provider_identity
+            || mapping.address_space_identity != address_space.address_space_identity
+        {
+            return Err(user_error(
+                "user unmap requires the mapping's exact prepared address space",
+            ));
+        }
+        Ok(mapping.backing)
+    }
+
+    fn validate_user_mapping(
+        &self,
+        mapping: &UserMapping,
+        expected: UserMappingStage,
+    ) -> Result<(), SystemsModelError> {
+        if mapping.provider_identity != self.provider_identity
+            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || mapping.stage != expected
+        {
+            return Err(user_error(
+                "user mapping operation requires the exact preceding affine refinement",
+            ));
+        }
+        Ok(())
     }
 
     /// Create one validated qualification-only user continuation.
@@ -915,6 +1037,63 @@ mod tests {
         protocol
             .return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)
             .unwrap()
+    }
+
+    #[test]
+    fn maps_stores_loads_and_unmaps_one_affine_user_frame() {
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MAPPING-001.
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        assert_eq!(
+            protocol.unmap_user_frame(&address_space, mapping).unwrap(),
+            INITIAL_USER_MAPPING_REQUEST
+        );
+    }
+
+    #[test]
+    fn rejects_wrong_user_mapping_shape_order_and_unverified_unmap() {
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MAPPING-001.
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        assert_eq!(
+            protocol
+                .map_user_frame(&address_space, INITIAL_USER_BACKING_REQUEST)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        assert_eq!(
+            protocol.load_user_mapping_byte(mapping).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        assert_eq!(
+            protocol
+                .unmap_user_frame(&address_space, mapping)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
     }
 
     #[test]

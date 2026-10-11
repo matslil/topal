@@ -39,7 +39,7 @@ use crate::{
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
     SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
     SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SuspendedUserContext, SystemsUserExecutionProtocol,
+    SuspendedUserContext, SystemsUserExecutionProtocol, UserMapping,
     TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
 };
 
@@ -962,6 +962,10 @@ fn validate_entry(
                     | SystemsOperation::ConsumeEmptyRunnableQueue
                     | SystemsOperation::PrepareUserAddressSpace
                     | SystemsOperation::VerifyUserAddressSpaceMapping
+                    | SystemsOperation::MapUserAddressSpace
+                    | SystemsOperation::StoreUserMappingByte
+                    | SystemsOperation::LoadUserMappingByte
+                    | SystemsOperation::UnmapUserAddressSpace
                     | SystemsOperation::PrepareUserProbe { .. }
                     | SystemsOperation::EnterUserContext
                     | SystemsOperation::CompleteUserExecution
@@ -1363,6 +1367,15 @@ impl BootstrapAuthorityState {
                 self.memory_ownership = BootstrapMemoryOwnership::Frames(*request);
             }
             SystemsOperation::ReleasePhysicalFrames => {
+                if matches!(
+                    self.memory_ownership,
+                    BootstrapMemoryOwnership::UserMapping(_)
+                ) {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "physical-frame release is invalid while a user mapping owns the extent",
+                    ));
+                }
                 if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Frames(_)) {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
@@ -2541,6 +2554,7 @@ pub fn model_systems_transitions(
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
     let mut user_protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
     let mut prepared_user_space: Option<PreparedUserAddressSpace> = None;
+    let mut user_mapping: Option<UserMapping> = None;
     let mut suspended_user: Option<SuspendedUserContext> = None;
     let mut completed_user: Option<CompletedUserExecution> = None;
     let mut revoked_user_space: Option<RevokedUserAddressSpace> = None;
@@ -2599,6 +2613,7 @@ pub fn model_systems_transitions(
             &program.user_syscall.handler,
             &mut user_protocol,
             &mut prepared_user_space,
+            &mut user_mapping,
             &mut suspended_user,
             &mut completed_user,
             &mut revoked_user_space,
@@ -2626,6 +2641,7 @@ fn model_user_execution_transition(
     handler: &SystemsHandler,
     protocol: &mut SystemsUserExecutionProtocol,
     prepared: &mut Option<PreparedUserAddressSpace>,
+    mapping: &mut Option<UserMapping>,
     suspended: &mut Option<SuspendedUserContext>,
     completed: &mut Option<CompletedUserExecution>,
     revoked: &mut Option<RevokedUserAddressSpace>,
@@ -2658,36 +2674,76 @@ fn model_user_execution_transition(
             });
         }
         SystemsOperation::MapUserAddressSpace => {
-            if prepared.is_none() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            if prepared.is_none()
+                || mapping.is_some()
+                || suspended.is_some()
+                || completed.is_some()
+                || revoked.is_some()
             {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user mapping model requires one prepared address space",
                 ));
             }
+            *mapping = Some(protocol.map_user_frame(
+                prepared.as_ref().expect("checked prepared user space"),
+                INITIAL_SINGLE_FRAME_REQUEST,
+            )?);
             transitions.push(SystemsTransition::MapUserAddressSpace {
                 address_space_identity: 1,
                 mapping_identity: 1,
             });
         }
         SystemsOperation::StoreUserMappingByte => {
+            *mapping = Some(protocol.store_user_mapping_byte(mapping.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user mapping store requires one live affine mapping",
+                )
+            })?)?);
             transitions.push(SystemsTransition::StoreUserMappingByte {
                 mapping_identity: 1,
             });
         }
         SystemsOperation::LoadUserMappingByte => {
+            *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user mapping load requires one stored affine mapping",
+                )
+            })?)?);
             transitions.push(SystemsTransition::LoadUserMappingByte {
                 mapping_identity: 1,
             });
         }
         SystemsOperation::UnmapUserAddressSpace => {
+            let returned = protocol.unmap_user_frame(
+                prepared.as_ref().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires one prepared address space",
+                    )
+                })?,
+                mapping.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires one verified affine mapping",
+                    )
+                })?,
+            )?;
+            if returned != INITIAL_SINGLE_FRAME_REQUEST {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user unmap returned the wrong physical-frame extent",
+                ));
+            }
             transitions.push(SystemsTransition::UnmapUserAddressSpace {
                 address_space_identity: 1,
                 mapping_identity: 1,
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
-            if suspended.is_some() || completed.is_some() || revoked.is_some() {
+            if mapping.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user model admits exactly one live probe lifecycle",
@@ -4002,7 +4058,10 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
             SYSTEMS_USER_ADDRESS_SPACE_PREPARE.into(),
             SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
-            SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_MAP.into(),
+            SYSTEMS_USER_MAPPING_STORE_BYTE.into(),
+            SYSTEMS_USER_MAPPING_LOAD_BYTE.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_UNMAP.into(),
             SYSTEMS_USER_CONTEXT_PREPARE.into(),
             SYSTEMS_USER_CONTEXT_ENTER.into(),
             SYSTEMS_USER_CONTEXT_COMPLETE.into(),
@@ -4133,7 +4192,10 @@ mod tests {
                             request: INITIAL_SINGLE_FRAME_REQUEST,
                             failure_message: "disjoint frame allocation failed".into(),
                         },
-                        SystemsOperation::VerifyUserAddressSpaceMapping,
+                        SystemsOperation::MapUserAddressSpace,
+                        SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::LoadUserMappingByte,
+                        SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
@@ -4311,6 +4373,10 @@ mod tests {
                 | SystemsOperation::ConsumeEmptyRunnableQueue
                 | SystemsOperation::PrepareUserAddressSpace
                 | SystemsOperation::VerifyUserAddressSpaceMapping
+                | SystemsOperation::MapUserAddressSpace
+                | SystemsOperation::StoreUserMappingByte
+                | SystemsOperation::LoadUserMappingByte
+                | SystemsOperation::UnmapUserAddressSpace
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
@@ -4569,8 +4635,19 @@ mod tests {
                 SystemsTransition::AllocatePhysicalFrames {
                     request: INITIAL_SINGLE_FRAME_REQUEST,
                 },
-                SystemsTransition::VerifyUserAddressSpaceMapping {
+                SystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                SystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 1,
+                },
+                SystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 1,
+                },
+                SystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
                 },
                 SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::ConsoleWrite {
@@ -4768,47 +4845,49 @@ mod tests {
             "E-SYSTEMS-FRAMES"
         );
 
-        let mut missing_verification = program(SystemsDisposition::Resume);
-        let verification = missing_verification
+        let mut missing_unmap = program(SystemsDisposition::Resume);
+        let unmap = missing_unmap
             .bootstrap
             .handler
             .operations
             .iter()
-            .position(|operation| {
-                matches!(operation, SystemsOperation::VerifyUserAddressSpaceMapping)
-            })
+            .position(|operation| matches!(operation, SystemsOperation::UnmapUserAddressSpace))
             .unwrap();
-        missing_verification
-            .bootstrap
-            .handler
-            .operations
-            .remove(verification);
-        refresh_bootstrap_effects(&mut missing_verification);
+        missing_unmap.bootstrap.handler.operations.remove(unmap);
+        refresh_bootstrap_effects(&mut missing_unmap);
         assert_eq!(
-            validate_systems_program(&missing_verification)
-                .unwrap_err()
-                .code,
+            validate_systems_program(&missing_unmap).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let mut duplicate_verification = program(SystemsDisposition::Resume);
-        let verification = duplicate_verification
+        let mut duplicate_store = program(SystemsDisposition::Resume);
+        let store = duplicate_store
             .bootstrap
             .handler
             .operations
             .iter()
-            .position(|operation| {
-                matches!(operation, SystemsOperation::VerifyUserAddressSpaceMapping)
-            })
+            .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
             .unwrap();
-        duplicate_verification.bootstrap.handler.operations.insert(
-            verification + 1,
-            SystemsOperation::VerifyUserAddressSpaceMapping,
+        duplicate_store.bootstrap.handler.operations.insert(
+            store + 1,
+            SystemsOperation::StoreUserMappingByte,
         );
         assert_eq!(
-            validate_systems_program(&duplicate_verification)
-                .unwrap_err()
-                .code,
+            validate_systems_program(&duplicate_store).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut reordered_access = program(SystemsDisposition::Resume);
+        let store = reordered_access
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
+            .unwrap();
+        reordered_access.bootstrap.handler.operations.swap(store, store + 1);
+        assert_eq!(
+            validate_systems_program(&reordered_access).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"
         );
     }
@@ -4980,6 +5059,10 @@ mod tests {
                         | SystemsOperation::ConsumeEmptyRunnableQueue
                         | SystemsOperation::PrepareUserAddressSpace
                         | SystemsOperation::VerifyUserAddressSpaceMapping
+                        | SystemsOperation::MapUserAddressSpace
+                        | SystemsOperation::StoreUserMappingByte
+                        | SystemsOperation::LoadUserMappingByte
+                        | SystemsOperation::UnmapUserAddressSpace
                         | SystemsOperation::PrepareUserProbe { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
