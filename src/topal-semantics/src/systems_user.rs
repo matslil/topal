@@ -1112,7 +1112,7 @@ mod tests {
     }
 
     #[test]
-    fn maps_stores_loads_and_unmaps_two_fresh_affine_generations() {
+    fn retains_disjoint_code_and_data_mappings_until_role_specific_unmap() {
         // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MAPPING-001.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         let address_space = protocol
@@ -1126,20 +1126,29 @@ mod tests {
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
-        assert_eq!(
-            protocol.unmap_user_frame(&address_space, mapping).unwrap(),
-            INITIAL_USER_MAPPING_REQUEST
-        );
-        let mapping = protocol
+        let code_mapping = mapping;
+        let data_mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
-        assert_ne!(mapping.identity(), first_identity);
-        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
-        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
-        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
-        let mapping = protocol.seal_user_mapping_immutable_data(mapping).unwrap();
+        assert_ne!(data_mapping.identity(), first_identity);
+        let data_mapping = protocol.store_user_mapping_byte(data_mapping).unwrap();
+        let data_mapping = protocol
+            .protect_user_mapping_read_only(data_mapping)
+            .unwrap();
+        let data_mapping = protocol.load_user_mapping_byte(data_mapping).unwrap();
+        let data_mapping = protocol
+            .seal_user_mapping_immutable_data(data_mapping)
+            .unwrap();
         assert_eq!(
-            protocol.unmap_user_frame(&address_space, mapping).unwrap(),
+            protocol
+                .unmap_user_frame(&address_space, data_mapping)
+                .unwrap(),
+            INITIAL_USER_MAPPING_REQUEST
+        );
+        assert_eq!(
+            protocol
+                .unmap_user_frame(&address_space, code_mapping)
+                .unwrap(),
             INITIAL_USER_MAPPING_REQUEST
         );
     }

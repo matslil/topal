@@ -1288,8 +1288,8 @@ enum BootstrapUserExecutionState {
     MappingProtected(PhysicalFrameRequest, u8),
     MappingVerified(PhysicalFrameRequest, u8),
     MappingExecutable(PhysicalFrameRequest, u8),
+    MappingExecutableAfterData(PhysicalFrameRequest),
     MappingImmutableData(PhysicalFrameRequest, u8),
-    AddressSpaceMappedOnce(PhysicalFrameRequest),
     AddressSpaceVerified(PhysicalFrameRequest),
     Prepared(PhysicalFrameRequest),
     Completed(PhysicalFrameRequest),
@@ -1902,7 +1902,7 @@ impl BootstrapAuthorityState {
             SystemsOperation::MapUserAddressSpace => {
                 let (backing, generation) = match self.user_execution {
                     BootstrapUserExecutionState::AddressSpacePrepared(backing) => (backing, 1),
-                    BootstrapUserExecutionState::AddressSpaceMappedOnce(backing) => (backing, 2),
+                    BootstrapUserExecutionState::MappingExecutable(backing, 1) => (backing, 2),
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-USER-CONTEXT",
@@ -2003,6 +2003,7 @@ impl BootstrapAuthorityState {
                 }
                 self.user_execution =
                     BootstrapUserExecutionState::MappingExecutable(backing, generation);
+                self.memory_ownership = BootstrapMemoryOwnership::None;
             }
             SystemsOperation::SealUserMappingImmutableData => {
                 let BootstrapUserExecutionState::MappingVerified(backing, generation) =
@@ -2024,10 +2025,13 @@ impl BootstrapAuthorityState {
                 }
                 self.user_execution =
                     BootstrapUserExecutionState::MappingImmutableData(backing, generation);
+                self.memory_ownership = BootstrapMemoryOwnership::None;
             }
             SystemsOperation::UnmapUserAddressSpace => {
                 let (backing, generation) = match self.user_execution {
-                    BootstrapUserExecutionState::MappingExecutable(backing, 1) => (backing, 1),
+                    BootstrapUserExecutionState::MappingExecutableAfterData(backing) => {
+                        (backing, 1)
+                    }
                     BootstrapUserExecutionState::MappingImmutableData(backing, 2) => (backing, 2),
                     _ => {
                         return Err(SystemsModelError::new(
@@ -2036,9 +2040,7 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
-                if self.memory_ownership
-                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
-                {
+                if self.memory_ownership != BootstrapMemoryOwnership::None {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user unmap requires its owned disjoint frame",
@@ -2047,8 +2049,8 @@ impl BootstrapAuthorityState {
                 self.memory_ownership =
                     BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
                 self.user_execution = match generation {
-                    1 => BootstrapUserExecutionState::AddressSpaceMappedOnce(backing),
-                    2 => BootstrapUserExecutionState::AddressSpaceVerified(backing),
+                    1 => BootstrapUserExecutionState::AddressSpaceVerified(backing),
+                    2 => BootstrapUserExecutionState::MappingExecutableAfterData(backing),
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-USER-CONTEXT",
@@ -2663,6 +2665,7 @@ pub fn model_systems_transitions(
     let mut user_protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
     let mut prepared_user_space: Option<PreparedUserAddressSpace> = None;
     let mut user_mapping: Option<UserMapping> = None;
+    let mut resident_code_mapping: Option<UserMapping> = None;
     let mut suspended_user: Option<SuspendedUserContext> = None;
     let mut completed_user: Option<CompletedUserExecution> = None;
     let mut revoked_user_space: Option<RevokedUserAddressSpace> = None;
@@ -2722,6 +2725,7 @@ pub fn model_systems_transitions(
             &mut user_protocol,
             &mut prepared_user_space,
             &mut user_mapping,
+            &mut resident_code_mapping,
             &mut suspended_user,
             &mut completed_user,
             &mut revoked_user_space,
@@ -2750,6 +2754,7 @@ fn model_user_execution_transition(
     protocol: &mut SystemsUserExecutionProtocol,
     prepared: &mut Option<PreparedUserAddressSpace>,
     mapping: &mut Option<UserMapping>,
+    resident_code: &mut Option<UserMapping>,
     suspended: &mut Option<SuspendedUserContext>,
     completed: &mut Option<CompletedUserExecution>,
     revoked: &mut Option<RevokedUserAddressSpace>,
@@ -2784,6 +2789,8 @@ fn model_user_execution_transition(
         SystemsOperation::MapUserAddressSpace => {
             if prepared.is_none()
                 || mapping.is_some()
+                || (resident_code.is_some()
+                    && resident_code.as_ref().map(UserMapping::identity) != Some(1))
                 || suspended.is_some()
                 || completed.is_some()
                 || revoked.is_some()
@@ -2850,17 +2857,23 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
         }
         SystemsOperation::PermitUserMappingExecute => {
-            *mapping = Some(
-                protocol.permit_user_mapping_execute(mapping.take().ok_or_else(|| {
+            if resident_code.is_some() {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user model admits exactly one resident executable-code mapping",
+                ));
+            }
+            *resident_code = Some(protocol.permit_user_mapping_execute(
+                mapping.take().ok_or_else(|| {
                     SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user mapping execute promotion requires one verified affine mapping",
                     )
-                })?)?,
-            );
-            let mapping_identity = mapping
+                })?,
+            )?);
+            let mapping_identity = resident_code
                 .as_ref()
-                .expect("executable mapping was just restored")
+                .expect("executable mapping was just retained")
                 .identity();
             transitions.push(SystemsTransition::PermitUserMappingExecute { mapping_identity });
         }
@@ -2880,12 +2893,16 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::SealUserMappingImmutableData { mapping_identity });
         }
         SystemsOperation::UnmapUserAddressSpace => {
-            let mapping = mapping.take().ok_or_else(|| {
-                SystemsModelError::new(
-                    "E-SYSTEMS-USER-CONTEXT",
-                    "user unmap requires one verified affine mapping",
-                )
-            })?;
+            let mapping = if mapping.is_some() {
+                mapping.take().expect("mapping presence checked")
+            } else {
+                resident_code.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires one role-specific affine mapping",
+                    )
+                })?
+            };
             let mapping_identity = mapping.identity();
             let returned = protocol.unmap_user_frame(
                 prepared.as_ref().ok_or_else(|| {
@@ -2908,7 +2925,11 @@ fn model_user_execution_transition(
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
-            if mapping.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            if mapping.is_some()
+                || resident_code.is_some()
+                || suspended.is_some()
+                || completed.is_some()
+                || revoked.is_some()
             {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
@@ -4369,12 +4390,17 @@ mod tests {
                         SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::PermitUserMappingExecute,
-                        SystemsOperation::UnmapUserAddressSpace,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            failure_message: "data frame allocation failed".into(),
+                        },
                         SystemsOperation::MapUserAddressSpace,
                         SystemsOperation::StoreUserMappingByte,
                         SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::SealUserMappingImmutableData,
+                        SystemsOperation::UnmapUserAddressSpace,
+                        SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::ConsoleWrite {
@@ -4834,9 +4860,8 @@ mod tests {
                 SystemsTransition::PermitUserMappingExecute {
                     mapping_identity: 1,
                 },
-                SystemsTransition::UnmapUserAddressSpace {
-                    address_space_identity: 1,
-                    mapping_identity: 1,
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
                 },
                 SystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
@@ -4857,6 +4882,11 @@ mod tests {
                 SystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 2,
+                },
+                SystemsTransition::ReleasePhysicalFrames,
+                SystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
                 },
                 SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::ConsoleWrite {
@@ -5066,7 +5096,7 @@ mod tests {
         refresh_bootstrap_effects(&mut missing_unmap);
         assert_eq!(
             validate_systems_program(&missing_unmap).unwrap_err().code,
-            "E-SYSTEMS-USER-CONTEXT"
+            "E-SYSTEMS-FRAMES"
         );
 
         let mut duplicate_store = program(SystemsDisposition::Resume);
