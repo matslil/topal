@@ -2950,6 +2950,7 @@ fn analyze_kernel_context_decision(
         &completion_resumed,
         &user_space,
         &scratch_frames,
+        "probe-code",
     )?;
     let after_map =
         select_user_mapping_continuation(source, span, scratch_after_map, map_continuation, "map")?;
@@ -3035,32 +3036,37 @@ fn analyze_kernel_context_decision(
         execute_continuation,
         "execute promotion",
     )?;
-    let [unmap_mapping, scratch_after_unmap @ ..] = after_execute else {
+    let (data_subject, data_frames, data_success, _data_problem, data_failure, data_span) =
+        result_sequence(source, after_execute, "data frame allocation")?;
+    let data_request = parse_physical_frame_allocation(source, data_subject, &completion_resumed)?;
+    if data_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
         return Err(user_context_diagnostic(
             source,
-            span,
-            "executable user mapping must be unmapped",
+            data_subject.span(),
+            "resident immutable data requires exactly one separately allocated frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: data_failure_message,
+    } = action_disposition(source, data_failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            data_failure.span(),
+            "data frame allocation failure must preserve the allocator context and enter `fatal`",
         ));
     };
-    let (returned_scratch, unmap_continuation) = parse_user_address_space_unmap(
-        source,
-        unmap_mapping,
-        &completion_resumed,
-        &user_space,
-        &executable_scratch,
-    )?;
-    let after_first_unmap = select_user_mapping_continuation(
-        source,
-        span,
-        scratch_after_unmap,
-        unmap_continuation,
-        "unmap",
-    )?;
-    let [map_mapping_again, after_second_map @ ..] = after_first_unmap else {
+    let data_statements = action_block(source, data_success, "data frame allocation success")?;
+    let [map_mapping_again, after_second_map @ ..] = data_statements else {
         return Err(user_context_diagnostic(
             source,
-            span,
-            "the returned user-mapping extent must enter one fresh mapping generation",
+            data_span,
+            "data frame allocation success must construct and revoke immutable data before executable code",
         ));
     };
     let (mapped_scratch_again, map_again_continuation) = parse_user_address_space_map(
@@ -3068,7 +3074,8 @@ fn analyze_kernel_context_decision(
         map_mapping_again,
         &completion_resumed,
         &user_space,
-        &returned_scratch,
+        &data_frames,
+        "probe-data",
     )?;
     let after_second_map = select_user_mapping_continuation(
         source,
@@ -3174,33 +3181,50 @@ fn analyze_kernel_context_decision(
         &user_space,
         &immutable_data_scratch_again,
     )?;
-    let scratch_continuation = select_user_mapping_continuation(
+    let after_data_unmap = select_user_mapping_continuation(
         source,
         span,
         after_second_unmap,
         unmap_again_continuation,
-        "second unmap",
+        "data unmap",
     )?;
     let [
-        release_scratch,
+        release_data,
+        unmap_code,
+        release_code,
         mapping_marker_statement,
         disjoint_marker_statement,
         prepare_user,
         scratch_rest @ ..,
-    ] = scratch_continuation
+    ] = after_data_unmap
     else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping unmap must return the extent for release before user preparation",
+            "resident data must be released before executable code teardown and user preparation",
         ));
     };
     parse_physical_frame_release(
         source,
-        release_scratch,
+        release_data,
         &completion_resumed,
         &returned_scratch_again,
     )?;
+    let (returned_code, code_unmap_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_code,
+        &completion_resumed,
+        &user_space,
+        &executable_scratch,
+    )?;
+    if !code_unmap_continuation.is_empty() {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(unmap_code),
+            "executable-code unmap continuation must remain in the enclosing construction scope",
+        ));
+    }
+    parse_physical_frame_release(source, release_code, &completion_resumed, &returned_code)?;
     let mapping_marker = analyze_operation(
         source,
         mapping_marker_statement,
@@ -3410,12 +3434,17 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::PermitUserMappingExecute,
-            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: data_request,
+                failure_message: data_failure_message,
+            },
             CompilerSystemsOperation::MapUserAddressSpace,
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::SealUserMappingImmutableData,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             mapping_marker,
@@ -3579,6 +3608,7 @@ fn parse_user_address_space_map<'a>(
     context_name: &str,
     address_space_name: &str,
     backing_name: &str,
+    layout_name: &str,
 ) -> Result<(String, &'a [Statement]), Diagnostic> {
     let (name, items, span, declarations) = match statement {
         Statement::Implementation {
@@ -3661,7 +3691,7 @@ fn parse_user_address_space_map<'a>(
     }
     if address_space != Some(address_space_name)
         || backing != Some(backing_name)
-        || layout != Some("probe-guard")
+        || layout != Some(layout_name)
     {
         return Err(user_context_diagnostic(
             source,
@@ -5945,9 +5975,11 @@ mod tests {
                 CompilerSystemsTransition::PermitUserMappingExecute {
                     mapping_identity: 1,
                 },
-                CompilerSystemsTransition::UnmapUserAddressSpace {
-                    address_space_identity: 1,
-                    mapping_identity: 1,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
                 },
                 CompilerSystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
@@ -5968,6 +6000,11 @@ mod tests {
                 CompilerSystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 2,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6135,7 +6172,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 113);
+        assert_eq!(program.bootstrap.handler.operations.len(), 115);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

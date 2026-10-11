@@ -192,45 +192,55 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                               mapped-scratch is completion-resumed user address space map (
                                                                                                                 address-space is user-space,
                                                                                                                 backing is scratch-frame,
-                                                                                                                layout is probe-guard
+                                                                                                                layout is probe-code
                                                                                                               )
                                                                                                               stored-scratch is completion-resumed user mapping store byte mapped-scratch
                                                                                                               protected-scratch is completion-resumed user mapping protect read only stored-scratch
                                                                                                               verified-scratch is completion-resumed user mapping load byte protected-scratch
                                                                                                               executable-scratch is completion-resumed user mapping permit execute verified-scratch
-                                                                                                              returned-scratch is completion-resumed user address space unmap (
-                                                                                                                address-space is user-space,
-                                                                                                                mapping is executable-scratch
+                                                                                                              completion-resumed frames allocate (
+                                                                                                                frame-count is 1,
+                                                                                                                alignment-frames is 1
                                                                                                               )
-                                                                                                              mapped-scratch-again is completion-resumed user address space map (
-                                                                                                                address-space is user-space,
-                                                                                                                backing is returned-scratch,
-                                                                                                                layout is probe-guard
-                                                                                                              )
-                                                                                                              stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
-                                                                                                              protected-scratch-again is completion-resumed user mapping protect read only stored-scratch-again
-                                                                                                              verified-scratch-again is completion-resumed user mapping load byte protected-scratch-again
-                                                                                                              immutable-data-scratch-again is completion-resumed user mapping seal immutable data verified-scratch-again
-                                                                                                              returned-scratch-again is completion-resumed user address space unmap (
-                                                                                                                address-space is user-space,
-                                                                                                                mapping is immutable-data-scratch-again
-                                                                                                              )
-                                                                                                              completion-resumed frames release returned-scratch-again
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
-                                                                                                              user-probe is completion-resumed user probe prepare (
-                                                                                                                process-identity is 1,
-                                                                                                                address-space is user-space
-                                                                                                              )
-                                                                                                              user-completed is completion-resumed user context enter user-probe
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
-                                                                                                              revoked-space is completion-resumed user execution complete user-completed
-                                                                                                              returned-frames is completion-resumed user address space reclaim revoked-space
-                                                                                                              completion-resumed frames release returned-frames
-                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
-                                                                                                              completion-resumed fatal "toolchain gate complete"
+                                                                                                                Ok data-frame then {
+                                                                                                                  mapped-data is completion-resumed user address space map (
+                                                                                                                    address-space is user-space,
+                                                                                                                    backing is data-frame,
+                                                                                                                    layout is probe-data
+                                                                                                                  )
+                                                                                                                  stored-data is completion-resumed user mapping store byte mapped-data
+                                                                                                                  protected-data is completion-resumed user mapping protect read only stored-data
+                                                                                                                  verified-data is completion-resumed user mapping load byte protected-data
+                                                                                                                  immutable-data is completion-resumed user mapping seal immutable data verified-data
+                                                                                                                  returned-data is completion-resumed user address space unmap (
+                                                                                                                    address-space is user-space,
+                                                                                                                    mapping is immutable-data
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-data
+                                                                                                                  returned-code is completion-resumed user address space unmap (
+                                                                                                                    address-space is user-space,
+                                                                                                                    mapping is executable-scratch
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-code
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
+                                                                                                                  user-probe is completion-resumed user probe prepare (
+                                                                                                                    process-identity is 1,
+                                                                                                                    address-space is user-space
+                                                                                                                  )
+                                                                                                                  user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                                  revoked-space is completion-resumed user execution complete user-completed
+                                                                                                                  returned-frames is completion-resumed user address space reclaim revoked-space
+                                                                                                                  completion-resumed frames release returned-frames
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                                  completion-resumed fatal "toolchain gate complete"
+                                                                                                                }
+                                                                                                                Error problem then {
+                                                                                                                  completion-resumed fatal "data frame allocation failed"
+                                                                                                                }
                                                                                                             }
                                                                                                             Error problem then {
                                                                                                               completion-resumed fatal "disjoint frame allocation failed"
