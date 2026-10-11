@@ -458,6 +458,21 @@ unmap, code-first teardown, release while mapped, or recoverable exit with live
 construction authority SHALL be invalid. This refinement SHALL NOT constitute
 a general mapping collection, layout API, application image, or loader.
 
+The resident-image readiness qualification SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_READY` console observation after
+`ImmutableDataMapping` is produced and before either finalized mapping is
+unmapped. At emission, the exact generation-one `ExecutableCodeMapping` and
+generation-two `ImmutableDataMapping` SHALL both remain live. Emission SHALL
+preserve their identities, backing, placements, contents, permissions, and
+affine ownership and SHALL produce no mapping or access authority.
+
+Emission before both mappings are finalized, after either unmap begins, with
+substituted roles or identities, or with a missing, duplicate, or renamed
+marker SHALL be invalid. The observation SHALL expose no address, permission
+encoding, page-table representation, or target completion mechanism and SHALL
+NOT imply readiness for user entry or constitute an application-image or
+loader interface.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -614,6 +614,15 @@ data before unmapping and releasing code. User preparation requires both
 mappings revoked and both returned extents released. This is exactly a two-
 mapping construction proof, not a general mapping collection or image loader.
 
+The resident-image readiness refinement emits the exact
+`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after immutable data is
+sealed and before either finalized mapping is unmapped. At that boundary one
+RO/X code mapping and one RO/NX data mapping coexist with pairwise-disjoint
+backing. Console output preserves both affine owners: the marker grants no
+mapping or access authority and exposes no address, permission encoding, or
+target representation. It is a bounded physical witness, not an application
+image, loader, or transfer into user execution.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

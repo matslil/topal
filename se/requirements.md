@@ -492,6 +492,14 @@ release while mapped, or recoverable disposition with either mapping live shall
 fail closed. Provider-private placement and revocation mechanics shall remain
 unobservable.
 
+The resident-image qualification shall emit the exact
+`TOPAL_KERNEL_USER_IMAGE_READY` marker after both role-specific mappings are
+finalized and before either is unmapped. Emission shall preserve both affine
+mapping owners and grant no additional authority. Missing, duplicate, renamed,
+early, or late emission shall fail closed. The marker shall expose no mapping
+identity, address, permission representation, or target mechanism and shall
+not imply that the image can enter user execution.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

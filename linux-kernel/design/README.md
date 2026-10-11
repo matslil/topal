@@ -44,6 +44,7 @@ records, not this directory alone, define language meaning.
 - [Affine user-mapping executable promotion](user-mapping-executable-promotion.md)
 - [Sealed immutable user-mapping roles](user-mapping-image-roles.md)
 - [Bounded resident user-image mappings](resident-user-image-mappings.md)
+- [Resident user-image readiness witness](resident-user-image-readiness.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
