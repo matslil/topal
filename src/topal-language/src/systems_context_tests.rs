@@ -174,6 +174,10 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("uname-machine is \"x86_64\"", "uname-machine is \"aarch64\""),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "completion-resumed user context enter user-probe",
                 "completion-resumed user context enter other-probe",

@@ -739,6 +739,37 @@ fn field_natural(
     parse_storage_natural(source, &field.value)
 }
 
+fn field_static_string(
+    source: &SourceText,
+    field: &ProductField,
+    expected_label: &str,
+) -> Result<String, Diagnostic> {
+    let Some(label) = field.label else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires named `{expected_label}`"),
+        ));
+    };
+    if source.slice(label) != expected_label {
+        return Err(user_context_diagnostic(
+            source,
+            label,
+            format!("user syscall dispatch requires `{expected_label}` in source order"),
+        ));
+    }
+    let Expression::String(value) = field.value else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires static string `{expected_label}`"),
+        ));
+    };
+    parse_string(source.slice(value))
+        .map(str::to_owned)
+        .ok_or_else(|| user_context_diagnostic(source, value, "invalid static uname field"))
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
@@ -899,25 +930,37 @@ fn analyze_user_syscall_handler(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must be `context linux syscall dispatch (getpid-result is 1, exit-group-status is 0)`",
+            "user syscall dispatch requires the sealed getpid, uname, and exit_group fields",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 2
+        || fields.len() != 8
         || field_natural(source, &fields[0], "getpid-result")? != 1
-        || field_natural(source, &fields[1], "exit-group-status")? != 0
+        || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
+        || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
+        || field_static_string(source, &fields[3], "uname-release")? != "7.2.9-topal"
+        || field_static_string(source, &fields[4], "uname-version")? != "#1 Topal"
+        || field_static_string(source, &fields[5], "uname-machine")? != "x86_64"
+        || field_static_string(source, &fields[6], "uname-domainname")? != "(none)"
+        || field_natural(source, &fields[7], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
         getpid_result: 1,
+        uname_sysname: "Linux".into(),
+        uname_nodename: "topal".into(),
+        uname_release: "7.2.9-topal".into(),
+        uname_version: "#1 Topal".into(),
+        uname_machine: "x86_64".into(),
+        uname_domainname: "(none)".into(),
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {

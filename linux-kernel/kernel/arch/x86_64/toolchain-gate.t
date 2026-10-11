@@ -328,7 +328,16 @@ terminal-thread-handler is fn (
 user-syscall-handler is fn (
   context : InitialUserSyscallContext
 ) -> InitialUserSyscallDisposition
-  context linux syscall dispatch (getpid-result is 1, exit-group-status is 0)
+  context linux syscall dispatch (
+    getpid-result is 1,
+    uname-sysname is "Linux",
+    uname-nodename is "topal",
+    uname-release is "7.2.9-topal",
+    uname-version is "#1 Topal",
+    uname-machine is "x86_64",
+    uname-domainname is "(none)",
+    exit-group-status is 0
+  )
 
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (

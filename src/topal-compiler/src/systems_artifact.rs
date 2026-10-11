@@ -2717,11 +2717,18 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         || program.user_syscall.handler.disposition
             != (CompilerSystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
+                uname_sysname: "Linux".into(),
+                uname_nodename: "topal".into(),
+                uname_release: "7.2.9-topal".into(),
+                uname_version: "#1 Topal".into(),
+                uname_machine: "x86_64".into(),
+                uname_domainname: "(none)".into(),
                 exit_group_status: 0,
             })
     {
         return Err(CompileError::Tool(
-            "x86 initial user-syscall entry requires the sealed getpid/exit_group dispatch".into(),
+            "x86 initial user-syscall entry requires the sealed getpid/uname/exit_group dispatch"
+                .into(),
         ));
     }
 

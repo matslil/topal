@@ -274,6 +274,12 @@ pub enum SystemsDisposition {
     RetireKernelContextToCaller,
     DispatchInitialUserSyscall {
         getpid_result: u64,
+        uname_sysname: String,
+        uname_nodename: String,
+        uname_release: String,
+        uname_version: String,
+        uname_machine: String,
+        uname_domainname: String,
         exit_group_status: u64,
     },
     Fatal {
@@ -1005,6 +1011,12 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
         || handler.disposition
             != (SystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
+                uname_sysname: "Linux".into(),
+                uname_nodename: "topal".into(),
+                uname_release: "7.2.9-topal".into(),
+                uname_version: "#1 Topal".into(),
+                uname_machine: "x86_64".into(),
+                uname_domainname: "(none)".into(),
                 exit_group_status: 0,
             })
     {
@@ -2337,6 +2349,7 @@ fn model_user_execution_transition(
             let SystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result,
                 exit_group_status,
+                ..
             } = handler.disposition
             else {
                 return Err(SystemsModelError::new(
@@ -3604,6 +3617,12 @@ mod tests {
                     operations: Vec::new(),
                     disposition: SystemsDisposition::DispatchInitialUserSyscall {
                         getpid_result: 1,
+                        uname_sysname: "Linux".into(),
+                        uname_nodename: "topal".into(),
+                        uname_release: "7.2.9-topal".into(),
+                        uname_version: "#1 Topal".into(),
+                        uname_machine: "x86_64".into(),
+                        uname_domainname: "(none)".into(),
                         exit_group_status: 0,
                     },
                     effects: vec![SYSTEMS_USER_SYSCALL_DISPATCH.into()],
