@@ -57,8 +57,8 @@ pub use topal_semantics::{
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_STORE_BYTE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -3036,7 +3036,11 @@ fn analyze_kernel_context_decision(
         "execute promotion",
     )?;
     let [unmap_mapping, scratch_after_unmap @ ..] = after_execute else {
-        return Err(user_context_diagnostic(source, span, "executable user mapping must be unmapped"));
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "executable user mapping must be unmapped",
+        ));
     };
     let (returned_scratch, unmap_continuation) = parse_user_address_space_unmap(
         source,
@@ -3157,7 +3161,11 @@ fn analyze_kernel_context_decision(
         "second execute promotion",
     )?;
     let [unmap_mapping_again, after_second_unmap @ ..] = after_second_execute else {
-        return Err(user_context_diagnostic(source, span, "second executable user mapping must be unmapped"));
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second executable user mapping must be unmapped",
+        ));
     };
     let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
         source,

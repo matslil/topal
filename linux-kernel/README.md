@@ -191,6 +191,13 @@ records distinct preparation, context binding, revocation, reclaim, and release
 transitions; split x86-64 provider operations; and two deterministic pinned-
 QEMU runs without changing core-language meaning.
 
+The following systems-only refinement adds
+[affine executable promotion](design/user-mapping-executable-promotion.md)
+after read-only verification. Its
+[implementation and qualification report](step-4-user-mapping-executable-promotion.md)
+records W^X-preserving RO/NX-to-RO/X authority, provider-private completion,
+structural inspection, and two deterministic pinned-QEMU runs.
+
 The latest systems-only refinement qualifies a
 [bounded disjoint live-frame extent](design/disjoint-live-frame-extent.md)
 while the prepared address space retains its backing. Its
@@ -337,6 +344,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 affine user-mapping lifecycle](step-4-affine-user-mapping-lifecycle.md)
 - [Step 4 sequential user-mapping generations](step-4-sequential-user-mapping-generations.md)
 - [Step 4 user-mapping permission tightening](step-4-user-mapping-permission-tightening.md)
+- [Step 4 user-mapping executable promotion](step-4-user-mapping-executable-promotion.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

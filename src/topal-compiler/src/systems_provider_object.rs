@@ -2572,10 +2572,7 @@ mod tests {
                     .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]),
             "user load must compare the fixed byte and revoke on mismatch"
         );
-        let user_execute = symbol_bytes(
-            &file,
-            X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
-        );
+        let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
             user_execute
                 .windows(5)

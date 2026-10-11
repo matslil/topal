@@ -38,10 +38,10 @@ use crate::{
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_STORE_BYTE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
-    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
+    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -2818,14 +2818,14 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
         }
         SystemsOperation::PermitUserMappingExecute => {
-            *mapping = Some(protocol.permit_user_mapping_execute(mapping.take().ok_or_else(
-                || {
+            *mapping = Some(
+                protocol.permit_user_mapping_execute(mapping.take().ok_or_else(|| {
                     SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user mapping execute promotion requires one verified affine mapping",
                     )
-                },
-            )?)?);
+                })?)?,
+            );
             let mapping_identity = mapping
                 .as_ref()
                 .expect("executable mapping was just restored")
