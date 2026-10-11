@@ -223,11 +223,26 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-FRAMES",
         ),
         (
+            SOURCE.replace("backing is scratch-frame", "backing is other-scratch"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("layout is probe-guard", "layout is other-layout"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
-                "completion-resumed frames release scratch-frame",
+                "completion-resumed frames release returned-scratch",
                 "completion-resumed frames release other-scratch",
             ),
             "E-SYSTEMS-FRAMES",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_MAPPING_OK",
+                "TOPAL_KERNEL_USER_MAPPING_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(

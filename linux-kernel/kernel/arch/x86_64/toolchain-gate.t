@@ -189,7 +189,13 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                             alignment-frames is 1
                                                                                                           )
                                                                                                             Ok scratch-frame then {
-                                                                                                              completion-resumed frames release scratch-frame
+                                                                                                              returned-scratch is completion-resumed user address space verify mapping (
+                                                                                                                address-space is user-space,
+                                                                                                                backing is scratch-frame,
+                                                                                                                layout is probe-guard
+                                                                                                              )
+                                                                                                              completion-resumed frames release returned-scratch
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
                                                                                                               completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
                                                                                                               user-probe is completion-resumed user probe prepare (
                                                                                                                 process-identity is 1,

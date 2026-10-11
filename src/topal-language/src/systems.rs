@@ -52,10 +52,10 @@ pub use topal_semantics::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
-    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -2934,25 +2934,71 @@ fn analyze_kernel_context_decision(
     };
     let scratch_statements =
         action_block(source, scratch_success, "disjoint frame allocation success")?;
+    let [verify_mapping, scratch_after_verify @ ..] = scratch_statements else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "disjoint frame allocation success must verify and release its exact extent, publish its markers, and consume the prepared user address space",
+        ));
+    };
+    let (returned_scratch, verify_continuation) = parse_user_address_space_verify_mapping(
+        source,
+        verify_mapping,
+        &completion_resumed,
+        &user_space,
+        &scratch_frames,
+    )?;
+    let scratch_continuation = match (
+        scratch_after_verify.is_empty(),
+        verify_continuation.is_empty(),
+    ) {
+        (true, false) => verify_continuation,
+        (false, true) => scratch_after_verify,
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                span,
+                "user mapping verification must transfer exactly one continuation",
+            ));
+        }
+    };
     let [
         release_scratch,
+        mapping_marker_statement,
         disjoint_marker_statement,
         prepare_user,
         scratch_rest @ ..,
-    ] = scratch_statements
+    ] = scratch_continuation
     else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "disjoint frame allocation success must release its exact extent, publish its marker, and consume the prepared user address space",
+            "disjoint frame allocation success must verify and release its exact extent, publish its markers, and consume the prepared user address space",
         ));
     };
     parse_physical_frame_release(
         source,
         release_scratch,
         &completion_resumed,
-        &scratch_frames,
+        &returned_scratch,
     )?;
+    let mapping_marker = analyze_operation(
+        source,
+        mapping_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if mapping_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(mapping_marker_statement),
+            "user mapping round trip requires its exact marker",
+        ));
+    }
     let disjoint_marker = analyze_operation(
         source,
         disjoint_marker_statement,
@@ -3140,7 +3186,9 @@ fn analyze_kernel_context_decision(
                 request: scratch_request,
                 failure_message: scratch_failure_message,
             },
+            CompilerSystemsOperation::VerifyUserAddressSpaceMapping,
             CompilerSystemsOperation::ReleasePhysicalFrames,
+            mapping_marker,
             disjoint_marker,
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
@@ -3290,6 +3338,107 @@ fn parse_user_address_space_prepare<'a>(
             source,
             *span,
             "the initial user address space requires the exact three-frame backing and sealed initial-probe layout",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_verify_mapping<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    backing_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping verification must bind the returned affine extent",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        verify,
+        mapping,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping verification requires named address-space, backing, and layout parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, verify, "verify")
+        || !identifier_is(source, mapping, "mapping")
+        || fields.len() != 3
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user mapping verification requires the exact prepared space, disjoint backing, and probe-guard layout",
+        ));
+    }
+    let mut address_space = None;
+    let mut backing = None;
+    let mut layout = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping verification parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping verification values must use live affine identities",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => address_space = Some(source.slice(value)),
+            "backing" => backing = Some(source.slice(value)),
+            "layout" => layout = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user mapping verification parameter",
+                ));
+            }
+        }
+    }
+    if address_space != Some(address_space_name)
+        || backing != Some(backing_name)
+        || layout != Some("probe-guard")
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user mapping verification requires the exact prepared space, disjoint backing, and probe-guard layout",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -4832,6 +4981,7 @@ mod tests {
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -5225,7 +5375,13 @@ mod tests {
                         alignment_frames: 1,
                     },
                 },
+                CompilerSystemsTransition::VerifyUserAddressSpaceMapping {
+                    address_space_identity: 1,
+                },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
                 },
@@ -5388,7 +5544,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 100);
+        assert_eq!(program.bootstrap.handler.operations.len(), 102);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -5429,6 +5585,7 @@ mod tests {
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,

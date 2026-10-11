@@ -7,6 +7,8 @@ pub const SYSTEMS_USER_ADDRESS_SPACE_PREPARE: &str =
     "topal.systems.memory.user-address-space.prepare/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_RECLAIM: &str =
     "topal.systems.memory.user-address-space.reclaim/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING: &str =
+    "topal.systems.memory.user-address-space.verify-mapping/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
 pub const SYSTEMS_USER_SYSCALL_ENTRY: &str = "topal.systems.entry.user-syscall/1";
 pub const SYSTEMS_USER_SYSCALL_DISPATCH: &str =
