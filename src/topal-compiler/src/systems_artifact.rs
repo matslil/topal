@@ -31,10 +31,12 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -67,15 +69,17 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
     X86_SYSTEMS_USER_PREPARE_SYMBOL, X86_SYSTEMS_USER_SYSCALL_SYMBOL,
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/23";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/23";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/24";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/24";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -807,6 +811,22 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL,
         ),
         (
+            SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_MAPPING_STORE_BYTE,
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+        ),
+        (
             SYSTEMS_USER_CONTEXT_PREPARE,
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
         ),
@@ -911,6 +931,10 @@ enum ProviderSymbol {
     ReclaimKernelContext,
     PrepareUserAddressSpace,
     VerifyUserAddressSpaceMapping,
+    MapUserAddressSpace,
+    StoreUserMappingByte,
+    LoadUserMappingByte,
+    UnmapUserAddressSpace,
     PrepareUserProbe,
     EnterUserContext,
     CompleteUserBacking,
@@ -961,6 +985,10 @@ impl ProviderSymbol {
             Self::VerifyUserAddressSpaceMapping => {
                 X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL
             }
+            Self::MapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+            Self::StoreUserMappingByte => X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            Self::LoadUserMappingByte => X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            Self::UnmapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
             Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
             Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
             Self::CompleteUserBacking => X86_SYSTEMS_USER_COMPLETE_SYMBOL,
@@ -1010,6 +1038,10 @@ impl ProviderSymbol {
             | Self::ReclaimKernelContext
             | Self::PrepareUserAddressSpace
             | Self::VerifyUserAddressSpaceMapping
+            | Self::MapUserAddressSpace
+            | Self::StoreUserMappingByte
+            | Self::LoadUserMappingByte
+            | Self::UnmapUserAddressSpace
             | Self::PrepareUserProbe
             | Self::EnterUserContext
             | Self::CompleteUserBacking
@@ -1190,6 +1222,9 @@ enum RootUserExecutionState {
     #[default]
     Fresh,
     AddressSpacePrepared,
+    UserMappingLive,
+    UserMappingStored,
+    UserMappingVerified,
     AddressSpaceVerified,
     Prepared,
     Completed,
@@ -1229,6 +1264,10 @@ struct ProviderSymbols {
     reclaim_kernel_context: SymbolId,
     prepare_user_address_space: SymbolId,
     verify_user_address_space_mapping: SymbolId,
+    map_user_address_space: SymbolId,
+    store_user_mapping_byte: SymbolId,
+    load_user_mapping_byte: SymbolId,
+    unmap_user_address_space: SymbolId,
     prepare_user_probe: SymbolId,
     enter_user_context: SymbolId,
     complete_user_backing: SymbolId,
@@ -2427,6 +2466,73 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn map_user_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::AddressSpacePrepared
+            || self.physical_frame_count != Some(1)
+        {
+            return Err(CompileError::Tool(
+                "x86 user map requires the prepared address space and one disjoint frame".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]);
+        self.call_checked_bool(ProviderSymbol::MapUserAddressSpace)?;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+        self.physical_frame_count = None;
+        self.user_execution = RootUserExecutionState::UserMappingLive;
+        Ok(())
+    }
+
+    fn store_user_mapping_byte(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingLive
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping store requires the exact live mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::StoreUserMappingByte)?;
+        self.user_execution = RootUserExecutionState::UserMappingStored;
+        Ok(())
+    }
+
+    fn load_user_mapping_byte(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingStored
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping load requires the exact stored mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::LoadUserMappingByte)?;
+        self.user_execution = RootUserExecutionState::UserMappingVerified;
+        Ok(())
+    }
+
+    fn unmap_user_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingVerified
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user unmap requires the exact verified mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call(ProviderSymbol::UnmapUserAddressSpace);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
+        self.physical_frame_count = Some(1);
+        self.user_execution = RootUserExecutionState::AddressSpaceVerified;
+        Ok(())
+    }
+
     fn enter_user_context(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.user_execution != RootUserExecutionState::Prepared
@@ -2586,6 +2692,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::ArmDeadline
                     | CompilerSystemsOperation::WaitDeadline
                     | CompilerSystemsOperation::BootstrapRelease
+                    | CompilerSystemsOperation::PrepareUserAddressSpace
+                    | CompilerSystemsOperation::MapUserAddressSpace
+                    | CompilerSystemsOperation::StoreUserMappingByte
+                    | CompilerSystemsOperation::LoadUserMappingByte
+                    | CompilerSystemsOperation::UnmapUserAddressSpace
                     | CompilerSystemsOperation::PrepareUserProbe { .. }
                     | CompilerSystemsOperation::EnterUserContext
                     | CompilerSystemsOperation::CompleteUserExecution
@@ -2707,6 +2818,22 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         verify_user_address_space_mapping: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::VerifyUserAddressSpaceMapping,
+        ),
+        map_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::MapUserAddressSpace,
+        ),
+        store_user_mapping_byte: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::StoreUserMappingByte,
+        ),
+        load_user_mapping_byte: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::LoadUserMappingByte,
+        ),
+        unmap_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::UnmapUserAddressSpace,
         ),
         prepare_user_probe: undefined_provider_symbol(
             &mut object,
@@ -3166,6 +3293,18 @@ fn encode_operations(
             CompilerSystemsOperation::VerifyUserAddressSpaceMapping => {
                 encoder.verify_user_address_space_mapping()?;
             }
+            CompilerSystemsOperation::MapUserAddressSpace => {
+                encoder.map_user_address_space()?;
+            }
+            CompilerSystemsOperation::StoreUserMappingByte => {
+                encoder.store_user_mapping_byte()?;
+            }
+            CompilerSystemsOperation::LoadUserMappingByte => {
+                encoder.load_user_mapping_byte()?;
+            }
+            CompilerSystemsOperation::UnmapUserAddressSpace => {
+                encoder.unmap_user_address_space()?;
+            }
             CompilerSystemsOperation::PrepareUserProbe { process_identity } => {
                 encoder.prepare_user_probe(*process_identity)?;
             }
@@ -3258,6 +3397,10 @@ fn append_root(
             ProviderSymbol::VerifyUserAddressSpaceMapping => {
                 provider_symbols.verify_user_address_space_mapping
             }
+            ProviderSymbol::MapUserAddressSpace => provider_symbols.map_user_address_space,
+            ProviderSymbol::StoreUserMappingByte => provider_symbols.store_user_mapping_byte,
+            ProviderSymbol::LoadUserMappingByte => provider_symbols.load_user_mapping_byte,
+            ProviderSymbol::UnmapUserAddressSpace => provider_symbols.unmap_user_address_space,
             ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
             ProviderSymbol::EnterUserContext => provider_symbols.enter_user_context,
             ProviderSymbol::CompleteUserBacking => provider_symbols.complete_user_backing,
@@ -3487,6 +3630,20 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ReclaimUserAddressSpace {
                     address_space_identity,
                 } => format!("{identity}:address-space={address_space_identity}"),
+                CompilerSystemsTransition::MapUserAddressSpace {
+                    address_space_identity,
+                    mapping_identity,
+                }
+                | CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity,
+                    mapping_identity,
+                } => format!(
+                    "{identity}:address-space={address_space_identity}:mapping={mapping_identity}"
+                ),
+                CompilerSystemsTransition::StoreUserMappingByte { mapping_identity }
+                | CompilerSystemsTransition::LoadUserMappingByte { mapping_identity } => {
+                    format!("{identity}:mapping={mapping_identity}")
+                }
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity,
                     probe_identity,
@@ -3712,7 +3869,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1025);
+        assert_eq!(relocation_targets.len(), 1034);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3815,8 +3972,22 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL)
                 .count(),
-            1
+            0
         );
+        for target in [
+            X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
             relocation_targets
@@ -3844,14 +4015,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            40
+            43
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            51
+            54
         );
         assert_eq!(
             relocation_targets
@@ -3911,7 +4082,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            27,
+            30,
             "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -4011,6 +4182,10 @@ mod tests {
                 "topal_x86_systems_context_reclaim",
                 "topal_x86_systems_user_prepare_initial_address_space",
                 "topal_x86_systems_user_verify_initial_mapping",
+                "topal_x86_systems_user_map_initial_frame",
+                "topal_x86_systems_user_store_initial_mapping_byte",
+                "topal_x86_systems_user_load_initial_mapping_byte",
+                "topal_x86_systems_user_unmap_initial_frame",
                 "topal_x86_systems_user_prepare_initial_probe",
                 "topal_x86_systems_user_complete_initial_backing",
                 "topal_x86_systems_user_reclaim_initial_address_space",
@@ -4053,10 +4228,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 55);
+        assert_eq!(decoded.placements.len(), 59);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 163);
+        assert_eq!(decoded.semantic_trace.len(), 166);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4064,15 +4239,18 @@ mod tests {
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
-        assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING));
-        assert_eq!(decoded.semantic_trace[122], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[156].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[157], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[158].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(156..159);
-        decoded.semantic_trace.drain(120..125);
+        assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
+        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
+        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[125], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[159].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[160], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[161].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(159..162);
+        decoded.semantic_trace.drain(120..128);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");

@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/23";
+    "topal.provider-object.x86_64-qemu-pc-q35/24";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -65,6 +65,14 @@ pub const X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL: &str =
     "topal_x86_systems_user_prepare_initial_address_space";
 pub const X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL: &str =
     "topal_x86_systems_user_verify_initial_mapping";
+pub const X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL: &str =
+    "topal_x86_systems_user_map_initial_frame";
+pub const X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL: &str =
+    "topal_x86_systems_user_store_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL: &str =
+    "topal_x86_systems_user_load_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL: &str =
+    "topal_x86_systems_user_unmap_initial_frame";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
 pub const X86_SYSTEMS_USER_ENTER_SYMBOL: &str = "topal_x86_systems_user_enter_initial_context";
 pub const X86_SYSTEMS_USER_COMPLETE_SYMBOL: &str =
@@ -292,6 +300,22 @@ fn append_user_functions(
             user_verify_initial_mapping()?,
         ),
         (
+            X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+            user_map_initial_frame()?,
+        ),
+        (
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            user_store_initial_mapping_byte()?,
+        ),
+        (
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            user_load_initial_mapping_byte()?,
+        ),
+        (
+            X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+            user_unmap_initial_frame()?,
+        ),
+        (
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
             user_prepare_initial_probe()?,
         ),
@@ -420,11 +444,135 @@ fn user_verify_initial_mapping() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "cleanup-fail");
     code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
     code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x07]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
 
     code.bind("cleanup-fail")?;
     code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
     code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0x3f, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0x89, 0xd0]);
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x89, 0xc9]);
+    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x39, 0xc8]);
+    code.jump_if(0x86, "disjoint");
+    code.bytes(&[0x4c, 0x39, 0xca]);
+    code.jump_if(0x83, "disjoint");
+    code.jump("fail");
+
+    code.bind("disjoint")?;
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0xd0]);
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x4d, 0x09, 0xc8, 0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x48, 0x89, 0x57, 0x78]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x04]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x04]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0xc6, 0x02, 0x6d]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x05]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x05]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
+    code.jump_if(0x85, "cleanup-fail");
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+
+    code.bind("cleanup-fail")?;
+    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x00]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x06]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x07]);
+    code.bytes(&[0x4c, 0x89, 0xc0, 0xc3]);
+
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -438,7 +586,7 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x3f, 0x00]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x01]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xb9]);
     code.bytes(&0xc000_0080_u32.to_le_bytes()); // IA32_EFER
@@ -2220,6 +2368,59 @@ mod tests {
                 .count()
                 >= 2,
             "mapping verification must invalidate after publication and revocation"
+        );
+        let user_map = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL);
+        assert!(
+            user_map
+                .windows(8)
+                .any(|bytes| bytes == 0x8000_0000_0000_0007_u64.to_le_bytes())
+                && user_map
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x57, 0x78]),
+            "user map must publish RW/NX authority and retain its exact frame identity"
+        );
+        assert!(
+            user_map
+                .windows(7)
+                .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x04])
+        );
+        let user_store = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL);
+        assert!(
+            user_store
+                .windows(4)
+                .any(|bytes| bytes == [0x41, 0xc6, 0x02, 0x6d])
+                && user_store
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05])
+        );
+        let user_load = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL);
+        assert!(
+            user_load
+                .windows(4)
+                .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
+                && user_load
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06])
+                && user_load
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]),
+            "user load must compare the fixed byte and revoke on mismatch"
+        );
+        let user_unmap = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL);
+        assert!(
+            user_unmap
+                .windows(8)
+                .any(|bytes| bytes == [0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
+                && user_unmap
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x07]),
+            "user unmap must revoke, invalidate, consume private mapping state, and return the frame"
         );
         let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);
         assert!(

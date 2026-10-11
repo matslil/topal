@@ -23,10 +23,12 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
     SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
@@ -35,7 +37,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/23";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/24";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -83,6 +85,10 @@ pub enum X86SystemsLowering {
     ReclaimKernelContext,
     PrepareInitialUserAddressSpace,
     VerifyInitialUserMapping,
+    MapInitialUserFrame,
+    StoreInitialUserMappingByte,
+    LoadInitialUserMappingByte,
+    UnmapInitialUserFrame,
     PrepareInitialUserProbe,
     EnterInitialUserContext,
     CompleteInitialUserBacking,
@@ -179,6 +185,14 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.user.prepare-initial-address-space/1"
             }
             Self::VerifyInitialUserMapping => "topal.provider.x86_64.user.verify-initial-mapping/1",
+            Self::MapInitialUserFrame => "topal.provider.x86_64.user.map-initial-frame/1",
+            Self::StoreInitialUserMappingByte => {
+                "topal.provider.x86_64.user.store-initial-mapping-byte/1"
+            }
+            Self::LoadInitialUserMappingByte => {
+                "topal.provider.x86_64.user.load-initial-mapping-byte/1"
+            }
+            Self::UnmapInitialUserFrame => "topal.provider.x86_64.user.unmap-initial-frame/1",
             Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
             Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
             Self::CompleteInitialUserBacking => {
@@ -239,6 +253,10 @@ impl X86SystemsLowering {
                 | Self::PreemptCurrentKernelContext
                 | Self::PrepareInitialUserAddressSpace
                 | Self::VerifyInitialUserMapping
+                | Self::MapInitialUserFrame
+                | Self::StoreInitialUserMappingByte
+                | Self::LoadInitialUserMappingByte
+                | Self::UnmapInitialUserFrame
                 | Self::PrepareInitialUserProbe
                 | Self::EnterInitialUserContext
                 | Self::CompleteInitialUserBacking
@@ -410,6 +428,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
         SYSTEMS_USER_ADDRESS_SPACE_PREPARE => X86SystemsLowering::PrepareInitialUserAddressSpace,
         SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING => X86SystemsLowering::VerifyInitialUserMapping,
+        SYSTEMS_USER_ADDRESS_SPACE_MAP => X86SystemsLowering::MapInitialUserFrame,
+        SYSTEMS_USER_MAPPING_STORE_BYTE => X86SystemsLowering::StoreInitialUserMappingByte,
+        SYSTEMS_USER_MAPPING_LOAD_BYTE => X86SystemsLowering::LoadInitialUserMappingByte,
+        SYSTEMS_USER_ADDRESS_SPACE_UNMAP => X86SystemsLowering::UnmapInitialUserFrame,
         SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
         SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
         SYSTEMS_USER_CONTEXT_COMPLETE => X86SystemsLowering::CompleteInitialUserBacking,
@@ -488,6 +510,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::VerifyInitialUserMapping => {
                 SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING
             }
+            X86SystemsLowering::MapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            X86SystemsLowering::StoreInitialUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            X86SystemsLowering::LoadInitialUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86SystemsLowering::UnmapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
             X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             X86SystemsLowering::CompleteInitialUserBacking => SYSTEMS_USER_CONTEXT_COMPLETE,
@@ -544,7 +570,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 55);
+        assert_eq!(plan.operations.len(), 58);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -631,6 +657,22 @@ mod tests {
             (
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 X86SystemsLowering::PrepareInitialUserAddressSpace,
+            ),
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
+                X86SystemsLowering::MapInitialUserFrame,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
+                X86SystemsLowering::StoreInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                X86SystemsLowering::LoadInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                X86SystemsLowering::UnmapInitialUserFrame,
             ),
             (
                 SYSTEMS_USER_CONTEXT_PREPARE,
