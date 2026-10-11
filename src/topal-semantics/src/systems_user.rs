@@ -11,6 +11,8 @@ pub const SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING: &str =
     "topal.systems.memory.user-address-space.verify-mapping/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_MAP: &str = "topal.systems.memory.user-address-space.map/1";
 pub const SYSTEMS_USER_MAPPING_STORE_BYTE: &str = "topal.systems.memory.user-mapping.store-byte/1";
+pub const SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY: &str =
+    "topal.systems.memory.user-mapping.protect-read-only/1";
 pub const SYSTEMS_USER_MAPPING_LOAD_BYTE: &str = "topal.systems.memory.user-mapping.load-byte/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_UNMAP: &str =
     "topal.systems.memory.user-address-space.unmap/1";
@@ -81,6 +83,7 @@ pub struct PreparedUserAddressSpace {
 enum UserMappingStage {
     Live,
     Stored,
+    Protected,
     Verified,
 }
 
@@ -378,17 +381,32 @@ impl SystemsUserExecutionProtocol {
         Ok(mapping)
     }
 
-    /// Consume a stored mapping into its fixed-byte verified refinement.
+    /// Consume a stored writable mapping into its read-only refinement.
     ///
     /// # Errors
     ///
     /// Returns a stable diagnostic unless the mapping is the exact stored
     /// provider-owned refinement.
-    pub fn load_user_mapping_byte(
+    pub fn protect_user_mapping_read_only(
         &self,
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
         self.validate_user_mapping(&mapping, UserMappingStage::Stored)?;
+        mapping.stage = UserMappingStage::Protected;
+        Ok(mapping)
+    }
+
+    /// Consume a protected mapping into its fixed-byte verified refinement.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless the mapping is the exact protected
+    /// provider-owned refinement.
+    pub fn load_user_mapping_byte(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Protected)?;
         mapping.stage = UserMappingStage::Verified;
         Ok(mapping)
     }
@@ -1056,6 +1074,7 @@ mod tests {
             .unwrap();
         let first_identity = mapping.identity();
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
         assert_eq!(
             protocol.unmap_user_frame(&address_space, mapping).unwrap(),
@@ -1066,6 +1085,7 @@ mod tests {
             .unwrap();
         assert_ne!(mapping.identity(), first_identity);
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
         assert_eq!(
             protocol.unmap_user_frame(&address_space, mapping).unwrap(),
@@ -1091,6 +1111,19 @@ mod tests {
         let mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
+        assert_eq!(
+            protocol.load_user_mapping_byte(mapping).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         assert_eq!(
             protocol.load_user_mapping_byte(mapping).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"

@@ -36,11 +36,11 @@ use crate::{
     SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
-    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
-    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
+    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
+    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -210,6 +210,7 @@ pub enum SystemsOperation {
     VerifyUserAddressSpaceMapping,
     MapUserAddressSpace,
     StoreUserMappingByte,
+    ProtectUserMappingReadOnly,
     LoadUserMappingByte,
     UnmapUserAddressSpace,
     PrepareUserProbe {
@@ -282,6 +283,7 @@ impl SystemsOperation {
             Self::VerifyUserAddressSpaceMapping => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_MAP,
             Self::StoreUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::ProtectUserMappingReadOnly => SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
             Self::LoadUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
             Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
@@ -569,6 +571,9 @@ pub enum SystemsTransition {
     StoreUserMappingByte {
         mapping_identity: u64,
     },
+    ProtectUserMappingReadOnly {
+        mapping_identity: u64,
+    },
     LoadUserMappingByte {
         mapping_identity: u64,
     },
@@ -772,6 +777,7 @@ impl SystemsTransition {
             Self::VerifyUserAddressSpaceMapping { .. } => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_MAP,
             Self::StoreUserMappingByte { .. } => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::ProtectUserMappingReadOnly { .. } => SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
             Self::LoadUserMappingByte { .. } => SYSTEMS_USER_MAPPING_LOAD_BYTE,
             Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
@@ -1266,6 +1272,7 @@ enum BootstrapUserExecutionState {
     AddressSpacePrepared(PhysicalFrameRequest),
     MappingLive(PhysicalFrameRequest, u8),
     MappingStored(PhysicalFrameRequest, u8),
+    MappingProtected(PhysicalFrameRequest, u8),
     MappingVerified(PhysicalFrameRequest, u8),
     AddressSpaceMappedOnce(PhysicalFrameRequest),
     AddressSpaceVerified(PhysicalFrameRequest),
@@ -1921,13 +1928,33 @@ impl BootstrapAuthorityState {
                 self.user_execution =
                     BootstrapUserExecutionState::MappingStored(backing, generation);
             }
-            SystemsOperation::LoadUserMappingByte => {
+            SystemsOperation::ProtectUserMappingReadOnly => {
                 let BootstrapUserExecutionState::MappingStored(backing, generation) =
                     self.user_execution
                 else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user mapping load requires the exact stored mapping",
+                        "user mapping protection requires the exact stored writable mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping protection requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingProtected(backing, generation);
+            }
+            SystemsOperation::LoadUserMappingByte => {
+                let BootstrapUserExecutionState::MappingProtected(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires the exact protected mapping",
                     ));
                 };
                 if self.memory_ownership
@@ -2507,6 +2534,7 @@ fn validate_bootstrap_storage_operation(
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
         | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
@@ -2730,12 +2758,27 @@ fn model_user_execution_transition(
                 .identity();
             transitions.push(SystemsTransition::StoreUserMappingByte { mapping_identity });
         }
+        SystemsOperation::ProtectUserMappingReadOnly => {
+            *mapping = Some(protocol.protect_user_mapping_read_only(
+                mapping.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping protection requires one stored affine mapping",
+                    )
+                })?,
+            )?);
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("protected mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::ProtectUserMappingReadOnly { mapping_identity });
+        }
         SystemsOperation::LoadUserMappingByte => {
             *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(
                 || {
                     SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user mapping load requires one stored affine mapping",
+                        "user mapping load requires one protected affine mapping",
                     )
                 },
             )?)?);
@@ -3970,6 +4013,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
         | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
@@ -4092,6 +4136,7 @@ mod tests {
             SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
             SYSTEMS_USER_ADDRESS_SPACE_MAP.into(),
             SYSTEMS_USER_MAPPING_STORE_BYTE.into(),
+            SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY.into(),
             SYSTEMS_USER_MAPPING_LOAD_BYTE.into(),
             SYSTEMS_USER_ADDRESS_SPACE_UNMAP.into(),
             SYSTEMS_USER_CONTEXT_PREPARE.into(),
@@ -4226,10 +4271,12 @@ mod tests {
                         },
                         SystemsOperation::MapUserAddressSpace,
                         SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::MapUserAddressSpace,
                         SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
@@ -4411,6 +4458,7 @@ mod tests {
                 | SystemsOperation::VerifyUserAddressSpaceMapping
                 | SystemsOperation::MapUserAddressSpace
                 | SystemsOperation::StoreUserMappingByte
+                | SystemsOperation::ProtectUserMappingReadOnly
                 | SystemsOperation::LoadUserMappingByte
                 | SystemsOperation::UnmapUserAddressSpace
                 | SystemsOperation::PrepareUserProbe { .. }
@@ -4678,6 +4726,9 @@ mod tests {
                 SystemsTransition::StoreUserMappingByte {
                     mapping_identity: 1,
                 },
+                SystemsTransition::ProtectUserMappingReadOnly {
+                    mapping_identity: 1,
+                },
                 SystemsTransition::LoadUserMappingByte {
                     mapping_identity: 1,
                 },
@@ -4690,6 +4741,9 @@ mod tests {
                     mapping_identity: 2,
                 },
                 SystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                SystemsTransition::ProtectUserMappingReadOnly {
                     mapping_identity: 2,
                 },
                 SystemsTransition::LoadUserMappingByte {
@@ -4928,6 +4982,50 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
+        let mut missing_protection = program(SystemsDisposition::Resume);
+        let protection = missing_protection
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(operation, SystemsOperation::ProtectUserMappingReadOnly)
+            })
+            .unwrap();
+        missing_protection
+            .bootstrap
+            .handler
+            .operations
+            .remove(protection);
+        refresh_bootstrap_effects(&mut missing_protection);
+        assert_eq!(
+            validate_systems_program(&missing_protection)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicate_protection = program(SystemsDisposition::Resume);
+        let protection = duplicate_protection
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(operation, SystemsOperation::ProtectUserMappingReadOnly)
+            })
+            .unwrap();
+        duplicate_protection.bootstrap.handler.operations.insert(
+            protection + 1,
+            SystemsOperation::ProtectUserMappingReadOnly,
+        );
+        assert_eq!(
+            validate_systems_program(&duplicate_protection)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
         let mut reordered_access = program(SystemsDisposition::Resume);
         let store = reordered_access
             .bootstrap
@@ -4964,6 +5062,7 @@ mod tests {
             [
                 SystemsOperation::MapUserAddressSpace,
                 SystemsOperation::StoreUserMappingByte,
+                SystemsOperation::ProtectUserMappingReadOnly,
                 SystemsOperation::LoadUserMappingByte,
                 SystemsOperation::UnmapUserAddressSpace,
             ],
@@ -5145,6 +5244,7 @@ mod tests {
                         | SystemsOperation::VerifyUserAddressSpaceMapping
                         | SystemsOperation::MapUserAddressSpace
                         | SystemsOperation::StoreUserMappingByte
+                        | SystemsOperation::ProtectUserMappingReadOnly
                         | SystemsOperation::LoadUserMappingByte
                         | SystemsOperation::UnmapUserAddressSpace
                         | SystemsOperation::PrepareUserProbe { .. }
