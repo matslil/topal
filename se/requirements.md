@@ -465,6 +465,15 @@ translation revocation before success. Store after protection, load from stale
 writable authority, permission widening, skipped protection, or recoverable
 failure after update publication shall fail closed.
 
+The affine user-mapping executable refinement shall require each verified
+RO/NX generation to pass through a distinct executable RO/X refinement before
+unmap. Promotion shall preserve mapping, address-space, backing, placement,
+and content identity, shall never restore write authority, and shall complete
+target translation and instruction-observation requirements before success.
+Promotion from writable or unverified authority, W+X authority, skipped or
+duplicate promotion, stale refinement use, or recoverable failure after
+publication begins shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

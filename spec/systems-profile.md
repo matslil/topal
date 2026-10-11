@@ -412,6 +412,23 @@ publication begins SHALL be invalid. The initial profile SHALL admit only the
 sealed RW/NX-to-RO/NX transition and SHALL expose no permission bit or
 invalidation mechanism.
 
+The executable-promotion refinement SHALL insert `user mapping permit execute`
+between load verification and unmap in each admitted generation. The operation
+SHALL consume `VerifiedUserMapping` and SHALL produce an
+`ExecutableUserMapping` with the same provider, address-space, mapping,
+backing, placement, memory-kind, user-access, content, and read-only identities
+but with executable authority replacing non-executable authority. Executable
+publication and target translation and instruction-observation completion
+SHALL precede observable success. Unmap SHALL consume only that executable
+refinement.
+
+Promotion from writable, stored, protected, or otherwise unverified authority;
+write-authority restoration; W+X authority; skipped or duplicate promotion;
+stale refinement use; identity substitution; and recoverable failure after
+publication begins SHALL be invalid. The initial profile SHALL admit only the
+sealed RO/NX-to-RO/X transition and SHALL expose no permission bit, cache,
+barrier, or invalidation mechanism.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

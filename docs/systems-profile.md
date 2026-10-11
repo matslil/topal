@@ -591,6 +591,14 @@ that protected refinement. Protection preserves identity, placement, contents,
 user accessibility, and non-executable policy; it cannot widen authority or
 expose target permission representation.
 
+After verification, `user mapping permit execute` consumes the exact RO/NX
+refinement and returns an opaque RO/X refinement only after executable
+authority publication and the target's translation and instruction-
+observation completion. Promotion preserves read-only authority, identity,
+placement, contents, and user accessibility. It cannot restore write
+authority, create W+X access, or expose target permission representation.
+Unmap consumes the executable refinement.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

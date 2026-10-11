@@ -41,6 +41,7 @@ records, not this directory alone, define language meaning.
 - [Bounded affine user-mapping lifecycle](affine-user-mapping-lifecycle.md)
 - [Sequential affine user-mapping generations](sequential-user-mapping-generations.md)
 - [Affine user-mapping permission tightening](user-mapping-permission-tightening.md)
+- [Affine user-mapping executable promotion](user-mapping-executable-promotion.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
