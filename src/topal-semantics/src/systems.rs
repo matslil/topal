@@ -39,8 +39,8 @@ use crate::{
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
     SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
     SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SuspendedUserContext, SystemsUserExecutionProtocol, UserMapping,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
+    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -1916,7 +1916,8 @@ impl BootstrapAuthorityState {
                 self.user_execution = BootstrapUserExecutionState::MappingStored(backing);
             }
             SystemsOperation::LoadUserMappingByte => {
-                let BootstrapUserExecutionState::MappingStored(backing) = self.user_execution else {
+                let BootstrapUserExecutionState::MappingStored(backing) = self.user_execution
+                else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user mapping load requires the exact stored mapping",
@@ -2695,23 +2696,27 @@ fn model_user_execution_transition(
             });
         }
         SystemsOperation::StoreUserMappingByte => {
-            *mapping = Some(protocol.store_user_mapping_byte(mapping.take().ok_or_else(|| {
-                SystemsModelError::new(
-                    "E-SYSTEMS-USER-CONTEXT",
-                    "user mapping store requires one live affine mapping",
-                )
-            })?)?);
+            *mapping = Some(protocol.store_user_mapping_byte(mapping.take().ok_or_else(
+                || {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires one live affine mapping",
+                    )
+                },
+            )?)?);
             transitions.push(SystemsTransition::StoreUserMappingByte {
                 mapping_identity: 1,
             });
         }
         SystemsOperation::LoadUserMappingByte => {
-            *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(|| {
-                SystemsModelError::new(
-                    "E-SYSTEMS-USER-CONTEXT",
-                    "user mapping load requires one stored affine mapping",
-                )
-            })?)?);
+            *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(
+                || {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires one stored affine mapping",
+                    )
+                },
+            )?)?);
             transitions.push(SystemsTransition::LoadUserMappingByte {
                 mapping_identity: 1,
             });
@@ -2743,7 +2748,8 @@ fn model_user_execution_transition(
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
-            if mapping.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some() {
+            if mapping.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user model admits exactly one live probe lifecycle",
@@ -4868,10 +4874,11 @@ mod tests {
             .iter()
             .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
             .unwrap();
-        duplicate_store.bootstrap.handler.operations.insert(
-            store + 1,
-            SystemsOperation::StoreUserMappingByte,
-        );
+        duplicate_store
+            .bootstrap
+            .handler
+            .operations
+            .insert(store + 1, SystemsOperation::StoreUserMappingByte);
         assert_eq!(
             validate_systems_program(&duplicate_store).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"
@@ -4885,9 +4892,15 @@ mod tests {
             .iter()
             .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
             .unwrap();
-        reordered_access.bootstrap.handler.operations.swap(store, store + 1);
+        reordered_access
+            .bootstrap
+            .handler
+            .operations
+            .swap(store, store + 1);
         assert_eq!(
-            validate_systems_program(&reordered_access).unwrap_err().code,
+            validate_systems_program(&reordered_access)
+                .unwrap_err()
+                .code,
             "E-SYSTEMS-USER-CONTEXT"
         );
     }

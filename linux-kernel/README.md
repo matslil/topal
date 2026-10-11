@@ -206,6 +206,13 @@ records opaque map/access/revoke ownership, private x86-64 RW/NX leaf
 publication and invalidation, exact extent return, structural inspection, and
 two deterministic pinned-QEMU runs without changing core-language meaning.
 
+The latest systems-only refinement splits that transaction into a
+[bounded affine user-mapping lifecycle](design/affine-user-mapping-lifecycle.md).
+Its [implementation and qualification report](step-4-affine-user-mapping-lifecycle.md)
+records distinct map, store, load, and unmap refinements, persistent opaque
+mapping ownership, exact frame return, structural x86-64 inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -310,6 +317,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 allocator-backed user probe](step-4-allocator-backed-user-probe.md)
 - [Step 4 opaque user-address-space lifecycle](step-4-opaque-user-address-space.md)
 - [Step 4 disjoint live-frame extent](step-4-disjoint-live-frame-extent.md)
+- [Step 4 sealed user-mapping round trip](step-4-sealed-user-mapping-round-trip.md)
+- [Step 4 affine user-mapping lifecycle](step-4-affine-user-mapping-lifecycle.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

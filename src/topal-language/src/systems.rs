@@ -2950,13 +2950,8 @@ fn analyze_kernel_context_decision(
         &user_space,
         &scratch_frames,
     )?;
-    let after_map = select_user_mapping_continuation(
-        source,
-        span,
-        scratch_after_map,
-        map_continuation,
-        "map",
-    )?;
+    let after_map =
+        select_user_mapping_continuation(source, span, scratch_after_map, map_continuation, "map")?;
     let [store_mapping, scratch_after_store @ ..] = after_map else {
         return Err(user_context_diagnostic(
             source,
