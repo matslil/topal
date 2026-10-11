@@ -429,6 +429,19 @@ publication begins SHALL be invalid. The initial profile SHALL admit only the
 sealed RO/NX-to-RO/X transition and SHALL expose no permission bit, cache,
 barrier, or invalidation mechanism.
 
+The sealed image-role refinement SHALL classify generation one as
+`ExecutableCodeMapping` through executable promotion. For generation two,
+`user mapping seal immutable data` SHALL consume `VerifiedUserMapping` and
+produce `ImmutableDataMapping` while preserving provider, address-space,
+mapping, backing, placement, memory-kind, user-access, content, read-only, and
+non-executable identities. The provider SHALL prove that no permission or
+content changed. Unmap SHALL consume the exact role-specific final refinement.
+
+Executable promotion of generation two, data sealing of generation one,
+cross-role substitution, unclassified unmap, write-authority restoration, and
+W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
+permission representation, or target validation mechanism.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -474,6 +474,14 @@ Promotion from writable or unverified authority, W+X authority, skipped or
 duplicate promotion, stale refinement use, or recoverable failure after
 publication begins shall fail closed.
 
+The sealed user-mapping role refinement shall classify the first verified
+generation as immutable executable code through the approved RO/NX-to-RO/X
+promotion and the second as immutable non-executable data through an explicit
+RO/NX-preserving seal. Cross-role substitution, executable promotion of the
+data generation, data sealing of the code generation, unclassified unmap,
+write-authority restoration, or W+X authority shall fail closed. Both roles
+shall remain opaque and shall be revoked before frame return.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

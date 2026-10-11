@@ -599,6 +599,13 @@ placement, contents, and user accessibility. It cannot restore write
 authority, create W+X access, or expose target permission representation.
 Unmap consumes the executable refinement.
 
+The bounded image-role refinement uses executable promotion only for the first
+generation, classifying it as immutable code. The second generation remains
+RO/NX: `user mapping seal immutable data` consumes its verified refinement and
+returns an opaque immutable-data refinement after the provider proves the
+completed read-only, non-executable authority is unchanged. Code and data
+refinements are distinct and cannot be substituted at unmap.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
