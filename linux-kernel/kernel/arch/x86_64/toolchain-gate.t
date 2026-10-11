@@ -212,6 +212,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   protected-data is completion-resumed user mapping protect read only stored-data
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
                                                                                                                   immutable-data is completion-resumed user mapping seal immutable data verified-data
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
                                                                                                                   returned-data is completion-resumed user address space unmap (
                                                                                                                     address-space is user-space,
                                                                                                                     mapping is immutable-data

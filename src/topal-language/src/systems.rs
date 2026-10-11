@@ -3167,13 +3167,32 @@ fn analyze_kernel_context_decision(
         seal_again_continuation,
         "second immutable-data seal",
     )?;
-    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_seal else {
+    let [image_ready_marker_statement, unmap_mapping_again, after_second_unmap @ ..] =
+        after_second_seal
+    else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second immutable-data user mapping must be unmapped",
+            "second immutable-data user mapping must publish image readiness before unmap",
         ));
     };
+    let image_ready_marker = analyze_operation(
+        source,
+        image_ready_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if image_ready_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(image_ready_marker_statement),
+            "resident user image requires its exact readiness marker before teardown",
+        ));
+    }
     let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
         source,
         unmap_mapping_again,
@@ -3443,6 +3462,7 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::SealUserMappingImmutableData,
+            image_ready_marker,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             CompilerSystemsOperation::UnmapUserAddressSpace,
@@ -5997,6 +6017,9 @@ mod tests {
                 CompilerSystemsTransition::SealUserMappingImmutableData {
                     mapping_identity: 2,
                 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
+                },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 2,
@@ -6172,7 +6195,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 115);
+        assert_eq!(program.bootstrap.handler.operations.len(), 116);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

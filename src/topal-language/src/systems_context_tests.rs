@@ -307,6 +307,13 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_READY",
+                "TOPAL_KERNEL_USER_IMAGE_NOT_READY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
                 "TOPAL_KERNEL_USER_MAPPING_OK",
                 "TOPAL_KERNEL_USER_MAPPING_EARLY",
             ),
