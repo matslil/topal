@@ -432,6 +432,14 @@ shall release the additional extent before user-context binding. A third live
 extent, another request shape, overlap, backing release, or disposition with
 the additional extent live shall fail closed.
 
+The initial prepared user address space shall admit one sealed `probe-guard`
+mapping round trip over that disjoint extent. The provider shall install RW/NX
+user authority, confirm the fixed byte write/read observation, revoke the
+mapping, complete target-required invalidation, and return the exact extent
+before reporting success. Wrong provenance, overlap, partial access, stale
+translation, duplicate verification, or user-context binding before release
+shall fail closed. No numeric address shall become source-observable.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

@@ -360,6 +360,15 @@ ranges. The additional extent SHALL be released before user-state preparation.
 No third live extent, alternative shape, split, address observation, or
 recoverable disposition with the additional extent live SHALL be admitted.
 
+The initial `PreparedUserAddressSpace` MAY consume that additional extent in
+one `probe-guard` verification transaction. The transaction SHALL derive only
+RW/NX user mapping authority, SHALL confirm one fixed byte store/load through
+that mapping, SHALL revoke all derived access, SHALL complete the target
+translation-invalidation contract, and SHALL return the exact input extent.
+Success SHALL NOT be observable before revocation and completion. The prepared
+address-space identity and backing SHALL remain unchanged, and user-state
+preparation SHALL remain invalid until source releases the returned extent.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

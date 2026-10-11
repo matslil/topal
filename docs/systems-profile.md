@@ -557,6 +557,14 @@ extent before transferring the prepared space into user execution. This closed
 qualification does not expose either base, permit a third live extent, split
 address-space backing, or define a general concurrent allocator.
 
+The initial prepared address space may consume that additional extent through
+one sealed `probe-guard` mapping round trip. The provider installs an opaque
+read-write, non-executable user mapping, confirms one fixed byte store and
+load, revokes every derived access, completes target-required translation
+invalidation, and returns the exact extent. Source must release the returned
+extent before user-state preparation. Placement, addresses, page-table form,
+and invalidation mechanics remain provider-private.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
