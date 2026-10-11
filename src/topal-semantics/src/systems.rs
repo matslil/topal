@@ -1792,10 +1792,13 @@ impl BootstrapAuthorityState {
                         "user probe preparation requires the exact prepared user address space",
                     ));
                 };
-                if *process_identity != 1 || !self.critical_stack.is_empty() {
+                if *process_identity != 1
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.critical_stack.is_empty()
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user probe preparation requires PID one, the exact prepared address space, and no live critical scope",
+                        "user probe preparation requires PID one, the exact prepared address space, no source-owned extent, and no live critical scope",
                     ));
                 }
                 self.user_execution = BootstrapUserExecutionState::Prepared(backing);
@@ -3932,6 +3935,14 @@ mod tests {
                             failure_message: "user backing allocation failed".into(),
                         },
                         SystemsOperation::PrepareUserAddressSpace,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            failure_message: "disjoint frame allocation failed".into(),
+                        },
+                        SystemsOperation::ReleasePhysicalFrames,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                        },
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
@@ -4104,9 +4115,12 @@ mod tests {
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
-                | SystemsOperation::ReclaimUserAddressSpace => false,
+                | SystemsOperation::ReclaimUserAddressSpace
+                | SystemsOperation::AllocatePhysicalFrames { .. }
+                | SystemsOperation::ReleasePhysicalFrames => false,
                 SystemsOperation::ConsoleWrite { text }
-                    if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
+                    if text.starts_with("TOPAL_KERNEL_CONTEXT_")
+                        || text == "TOPAL_KERNEL_FRAME_DISJOINT_OK" =>
                 {
                     false
                 }
@@ -4352,6 +4366,13 @@ mod tests {
                 SystemsTransition::PrepareUserAddressSpace {
                     address_space_identity: 1,
                 },
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                },
+                SystemsTransition::ReleasePhysicalFrames,
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                },
                 SystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -4487,6 +4508,58 @@ mod tests {
                     message: "done".into(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn prepared_user_space_admits_one_released_source_extent() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001,
+        // TOPAL-SYSTEMS-CONTEXT-006.
+        let mut live_at_probe = program(SystemsDisposition::Resume);
+        let scratch_release = live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserAddressSpace))
+            .unwrap()
+            + 2;
+        let prepare_probe = live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserProbe { .. }))
+            .unwrap();
+        live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .swap(scratch_release, prepare_probe);
+        assert_eq!(
+            validate_systems_program(&live_at_probe).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut third_extent = program(SystemsDisposition::Resume);
+        let scratch_allocation = third_extent
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserAddressSpace))
+            .unwrap()
+            + 2;
+        third_extent.bootstrap.handler.operations.insert(
+            scratch_allocation,
+            SystemsOperation::AllocatePhysicalFrames {
+                request: INITIAL_SINGLE_FRAME_REQUEST,
+                failure_message: "third frame allocation failed".into(),
+            },
+        );
+        assert_eq!(
+            validate_systems_program(&third_extent).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
         );
     }
 
@@ -4660,6 +4733,8 @@ mod tests {
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
                         | SystemsOperation::ReclaimUserAddressSpace
+                        | SystemsOperation::AllocatePhysicalFrames { .. }
+                        | SystemsOperation::ReleasePhysicalFrames
                 )
             });
         refresh_bootstrap_effects(&mut missing_reclaim);
