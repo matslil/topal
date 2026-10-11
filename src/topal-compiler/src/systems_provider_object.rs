@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/28";
+    "topal.provider-object.x86_64-qemu-pc-q35/29";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -485,15 +485,24 @@ fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "generation-one");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x07]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xb8, 0x08, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x11, 0x00, 0x00, 0x00]);
     code.jump("generation-accepted");
     code.bind("generation-one")?;
     code.bytes(&[0xb8, 0x04, 0x00, 0x00, 0x00]);
     code.bind("generation-accepted")?;
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x84, "check-generation-one-frame");
+    code.bytes(&[0x48, 0x83, 0xbf, 0x80, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x3b, 0x57, 0x78]);
+    code.jump_if(0x84, "fail");
+    code.jump("frame-slot-clear");
+    code.bind("check-generation-one-frame")?;
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x85, "fail");
+    code.bind("frame-slot-clear")?;
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
@@ -511,6 +520,10 @@ fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
 
     code.bind("disjoint")?;
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x84, "pte-slot-selected");
+    code.bytes(&[0x48, 0x83, 0xc1, 0x08]);
+    code.bind("pte-slot-selected")?;
     code.bytes(&[0x48, 0x83, 0x79, 0x10, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x89, 0xd0]);
@@ -518,10 +531,18 @@ fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
     code.bytes(&[0x4d, 0x09, 0xc8, 0x4c, 0x89, 0x41, 0x10]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x84, "publish-generation-one");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.bytes(&[0x48, 0x89, 0x97, 0x80, 0x00, 0x00, 0x00]);
+    code.jump("publish-mapping");
+    code.bind("publish-generation-one")?;
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_2000_u64.to_le_bytes());
-    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0x48, 0x89, 0x57, 0x78]);
+    code.bind("publish-mapping")?;
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
 
@@ -536,18 +557,26 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x04]);
     code.jump_if(0x84, "generation-one");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x08]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x11]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xb8, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x12, 0x00, 0x00, 0x00]);
     code.jump("generation-accepted");
     code.bind("generation-one")?;
     code.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00]);
     code.bind("generation-accepted")?;
+    code.bytes(&[0x3c, 0x05]);
+    code.jump_if(0x84, "select-generation-one");
+    code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.jump("mapping-selected");
+    code.bind("select-generation-one")?;
     code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
-    code.bytes(&[0x4d, 0x85, 0xc0]);
-    code.jump_if(0x84, "fail");
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bind("mapping-selected")?;
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
     code.bytes(&[0x41, 0xc6, 0x02, 0x6d]);
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -562,19 +591,30 @@ fn user_protect_initial_mapping_read_only() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x05]);
     code.jump_if(0x84, "generation-one");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x09]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x12]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xb8, 0x0d, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x13, 0x00, 0x00, 0x00]);
     code.jump("generation-accepted");
     code.bind("generation-one")?;
     code.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00]);
     code.bind("generation-accepted")?;
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x84, "check-generation-one-frame");
+    code.bytes(&[0x48, 0x83, 0xbf, 0x80, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.jump("frame-present");
+    code.bind("check-generation-one-frame")?;
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x84, "fail");
+    code.bind("frame-present")?;
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x84, "pte-selected");
+    code.bytes(&[0x48, 0x83, 0xc1, 0x08]);
+    code.bind("pte-selected")?;
     code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
@@ -584,8 +624,15 @@ fn user_protect_initial_mapping_read_only() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x83, 0xe0, 0xfd]);
     code.bytes(&[0x4c, 0x89, 0x41, 0x10]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x84, "invalidate-generation-one");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.jump("invalidate-mapping");
+    code.bind("invalidate-generation-one")?;
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bind("invalidate-mapping")?;
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -599,36 +646,41 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
-    code.jump_if(0x84, "generation-accepted");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0d]);
+    code.jump_if(0x84, "generation-one");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x13]);
     code.jump_if(0x85, "fail");
-    code.bind("generation-accepted")?;
+    code.bytes(&[0xb8, 0x14, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x08, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.jump("generation-selected");
+    code.bind("generation-one")?;
+    code.bytes(&[0xb8, 0x06, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bind("generation-selected")?;
     code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
     code.jump_if(0x85, "cleanup-fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
-    code.jump_if(0x84, "success-one");
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0a]);
-    code.jump("success");
-    code.bind("success-one")?;
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
-    code.bind("success")?;
+    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
 
     code.bind("cleanup-fail")?;
     code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
     code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
-    code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
+    code.bytes(&[0x3c, 0x06]);
     code.jump_if(0x84, "cleanup-one");
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x07]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0x80, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0e]);
     code.jump("fail");
     code.bind("cleanup-one")?;
+    code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -671,14 +723,14 @@ fn user_seal_initial_mapping_immutable_data() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0a]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x14]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xbf, 0x80, 0x00, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc1, 0x08, 0x20, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
@@ -686,7 +738,7 @@ fn user_seal_initial_mapping_immutable_data() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x0f, 0xba, 0xe0, 0x3f]);
     code.jump_if(0x83, "fail");
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x10]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x15]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -698,29 +750,41 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
-    code.jump_if(0x84, "generation-accepted");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x10]);
+    code.jump_if(0x84, "unmap-code");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x15]);
     code.jump_if(0x85, "fail");
-    code.bind("generation-accepted")?;
-    code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
-    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x08, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.jump("mapping-selected");
+    code.bind("unmap-code")?;
+    code.bytes(&[0xb8, 0x0b, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
-    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
-    code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bind("mapping-selected")?;
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x3c, 0x0e]);
+    code.jump_if(0x84, "clear-data-frame");
     code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
-    code.jump_if(0x84, "generation-one");
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0b]);
-    code.jump("returned");
-    code.bind("generation-one")?;
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x07]);
+    code.jump("frame-cleared");
+    code.bind("clear-data-frame")?;
+    code.bytes(&[0x48, 0xc7, 0x87, 0x80, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bind("frame-cleared")?;
+    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bind("returned")?;
     code.bytes(&[0x4c, 0x89, 0xc0, 0xc3]);
 
@@ -2536,10 +2600,16 @@ mod tests {
                 .any(|bytes| bytes == [0xb8, 0x04, 0, 0, 0])
                 && user_map
                     .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x08, 0, 0, 0])
+                    .any(|bytes| bytes == [0xb8, 0x11, 0, 0, 0])
                 && user_map
                     .windows(6)
                     .any(|bytes| bytes == [0x88, 0x87, 0x70, 0, 0, 0])
+                && user_map
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x97, 0x80, 0, 0, 0])
+                && user_map
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0060_3000_u64.to_le_bytes())
         );
         let user_store = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL);
         assert!(
@@ -2551,7 +2621,7 @@ mod tests {
                     .any(|bytes| bytes == [0xb8, 0x05, 0, 0, 0])
                 && user_store
                     .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x09, 0, 0, 0])
+                    .any(|bytes| bytes == [0xb8, 0x12, 0, 0, 0])
                 && user_store
                     .windows(6)
                     .any(|bytes| bytes == [0x88, 0x87, 0x70, 0, 0, 0])
@@ -2562,8 +2632,8 @@ mod tests {
                 .windows(4)
                 .any(|bytes| bytes == [0x49, 0x83, 0xe0, 0xfd])
                 && user_protect
-                    .windows(4)
-                    .any(|bytes| bytes == [0x0f, 0xae, 0xf0, 0x49])
+                    .windows(3)
+                    .any(|bytes| bytes == [0x0f, 0xae, 0xf0])
                 && user_protect
                     .windows(4)
                     .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
@@ -2572,7 +2642,7 @@ mod tests {
                     .any(|bytes| bytes == [0xb8, 0x0c, 0, 0, 0])
                 && user_protect
                     .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x0d, 0, 0, 0]),
+                    .any(|bytes| bytes == [0xb8, 0x13, 0, 0, 0]),
             "user protection must revoke the writable bit, order publication, invalidate the target, and retain generation"
         );
         let user_load = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL);
@@ -2585,16 +2655,19 @@ mod tests {
                     .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0c])
                 && user_load
                     .windows(7)
-                    .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0d])
+                    .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x13])
                 && user_load
-                    .windows(7)
-                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06])
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x06, 0, 0, 0])
                 && user_load
-                    .windows(7)
-                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x0a])
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x14, 0, 0, 0])
                 && user_load
                     .windows(8)
-                    .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]),
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0])
+                && user_load
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0]),
             "user load must compare the fixed byte and revoke on mismatch"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
@@ -2617,7 +2690,7 @@ mod tests {
         assert!(
             user_data
                 .windows(7)
-                .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0a])
+                .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x14])
                 && user_data
                     .windows(4)
                     .any(|bytes| bytes == [0x41, 0xf6, 0xc0, 0x02])
@@ -2626,7 +2699,7 @@ mod tests {
                     .any(|bytes| bytes == [0x49, 0x0f, 0xba, 0xe0, 0x3f])
                 && user_data
                     .windows(7)
-                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x10]),
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x15]),
             "immutable-data sealing must accept only generation two and preserve its RO/NX permissions"
         );
         let user_unmap = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL);
@@ -2641,11 +2714,11 @@ mod tests {
                     .windows(8)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0])
                 && user_unmap
-                    .windows(7)
-                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x07])
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0])
                 && user_unmap
-                    .windows(7)
-                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x0b]),
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0060_3000_u64.to_le_bytes()),
             "user unmap must revoke, invalidate, consume private mapping state, and return the frame"
         );
         let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);

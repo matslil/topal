@@ -81,8 +81,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/28";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/28";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/29";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/29";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1253,8 +1253,8 @@ enum RootUserExecutionState {
     UserMappingProtected(u8),
     UserMappingVerified(u8),
     UserMappingExecutable(u8),
+    UserMappingExecutableAfterData,
     UserMappingImmutableData(u8),
-    AddressSpaceMappedOnce,
     AddressSpaceVerified,
     Prepared,
     Completed,
@@ -1349,25 +1349,36 @@ impl RootEncoder {
                 "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
             ));
         }
-        if self.user_execution == RootUserExecutionState::AddressSpacePrepared {
+        let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
+        if matches!(
+            self.user_execution,
+            RootUserExecutionState::AddressSpacePrepared
+                | RootUserExecutionState::UserMappingExecutable(1)
+        ) {
             self.load_bootstrap_storage_address(176)?;
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x4f, 0x68]); // excluded backing base in rcx
         } else {
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
         }
-        match self.translation {
-            RootTranslationState::BootstrapActive => {
-                self.bytes
-                    .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
-            }
-            RootTranslationState::ReplacementActive | RootTranslationState::RemovedActive => {
-                self.bytes
-                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x50, 0x00, 0x00]);
-            }
-            _ => {
-                return Err(CompileError::Tool(
+        if resident_code {
+            self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
+            self.bytes
+                .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x10, 0x00, 0x00]); // next frame
+        } else {
+            match self.translation {
+                RootTranslationState::BootstrapActive => {
+                    self.bytes
+                        .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
+                }
+                RootTranslationState::ReplacementActive | RootTranslationState::RemovedActive => {
+                    self.bytes
+                        .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x50, 0x00, 0x00]);
+                }
+                _ => {
+                    return Err(CompileError::Tool(
                     "x86 root lowering encountered frame allocation in an unavailable translation state".into(),
                 ));
+                }
             }
         }
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // rsi = retained boot params
@@ -2502,7 +2513,7 @@ impl RootEncoder {
     fn map_user_address_space(&mut self) -> Result<(), CompileError> {
         let generation = match self.user_execution {
             RootUserExecutionState::AddressSpacePrepared => 1,
-            RootUserExecutionState::AddressSpaceMappedOnce => 2,
+            RootUserExecutionState::UserMappingExecutable(1) => 2,
             _ => 0,
         };
         if self.role != RootRole::BootstrapWithLocalNotification
@@ -2622,7 +2633,7 @@ impl RootEncoder {
         if self.role != RootRole::BootstrapWithLocalNotification
             || !matches!(
                 self.user_execution,
-                RootUserExecutionState::UserMappingExecutable(1)
+                RootUserExecutionState::UserMappingExecutableAfterData
                     | RootUserExecutionState::UserMappingImmutableData(2)
             )
             || self.physical_frame_count.is_some()
@@ -2638,13 +2649,13 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
         self.physical_frame_count = Some(1);
         let generation = match self.user_execution {
-            RootUserExecutionState::UserMappingExecutable(generation)
-            | RootUserExecutionState::UserMappingImmutableData(generation) => generation,
+            RootUserExecutionState::UserMappingExecutableAfterData => 1,
+            RootUserExecutionState::UserMappingImmutableData(generation) => generation,
             _ => unreachable!("finalized mapping checked above"),
         };
         self.user_execution = match generation {
-            1 => RootUserExecutionState::AddressSpaceMappedOnce,
-            2 => RootUserExecutionState::AddressSpaceVerified,
+            1 => RootUserExecutionState::AddressSpaceVerified,
+            2 => RootUserExecutionState::UserMappingExecutableAfterData,
             _ => unreachable!("only two mapping generations are constructed"),
         };
         Ok(())
@@ -4024,7 +4035,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1058);
+        assert_eq!(relocation_targets.len(), 1061);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4120,7 +4131,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            5
+            6
         );
         assert_eq!(
             relocation_targets
@@ -4183,14 +4194,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            51
+            52
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            62
+            63
         );
         assert_eq!(
             relocation_targets
@@ -4250,7 +4261,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            38,
+            39,
             "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -4402,7 +4413,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 62);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 174);
+        assert_eq!(decoded.semantic_trace.len(), 176);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4415,7 +4426,7 @@ mod tests {
         assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
         assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
         assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_MAPPING_PERMIT_EXECUTE));
-        assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
         assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
         assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
@@ -4423,13 +4434,15 @@ mod tests {
         assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA));
         assert!(decoded.semantic_trace[132].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
         assert_eq!(decoded.semantic_trace[133], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[167].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[168], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[169].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(167..170);
-        decoded.semantic_trace.drain(120..136);
+        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[135], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[169].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[170], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[171].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(169..172);
+        decoded.semantic_trace.drain(120..138);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
