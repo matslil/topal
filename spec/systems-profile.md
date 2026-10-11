@@ -369,6 +369,25 @@ Success SHALL NOT be observable before revocation and completion. The prepared
 address-space identity and backing SHALL remain unchanged, and user-state
 preparation SHALL remain invalid until source releases the returned extent.
 
+The affine refinement SHALL represent that transaction with four closed
+operations. `user address space map` SHALL consume the additional extent and
+produce one fresh opaque `LiveUserMapping`; `user mapping store byte` SHALL
+consume it and produce `StoredUserMapping`; `user mapping load byte` SHALL
+consume that refinement, compare the fixed byte, and produce
+`VerifiedUserMapping`; and `user address space unmap` SHALL consume the
+verified mapping and return exactly the original extent. Publication SHALL
+complete before map success, and revocation plus target translation completion
+SHALL precede unmap success. The prepared address-space identity and original
+backing SHALL be invariant across all four operations.
+
+Skipping, reordering, duplicating, or using a consumed refinement; releasing
+the extent or preparing user state while a mapping is live; using another
+address space, extent, layout, right, or byte; and recoverable disposition
+after publication failure SHALL be invalid. The initial refinement SHALL
+admit only the sealed `probe-guard` layout, RW/NX rights, one fixed byte, one
+mapping, and one lifecycle. It SHALL expose no address or descriptor value and
+SHALL NOT constitute a general user-mapping or image-construction API.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

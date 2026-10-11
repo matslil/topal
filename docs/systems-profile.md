@@ -565,6 +565,16 @@ invalidation, and returns the exact extent. Source must release the returned
 extent before user-state preparation. Placement, addresses, page-table form,
 and invalidation mechanics remain provider-private.
 
+The bounded affine refinement expresses that round trip as four distinct
+systems operations. `user address space map` consumes the disjoint extent into
+one opaque mapping; `user mapping store byte` and `user mapping load byte`
+consume and return successively refined mapping authority; and `user address
+space unmap` consumes the verified mapping and returns the exact extent after
+revocation and target completion. The address space cannot enter user
+execution while any mapping refinement is live. The fixed layout, rights, and
+byte remain sealed provider policy; this is not a general address or mapping
+API.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

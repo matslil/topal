@@ -38,6 +38,7 @@ records, not this directory alone, define language meaning.
 - [Opaque user-address-space lifecycle contract](opaque-user-address-space.md)
 - [Bounded disjoint live-frame-extent contract](disjoint-live-frame-extent.md)
 - [Sealed user mapping round-trip contract](sealed-user-mapping-round-trip.md)
+- [Bounded affine user-mapping lifecycle](affine-user-mapping-lifecycle.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

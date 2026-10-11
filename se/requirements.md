@@ -440,6 +440,15 @@ before reporting success. Wrong provenance, overlap, partial access, stale
 translation, duplicate verification, or user-context binding before release
 shall fail closed. No numeric address shall become source-observable.
 
+The bounded affine user-mapping refinement shall separate that transaction
+into map, fixed-byte store, fixed-byte load/verification, and unmap operations.
+Each operation shall consume the preceding mapping refinement. Map shall
+consume the exact disjoint extent; unmap shall return that same extent only
+after revocation and target completion. Release, user-context binding,
+duplicate use, reordering, or recoverable disposition while a mapping is live
+shall fail closed. Layout, rights, byte value, addresses, and target
+translation mechanics shall remain sealed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,
