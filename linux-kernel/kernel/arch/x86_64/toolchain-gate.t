@@ -171,6 +171,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                     user-probe is completion-resumed user probe prepare (process-identity is 1)
                                                                                                     user-completed is completion-resumed user context enter user-probe
                                                                                                     completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                    completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                     completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
                                                                                                     completion-resumed user execution complete user-completed
                                                                                                     completion-resumed fatal "toolchain gate complete"
@@ -337,6 +338,9 @@ user-syscall-handler is fn (
     uname-version is "#1 Topal",
     uname-machine is "x86_64",
     uname-domainname is "(none)",
+    nanosleep-seconds is 0,
+    nanosleep-nanoseconds is 0,
+    nanosleep-remainder-candidate is 0,
     exit-group-status is 0
   )
 

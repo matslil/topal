@@ -31,8 +31,8 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_TO,
-    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -797,6 +797,7 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         ),
         (SYSTEMS_USER_CONTEXT_ENTER, X86_SYSTEMS_USER_ENTER_SYMBOL),
         (SYSTEMS_USER_COPY_TO, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
+        (SYSTEMS_USER_COPY_FROM, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
         (
             SYSTEMS_USER_SYSCALL_DISPATCH,
             X86_SYSTEMS_USER_SYSCALL_SYMBOL,
@@ -2719,7 +2720,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     )?;
     symbols.terminal_thread_entry = Some(terminal_thread_entry);
 
-    if program.user_syscall.handler.operations != [CompilerSystemsOperation::CopyInitialUnameToUser]
+    if program.user_syscall.handler.operations
+        != [
+            CompilerSystemsOperation::CopyInitialUnameToUser,
+            CompilerSystemsOperation::CopyInitialTimespecFromUser,
+        ]
         || program.user_syscall.handler.disposition
             != (CompilerSystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
@@ -2729,11 +2734,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 uname_version: "#1 Topal".into(),
                 uname_machine: "x86_64".into(),
                 uname_domainname: "(none)".into(),
+                nanosleep_seconds: 0,
+                nanosleep_nanoseconds: 0,
+                nanosleep_remainder_candidate: 0,
                 exit_group_status: 0,
             })
     {
         return Err(CompileError::Tool(
-            "x86 initial user-syscall entry requires the sealed getpid/uname/exit_group dispatch"
+            "x86 initial user-syscall entry requires the sealed getpid/uname/nanosleep/exit_group dispatch"
                 .into(),
         ));
     }
@@ -3035,9 +3043,10 @@ fn encode_operations(
             CompilerSystemsOperation::CompleteUserExecution => {
                 encoder.complete_user_execution()?;
             }
-            CompilerSystemsOperation::CopyInitialUnameToUser => {
+            CompilerSystemsOperation::CopyInitialUnameToUser
+            | CompilerSystemsOperation::CopyInitialTimespecFromUser => {
                 return Err(CompileError::Tool(
-                    "x86 copy_to_user lowers only inside the sealed user-syscall entry".into(),
+                    "x86 user transfer lowers only inside the sealed user-syscall entry".into(),
                 ));
             }
         }
@@ -3541,7 +3550,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 864);
+        assert_eq!(relocation_targets.len(), 894);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3659,7 +3668,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            731
+            761
         );
         assert_eq!(
             relocation_targets
@@ -3865,10 +3874,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 50);
+        assert_eq!(decoded.placements.len(), 51);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 139);
+        assert_eq!(decoded.semantic_trace.len(), 140);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -4055,8 +4064,9 @@ mod tests {
         assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
         assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[137].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[138].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

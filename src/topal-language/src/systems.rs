@@ -52,8 +52,9 @@ pub use topal_semantics::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -931,14 +932,14 @@ fn analyze_user_syscall_handler(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch requires the sealed getpid, uname, and exit_group fields",
+            "user syscall dispatch requires the sealed getpid, uname, nanosleep, and exit_group fields",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 8
+        || fields.len() != 11
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -946,12 +947,15 @@ fn analyze_user_syscall_handler(
         || field_static_string(source, &fields[4], "uname-version")? != "#1 Topal"
         || field_static_string(source, &fields[5], "uname-machine")? != "x86_64"
         || field_static_string(source, &fields[6], "uname-domainname")? != "(none)"
-        || field_natural(source, &fields[7], "exit-group-status")? != 0
+        || field_natural(source, &fields[7], "nanosleep-seconds")? != 0
+        || field_natural(source, &fields[8], "nanosleep-nanoseconds")? != 0
+        || field_natural(source, &fields[9], "nanosleep-remainder-candidate")? != 0
+        || field_natural(source, &fields[10], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept the zero-duration nanosleep value, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
@@ -962,14 +966,21 @@ fn analyze_user_syscall_handler(
         uname_version: "#1 Topal".into(),
         uname_machine: "x86_64".into(),
         uname_domainname: "(none)".into(),
+        nanosleep_seconds: 0,
+        nanosleep_nanoseconds: 0,
+        nanosleep_remainder_candidate: 0,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::UserSyscall,
-        operations: vec![CompilerSystemsOperation::CopyInitialUnameToUser],
+        operations: vec![
+            CompilerSystemsOperation::CopyInitialUnameToUser,
+            CompilerSystemsOperation::CopyInitialTimespecFromUser,
+        ],
         effects: vec![
             SYSTEMS_USER_SYSCALL_DISPATCH.to_owned(),
+            SYSTEMS_USER_COPY_FROM.to_owned(),
             SYSTEMS_USER_COPY_TO.to_owned(),
         ],
         disposition,
@@ -2842,7 +2853,8 @@ fn analyze_kernel_context_decision(
         consume_queue,
         prepare_user,
         enter_user,
-        user_copy_marker_statement,
+        user_copy_to_marker_statement,
+        user_copy_from_marker_statement,
         user_marker_statement,
         complete_user,
         disposition,
@@ -2864,21 +2876,38 @@ fn analyze_kernel_context_decision(
     let user_probe = parse_user_probe_prepare(source, prepare_user, &completion_resumed)?;
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
-    let user_copy_marker = analyze_operation(
+    let user_copy_to_marker = analyze_operation(
         source,
-        user_copy_marker_statement,
+        user_copy_to_marker_statement,
         CompilerSystemsContextKind::Bootstrap,
         &completion_resumed,
     )?;
-    if user_copy_marker
+    if user_copy_to_marker
         != (CompilerSystemsOperation::ConsoleWrite {
             text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
         })
     {
         return Err(kernel_context_diagnostic(
             source,
-            statement_span(user_copy_marker_statement),
+            statement_span(user_copy_to_marker_statement),
             "user copy_to_user recovery requires its exact marker",
+        ));
+    }
+    let user_copy_from_marker = analyze_operation(
+        source,
+        user_copy_from_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_copy_from_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_COPY_FROM_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_copy_from_marker_statement),
+            "user copy_from_user recovery requires its exact marker",
         ));
     }
     let user_marker = analyze_operation(
@@ -2949,7 +2978,8 @@ fn analyze_kernel_context_decision(
                 process_identity: 1,
             },
             CompilerSystemsOperation::EnterUserContext,
-            user_copy_marker,
+            user_copy_to_marker,
+            user_copy_from_marker,
             user_marker,
             CompilerSystemsOperation::CompleteUserExecution,
         ],
@@ -4897,6 +4927,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_COPY_FROM_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
                 },
                 CompilerSystemsTransition::CompleteUserExecution {
@@ -4918,7 +4951,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 88);
+        assert_eq!(program.bootstrap.handler.operations.len(), 89);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

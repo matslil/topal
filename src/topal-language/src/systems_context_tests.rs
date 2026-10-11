@@ -38,7 +38,11 @@ fn requires_typed_affine_kernel_context_round_trip() {
     );
     assert_eq!(
         program.user_syscall.handler.effects,
-        [SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_COPY_TO]
+        [
+            SYSTEMS_USER_SYSCALL_DISPATCH,
+            SYSTEMS_USER_COPY_FROM,
+            SYSTEMS_USER_COPY_TO,
+        ]
     );
 
     for (source, expected) in [
@@ -178,9 +182,20 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("nanosleep-nanoseconds is 0", "nanosleep-nanoseconds is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_EARLY",
+            ),
+            "E-SYSTEMS-CONTEXT-TRANSFER",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_COPY_FROM_OK",
+                "TOPAL_KERNEL_USER_COPY_FROM_EARLY",
             ),
             "E-SYSTEMS-CONTEXT-TRANSFER",
         ),

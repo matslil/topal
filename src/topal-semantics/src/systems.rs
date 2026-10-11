@@ -31,10 +31,11 @@ use crate::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
-    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
+    SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END, SuspendedUserContext,
+    SystemsUserExecutionProtocol, TranslationEditKind, TranslationMappingRequest,
+    TranslationUpdateRequest,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -206,6 +207,7 @@ pub enum SystemsOperation {
     EnterUserContext,
     CompleteUserExecution,
     CopyInitialUnameToUser,
+    CopyInitialTimespecFromUser,
 }
 
 impl SystemsOperation {
@@ -268,6 +270,7 @@ impl SystemsOperation {
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
             Self::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
+            Self::CopyInitialTimespecFromUser => SYSTEMS_USER_COPY_FROM,
         }
     }
 }
@@ -285,6 +288,9 @@ pub enum SystemsDisposition {
         uname_version: String,
         uname_machine: String,
         uname_domainname: String,
+        nanosleep_seconds: u64,
+        nanosleep_nanoseconds: u64,
+        nanosleep_remainder_candidate: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -918,7 +924,11 @@ fn validate_entry(
                             | SystemsOperation::AwaitKernelCompletion
                     ))
                 || (required_context == SystemsContextKind::UserSyscall
-                    && !matches!(operation, SystemsOperation::CopyInitialUnameToUser))
+                    && !matches!(
+                        operation,
+                        SystemsOperation::CopyInitialUnameToUser
+                            | SystemsOperation::CopyInitialTimespecFromUser
+                    ))
         })
     {
         return Err(SystemsModelError::new(
@@ -1033,7 +1043,11 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
 }
 
 fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
-    if handler.operations != [SystemsOperation::CopyInitialUnameToUser]
+    if handler.operations
+        != [
+            SystemsOperation::CopyInitialUnameToUser,
+            SystemsOperation::CopyInitialTimespecFromUser,
+        ]
         || handler.disposition
             != (SystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
@@ -1043,12 +1057,15 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 uname_version: "#1 Topal".into(),
                 uname_machine: "x86_64".into(),
                 uname_domainname: "(none)".into(),
+                nanosleep_seconds: 0,
+                nanosleep_nanoseconds: 0,
+                nanosleep_remainder_candidate: 0,
                 exit_group_status: 0,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch getpid result one and exit_group status zero",
+            "the initial user-syscall handler must dispatch the sealed getpid, uname, nanosleep, and exit_group protocol",
         ));
     }
     Ok(())
@@ -2382,6 +2399,7 @@ fn model_user_execution_transition(
                     uname_machine,
                     uname_domainname,
                     exit_group_status,
+                    ..
                 } => (
                     *getpid_result,
                     LinuxUtsName {
@@ -3396,7 +3414,8 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution
-        | SystemsOperation::CopyInitialUnameToUser => {
+        | SystemsOperation::CopyInitialUnameToUser
+        | SystemsOperation::CopyInitialTimespecFromUser => {
             unreachable!("user-execution operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
@@ -3725,7 +3744,10 @@ mod tests {
                 handler: SystemsHandler {
                     name: "user-syscall".into(),
                     context: SystemsContextKind::UserSyscall,
-                    operations: vec![SystemsOperation::CopyInitialUnameToUser],
+                    operations: vec![
+                        SystemsOperation::CopyInitialUnameToUser,
+                        SystemsOperation::CopyInitialTimespecFromUser,
+                    ],
                     disposition: SystemsDisposition::DispatchInitialUserSyscall {
                         getpid_result: 1,
                         uname_sysname: "Linux".into(),
@@ -3734,10 +3756,14 @@ mod tests {
                         uname_version: "#1 Topal".into(),
                         uname_machine: "x86_64".into(),
                         uname_domainname: "(none)".into(),
+                        nanosleep_seconds: 0,
+                        nanosleep_nanoseconds: 0,
+                        nanosleep_remainder_candidate: 0,
                         exit_group_status: 0,
                     },
                     effects: vec![
                         SYSTEMS_USER_SYSCALL_DISPATCH.into(),
+                        SYSTEMS_USER_COPY_FROM.into(),
                         SYSTEMS_USER_COPY_TO.into(),
                     ],
                 },

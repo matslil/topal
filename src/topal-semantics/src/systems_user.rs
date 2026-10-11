@@ -12,6 +12,7 @@ pub const SYSTEMS_USER_TERMINATE: &str = "topal.systems.disposition.user-syscall
 pub const SYSTEMS_USER_CONTEXT_COMPLETE: &str = "topal.systems.context.user.complete/1";
 pub const SYSTEMS_USER_TRANSFER_BEGIN: &str = "topal.systems.user-transfer.begin/1";
 pub const SYSTEMS_USER_COPY_TO: &str = "topal.systems.user-transfer.copy-to/1";
+pub const SYSTEMS_USER_COPY_FROM: &str = "topal.systems.user-transfer.copy-from/1";
 pub const SYSTEMS_USER_TRANSFER_END: &str = "topal.systems.user-transfer.end/1";
 
 pub const INITIAL_USER_ADDRESS_SPACE_IDENTITY: &str = "topal.systems.address-space.initial-user/1";
