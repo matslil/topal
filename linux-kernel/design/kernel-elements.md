@@ -167,6 +167,13 @@ resume address. Nested kernel faults outside such a region remain fatal.
 The same abstraction covers x86 SMAP access control, AArch64 PAN/UAO choices,
 and RISC-V SUM-related access without making any one control bit portable.
 
+The first approved refinement derives one affine `UserTransferScope` from the
+exact live syscall entry and requires its refined successor before disposition.
+`copy_to_user` returns either complete extent or fault with copied-prefix
+length; candidates remain untrusted words and the backend binds only generated
+copy sites to generated recovery continuations. See
+[TK-DEC-033](user-copy-to-uname.md).
+
 ## TK-ELEMENT-ATOMIC-001 — Typed atomic locations
 
 Kernel-safe shared state requires a source-visible operation stronger than the

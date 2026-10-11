@@ -150,6 +150,13 @@ records one affine PID-one user execution, typed Linux syscall entry,
 `SYSCALL`/`SYSRETQ` lowering, structural inspection, and two deterministic
 pinned-QEMU runs.
 
+The next Step 4 slice adds the approved systems-only
+[fault-contained `copy_to_user` and `uname`](design/user-copy-to-uname.md)
+contract. It ties transfer authority to the exact syscall entry, preserves
+untrusted user candidates as non-references, reports explicit prefix progress,
+and qualifies successful and recovered-fault `uname` paths without introducing
+file-descriptor or core-language exception semantics.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -248,6 +255,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 deadline-preemptible context transfer](step-4-deadline-preemptible-context-transfer.md)
 - [Step 4 one-shot kernel completion](step-4-one-shot-kernel-completion.md)
 - [Step 4 initial user syscall round trip](step-4-user-syscall-roundtrip.md)
+- Fault-contained `copy_to_user` and `uname` implementation report (this slice)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

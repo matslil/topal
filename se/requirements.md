@@ -360,6 +360,22 @@ retain bounds, layout, rights, cache/order policy, owner, and lifetime. User
 transfer and other admitted recovery shall use generated closed fault scopes;
 source shall not dereference a user candidate or name a recovery instruction.
 
+The first executable user-transfer refinement shall remain exclusive to the
+systems feature. It shall derive one affine scope from the exact live syscall
+entry, thread, address space, and ABI; consume and return that scope through
+every transfer outcome; and forbid syscall disposition while the scope is
+live. A bounded `copy_to_user` shall return complete extent or structured fault
+with copied-prefix progress without converting its untrusted ABI candidate to
+a Topal reference.
+
+The initial x86-64 qualification shall implement native Linux `uname` number
+63 with a source-owned `new_utsname`, verify a successful copy, and force a
+copy across an unmapped guard page. Only generated copy sites shall recover
+from the matching page fault and the syscall shall return `-EFAULT`; other
+faults shall remain fatal. `copy_from_user`, arbitrary extents, concurrent
+mapping changes, general UTS namespaces, and core-language exception handling
+remain unavailable.
+
 An entered bootstrap context shall refine through one exhaustive, affine
 boot-memory transition. A qualified provider shall validate its opaque native
 handoff; conservatively normalize overlapping source ranges; retain source
@@ -559,11 +575,12 @@ shall own privilege, stack, saved-state, security, result-placement, and return
 mechanics but shall not select a syscall or invent a result.
 
 The first executable x86-64 profile shall use one generated ring-3 probe and
-the pinned Linux `getpid` and `exit_group` numbers. It shall verify one
-user-to-kernel-to-user return followed by terminal restoration with status
-zero. Fixed probe mappings shall be qualification evidence only. ELF loading,
-pointer-bearing syscalls, user-copy recovery, user faults, signals, restart,
-TLS, multiple processes or threads, user preemption, migration, SMP, and the
+the pinned Linux `getpid`, `uname`, and `exit_group` numbers. It shall verify
+ordinary returns, one generated user-copy fault recovery, and terminal
+restoration with status zero. Fixed probe mappings shall be qualification
+evidence only. ELF loading, pointer-bearing syscalls other than the sealed
+`uname` qualification, general user-copy recovery, signals, restart, TLS,
+multiple processes or threads, user preemption, migration, SMP, and the
 complete syscall table remain unavailable.
 
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership

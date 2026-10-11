@@ -542,10 +542,11 @@ The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
 or invent its result. The first x86-64 qualification uses a generated ring-3
-probe with real Linux `getpid` and `exit_group` numbers. The probe and its fixed
-RX and RW/NX mappings are physical evidence, not an application format or ELF
-loader. Pointer-bearing syscalls, user-copy recovery, faults, signals, restart,
-TLS, multiple threads, user preemption, migration, and SMP remain excluded.
+probe with real Linux `getpid`, `uname`, and `exit_group` numbers. The probe and
+its fixed RX and RW/NX mappings are physical evidence, not an application
+format or ELF loader. Pointer-bearing syscalls other than the sealed `uname`
+qualification, general user-copy recovery, signals, restart, TLS, multiple
+threads, user preemption, migration, and SMP remain excluded.
 
 ## External observations and permitted choice
 
@@ -746,6 +747,20 @@ address or install a catch-all exception handler.
 A recovery scope admits only its declared synchronous faults and operations.
 Unexpected kernel faults, machine-critical events, stack corruption, and
 faults outside the generated scope use their owning fatal or entry protocol.
+
+The initial user-transfer refinement is systems-only. One opaque affine scope
+is derived from the exact live syscall entry and must be returned through every
+complete or fault outcome before that entry can be disposed. `copy_to_user`
+accepts an untrusted ABI candidate and bounded kernel-owned bytes; it reports
+complete extent or the copied prefix permitted by the selected Linux contract.
+The candidate never becomes a Topal reference.
+
+The first x86-64 qualification extends the generated probe with Linux `uname`.
+A complete copy publishes one source-owned `new_utsname`; a copy crossing from
+the writable probe page into an unmapped guard page enters only the generated
+page-fault recovery continuation and produces `-EFAULT`. Other page faults
+remain fatal. This does not add general user mapping, `copy_from_user`, UTS
+namespaces, or ordinary core-language recovery.
 
 ## Atomic locations and shared state
 

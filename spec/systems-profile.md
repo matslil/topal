@@ -449,6 +449,25 @@ kernel-owned storage, and partial-progress/interruption policy. It SHALL return
 validated data, permitted partial progress, or a structured fault. Direct
 source access through a user candidate SHALL be invalid.
 
+The initial `copy_to_user` form SHALL derive exactly one opaque affine
+`UserTransferScope P A T B I` from a live `UserSyscallContext P A T B I`.
+Opening the scope SHALL suspend disposition of that entry. Each transfer SHALL
+consume one scope and return exactly one refined successor with either
+`Complete(copied = extent)` or `Fault(copied-prefix)`; reunion with the exact
+successor SHALL be required before return or termination. Candidate overflow,
+wrong identity, duplicate scope use, direct candidate access, and disposition
+with a live scope SHALL be rejected before lowering or fail closed.
+
+The initial executable x86-64 profile SHALL extend its generated probe with
+native Linux syscall 63 (`uname`). One valid call SHALL receive a source-owned,
+six-field, 65-byte-per-field `new_utsname` and result zero. One call whose
+390-byte destination crosses from its writable user page into an unmapped
+guard page SHALL enter only the generated page-fault recovery continuation and
+return Linux `-EFAULT`. Prefix stores before fault MAY remain observable.
+Unscoped or mismatched page faults SHALL remain fatal. This initial form SHALL
+NOT admit `copy_from_user`, arbitrary extents, concurrent mapping changes,
+general UTS namespaces, or core-language exception handling.
+
 An unlisted fault, nested fault outside its own admitted scope,
 machine-critical event, or corrupted entry/stack state SHALL NOT be caught by
 this rule and SHALL follow its owning entry or fatal protocol.
@@ -771,13 +790,15 @@ a live syscall context SHALL be rejected.
 The initial executable x86-64 profile SHALL create one process/thread and one
 generated ring-3 probe in fixed validated RX and RW/NX user mappings. The probe
 SHALL invoke native Linux syscall 39 (`getpid`), verify the source-owned PID
-result after one return to user mode, and invoke syscall 231 (`exit_group`)
-with status zero. Termination SHALL restore the exact registered kernel
-continuation. The probe SHALL be qualification evidence, not an executable
-format or loader. ELF, dynamic linking, pointer-bearing syscalls, user copy,
-user faults, signals, restart, seccomp, audit, ptrace, TLS, extended state,
-fork/clone, multiple processes or threads, user preemption, migration, SMP,
-and the complete syscall table SHALL remain unavailable.
+result after one return to user mode, exercise syscall 63 (`uname`) through the
+separately specified initial `copy_to_user` success and fault paths, and invoke
+syscall 231 (`exit_group`) with status zero. Termination SHALL restore the exact
+registered kernel continuation. The probe SHALL be qualification evidence,
+not an executable format or loader. ELF, dynamic linking, pointer-bearing
+syscalls other than sealed `uname`, general user copy, signals, restart,
+seccomp, audit, ptrace, TLS, extended state, fork/clone, multiple processes or
+threads, user preemption, migration, SMP, and the complete syscall table SHALL
+remain unavailable.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

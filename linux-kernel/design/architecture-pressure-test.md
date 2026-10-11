@@ -84,11 +84,18 @@ selected personality rather than the common machine provider.
 | invalidation | address/context/global operations and shootdown | scoped TLBI plus completion ordering | `SFENCE.VMA` scopes and shootdown | semantic range/address-space/scope invalidation |
 | kernel/user isolation | page permissions, SMEP/SMAP-related controls | permission and PAN-related controls | U/S permissions and SUM-related control | user-transfer capability and access scope |
 | instruction visibility | coherent cases plus serialization rules | cache maintenance may be required | fence/cache-block facilities vary | explicit instruction-publication contract |
+| fault-contained `copy_to_user` | generated #PF recovery and SMAP-qualified access | generated synchronous-abort recovery with PAN/UAO-qualified access | generated page-fault recovery with SUM-qualified access | affine user-transfer scope with complete or copied-prefix fault outcome |
 
 A common `flush TLB` intrinsic is rejected: targets differ in scope,
 completion, broadcast, and required ordering. The common operation instead
 names the mapping change, affected address-space/range, processors, and point
 at which reuse becomes legal.
+
+The user-transfer scope likewise names no recovery address or access-control
+bit. Each provider binds only generated copy sites to its private synchronous
+fault entry and returns the same complete-or-prefix outcome. A prevalidation
+cannot replace recovery because mappings or permissions may change after the
+check in later concurrent profiles.
 
 ## Atomicity, ordering, and critical state
 
