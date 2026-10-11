@@ -490,12 +490,14 @@ fn install_page_tables(protected: &mut [u8]) -> Result<(), CompileError> {
 }
 
 fn install_gdt(protected: &mut [u8]) -> Result<(), CompileError> {
-    let gdt = payload_offset(GDT_ADDRESS, 32, protected.len())?;
+    let gdt = payload_offset(GDT_ADDRESS, 48, protected.len())?;
     let descriptors = [
         0_u64,
         0x00cf_9a00_0000_ffff,
         0x00af_9a00_0000_ffff,
         0x00cf_9200_0000_ffff,
+        0x00cf_f200_0000_ffff,
+        0x00af_fa00_0000_ffff,
     ];
     for (index, descriptor) in descriptors.into_iter().enumerate() {
         write_u64(protected, gdt + index * 8, descriptor);
@@ -742,7 +744,7 @@ fn real_mode_continuation_code() -> Result<Vec<u8>, CompileError> {
         &narrow_u32(X86_PROTECTED_PAYLOAD_ADDRESS, "protected payload")?.to_le_bytes(),
     );
     code.extend_from_slice(&0x08_u16.to_le_bytes());
-    code.extend_from_slice(&31_u16.to_le_bytes());
+    code.extend_from_slice(&47_u16.to_le_bytes());
     code.extend_from_slice(&narrow_u32(GDT_ADDRESS, "GDT")?.to_le_bytes());
     Ok(code)
 }
@@ -907,6 +909,15 @@ mod tests {
         assert_eq!(
             u64::from_le_bytes(protected[pml4..pml4 + 8].try_into().unwrap()),
             PAGE_TABLE_PDPT_ADDRESS | 3
+        );
+        let gdt = usize::try_from(GDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 32..gdt + 40].try_into().unwrap()),
+            0x00cf_f200_0000_ffff
+        );
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 40..gdt + 48].try_into().unwrap()),
+            0x00af_fa00_0000_ffff
         );
         let gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap() + 3 * 16;
         assert_eq!(protected[gate + 5], 0x8f);

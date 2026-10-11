@@ -2795,6 +2795,7 @@ fn analyze_kernel_context_decision(
         consume_queue,
         prepare_user,
         enter_user,
+        user_marker_statement,
         complete_user,
         disposition,
     ] = completion_continuation
@@ -2815,6 +2816,23 @@ fn analyze_kernel_context_decision(
     let user_probe = parse_user_probe_prepare(source, prepare_user, &completion_resumed)?;
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let user_marker = analyze_operation(
+        source,
+        user_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_marker_statement),
+            "user syscall round trip requires its exact marker",
+        ));
+    }
     parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
     let disposition = analyze_disposition(
         source,
@@ -2866,6 +2884,7 @@ fn analyze_kernel_context_decision(
                 process_identity: 1,
             },
             CompilerSystemsOperation::EnterUserContext,
+            user_marker,
             CompilerSystemsOperation::CompleteUserExecution,
         ],
         disposition,
@@ -4762,6 +4781,9 @@ mod tests {
                     kernel_continuation_identity: 1,
                     status: 0,
                 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
+                },
                 CompilerSystemsTransition::CompleteUserExecution {
                     process_identity: 1,
                 },
@@ -4781,7 +4803,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 86);
+        assert_eq!(program.bootstrap.handler.operations.len(), 87);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

@@ -170,6 +170,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                     completion-resumed kernel runnable queue consume empty runnable
                                                                                                     user-probe is completion-resumed user probe prepare (process-identity is 1)
                                                                                                     user-completed is completion-resumed user context enter user-probe
+                                                                                                    completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
                                                                                                     completion-resumed user execution complete user-completed
                                                                                                     completion-resumed fatal "toolchain gate complete"
                                                                                             }

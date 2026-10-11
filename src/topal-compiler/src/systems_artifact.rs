@@ -31,6 +31,7 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_SYSCALL_DISPATCH,
     model_systems_transitions,
 };
 
@@ -63,11 +64,12 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_USER_ENTER_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/15";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/15";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/16";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/16";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -81,7 +83,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 38] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 41] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -117,6 +119,9 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 38] = [
     X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
     X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -781,6 +786,15 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
         ),
+        (
+            SYSTEMS_USER_CONTEXT_PREPARE,
+            X86_SYSTEMS_USER_PREPARE_SYMBOL,
+        ),
+        (SYSTEMS_USER_CONTEXT_ENTER, X86_SYSTEMS_USER_ENTER_SYMBOL),
+        (
+            SYSTEMS_USER_SYSCALL_DISPATCH,
+            X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+        ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -865,6 +879,9 @@ enum ProviderSymbol {
     PreemptCurrentKernelContext,
     RetireKernelContext,
     ReclaimKernelContext,
+    PrepareUserProbe,
+    EnterUserContext,
+    UserSyscall,
     KernelThreadEntry,
     CompletionThreadEntry,
     TerminalThreadEntry,
@@ -906,6 +923,9 @@ impl ProviderSymbol {
             Self::PreemptCurrentKernelContext => X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
             Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+            Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
+            Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
+            Self::UserSyscall => X86_SYSTEMS_USER_SYSCALL_SYMBOL,
             Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
             Self::CompletionThreadEntry => X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
             Self::TerminalThreadEntry => X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
@@ -948,6 +968,9 @@ impl ProviderSymbol {
             | Self::PreemptCurrentKernelContext
             | Self::RetireKernelContext
             | Self::ReclaimKernelContext
+            | Self::PrepareUserProbe
+            | Self::EnterUserContext
+            | Self::UserSyscall
             | Self::KernelThreadEntry
             | Self::CompletionThreadEntry
             | Self::TerminalThreadEntry
@@ -1022,6 +1045,7 @@ struct RootEncoder {
     bootstrap_next_offset: u64,
     context_stack_offsets: [Option<u64>; 3],
     completion: RootCompletionState,
+    user_execution: RootUserExecutionState,
     role: RootRole,
 }
 
@@ -1117,6 +1141,15 @@ enum RootCompletionState {
     Consumed,
 }
 
+#[derive(Default, Eq, PartialEq)]
+enum RootUserExecutionState {
+    #[default]
+    Fresh,
+    Prepared,
+    Completed,
+    Consumed,
+}
+
 #[derive(Clone, Copy)]
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
@@ -1147,6 +1180,9 @@ struct ProviderSymbols {
     preempt_current_kernel_context: SymbolId,
     retire_kernel_context: SymbolId,
     reclaim_kernel_context: SymbolId,
+    prepare_user_probe: SymbolId,
+    enter_user_context: SymbolId,
+    user_syscall: SymbolId,
     kernel_thread_entry: Option<SymbolId>,
     completion_thread_entry: Option<SymbolId>,
     terminal_thread_entry: Option<SymbolId>,
@@ -1196,7 +1232,7 @@ impl RootEncoder {
             }
             RootTranslationState::ReplacementActive => {
                 self.bytes
-                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x40, 0x00, 0x00]);
+                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x50, 0x00, 0x00]);
             }
             _ => {
                 return Err(CompileError::Tool(
@@ -1563,6 +1599,13 @@ impl RootEncoder {
         {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live one-shot completion".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && self.user_execution != RootUserExecutionState::Consumed
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live initial user execution".into(),
             ));
         }
         if matches!(
@@ -2265,6 +2308,56 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::QueueConsumed
+            || self.completion != RootCompletionState::Consumed
+            || self.user_execution != RootUserExecutionState::Fresh
+            || self.translation != RootTranslationState::RemovedActive
+            || self.critical != RootCriticalState::Restored
+            || process_identity != 1
+        {
+            return Err(CompileError::Tool(
+                "x86 user probe preparation requires completed kernel cleanup, PID one, and the restored replacement translation".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // syscall entry in RSI
+        self.rip_relative_symbol(ProviderSymbol::UserSyscall, 0)?;
+        self.call_checked_bool(ProviderSymbol::PrepareUserProbe)?;
+        self.user_execution = RootUserExecutionState::Prepared;
+        Ok(())
+    }
+
+    fn enter_user_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::Prepared
+        {
+            return Err(CompileError::Tool(
+                "x86 user entry requires the exact prepared affine user context".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::EnterUserContext)?;
+        self.user_execution = RootUserExecutionState::Completed;
+        Ok(())
+    }
+
+    fn complete_user_execution(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::Completed
+        {
+            return Err(CompileError::Tool(
+                "x86 user completion requires terminal exit_group restoration".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x80, 0x3f, 0x04]);
+        self.jump_to_fatal_if(0x85)?;
+        self.user_execution = RootUserExecutionState::Consumed;
+        Ok(())
+    }
+
     fn load_bootstrap_storage_address(&mut self, storage_offset: u64) -> Result<(), CompileError> {
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]); // lea rdi, [rip+disp32]
         self.rip_relative_storage(storage_offset, 0)
@@ -2378,6 +2471,9 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::ArmDeadline
                     | CompilerSystemsOperation::WaitDeadline
                     | CompilerSystemsOperation::BootstrapRelease
+                    | CompilerSystemsOperation::PrepareUserProbe { .. }
+                    | CompilerSystemsOperation::EnterUserContext
+                    | CompilerSystemsOperation::CompleteUserExecution
             )
         })
         || program
@@ -2489,6 +2585,15 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ReclaimKernelContext,
         ),
+        prepare_user_probe: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PrepareUserProbe,
+        ),
+        enter_user_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::EnterUserContext,
+        ),
+        user_syscall: undefined_provider_symbol(&mut object, ProviderSymbol::UserSyscall),
         kernel_thread_entry: None,
         completion_thread_entry: None,
         terminal_thread_entry: None,
@@ -2523,6 +2628,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 kernel-thread root cannot preempt itself as a deadline entry".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 kernel-thread root cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     let kernel_thread_entry = append_root(
         &mut object,
@@ -2548,7 +2658,9 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::Fatal { .. } => {
             completion_thread.jump(ProviderSymbol::Fatal);
         }
-        CompilerSystemsDisposition::Resume | CompilerSystemsDisposition::PreemptKernelContext => {
+        CompilerSystemsDisposition::Resume
+        | CompilerSystemsDisposition::PreemptKernelContext
+        | CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
             return Err(CompileError::Tool(
                 "x86 completion-thread root requires retirement disposition".into(),
             ));
@@ -2586,6 +2698,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 terminal-thread root cannot preempt a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 terminal-thread root cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     let terminal_thread_entry = append_root(
         &mut object,
@@ -2595,6 +2712,18 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         symbols,
     )?;
     symbols.terminal_thread_entry = Some(terminal_thread_entry);
+
+    if !program.user_syscall.handler.operations.is_empty()
+        || program.user_syscall.handler.disposition
+            != (CompilerSystemsDisposition::DispatchInitialUserSyscall {
+                getpid_result: 1,
+                exit_group_status: 0,
+            })
+    {
+        return Err(CompileError::Tool(
+            "x86 initial user-syscall entry requires the sealed getpid/exit_group dispatch".into(),
+        ));
+    }
 
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
@@ -2641,6 +2770,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 deadline entry cannot retire a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 deadline entry cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2681,6 +2815,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 local-notification entry cannot preempt a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 local-notification entry cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2711,6 +2850,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::PreemptKernelContext => {
             return Err(CompileError::Tool(
                 "x86 debug-break entry cannot preempt a kernel context".into(),
+            ));
+        }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 debug-break entry cannot dispatch a user syscall".into(),
             ));
         }
     }
@@ -2871,6 +3015,13 @@ fn encode_operations(
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue => {
                 encoder.consume_empty_runnable_queue()?;
             }
+            CompilerSystemsOperation::PrepareUserProbe { process_identity } => {
+                encoder.prepare_user_probe(*process_identity)?;
+            }
+            CompilerSystemsOperation::EnterUserContext => encoder.enter_user_context()?,
+            CompilerSystemsOperation::CompleteUserExecution => {
+                encoder.complete_user_execution()?;
+            }
         }
     }
     encoder.complete()
@@ -2943,6 +3094,9 @@ fn append_root(
             }
             ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
             ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
+            ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
+            ProviderSymbol::EnterUserContext => provider_symbols.enter_user_context,
+            ProviderSymbol::UserSyscall => provider_symbols.user_syscall,
             ProviderSymbol::KernelThreadEntry => {
                 provider_symbols.kernel_thread_entry.ok_or_else(|| {
                     CompileError::Tool(
@@ -3158,6 +3312,42 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:context={context_identity}:completion={completion_identity}"
                 ),
+                CompilerSystemsTransition::PrepareUserProbe {
+                    process_identity,
+                    probe_identity,
+                } => format!(
+                    "{identity}:process={process_identity}:probe={probe_identity}"
+                ),
+                CompilerSystemsTransition::EnterUserExecution {
+                    process_identity,
+                    kernel_continuation_identity,
+                } => format!(
+                    "{identity}:process={process_identity}:continuation={kernel_continuation_identity}"
+                ),
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity,
+                    number,
+                    arguments,
+                } => format!(
+                    "{identity}:entry={entry_identity}:number={number}:arguments={arguments:?}"
+                ),
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity,
+                    result,
+                } => format!("{identity}:entry={entry_identity}:result={result}"),
+                CompilerSystemsTransition::TerminateUser {
+                    entry_identity,
+                    status,
+                } => format!("{identity}:entry={entry_identity}:status={status}"),
+                CompilerSystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity,
+                    status,
+                } => format!(
+                    "{identity}:continuation={kernel_continuation_identity}:status={status}"
+                ),
+                CompilerSystemsTransition::CompleteUserExecution { process_identity } => {
+                    format!("{identity}:process={process_identity}")
+                }
                 CompilerSystemsTransition::TakePreemptedKernelContext {
                     context_identity,
                     event_identity,
@@ -3307,7 +3497,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 799);
+        assert_eq!(relocation_targets.len(), 836);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3425,21 +3615,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            675
+            703
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            33
+            36
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            42
+            45
         );
         assert_eq!(
             relocation_targets
@@ -3499,8 +3689,8 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            20,
-            "root must derive opaque storage for atomic, notification, clock, deadline, and context operations"
+            23,
+            "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
             root_bytes
@@ -3591,6 +3781,9 @@ mod tests {
                 "topal_x86_systems_context_preempt_current",
                 "topal_x86_systems_context_retire",
                 "topal_x86_systems_context_reclaim",
+                "topal_x86_systems_user_prepare_initial_probe",
+                "topal_x86_systems_user_enter_initial_context",
+                "topal_x86_systems_user_dispatch_initial_syscall",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -3628,10 +3821,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 46);
+        assert_eq!(decoded.placements.len(), 49);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 119);
+        assert_eq!(decoded.semantic_trace.len(), 128);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -3787,7 +3980,22 @@ mod tests {
             decoded.semantic_trace[117],
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
         );
-        assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
+        assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[120].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[121]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[122].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[123]
+                .starts_with("topal.systems.disposition.user-syscall.terminate/1")
+        );
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[126].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

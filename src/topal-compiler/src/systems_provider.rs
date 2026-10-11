@@ -22,7 +22,9 @@ use topal_language::compiler::{
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_SYSCALL_DISPATCH,
+    validate_systems_program,
 };
 use topal_language::compiler::{
     SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
@@ -31,7 +33,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/15";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/16";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -77,6 +79,9 @@ pub enum X86SystemsLowering {
     TransferKernelContext,
     RetireKernelContext,
     ReclaimKernelContext,
+    PrepareInitialUserProbe,
+    EnterInitialUserContext,
+    DispatchInitialUserSyscall,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -160,6 +165,11 @@ impl X86SystemsLowering {
             Self::TransferKernelContext => "topal.provider.x86_64.context.transfer/1",
             Self::RetireKernelContext => "topal.provider.x86_64.context.retire/1",
             Self::ReclaimKernelContext => "topal.provider.x86_64.context.reclaim/1",
+            Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
+            Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
+            Self::DispatchInitialUserSyscall => {
+                "topal.provider.x86_64.user.dispatch-initial-syscall/1"
+            }
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -201,6 +211,9 @@ impl X86SystemsLowering {
                 | Self::AwaitDeadlinePreemption
                 | Self::BlockOneShotCompletion
                 | Self::PreemptCurrentKernelContext
+                | Self::PrepareInitialUserProbe
+                | Self::EnterInitialUserContext
+                | Self::DispatchInitialUserSyscall
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -267,6 +280,7 @@ pub fn plan_x86_64_systems_provider(
         .chain(&program.kernel_thread.handler.effects)
         .chain(&program.completion_thread.handler.effects)
         .chain(&program.terminal_thread.handler.effects)
+        .chain(&program.user_syscall.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
     semantic_identities.extend([
@@ -288,6 +302,7 @@ pub fn plan_x86_64_systems_provider(
                 | SYSTEMS_KERNEL_COMPLETION_CREATE
                 | SYSTEMS_KERNEL_COMPLETION_SIGNAL
                 | SYSTEMS_KERNEL_COMPLETION_CONSUME
+                | SYSTEMS_USER_CONTEXT_COMPLETE
         )
     });
 
@@ -362,6 +377,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_TRANSFER => X86SystemsLowering::TransferKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RETIRE => X86SystemsLowering::RetireKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
+        SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
+        SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
+        SYSTEMS_USER_SYSCALL_DISPATCH => X86SystemsLowering::DispatchInitialUserSyscall,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -427,6 +445,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             X86SystemsLowering::RetireKernelContext => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             X86SystemsLowering::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
+            X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
+            X86SystemsLowering::DispatchInitialUserSyscall => SYSTEMS_USER_SYSCALL_DISPATCH,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -474,7 +495,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 46);
+        assert_eq!(plan.operations.len(), 49);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -484,6 +505,7 @@ mod tests {
             SYSTEMS_KERNEL_COMPLETION_CREATE,
             SYSTEMS_KERNEL_COMPLETION_SIGNAL,
             SYSTEMS_KERNEL_COMPLETION_CONSUME,
+            SYSTEMS_USER_CONTEXT_COMPLETE,
         ] {
             assert!(
                 plan.operations
@@ -557,6 +579,24 @@ mod tests {
         assert_clock_lowering(&plan);
         assert_deadline_lowerings(&plan);
         assert_context_lowerings(&plan);
+        for (semantic_identity, lowering) in [
+            (
+                SYSTEMS_USER_CONTEXT_PREPARE,
+                X86SystemsLowering::PrepareInitialUserProbe,
+            ),
+            (
+                SYSTEMS_USER_CONTEXT_ENTER,
+                X86SystemsLowering::EnterInitialUserContext,
+            ),
+            (
+                SYSTEMS_USER_SYSCALL_DISPATCH,
+                X86SystemsLowering::DispatchInitialUserSyscall,
+            ),
+        ] {
+            assert!(plan.operations.iter().any(|operation| {
+                operation.semantic_identity == semantic_identity && operation.lowering == lowering
+            }));
+        }
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -707,7 +747,7 @@ mod tests {
         let second = plan_x86_64_systems_provider(&program()).unwrap();
         assert_eq!(first, second);
         let evidence = format!("{first:?}");
-        for forbidden in ["linux-gnu", "syscall", "libc", "dynamic-loader"] {
+        for forbidden in ["linux-gnu", "libc", "dynamic-loader"] {
             assert!(!evidence.contains(forbidden), "{evidence}");
         }
     }
