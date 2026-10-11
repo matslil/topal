@@ -45,10 +45,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.evidence
         self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/18")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/15")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/16")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/15",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/16",
         )
         self.assertEqual(
             evidence["boot_schema"],

@@ -142,6 +142,14 @@ records persistent signal-first readiness, an exact block-first dispatcher,
 source-owned wakeup and FIFO selection, three private x86-64 context records,
 and two deterministic pinned-QEMU runs.
 
+The current Step 4 slice adds the approved
+[initial user syscall round trip](design/user-syscall-roundtrip.md). Its
+[implementation and qualification report](step-4-user-syscall-roundtrip.md)
+records one affine PID-one user execution, typed Linux syscall entry,
+`getpid` return, `exit_group(0)` termination, private x86-64 ring-3 and
+`SYSCALL`/`SYSRETQ` lowering, structural inspection, and two deterministic
+pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -239,6 +247,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded affine runnable queue](step-4-affine-runnable-queue.md)
 - [Step 4 deadline-preemptible context transfer](step-4-deadline-preemptible-context-transfer.md)
 - [Step 4 one-shot kernel completion](step-4-one-shot-kernel-completion.md)
+- [Step 4 initial user syscall round trip](step-4-user-syscall-roundtrip.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
