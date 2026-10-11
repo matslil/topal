@@ -55,8 +55,9 @@ pub use topal_semantics::{
     SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -3014,19 +3015,35 @@ fn analyze_kernel_context_decision(
         load_continuation,
         "load",
     )?;
-    let [unmap_mapping, scratch_after_unmap @ ..] = after_load else {
+    let [execute_mapping, scratch_after_execute @ ..] = after_load else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping load must be followed by unmap",
+            "user mapping load must be followed by execute promotion and unmap",
         ));
+    };
+    let (executable_scratch, execute_continuation) = parse_user_mapping_execute_promotion(
+        source,
+        execute_mapping,
+        &completion_resumed,
+        &verified_scratch,
+    )?;
+    let after_execute = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_execute,
+        execute_continuation,
+        "execute promotion",
+    )?;
+    let [unmap_mapping, scratch_after_unmap @ ..] = after_execute else {
+        return Err(user_context_diagnostic(source, span, "executable user mapping must be unmapped"));
     };
     let (returned_scratch, unmap_continuation) = parse_user_address_space_unmap(
         source,
         unmap_mapping,
         &completion_resumed,
         &user_space,
-        &verified_scratch,
+        &executable_scratch,
     )?;
     let after_first_unmap = select_user_mapping_continuation(
         source,
@@ -3118,19 +3135,36 @@ fn analyze_kernel_context_decision(
         load_again_continuation,
         "second load",
     )?;
-    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_load else {
+    let [execute_mapping_again, after_second_execute @ ..] = after_second_load else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second user mapping load must be followed by unmap",
+            "second user mapping load must be followed by execute promotion and unmap",
         ));
+    };
+    let (executable_scratch_again, execute_again_continuation) =
+        parse_user_mapping_execute_promotion(
+            source,
+            execute_mapping_again,
+            &completion_resumed,
+            &verified_scratch_again,
+        )?;
+    let after_second_execute = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_execute,
+        execute_again_continuation,
+        "second execute promotion",
+    )?;
+    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_execute else {
+        return Err(user_context_diagnostic(source, span, "second executable user mapping must be unmapped"));
     };
     let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
         source,
         unmap_mapping_again,
         &completion_resumed,
         &user_space,
-        &verified_scratch_again,
+        &executable_scratch_again,
     )?;
     let scratch_continuation = select_user_mapping_continuation(
         source,
@@ -3367,11 +3401,13 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::PermitUserMappingExecute,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::MapUserAddressSpace,
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::PermitUserMappingExecute,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             mapping_marker,
@@ -3723,6 +3759,55 @@ fn parse_user_mapping_protection<'a>(
             source,
             *span,
             "user mapping protect read only requires the exact stored mapping refinement",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_execute_promotion<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping execute promotion must bind its affine refinement",
+            ));
+        }
+    };
+    let [receiver, user, mapping, permit, execute, verified_mapping] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping execute promotion requires the exact verified mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, permit, "permit")
+        || !identifier_is(source, execute, "execute")
+        || !identifier_is(source, verified_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping permit execute requires the exact verified mapping refinement",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -5380,6 +5465,7 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -5788,6 +5874,9 @@ mod tests {
                 CompilerSystemsTransition::LoadUserMappingByte {
                     mapping_identity: 1,
                 },
+                CompilerSystemsTransition::PermitUserMappingExecute {
+                    mapping_identity: 1,
+                },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 1,
@@ -5803,6 +5892,9 @@ mod tests {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::PermitUserMappingExecute {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
@@ -5975,7 +6067,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 111);
+        assert_eq!(program.bootstrap.handler.operations.len(), 113);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -6019,6 +6111,7 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,

@@ -252,7 +252,14 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
-            SOURCE.replace("mapping is verified-scratch", "mapping is stored-scratch"),
+            SOURCE.replace("mapping is executable-scratch", "mapping is stored-scratch"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "user mapping permit execute verified-scratch",
+                "user mapping permit execute protected-scratch",
+            ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
@@ -282,8 +289,8 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "mapping is verified-scratch-again",
-                "mapping is verified-scratch",
+                "mapping is executable-scratch-again",
+                "mapping is executable-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

@@ -197,9 +197,10 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                               stored-scratch is completion-resumed user mapping store byte mapped-scratch
                                                                                                               protected-scratch is completion-resumed user mapping protect read only stored-scratch
                                                                                                               verified-scratch is completion-resumed user mapping load byte protected-scratch
+                                                                                                              executable-scratch is completion-resumed user mapping permit execute verified-scratch
                                                                                                               returned-scratch is completion-resumed user address space unmap (
                                                                                                                 address-space is user-space,
-                                                                                                                mapping is verified-scratch
+                                                                                                                mapping is executable-scratch
                                                                                                               )
                                                                                                               mapped-scratch-again is completion-resumed user address space map (
                                                                                                                 address-space is user-space,
@@ -209,9 +210,10 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                               stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
                                                                                                               protected-scratch-again is completion-resumed user mapping protect read only stored-scratch-again
                                                                                                               verified-scratch-again is completion-resumed user mapping load byte protected-scratch-again
+                                                                                                              executable-scratch-again is completion-resumed user mapping permit execute verified-scratch-again
                                                                                                               returned-scratch-again is completion-resumed user address space unmap (
                                                                                                                 address-space is user-space,
-                                                                                                                mapping is verified-scratch-again
+                                                                                                                mapping is executable-scratch-again
                                                                                                               )
                                                                                                               completion-resumed frames release returned-scratch-again
                                                                                                               completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
