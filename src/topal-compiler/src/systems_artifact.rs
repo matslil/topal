@@ -2667,7 +2667,8 @@ impl RootEncoder {
             || self.user_execution != RootUserExecutionState::PreparedWithResidentImage
         {
             return Err(CompileError::Tool(
-                "x86 user entry requires the prepared context and both resident image mappings".into(),
+                "x86 user entry requires the prepared context and both resident image mappings"
+                    .into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -2681,7 +2682,8 @@ impl RootEncoder {
             || self.user_execution != RootUserExecutionState::CompletedImageRevoked
         {
             return Err(CompileError::Tool(
-                "x86 user completion requires terminal exit_group restoration and image teardown".into(),
+                "x86 user completion requires terminal exit_group restoration and image teardown"
+                    .into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;

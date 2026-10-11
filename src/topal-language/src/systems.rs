@@ -3198,10 +3198,7 @@ fn analyze_kernel_context_decision(
     }
     let (user_probe, probe_continuation) =
         parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_space)?;
-    let user_continuation = match (
-        after_prepare_user.is_empty(),
-        probe_continuation.is_empty(),
-    ) {
+    let user_continuation = match (after_prepare_user.is_empty(), probe_continuation.is_empty()) {
         (true, false) => probe_continuation,
         (false, true) => after_prepare_user,
         _ => {
@@ -3307,14 +3304,13 @@ fn analyze_kernel_context_decision(
             "returned user execution requires its exact retained-image marker before teardown",
         ));
     }
-    let (returned_scratch_again, unmap_again_continuation) =
-        parse_user_address_space_unmap(
-            source,
-            unmap_mapping_again,
-            &completion_resumed,
-            &user_space,
-            &immutable_data_scratch_again,
-        )?;
+    let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_mapping_again,
+        &completion_resumed,
+        &user_space,
+        &immutable_data_scratch_again,
+    )?;
     if !unmap_again_continuation.is_empty() {
         return Err(user_context_diagnostic(
             source,

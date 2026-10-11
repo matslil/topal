@@ -511,8 +511,7 @@ impl SystemsUserExecutionProtocol {
         }
         if mapping.provider_identity != self.provider_identity
             || mapping.backing != INITIAL_USER_MAPPING_REQUEST
-            || mapping.address_space_identity
-                != completed.address_space.address_space_identity
+            || mapping.address_space_identity != completed.address_space.address_space_identity
         {
             return Err(user_error(
                 "post-execution user unmap requires the mapping's exact completed address space",

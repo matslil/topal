@@ -171,8 +171,12 @@ invalidation and retains it while a separately allocated, disjoint frame is
 mapped at the sealed data location. The second mapping remains RO/NX when it
 is sealed as immutable data. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
-coexist, before data-first and code-second revocation return their exact
-frames. The harness
+coexist. Both mappings then remain resident while the existing sealed probe
+completes its syscall and fault-recovery sequence. After the exact kernel
+return, `TOPAL_KERNEL_USER_IMAGE_RETAINED` proves both role owners still
+coexist before data-first and code-second revocation return their exact frames.
+The private construction placements remain distinct from the probe's code,
+stack, transfer candidates, and deliberate `0x602000` fault guard. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
