@@ -759,8 +759,18 @@ The first x86-64 qualification extends the generated probe with Linux `uname`.
 A complete copy publishes one source-owned `new_utsname`; a copy crossing from
 the writable probe page into an unmapped guard page enters only the generated
 page-fault recovery continuation and produces `-EFAULT`. Other page faults
-remain fatal. This does not add general user mapping, `copy_from_user`, UTS
-namespaces, or ordinary core-language recovery.
+remain fatal.
+
+The input-direction refinement uses the same affine scope. `copy_from_user`
+keeps destination staging private until every byte of one selected layout was
+copied and validated. Completion returns the value; a fault returns permitted
+prefix progress but no partial or uninitialized value. The initial x86-64
+probe uses Linux `nanosleep` with a complete zero-duration native `timespec`
+and with a second `timespec` whose final eight bytes cross into the guard page.
+The first returns immediately with zero and the second returns `-EFAULT`.
+Nonzero sleep, remainder output, signals, restart, arbitrary input layouts,
+general user mapping, UTS namespaces, and ordinary core-language recovery
+remain unavailable.
 
 ## Atomic locations and shared state
 

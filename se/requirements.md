@@ -372,9 +372,19 @@ The initial x86-64 qualification shall implement native Linux `uname` number
 63 with a source-owned `new_utsname`, verify a successful copy, and force a
 copy across an unmapped guard page. Only generated copy sites shall recover
 from the matching page fault and the syscall shall return `-EFAULT`; other
-faults shall remain fatal. `copy_from_user`, arbitrary extents, concurrent
-mapping changes, general UTS namespaces, and core-language exception handling
-remain unavailable.
+faults shall remain fatal.
+
+The input-direction refinement shall keep destination staging inaccessible
+until a selected layout has been copied completely and validated. A bounded
+`copy_from_user` shall return a complete value and extent or a structured fault
+with copied-prefix progress and no partial value. The initial x86-64
+qualification shall implement native Linux `nanosleep` number 35 for one
+zero-duration native `timespec`, verify an immediate successful result, and
+force a second read across the same unmapped guard page. Only the exact
+generated read site shall recover and return `-EFAULT`; other faults shall
+remain fatal. Nonzero sleep, remainder output, interruption, restart,
+arbitrary layouts and extents, concurrent mapping changes, general UTS
+namespaces, and core-language exception handling remain unavailable.
 
 An entered bootstrap context shall refine through one exhaustive, affine
 boot-memory transition. A qualified provider shall validate its opaque native
@@ -575,13 +585,14 @@ shall own privilege, stack, saved-state, security, result-placement, and return
 mechanics but shall not select a syscall or invent a result.
 
 The first executable x86-64 profile shall use one generated ring-3 probe and
-the pinned Linux `getpid`, `uname`, and `exit_group` numbers. It shall verify
-ordinary returns, one generated user-copy fault recovery, and terminal
-restoration with status zero. Fixed probe mappings shall be qualification
-evidence only. ELF loading, pointer-bearing syscalls other than the sealed
-`uname` qualification, general user-copy recovery, signals, restart, TLS,
-multiple processes or threads, user preemption, migration, SMP, and the
-complete syscall table remain unavailable.
+the pinned Linux `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
+shall verify ordinary returns, generated output- and input-direction user-copy
+fault recovery, and terminal restoration with status zero. Fixed probe
+mappings shall be qualification evidence only. ELF loading, pointer-bearing
+syscalls other than the sealed `uname` and zero-duration `nanosleep`
+qualifications, general user-copy recovery, signals, restart, TLS, multiple
+processes or threads, user preemption, migration, SMP, and the complete syscall
+table remain unavailable.
 
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 

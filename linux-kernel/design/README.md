@@ -32,6 +32,7 @@ records, not this directory alone, define language meaning.
 - [One-shot affine kernel-completion contract](one-shot-kernel-completion.md)
 - [Affine user-execution and syscall round-trip contract](user-syscall-roundtrip.md)
 - [Fault-contained `copy_to_user` and `uname` contract](user-copy-to-uname.md)
+- [Fault-contained `copy_from_user` and zero-duration `nanosleep` contract](user-copy-from-timespec.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -464,9 +464,26 @@ six-field, 65-byte-per-field `new_utsname` and result zero. One call whose
 390-byte destination crosses from its writable user page into an unmapped
 guard page SHALL enter only the generated page-fault recovery continuation and
 return Linux `-EFAULT`. Prefix stores before fault MAY remain observable.
-Unscoped or mismatched page faults SHALL remain fatal. This initial form SHALL
-NOT admit `copy_from_user`, arbitrary extents, concurrent mapping changes,
-general UTS namespaces, or core-language exception handling.
+Unscoped or mismatched page faults SHALL remain fatal.
+
+The initial `copy_from_user` form SHALL consume and return the same exact
+entry-bound affine scope. Its destination staging SHALL remain inaccessible to
+source unless the selected layout was copied completely and validated.
+`Complete(value, copied = extent)` SHALL expose that value;
+`Fault(copied-prefix)` SHALL expose no staging bytes or partial value.
+
+The executable x86-64 profile SHALL then invoke native Linux syscall 35
+(`nanosleep`) with a null remainder candidate. One call SHALL copy and validate
+a native 16-byte `{ tv_sec = 0, tv_nsec = 0 }` and return zero without arming a
+deadline. One call SHALL copy its first eight bytes before the final field
+crosses into the unmapped guard page, recover only at the generated supervisor
+read site, discard the staging value, and return Linux `-EFAULT`. A direction,
+fault class, site, address, entry, extent, layout, or prefix mismatch SHALL
+remain fatal or fail closed.
+
+These initial forms SHALL NOT admit arbitrary extents or input layouts,
+concurrent mapping changes, nonzero sleep, remainder output, interruption,
+restart, general UTS namespaces, or core-language exception handling.
 
 An unlisted fault, nested fault outside its own admitted scope,
 machine-critical event, or corrupted entry/stack state SHALL NOT be caught by
@@ -791,14 +808,15 @@ The initial executable x86-64 profile SHALL create one process/thread and one
 generated ring-3 probe in fixed validated RX and RW/NX user mappings. The probe
 SHALL invoke native Linux syscall 39 (`getpid`), verify the source-owned PID
 result after one return to user mode, exercise syscall 63 (`uname`) through the
-separately specified initial `copy_to_user` success and fault paths, and invoke
-syscall 231 (`exit_group`) with status zero. Termination SHALL restore the exact
-registered kernel continuation. The probe SHALL be qualification evidence,
-not an executable format or loader. ELF, dynamic linking, pointer-bearing
-syscalls other than sealed `uname`, general user copy, signals, restart,
-seccomp, audit, ptrace, TLS, extended state, fork/clone, multiple processes or
-threads, user preemption, migration, SMP, and the complete syscall table SHALL
-remain unavailable.
+separately specified initial `copy_to_user` success and fault paths, exercise
+syscall 35 (`nanosleep`) through the initial `copy_from_user` success and fault
+paths, and invoke syscall 231 (`exit_group`) with status zero. Termination SHALL
+restore the exact registered kernel continuation. The probe SHALL be
+qualification evidence, not an executable format or loader. ELF, dynamic
+linking, pointer-bearing syscalls other than sealed `uname` and zero-duration
+`nanosleep`, general user copy, signals, restart, seccomp, audit, ptrace, TLS,
+extended state, fork/clone, multiple processes or threads, user preemption,
+migration, SMP, and the complete syscall table SHALL remain unavailable.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

@@ -174,6 +174,12 @@ length; candidates remain untrusted words and the backend binds only generated
 copy sites to generated recovery continuations. See
 [TK-DEC-033](user-copy-to-uname.md).
 
+The input-direction refinement keeps staging storage private until a complete
+selected layout has been copied and validated. `copy_from_user` therefore
+returns either a complete value and extent or a fault with copied-prefix
+length but no partial value. See
+[TK-DEC-034](user-copy-from-timespec.md).
+
 ## TK-ELEMENT-ATOMIC-001 — Typed atomic locations
 
 Kernel-safe shared state requires a source-visible operation stronger than the

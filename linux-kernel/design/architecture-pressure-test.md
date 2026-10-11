@@ -85,6 +85,7 @@ selected personality rather than the common machine provider.
 | kernel/user isolation | page permissions, SMEP/SMAP-related controls | permission and PAN-related controls | U/S permissions and SUM-related control | user-transfer capability and access scope |
 | instruction visibility | coherent cases plus serialization rules | cache maintenance may be required | fence/cache-block facilities vary | explicit instruction-publication contract |
 | fault-contained `copy_to_user` | generated #PF recovery and SMAP-qualified access | generated synchronous-abort recovery with PAN/UAO-qualified access | generated page-fault recovery with SUM-qualified access | affine user-transfer scope with complete or copied-prefix fault outcome |
+| layout-validating `copy_from_user` | generated #PF recovery around supervisor loads | generated synchronous-abort recovery around PAN/UAO-qualified loads | generated page-fault recovery around SUM-qualified loads | complete validated value or prefix-only fault; no partial staging value |
 
 A common `flush TLB` intrinsic is rejected: targets differ in scope,
 completion, broadcast, and required ordering. The common operation instead
@@ -93,9 +94,10 @@ at which reuse becomes legal.
 
 The user-transfer scope likewise names no recovery address or access-control
 bit. Each provider binds only generated copy sites to its private synchronous
-fault entry and returns the same complete-or-prefix outcome. A prevalidation
-cannot replace recovery because mappings or permissions may change after the
-check in later concurrent profiles.
+fault entry and returns the same complete-or-prefix outcome. Input layout
+staging remains provider-private unless every byte is present and validation
+succeeds. A prevalidation cannot replace recovery because mappings or
+permissions may change after the check in later concurrent profiles.
 
 ## Atomicity, ordering, and critical state
 
