@@ -16,6 +16,8 @@ pub const SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY: &str =
 pub const SYSTEMS_USER_MAPPING_LOAD_BYTE: &str = "topal.systems.memory.user-mapping.load-byte/1";
 pub const SYSTEMS_USER_MAPPING_PERMIT_EXECUTE: &str =
     "topal.systems.memory.user-mapping.permit-execute/1";
+pub const SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA: &str =
+    "topal.systems.memory.user-mapping.seal-immutable-data/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_UNMAP: &str =
     "topal.systems.memory.user-address-space.unmap/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
@@ -88,6 +90,7 @@ enum UserMappingStage {
     Protected,
     Verified,
     Executable,
+    ImmutableData,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -420,7 +423,27 @@ impl SystemsUserExecutionProtocol {
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
         self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        if mapping.mapping_identity != 1 {
+            return Err(user_error(
+                "only the first bounded mapping generation has executable-code role",
+            ));
+        }
         mapping.stage = UserMappingStage::Executable;
+        Ok(mapping)
+    }
+
+    /// Consume the second verified mapping into its immutable-data refinement.
+    pub fn seal_user_mapping_immutable_data(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        if mapping.mapping_identity != 2 {
+            return Err(user_error(
+                "only the second bounded mapping generation has immutable-data role",
+            ));
+        }
+        mapping.stage = UserMappingStage::ImmutableData;
         Ok(mapping)
     }
 
@@ -435,7 +458,20 @@ impl SystemsUserExecutionProtocol {
         address_space: &PreparedUserAddressSpace,
         mapping: UserMapping,
     ) -> Result<PhysicalFrameRequest, SystemsModelError> {
-        self.validate_user_mapping(&mapping, UserMappingStage::Executable)?;
+        if mapping.stage != UserMappingStage::Executable
+            && mapping.stage != UserMappingStage::ImmutableData
+        {
+            return Err(user_error(
+                "user unmap requires the exact role-classified affine refinement",
+            ));
+        }
+        if mapping.provider_identity != self.provider_identity
+            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+        {
+            return Err(user_error(
+                "user mapping operation requires the exact preceding affine refinement",
+            ));
+        }
         if address_space.provider_identity != self.provider_identity
             || mapping.address_space_identity != address_space.address_space_identity
         {
@@ -1101,7 +1137,7 @@ mod tests {
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
-        let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
+        let mapping = protocol.seal_user_mapping_immutable_data(mapping).unwrap();
         assert_eq!(
             protocol.unmap_user_frame(&address_space, mapping).unwrap(),
             INITIAL_USER_MAPPING_REQUEST
@@ -1154,6 +1190,54 @@ mod tests {
         assert_eq!(
             protocol
                 .unmap_user_frame(&address_space, mapping)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+    }
+
+    #[test]
+    fn rejects_cross_role_user_mapping_finalization() {
+        // TOPAL-SYSTEMS-MAPPING-001, TK-DEC-044.
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
+        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        assert_eq!(
+            protocol
+                .seal_user_mapping_immutable_data(mapping)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let address_space = protocol
+            .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
+            .unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
+        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
+        protocol.unmap_user_frame(&address_space, mapping).unwrap();
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
+        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        assert_eq!(
+            protocol
+                .permit_user_mapping_execute(mapping)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"
