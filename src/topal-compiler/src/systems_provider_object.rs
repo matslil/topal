@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/20";
+    "topal.provider-object.x86_64-qemu-pc-q35/21";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -61,10 +61,14 @@ pub const X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL: &str =
     "topal_x86_systems_context_preempt_current";
 pub const X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL: &str = "topal_x86_systems_context_retire";
 pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_reclaim";
+pub const X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL: &str =
+    "topal_x86_systems_user_prepare_initial_address_space";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
 pub const X86_SYSTEMS_USER_ENTER_SYMBOL: &str = "topal_x86_systems_user_enter_initial_context";
 pub const X86_SYSTEMS_USER_COMPLETE_SYMBOL: &str =
     "topal_x86_systems_user_complete_initial_backing";
+pub const X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL: &str =
+    "topal_x86_systems_user_reclaim_initial_address_space";
 pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispatch_initial_syscall";
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
@@ -278,6 +282,10 @@ fn append_user_functions(
 ) -> Result<(), CompileError> {
     for (name, encoded) in [
         (
+            X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+            user_prepare_initial_address_space()?,
+        ),
+        (
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
             user_prepare_initial_probe()?,
         ),
@@ -285,6 +293,10 @@ fn append_user_functions(
         (
             X86_SYSTEMS_USER_COMPLETE_SYMBOL,
             user_complete_initial_backing()?,
+        ),
+        (
+            X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+            user_reclaim_initial_address_space()?,
         ),
         (
             X86_SYSTEMS_USER_SYSCALL_SYMBOL,
@@ -300,7 +312,7 @@ fn append_user_functions(
     Ok(())
 }
 
-fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
+fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
     if probe.len() > 4096 {
@@ -310,8 +322,6 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     }
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
-    code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x85, 0xd2]); // allocator-owned backing base
     code.jump_if(0x84, "fail");
@@ -353,6 +363,23 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x41, 0x0f, 0x01, 0x38]); // invlpg [r8]
     }
 
+    code.bytes(&[0xc6, 0x87, 0x69, 0x00, 0x00, 0x00, 0x01]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0x69, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x85, "fail");
     code.bytes(&[0xb9]);
     code.bytes(&0xc000_0080_u32.to_le_bytes()); // IA32_EFER
     code.bytes(&[0x0f, 0x32, 0x83, 0xc8, 0x01, 0x0f, 0x30]); // enable SCE
@@ -385,9 +412,28 @@ fn user_complete_initial_backing() -> Result<Vec<u8>, CompileError> {
         code.bytes(&address.to_le_bytes());
         code.bytes(&[0x0f, 0x01, 0x3a]); // invlpg [rdx]
     }
-    code.bytes(&[0x48, 0xc7, 0x47, 0x68, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x87, 0x69, 0x00, 0x00, 0x00, 0x02]);
     code.bytes(&[0xc6, 0x07, 0x09]);
-    code.bytes(&[0x4c, 0x89, 0xc8, 0xc3]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_reclaim_initial_address_space() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x09]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0x69, 0x00, 0x00, 0x00, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x47, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0xc7, 0x47, 0x68, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x87, 0x69, 0x00, 0x00, 0x00, 0x03]);
+    code.bytes(&[0xc6, 0x07, 0x0a, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -2005,6 +2051,8 @@ mod tests {
                 .any(|bytes| bytes == 0x8000_0000_0060_1007_u64.to_le_bytes())
         );
 
+        let user_address_prepare =
+            symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL);
         let user_prepare = symbol_bytes(&file, X86_SYSTEMS_USER_PREPARE_SYMBOL);
         for msr in [
             0xc000_0080_u32,
@@ -2021,19 +2069,19 @@ mod tests {
             );
         }
         assert!(
-            user_prepare
+            user_address_prepare
                 .windows(4)
                 .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x38]),
-            "user preparation must invalidate the sealed probe page after removing write access"
+            "address-space preparation must invalidate the sealed probe page after publication"
         );
         assert!(
-            user_prepare
+            user_address_prepare
                 .windows(4)
                 .any(|bytes| bytes == [0x48, 0x89, 0x57, 0x68]),
-            "user preparation must retain the allocator-owned backing identity"
+            "address-space preparation must retain the allocator-owned backing identity"
         );
         assert!(
-            user_prepare
+            user_address_prepare
                 .windows(8)
                 .any(|bytes| bytes == 0x8000_0000_0000_0007_u64.to_le_bytes())
         );
@@ -2050,6 +2098,13 @@ mod tests {
                 .count(),
             3,
             "user completion must invalidate code, stack, and guard locations"
+        );
+        let user_reclaim = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL);
+        assert!(
+            user_reclaim
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x47, 0x68]),
+            "address-space reclaim must return the retained backing identity"
         );
         let user_enter = symbol_bytes(&file, X86_SYSTEMS_USER_ENTER_SYMBOL);
         assert!(user_enter.windows(2).any(|bytes| bytes == [0x48, 0xcf]));
