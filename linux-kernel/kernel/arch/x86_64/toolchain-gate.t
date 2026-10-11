@@ -175,13 +175,27 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                   completion-resumed is completion-completed kernel context reclaim
                                                                                                     completion-resumed kernel completion consume one-shot
                                                                                                     completion-resumed kernel runnable queue consume empty runnable
-                                                                                                    user-probe is completion-resumed user probe prepare (process-identity is 1)
-                                                                                                    user-completed is completion-resumed user context enter user-probe
-                                                                                                    completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                    completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                    completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
-                                                                                                    completion-resumed user execution complete user-completed
-                                                                                                    completion-resumed fatal "toolchain gate complete"
+                                                                                                    completion-resumed frames allocate (
+                                                                                                      frame-count is 3,
+                                                                                                      alignment-frames is 1
+                                                                                                    )
+                                                                                                      Ok user-frames then {
+                                                                                                        user-probe is completion-resumed user probe prepare (
+                                                                                                          process-identity is 1,
+                                                                                                          backing is user-frames
+                                                                                                        )
+                                                                                                        user-completed is completion-resumed user context enter user-probe
+                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                        returned-frames is completion-resumed user execution complete user-completed
+                                                                                                        completion-resumed frames release returned-frames
+                                                                                                        completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                        completion-resumed fatal "toolchain gate complete"
+                                                                                                      }
+                                                                                                      Error problem then {
+                                                                                                        completion-resumed fatal "user backing allocation failed"
+                                                                                                      }
                                                                                             }
                                                                                             Error problem then {
                                                                                               resumed fatal "terminal context stack allocation failed"

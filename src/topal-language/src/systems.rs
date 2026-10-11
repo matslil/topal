@@ -2848,18 +2848,7 @@ fn analyze_kernel_context_decision(
     }
     let (completion_resumed, completion_continuation) =
         parse_kernel_context_reclaim(source, reclaim_completion, &completion_completed)?;
-    let [
-        consume_completion,
-        consume_queue,
-        prepare_user,
-        enter_user,
-        user_copy_to_marker_statement,
-        user_copy_from_marker_statement,
-        user_marker_statement,
-        complete_user,
-        disposition,
-    ] = completion_continuation
-    else {
+    let [consume_completion, consume_queue, user_allocation @ ..] = completion_continuation else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_completion),
@@ -2873,7 +2862,58 @@ fn analyze_kernel_context_decision(
         &completion_name,
     )?;
     parse_runnable_queue_consume(source, consume_queue, &completion_resumed, &queue_name)?;
-    let user_probe = parse_user_probe_prepare(source, prepare_user, &completion_resumed)?;
+    let (subject, user_frames, success, _problem_name, failure, span) =
+        result_sequence(source, user_allocation, "user backing allocation")?;
+    let backing_request = parse_physical_frame_allocation(source, subject, &completion_resumed)?;
+    if backing_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 3,
+            alignment_frames: 1,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            subject.span(),
+            "initial user backing requires exactly three frames aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: backing_failure,
+    } = action_disposition(source, failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            failure.span(),
+            "user backing allocation failure must preserve the allocator context and enter `fatal`",
+        ));
+    };
+    let user_statements = action_block(source, success, "user backing allocation success")?;
+    let [prepare_user] = user_statements else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user backing success must begin with one affine user-probe preparation scope",
+        ));
+    };
+    let (user_probe, user_continuation) =
+        parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_frames)?;
+    let [
+        enter_user,
+        user_copy_to_marker_statement,
+        user_copy_from_marker_statement,
+        user_marker_statement,
+        complete_user,
+        release_user_frames,
+        backing_marker_statement,
+        disposition,
+    ] = user_continuation
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user probe preparation must enter, complete, release, publish its marker, and reach disposition",
+        ));
+    };
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
     let user_copy_to_marker = analyze_operation(
@@ -2927,7 +2967,31 @@ fn analyze_kernel_context_decision(
             "user syscall round trip requires its exact marker",
         ));
     }
-    parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
+    let returned_frames =
+        parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
+    parse_physical_frame_release(
+        source,
+        release_user_frames,
+        &completion_resumed,
+        &returned_frames,
+    )?;
+    let backing_marker = analyze_operation(
+        source,
+        backing_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if backing_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(backing_marker_statement),
+            "user backing release requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -2974,6 +3038,10 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::ReclaimKernelContext,
             CompilerSystemsOperation::ConsumeKernelCompletion,
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: backing_request,
+                failure_message: backing_failure,
+            },
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
             },
@@ -2982,6 +3050,8 @@ fn analyze_kernel_context_decision(
             user_copy_from_marker,
             user_marker,
             CompilerSystemsOperation::CompleteUserExecution,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            backing_marker,
         ],
         disposition,
     })
@@ -3038,15 +3108,17 @@ fn parse_kernel_context_create(
     Ok(source.slice(*name).to_owned())
 }
 
-fn parse_user_probe_prepare(
+fn parse_user_probe_prepare<'a>(
     source: &SourceText,
-    statement: &Statement,
+    statement: &'a Statement,
     context_name: &str,
-) -> Result<String, Diagnostic> {
-    let Statement::Binding {
+    backing_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let Statement::Implementation {
         name,
-        classifier: None,
-        value: Expression::Application { items, span },
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
     } = statement
     else {
         return Err(user_context_diagnostic(
@@ -3073,8 +3145,7 @@ fn parse_user_probe_prepare(
         || !identifier_is(source, user, "user")
         || !identifier_is(source, probe, "probe")
         || !identifier_is(source, prepare, "prepare")
-        || fields.len() != 1
-        || field_natural(source, &fields[0], "process-identity")? != 1
+        || fields.len() != 2
     {
         return Err(user_context_diagnostic(
             source,
@@ -3082,7 +3153,47 @@ fn parse_user_probe_prepare(
             "the initial suspended user probe requires process identity one and exact processor, address-space, thread, and ABI classifiers",
         ));
     }
-    Ok(source.slice(*name).to_owned())
+    let mut process_identity = None;
+    let mut backing = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user probe preparation parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "process-identity" => {
+                process_identity = Some(parse_storage_natural(source, &field.value)?);
+            }
+            "backing" => {
+                let Expression::Identifier(name) = field.value else {
+                    return Err(user_context_diagnostic(
+                        source,
+                        field.value.span(),
+                        "user probe backing must be the live affine frame extent",
+                    ));
+                };
+                backing = Some(source.slice(name));
+            }
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user probe preparation parameter",
+                ));
+            }
+        }
+    }
+    if process_identity != Some(1) || backing != Some(backing_name) {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial suspended user probe requires process identity one and its exact three-frame backing extent",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
 }
 
 fn parse_user_context_enter(
@@ -3130,8 +3241,13 @@ fn parse_user_execution_complete(
     statement: &Statement,
     context_name: &str,
     completed_name: &str,
-) -> Result<(), Diagnostic> {
-    let Statement::Expression(Expression::Application { items, span }) = statement else {
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
         return Err(user_context_diagnostic(
             source,
             statement_span(statement),
@@ -3157,7 +3273,7 @@ fn parse_user_execution_complete(
             "user completion must consume the exact terminal execution result",
         ));
     }
-    Ok(())
+    Ok(source.slice(*name).to_owned())
 }
 
 fn parse_kernel_completion_create(
@@ -4857,6 +4973,12 @@ mod tests {
                     completion_identity: 1,
                 },
                 CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 3,
+                        alignment_frames: 1,
+                    },
+                },
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -4993,6 +5115,10 @@ mod tests {
                 CompilerSystemsTransition::CompleteUserExecution {
                     process_identity: 1,
                 },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -5009,7 +5135,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 92);
+        assert_eq!(program.bootstrap.handler.operations.len(), 95);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

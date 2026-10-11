@@ -207,6 +207,24 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("backing is user-frames", "backing is other-frames"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "completion-resumed frames release returned-frames",
+                "completion-resumed frames release user-frames",
+            ),
+            "E-SYSTEMS-FRAMES",
+        ),
+        (
+            SOURCE.replace(
+                "returned-frames is completion-resumed user execution complete user-completed",
+                "completion-resumed user execution complete user-completed",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace("context : InitialUserSyscallContext", "context : OtherContext"),
             "E-SYSTEMS-HANDLER",
         ),
