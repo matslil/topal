@@ -1204,12 +1204,12 @@ enum BootstrapKernelCompletionState {
     Consumed,
 }
 
-#[derive(Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 enum BootstrapUserExecutionState {
     #[default]
     Fresh,
-    Prepared,
-    Completed,
+    Prepared(PhysicalFrameRequest),
+    Completed(PhysicalFrameRequest),
     Consumed,
 }
 
@@ -1752,35 +1752,44 @@ impl BootstrapAuthorityState {
                 if self.kernel_context != BootstrapKernelContextState::QueueConsumed
                     || self.kernel_completion != BootstrapKernelCompletionState::Consumed
                     || self.user_execution != BootstrapUserExecutionState::Fresh
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::Frames(INITIAL_MULTI_FRAME_REQUEST)
                     || *process_identity != 1
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user probe preparation requires completed kernel-context cleanup, PID one, and no live critical scope",
+                        "user probe preparation requires completed kernel-context cleanup, PID one, its exact three-frame backing, and no live critical scope",
                     ));
                 }
-                self.user_execution = BootstrapUserExecutionState::Prepared;
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.user_execution =
+                    BootstrapUserExecutionState::Prepared(INITIAL_MULTI_FRAME_REQUEST);
             }
             SystemsOperation::EnterUserContext => {
-                if self.user_execution != BootstrapUserExecutionState::Prepared
-                    || !self.critical_stack.is_empty()
-                {
+                let BootstrapUserExecutionState::Prepared(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry requires the exact prepared probe and restored kernel context",
+                    ));
+                };
+                if !self.critical_stack.is_empty() {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user entry requires the exact prepared probe and restored kernel context",
                     ));
                 }
-                self.user_execution = BootstrapUserExecutionState::Completed;
+                self.user_execution = BootstrapUserExecutionState::Completed(backing);
             }
             SystemsOperation::CompleteUserExecution => {
-                if self.user_execution != BootstrapUserExecutionState::Completed {
+                let BootstrapUserExecutionState::Completed(backing) = self.user_execution else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user completion requires terminal exit_group restoration",
                     ));
-                }
+                };
                 self.user_execution = BootstrapUserExecutionState::Consumed;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(backing);
             }
             _ => return Ok(false),
         }
@@ -3687,6 +3696,8 @@ mod tests {
             SYSTEMS_DEADLINE_AFTER.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
+            SYSTEMS_FRAMES_ALLOCATE.into(),
+            SYSTEMS_FRAMES_RELEASE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
             SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
             SYSTEMS_KERNEL_COMPLETION_CREATE.into(),
@@ -3822,11 +3833,16 @@ mod tests {
                         SystemsOperation::ReclaimKernelContext,
                         SystemsOperation::ConsumeKernelCompletion,
                         SystemsOperation::ConsumeEmptyRunnableQueue,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_MULTI_FRAME_REQUEST,
+                            failure_message: "user backing allocation failed".into(),
+                        },
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::CompleteUserExecution,
+                        SystemsOperation::ReleasePhysicalFrames,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -4232,6 +4248,9 @@ mod tests {
                     completion_identity: 1,
                 },
                 SystemsTransition::ConsumeEmptyRunnableQueue,
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_MULTI_FRAME_REQUEST,
+                },
                 SystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -4359,6 +4378,7 @@ mod tests {
                 SystemsTransition::CompleteUserExecution {
                     process_identity: 1,
                 },
+                SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
@@ -4744,12 +4764,15 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::ReleasePhysicalFrames));
 
         let mut unsupported = program.clone();
-        let SystemsOperation::AllocatePhysicalFrames { request, .. } =
+        let SystemsOperation::AllocatePhysicalFrames {
+            request: unsupported_request,
+            ..
+        } =
             &mut unsupported.bootstrap.handler.operations[2]
         else {
             unreachable!("test inserted the allocation at index two")
         };
-        request.frame_count = 2;
+        unsupported_request.frame_count = 2;
         assert_eq!(
             validate_systems_program(&unsupported).unwrap_err().code,
             "E-SYSTEMS-FRAMES"
@@ -4769,16 +4792,16 @@ mod tests {
             "E-SYSTEMS-MAPPING"
         );
 
+        program.bootstrap.handler.operations.drain(2..4);
         program
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::ReleasePhysicalFrames));
-        program
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| effect != SYSTEMS_FRAMES_RELEASE);
+            .push(SystemsOperation::AllocatePhysicalFrames {
+                request,
+                failure_message: "late frame allocation failed".into(),
+            });
+        refresh_bootstrap_effects(&mut program);
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-FRAMES-LIVE"
