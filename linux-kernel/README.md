@@ -160,6 +160,14 @@ file-descriptor or core-language exception semantics. Its
 records the checked lifecycle, generated recovery entry, and two deterministic
 pinned-QEMU runs.
 
+The latest Step 4 slice adds the approved systems-only
+[fault-contained `copy_from_user` and zero-duration `nanosleep`](design/user-copy-from-timespec.md)
+contract. It keeps input staging private until a complete selected layout is
+validated and exposes no partial value on fault. Its
+[implementation and qualification report](step-4-user-copy-from-timespec.md)
+records the checked lifecycle, direction-specific generated recovery, and two
+deterministic pinned-QEMU runs without changing the core language.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -259,6 +267,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 one-shot kernel completion](step-4-one-shot-kernel-completion.md)
 - [Step 4 initial user syscall round trip](step-4-user-syscall-roundtrip.md)
 - [Step 4 fault-contained `copy_to_user` and `uname`](step-4-user-copy-to-uname.md)
+- [Step 4 fault-contained `copy_from_user` and zero-duration `nanosleep`](step-4-user-copy-from-timespec.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

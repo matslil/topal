@@ -120,9 +120,10 @@ this kernel increment tests boot-memory handoff validation, privileged entry,
 console output, a resumable debug-break exception, checked kernel-owned-memory
 use, one completed local-notification interrupt, two HPET-backed monotonic-clock
 observations, and deadline-driven preemption and later restoration of one
-kernel context, followed by one qualification-only ring-3 `getpid`/
-`exit_group` round trip before the nonreturning fatal path. It does not boot a
-general userspace or attach its reference root disk.
+kernel context, followed by one qualification-only ring-3 syscall sequence
+covering `getpid`, `uname`, zero-duration `nanosleep`, and `exit_group` before
+the nonreturning fatal path. It does not boot a general userspace or attach its
+reference root disk.
 
 From the repository root:
 
@@ -137,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 23 ordered serial markers. The generated real-mode adapter
+and waits for the 24 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -147,8 +148,9 @@ the worker in its sealed region, the handler returns to the exact dispatcher,
 source runs the terminal and completion workers in the checked order, and
 redispatch resumes then retires both suspended workers. The final user marker
 is reachable only after a ring-3 probe receives PID one from Linux x86-64
-`getpid`, issues `exit_group(0)`, and restores the exact kernel continuation.
-The harness
+`getpid`, completes and faults both output-direction `uname` and
+input-direction zero-duration `nanosleep` transfers, issues `exit_group(0)`,
+and restores the exact kernel continuation. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
