@@ -1218,6 +1218,7 @@ struct BootstrapAuthorityState {
     kernel_context: BootstrapKernelContextState,
     kernel_completion: BootstrapKernelCompletionState,
     user_execution: BootstrapUserExecutionState,
+    resident_user_image_ready: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2027,6 +2028,24 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::MappingImmutableData(backing, generation);
                 self.memory_ownership = BootstrapMemoryOwnership::None;
             }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_READY" =>
+            {
+                if self.user_execution
+                    != BootstrapUserExecutionState::MappingImmutableData(
+                        INITIAL_MULTI_FRAME_REQUEST,
+                        2,
+                    )
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.resident_user_image_ready
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user image readiness requires both finalized role mappings to remain resident exactly once",
+                    ));
+                }
+                self.resident_user_image_ready = true;
+            }
             SystemsOperation::UnmapUserAddressSpace => {
                 let (backing, generation) = match self.user_execution {
                     BootstrapUserExecutionState::MappingExecutableAfterData(backing) => {
@@ -2044,6 +2063,12 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user unmap requires its owned disjoint frame",
+                    ));
+                }
+                if generation == 2 && !self.resident_user_image_ready {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "immutable data cannot be unmapped before the resident image readiness witness",
                     ));
                 }
                 self.memory_ownership =
@@ -4399,6 +4424,9 @@ mod tests {
                         SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::SealUserMappingImmutableData,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
+                        },
                         SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::UnmapUserAddressSpace,
@@ -4595,7 +4623,8 @@ mod tests {
                 SystemsOperation::ConsoleWrite { text }
                     if text.starts_with("TOPAL_KERNEL_CONTEXT_")
                         || text == "TOPAL_KERNEL_FRAME_DISJOINT_OK"
-                        || text == "TOPAL_KERNEL_USER_MAPPING_OK" =>
+                        || text == "TOPAL_KERNEL_USER_MAPPING_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_READY" =>
                 {
                     false
                 }
@@ -4878,6 +4907,9 @@ mod tests {
                 },
                 SystemsTransition::SealUserMappingImmutableData {
                     mapping_identity: 2,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                 },
                 SystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
@@ -5216,6 +5248,63 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
+        let mut late_image_readiness = program(SystemsDisposition::Resume);
+        let readiness = late_image_readiness
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                )
+            })
+            .unwrap();
+        late_image_readiness
+            .bootstrap
+            .handler
+            .operations
+            .swap(readiness, readiness + 1);
+        assert_eq!(
+            validate_systems_program(&late_image_readiness)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicate_image_readiness = program(SystemsDisposition::Resume);
+        let readiness = duplicate_image_readiness
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                )
+            })
+            .unwrap();
+        duplicate_image_readiness
+            .bootstrap
+            .handler
+            .operations
+            .insert(
+                readiness + 1,
+                SystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
+                },
+            );
+        assert_eq!(
+            validate_systems_program(&duplicate_image_readiness)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
         let mut third_generation = program(SystemsDisposition::Resume);
         let release = third_generation
             .bootstrap
@@ -5402,6 +5491,17 @@ mod tests {
             .handler
             .operations
             .remove(final_reclaim);
+        missing_reclaim
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| {
+                !matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                )
+            });
         missing_reclaim
             .bootstrap
             .handler
