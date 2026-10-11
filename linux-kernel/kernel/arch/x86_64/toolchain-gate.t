@@ -210,10 +210,10 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                               stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
                                                                                                               protected-scratch-again is completion-resumed user mapping protect read only stored-scratch-again
                                                                                                               verified-scratch-again is completion-resumed user mapping load byte protected-scratch-again
-                                                                                                              executable-scratch-again is completion-resumed user mapping permit execute verified-scratch-again
+                                                                                                              immutable-data-scratch-again is completion-resumed user mapping seal immutable data verified-scratch-again
                                                                                                               returned-scratch-again is completion-resumed user address space unmap (
                                                                                                                 address-space is user-space,
-                                                                                                                mapping is executable-scratch-again
+                                                                                                                mapping is immutable-data-scratch-again
                                                                                                               )
                                                                                                               completion-resumed frames release returned-scratch-again
                                                                                                               completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"

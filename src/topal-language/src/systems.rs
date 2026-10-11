@@ -56,9 +56,9 @@ pub use topal_semantics::{
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
-    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_STORE_BYTE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -3139,32 +3139,32 @@ fn analyze_kernel_context_decision(
         load_again_continuation,
         "second load",
     )?;
-    let [execute_mapping_again, after_second_execute @ ..] = after_second_load else {
+    let [seal_mapping_again, after_second_seal @ ..] = after_second_load else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second user mapping load must be followed by execute promotion and unmap",
+            "second user mapping load must be followed by immutable-data sealing and unmap",
         ));
     };
-    let (executable_scratch_again, execute_again_continuation) =
-        parse_user_mapping_execute_promotion(
+    let (immutable_data_scratch_again, seal_again_continuation) =
+        parse_user_mapping_immutable_data_seal(
             source,
-            execute_mapping_again,
+            seal_mapping_again,
             &completion_resumed,
             &verified_scratch_again,
         )?;
-    let after_second_execute = select_user_mapping_continuation(
+    let after_second_seal = select_user_mapping_continuation(
         source,
         span,
-        after_second_execute,
-        execute_again_continuation,
-        "second execute promotion",
+        after_second_seal,
+        seal_again_continuation,
+        "second immutable-data seal",
     )?;
-    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_execute else {
+    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_seal else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second executable user mapping must be unmapped",
+            "second immutable-data user mapping must be unmapped",
         ));
     };
     let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
@@ -3172,7 +3172,7 @@ fn analyze_kernel_context_decision(
         unmap_mapping_again,
         &completion_resumed,
         &user_space,
-        &executable_scratch_again,
+        &immutable_data_scratch_again,
     )?;
     let scratch_continuation = select_user_mapping_continuation(
         source,
@@ -3415,7 +3415,7 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
-            CompilerSystemsOperation::PermitUserMappingExecute,
+            CompilerSystemsOperation::SealUserMappingImmutableData,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             mapping_marker,
@@ -3816,6 +3816,65 @@ fn parse_user_mapping_execute_promotion<'a>(
             source,
             *span,
             "user mapping permit execute requires the exact verified mapping refinement",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_immutable_data_seal<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping immutable-data seal must bind its affine refinement",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        mapping,
+        seal,
+        immutable,
+        data,
+        verified_mapping,
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping immutable-data seal requires the exact verified mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, seal, "seal")
+        || !identifier_is(source, immutable, "immutable")
+        || !identifier_is(source, data, "data")
+        || !identifier_is(source, verified_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping seal immutable data requires the second verified refinement",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -5475,6 +5534,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+                SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -5902,7 +5962,7 @@ mod tests {
                 CompilerSystemsTransition::LoadUserMappingByte {
                     mapping_identity: 2,
                 },
-                CompilerSystemsTransition::PermitUserMappingExecute {
+                CompilerSystemsTransition::SealUserMappingImmutableData {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
@@ -6121,6 +6181,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+                SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
