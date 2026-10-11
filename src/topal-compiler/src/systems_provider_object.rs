@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/21";
+    "topal.provider-object.x86_64-qemu-pc-q35/22";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1361,6 +1361,13 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
 
 fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x54]); // preserve r12
+    code.bytes(&[0x49, 0x89, 0xcc]); // retain optional excluded base
+    code.bytes(&[0x4d, 0x85, 0xe4]);
+    code.jump_if(0x84, "count-admitted");
+    code.bytes(&[0x83, 0xfa, 0x01]); // exclusion admits only one frame
+    code.jump_if(0x85, "fail");
+    code.bind("count-admitted")?;
     code.bytes(&[0x83, 0xfa, 0x01]); // frame count == 1
     code.jump_if(0x84, "count-ready");
     code.bytes(&[0x83, 0xfa, 0x03]); // frame count == 3
@@ -1409,11 +1416,25 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x89, 0xc2]); // extent end = candidate
     code.bytes(&[0x4d, 0x01, 0xc2]); // extent end += byte count
     code.jump_if(0x82, "fail");
+    code.bytes(&[0x4d, 0x85, 0xe4]); // optional live user backing exclusion
+    code.jump_if(0x84, "extent-ready");
+    code.bytes(&[0x4d, 0x89, 0xe1]); // excluded end = excluded base
+    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x4d, 0x39, 0xe2]); // extent end <= excluded base
+    code.jump_if(0x86, "extent-ready");
+    code.bytes(&[0x4c, 0x39, 0xc8]); // candidate >= excluded end
+    code.jump_if(0x83, "extent-ready");
+    code.bytes(&[0x4c, 0x89, 0xc8]); // advance candidate past exclusion
+    code.bytes(&[0x49, 0x89, 0xc2]);
+    code.bytes(&[0x4d, 0x01, 0xc2]);
+    code.jump_if(0x82, "fail");
+    code.bind("extent-ready")?;
     code.bytes(&[0x4d, 0x39, 0xda]); // extent end <= RAM end
     code.jump_if(0x87, "next");
     code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x00, 0x00, 0x40]); // end <= 1 GiB
     code.jump_if(0x87, "next");
-    code.bytes(&[0xc3]); // return physical base in rax
+    code.bytes(&[0x41, 0x5c, 0xc3]); // restore r12 and return physical base
 
     code.bind("zero-length")?;
     code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
@@ -1425,7 +1446,7 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "loop");
 
     code.bind("fail")?;
-    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.bytes(&[0x31, 0xc0, 0x41, 0x5c, 0xc3]);
     code.finish()
 }
 
@@ -1982,11 +2003,35 @@ mod tests {
             selector.windows(3).any(|bytes| bytes == [0x4d, 0x39, 0xda]),
             "selector must require the complete extent to fit its E820 RAM run"
         );
+        assert_eq!(&selector[..5], &[0x41, 0x54, 0x49, 0x89, 0xcc]);
+        assert!(
+            selector
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]),
+            "selector must derive the end of the exact three-frame exclusion"
+        );
+        assert!(
+            selector.windows(3).any(|bytes| bytes == [0x4d, 0x39, 0xe2])
+                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x39, 0xc8])
+                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x89, 0xc8]),
+            "selector must detect overlap and advance beyond the live user backing"
+        );
         assert!(
             selector.windows(3).any(|bytes| bytes == [0x48, 0x39, 0xf8]),
             "selector must apply its provider-private allocation floor"
         );
-        assert_eq!(&selector[selector.len() - 3..], &[0x31, 0xc0, 0xc3]);
+        assert_eq!(
+            selector
+                .windows(3)
+                .filter(|bytes| *bytes == [0x41, 0x5c, 0xc3])
+                .count(),
+            2,
+            "success and failure must both restore r12"
+        );
+        assert_eq!(
+            &selector[selector.len() - 5..],
+            &[0x31, 0xc0, 0x41, 0x5c, 0xc3]
+        );
 
         let translation_selector = file
             .symbol_by_name(X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL)

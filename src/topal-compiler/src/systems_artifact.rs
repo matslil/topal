@@ -73,8 +73,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/21";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/21";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/22";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/22";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1258,10 +1258,18 @@ impl RootEncoder {
             || self.kernel_mapping_live
             || !matches!(frame_count, 1 | 3)
             || alignment_frames != 1
+            || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
+                && frame_count != 1)
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
             ));
+        }
+        if self.user_execution == RootUserExecutionState::AddressSpacePrepared {
+            self.load_bootstrap_storage_address(176)?;
+            self.bytes.extend_from_slice(&[0x48, 0x8b, 0x4f, 0x68]); // excluded backing base in rcx
+        } else {
+            self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
         }
         match self.translation {
             RootTranslationState::BootstrapActive => {
@@ -2376,11 +2384,11 @@ impl RootEncoder {
     fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.user_execution != RootUserExecutionState::AddressSpacePrepared
+            || self.physical_frame_count.is_some()
             || process_identity != 1
         {
             return Err(CompileError::Tool(
-                "x86 user probe preparation requires PID one and the exact prepared address space"
-                    .into(),
+                "x86 user probe preparation requires PID one, the exact prepared address space, and no source-owned extent".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -3663,7 +3671,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 961);
+        assert_eq!(relocation_targets.len(), 994);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3759,7 +3767,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            4
+            5
         );
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
@@ -3781,21 +3789,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            817
+            847
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            38
+            39
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            49
+            50
         );
         assert_eq!(
             relocation_targets
@@ -3855,8 +3863,14 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            25,
+            26,
             "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
+        );
+        assert!(
+            root_bytes
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x4f, 0x68]),
+            "root must pass the prepared user backing only as a provider-private exclusion"
         );
         assert!(
             root_bytes
@@ -3993,17 +4007,21 @@ mod tests {
         assert_eq!(decoded.placements.len(), 54);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 158);
+        assert_eq!(decoded.semantic_trace.len(), 161);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
         decoded.semantic_trace.drain(27..30);
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
-        assert!(decoded.semantic_trace[151].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[152], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[153].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(151..154);
+        assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert_eq!(decoded.semantic_trace[121], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[154].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[155], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[156].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(154..157);
+        decoded.semantic_trace.drain(120..123);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
