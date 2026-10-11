@@ -14,6 +14,8 @@ pub const SYSTEMS_USER_MAPPING_STORE_BYTE: &str = "topal.systems.memory.user-map
 pub const SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY: &str =
     "topal.systems.memory.user-mapping.protect-read-only/1";
 pub const SYSTEMS_USER_MAPPING_LOAD_BYTE: &str = "topal.systems.memory.user-mapping.load-byte/1";
+pub const SYSTEMS_USER_MAPPING_PERMIT_EXECUTE: &str =
+    "topal.systems.memory.user-mapping.permit-execute/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_UNMAP: &str =
     "topal.systems.memory.user-address-space.unmap/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
@@ -85,6 +87,7 @@ enum UserMappingStage {
     Stored,
     Protected,
     Verified,
+    Executable,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -411,6 +414,16 @@ impl SystemsUserExecutionProtocol {
         Ok(mapping)
     }
 
+    /// Consume a verified read-only mapping into its executable refinement.
+    pub fn permit_user_mapping_execute(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        mapping.stage = UserMappingStage::Executable;
+        Ok(mapping)
+    }
+
     /// Consume a verified mapping and return its exact original frame extent.
     ///
     /// # Errors
@@ -422,7 +435,7 @@ impl SystemsUserExecutionProtocol {
         address_space: &PreparedUserAddressSpace,
         mapping: UserMapping,
     ) -> Result<PhysicalFrameRequest, SystemsModelError> {
-        self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        self.validate_user_mapping(&mapping, UserMappingStage::Executable)?;
         if address_space.provider_identity != self.provider_identity
             || mapping.address_space_identity != address_space.address_space_identity
         {
@@ -1076,6 +1089,7 @@ mod tests {
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         assert_eq!(
             protocol.unmap_user_frame(&address_space, mapping).unwrap(),
             INITIAL_USER_MAPPING_REQUEST
@@ -1087,6 +1101,7 @@ mod tests {
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         assert_eq!(
             protocol.unmap_user_frame(&address_space, mapping).unwrap(),
             INITIAL_USER_MAPPING_REQUEST
