@@ -23,8 +23,8 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_CONTEXT_COMPLETE,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_SYSCALL_DISPATCH,
-    validate_systems_program,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_TO,
+    SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
     SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
@@ -33,7 +33,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/16";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/17";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -81,6 +81,7 @@ pub enum X86SystemsLowering {
     ReclaimKernelContext,
     PrepareInitialUserProbe,
     EnterInitialUserContext,
+    CopyInitialUnameToUser,
     DispatchInitialUserSyscall,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
@@ -167,6 +168,9 @@ impl X86SystemsLowering {
             Self::ReclaimKernelContext => "topal.provider.x86_64.context.reclaim/1",
             Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
             Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
+            Self::CopyInitialUnameToUser => {
+                "topal.provider.x86_64.user.copy-to-with-page-fault-recovery/1"
+            }
             Self::DispatchInitialUserSyscall => {
                 "topal.provider.x86_64.user.dispatch-initial-syscall/1"
             }
@@ -213,6 +217,7 @@ impl X86SystemsLowering {
                 | Self::PreemptCurrentKernelContext
                 | Self::PrepareInitialUserProbe
                 | Self::EnterInitialUserContext
+                | Self::CopyInitialUnameToUser
                 | Self::DispatchInitialUserSyscall
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
@@ -379,6 +384,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
         SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
         SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
+        SYSTEMS_USER_COPY_TO => X86SystemsLowering::CopyInitialUnameToUser,
         SYSTEMS_USER_SYSCALL_DISPATCH => X86SystemsLowering::DispatchInitialUserSyscall,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
@@ -447,6 +453,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
             X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
+            X86SystemsLowering::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
             X86SystemsLowering::DispatchInitialUserSyscall => SYSTEMS_USER_SYSCALL_DISPATCH,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -495,7 +502,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 49);
+        assert_eq!(plan.operations.len(), 50);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -587,6 +594,10 @@ mod tests {
             (
                 SYSTEMS_USER_CONTEXT_ENTER,
                 X86SystemsLowering::EnterInitialUserContext,
+            ),
+            (
+                SYSTEMS_USER_COPY_TO,
+                X86SystemsLowering::CopyInitialUnameToUser,
             ),
             (
                 SYSTEMS_USER_SYSCALL_DISPATCH,

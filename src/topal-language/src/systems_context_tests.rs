@@ -38,7 +38,7 @@ fn requires_typed_affine_kernel_context_round_trip() {
     );
     assert_eq!(
         program.user_syscall.handler.effects,
-        [SYSTEMS_USER_SYSCALL_DISPATCH]
+        [SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_COPY_TO]
     );
 
     for (source, expected) in [

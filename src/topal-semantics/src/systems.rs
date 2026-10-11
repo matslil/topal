@@ -205,6 +205,7 @@ pub enum SystemsOperation {
     },
     EnterUserContext,
     CompleteUserExecution,
+    CopyInitialUnameToUser,
 }
 
 impl SystemsOperation {
@@ -266,6 +267,7 @@ impl SystemsOperation {
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
+            Self::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
         }
     }
 }
@@ -916,7 +918,7 @@ fn validate_entry(
                             | SystemsOperation::AwaitKernelCompletion
                     ))
                 || (required_context == SystemsContextKind::UserSyscall
-                    && !entry.handler.operations.is_empty())
+                    && !matches!(operation, SystemsOperation::CopyInitialUnameToUser))
         })
     {
         return Err(SystemsModelError::new(
@@ -1031,7 +1033,7 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
 }
 
 fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
-    if !handler.operations.is_empty()
+    if handler.operations != [SystemsOperation::CopyInitialUnameToUser]
         || handler.disposition
             != (SystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
@@ -3393,7 +3395,8 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
-        | SystemsOperation::CompleteUserExecution => {
+        | SystemsOperation::CompleteUserExecution
+        | SystemsOperation::CopyInitialUnameToUser => {
             unreachable!("user-execution operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
@@ -3640,7 +3643,7 @@ mod tests {
                 handler: SystemsHandler {
                     name: "debug".into(),
                     context: SystemsContextKind::DebugBreak,
-                    operations: Vec::new(),
+                    operations: vec![SystemsOperation::CopyInitialUnameToUser],
                     effects: vec![
                         debug_disposition
                             .semantic_identity(SystemsContextKind::DebugBreak)
@@ -3733,7 +3736,10 @@ mod tests {
                         uname_domainname: "(none)".into(),
                         exit_group_status: 0,
                     },
-                    effects: vec![SYSTEMS_USER_SYSCALL_DISPATCH.into()],
+                    effects: vec![
+                        SYSTEMS_USER_SYSCALL_DISPATCH.into(),
+                        SYSTEMS_USER_COPY_TO.into(),
+                    ],
                 },
             },
         }

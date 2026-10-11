@@ -31,7 +31,8 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_SYSCALL_DISPATCH,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_TO,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
     model_systems_transitions,
 };
 
@@ -64,12 +65,13 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    X86_SYSTEMS_USER_ENTER_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
-    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL, X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+    generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/16";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/16";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/17";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/17";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -83,7 +85,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 41] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 42] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -122,6 +124,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 41] = [
     X86_SYSTEMS_USER_PREPARE_SYMBOL,
     X86_SYSTEMS_USER_ENTER_SYMBOL,
     X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -425,6 +428,7 @@ fn artifact_provenance(
             X86_SYSTEMS_DEBUG_BREAK_ENTRY.into(),
             X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY.into(),
             X86_SYSTEMS_DEADLINE_ENTRY.into(),
+            X86_SYSTEMS_USER_COPY_FAULT_SYMBOL.into(),
         ],
         bootstrap_storage_capacity: plan.bootstrap_placement.capacity_bytes,
         bootstrap_storage_alignment: plan.bootstrap_placement.alignment_bytes,
@@ -647,6 +651,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
         X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
         X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+        X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -791,6 +796,7 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
         ),
         (SYSTEMS_USER_CONTEXT_ENTER, X86_SYSTEMS_USER_ENTER_SYMBOL),
+        (SYSTEMS_USER_COPY_TO, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
         (
             SYSTEMS_USER_SYSCALL_DISPATCH,
             X86_SYSTEMS_USER_SYSCALL_SYMBOL,
@@ -2352,7 +2358,7 @@ impl RootEncoder {
             ));
         }
         self.load_bootstrap_storage_address(176)?;
-        self.bytes.extend_from_slice(&[0x80, 0x3f, 0x04]);
+        self.bytes.extend_from_slice(&[0x80, 0x3f, 0x06]);
         self.jump_to_fatal_if(0x85)?;
         self.user_execution = RootUserExecutionState::Consumed;
         Ok(())
@@ -2713,7 +2719,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     )?;
     symbols.terminal_thread_entry = Some(terminal_thread_entry);
 
-    if !program.user_syscall.handler.operations.is_empty()
+    if program.user_syscall.handler.operations != [CompilerSystemsOperation::CopyInitialUnameToUser]
         || program.user_syscall.handler.disposition
             != (CompilerSystemsDisposition::DispatchInitialUserSyscall {
                 getpid_result: 1,
@@ -3028,6 +3034,11 @@ fn encode_operations(
             CompilerSystemsOperation::EnterUserContext => encoder.enter_user_context()?,
             CompilerSystemsOperation::CompleteUserExecution => {
                 encoder.complete_user_execution()?;
+            }
+            CompilerSystemsOperation::CopyInitialUnameToUser => {
+                return Err(CompileError::Tool(
+                    "x86 copy_to_user lowers only inside the sealed user-syscall entry".into(),
+                ));
             }
         }
     }
@@ -3854,10 +3865,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 49);
+        assert_eq!(decoded.placements.len(), 50);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 128);
+        assert_eq!(decoded.semantic_trace.len(), 138);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -4021,14 +4032,30 @@ mod tests {
                 .starts_with("topal.systems.disposition.user-syscall.return/1")
         );
         assert!(decoded.semantic_trace[122].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_COPY_TO));
+        assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_TRANSFER_END));
         assert!(
-            decoded.semantic_trace[123]
+            decoded.semantic_trace[126]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[127].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_COPY_TO));
+        assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[131]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[132].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[133]
                 .starts_with("topal.systems.disposition.user-syscall.terminate/1")
         );
-        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
-        assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[126].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[136].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

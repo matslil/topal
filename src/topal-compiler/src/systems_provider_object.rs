@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/16";
+    "topal.provider-object.x86_64-qemu-pc-q35/17";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -64,6 +64,7 @@ pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
 pub const X86_SYSTEMS_USER_ENTER_SYMBOL: &str = "topal_x86_systems_user_enter_initial_context";
 pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispatch_initial_syscall";
+pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -283,6 +284,10 @@ fn append_user_functions(
             X86_SYSTEMS_USER_SYSCALL_SYMBOL,
             user_dispatch_initial_syscall()?,
         ),
+        (
+            X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
+            user_copy_page_fault_entry()?,
+        ),
     ] {
         append_encoded_function(object, text, name, &encoded);
     }
@@ -290,11 +295,8 @@ fn append_user_functions(
 }
 
 fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
-    const PROBE: [u8; 40] = [
-        0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0x01, 0x75, 0x0b, 0x31, 0xff,
-        0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b, 0xbf, 0x01, 0x00, 0x00, 0x00, 0xb8,
-        0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b, 0x90, 0x90,
-    ];
+    let mut probe = initial_user_probe()?;
+    probe.resize(probe.len().next_multiple_of(8), 0x90);
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
@@ -304,7 +306,7 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0xb8]);
     code.bytes(&0x0060_0000_u64.to_le_bytes());
-    for (index, chunk) in PROBE.chunks_exact(8).enumerate() {
+    for (index, chunk) in probe.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
         let displacement = u8::try_from(index * 8)
@@ -328,6 +330,44 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn initial_user_probe() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
+    code.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    code.jump_if(0x85, "probe-fail");
+
+    code.bytes(&[0x48, 0x81, 0xec, 0x00, 0x02, 0x00, 0x00]); // 512-byte buffer
+    code.bytes(&[0x48, 0x89, 0xe7]);
+    code.bytes(&[0xb8, 0x3f, 0x00, 0x00, 0x00, 0x0f, 0x05]); // uname(valid)
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "probe-fail");
+    code.bytes(&[0x81, 0x3c, 0x24]);
+    code.bytes(&u32::from_le_bytes(*b"Linu").to_le_bytes());
+    code.jump_if(0x85, "probe-fail");
+    code.bytes(&[0x80, 0x7c, 0x24, 0x04, b'x']);
+    code.jump_if(0x85, "probe-fail");
+    code.bytes(&[0x81, 0xbc, 0x24]);
+    code.bytes(&260_u32.to_le_bytes());
+    code.bytes(&u32::from_le_bytes(*b"x86_").to_le_bytes());
+    code.jump_if(0x85, "probe-fail");
+    code.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x02, 0x00, 0x00]);
+
+    code.bytes(&[0xbf]);
+    code.bytes(&0x0060_1f00_u32.to_le_bytes());
+    code.bytes(&[0xb8, 0x3f, 0x00, 0x00, 0x00, 0x0f, 0x05]); // uname(guard crossing)
+    code.bytes(&[0x48, 0x83, 0xf8, 0xf2]); // -EFAULT
+    code.jump_if(0x85, "probe-fail");
+
+    code.bytes(&[
+        0x31, 0xff, 0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b,
+    ]);
+    code.bind("probe-fail")?;
+    code.bytes(&[
+        0xbf, 0x01, 0x00, 0x00, 0x00, 0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b,
+    ]);
     code.finish()
 }
 
@@ -372,9 +412,17 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x0f, 0x01, 0xf8]); // swapgs
     code.bytes(&[0x65, 0x48, 0x89, 0x24, 0x25, 0x10, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x48, 0x89, 0x0c, 0x25, 0x30, 0x00, 0x00, 0x00]); // user RCX
+    code.bytes(&[0x65, 0x4c, 0x89, 0x1c, 0x25, 0x38, 0x00, 0x00, 0x00]); // user R11
+    code.bytes(&[0x65, 0x4c, 0x89, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]); // user R8
+    code.bytes(&[0x65, 0x4c, 0x89, 0x0c, 0x25, 0x48, 0x00, 0x00, 0x00]); // user R9
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x50, 0x00, 0x00, 0x00]); // user R10
+    code.bytes(&[0x65, 0x48, 0x89, 0x14, 0x25, 0x58, 0x00, 0x00, 0x00]); // user RDX
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 0x08, 0x00, 0x00, 0x00]);
     code.bytes(&[0x83, 0xf8, 0x27]);
     code.jump_if(0x84, "getpid");
+    code.bytes(&[0x83, 0xf8, 0x3f]);
+    code.jump_if(0x84, "uname");
     code.bytes(&[0x3d, 0xe7, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "exit-group");
     code.jump("fail");
@@ -384,19 +432,120 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x03]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("uname")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x03]);
+    code.jump_if(0x84, "uname-valid");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x04]);
+    code.jump_if(0x84, "uname-fault");
+    code.jump("fail");
+
+    code.bind("uname-valid")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0060_1e00_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x19, 0x00, 0x00, 0x00, 0x04]);
+    code.jump("copy-to-user");
+
+    code.bind("uname-fault")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0060_1f00_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x19, 0x00, 0x00, 0x00, 0x05]);
+
+    code.bind("copy-to-user")?;
+    code.bytes(&[0x49, 0x89, 0xf8]); // destination candidate
+    code.rip_lea(&[0x4c, 0x8d, 0x0d], "uts-data"); // source bytes in R9
+    code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix in R10
+    code.rip_lea(&[0x48, 0x8d, 0x05], "copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("copy-loop")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x11]); // source[index]
+    code.bind("copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x10]); // user candidate[index]
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x81, 0xfa]);
+    code.bytes(&390_u32.to_le_bytes());
+    code.jump_if(0x85, "copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("copy-complete");
+
+    code.bind("copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]); // -EFAULT
+    code.bind("copy-complete")?;
+    code.bytes(&[0x65, 0x8a, 0x14, 0x25, 0x19, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x88, 0x14, 0x25, 0x00, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("return-user")?;
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0x48, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x50, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x58, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0x30, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x1c, 0x25, 0x38, 0x00, 0x00, 0x00]);
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 0x10, 0x00, 0x00, 0x00]);
     code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]); // swapgs; sysretq
 
     code.bind("exit-group")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x03]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x05]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x04]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x06]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.bytes(&[0x0f, 0x01, 0xf8, 0xc3]); // restore kernel GS base; return continuation
 
     code.bind("fail")?;
+    code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
+    code.bind("uts-data")?;
+    code.bytes(&initial_utsname_bytes());
+    code.finish()
+}
+
+fn initial_utsname_bytes() -> [u8; 390] {
+    let mut bytes = [0_u8; 390];
+    for (index, value) in [
+        "Linux",
+        "topal",
+        "7.2.9-topal",
+        "#1 Topal",
+        "x86_64",
+        "(none)",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let start = index * 65;
+        bytes[start..start + value.len()].copy_from_slice(value.as_bytes());
+    }
+    bytes
+}
+
+fn user_copy_page_fault_entry() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x85, "fault-fatal");
+    code.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x02]); // non-present supervisor write
+    code.jump_if(0x85, "fault-fatal");
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x08]);
+    code.bytes(&[0x65, 0x48, 0x3b, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fault-fatal");
+    code.bytes(&[0x0f, 0x20, 0xd0]); // CR2
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0060_2000_u32.to_le_bytes());
+    code.jump_if(0x85, "fault-fatal");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x89, 0x44, 0x24, 0x08]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x08, 0x48, 0xcf]); // discard error; iretq
+    code.bind("fault-fatal")?;
     code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
     code.finish()
 }
@@ -1379,6 +1528,11 @@ impl X86FunctionEncoder {
         self.fixup(label);
     }
 
+    fn rip_lea(&mut self, opcode: &[u8], label: &'static str) {
+        self.bytes.extend_from_slice(opcode);
+        self.fixup(label);
+    }
+
     fn fixup(&mut self, label: &'static str) {
         let offset = self.bytes.len();
         self.fixups.push((offset, label));
@@ -1735,7 +1889,30 @@ mod tests {
             user_syscall
                 .windows(3)
                 .any(|bytes| bytes == [0x48, 0x0f, 0x07]),
-            "getpid must return through SYSRETQ"
+            "returning user syscalls must use SYSRETQ"
+        );
+        assert!(
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == 390_u32.to_le_bytes()),
+            "copy_to_user must retain the exact new_utsname extent"
+        );
+        assert!(
+            user_syscall.windows(8).any(|bytes| bytes == b"7.2.9-to"),
+            "uname bytes must come from the checked source-owned value"
+        );
+        let copy_fault = symbol_bytes(&file, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL);
+        assert!(
+            copy_fault
+                .windows(3)
+                .any(|bytes| bytes == [0x0f, 0x20, 0xd0])
+        );
+        assert!(copy_fault.windows(2).any(|bytes| bytes == [0x48, 0xcf]));
+        assert!(
+            copy_fault
+                .windows(4)
+                .any(|bytes| bytes == 0x0060_2000_u32.to_le_bytes()),
+            "copy fault recovery must validate the exact guard-page fault address"
         );
 
         let send = symbol_bytes(&file, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL);

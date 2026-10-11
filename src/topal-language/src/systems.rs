@@ -52,7 +52,8 @@ pub use topal_semantics::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -966,8 +967,11 @@ fn analyze_user_syscall_handler(
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::UserSyscall,
-        operations: Vec::new(),
-        effects: vec![SYSTEMS_USER_SYSCALL_DISPATCH.to_owned()],
+        operations: vec![CompilerSystemsOperation::CopyInitialUnameToUser],
+        effects: vec![
+            SYSTEMS_USER_SYSCALL_DISPATCH.to_owned(),
+            SYSTEMS_USER_COPY_TO.to_owned(),
+        ],
         disposition,
     })
 }
