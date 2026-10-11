@@ -3851,6 +3851,7 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
             SYSTEMS_USER_ADDRESS_SPACE_PREPARE.into(),
             SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING.into(),
             SYSTEMS_USER_CONTEXT_PREPARE.into(),
             SYSTEMS_USER_CONTEXT_ENTER.into(),
             SYSTEMS_USER_CONTEXT_COMPLETE.into(),
@@ -4566,7 +4567,7 @@ mod tests {
     }
 
     #[test]
-    fn prepared_user_space_admits_one_released_source_extent() {
+    fn prepared_user_space_requires_one_mapping_round_trip_and_released_extent() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001,
         // TOPAL-SYSTEMS-CONTEXT-006.
         let mut live_at_probe = program(SystemsDisposition::Resume);
@@ -4614,6 +4615,50 @@ mod tests {
         assert_eq!(
             validate_systems_program(&third_extent).unwrap_err().code,
             "E-SYSTEMS-FRAMES"
+        );
+
+        let mut missing_verification = program(SystemsDisposition::Resume);
+        let verification = missing_verification
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(operation, SystemsOperation::VerifyUserAddressSpaceMapping)
+            })
+            .unwrap();
+        missing_verification
+            .bootstrap
+            .handler
+            .operations
+            .remove(verification);
+        refresh_bootstrap_effects(&mut missing_verification);
+        assert_eq!(
+            validate_systems_program(&missing_verification)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicate_verification = program(SystemsDisposition::Resume);
+        let verification = duplicate_verification
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(operation, SystemsOperation::VerifyUserAddressSpaceMapping)
+            })
+            .unwrap();
+        duplicate_verification.bootstrap.handler.operations.insert(
+            verification + 1,
+            SystemsOperation::VerifyUserAddressSpaceMapping,
+        );
+        assert_eq!(
+            validate_systems_program(&duplicate_verification)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
         );
     }
 
