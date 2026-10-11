@@ -93,6 +93,14 @@ pub struct UserMapping {
     stage: UserMappingStage,
 }
 
+impl UserMapping {
+    /// Return the opaque identity used only for semantic trace correlation.
+    #[must_use]
+    pub const fn identity(&self) -> u64 {
+        self.mapping_identity
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct RevokedUserAddressSpace {
     provider_identity: String,
@@ -1037,7 +1045,7 @@ mod tests {
     }
 
     #[test]
-    fn maps_stores_loads_and_unmaps_one_affine_user_frame() {
+    fn maps_stores_loads_and_unmaps_two_fresh_affine_generations() {
         // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MAPPING-001.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         let address_space = protocol
@@ -1046,6 +1054,17 @@ mod tests {
         let mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
+        let first_identity = mapping.identity();
+        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        assert_eq!(
+            protocol.unmap_user_frame(&address_space, mapping).unwrap(),
+            INITIAL_USER_MAPPING_REQUEST
+        );
+        let mapping = protocol
+            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .unwrap();
+        assert_ne!(mapping.identity(), first_identity);
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
         assert_eq!(

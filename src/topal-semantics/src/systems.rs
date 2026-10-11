@@ -1264,9 +1264,10 @@ enum BootstrapUserExecutionState {
     #[default]
     Fresh,
     AddressSpacePrepared(PhysicalFrameRequest),
-    MappingLive(PhysicalFrameRequest),
-    MappingStored(PhysicalFrameRequest),
-    MappingVerified(PhysicalFrameRequest),
+    MappingLive(PhysicalFrameRequest, u8),
+    MappingStored(PhysicalFrameRequest, u8),
+    MappingVerified(PhysicalFrameRequest, u8),
+    AddressSpaceMappedOnce(PhysicalFrameRequest),
     AddressSpaceVerified(PhysicalFrameRequest),
     Prepared(PhysicalFrameRequest),
     Completed(PhysicalFrameRequest),
@@ -1877,13 +1878,15 @@ impl BootstrapAuthorityState {
                 self.user_execution = BootstrapUserExecutionState::AddressSpaceVerified(backing);
             }
             SystemsOperation::MapUserAddressSpace => {
-                let BootstrapUserExecutionState::AddressSpacePrepared(backing) =
-                    self.user_execution
-                else {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-USER-CONTEXT",
-                        "user mapping publication requires the exact prepared address space",
-                    ));
+                let (backing, generation) = match self.user_execution {
+                    BootstrapUserExecutionState::AddressSpacePrepared(backing) => (backing, 1),
+                    BootstrapUserExecutionState::AddressSpaceMappedOnce(backing) => (backing, 2),
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "user mapping publication requires the prepared address space at its next exact generation",
+                        ));
+                    }
                 };
                 if self.memory_ownership
                     != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
@@ -1896,10 +1899,12 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership =
                     BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST);
-                self.user_execution = BootstrapUserExecutionState::MappingLive(backing);
+                self.user_execution = BootstrapUserExecutionState::MappingLive(backing, generation);
             }
             SystemsOperation::StoreUserMappingByte => {
-                let BootstrapUserExecutionState::MappingLive(backing) = self.user_execution else {
+                let BootstrapUserExecutionState::MappingLive(backing, generation) =
+                    self.user_execution
+                else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user mapping store requires the exact live mapping",
@@ -1913,10 +1918,12 @@ impl BootstrapAuthorityState {
                         "user mapping store requires its owned disjoint frame",
                     ));
                 }
-                self.user_execution = BootstrapUserExecutionState::MappingStored(backing);
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingStored(backing, generation);
             }
             SystemsOperation::LoadUserMappingByte => {
-                let BootstrapUserExecutionState::MappingStored(backing) = self.user_execution
+                let BootstrapUserExecutionState::MappingStored(backing, generation) =
+                    self.user_execution
                 else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -1931,10 +1938,12 @@ impl BootstrapAuthorityState {
                         "user mapping load requires its owned disjoint frame",
                     ));
                 }
-                self.user_execution = BootstrapUserExecutionState::MappingVerified(backing);
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingVerified(backing, generation);
             }
             SystemsOperation::UnmapUserAddressSpace => {
-                let BootstrapUserExecutionState::MappingVerified(backing) = self.user_execution
+                let BootstrapUserExecutionState::MappingVerified(backing, generation) =
+                    self.user_execution
                 else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -1951,7 +1960,16 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership =
                     BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
-                self.user_execution = BootstrapUserExecutionState::AddressSpaceVerified(backing);
+                self.user_execution = match generation {
+                    1 => BootstrapUserExecutionState::AddressSpaceMappedOnce(backing),
+                    2 => BootstrapUserExecutionState::AddressSpaceVerified(backing),
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "user unmap requires one of the two admitted mapping generations",
+                        ));
+                    }
+                };
             }
             SystemsOperation::EnterUserContext => {
                 let BootstrapUserExecutionState::Prepared(backing) = self.user_execution else {
@@ -2686,13 +2704,15 @@ fn model_user_execution_transition(
                     "user mapping model requires one prepared address space",
                 ));
             }
-            *mapping = Some(protocol.map_user_frame(
+            let fresh_mapping = protocol.map_user_frame(
                 prepared.as_ref().expect("checked prepared user space"),
                 INITIAL_SINGLE_FRAME_REQUEST,
-            )?);
+            )?;
+            let mapping_identity = fresh_mapping.identity();
+            *mapping = Some(fresh_mapping);
             transitions.push(SystemsTransition::MapUserAddressSpace {
                 address_space_identity: 1,
-                mapping_identity: 1,
+                mapping_identity,
             });
         }
         SystemsOperation::StoreUserMappingByte => {
@@ -2704,9 +2724,11 @@ fn model_user_execution_transition(
                     )
                 },
             )?)?);
-            transitions.push(SystemsTransition::StoreUserMappingByte {
-                mapping_identity: 1,
-            });
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("stored mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::StoreUserMappingByte { mapping_identity });
         }
         SystemsOperation::LoadUserMappingByte => {
             *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(
@@ -2717,11 +2739,20 @@ fn model_user_execution_transition(
                     )
                 },
             )?)?);
-            transitions.push(SystemsTransition::LoadUserMappingByte {
-                mapping_identity: 1,
-            });
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("verified mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
         }
         SystemsOperation::UnmapUserAddressSpace => {
+            let mapping = mapping.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user unmap requires one verified affine mapping",
+                )
+            })?;
+            let mapping_identity = mapping.identity();
             let returned = protocol.unmap_user_frame(
                 prepared.as_ref().ok_or_else(|| {
                     SystemsModelError::new(
@@ -2729,12 +2760,7 @@ fn model_user_execution_transition(
                         "user unmap requires one prepared address space",
                     )
                 })?,
-                mapping.take().ok_or_else(|| {
-                    SystemsModelError::new(
-                        "E-SYSTEMS-USER-CONTEXT",
-                        "user unmap requires one verified affine mapping",
-                    )
-                })?,
+                mapping,
             )?;
             if returned != INITIAL_SINGLE_FRAME_REQUEST {
                 return Err(SystemsModelError::new(
@@ -2744,7 +2770,7 @@ fn model_user_execution_transition(
             }
             transitions.push(SystemsTransition::UnmapUserAddressSpace {
                 address_space_identity: 1,
-                mapping_identity: 1,
+                mapping_identity,
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
@@ -4202,6 +4228,10 @@ mod tests {
                         SystemsOperation::StoreUserMappingByte,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::UnmapUserAddressSpace,
+                        SystemsOperation::MapUserAddressSpace,
+                        SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::LoadUserMappingByte,
+                        SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
@@ -4655,6 +4685,20 @@ mod tests {
                     address_space_identity: 1,
                     mapping_identity: 1,
                 },
+                SystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                SystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                SystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 2,
+                },
+                SystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
                 SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
@@ -4801,7 +4845,7 @@ mod tests {
     }
 
     #[test]
-    fn prepared_user_space_requires_one_mapping_round_trip_and_released_extent() {
+    fn prepared_user_space_requires_two_mapping_generations_and_released_extent() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001,
         // TOPAL-SYSTEMS-CONTEXT-006.
         let mut live_at_probe = program(SystemsDisposition::Resume);
@@ -4899,6 +4943,33 @@ mod tests {
             .swap(store, store + 1);
         assert_eq!(
             validate_systems_program(&reordered_access)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut third_generation = program(SystemsDisposition::Resume);
+        let release = third_generation
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter(|(_, operation)| matches!(operation, SystemsOperation::UnmapUserAddressSpace))
+            .nth(1)
+            .map(|(index, _)| index + 1)
+            .unwrap();
+        third_generation.bootstrap.handler.operations.splice(
+            release..release,
+            [
+                SystemsOperation::MapUserAddressSpace,
+                SystemsOperation::StoreUserMappingByte,
+                SystemsOperation::LoadUserMappingByte,
+                SystemsOperation::UnmapUserAddressSpace,
+            ],
+        );
+        assert_eq!(
+            validate_systems_program(&third_generation)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"

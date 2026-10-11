@@ -3327,6 +3327,10 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::MapUserAddressSpace,
+            CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             mapping_marker,
             disjoint_marker,
@@ -5692,6 +5696,20 @@ mod tests {
                     address_space_identity: 1,
                     mapping_identity: 1,
                 },
+                CompilerSystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
@@ -5858,7 +5876,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 105);
+        assert_eq!(program.bootstrap.handler.operations.len(), 109);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
