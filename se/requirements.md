@@ -386,14 +386,16 @@ remain fatal. Nonzero sleep, remainder output, interruption, restart,
 arbitrary layouts and extents, concurrent mapping changes, general UTS
 namespaces, and core-language exception handling remain unavailable.
 
-The initial allocator-backed user-execution refinement shall consume one
-qualified three-frame physical extent into the suspended user context. The
-provider shall use only that extent for the executable page, non-executable
-stack, and user leaf-translation backing; fixed hidden physical user pages are
-forbidden. Terminal completion shall revoke and invalidate every derived user
-mapping and return the exact indivisible extent before source release. Source
-shall observe no physical or virtual address, PTE layout, or target return
-state.
+The initial opaque user-address-space refinement shall consume one qualified
+three-frame physical extent into a prepared user address space with fresh
+identity. User-state preparation shall consume that address space into the
+suspended user context. The provider shall use only its extent for the
+executable page, non-executable stack, and user leaf-translation backing; fixed
+hidden physical user pages are forbidden. Terminal completion shall revoke and
+invalidate every derived user mapping and return a revoked address space.
+Reclaim shall consume only that revoked state and return the exact indivisible
+extent before source release. Source shall observe no physical or virtual
+address, PTE layout, or target return state.
 
 An entered bootstrap context shall refine through one exhaustive, affine
 boot-memory transition. A qualified provider shall validate its opaque native
@@ -610,6 +612,14 @@ syscalls other than the sealed `uname` and zero-duration `nanosleep`
 qualifications, general user-copy recovery, signals, restart, TLS, multiple
 processes or threads, user preemption, migration, SMP, and the complete syscall
 table remain unavailable.
+
+The prepared user address space, suspended user context, completed execution,
+and revoked address space shall retain one exact address-space identity through
+their affine transitions. Preparation, context binding, revocation, and
+reclaim shall remain distinct operations. The initial `initial-probe` layout
+shall admit one live user address space and no source-selected mappings,
+arbitrary permissions, ELF segments, dynamic stack construction, concurrent
+edits, address-space switching, or recoverable partial construction.
 
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 

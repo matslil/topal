@@ -30,6 +30,10 @@ returned-frames is context user execution complete user-completed
 context frames release returned-frames
 ```
 
+The later [opaque user-address-space lifecycle](opaque-user-address-space.md)
+separates preparation and reclaim from user-thread state while retaining this
+exact ownership boundary.
+
 Terminal completion consumes the exact completed execution, revokes every
 user mapping derived from the extent, performs the provider completion and
 translation-invalidation contract, and returns the original indivisible

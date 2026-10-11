@@ -811,13 +811,21 @@ processor, address-space, thread, ABI, entry, or continuation identity;
 duplicate entry or disposition; return after termination; and disposition with
 a live syscall context SHALL be rejected.
 
-Initial user-state preparation SHALL consume exactly one live three-frame
-`PhysicalFrameExtent` into its `SuspendedUserContext`. That user context SHALL
-exclusively own the complete extent through every entry, syscall return, and
-terminal transition. Terminal completion SHALL revoke all mappings derived
-from the extent, satisfy the provider translation-invalidation contract, and
-return exactly the original indivisible extent. Release, splitting, access,
-reuse, or disposition while user execution owns the extent SHALL be invalid.
+Initial user-address-space preparation SHALL consume exactly one live
+three-frame `PhysicalFrameExtent` and the sealed `initial-probe` layout into a
+fresh opaque `PreparedUserAddressSpace A`. Initial user-state preparation SHALL
+consume that exact space into its `SuspendedUserContext P A T B`. The user
+context SHALL exclusively own the space and complete extent through every
+entry, syscall return, and terminal transition.
+
+Terminal completion SHALL revoke all mappings derived from the extent, satisfy
+the provider translation-invalidation contract, and return exactly one opaque
+`RevokedUserAddressSpace A`. Reclaim SHALL consume that revoked state and
+return exactly the original indivisible extent. Wrong identity, reclaim before
+revocation, duplicate transition, release, splitting, access, reuse, or
+disposition while either address-space or user-execution state owns the extent
+SHALL be invalid. Failure after publication begins SHALL be fatal-only in the
+initial profile.
 
 The initial executable x86-64 profile SHALL create one process/thread and one
 generated ring-3 probe in allocator-backed validated RX and RW/NX user
@@ -833,6 +841,12 @@ linking, pointer-bearing syscalls other than sealed `uname` and zero-duration
 `nanosleep`, general user copy, signals, restart, seccomp, audit, ptrace, TLS,
 extended state, fork/clone, multiple processes or threads, user preemption,
 migration, SMP, and the complete syscall table SHALL remain unavailable.
+
+The initial profile SHALL admit one live `initial-probe` address space. It
+SHALL NOT expose or admit source-selected virtual addresses, page-table levels
+or entries, arbitrary permissions, ELF segments, dynamic stack construction,
+concurrent address-space edits, multiple live spaces, or address-space
+switching.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

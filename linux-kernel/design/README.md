@@ -35,6 +35,7 @@ records, not this directory alone, define language meaning.
 - [Fault-contained `copy_to_user` and `uname` contract](user-copy-to-uname.md)
 - [Fault-contained `copy_from_user` and zero-duration `nanosleep` contract](user-copy-from-timespec.md)
 - [Allocator-backed user-probe ownership contract](allocator-backed-user-probe.md)
+- [Opaque user-address-space lifecycle contract](opaque-user-address-space.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

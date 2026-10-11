@@ -39,12 +39,13 @@ invent a result, or own Linux dispatch policy.
 ## First executable profile
 
 The initial x86-64 profile creates one process/thread identity and one sealed
-qualification-only user probe. Preparation consumes one allocator-owned
-three-frame extent and assigns sealed code, stack, and leaf-translation roles.
-The provider publishes one read-only executable user page and one writable,
-non-executable user stack in a validated user address space; terminal
-completion revokes those mappings and returns the exact whole extent for
-release. The probe performs native Linux x86-64 syscall `39`
+qualification-only user probe. User-address-space preparation consumes one
+allocator-owned three-frame extent and assigns sealed code, stack, and
+leaf-translation roles. The provider publishes one read-only executable user
+page and one writable, non-executable user stack in a validated opaque address
+space. User-state preparation consumes that space into the context; terminal
+completion returns it only after revocation, and reclaim returns the exact
+whole extent for release. The probe performs native Linux x86-64 syscall `39`
 (`getpid`), verifies that the returned value is the source-owned initial PID,
 and then performs syscall `231` (`exit_group`) with status zero. A mismatch
 terminates with a distinct nonzero status.
@@ -61,6 +62,10 @@ The probe is not an application format or a hidden executable loader. It is a
 target-qualified physical witness for the common state transitions. Later ELF
 loading must create the same validated semantic state from a checked Linux
 image rather than depending on this probe representation.
+
+The address-space lifecycle is refined by
+[TK-DEC-037](opaque-user-address-space.md). Its `initial-probe` layout is a
+closed qualification template rather than a general mapping interface.
 
 ## Cross-architecture boundary
 

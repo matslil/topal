@@ -324,6 +324,13 @@ terminating that user context and restoring its registered kernel
 continuation. The backend owns privilege, stack, saved-state, security, and
 return mechanics. See [TK-DEC-032](user-syscall-roundtrip.md).
 
+The approved opaque-address-space refinement separates translation ownership
+from user-thread state. Preparation consumes one qualified backing extent into
+a fresh opaque address space; user-state preparation consumes that space;
+terminal completion returns only a revoked space; and reclaim returns the exact
+extent. Source observes lifetime and identity but no address or page-table
+representation. See [TK-DEC-037](opaque-user-address-space.md).
+
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 
 A fault-recovery scope admits only a closed set of expected synchronous faults

@@ -539,22 +539,25 @@ returning one ABI result to the exact revalidated user continuation or
 terminating the user context and restoring its registered kernel
 continuation. Neither path is an ordinary function return.
 
-User-state preparation may consume an affine physical-frame extent as opaque
-address-space backing. The returned suspended user context owns that complete
-extent until terminal completion revokes every derived user mapping, performs
-the provider translation-completion contract, and returns the exact extent.
-Source cannot access, split, release, or otherwise reuse backing while user
-execution owns it. Target page-table roles, virtual placement, publication,
-invalidation, and entry mechanics remain provider-private.
+User-address-space preparation consumes an affine physical-frame extent and
+returns an opaque prepared address space with fresh identity. User-state
+preparation consumes that space into the returned suspended user context,
+which owns it until terminal completion revokes every derived user mapping and
+performs the provider translation-completion contract. Completion returns an
+opaque revoked address space; reclaiming only that revoked state returns the
+exact original extent. Source cannot access, split, release, or otherwise reuse
+backing while either address-space or user-execution state owns it. Target
+page-table roles, virtual placement, publication, invalidation, and entry
+mechanics remain provider-private.
 
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall
 or invent its result. The first x86-64 qualification uses a generated ring-3
-probe with real Linux `getpid`, `uname`, and `exit_group` numbers. The probe and
-its allocator-backed RX and RW/NX mappings are physical evidence, not an
-application format or ELF loader. Pointer-bearing syscalls other than the
-sealed `uname`
+probe with real Linux `getpid`, `uname`, and `exit_group` numbers. Its sealed
+`initial-probe` address-space layout and allocator-backed RX and RW/NX mappings
+are physical evidence, not a general mapping API, application format, or ELF
+loader. Pointer-bearing syscalls other than the sealed `uname`
 qualification, general user-copy recovery, signals, restart, TLS, multiple
 threads, user preemption, migration, and SMP remain excluded.
 
