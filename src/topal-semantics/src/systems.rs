@@ -3643,7 +3643,7 @@ mod tests {
                 handler: SystemsHandler {
                     name: "debug".into(),
                     context: SystemsContextKind::DebugBreak,
-                    operations: vec![SystemsOperation::CopyInitialUnameToUser],
+                    operations: Vec::new(),
                     effects: vec![
                         debug_disposition
                             .semantic_identity(SystemsContextKind::DebugBreak)
@@ -3725,7 +3725,7 @@ mod tests {
                 handler: SystemsHandler {
                     name: "user-syscall".into(),
                     context: SystemsContextKind::UserSyscall,
-                    operations: Vec::new(),
+                    operations: vec![SystemsOperation::CopyInitialUnameToUser],
                     disposition: SystemsDisposition::DispatchInitialUserSyscall {
                         getpid_result: 1,
                         uname_sysname: "Linux".into(),

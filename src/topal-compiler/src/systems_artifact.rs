@@ -32,8 +32,7 @@ use topal_language::compiler::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_TO,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    model_systems_transitions,
+    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -44,6 +43,7 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -3541,7 +3541,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 836);
+        assert_eq!(relocation_targets.len(), 864);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3659,7 +3659,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            703
+            731
         );
         assert_eq!(
             relocation_targets
@@ -3868,7 +3868,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 50);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 138);
+        assert_eq!(decoded.semantic_trace.len(), 139);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -4054,8 +4054,9 @@ mod tests {
         );
         assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
         assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[136].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[137].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

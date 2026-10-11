@@ -2842,6 +2842,7 @@ fn analyze_kernel_context_decision(
         consume_queue,
         prepare_user,
         enter_user,
+        user_copy_marker_statement,
         user_marker_statement,
         complete_user,
         disposition,
@@ -2863,6 +2864,23 @@ fn analyze_kernel_context_decision(
     let user_probe = parse_user_probe_prepare(source, prepare_user, &completion_resumed)?;
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let user_copy_marker = analyze_operation(
+        source,
+        user_copy_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_copy_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_copy_marker_statement),
+            "user copy_to_user recovery requires its exact marker",
+        ));
+    }
     let user_marker = analyze_operation(
         source,
         user_marker_statement,
@@ -2931,6 +2949,7 @@ fn analyze_kernel_context_decision(
                 process_identity: 1,
             },
             CompilerSystemsOperation::EnterUserContext,
+            user_copy_marker,
             user_marker,
             CompilerSystemsOperation::CompleteUserExecution,
         ],
@@ -4817,16 +4836,65 @@ mod tests {
                 },
                 CompilerSystemsTransition::EnterUserSyscall {
                     entry_identity: 2,
+                    number: 63,
+                    arguments: [6_299_136, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                    candidate: 6_299_136,
+                    extent: 390,
+                },
+                CompilerSystemsTransition::CopyToUserComplete {
+                    transfer_identity: 1,
+                    copied: 390,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 2,
+                    result: 0,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 3,
+                    number: 63,
+                    arguments: [6_299_392, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                    candidate: 6_299_392,
+                    extent: 390,
+                },
+                CompilerSystemsTransition::CopyToUserFault {
+                    transfer_identity: 2,
+                    copied_prefix: 256,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 3,
+                    result: u64::MAX - 13,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 4,
                     number: 231,
                     arguments: [0; 6],
                 },
                 CompilerSystemsTransition::TerminateUser {
-                    entry_identity: 2,
+                    entry_identity: 4,
                     status: 0,
                 },
                 CompilerSystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
@@ -4850,7 +4918,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 87);
+        assert_eq!(program.bootstrap.handler.operations.len(), 88);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

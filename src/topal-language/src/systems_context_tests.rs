@@ -179,6 +179,13 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
+                "TOPAL_KERNEL_USER_COPY_TO_OK",
+                "TOPAL_KERNEL_USER_COPY_TO_EARLY",
+            ),
+            "E-SYSTEMS-CONTEXT-TRANSFER",
+        ),
+        (
+            SOURCE.replace(
                 "completion-resumed user context enter user-probe",
                 "completion-resumed user context enter other-probe",
             ),
