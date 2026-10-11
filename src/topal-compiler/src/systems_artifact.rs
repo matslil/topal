@@ -31,8 +31,9 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
+    model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -65,13 +66,13 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
-    X86_SYSTEMS_USER_PREPARE_SYMBOL, X86_SYSTEMS_USER_SYSCALL_SYMBOL,
-    generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_USER_COMPLETE_SYMBOL, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
+    X86_SYSTEMS_USER_ENTER_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/19";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/19";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/20";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/20";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -85,7 +86,7 @@ pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 42] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 43] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -123,6 +124,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 42] = [
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_PREPARE_SYMBOL,
     X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_COMPLETE_SYMBOL,
     X86_SYSTEMS_USER_SYSCALL_SYMBOL,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
     "topal_x86_systems_uart16550_write",
@@ -796,6 +798,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
         ),
         (SYSTEMS_USER_CONTEXT_ENTER, X86_SYSTEMS_USER_ENTER_SYMBOL),
+        (
+            SYSTEMS_USER_CONTEXT_COMPLETE,
+            X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+        ),
         (SYSTEMS_USER_COPY_TO, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
         (SYSTEMS_USER_COPY_FROM, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
         (
@@ -888,6 +894,7 @@ enum ProviderSymbol {
     ReclaimKernelContext,
     PrepareUserProbe,
     EnterUserContext,
+    CompleteUserBacking,
     UserSyscall,
     KernelThreadEntry,
     CompletionThreadEntry,
@@ -932,6 +939,7 @@ impl ProviderSymbol {
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
             Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
             Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
+            Self::CompleteUserBacking => X86_SYSTEMS_USER_COMPLETE_SYMBOL,
             Self::UserSyscall => X86_SYSTEMS_USER_SYSCALL_SYMBOL,
             Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
             Self::CompletionThreadEntry => X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
@@ -977,6 +985,7 @@ impl ProviderSymbol {
             | Self::ReclaimKernelContext
             | Self::PrepareUserProbe
             | Self::EnterUserContext
+            | Self::CompleteUserBacking
             | Self::UserSyscall
             | Self::KernelThreadEntry
             | Self::CompletionThreadEntry
@@ -1189,6 +1198,7 @@ struct ProviderSymbols {
     reclaim_kernel_context: SymbolId,
     prepare_user_probe: SymbolId,
     enter_user_context: SymbolId,
+    complete_user_backing: SymbolId,
     user_syscall: SymbolId,
     kernel_thread_entry: Option<SymbolId>,
     completion_thread_entry: Option<SymbolId>,
@@ -2324,18 +2334,22 @@ impl RootEncoder {
             || self.kernel_context != RootKernelContextState::QueueConsumed
             || self.completion != RootCompletionState::Consumed
             || self.user_execution != RootUserExecutionState::Fresh
+            || self.physical_frame_count != Some(3)
             || self.translation != RootTranslationState::RemovedActive
             || self.critical != RootCriticalState::Restored
             || process_identity != 1
         {
             return Err(CompileError::Tool(
-                "x86 user probe preparation requires completed kernel cleanup, PID one, and the restored replacement translation".into(),
+                "x86 user probe preparation requires completed kernel cleanup, PID one, exact three-frame backing, and the restored replacement translation".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // syscall entry in RSI
         self.rip_relative_symbol(ProviderSymbol::UserSyscall, 0)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]); // backing base in rdx
         self.call_checked_bool(ProviderSymbol::PrepareUserProbe)?;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+        self.physical_frame_count = None;
         self.user_execution = RootUserExecutionState::Prepared;
         Ok(())
     }
@@ -2363,8 +2377,11 @@ impl RootEncoder {
             ));
         }
         self.load_bootstrap_storage_address(176)?;
-        self.bytes.extend_from_slice(&[0x80, 0x3f, 0x08]);
-        self.jump_to_fatal_if(0x85)?;
+        self.call(ProviderSymbol::CompleteUserBacking);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
+        self.physical_frame_count = Some(3);
         self.user_execution = RootUserExecutionState::Consumed;
         Ok(())
     }
@@ -2599,6 +2616,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         prepare_user_probe: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::PrepareUserProbe,
+        ),
+        complete_user_backing: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CompleteUserBacking,
         ),
         enter_user_context: undefined_provider_symbol(
             &mut object,
@@ -3127,6 +3148,7 @@ fn append_root(
             ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
             ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
             ProviderSymbol::EnterUserContext => provider_symbols.enter_user_context,
+            ProviderSymbol::CompleteUserBacking => provider_symbols.complete_user_backing,
             ProviderSymbol::UserSyscall => provider_symbols.user_syscall,
             ProviderSymbol::KernelThreadEntry => {
                 provider_symbols.kernel_thread_entry.ok_or_else(|| {
@@ -3568,7 +3590,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 924);
+        assert_eq!(relocation_targets.len(), 955);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3664,7 +3686,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            3
+            4
         );
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
@@ -3686,7 +3708,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            789
+            817
         );
         assert_eq!(
             relocation_targets
@@ -3700,7 +3722,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            46
+            47
         );
         assert_eq!(
             relocation_targets
@@ -3853,6 +3875,7 @@ mod tests {
                 "topal_x86_systems_context_retire",
                 "topal_x86_systems_context_reclaim",
                 "topal_x86_systems_user_prepare_initial_probe",
+                "topal_x86_systems_user_complete_initial_backing",
                 "topal_x86_systems_user_enter_initial_context",
                 "topal_x86_systems_user_dispatch_initial_syscall",
                 "topal_x86_systems_uart16550_write",
@@ -3892,14 +3915,19 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 51);
+        assert_eq!(decoded.placements.len(), 52);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 153);
+        assert_eq!(decoded.semantic_trace.len(), 156);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
         decoded.semantic_trace.drain(27..30);
+        assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert_eq!(decoded.semantic_trace[150], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[151].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(150..152);
+        decoded.semantic_trace.drain(118..119);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);

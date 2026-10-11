@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/19";
+    "topal.provider-object.x86_64-qemu-pc-q35/20";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -63,6 +63,8 @@ pub const X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL: &str = "topal_x86_systems_context_r
 pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_reclaim";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
 pub const X86_SYSTEMS_USER_ENTER_SYMBOL: &str = "topal_x86_systems_user_enter_initial_context";
+pub const X86_SYSTEMS_USER_COMPLETE_SYMBOL: &str =
+    "topal_x86_systems_user_complete_initial_backing";
 pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispatch_initial_syscall";
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
@@ -281,6 +283,10 @@ fn append_user_functions(
         ),
         (X86_SYSTEMS_USER_ENTER_SYMBOL, user_enter_initial_context()?),
         (
+            X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+            user_complete_initial_backing()?,
+        ),
+        (
             X86_SYSTEMS_USER_SYSCALL_SYMBOL,
             user_dispatch_initial_syscall()?,
         ),
@@ -307,10 +313,17 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]); // allocator-owned backing base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0xd0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
     code.bytes(&[0x80, 0x3f, 0x00]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x49, 0xb8]);
-    code.bytes(&0x0060_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0xf9]); // retain state in r9
+    code.bytes(&[0x48, 0x89, 0x57, 0x68]); // retain backing identity
+    code.bytes(&[0x49, 0x89, 0xd0]); // publish through supervisor identity mapping
     for (index, chunk) in probe.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
@@ -319,11 +332,26 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x49, 0x89, 0x80]);
         code.bytes(&displacement.to_le_bytes());
     }
+    code.bytes(&[0x4c, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
+    code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]); // clear frame
+    code.bytes(&[0x4c, 0x89, 0xcf]); // restore state
+    code.bytes(&[0x49, 0x89, 0xd2, 0x49, 0x83, 0xca, 0x05]); // RX code leaf
+    code.bytes(&[0x4d, 0x89, 0x13]);
+    code.bytes(&[0x4c, 0x8d, 0x92, 0x00, 0x10, 0x00, 0x00]); // stack frame
+    code.bytes(&[0x48, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x09, 0xca, 0x4d, 0x89, 0x53, 0x08]); // RW/NX stack leaf
     code.bytes(&[0x0f, 0x20, 0xd8]); // active root from CR3
     code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
-    code.bytes(&[0x48, 0xc7, 0x80, 0x00, 0x40, 0x00, 0x00]); // code PTE
-    code.bytes(&0x0060_0005_u32.to_le_bytes()); // present/user/read-only/executable
-    code.bytes(&[0x41, 0x0f, 0x01, 0x38]); // invlpg [r8]
+    code.bytes(&[0x4d, 0x89, 0xda, 0x49, 0x83, 0xca, 0x07]);
+    code.bytes(&[0x4c, 0x89, 0x90, 0x18, 0x20, 0x00, 0x00]); // publish user PT
+    code.bytes(&[0x0f, 0xae, 0xf0]); // publish before invalidation
+    for address in [0x0060_0000_u64, 0x0060_1000, 0x0060_2000] {
+        code.bytes(&[0x49, 0xb8]);
+        code.bytes(&address.to_le_bytes());
+        code.bytes(&[0x41, 0x0f, 0x01, 0x38]); // invlpg [r8]
+    }
 
     code.bytes(&[0xb9]);
     code.bytes(&0xc000_0080_u32.to_le_bytes()); // IA32_EFER
@@ -334,6 +362,32 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     emit_wrmsr_register(&mut code, 0xc000_0102, &[0x48, 0x89, 0xf8]); // kernel GS base
     code.bytes(&[0xc6, 0x07, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_complete_initial_backing() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x08]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x4f, 0x68]); // retained backing base
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8]);
+    code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0xc7, 0x80, 0x18, 0x20, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    for address in [0x0060_0000_u64, 0x0060_1000, 0x0060_2000] {
+        code.bytes(&[0x48, 0xba]);
+        code.bytes(&address.to_le_bytes());
+        code.bytes(&[0x0f, 0x01, 0x3a]); // invlpg [rdx]
+    }
+    code.bytes(&[0x48, 0xc7, 0x47, 0x68, 0, 0, 0, 0]);
+    code.bytes(&[0xc6, 0x07, 0x09]);
+    code.bytes(&[0x4c, 0x89, 0xc8, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -1407,15 +1461,6 @@ fn translation_space_builder() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x89, 0x04, 0xcf]);
     code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
     code.jump_if(0x85, "leaves");
-    code.bytes(&[0x4d, 0x8d, 0x98, 0x00, 0x40, 0x00, 0x00]); // user PT
-    code.bytes(&[0x4c, 0x89, 0xd8, 0x48, 0x83, 0xc8, 0x07]);
-    code.bytes(&[0x49, 0x89, 0x80, 0x18, 0x20, 0x00, 0x00]); // PDE[3]
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0060_0007_u64.to_le_bytes()); // writable while preparing probe
-    code.bytes(&[0x49, 0x89, 0x03]);
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x8000_0000_0060_1007_u64.to_le_bytes()); // user stack, NX
-    code.bytes(&[0x49, 0x89, 0x43, 0x08]);
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&0x0000_0000_fec0_009b_u64.to_le_bytes()); // HPET 2 MiB MMIO leaf
     code.bytes(&[0x49, 0x89, 0x82, 0xb0, 0x0f, 0x00, 0x00]); // PDE[502]
@@ -1950,16 +1995,14 @@ mod tests {
             "replacement translation must publish the local-APIC directory through PDPT[3]"
         );
         assert!(
-            builder
+            !builder
                 .windows(8)
-                .any(|bytes| bytes == 0x0060_0007_u64.to_le_bytes()),
-            "replacement translation must stage the writable user probe page"
+                .any(|bytes| bytes == 0x0060_0007_u64.to_le_bytes())
         );
         assert!(
-            builder
+            !builder
                 .windows(8)
-                .any(|bytes| bytes == 0x8000_0000_0060_1007_u64.to_le_bytes()),
-            "replacement translation must stage the NX user stack page"
+                .any(|bytes| bytes == 0x8000_0000_0060_1007_u64.to_le_bytes())
         );
 
         let user_prepare = symbol_bytes(&file, X86_SYSTEMS_USER_PREPARE_SYMBOL);
@@ -1982,6 +2025,31 @@ mod tests {
                 .windows(4)
                 .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x38]),
             "user preparation must invalidate the sealed probe page after removing write access"
+        );
+        assert!(
+            user_prepare
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x89, 0x57, 0x68]),
+            "user preparation must retain the allocator-owned backing identity"
+        );
+        assert!(
+            user_prepare
+                .windows(8)
+                .any(|bytes| bytes == 0x8000_0000_0000_0007_u64.to_le_bytes())
+        );
+        let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);
+        assert!(
+            user_complete
+                .windows(11)
+                .any(|bytes| bytes == [0x48, 0xc7, 0x80, 0x18, 0x20, 0x00, 0x00, 0, 0, 0, 0])
+        );
+        assert_eq!(
+            user_complete
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0x01, 0x3a])
+                .count(),
+            3,
+            "user completion must invalidate code, stack, and guard locations"
         );
         let user_enter = symbol_bytes(&file, X86_SYSTEMS_USER_ENTER_SYMBOL);
         assert!(user_enter.windows(2).any(|bytes| bytes == [0x48, 0xcf]));

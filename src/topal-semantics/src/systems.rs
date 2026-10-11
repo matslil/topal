@@ -4767,8 +4767,7 @@ mod tests {
         let SystemsOperation::AllocatePhysicalFrames {
             request: unsupported_request,
             ..
-        } =
-            &mut unsupported.bootstrap.handler.operations[2]
+        } = &mut unsupported.bootstrap.handler.operations[2]
         else {
             unreachable!("test inserted the allocation at index two")
         };
