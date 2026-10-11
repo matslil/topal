@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/25";
+    "topal.provider-object.x86_64-qemu-pc-q35/26";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -69,6 +69,8 @@ pub const X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL: &str =
     "topal_x86_systems_user_map_initial_frame";
 pub const X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL: &str =
     "topal_x86_systems_user_store_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL: &str =
+    "topal_x86_systems_user_protect_initial_mapping_read_only";
 pub const X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL: &str =
     "topal_x86_systems_user_load_initial_mapping_byte";
 pub const X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL: &str =
@@ -308,6 +310,10 @@ fn append_user_functions(
             user_store_initial_mapping_byte()?,
         ),
         (
+            X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
+            user_protect_initial_mapping_read_only()?,
+        ),
+        (
             X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
             user_load_initial_mapping_byte()?,
         ),
@@ -538,13 +544,51 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
-fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
+fn user_protect_initial_mapping_read_only() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x05]);
-    code.jump_if(0x84, "generation-accepted");
+    code.jump_if(0x84, "generation-one");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x09]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x0d, 0x00, 0x00, 0x00]);
+    code.jump("generation-accepted");
+    code.bind("generation-one")?;
+    code.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00]);
+    code.bind("generation-accepted")?;
+    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x89, 0xc1, 0x41, 0x83, 0xe1, 0x07]);
+    code.bytes(&[0x41, 0x80, 0xf9, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x83, 0xe0, 0xfd]);
+    code.bytes(&[0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
+    code.jump_if(0x84, "generation-accepted");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0d]);
     code.jump_if(0x85, "fail");
     code.bind("generation-accepted")?;
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
@@ -555,7 +599,7 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x0060_2000_u64.to_le_bytes());
     code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
     code.jump_if(0x85, "cleanup-fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x05]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
     code.jump_if(0x84, "success-one");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0a]);
     code.jump("success");
@@ -568,7 +612,7 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
     code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x05]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
     code.jump_if(0x84, "cleanup-one");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x07]);
     code.jump("fail");
@@ -2442,11 +2486,36 @@ mod tests {
                     .windows(6)
                     .any(|bytes| bytes == [0x88, 0x87, 0x70, 0, 0, 0])
         );
+        let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
+        assert!(
+            user_protect
+                .windows(4)
+                .any(|bytes| bytes == [0x49, 0x83, 0xe0, 0xfd])
+                && user_protect
+                    .windows(4)
+                    .any(|bytes| bytes == [0x0f, 0xae, 0xf0, 0x49])
+                && user_protect
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
+                && user_protect
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x0c, 0, 0, 0])
+                && user_protect
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x0d, 0, 0, 0]),
+            "user protection must revoke the writable bit, order publication, invalidate the target, and retain generation"
+        );
         let user_load = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL);
         assert!(
             user_load
                 .windows(4)
                 .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
+                && user_load
+                    .windows(7)
+                    .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0c])
+                && user_load
+                    .windows(7)
+                    .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0d])
                 && user_load
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06])

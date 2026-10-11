@@ -4988,9 +4988,7 @@ mod tests {
             .handler
             .operations
             .iter()
-            .position(|operation| {
-                matches!(operation, SystemsOperation::ProtectUserMappingReadOnly)
-            })
+            .position(|operation| matches!(operation, SystemsOperation::ProtectUserMappingReadOnly))
             .unwrap();
         missing_protection
             .bootstrap
@@ -5011,14 +5009,13 @@ mod tests {
             .handler
             .operations
             .iter()
-            .position(|operation| {
-                matches!(operation, SystemsOperation::ProtectUserMappingReadOnly)
-            })
+            .position(|operation| matches!(operation, SystemsOperation::ProtectUserMappingReadOnly))
             .unwrap();
-        duplicate_protection.bootstrap.handler.operations.insert(
-            protection + 1,
-            SystemsOperation::ProtectUserMappingReadOnly,
-        );
+        duplicate_protection
+            .bootstrap
+            .handler
+            .operations
+            .insert(protection + 1, SystemsOperation::ProtectUserMappingReadOnly);
         assert_eq!(
             validate_systems_program(&duplicate_protection)
                 .unwrap_err()
