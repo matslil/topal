@@ -482,6 +482,45 @@ impl SystemsUserExecutionProtocol {
         Ok(mapping.backing)
     }
 
+    /// Consume one finalized image mapping after its user execution has
+    /// returned to the exact kernel continuation.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a wrong completed execution, provider,
+    /// address space, or mapping refinement.
+    pub fn unmap_completed_user_frame(
+        &self,
+        completed: &CompletedUserExecution,
+        mapping: UserMapping,
+    ) -> Result<PhysicalFrameRequest, SystemsModelError> {
+        if completed.provider_identity != self.provider_identity
+            || completed.address_space.provider_identity != self.provider_identity
+            || completed.address_space.address_space_identity == 0
+        {
+            return Err(user_error(
+                "post-execution user unmap requires the exact completed address space",
+            ));
+        }
+        if mapping.stage != UserMappingStage::Executable
+            && mapping.stage != UserMappingStage::ImmutableData
+        {
+            return Err(user_error(
+                "user unmap requires the exact role-classified affine refinement",
+            ));
+        }
+        if mapping.provider_identity != self.provider_identity
+            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || mapping.address_space_identity
+                != completed.address_space.address_space_identity
+        {
+            return Err(user_error(
+                "post-execution user unmap requires the mapping's exact completed address space",
+            ));
+        }
+        Ok(mapping.backing)
+    }
+
     fn validate_user_mapping(
         &self,
         mapping: &UserMapping,
