@@ -72,5 +72,10 @@ probes. It therefore qualifies multi-frame extent geometry and ownership, but
 not simultaneous live extents, subextent access, page-table construction, or
 user mapping. Those remain separate fail-closed increments.
 
+The later [bounded disjoint live-extent refinement](disjoint-live-frame-extent.md)
+admits one exact nested one-frame allocation while prepared user-address-space
+state owns this three-frame extent. It does not otherwise relax the closed
+request shapes or indivisible ownership defined here.
+
 This systems-only refinement was approved in the project discussion before
 implementation.

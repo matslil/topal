@@ -64,6 +64,11 @@ multiple simultaneously live extents, splitting an extent, and reclaiming
 boot-owned ranges remain fail-closed until their separate implementations and
 evidence exist.
 
+[TK-DEC-038](disjoint-live-frame-extent.md) additionally qualifies one
+simultaneously live one-frame extent while an opaque prepared user address
+space owns the three-frame extent. The general allocator contract and opaque
+base rule remain unchanged.
+
 ## Architecture pressure test
 
 The common abstraction is ownership of target-qualified complete frames, not

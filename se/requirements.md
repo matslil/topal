@@ -424,6 +424,14 @@ extent, and require whole-extent release before any later bootstrap transition
 or disposition. Other counts, non-unit alignment, dynamic requests, extent
 splitting, and multiple simultaneously live extents shall fail closed.
 
+The bounded disjoint-extent refinement shall admit exactly one additional
+static one-frame, unit-aligned source-owned extent while one prepared initial
+user address space owns its three-frame backing. The allocator and provider
+shall prove complete-interval non-overlap without exposing an address. Source
+shall release the additional extent before user-context binding. A third live
+extent, another request shape, overlap, backing release, or disposition with
+the additional extent live shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,

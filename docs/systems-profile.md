@@ -550,6 +550,13 @@ backing while either address-space or user-execution state owns it. Target
 page-table roles, virtual placement, publication, invalidation, and entry
 mechanics remain provider-private.
 
+The bounded allocator may return one additional opaque one-frame extent while
+the initial prepared address space owns its three-frame backing. The allocator
+must prove the complete extents disjoint. Source must release the additional
+extent before transferring the prepared space into user execution. This closed
+qualification does not expose either base, permit a third live extent, split
+address-space backing, or define a general concurrent allocator.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

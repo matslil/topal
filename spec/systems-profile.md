@@ -351,6 +351,15 @@ extent and SHALL require release of that complete extent. The profile SHALL
 reject every other count or alignment, a dynamic request, extent splitting,
 and more than one simultaneously live extent before artifact publication.
 
+The disjoint-live-extent refinement SHALL permit one exception to that last
+restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
+extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
+identity. The complete returned interval SHALL be disjoint from the prepared
+space's complete backing interval, all reservations, and all non-allocatable
+ranges. The additional extent SHALL be released before user-state preparation.
+No third live extent, alternative shape, split, address observation, or
+recoverable disposition with the additional extent live SHALL be admitted.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
