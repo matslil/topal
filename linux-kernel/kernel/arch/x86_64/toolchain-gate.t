@@ -213,6 +213,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
                                                                                                                   immutable-data is completion-resumed user mapping seal immutable data verified-data
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
+                                                                                                                  user-probe is completion-resumed user probe prepare (
+                                                                                                                    process-identity is 1,
+                                                                                                                    address-space is user-space
+                                                                                                                  )
+                                                                                                                  user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                                                                                                                   returned-data is completion-resumed user address space unmap (
                                                                                                                     address-space is user-space,
                                                                                                                     mapping is immutable-data
@@ -225,14 +234,6 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed frames release returned-code
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
-                                                                                                                  user-probe is completion-resumed user probe prepare (
-                                                                                                                    process-identity is 1,
-                                                                                                                    address-space is user-space
-                                                                                                                  )
-                                                                                                                  user-completed is completion-resumed user context enter user-probe
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
                                                                                                                   revoked-space is completion-resumed user execution complete user-completed
                                                                                                                   returned-frames is completion-resumed user address space reclaim revoked-space
                                                                                                                   completion-resumed frames release returned-frames

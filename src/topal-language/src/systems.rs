@@ -3169,14 +3169,14 @@ fn analyze_kernel_context_decision(
     )?;
     let [
         image_ready_marker_statement,
-        unmap_mapping_again,
-        after_second_unmap @ ..,
+        prepare_user,
+        after_prepare_user @ ..,
     ] = after_second_seal
     else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "second immutable-data user mapping must publish image readiness before unmap",
+            "second immutable-data user mapping must publish readiness before user preparation",
         ));
     };
     let image_ready_marker = analyze_operation(
@@ -3196,96 +3196,14 @@ fn analyze_kernel_context_decision(
             "resident user image requires its exact readiness marker before teardown",
         ));
     }
-    let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
-        source,
-        unmap_mapping_again,
-        &completion_resumed,
-        &user_space,
-        &immutable_data_scratch_again,
-    )?;
-    let after_data_unmap = select_user_mapping_continuation(
-        source,
-        span,
-        after_second_unmap,
-        unmap_again_continuation,
-        "data unmap",
-    )?;
-    let [
-        release_data,
-        unmap_code,
-        release_code,
-        mapping_marker_statement,
-        disjoint_marker_statement,
-        prepare_user,
-        scratch_rest @ ..,
-    ] = after_data_unmap
-    else {
-        return Err(user_context_diagnostic(
-            source,
-            span,
-            "resident data must be released before executable code teardown and user preparation",
-        ));
-    };
-    parse_physical_frame_release(
-        source,
-        release_data,
-        &completion_resumed,
-        &returned_scratch_again,
-    )?;
-    let (returned_code, code_unmap_continuation) = parse_user_address_space_unmap(
-        source,
-        unmap_code,
-        &completion_resumed,
-        &user_space,
-        &executable_scratch,
-    )?;
-    if !code_unmap_continuation.is_empty() {
-        return Err(user_context_diagnostic(
-            source,
-            statement_span(unmap_code),
-            "executable-code unmap continuation must remain in the enclosing construction scope",
-        ));
-    }
-    parse_physical_frame_release(source, release_code, &completion_resumed, &returned_code)?;
-    let mapping_marker = analyze_operation(
-        source,
-        mapping_marker_statement,
-        CompilerSystemsContextKind::Bootstrap,
-        &completion_resumed,
-    )?;
-    if mapping_marker
-        != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
-        })
-    {
-        return Err(user_context_diagnostic(
-            source,
-            statement_span(mapping_marker_statement),
-            "user mapping round trip requires its exact marker",
-        ));
-    }
-    let disjoint_marker = analyze_operation(
-        source,
-        disjoint_marker_statement,
-        CompilerSystemsContextKind::Bootstrap,
-        &completion_resumed,
-    )?;
-    if disjoint_marker
-        != (CompilerSystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
-        })
-    {
-        return Err(user_context_diagnostic(
-            source,
-            statement_span(disjoint_marker_statement),
-            "disjoint frame release requires its exact marker",
-        ));
-    }
     let (user_probe, probe_continuation) =
         parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_space)?;
-    let user_continuation = match (scratch_rest.is_empty(), probe_continuation.is_empty()) {
+    let user_continuation = match (
+        after_prepare_user.is_empty(),
+        probe_continuation.is_empty(),
+    ) {
         (true, false) => probe_continuation,
-        (false, true) => scratch_rest,
+        (false, true) => after_prepare_user,
         _ => {
             return Err(user_context_diagnostic(
                 source,
@@ -3299,6 +3217,13 @@ fn analyze_kernel_context_decision(
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
+        retained_marker_statement,
+        unmap_mapping_again,
+        release_data,
+        unmap_code,
+        release_code,
+        mapping_marker_statement,
+        disjoint_marker_statement,
         complete_user,
         reclaim_user_space,
         release_user_frames,
@@ -3309,7 +3234,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user probe preparation must enter, revoke, reclaim, release, publish its marker, and reach disposition",
+            "user probe must return with its image resident before ordered teardown, completion, reclaim, and disposition",
         ));
     };
     let user_completed =
@@ -3363,6 +3288,93 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_marker_statement),
             "user syscall round trip requires its exact marker",
+        ));
+    }
+    let retained_marker = analyze_operation(
+        source,
+        retained_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if retained_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(retained_marker_statement),
+            "returned user execution requires its exact retained-image marker before teardown",
+        ));
+    }
+    let (returned_scratch_again, unmap_again_continuation) =
+        parse_user_address_space_unmap(
+            source,
+            unmap_mapping_again,
+            &completion_resumed,
+            &user_space,
+            &immutable_data_scratch_again,
+        )?;
+    if !unmap_again_continuation.is_empty() {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(unmap_mapping_again),
+            "immutable-data unmap continuation must remain after returned user execution",
+        ));
+    }
+    parse_physical_frame_release(
+        source,
+        release_data,
+        &completion_resumed,
+        &returned_scratch_again,
+    )?;
+    let (returned_code, code_unmap_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_code,
+        &completion_resumed,
+        &user_space,
+        &executable_scratch,
+    )?;
+    if !code_unmap_continuation.is_empty() {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(unmap_code),
+            "executable-code unmap continuation must remain after returned user execution",
+        ));
+    }
+    parse_physical_frame_release(source, release_code, &completion_resumed, &returned_code)?;
+    let mapping_marker = analyze_operation(
+        source,
+        mapping_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if mapping_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(mapping_marker_statement),
+            "user mapping round trip requires its exact marker",
+        ));
+    }
+    let disjoint_marker = analyze_operation(
+        source,
+        disjoint_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if disjoint_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(disjoint_marker_statement),
+            "disjoint frame release requires its exact marker",
         ));
     }
     let revoked_space =
@@ -3466,12 +3478,6 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::SealUserMappingImmutableData,
             image_ready_marker,
-            CompilerSystemsOperation::UnmapUserAddressSpace,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            CompilerSystemsOperation::UnmapUserAddressSpace,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            mapping_marker,
-            disjoint_marker,
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
             },
@@ -3479,6 +3485,13 @@ fn analyze_kernel_context_decision(
             user_copy_to_marker,
             user_copy_from_marker,
             user_marker,
+            retained_marker,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            mapping_marker,
+            disjoint_marker,
             CompilerSystemsOperation::CompleteUserExecution,
             CompilerSystemsOperation::ReclaimUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -6023,22 +6036,6 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                 },
-                CompilerSystemsTransition::UnmapUserAddressSpace {
-                    address_space_identity: 1,
-                    mapping_identity: 2,
-                },
-                CompilerSystemsTransition::ReleasePhysicalFrames,
-                CompilerSystemsTransition::UnmapUserAddressSpace {
-                    address_space_identity: 1,
-                    mapping_identity: 1,
-                },
-                CompilerSystemsTransition::ReleasePhysicalFrames,
-                CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
-                },
-                CompilerSystemsTransition::ConsoleWrite {
-                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
-                },
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -6172,6 +6169,25 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
                 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
+                },
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                },
                 CompilerSystemsTransition::CompleteUserExecution {
                     process_identity: 1,
                 },
@@ -6198,7 +6214,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 116);
+        assert_eq!(program.bootstrap.handler.operations.len(), 117);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
