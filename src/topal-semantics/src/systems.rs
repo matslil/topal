@@ -5,7 +5,9 @@ use std::fmt;
 use crate::{
     AtomicCompareExchangeResult, AtomicOrder, AtomicWordLocation, AtomicWordRequest,
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    CompletedUserExecution, CriticalDomain, KernelMappingRequest, LocalInterruptMaskState,
+    CompletedUserExecution, CriticalDomain, INITIAL_USER_UNAME_FAULT_CANDIDATE,
+    INITIAL_USER_UNAME_VALID_CANDIDATE, KernelMappingRequest, LINUX_NEW_UTSNAME_BYTES,
+    LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_UNAME, LinuxUtsName, LocalInterruptMaskState,
     LocalNotificationProtocol, PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
     SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
     SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -29,8 +31,9 @@ use crate::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
-    SYSTEMS_USER_TERMINATE, SuspendedUserContext, SystemsUserExecutionProtocol,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
+    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
     TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
 };
 
@@ -539,6 +542,24 @@ pub enum SystemsTransition {
         number: u64,
         arguments: [u64; 6],
     },
+    BeginUserTransfer {
+        entry_identity: u64,
+        transfer_identity: u64,
+        candidate: u64,
+        extent: u64,
+    },
+    CopyToUserComplete {
+        transfer_identity: u64,
+        copied: u64,
+    },
+    CopyToUserFault {
+        transfer_identity: u64,
+        copied_prefix: u64,
+    },
+    EndUserTransfer {
+        entry_identity: u64,
+        transfer_identity: u64,
+    },
     ReturnToUser {
         entry_identity: u64,
         result: u64,
@@ -690,6 +711,9 @@ impl SystemsTransition {
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
             Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
+            Self::BeginUserTransfer { .. } => SYSTEMS_USER_TRANSFER_BEGIN,
+            Self::CopyToUserComplete { .. } | Self::CopyToUserFault { .. } => SYSTEMS_USER_COPY_TO,
+            Self::EndUserTransfer { .. } => SYSTEMS_USER_TRANSFER_END,
             Self::ReturnToUser { .. } => SYSTEMS_USER_SYSCALL_RETURN,
             Self::TerminateUser { .. } => SYSTEMS_USER_TERMINATE,
             Self::ResumeUserKernelContinuation { .. } => SYSTEMS_USER_CONTEXT_ENTER,
@@ -2346,16 +2370,34 @@ fn model_user_execution_transition(
                 process_identity: 1,
                 kernel_continuation_identity: 1,
             });
-            let SystemsDisposition::DispatchInitialUserSyscall {
-                getpid_result,
-                exit_group_status,
-                ..
-            } = handler.disposition
-            else {
-                return Err(SystemsModelError::new(
-                    "E-SYSTEMS-USER-CONTEXT",
-                    "user entry model requires the checked initial syscall dispatcher",
-                ));
+            let (getpid_result, uname_value, exit_group_status) = match &handler.disposition {
+                SystemsDisposition::DispatchInitialUserSyscall {
+                    getpid_result,
+                    uname_sysname,
+                    uname_nodename,
+                    uname_release,
+                    uname_version,
+                    uname_machine,
+                    uname_domainname,
+                    exit_group_status,
+                } => (
+                    *getpid_result,
+                    LinuxUtsName {
+                        sysname: uname_sysname.clone(),
+                        nodename: uname_nodename.clone(),
+                        release: uname_release.clone(),
+                        version: uname_version.clone(),
+                        machine: uname_machine.clone(),
+                        domainname: uname_domainname.clone(),
+                    },
+                    *exit_group_status,
+                ),
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry model requires the checked initial syscall dispatcher",
+                    ));
+                }
             };
             let getpid = protocol.enter_syscall(active, crate::LINUX_X86_64_GETPID, [0; 6])?;
             transitions.push(SystemsTransition::EnterUserSyscall {
@@ -2368,19 +2410,85 @@ fn model_user_execution_transition(
                 entry_identity: 1,
                 result: getpid_result,
             });
+            let uname = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 2,
+                number: LINUX_X86_64_UNAME,
+                arguments: [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            });
+            let scope = protocol.begin_uname_transfer(uname)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 2,
+                transfer_identity: 1,
+                candidate: INITIAL_USER_UNAME_VALID_CANDIDATE,
+                extent: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let outcome = protocol.copy_initial_utsname_to_user(
+                scope,
+                &uname_value,
+                LINUX_NEW_UTSNAME_BYTES,
+            )?;
+            transitions.push(SystemsTransition::CopyToUserComplete {
+                transfer_identity: 1,
+                copied: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let active = protocol.return_uname(outcome, 0)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 2,
+                transfer_identity: 1,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 2,
+                result: 0,
+            });
+            let uname = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 3,
+                number: LINUX_X86_64_UNAME,
+                arguments: [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            });
+            let scope = protocol.begin_uname_transfer(uname)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 3,
+                transfer_identity: 2,
+                candidate: INITIAL_USER_UNAME_FAULT_CANDIDATE,
+                extent: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let outcome = protocol.copy_initial_utsname_to_user(scope, &uname_value, 256)?;
+            transitions.push(SystemsTransition::CopyToUserFault {
+                transfer_identity: 2,
+                copied_prefix: 256,
+            });
+            let active = protocol.return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 3,
+                transfer_identity: 2,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 3,
+                result: LINUX_X86_64_EFAULT_RESULT,
+            });
             let exit = protocol.enter_syscall(
                 active,
                 crate::LINUX_X86_64_EXIT_GROUP,
                 [exit_group_status, 0, 0, 0, 0, 0],
             )?;
             transitions.push(SystemsTransition::EnterUserSyscall {
-                entry_identity: 2,
+                entry_identity: 4,
                 number: crate::LINUX_X86_64_EXIT_GROUP,
                 arguments: [exit_group_status, 0, 0, 0, 0, 0],
             });
             *completed = Some(protocol.terminate_exit_group(exit, exit_group_status)?);
             transitions.push(SystemsTransition::TerminateUser {
-                entry_identity: 2,
+                entry_identity: 4,
                 status: exit_group_status,
             });
             transitions.push(SystemsTransition::ResumeUserKernelContinuation {
@@ -3934,11 +4042,57 @@ mod tests {
                 },
                 SystemsTransition::EnterUserSyscall {
                     entry_identity: 2,
+                    number: 63,
+                    arguments: [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                    candidate: INITIAL_USER_UNAME_VALID_CANDIDATE,
+                    extent: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::CopyToUserComplete {
+                    transfer_identity: 1,
+                    copied: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 2,
+                    result: 0,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 3,
+                    number: 63,
+                    arguments: [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                    candidate: INITIAL_USER_UNAME_FAULT_CANDIDATE,
+                    extent: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::CopyToUserFault {
+                    transfer_identity: 2,
+                    copied_prefix: 256,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 3,
+                    result: LINUX_X86_64_EFAULT_RESULT,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 4,
                     number: 231,
                     arguments: [0; 6],
                 },
                 SystemsTransition::TerminateUser {
-                    entry_identity: 2,
+                    entry_identity: 4,
                     status: 0,
                 },
                 SystemsTransition::ResumeUserKernelContinuation {

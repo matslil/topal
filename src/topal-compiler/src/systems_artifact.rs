@@ -3338,6 +3338,32 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:entry={entry_identity}:number={number}:arguments={arguments:?}"
                 ),
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity,
+                    transfer_identity,
+                    candidate,
+                    extent,
+                } => format!(
+                    "{identity}:entry={entry_identity}:transfer={transfer_identity}:candidate={candidate}:extent={extent}"
+                ),
+                CompilerSystemsTransition::CopyToUserComplete {
+                    transfer_identity,
+                    copied,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied={copied}"
+                ),
+                CompilerSystemsTransition::CopyToUserFault {
+                    transfer_identity,
+                    copied_prefix,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied-prefix={copied_prefix}"
+                ),
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity,
+                    transfer_identity,
+                } => format!(
+                    "{identity}:entry={entry_identity}:transfer={transfer_identity}"
+                ),
                 CompilerSystemsTransition::ReturnToUser {
                     entry_identity,
                     result,

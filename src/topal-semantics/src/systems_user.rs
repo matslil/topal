@@ -10,17 +10,28 @@ pub const SYSTEMS_USER_SYSCALL_DISPATCH: &str =
 pub const SYSTEMS_USER_SYSCALL_RETURN: &str = "topal.systems.disposition.user-syscall.return/1";
 pub const SYSTEMS_USER_TERMINATE: &str = "topal.systems.disposition.user-syscall.terminate/1";
 pub const SYSTEMS_USER_CONTEXT_COMPLETE: &str = "topal.systems.context.user.complete/1";
+pub const SYSTEMS_USER_TRANSFER_BEGIN: &str = "topal.systems.user-transfer.begin/1";
+pub const SYSTEMS_USER_COPY_TO: &str = "topal.systems.user-transfer.copy-to/1";
+pub const SYSTEMS_USER_TRANSFER_END: &str = "topal.systems.user-transfer.end/1";
 
 pub const INITIAL_USER_ADDRESS_SPACE_IDENTITY: &str = "topal.systems.address-space.initial-user/1";
 pub const INITIAL_USER_THREAD_IDENTITY: &str = "topal.systems.thread.initial-user/1";
 pub const LINUX_X86_64_ABI_IDENTITY: &str = "topal.systems.abi.linux-x86_64-7.2.9/1";
 pub const LINUX_X86_64_GETPID: u64 = 39;
+pub const LINUX_X86_64_UNAME: u64 = 63;
 pub const LINUX_X86_64_EXIT_GROUP: u64 = 231;
+pub const LINUX_X86_64_EFAULT_RESULT: u64 = u64::MAX - 13;
+pub const INITIAL_USER_UNAME_VALID_CANDIDATE: u64 = 0x0060_1e00;
+pub const INITIAL_USER_UNAME_FAULT_CANDIDATE: u64 = 0x0060_1f00;
+pub const LINUX_NEW_UTSNAME_FIELD_BYTES: u64 = 65;
+pub const LINUX_NEW_UTSNAME_BYTES: u64 = 6 * LINUX_NEW_UTSNAME_FIELD_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UserProbeStage {
     AwaitingGetpid,
     ReturnedFromGetpid,
+    ReturnedFromValidUname,
+    ReturnedFromFaultingUname,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -52,6 +63,70 @@ pub struct UserSyscallContext {
     entry_identity: u64,
     number: u64,
     arguments: [u64; 6],
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct UserTransferScope {
+    entry: UserSyscallContext,
+    transfer_identity: u64,
+    candidate: u64,
+    extent: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum UserTransferOutcome {
+    Complete {
+        scope: UserTransferScope,
+        copied: u64,
+    },
+    Fault {
+        scope: UserTransferScope,
+        copied_prefix: u64,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LinuxUtsName {
+    pub sysname: String,
+    pub nodename: String,
+    pub release: String,
+    pub version: String,
+    pub machine: String,
+    pub domainname: String,
+}
+
+impl LinuxUtsName {
+    #[must_use]
+    pub fn initial() -> Self {
+        Self {
+            sysname: "Linux".into(),
+            nodename: "topal".into(),
+            release: "7.2.9-topal".into(),
+            version: "#1 Topal".into(),
+            machine: "x86_64".into(),
+            domainname: "(none)".into(),
+        }
+    }
+
+    fn validate(&self) -> Result<(), SystemsModelError> {
+        if self != &Self::initial()
+            || [
+                &self.sysname,
+                &self.nodename,
+                &self.release,
+                &self.version,
+                &self.machine,
+                &self.domainname,
+            ]
+            .iter()
+            .any(|field| field.len() >= LINUX_NEW_UTSNAME_FIELD_BYTES as usize)
+        {
+            return Err(user_transfer_error(
+                "initial uname transfer requires the exact source-owned NUL-terminated field values",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl UserSyscallContext {
@@ -97,6 +172,7 @@ pub struct SystemsUserExecutionProtocol {
     next_probe_identity: u64,
     next_kernel_continuation_identity: u64,
     next_entry_identity: u64,
+    next_transfer_identity: u64,
 }
 
 impl SystemsUserExecutionProtocol {
@@ -111,6 +187,7 @@ impl SystemsUserExecutionProtocol {
             next_probe_identity: 1,
             next_kernel_continuation_identity: 1,
             next_entry_identity: 1,
+            next_transfer_identity: 1,
         }
     }
 
@@ -183,12 +260,22 @@ impl SystemsUserExecutionProtocol {
         let valid = match active.suspended.stage {
             UserProbeStage::AwaitingGetpid => number == LINUX_X86_64_GETPID && arguments == [0; 6],
             UserProbeStage::ReturnedFromGetpid => {
+                number == LINUX_X86_64_UNAME
+                    && arguments[0] == INITIAL_USER_UNAME_VALID_CANDIDATE
+                    && arguments[1..] == [0; 5]
+            }
+            UserProbeStage::ReturnedFromValidUname => {
+                number == LINUX_X86_64_UNAME
+                    && arguments[0] == INITIAL_USER_UNAME_FAULT_CANDIDATE
+                    && arguments[1..] == [0; 5]
+            }
+            UserProbeStage::ReturnedFromFaultingUname => {
                 number == LINUX_X86_64_EXIT_GROUP && arguments[0] == 0 && arguments[1..] == [0; 5]
             }
         };
         if !valid {
             return Err(user_error(
-                "user syscall does not match the sealed getpid then exit_group protocol",
+                "user syscall does not match the sealed getpid, uname success, uname fault, then exit_group protocol",
             ));
         }
         let entry_identity = self.next_entry_identity;
@@ -201,6 +288,128 @@ impl SystemsUserExecutionProtocol {
             number,
             arguments,
         })
+    }
+
+    /// Consume one uname entry into its exact affine user-transfer scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for the wrong syscall, candidate, extent,
+    /// identity, or overflowed user range.
+    pub fn begin_uname_transfer(
+        &mut self,
+        entry: UserSyscallContext,
+    ) -> Result<UserTransferScope, SystemsModelError> {
+        self.validate_entry(&entry)?;
+        if entry.number != LINUX_X86_64_UNAME
+            || !matches!(
+                entry.active.suspended.stage,
+                UserProbeStage::ReturnedFromGetpid | UserProbeStage::ReturnedFromValidUname
+            )
+        {
+            return Err(user_transfer_error(
+                "user transfer requires the exact live uname syscall entry",
+            ));
+        }
+        let candidate = entry.arguments[0];
+        let extent = LINUX_NEW_UTSNAME_BYTES;
+        candidate.checked_add(extent - 1).ok_or_else(|| {
+            user_transfer_error("user transfer candidate range must not overflow")
+        })?;
+        let transfer_identity = self.next_transfer_identity;
+        self.next_transfer_identity = transfer_identity
+            .checked_add(1)
+            .ok_or_else(|| user_transfer_error("user-transfer identity exhausted"))?;
+        Ok(UserTransferScope {
+            entry,
+            transfer_identity,
+            candidate,
+            extent,
+        })
+    }
+
+    /// Copy the source-owned uname bytes through one fault-contained scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a wrong scope, source value, or
+    /// provider-reported writable prefix.
+    pub fn copy_initial_utsname_to_user(
+        &self,
+        scope: UserTransferScope,
+        value: &LinuxUtsName,
+        writable_prefix: u64,
+    ) -> Result<UserTransferOutcome, SystemsModelError> {
+        self.validate_transfer_scope(&scope)?;
+        value.validate()?;
+        if writable_prefix >= scope.extent {
+            return Ok(UserTransferOutcome::Complete {
+                copied: scope.extent,
+                scope,
+            });
+        }
+        if scope.candidate != INITIAL_USER_UNAME_FAULT_CANDIDATE || writable_prefix != 256 {
+            return Err(user_transfer_error(
+                "initial uname fault requires the exact guard-page prefix",
+            ));
+        }
+        Ok(UserTransferOutcome::Fault {
+            scope,
+            copied_prefix: writable_prefix,
+        })
+    }
+
+    /// Reunite the refined transfer scope with its syscall entry and return
+    /// the exact Linux result to user execution.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for an outcome/result mismatch or wrong
+    /// probe stage.
+    pub fn return_uname(
+        &self,
+        outcome: UserTransferOutcome,
+        result: u64,
+    ) -> Result<ActiveUserExecution, SystemsModelError> {
+        let (mut scope, required_result, complete) = match outcome {
+            UserTransferOutcome::Complete { scope, copied } => {
+                if copied != LINUX_NEW_UTSNAME_BYTES {
+                    return Err(user_transfer_error(
+                        "complete uname transfer requires the entire layout extent",
+                    ));
+                }
+                (scope, 0, true)
+            }
+            UserTransferOutcome::Fault {
+                scope,
+                copied_prefix,
+            } => {
+                if copied_prefix >= LINUX_NEW_UTSNAME_BYTES {
+                    return Err(user_transfer_error(
+                        "faulting uname transfer requires a proper copied prefix",
+                    ));
+                }
+                (scope, LINUX_X86_64_EFAULT_RESULT, false)
+            }
+        };
+        self.validate_transfer_scope(&scope)?;
+        if result != required_result {
+            return Err(user_transfer_error(
+                "uname return result must match its complete or fault outcome",
+            ));
+        }
+        scope.entry.active.suspended.stage = match (scope.entry.active.suspended.stage, complete) {
+            (UserProbeStage::ReturnedFromGetpid, true) => UserProbeStage::ReturnedFromValidUname,
+            (UserProbeStage::ReturnedFromValidUname, false) => {
+                UserProbeStage::ReturnedFromFaultingUname
+            }
+            _ => {
+                return Err(user_transfer_error(
+                    "uname transfer outcome does not match the sealed probe stage",
+                ));
+            }
+        };
+        Ok(scope.entry.active)
     }
 
     /// Encode the source-owned PID and resume the exact captured continuation.
@@ -238,7 +447,7 @@ impl SystemsUserExecutionProtocol {
     ) -> Result<CompletedUserExecution, SystemsModelError> {
         self.validate_entry(&entry)?;
         if entry.number != LINUX_X86_64_EXIT_GROUP
-            || entry.active.suspended.stage != UserProbeStage::ReturnedFromGetpid
+            || entry.active.suspended.stage != UserProbeStage::ReturnedFromFaultingUname
             || status != entry.arguments[0]
         {
             return Err(user_error(
@@ -313,10 +522,28 @@ impl SystemsUserExecutionProtocol {
         }
         Ok(())
     }
+
+    fn validate_transfer_scope(&self, scope: &UserTransferScope) -> Result<(), SystemsModelError> {
+        self.validate_entry(&scope.entry)?;
+        if scope.transfer_identity == 0
+            || scope.entry.number != LINUX_X86_64_UNAME
+            || scope.candidate != scope.entry.arguments[0]
+            || scope.extent != LINUX_NEW_UTSNAME_BYTES
+        {
+            return Err(user_transfer_error(
+                "user transfer scope must retain its exact syscall entry, candidate, extent, and identity",
+            ));
+        }
+        Ok(())
+    }
 }
 
 fn user_error(message: impl Into<String>) -> SystemsModelError {
     SystemsModelError::new("E-SYSTEMS-USER-CONTEXT", message)
+}
+
+fn user_transfer_error(message: impl Into<String>) -> SystemsModelError {
+    SystemsModelError::new("E-SYSTEMS-USER-TRANSFER", message)
 }
 
 #[cfg(test)]
@@ -324,8 +551,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn completes_getpid_return_and_exit_group_termination() {
-        // TOPAL-SYSTEMS-CONTEXT-006.
+    fn completes_getpid_uname_transfers_and_exit_group_termination() {
+        // TOPAL-SYSTEMS-CONTEXT-006, TOPAL-SYSTEMS-RECOVERY-001.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         let suspended = protocol.prepare_probe(1).unwrap();
         let active = protocol.enter(suspended).unwrap();
@@ -335,6 +562,32 @@ mod tests {
         assert_eq!(getpid.number(), 39);
         assert_eq!(getpid.arguments(), [0; 6]);
         let active = protocol.return_getpid(getpid, 1).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let outcome = protocol
+            .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), LINUX_NEW_UTSNAME_BYTES)
+            .unwrap();
+        let active = protocol.return_uname(outcome, 0).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let outcome = protocol
+            .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), 256)
+            .unwrap();
+        let active = protocol
+            .return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)
+            .unwrap();
         let exit = protocol
             .enter_syscall(active, LINUX_X86_64_EXIT_GROUP, [0; 6])
             .unwrap();
@@ -342,7 +595,7 @@ mod tests {
         let summary = protocol.complete(completed).unwrap();
         assert_eq!(summary.process_identity, 1);
         assert_eq!(summary.kernel_continuation_identity, 1);
-        assert_eq!(summary.terminal_entry_identity, 2);
+        assert_eq!(summary.terminal_entry_identity, 4);
         assert_eq!(summary.status, 0);
     }
 
@@ -381,11 +634,93 @@ mod tests {
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
             .unwrap();
         let active = protocol.return_getpid(getpid, 1).unwrap();
-        let exit = protocol
-            .enter_syscall(active, LINUX_X86_64_EXIT_GROUP, [0; 6])
+        assert_eq!(
+            protocol
+                .enter_syscall(active, LINUX_X86_64_UNAME, [0; 6])
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let suspended = protocol.prepare_probe(1).unwrap();
+        let active = protocol.enter(suspended).unwrap();
+        let getpid = protocol
+            .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
+            .unwrap();
+        let active = protocol.return_getpid(getpid, 1).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let outcome = protocol
+            .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), LINUX_NEW_UTSNAME_BYTES)
             .unwrap();
         assert_eq!(
-            protocol.terminate_exit_group(exit, 1).unwrap_err().code,
+            protocol.return_uname(outcome, 1).unwrap_err().code,
+            "E-SYSTEMS-USER-TRANSFER"
+        );
+
+        let suspended = protocol.prepare_probe(1).unwrap();
+        let active = protocol.enter(suspended).unwrap();
+        let getpid = protocol
+            .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
+            .unwrap();
+        let active = protocol.return_getpid(getpid, 1).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        assert_eq!(
+            protocol
+                .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), 1)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-TRANSFER"
+        );
+
+        let suspended = protocol.prepare_probe(1).unwrap();
+        let active = protocol.enter(suspended).unwrap();
+        let getpid = protocol
+            .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
+            .unwrap();
+        let active = protocol.return_getpid(getpid, 1).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let mut wrong_value = LinuxUtsName::initial();
+        wrong_value.machine = "aarch64".into();
+        assert_eq!(
+            protocol
+                .copy_initial_utsname_to_user(scope, &wrong_value, LINUX_NEW_UTSNAME_BYTES)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-TRANSFER"
+        );
+
+        let suspended = protocol.prepare_probe(1).unwrap();
+        let active = protocol.enter(suspended).unwrap();
+        let getpid = protocol
+            .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
+            .unwrap();
+        let active = protocol.return_getpid(getpid, 1).unwrap();
+        assert_eq!(
+            protocol
+                .enter_syscall(active, LINUX_X86_64_EXIT_GROUP, [0; 6])
+                .unwrap_err()
+                .code,
             "E-SYSTEMS-USER-CONTEXT"
         );
 
