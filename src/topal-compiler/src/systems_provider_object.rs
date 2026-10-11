@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/18";
+    "topal.provider-object.x86_64-qemu-pc-q35/19";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1261,6 +1261,13 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
 
 fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x83, 0xfa, 0x01]); // frame count == 1
+    code.jump_if(0x84, "count-ready");
+    code.bytes(&[0x83, 0xfa, 0x03]); // frame count == 3
+    code.jump_if(0x85, "fail");
+    code.bind("count-ready")?;
+    code.bytes(&[0x48, 0xc1, 0xe2, 0x0c]); // byte count = frames * 4096
+    code.bytes(&[0x49, 0x89, 0xd0]); // retain byte count in r8
     code.bytes(&[0x48, 0x85, 0xff]); // test private allocation floor
     code.jump_if(0x84, "fail");
     code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
@@ -1299,9 +1306,12 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x49, 0x81, 0xe3, 0x00, 0xf0, 0xff, 0xff]); // align end down
-    code.bytes(&[0x4c, 0x39, 0xd8]); // candidate < end
-    code.jump_if(0x83, "next");
-    code.bytes(&[0x48, 0x3d, 0x00, 0xf0, 0xff, 0x3f]); // identity-mapped page <= 1 GiB
+    code.bytes(&[0x49, 0x89, 0xc2]); // extent end = candidate
+    code.bytes(&[0x4d, 0x01, 0xc2]); // extent end += byte count
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x4d, 0x39, 0xda]); // extent end <= RAM end
+    code.jump_if(0x87, "next");
+    code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x00, 0x00, 0x40]); // end <= 1 GiB
     code.jump_if(0x87, "next");
     code.bytes(&[0xc3]); // return physical base in rax
 
@@ -1865,9 +1875,21 @@ mod tests {
         assert_ne!(selector, &data[start..end]);
         assert!(
             selector
-                .windows(6)
-                .any(|bytes| bytes == [0x48, 0x3d, 0x00, 0xf0, 0xff, 0x3f]),
-            "selector must constrain the returned page to bootstrap identity mappings"
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x81, 0xfa, 0x00, 0x00, 0x00, 0x40]),
+            "selector must constrain the complete extent to bootstrap identity mappings"
+        );
+        assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x01]));
+        assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x03]));
+        assert!(
+            selector
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0xc1, 0xe2, 0x0c]),
+            "selector must convert the admitted frame count to a byte extent"
+        );
+        assert!(
+            selector.windows(3).any(|bytes| bytes == [0x4d, 0x39, 0xda]),
+            "selector must require the complete extent to fit its E820 RAM run"
         );
         assert!(
             selector.windows(3).any(|bytes| bytes == [0x48, 0x39, 0xf8]),

@@ -70,8 +70,8 @@ use crate::{
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/18";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/18";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/19";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/19";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1039,7 +1039,7 @@ struct RootEncoder {
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
-    physical_frames_live: bool,
+    physical_frame_count: Option<u64>,
     kernel_mapping_live: bool,
     translation: RootTranslationState,
     critical: RootCriticalState,
@@ -1222,14 +1222,13 @@ impl RootEncoder {
         alignment_frames: u64,
     ) -> Result<(), CompileError> {
         if !self.frame_allocator_created
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
-            || frame_count != 1
+            || !matches!(frame_count, 1 | 3)
             || alignment_frames != 1
         {
             return Err(CompileError::Tool(
-                "x86 root lowering requires one live allocator and the sealed one-frame request"
-                    .into(),
+                "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
             ));
         }
         match self.translation {
@@ -1237,7 +1236,7 @@ impl RootEncoder {
                 self.bytes
                     .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
             }
-            RootTranslationState::ReplacementActive => {
+            RootTranslationState::ReplacementActive | RootTranslationState::RemovedActive => {
                 self.bytes
                     .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x50, 0x00, 0x00]);
             }
@@ -1248,11 +1247,15 @@ impl RootEncoder {
             }
         }
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // rsi = retained boot params
+        let frame_count = u32::try_from(frame_count)
+            .map_err(|_| CompileError::Tool("physical frame count exceeds u32".into()))?;
+        self.bytes.push(0xba); // edx = frame count
+        self.bytes.extend_from_slice(&frame_count.to_le_bytes());
         self.call(ProviderSymbol::AllocatePhysicalFrames);
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
-        self.physical_frames_live = true;
+        self.physical_frame_count = Some(u64::from(frame_count));
         Ok(())
     }
 
@@ -1260,7 +1263,7 @@ impl RootEncoder {
         &mut self,
         request: CompilerKernelMappingRequest,
     ) -> Result<(), CompileError> {
-        if !self.physical_frames_live
+        if self.physical_frame_count != Some(1)
             || self.kernel_mapping_live
             || request != CompilerKernelMappingRequest::initial_read_write()
         {
@@ -1269,7 +1272,7 @@ impl RootEncoder {
                     .into(),
             ));
         }
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.kernel_mapping_live = true;
         Ok(())
     }
@@ -1319,24 +1322,25 @@ impl RootEncoder {
     }
 
     fn unmap_kernel_frames(&mut self) -> Result<(), CompileError> {
-        if !self.kernel_mapping_live || self.physical_frames_live {
+        if !self.kernel_mapping_live || self.physical_frame_count.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered unmap without a live kernel mapping".into(),
             ));
         }
         self.kernel_mapping_live = false;
-        self.physical_frames_live = true;
+        self.physical_frame_count = Some(1);
         Ok(())
     }
 
     fn release_physical_frames(&mut self) -> Result<(), CompileError> {
-        if !self.physical_frames_live {
+        if self.physical_frame_count.is_none() {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
         }
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
+        self.bytes.extend_from_slice(&[0x31, 0xd2]); // clear transient frame count
         Ok(())
     }
 
@@ -1345,7 +1349,7 @@ impl RootEncoder {
         request: CompilerTranslationUpdateRequest,
     ) -> Result<(), CompileError> {
         if !self.frame_allocator_created
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::BootstrapActive
             || request != CompilerTranslationUpdateRequest::initial_bootstrap_equivalent()
@@ -1396,7 +1400,7 @@ impl RootEncoder {
         match kind {
             CompilerTranslationEditKind::Map
                 if self.translation == RootTranslationState::ReplacementActive
-                    && self.physical_frames_live
+                    && self.physical_frame_count == Some(1)
                     && !self.kernel_mapping_live =>
             {
                 self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // payload in rdi
@@ -1411,7 +1415,7 @@ impl RootEncoder {
             CompilerTranslationEditKind::Unmap
                 if self.translation == RootTranslationState::MappedActive
                     && self.kernel_mapping_live
-                    && !self.physical_frames_live =>
+                    && self.physical_frame_count.is_none() =>
             {
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]); // active root
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]); // mapping
@@ -1434,7 +1438,7 @@ impl RootEncoder {
         request: CompilerTranslationMappingRequest,
     ) -> Result<(), CompileError> {
         if self.translation != RootTranslationState::MapEdit
-            || !self.physical_frames_live
+            || self.physical_frame_count != Some(1)
             || self.kernel_mapping_live
             || request != CompilerTranslationMappingRequest::initial_read_write()
         {
@@ -1445,7 +1449,7 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // metadata PD
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // payload frame
         self.call_checked_bool(ProviderSymbol::MapTranslationFrames)?;
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.translation = RootTranslationState::MapStaged;
         Ok(())
     }
@@ -1453,7 +1457,7 @@ impl RootEncoder {
     fn unmap_translation_mapping(&mut self) -> Result<(), CompileError> {
         if self.translation != RootTranslationState::UnmapEdit
             || !self.kernel_mapping_live
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires an unmap edit and its live mapping".into(),
@@ -1495,7 +1499,7 @@ impl RootEncoder {
                     .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
                 self.call_checked_bool(ProviderSymbol::CommitTranslationEdit)?;
                 self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]);
-                self.physical_frames_live = true;
+                self.physical_frame_count = Some(1);
                 self.translation = RootTranslationState::RemovedActive;
             }
             _ => {
@@ -1510,7 +1514,7 @@ impl RootEncoder {
     fn enter_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
         if domain != CompilerCriticalDomain::LocalMaskableInterrupts
             || self.critical == RootCriticalState::Live
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -1552,7 +1556,7 @@ impl RootEncoder {
                 "x86 root lowering ended with a live bootstrap region".into(),
             ));
         }
-        if self.physical_frames_live {
+        if self.physical_frame_count.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live physical-frame extent".into(),
             ));
@@ -3564,7 +3568,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 894);
+        assert_eq!(relocation_targets.len(), 924);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3660,7 +3664,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            2
+            3
         );
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
@@ -3682,7 +3686,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            761
+            789
         );
         assert_eq!(
             relocation_targets
@@ -3696,7 +3700,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            45
+            46
         );
         assert_eq!(
             relocation_targets
@@ -3883,7 +3887,7 @@ mod tests {
         assert!(published.map.is_file());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
-        let decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
+        let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
         assert_eq!(decoded, published.record);
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
@@ -3891,7 +3895,11 @@ mod tests {
         assert_eq!(decoded.placements.len(), 51);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 150);
+        assert_eq!(decoded.semantic_trace.len(), 153);
+        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..30);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);

@@ -33,7 +33,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/18";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/19";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -42,7 +42,7 @@ pub const X86_SYSTEMS_DATA_LAYOUT: &str =
 pub enum X86SystemsLowering {
     LinuxBootParamsE820,
     RetainedE820FrameAuthority,
-    E820SingleFrameSelect,
+    E820StaticFrameExtentSelect,
     ConsumePhysicalFrameExtent,
     AdoptBootstrapIdentityMapping,
     PlainKernelMappingStoreByte,
@@ -104,7 +104,9 @@ impl X86SystemsLowering {
             Self::RetainedE820FrameAuthority => {
                 "topal.provider.x86_64.frames.retained-e820-authority/1"
             }
-            Self::E820SingleFrameSelect => "topal.provider.x86_64.frames.select-one-e820/1",
+            Self::E820StaticFrameExtentSelect => {
+                "topal.provider.x86_64.frames.select-static-e820-extent/1"
+            }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
             Self::AdoptBootstrapIdentityMapping => {
                 "topal.provider.x86_64.mapping.adopt-bootstrap-identity/1"
@@ -346,7 +348,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
     let lowering = match identity {
         SYSTEMS_BOOT_MEMORY_DESCRIBE => X86SystemsLowering::LinuxBootParamsE820,
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
-        SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820SingleFrameSelect,
+        SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
         SYSTEMS_FRAMES_RELEASE => X86SystemsLowering::ConsumePhysicalFrameExtent,
         SYSTEMS_KERNEL_MAP => X86SystemsLowering::AdoptBootstrapIdentityMapping,
         SYSTEMS_KERNEL_MAPPING_STORE_BYTE => X86SystemsLowering::PlainKernelMappingStoreByte,
@@ -412,7 +414,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         semantic_identity: match lowering {
             X86SystemsLowering::LinuxBootParamsE820 => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
-            X86SystemsLowering::E820SingleFrameSelect => SYSTEMS_FRAMES_ALLOCATE,
+            X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
             X86SystemsLowering::ConsumePhysicalFrameExtent => SYSTEMS_FRAMES_RELEASE,
             X86SystemsLowering::AdoptBootstrapIdentityMapping => SYSTEMS_KERNEL_MAP,
             X86SystemsLowering::PlainKernelMappingStoreByte => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
@@ -538,7 +540,7 @@ mod tests {
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_ALLOCATE
-                && operation.lowering == X86SystemsLowering::E820SingleFrameSelect
+                && operation.lowering == X86SystemsLowering::E820StaticFrameExtentSelect
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_RELEASE
