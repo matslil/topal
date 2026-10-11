@@ -176,6 +176,14 @@ validated and exposes no partial value on fault. Its
 records the checked lifecycle, direction-specific generated recovery, and two
 deterministic pinned-QEMU runs without changing the core language.
 
+The allocator-backed user-probe refinement then applies the approved
+[user-backing ownership contract](design/allocator-backed-user-probe.md).
+Its [implementation and qualification report](step-4-allocator-backed-user-probe.md)
+records exact three-frame ownership transfer into user execution, sealed x86-64
+code/stack/translation roles, complete mapping revocation, exact extent return
+and release, and two deterministic pinned-QEMU runs. It changes only the
+systems profile and does not change the core language.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -277,6 +285,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 initial user syscall round trip](step-4-user-syscall-roundtrip.md)
 - [Step 4 fault-contained `copy_to_user` and `uname`](step-4-user-copy-to-uname.md)
 - [Step 4 fault-contained `copy_from_user` and zero-duration `nanosleep`](step-4-user-copy-from-timespec.md)
+- [Step 4 allocator-backed user probe](step-4-allocator-backed-user-probe.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
