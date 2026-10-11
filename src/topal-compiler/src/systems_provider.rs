@@ -27,7 +27,8 @@ use topal_language::compiler::{
     SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
     SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE,
-    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_MAPPING_PERMIT_EXECUTE, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_STORE_BYTE,
     SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
@@ -37,7 +38,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/26";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/27";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -89,6 +90,7 @@ pub enum X86SystemsLowering {
     StoreInitialUserMappingByte,
     ProtectInitialUserMappingReadOnly,
     LoadInitialUserMappingByte,
+    PermitInitialUserMappingExecute,
     UnmapInitialUserFrame,
     PrepareInitialUserProbe,
     EnterInitialUserContext,
@@ -196,6 +198,9 @@ impl X86SystemsLowering {
             Self::LoadInitialUserMappingByte => {
                 "topal.provider.x86_64.user.load-initial-mapping-byte/1"
             }
+            Self::PermitInitialUserMappingExecute => {
+                "topal.provider.x86_64.user.permit-initial-mapping-execute/1"
+            }
             Self::UnmapInitialUserFrame => "topal.provider.x86_64.user.unmap-initial-frame/1",
             Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
             Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
@@ -261,6 +266,7 @@ impl X86SystemsLowering {
                 | Self::StoreInitialUserMappingByte
                 | Self::ProtectInitialUserMappingReadOnly
                 | Self::LoadInitialUserMappingByte
+                | Self::PermitInitialUserMappingExecute
                 | Self::UnmapInitialUserFrame
                 | Self::PrepareInitialUserProbe
                 | Self::EnterInitialUserContext
@@ -439,6 +445,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::ProtectInitialUserMappingReadOnly
         }
         SYSTEMS_USER_MAPPING_LOAD_BYTE => X86SystemsLowering::LoadInitialUserMappingByte,
+        SYSTEMS_USER_MAPPING_PERMIT_EXECUTE => X86SystemsLowering::PermitInitialUserMappingExecute,
         SYSTEMS_USER_ADDRESS_SPACE_UNMAP => X86SystemsLowering::UnmapInitialUserFrame,
         SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
         SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
@@ -524,6 +531,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY
             }
             X86SystemsLowering::LoadInitialUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86SystemsLowering::PermitInitialUserMappingExecute => {
+                SYSTEMS_USER_MAPPING_PERMIT_EXECUTE
+            }
             X86SystemsLowering::UnmapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
             X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
@@ -581,7 +591,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 59);
+        assert_eq!(plan.operations.len(), 60);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -684,6 +694,10 @@ mod tests {
             (
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 X86SystemsLowering::LoadInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+                X86SystemsLowering::PermitInitialUserMappingExecute,
             ),
             (
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,

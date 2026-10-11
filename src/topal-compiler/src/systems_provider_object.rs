@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/26";
+    "topal.provider-object.x86_64-qemu-pc-q35/27";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -73,6 +73,8 @@ pub const X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL: &str =
     "topal_x86_systems_user_protect_initial_mapping_read_only";
 pub const X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL: &str =
     "topal_x86_systems_user_load_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL: &str =
+    "topal_x86_systems_user_permit_initial_mapping_execute";
 pub const X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL: &str =
     "topal_x86_systems_user_unmap_initial_frame";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
@@ -316,6 +318,10 @@ fn append_user_functions(
         (
             X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
             user_load_initial_mapping_byte()?,
+        ),
+        (
+            X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+            user_permit_initial_mapping_execute()?,
         ),
         (
             X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
@@ -623,13 +629,52 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
-fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
+fn user_permit_initial_mapping_execute() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x06]);
-    code.jump_if(0x84, "generation-accepted");
+    code.jump_if(0x84, "generation-one");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0a]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x0f, 0x00, 0x00, 0x00]);
+    code.jump("generation-accepted");
+    code.bind("generation-one")?;
+    code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
+    code.bind("generation-accepted")?;
+    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf6, 0xc0, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x0f, 0xba, 0xe0, 0x3f]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x49, 0x0f, 0xba, 0xf0, 0x3f]);
+    code.bytes(&[0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
+    code.jump_if(0x84, "generation-accepted");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0f]);
     code.jump_if(0x85, "fail");
     code.bind("generation-accepted")?;
     code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
@@ -645,7 +690,7 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x0060_2000_u64.to_le_bytes());
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x06]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
     code.jump_if(0x84, "generation-one");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0b]);
     code.jump("returned");
@@ -2526,6 +2571,28 @@ mod tests {
                     .windows(8)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]),
             "user load must compare the fixed byte and revoke on mismatch"
+        );
+        let user_execute = symbol_bytes(
+            &file,
+            X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+        );
+        assert!(
+            user_execute
+                .windows(5)
+                .any(|bytes| bytes == [0x49, 0x0f, 0xba, 0xe0, 0x3f])
+                && user_execute
+                    .windows(5)
+                    .any(|bytes| bytes == [0x49, 0x0f, 0xba, 0xf0, 0x3f])
+                && user_execute
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
+                && user_execute
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x0e, 0, 0, 0])
+                && user_execute
+                    .windows(5)
+                    .any(|bytes| bytes == [0xb8, 0x0f, 0, 0, 0]),
+            "user execute promotion must require NX, clear it, invalidate the target, and retain generation"
         );
         let user_unmap = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL);
         assert!(
