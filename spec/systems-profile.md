@@ -344,6 +344,13 @@ escape, and a bootstrap disposition with a live extent SHALL be invalid.
 Allocation choice and coalescing MAY vary only when success, failure, alignment,
 non-overlap, ownership, and provenance observations remain equivalent.
 
+The initial x86-64 executable profile SHALL admit only the static allocation
+shapes `(frame-count: 1, alignment-frames: 1)` and `(frame-count: 3,
+alignment-frames: 1)`. Either successful request SHALL produce one indivisible
+extent and SHALL require release of that complete extent. The profile SHALL
+reject every other count or alignment, a dynamic request, extent splitting,
+and more than one simultaneously live extent before artifact publication.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

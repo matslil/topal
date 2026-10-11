@@ -57,10 +57,12 @@ release, extent escape, and any bootstrap disposition with a live extent are
 invalid. Coalescing is an allocator implementation choice and cannot merge
 across a live reservation or distinct non-allocatable provenance.
 
-The initial executable slice accepts only the closed request for one frame
-aligned to one frame. Dynamic sizes, multiple simultaneously live extents,
-mapping an extent, and reclaiming boot-owned ranges remain fail-closed until
-their separate implementations and evidence exist.
+The initial executable slice accepts the closed requests for either one or
+three frames aligned to one frame. The three-frame request is one indivisible
+affine extent under [TK-DEC-035](bounded-multi-frame-extent.md). Dynamic sizes,
+multiple simultaneously live extents, splitting an extent, and reclaiming
+boot-owned ranges remain fail-closed until their separate implementations and
+evidence exist.
 
 ## Architecture pressure test
 
@@ -80,11 +82,14 @@ or use one target's frame extent under another target identity.
 ## Initial x86-64 executable slice
 
 The sealed x86 provider privately retains the validated Linux `boot_params`
-handoff. For the one-frame request it selects a complete E820 RAM frame above
-the closed 16 MiB bootstrap reservation floor and reports failure if no such
-frame exists. The compiler enforces that only one extent is live, that release
-precedes every later disposition, and that source never observes the selected
-physical base. The pinned QEMU gate emits `TOPAL_KERNEL_FRAME_ALLOCATED` only
-after the provider succeeds and the affine extent is established.
+handoff. For a qualified request it selects a complete contiguous E820 RAM
+extent above the closed 16 MiB bootstrap reservation floor and reports failure
+if the whole extent is unavailable. The compiler admits only the static
+`(1, 1)` and `(3, 1)` shapes, enforces that only one extent is live, requires
+whole-extent release before every later disposition, and never exposes the
+selected physical base. The pinned QEMU gate emits
+`TOPAL_KERNEL_FRAME_ALLOCATED` for the original one-frame probe and
+`TOPAL_KERNEL_FRAME_EXTENT_OK` for the three-frame probe only after provider
+success and affine ownership establishment.
 
 This contract was approved in the project discussion before implementation.

@@ -17,6 +17,7 @@ records, not this directory alone, define language meaning.
 - [Bootstrap-region source and provider contract](bootstrap-region.md)
 - [Portable boot-memory description contract](boot-memory-description.md)
 - [Affine physical-frame allocation contract](physical-frame-allocation.md)
+- [Bounded contiguous physical-frame extent refinement](bounded-multi-frame-extent.md)
 - [Opaque kernel-mapping contract](kernel-mapping.md)
 - [Translation-space construction and activation contract](translation-space.md)
 - [Active translation-edit contract](active-translation-edit.md)

@@ -405,6 +405,14 @@ Release shall consume an extent back into its originating allocator. Invalid,
 exhausted, cross-allocator, double-release, escaping, or disposition-with-live-
 extent behavior shall fail closed.
 
+The bounded multi-frame qualification shall remain exclusive to the systems
+feature and shall add no address or pointer conversion. The initial x86-64
+profile shall admit only static requests for one or three contiguous base
+frames with unit alignment, return either request as one indivisible affine
+extent, and require whole-extent release before any later bootstrap transition
+or disposition. Other counts, non-unit alignment, dynamic requests, extent
+splitting, and multiple simultaneously live extents shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,
