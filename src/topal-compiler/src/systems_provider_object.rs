@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/22";
+    "topal.provider-object.x86_64-qemu-pc-q35/23";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -63,6 +63,8 @@ pub const X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL: &str = "topal_x86_systems_context_r
 pub const X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL: &str = "topal_x86_systems_context_reclaim";
 pub const X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL: &str =
     "topal_x86_systems_user_prepare_initial_address_space";
+pub const X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL: &str =
+    "topal_x86_systems_user_verify_initial_mapping";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
 pub const X86_SYSTEMS_USER_ENTER_SYMBOL: &str = "topal_x86_systems_user_enter_initial_context";
 pub const X86_SYSTEMS_USER_COMPLETE_SYMBOL: &str =
@@ -286,6 +288,10 @@ fn append_user_functions(
             user_prepare_initial_address_space()?,
         ),
         (
+            X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL,
+            user_verify_initial_mapping()?,
+        ),
+        (
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
             user_prepare_initial_probe()?,
         ),
@@ -365,6 +371,60 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
 
     code.bytes(&[0xc6, 0x87, 0x69, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_verify_initial_mapping() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0x3f, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0x69, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0x89, 0xd0]);
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x89, 0xc9]);
+    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x39, 0xc8]);
+    code.jump_if(0x86, "disjoint");
+    code.bytes(&[0x4c, 0x39, 0xca]);
+    code.jump_if(0x83, "disjoint");
+    code.jump("fail");
+
+    code.bind("disjoint")?;
+    code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0xd0]);
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x4d, 0x09, 0xc8, 0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x41, 0xc6, 0x02, 0x6d]);
+    code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
+    code.jump_if(0x85, "cleanup-fail");
+    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+
+    code.bind("cleanup-fail")?;
+    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -2129,6 +2189,31 @@ mod tests {
             user_address_prepare
                 .windows(8)
                 .any(|bytes| bytes == 0x8000_0000_0000_0007_u64.to_le_bytes())
+        );
+        let user_mapping =
+            symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL);
+        assert!(
+            user_mapping
+                .windows(8)
+                .any(|bytes| bytes == 0x8000_0000_0000_0007_u64.to_le_bytes()),
+            "mapping verification must install an RW/NX user leaf"
+        );
+        assert!(
+            user_mapping
+                .windows(4)
+                .any(|bytes| bytes == [0x41, 0xc6, 0x02, 0x6d])
+                && user_mapping
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d]),
+            "mapping verification must perform its fixed byte store and load"
+        );
+        assert!(
+            user_mapping
+                .windows(4)
+                .filter(|bytes| *bytes == [0x41, 0x0f, 0x01, 0x3a])
+                .count()
+                >= 2,
+            "mapping verification must invalidate after publication and revocation"
         );
         let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);
         assert!(

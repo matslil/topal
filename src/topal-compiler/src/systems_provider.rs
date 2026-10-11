@@ -24,9 +24,9 @@ use topal_language::compiler::{
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
-    validate_systems_program,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
     SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
@@ -35,7 +35,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/22";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/23";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -82,6 +82,7 @@ pub enum X86SystemsLowering {
     RetireKernelContext,
     ReclaimKernelContext,
     PrepareInitialUserAddressSpace,
+    VerifyInitialUserMapping,
     PrepareInitialUserProbe,
     EnterInitialUserContext,
     CompleteInitialUserBacking,
@@ -177,6 +178,7 @@ impl X86SystemsLowering {
             Self::PrepareInitialUserAddressSpace => {
                 "topal.provider.x86_64.user.prepare-initial-address-space/1"
             }
+            Self::VerifyInitialUserMapping => "topal.provider.x86_64.user.verify-initial-mapping/1",
             Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
             Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
             Self::CompleteInitialUserBacking => {
@@ -236,6 +238,7 @@ impl X86SystemsLowering {
                 | Self::BlockOneShotCompletion
                 | Self::PreemptCurrentKernelContext
                 | Self::PrepareInitialUserAddressSpace
+                | Self::VerifyInitialUserMapping
                 | Self::PrepareInitialUserProbe
                 | Self::EnterInitialUserContext
                 | Self::CompleteInitialUserBacking
@@ -406,6 +409,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_RETIRE => X86SystemsLowering::RetireKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
         SYSTEMS_USER_ADDRESS_SPACE_PREPARE => X86SystemsLowering::PrepareInitialUserAddressSpace,
+        SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING => X86SystemsLowering::VerifyInitialUserMapping,
         SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
         SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
         SYSTEMS_USER_CONTEXT_COMPLETE => X86SystemsLowering::CompleteInitialUserBacking,
@@ -481,6 +485,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::PrepareInitialUserAddressSpace => {
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE
             }
+            X86SystemsLowering::VerifyInitialUserMapping => {
+                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING
+            }
             X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
             X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             X86SystemsLowering::CompleteInitialUserBacking => SYSTEMS_USER_CONTEXT_COMPLETE,
@@ -537,7 +544,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 54);
+        assert_eq!(plan.operations.len(), 55);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

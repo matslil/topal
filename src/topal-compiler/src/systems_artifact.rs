@@ -32,9 +32,9 @@ use topal_language::compiler::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH,
-    model_systems_transitions,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -68,13 +68,14 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
-    X86_SYSTEMS_USER_COMPLETE_SYMBOL, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
-    X86_SYSTEMS_USER_ENTER_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
-    X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL, X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+    generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/22";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/22";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/23";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/23";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -802,6 +803,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
         ),
         (
+            SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL,
+        ),
+        (
             SYSTEMS_USER_CONTEXT_PREPARE,
             X86_SYSTEMS_USER_PREPARE_SYMBOL,
         ),
@@ -905,6 +910,7 @@ enum ProviderSymbol {
     RetireKernelContext,
     ReclaimKernelContext,
     PrepareUserAddressSpace,
+    VerifyUserAddressSpaceMapping,
     PrepareUserProbe,
     EnterUserContext,
     CompleteUserBacking,
@@ -952,6 +958,9 @@ impl ProviderSymbol {
             Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
             Self::PrepareUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+            Self::VerifyUserAddressSpaceMapping => {
+                X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL
+            }
             Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
             Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
             Self::CompleteUserBacking => X86_SYSTEMS_USER_COMPLETE_SYMBOL,
@@ -1000,6 +1009,7 @@ impl ProviderSymbol {
             | Self::RetireKernelContext
             | Self::ReclaimKernelContext
             | Self::PrepareUserAddressSpace
+            | Self::VerifyUserAddressSpaceMapping
             | Self::PrepareUserProbe
             | Self::EnterUserContext
             | Self::CompleteUserBacking
@@ -1180,6 +1190,7 @@ enum RootUserExecutionState {
     #[default]
     Fresh,
     AddressSpacePrepared,
+    AddressSpaceVerified,
     Prepared,
     Completed,
     Revoked,
@@ -1217,6 +1228,7 @@ struct ProviderSymbols {
     retire_kernel_context: SymbolId,
     reclaim_kernel_context: SymbolId,
     prepare_user_address_space: SymbolId,
+    verify_user_address_space_mapping: SymbolId,
     prepare_user_probe: SymbolId,
     enter_user_context: SymbolId,
     complete_user_backing: SymbolId,
@@ -2383,7 +2395,7 @@ impl RootEncoder {
 
     fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.user_execution != RootUserExecutionState::AddressSpacePrepared
+            || self.user_execution != RootUserExecutionState::AddressSpaceVerified
             || self.physical_frame_count.is_some()
             || process_identity != 1
         {
@@ -2396,6 +2408,22 @@ impl RootEncoder {
         self.rip_relative_symbol(ProviderSymbol::UserSyscall, 0)?;
         self.call_checked_bool(ProviderSymbol::PrepareUserProbe)?;
         self.user_execution = RootUserExecutionState::Prepared;
+        Ok(())
+    }
+
+    fn verify_user_address_space_mapping(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::AddressSpacePrepared
+            || self.physical_frame_count != Some(1)
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping verification requires the prepared address space and one disjoint frame".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]); // disjoint frame base in rdx
+        self.call_checked_bool(ProviderSymbol::VerifyUserAddressSpaceMapping)?;
+        self.user_execution = RootUserExecutionState::AddressSpaceVerified;
         Ok(())
     }
 
@@ -2675,6 +2703,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         prepare_user_address_space: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::PrepareUserAddressSpace,
+        ),
+        verify_user_address_space_mapping: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::VerifyUserAddressSpaceMapping,
         ),
         prepare_user_probe: undefined_provider_symbol(
             &mut object,
@@ -3131,6 +3163,9 @@ fn encode_operations(
             CompilerSystemsOperation::PrepareUserAddressSpace => {
                 encoder.prepare_user_address_space()?;
             }
+            CompilerSystemsOperation::VerifyUserAddressSpaceMapping => {
+                encoder.verify_user_address_space_mapping()?;
+            }
             CompilerSystemsOperation::PrepareUserProbe { process_identity } => {
                 encoder.prepare_user_probe(*process_identity)?;
             }
@@ -3220,6 +3255,9 @@ fn append_root(
             ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
             ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
             ProviderSymbol::PrepareUserAddressSpace => provider_symbols.prepare_user_address_space,
+            ProviderSymbol::VerifyUserAddressSpaceMapping => {
+                provider_symbols.verify_user_address_space_mapping
+            }
             ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
             ProviderSymbol::EnterUserContext => provider_symbols.enter_user_context,
             ProviderSymbol::CompleteUserBacking => provider_symbols.complete_user_backing,
@@ -3441,6 +3479,9 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     "{identity}:context={context_identity}:completion={completion_identity}"
                 ),
                 CompilerSystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity,
+                }
+                | CompilerSystemsTransition::VerifyUserAddressSpaceMapping {
                     address_space_identity,
                 }
                 | CompilerSystemsTransition::ReclaimUserAddressSpace {
@@ -3671,7 +3712,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 994);
+        assert_eq!(relocation_targets.len(), 1025);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3769,6 +3810,13 @@ mod tests {
                 .count(),
             5
         );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL)
+                .count(),
+            1
+        );
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
             relocation_targets
@@ -3789,21 +3837,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            847
+            875
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            39
+            40
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            50
+            51
         );
         assert_eq!(
             relocation_targets
@@ -3863,7 +3911,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            26,
+            27,
             "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -3962,6 +4010,7 @@ mod tests {
                 "topal_x86_systems_context_retire",
                 "topal_x86_systems_context_reclaim",
                 "topal_x86_systems_user_prepare_initial_address_space",
+                "topal_x86_systems_user_verify_initial_mapping",
                 "topal_x86_systems_user_prepare_initial_probe",
                 "topal_x86_systems_user_complete_initial_backing",
                 "topal_x86_systems_user_reclaim_initial_address_space",
@@ -4004,10 +4053,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 54);
+        assert_eq!(decoded.placements.len(), 55);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 161);
+        assert_eq!(decoded.semantic_trace.len(), 163);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4015,13 +4064,15 @@ mod tests {
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
-        assert_eq!(decoded.semantic_trace[121], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[154].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[155], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[156].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(154..157);
-        decoded.semantic_trace.drain(120..123);
+        assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING));
+        assert_eq!(decoded.semantic_trace[122], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[156].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[157], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[158].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(156..159);
+        decoded.semantic_trace.drain(120..125);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
