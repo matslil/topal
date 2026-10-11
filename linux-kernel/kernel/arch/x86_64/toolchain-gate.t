@@ -189,10 +189,16 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                             alignment-frames is 1
                                                                                                           )
                                                                                                             Ok scratch-frame then {
-                                                                                                              returned-scratch is completion-resumed user address space verify mapping (
+                                                                                                              mapped-scratch is completion-resumed user address space map (
                                                                                                                 address-space is user-space,
                                                                                                                 backing is scratch-frame,
                                                                                                                 layout is probe-guard
+                                                                                                              )
+                                                                                                              stored-scratch is completion-resumed user mapping store byte mapped-scratch
+                                                                                                              verified-scratch is completion-resumed user mapping load byte stored-scratch
+                                                                                                              returned-scratch is completion-resumed user address space unmap (
+                                                                                                                address-space is user-space,
+                                                                                                                mapping is verified-scratch
                                                                                                               )
                                                                                                               completion-resumed frames release returned-scratch
                                                                                                               completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"

@@ -32,12 +32,14 @@ use crate::{
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
-    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
+    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SuspendedUserContext, SystemsUserExecutionProtocol,
     TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
 };
 
@@ -206,6 +208,10 @@ pub enum SystemsOperation {
     ConsumeEmptyRunnableQueue,
     PrepareUserAddressSpace,
     VerifyUserAddressSpaceMapping,
+    MapUserAddressSpace,
+    StoreUserMappingByte,
+    LoadUserMappingByte,
+    UnmapUserAddressSpace,
     PrepareUserProbe {
         process_identity: u64,
     },
@@ -274,6 +280,10 @@ impl SystemsOperation {
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             Self::PrepareUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::VerifyUserAddressSpaceMapping => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            Self::MapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::StoreUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::LoadUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
@@ -552,6 +562,20 @@ pub enum SystemsTransition {
     VerifyUserAddressSpaceMapping {
         address_space_identity: u64,
     },
+    MapUserAddressSpace {
+        address_space_identity: u64,
+        mapping_identity: u64,
+    },
+    StoreUserMappingByte {
+        mapping_identity: u64,
+    },
+    LoadUserMappingByte {
+        mapping_identity: u64,
+    },
+    UnmapUserAddressSpace {
+        address_space_identity: u64,
+        mapping_identity: u64,
+    },
     PrepareUserProbe {
         process_identity: u64,
         probe_identity: u64,
@@ -746,6 +770,10 @@ impl SystemsTransition {
             Self::ConsumeKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::PrepareUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::VerifyUserAddressSpaceMapping { .. } => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            Self::MapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::StoreUserMappingByte { .. } => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::LoadUserMappingByte { .. } => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
             Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
@@ -1232,6 +1260,9 @@ enum BootstrapUserExecutionState {
     #[default]
     Fresh,
     AddressSpacePrepared(PhysicalFrameRequest),
+    MappingLive(PhysicalFrameRequest),
+    MappingStored(PhysicalFrameRequest),
+    MappingVerified(PhysicalFrameRequest),
     AddressSpaceVerified(PhysicalFrameRequest),
     Prepared(PhysicalFrameRequest),
     Completed(PhysicalFrameRequest),
@@ -1244,6 +1275,7 @@ enum BootstrapMemoryOwnership {
     #[default]
     None,
     Frames(PhysicalFrameRequest),
+    UserMapping(PhysicalFrameRequest),
     Mapping(PhysicalFrameRequest),
     ProvisionalMapping(PhysicalFrameRequest),
     ProvisionalFrames(PhysicalFrameRequest),
@@ -1831,6 +1863,82 @@ impl BootstrapAuthorityState {
                 }
                 self.user_execution = BootstrapUserExecutionState::AddressSpaceVerified(backing);
             }
+            SystemsOperation::MapUserAddressSpace => {
+                let BootstrapUserExecutionState::AddressSpacePrepared(backing) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping publication requires the exact prepared address space",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping publication requires one disjoint source-owned frame and no live critical scope",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST);
+                self.user_execution = BootstrapUserExecutionState::MappingLive(backing);
+            }
+            SystemsOperation::StoreUserMappingByte => {
+                let BootstrapUserExecutionState::MappingLive(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires the exact live mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::MappingStored(backing);
+            }
+            SystemsOperation::LoadUserMappingByte => {
+                let BootstrapUserExecutionState::MappingStored(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires the exact stored mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::MappingVerified(backing);
+            }
+            SystemsOperation::UnmapUserAddressSpace => {
+                let BootstrapUserExecutionState::MappingVerified(backing) = self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires the exact verified mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires its owned disjoint frame",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+                self.user_execution = BootstrapUserExecutionState::AddressSpaceVerified(backing);
+            }
             SystemsOperation::EnterUserContext => {
                 let BootstrapUserExecutionState::Prepared(backing) = self.user_execution else {
                     return Err(SystemsModelError::new(
@@ -2053,6 +2161,12 @@ impl BootstrapAuthorityState {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-MAPPING-LIVE",
                     "bootstrap handler consumes its context while a kernel mapping remains live",
+                ));
+            }
+            BootstrapMemoryOwnership::UserMapping(_) => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "bootstrap handler consumes its context while a user mapping remains live",
                 ));
             }
             BootstrapMemoryOwnership::ProvisionalMapping(_)
@@ -2359,6 +2473,10 @@ fn validate_bootstrap_storage_operation(
         SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         SystemsOperation::PrepareUserAddressSpace
         | SystemsOperation::VerifyUserAddressSpaceMapping
+        | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution
@@ -2537,6 +2655,35 @@ fn model_user_execution_transition(
             }
             transitions.push(SystemsTransition::VerifyUserAddressSpaceMapping {
                 address_space_identity: 1,
+            });
+        }
+        SystemsOperation::MapUserAddressSpace => {
+            if prepared.is_none() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user mapping model requires one prepared address space",
+                ));
+            }
+            transitions.push(SystemsTransition::MapUserAddressSpace {
+                address_space_identity: 1,
+                mapping_identity: 1,
+            });
+        }
+        SystemsOperation::StoreUserMappingByte => {
+            transitions.push(SystemsTransition::StoreUserMappingByte {
+                mapping_identity: 1,
+            });
+        }
+        SystemsOperation::LoadUserMappingByte => {
+            transitions.push(SystemsTransition::LoadUserMappingByte {
+                mapping_identity: 1,
+            });
+        }
+        SystemsOperation::UnmapUserAddressSpace => {
+            transitions.push(SystemsTransition::UnmapUserAddressSpace {
+                address_space_identity: 1,
+                mapping_identity: 1,
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
@@ -3733,6 +3880,10 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::PrepareUserAddressSpace
         | SystemsOperation::VerifyUserAddressSpaceMapping
+        | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution

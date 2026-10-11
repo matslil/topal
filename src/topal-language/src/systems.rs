@@ -51,11 +51,13 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -2934,34 +2936,90 @@ fn analyze_kernel_context_decision(
     };
     let scratch_statements =
         action_block(source, scratch_success, "disjoint frame allocation success")?;
-    let [verify_mapping, scratch_after_verify @ ..] = scratch_statements else {
+    let [map_mapping, scratch_after_map @ ..] = scratch_statements else {
         return Err(user_context_diagnostic(
             source,
             span,
-            "disjoint frame allocation success must verify and release its exact extent, publish its markers, and consume the prepared user address space",
+            "disjoint frame allocation success must map, store, load, unmap, and release its exact extent before consuming the prepared user address space",
         ));
     };
-    let (returned_scratch, verify_continuation) = parse_user_address_space_verify_mapping(
+    let (mapped_scratch, map_continuation) = parse_user_address_space_map(
         source,
-        verify_mapping,
+        map_mapping,
         &completion_resumed,
         &user_space,
         &scratch_frames,
     )?;
-    let scratch_continuation = match (
-        scratch_after_verify.is_empty(),
-        verify_continuation.is_empty(),
-    ) {
-        (true, false) => verify_continuation,
-        (false, true) => scratch_after_verify,
-        _ => {
-            return Err(user_context_diagnostic(
-                source,
-                span,
-                "user mapping verification must transfer exactly one continuation",
-            ));
-        }
+    let after_map = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_map,
+        map_continuation,
+        "map",
+    )?;
+    let [store_mapping, scratch_after_store @ ..] = after_map else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping publication must be followed by store, load, and unmap",
+        ));
     };
+    let (stored_scratch, store_continuation) = parse_user_mapping_refinement(
+        source,
+        store_mapping,
+        &completion_resumed,
+        &mapped_scratch,
+        "store",
+    )?;
+    let after_store = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_store,
+        store_continuation,
+        "store",
+    )?;
+    let [load_mapping, scratch_after_load @ ..] = after_store else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping store must be followed by load and unmap",
+        ));
+    };
+    let (verified_scratch, load_continuation) = parse_user_mapping_refinement(
+        source,
+        load_mapping,
+        &completion_resumed,
+        &stored_scratch,
+        "load",
+    )?;
+    let after_load = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_load,
+        load_continuation,
+        "load",
+    )?;
+    let [unmap_mapping, scratch_after_unmap @ ..] = after_load else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping load must be followed by unmap",
+        ));
+    };
+    let (returned_scratch, unmap_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_mapping,
+        &completion_resumed,
+        &user_space,
+        &verified_scratch,
+    )?;
+    let scratch_continuation = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_unmap,
+        unmap_continuation,
+        "unmap",
+    )?;
     let [
         release_scratch,
         mapping_marker_statement,
@@ -2973,7 +3031,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "disjoint frame allocation success must verify and release its exact extent, publish its markers, and consume the prepared user address space",
+            "user mapping unmap must return the extent for release before user preparation",
         ));
     };
     parse_physical_frame_release(
@@ -3186,7 +3244,10 @@ fn analyze_kernel_context_decision(
                 request: scratch_request,
                 failure_message: scratch_failure_message,
             },
-            CompilerSystemsOperation::VerifyUserAddressSpaceMapping,
+            CompilerSystemsOperation::MapUserAddressSpace,
+            CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             mapping_marker,
             disjoint_marker,
@@ -3343,7 +3404,7 @@ fn parse_user_address_space_prepare<'a>(
     Ok((source.slice(*name).to_owned(), declarations))
 }
 
-fn parse_user_address_space_verify_mapping<'a>(
+fn parse_user_address_space_map<'a>(
     source: &SourceText,
     statement: &'a Statement,
     context_name: &str,
@@ -3366,7 +3427,7 @@ fn parse_user_address_space_verify_mapping<'a>(
             return Err(user_context_diagnostic(
                 source,
                 statement_span(statement),
-                "user mapping verification must bind the returned affine extent",
+                "user mapping publication must bind one fresh affine mapping",
             ));
         }
     };
@@ -3375,29 +3436,27 @@ fn parse_user_address_space_verify_mapping<'a>(
         user,
         address,
         space,
-        verify,
-        mapping,
+        map,
         Expression::Product { fields, .. },
     ] = items.as_slice()
     else {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user mapping verification requires named address-space, backing, and layout parameters",
+            "user mapping publication requires named address-space, backing, and layout parameters",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, user, "user")
         || !identifier_is(source, address, "address")
         || !identifier_is(source, space, "space")
-        || !identifier_is(source, verify, "verify")
-        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, map, "map")
         || fields.len() != 3
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "the initial user mapping verification requires the exact prepared space, disjoint backing, and probe-guard layout",
+            "the initial user mapping requires the exact prepared space, disjoint backing, and probe-guard layout",
         ));
     }
     let mut address_space = None;
@@ -3408,14 +3467,14 @@ fn parse_user_address_space_verify_mapping<'a>(
             return Err(user_context_diagnostic(
                 source,
                 field.value.span(),
-                "user mapping verification parameters must be named",
+                "user mapping publication parameters must be named",
             ));
         };
         let Expression::Identifier(value) = field.value else {
             return Err(user_context_diagnostic(
                 source,
                 field.value.span(),
-                "user mapping verification values must use live affine identities",
+                "user mapping publication values must use live affine identities",
             ));
         };
         match source.slice(label) {
@@ -3426,7 +3485,7 @@ fn parse_user_address_space_verify_mapping<'a>(
                 return Err(user_context_diagnostic(
                     source,
                     label,
-                    "unknown user mapping verification parameter",
+                    "unknown user mapping publication parameter",
                 ));
             }
         }
@@ -3438,10 +3497,172 @@ fn parse_user_address_space_verify_mapping<'a>(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "the initial user mapping verification requires the exact prepared space, disjoint backing, and probe-guard layout",
+            "the initial user mapping requires the exact prepared space, disjoint backing, and probe-guard layout",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_refinement<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+    operation: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping access must bind its refined affine mapping",
+            ));
+        }
+    };
+    let [receiver, user, mapping, access, byte, live_mapping] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping access requires the exact live mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, access, operation)
+        || !identifier_is(source, byte, "byte")
+        || !identifier_is(source, live_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            format!("user mapping {operation} requires the exact preceding mapping refinement"),
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_unmap<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    mapping_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping revocation must bind the returned affine extent",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        unmap,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping revocation requires named address-space and mapping parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, unmap, "unmap")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user unmap requires the exact prepared space and verified mapping",
+        ));
+    }
+    let mut address_space = None;
+    let mut mapping_identity = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping revocation parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping revocation values must use live affine identities",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => address_space = Some(source.slice(value)),
+            "mapping" => mapping_identity = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user mapping revocation parameter",
+                ));
+            }
+        }
+    }
+    if address_space != Some(address_space_name) || mapping_identity != Some(mapping_name) {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user unmap requires the exact prepared space and verified mapping",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn select_user_mapping_continuation<'a>(
+    source: &SourceText,
+    span: Span,
+    following: &'a [Statement],
+    nested: &'a [Statement],
+    operation: &str,
+) -> Result<&'a [Statement], Diagnostic> {
+    match (following.is_empty(), nested.is_empty()) {
+        (true, false) => Ok(nested),
+        (false, true) => Ok(following),
+        _ => Err(user_context_diagnostic(
+            source,
+            span,
+            format!("user mapping {operation} must transfer exactly one continuation"),
+        )),
+    }
 }
 
 fn parse_user_probe_prepare<'a>(
@@ -4979,9 +5200,12 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -5375,8 +5599,19 @@ mod tests {
                         alignment_frames: 1,
                     },
                 },
-                CompilerSystemsTransition::VerifyUserAddressSpaceMapping {
+                CompilerSystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::ConsoleWrite {
@@ -5544,7 +5779,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 102);
+        assert_eq!(program.bootstrap.handler.operations.len(), 105);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -5583,9 +5818,12 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,

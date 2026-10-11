@@ -9,6 +9,14 @@ pub const SYSTEMS_USER_ADDRESS_SPACE_RECLAIM: &str =
     "topal.systems.memory.user-address-space.reclaim/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING: &str =
     "topal.systems.memory.user-address-space.verify-mapping/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_MAP: &str =
+    "topal.systems.memory.user-address-space.map/1";
+pub const SYSTEMS_USER_MAPPING_STORE_BYTE: &str =
+    "topal.systems.memory.user-mapping.store-byte/1";
+pub const SYSTEMS_USER_MAPPING_LOAD_BYTE: &str =
+    "topal.systems.memory.user-mapping.load-byte/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_UNMAP: &str =
+    "topal.systems.memory.user-address-space.unmap/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
 pub const SYSTEMS_USER_SYSCALL_ENTRY: &str = "topal.systems.entry.user-syscall/1";
 pub const SYSTEMS_USER_SYSCALL_DISPATCH: &str =
