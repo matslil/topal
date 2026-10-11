@@ -1,6 +1,6 @@
 //! Architecture-independent affine user-execution and syscall-entry model.
 
-use crate::SystemsModelError;
+use crate::{PhysicalFrameRequest, SystemsModelError};
 
 pub const SYSTEMS_USER_CONTEXT_PREPARE: &str = "topal.systems.context.user.probe.prepare/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_PREPARE: &str =
@@ -35,6 +35,11 @@ pub const LINUX_TIMESPEC_BYTES: u64 = 16;
 pub const LINUX_NEW_UTSNAME_FIELD_BYTES: u64 = 65;
 pub const LINUX_NEW_UTSNAME_BYTES: u64 = 6 * LINUX_NEW_UTSNAME_FIELD_BYTES;
 
+const INITIAL_USER_BACKING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 3,
+    alignment_frames: 1,
+};
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UserProbeStage {
     AwaitingGetpid,
@@ -48,14 +53,29 @@ enum UserProbeStage {
 #[derive(Debug, Eq, PartialEq)]
 pub struct ValidatedUserState {
     provider_identity: String,
-    address_space_identity: String,
+    address_space_identity: u64,
     abi_identity: String,
     probe_identity: u64,
 }
 
 #[derive(Debug, Eq, PartialEq)]
+pub struct PreparedUserAddressSpace {
+    provider_identity: String,
+    address_space_identity: u64,
+    backing: PhysicalFrameRequest,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct RevokedUserAddressSpace {
+    provider_identity: String,
+    address_space_identity: u64,
+    backing: PhysicalFrameRequest,
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct SuspendedUserContext {
     validated: ValidatedUserState,
+    address_space: PreparedUserAddressSpace,
     processor_identity: String,
     thread_identity: String,
     process_identity: u64,
@@ -201,7 +221,7 @@ impl UserSyscallContext {
 pub struct CompletedUserExecution {
     provider_identity: String,
     processor_identity: String,
-    address_space_identity: String,
+    address_space: PreparedUserAddressSpace,
     thread_identity: String,
     abi_identity: String,
     process_identity: u64,
@@ -210,22 +230,23 @@ pub struct CompletedUserExecution {
     status: u64,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct UserExecutionCompletion {
     pub process_identity: u64,
     pub kernel_continuation_identity: u64,
     pub terminal_entry_identity: u64,
     pub status: u64,
+    pub revoked_address_space: RevokedUserAddressSpace,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsUserExecutionProtocol {
     provider_identity: String,
     processor_identity: String,
-    address_space_identity: String,
     thread_identity: String,
     abi_identity: String,
     next_probe_identity: u64,
+    next_address_space_identity: u64,
     next_kernel_continuation_identity: u64,
     next_entry_identity: u64,
     next_transfer_identity: u64,
@@ -237,14 +258,40 @@ impl SystemsUserExecutionProtocol {
         Self {
             provider_identity: "topal.systems.user-provider.initial/1".into(),
             processor_identity: crate::INITIAL_PROCESSOR_IDENTITY.into(),
-            address_space_identity: INITIAL_USER_ADDRESS_SPACE_IDENTITY.into(),
             thread_identity: INITIAL_USER_THREAD_IDENTITY.into(),
             abi_identity: LINUX_X86_64_ABI_IDENTITY.into(),
             next_probe_identity: 1,
+            next_address_space_identity: 1,
             next_kernel_continuation_identity: 1,
             next_entry_identity: 1,
             next_transfer_identity: 1,
         }
+    }
+
+    /// Prepare one opaque qualification-only user address space.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless backing has the sealed three-frame
+    /// shape.
+    pub fn prepare_address_space(
+        &mut self,
+        backing: PhysicalFrameRequest,
+    ) -> Result<PreparedUserAddressSpace, SystemsModelError> {
+        if backing != INITIAL_USER_BACKING_REQUEST {
+            return Err(user_error(
+                "the initial user address space requires exact three-frame backing",
+            ));
+        }
+        let address_space_identity = self.next_address_space_identity;
+        self.next_address_space_identity = address_space_identity
+            .checked_add(1)
+            .ok_or_else(|| user_error("user-address-space identity exhausted"))?;
+        Ok(PreparedUserAddressSpace {
+            provider_identity: self.provider_identity.clone(),
+            address_space_identity,
+            backing,
+        })
     }
 
     /// Create one validated qualification-only user continuation.
@@ -255,10 +302,11 @@ impl SystemsUserExecutionProtocol {
     pub fn prepare_probe(
         &mut self,
         process_identity: u64,
+        address_space: PreparedUserAddressSpace,
     ) -> Result<SuspendedUserContext, SystemsModelError> {
-        if process_identity != 1 {
+        if process_identity != 1 || address_space.provider_identity != self.provider_identity {
             return Err(user_error(
-                "the initial user probe requires source-owned process identity one",
+                "the initial user probe requires source-owned process identity one and its prepared address space",
             ));
         }
         let probe_identity = self.next_probe_identity;
@@ -268,10 +316,11 @@ impl SystemsUserExecutionProtocol {
         Ok(SuspendedUserContext {
             validated: ValidatedUserState {
                 provider_identity: self.provider_identity.clone(),
-                address_space_identity: self.address_space_identity.clone(),
+                address_space_identity: address_space.address_space_identity,
                 abi_identity: self.abi_identity.clone(),
                 probe_identity,
             },
+            address_space,
             processor_identity: self.processor_identity.clone(),
             thread_identity: self.thread_identity.clone(),
             process_identity,
@@ -686,7 +735,7 @@ impl SystemsUserExecutionProtocol {
         Ok(CompletedUserExecution {
             provider_identity: entry.active.suspended.validated.provider_identity,
             processor_identity: entry.active.suspended.processor_identity,
-            address_space_identity: entry.active.suspended.validated.address_space_identity,
+            address_space: entry.active.suspended.address_space,
             thread_identity: entry.active.suspended.thread_identity,
             abi_identity: entry.active.suspended.validated.abi_identity,
             process_identity: entry.active.suspended.process_identity,
@@ -707,7 +756,8 @@ impl SystemsUserExecutionProtocol {
     ) -> Result<UserExecutionCompletion, SystemsModelError> {
         if completed.provider_identity != self.provider_identity
             || completed.processor_identity != self.processor_identity
-            || completed.address_space_identity != self.address_space_identity
+            || completed.address_space.provider_identity != self.provider_identity
+            || completed.address_space.address_space_identity == 0
             || completed.thread_identity != self.thread_identity
             || completed.abi_identity != self.abi_identity
         {
@@ -720,7 +770,31 @@ impl SystemsUserExecutionProtocol {
             kernel_continuation_identity: completed.kernel_continuation_identity,
             terminal_entry_identity: completed.terminal_entry_identity,
             status: completed.status,
+            revoked_address_space: RevokedUserAddressSpace {
+                provider_identity: completed.address_space.provider_identity,
+                address_space_identity: completed.address_space.address_space_identity,
+                backing: completed.address_space.backing,
+            },
         })
+    }
+
+    /// Reclaim exact backing from one revoked user address space.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a space from another provider.
+    pub fn reclaim_address_space(
+        &self,
+        revoked: RevokedUserAddressSpace,
+    ) -> Result<PhysicalFrameRequest, SystemsModelError> {
+        if revoked.provider_identity != self.provider_identity
+            || revoked.address_space_identity == 0
+        {
+            return Err(user_error(
+                "user-address-space reclaim requires matching provider and live identity",
+            ));
+        }
+        Ok(revoked.backing)
     }
 
     fn validate_suspended(
@@ -729,7 +803,9 @@ impl SystemsUserExecutionProtocol {
     ) -> Result<(), SystemsModelError> {
         if suspended.validated.provider_identity != self.provider_identity
             || suspended.processor_identity != self.processor_identity
-            || suspended.validated.address_space_identity != self.address_space_identity
+            || suspended.validated.address_space_identity
+                != suspended.address_space.address_space_identity
+            || suspended.address_space.provider_identity != self.provider_identity
             || suspended.thread_identity != self.thread_identity
             || suspended.validated.abi_identity != self.abi_identity
             || suspended.validated.probe_identity == 0
@@ -786,10 +862,18 @@ fn user_transfer_error(message: impl Into<String>) -> SystemsModelError {
 mod tests {
     use super::*;
 
+    fn prepared_probe(
+        protocol: &mut SystemsUserExecutionProtocol,
+        process_identity: u64,
+    ) -> Result<SuspendedUserContext, SystemsModelError> {
+        let address_space = protocol.prepare_address_space(INITIAL_USER_BACKING_REQUEST)?;
+        protocol.prepare_probe(process_identity, address_space)
+    }
+
     fn active_after_uname_fault(
         protocol: &mut SystemsUserExecutionProtocol,
     ) -> ActiveUserExecution {
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -827,7 +911,7 @@ mod tests {
     fn completes_getpid_uname_timespec_transfers_and_exit_group_termination() {
         // TOPAL-SYSTEMS-CONTEXT-006, TOPAL-SYSTEMS-RECOVERY-001.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -900,6 +984,12 @@ mod tests {
         assert_eq!(summary.kernel_continuation_identity, 1);
         assert_eq!(summary.terminal_entry_identity, 6);
         assert_eq!(summary.status, 0);
+        assert_eq!(
+            protocol
+                .reclaim_address_space(summary.revoked_address_space)
+                .unwrap(),
+            INITIAL_USER_BACKING_REQUEST
+        );
     }
 
     #[test]
@@ -907,11 +997,21 @@ mod tests {
         // TOPAL-SYSTEMS-CONTEXT-006 negative conformance.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         assert_eq!(
-            protocol.prepare_probe(2).unwrap_err().code,
+            protocol
+                .prepare_address_space(PhysicalFrameRequest {
+                    frame_count: 1,
+                    alignment_frames: 1,
+                })
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+        assert_eq!(
+            prepared_probe(&mut protocol, 2).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         assert_eq!(
             protocol
@@ -921,7 +1021,7 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -931,7 +1031,7 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -945,7 +1045,7 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -967,7 +1067,7 @@ mod tests {
             "E-SYSTEMS-USER-TRANSFER"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -989,7 +1089,7 @@ mod tests {
             "E-SYSTEMS-USER-TRANSFER"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -1013,7 +1113,7 @@ mod tests {
             "E-SYSTEMS-USER-TRANSFER"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let active = protocol.enter(suspended).unwrap();
         let getpid = protocol
             .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
@@ -1027,7 +1127,7 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let suspended = protocol.prepare_probe(1).unwrap();
+        let suspended = prepared_probe(&mut protocol, 1).unwrap();
         let mut active = protocol.enter(suspended).unwrap();
         active.suspended.thread_identity = "topal.systems.thread.other/1".into();
         assert_eq!(

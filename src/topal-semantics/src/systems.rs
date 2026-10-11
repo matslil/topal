@@ -10,7 +10,8 @@ use crate::{
     INITIAL_USER_UNAME_VALID_CANDIDATE, KernelMappingRequest, LINUX_NEW_UTSNAME_BYTES,
     LINUX_TIMESPEC_BYTES, LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_NANOSLEEP, LINUX_X86_64_UNAME,
     LinuxTimespec, LinuxUtsName, LocalInterruptMaskState, LocalNotificationProtocol,
-    PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    PhysicalFrameRequest, PreparedUserAddressSpace, RevokedUserAddressSpace,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
     SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
@@ -2389,8 +2390,10 @@ pub fn model_systems_transitions(
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
     let mut user_protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+    let mut prepared_user_space: Option<PreparedUserAddressSpace> = None;
     let mut suspended_user: Option<SuspendedUserContext> = None;
     let mut completed_user: Option<CompletedUserExecution> = None;
+    let mut revoked_user_space: Option<RevokedUserAddressSpace> = None;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -2445,8 +2448,10 @@ pub fn model_systems_transitions(
             operation,
             &program.user_syscall.handler,
             &mut user_protocol,
+            &mut prepared_user_space,
             &mut suspended_user,
             &mut completed_user,
+            &mut revoked_user_space,
             &mut transitions,
         )? {
             continue;
@@ -2470,24 +2475,42 @@ fn model_user_execution_transition(
     operation: &SystemsOperation,
     handler: &SystemsHandler,
     protocol: &mut SystemsUserExecutionProtocol,
+    prepared: &mut Option<PreparedUserAddressSpace>,
     suspended: &mut Option<SuspendedUserContext>,
     completed: &mut Option<CompletedUserExecution>,
+    revoked: &mut Option<RevokedUserAddressSpace>,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
         SystemsOperation::PrepareUserAddressSpace => {
+            if prepared.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user model admits exactly one live address-space lifecycle",
+                ));
+            }
+            *prepared = Some(protocol.prepare_address_space(INITIAL_MULTI_FRAME_REQUEST)?);
             transitions.push(SystemsTransition::PrepareUserAddressSpace {
                 address_space_identity: 1,
             });
         }
         SystemsOperation::PrepareUserProbe { process_identity } => {
-            if suspended.is_some() || completed.is_some() {
+            if suspended.is_some() || completed.is_some() || revoked.is_some() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user model admits exactly one live probe lifecycle",
                 ));
             }
-            *suspended = Some(protocol.prepare_probe(*process_identity)?);
+            *suspended = Some(protocol.prepare_probe(
+                *process_identity,
+                prepared.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe model requires one prepared address space",
+                    )
+                })?,
+            )?);
             transitions.push(SystemsTransition::PrepareUserProbe {
                 process_identity: *process_identity,
                 probe_identity: 1,
@@ -2761,8 +2784,21 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::CompleteUserExecution {
                 process_identity: summary.process_identity,
             });
+            *revoked = Some(summary.revoked_address_space);
         }
         SystemsOperation::ReclaimUserAddressSpace => {
+            let backing = protocol.reclaim_address_space(revoked.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user-address-space reclaim model requires one revoked space",
+                )
+            })?)?;
+            if backing != INITIAL_MULTI_FRAME_REQUEST {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user-address-space reclaim returned the wrong backing shape",
+                ));
+            }
             transitions.push(SystemsTransition::ReclaimUserAddressSpace {
                 address_space_identity: 1,
             });
@@ -3768,6 +3804,8 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_PREPARE.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
             SYSTEMS_USER_CONTEXT_PREPARE.into(),
             SYSTEMS_USER_CONTEXT_ENTER.into(),
             SYSTEMS_USER_CONTEXT_COMPLETE.into(),
@@ -3893,11 +3931,13 @@ mod tests {
                             request: INITIAL_MULTI_FRAME_REQUEST,
                             failure_message: "user backing allocation failed".into(),
                         },
+                        SystemsOperation::PrepareUserAddressSpace,
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::CompleteUserExecution,
+                        SystemsOperation::ReclaimUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                     ],
                     disposition: SystemsDisposition::Fatal {
@@ -4060,9 +4100,11 @@ mod tests {
                 | SystemsOperation::ReclaimKernelContext
                 | SystemsOperation::ConsumeKernelCompletion
                 | SystemsOperation::ConsumeEmptyRunnableQueue
+                | SystemsOperation::PrepareUserAddressSpace
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::EnterUserContext
-                | SystemsOperation::CompleteUserExecution => false,
+                | SystemsOperation::CompleteUserExecution
+                | SystemsOperation::ReclaimUserAddressSpace => false,
                 SystemsOperation::ConsoleWrite { text }
                     if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
                 {
@@ -4307,6 +4349,9 @@ mod tests {
                 SystemsTransition::AllocatePhysicalFrames {
                     request: INITIAL_MULTI_FRAME_REQUEST,
                 },
+                SystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity: 1,
+                },
                 SystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -4433,6 +4478,9 @@ mod tests {
                 },
                 SystemsTransition::CompleteUserExecution {
                     process_identity: 1,
+                },
+                SystemsTransition::ReclaimUserAddressSpace {
+                    address_space_identity: 1,
                 },
                 SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::Fatal {
@@ -4607,9 +4655,11 @@ mod tests {
                     operation,
                     SystemsOperation::ConsumeKernelCompletion
                         | SystemsOperation::ConsumeEmptyRunnableQueue
+                        | SystemsOperation::PrepareUserAddressSpace
                         | SystemsOperation::PrepareUserProbe { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
+                        | SystemsOperation::ReclaimUserAddressSpace
                 )
             });
         refresh_bootstrap_effects(&mut missing_reclaim);
