@@ -5,12 +5,13 @@ use std::fmt;
 use crate::{
     AtomicCompareExchangeResult, AtomicOrder, AtomicWordLocation, AtomicWordRequest,
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    CompletedUserExecution, CriticalDomain, INITIAL_USER_UNAME_FAULT_CANDIDATE,
+    CompletedUserExecution, CriticalDomain, INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+    INITIAL_USER_TIMESPEC_VALID_CANDIDATE, INITIAL_USER_UNAME_FAULT_CANDIDATE,
     INITIAL_USER_UNAME_VALID_CANDIDATE, KernelMappingRequest, LINUX_NEW_UTSNAME_BYTES,
-    LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_UNAME, LinuxUtsName, LocalInterruptMaskState,
-    LocalNotificationProtocol, PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
-    SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
-    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    LINUX_TIMESPEC_BYTES, LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_NANOSLEEP, LINUX_X86_64_UNAME,
+    LinuxTimespec, LinuxUtsName, LocalInterruptMaskState, LocalNotificationProtocol,
+    PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
@@ -564,6 +565,16 @@ pub enum SystemsTransition {
         transfer_identity: u64,
         copied_prefix: u64,
     },
+    CopyFromUserComplete {
+        transfer_identity: u64,
+        copied: u64,
+        seconds: i64,
+        nanoseconds: i64,
+    },
+    CopyFromUserFault {
+        transfer_identity: u64,
+        copied_prefix: u64,
+    },
     EndUserTransfer {
         entry_identity: u64,
         transfer_identity: u64,
@@ -721,6 +732,9 @@ impl SystemsTransition {
             Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
             Self::BeginUserTransfer { .. } => SYSTEMS_USER_TRANSFER_BEGIN,
             Self::CopyToUserComplete { .. } | Self::CopyToUserFault { .. } => SYSTEMS_USER_COPY_TO,
+            Self::CopyFromUserComplete { .. } | Self::CopyFromUserFault { .. } => {
+                SYSTEMS_USER_COPY_FROM
+            }
             Self::EndUserTransfer { .. } => SYSTEMS_USER_TRANSFER_END,
             Self::ReturnToUser { .. } => SYSTEMS_USER_SYSCALL_RETURN,
             Self::TerminateUser { .. } => SYSTEMS_USER_TERMINATE,
@@ -2389,7 +2403,13 @@ fn model_user_execution_transition(
                 process_identity: 1,
                 kernel_continuation_identity: 1,
             });
-            let (getpid_result, uname_value, exit_group_status) = match &handler.disposition {
+            let (
+                getpid_result,
+                uname_value,
+                nanosleep_value,
+                remainder_candidate,
+                exit_group_status,
+            ) = match &handler.disposition {
                 SystemsDisposition::DispatchInitialUserSyscall {
                     getpid_result,
                     uname_sysname,
@@ -2398,8 +2418,10 @@ fn model_user_execution_transition(
                     uname_version,
                     uname_machine,
                     uname_domainname,
+                    nanosleep_seconds,
+                    nanosleep_nanoseconds,
+                    nanosleep_remainder_candidate,
                     exit_group_status,
-                    ..
                 } => (
                     *getpid_result,
                     LinuxUtsName {
@@ -2410,6 +2432,21 @@ fn model_user_execution_transition(
                         machine: uname_machine.clone(),
                         domainname: uname_domainname.clone(),
                     },
+                    LinuxTimespec {
+                        seconds: i64::try_from(*nanosleep_seconds).map_err(|_| {
+                            SystemsModelError::new(
+                                "E-SYSTEMS-USER-TRANSFER",
+                                "sealed nanosleep seconds exceed the native signed layout",
+                            )
+                        })?,
+                        nanoseconds: i64::try_from(*nanosleep_nanoseconds).map_err(|_| {
+                            SystemsModelError::new(
+                                "E-SYSTEMS-USER-TRANSFER",
+                                "sealed nanosleep nanoseconds exceed the native signed layout",
+                            )
+                        })?,
+                    },
+                    *nanosleep_remainder_candidate,
                     *exit_group_status,
                 ),
                 _ => {
@@ -2496,19 +2533,115 @@ fn model_user_execution_transition(
                 entry_identity: 3,
                 result: LINUX_X86_64_EFAULT_RESULT,
             });
+            let nanosleep = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [
+                    INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 4,
+                number: LINUX_X86_64_NANOSLEEP,
+                arguments: [
+                    INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            });
+            let scope = protocol.begin_nanosleep_transfer(nanosleep)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 4,
+                transfer_identity: 3,
+                candidate: INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                extent: LINUX_TIMESPEC_BYTES,
+            });
+            let outcome = protocol.copy_initial_timespec_from_user(
+                scope,
+                Some(nanosleep_value),
+                LINUX_TIMESPEC_BYTES,
+            )?;
+            transitions.push(SystemsTransition::CopyFromUserComplete {
+                transfer_identity: 3,
+                copied: LINUX_TIMESPEC_BYTES,
+                seconds: nanosleep_value.seconds,
+                nanoseconds: nanosleep_value.nanoseconds,
+            });
+            let active = protocol.return_nanosleep(outcome, 0)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 4,
+                transfer_identity: 3,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 4,
+                result: 0,
+            });
+            let nanosleep = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [
+                    INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 5,
+                number: LINUX_X86_64_NANOSLEEP,
+                arguments: [
+                    INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            });
+            let scope = protocol.begin_nanosleep_transfer(nanosleep)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 5,
+                transfer_identity: 4,
+                candidate: INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                extent: LINUX_TIMESPEC_BYTES,
+            });
+            let outcome = protocol.copy_initial_timespec_from_user(scope, None, 8)?;
+            transitions.push(SystemsTransition::CopyFromUserFault {
+                transfer_identity: 4,
+                copied_prefix: 8,
+            });
+            let active = protocol.return_nanosleep(outcome, LINUX_X86_64_EFAULT_RESULT)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 5,
+                transfer_identity: 4,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 5,
+                result: LINUX_X86_64_EFAULT_RESULT,
+            });
             let exit = protocol.enter_syscall(
                 active,
                 crate::LINUX_X86_64_EXIT_GROUP,
                 [exit_group_status, 0, 0, 0, 0, 0],
             )?;
             transitions.push(SystemsTransition::EnterUserSyscall {
-                entry_identity: 4,
+                entry_identity: 6,
                 number: crate::LINUX_X86_64_EXIT_GROUP,
                 arguments: [exit_group_status, 0, 0, 0, 0, 0],
             });
             *completed = Some(protocol.terminate_exit_group(exit, exit_group_status)?);
             transitions.push(SystemsTransition::TerminateUser {
-                entry_identity: 4,
+                entry_identity: 6,
                 status: exit_group_status,
             });
             transitions.push(SystemsTransition::ResumeUserKernelContinuation {
@@ -4120,11 +4253,59 @@ mod tests {
                 },
                 SystemsTransition::EnterUserSyscall {
                     entry_identity: 4,
+                    number: LINUX_X86_64_NANOSLEEP,
+                    arguments: [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                    candidate: INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    extent: LINUX_TIMESPEC_BYTES,
+                },
+                SystemsTransition::CopyFromUserComplete {
+                    transfer_identity: 3,
+                    copied: LINUX_TIMESPEC_BYTES,
+                    seconds: 0,
+                    nanoseconds: 0,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 4,
+                    result: 0,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 5,
+                    number: LINUX_X86_64_NANOSLEEP,
+                    arguments: [INITIAL_USER_TIMESPEC_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                    candidate: INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    extent: LINUX_TIMESPEC_BYTES,
+                },
+                SystemsTransition::CopyFromUserFault {
+                    transfer_identity: 4,
+                    copied_prefix: 8,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 5,
+                    result: LINUX_X86_64_EFAULT_RESULT,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 6,
                     number: 231,
                     arguments: [0; 6],
                 },
                 SystemsTransition::TerminateUser {
-                    entry_identity: 4,
+                    entry_identity: 6,
                     status: 0,
                 },
                 SystemsTransition::ResumeUserKernelContinuation {

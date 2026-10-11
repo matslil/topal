@@ -3378,6 +3378,20 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:transfer={transfer_identity}:copied-prefix={copied_prefix}"
                 ),
+                CompilerSystemsTransition::CopyFromUserComplete {
+                    transfer_identity,
+                    copied,
+                    seconds,
+                    nanoseconds,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied={copied}:seconds={seconds}:nanoseconds={nanoseconds}"
+                ),
+                CompilerSystemsTransition::CopyFromUserFault {
+                    transfer_identity,
+                    copied_prefix,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied-prefix={copied_prefix}"
+                ),
                 CompilerSystemsTransition::EndUserTransfer {
                     entry_identity,
                     transfer_identity,
@@ -3877,7 +3891,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 51);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 140);
+        assert_eq!(decoded.semantic_trace.len(), 150);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -4057,16 +4071,32 @@ mod tests {
                 .starts_with("topal.systems.disposition.user-syscall.return/1")
         );
         assert!(decoded.semantic_trace[132].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[133].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_COPY_FROM));
+        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_USER_TRANSFER_END));
         assert!(
-            decoded.semantic_trace[133]
+            decoded.semantic_trace[136]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[137].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_USER_COPY_FROM));
+        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[141]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[142].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[143]
                 .starts_with("topal.systems.disposition.user-syscall.terminate/1")
         );
-        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
-        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[138].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[144].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[145].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[149].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

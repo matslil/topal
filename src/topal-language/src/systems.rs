@@ -4912,11 +4912,59 @@ mod tests {
                 },
                 CompilerSystemsTransition::EnterUserSyscall {
                     entry_identity: 4,
+                    number: 35,
+                    arguments: [6_299_632, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                    candidate: 6_299_632,
+                    extent: 16,
+                },
+                CompilerSystemsTransition::CopyFromUserComplete {
+                    transfer_identity: 3,
+                    copied: 16,
+                    seconds: 0,
+                    nanoseconds: 0,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 4,
+                    result: 0,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 5,
+                    number: 35,
+                    arguments: [6_299_640, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                    candidate: 6_299_640,
+                    extent: 16,
+                },
+                CompilerSystemsTransition::CopyFromUserFault {
+                    transfer_identity: 4,
+                    copied_prefix: 8,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 5,
+                    result: u64::MAX - 13,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 6,
                     number: 231,
                     arguments: [0; 6],
                 },
                 CompilerSystemsTransition::TerminateUser {
-                    entry_identity: 4,
+                    entry_identity: 6,
                     status: 0,
                 },
                 CompilerSystemsTransition::ResumeUserKernelContinuation {

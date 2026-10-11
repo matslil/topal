@@ -19,11 +19,15 @@ pub const INITIAL_USER_ADDRESS_SPACE_IDENTITY: &str = "topal.systems.address-spa
 pub const INITIAL_USER_THREAD_IDENTITY: &str = "topal.systems.thread.initial-user/1";
 pub const LINUX_X86_64_ABI_IDENTITY: &str = "topal.systems.abi.linux-x86_64-7.2.9/1";
 pub const LINUX_X86_64_GETPID: u64 = 39;
+pub const LINUX_X86_64_NANOSLEEP: u64 = 35;
 pub const LINUX_X86_64_UNAME: u64 = 63;
 pub const LINUX_X86_64_EXIT_GROUP: u64 = 231;
 pub const LINUX_X86_64_EFAULT_RESULT: u64 = u64::MAX - 13;
 pub const INITIAL_USER_UNAME_VALID_CANDIDATE: u64 = 0x0060_1e00;
 pub const INITIAL_USER_UNAME_FAULT_CANDIDATE: u64 = 0x0060_1f00;
+pub const INITIAL_USER_TIMESPEC_VALID_CANDIDATE: u64 = 0x0060_1ff0;
+pub const INITIAL_USER_TIMESPEC_FAULT_CANDIDATE: u64 = 0x0060_1ff8;
+pub const LINUX_TIMESPEC_BYTES: u64 = 16;
 pub const LINUX_NEW_UTSNAME_FIELD_BYTES: u64 = 65;
 pub const LINUX_NEW_UTSNAME_BYTES: u64 = 6 * LINUX_NEW_UTSNAME_FIELD_BYTES;
 
@@ -33,6 +37,8 @@ enum UserProbeStage {
     ReturnedFromGetpid,
     ReturnedFromValidUname,
     ReturnedFromFaultingUname,
+    ReturnedFromValidNanosleep,
+    ReturnedFromFaultingNanosleep,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -72,6 +78,13 @@ pub struct UserTransferScope {
     transfer_identity: u64,
     candidate: u64,
     extent: u64,
+    direction: UserTransferDirection,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum UserTransferDirection {
+    ToUser,
+    FromUser,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -84,6 +97,44 @@ pub enum UserTransferOutcome {
         scope: UserTransferScope,
         copied_prefix: u64,
     },
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum UserInputTransferOutcome {
+    Complete {
+        scope: UserTransferScope,
+        copied: u64,
+        value: LinuxTimespec,
+    },
+    Fault {
+        scope: UserTransferScope,
+        copied_prefix: u64,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LinuxTimespec {
+    pub seconds: i64,
+    pub nanoseconds: i64,
+}
+
+impl LinuxTimespec {
+    #[must_use]
+    pub const fn zero() -> Self {
+        Self {
+            seconds: 0,
+            nanoseconds: 0,
+        }
+    }
+
+    fn validate(self) -> Result<(), SystemsModelError> {
+        if self.seconds < 0 || !(0..1_000_000_000).contains(&self.nanoseconds) {
+            return Err(user_transfer_error(
+                "native Linux timespec requires nonnegative seconds and nanoseconds below one billion",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -271,12 +322,22 @@ impl SystemsUserExecutionProtocol {
                     && arguments[1..] == [0; 5]
             }
             UserProbeStage::ReturnedFromFaultingUname => {
+                number == LINUX_X86_64_NANOSLEEP
+                    && arguments[0] == INITIAL_USER_TIMESPEC_VALID_CANDIDATE
+                    && arguments[1..] == [0; 5]
+            }
+            UserProbeStage::ReturnedFromValidNanosleep => {
+                number == LINUX_X86_64_NANOSLEEP
+                    && arguments[0] == INITIAL_USER_TIMESPEC_FAULT_CANDIDATE
+                    && arguments[1..] == [0; 5]
+            }
+            UserProbeStage::ReturnedFromFaultingNanosleep => {
                 number == LINUX_X86_64_EXIT_GROUP && arguments[0] == 0 && arguments[1..] == [0; 5]
             }
         };
         if !valid {
             return Err(user_error(
-                "user syscall does not match the sealed getpid, uname success, uname fault, then exit_group protocol",
+                "user syscall does not match the sealed getpid, uname success/fault, nanosleep success/fault, then exit_group protocol",
             ));
         }
         let entry_identity = self.next_entry_identity;
@@ -326,6 +387,48 @@ impl SystemsUserExecutionProtocol {
             transfer_identity,
             candidate,
             extent,
+            direction: UserTransferDirection::ToUser,
+        })
+    }
+
+    /// Consume one nanosleep entry into an input-direction transfer scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for the wrong syscall, candidate, extent,
+    /// identity, remainder candidate, or overflowed user range.
+    pub fn begin_nanosleep_transfer(
+        &mut self,
+        entry: UserSyscallContext,
+    ) -> Result<UserTransferScope, SystemsModelError> {
+        self.validate_entry(&entry)?;
+        if entry.number != LINUX_X86_64_NANOSLEEP
+            || entry.arguments[1] != 0
+            || !matches!(
+                entry.active.suspended.stage,
+                UserProbeStage::ReturnedFromFaultingUname
+                    | UserProbeStage::ReturnedFromValidNanosleep
+            )
+        {
+            return Err(user_transfer_error(
+                "user input transfer requires the exact live nanosleep syscall entry and null remainder candidate",
+            ));
+        }
+        let candidate = entry.arguments[0];
+        let extent = LINUX_TIMESPEC_BYTES;
+        candidate.checked_add(extent - 1).ok_or_else(|| {
+            user_transfer_error("user input transfer candidate range must not overflow")
+        })?;
+        let transfer_identity = self.next_transfer_identity;
+        self.next_transfer_identity = transfer_identity
+            .checked_add(1)
+            .ok_or_else(|| user_transfer_error("user-transfer identity exhausted"))?;
+        Ok(UserTransferScope {
+            entry,
+            transfer_identity,
+            candidate,
+            extent,
+            direction: UserTransferDirection::FromUser,
         })
     }
 
@@ -341,7 +444,12 @@ impl SystemsUserExecutionProtocol {
         value: &LinuxUtsName,
         writable_prefix: u64,
     ) -> Result<UserTransferOutcome, SystemsModelError> {
-        self.validate_transfer_scope(&scope)?;
+        self.validate_transfer_scope(
+            &scope,
+            UserTransferDirection::ToUser,
+            LINUX_X86_64_UNAME,
+            LINUX_NEW_UTSNAME_BYTES,
+        )?;
         value.validate()?;
         if writable_prefix >= scope.extent {
             return Ok(UserTransferOutcome::Complete {
@@ -357,6 +465,54 @@ impl SystemsUserExecutionProtocol {
         Ok(UserTransferOutcome::Fault {
             scope,
             copied_prefix: writable_prefix,
+        })
+    }
+
+    /// Copy and validate one native timespec without exposing partial staging.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a wrong scope, decoded value, or
+    /// provider-reported readable prefix.
+    pub fn copy_initial_timespec_from_user(
+        &self,
+        scope: UserTransferScope,
+        decoded: Option<LinuxTimespec>,
+        readable_prefix: u64,
+    ) -> Result<UserInputTransferOutcome, SystemsModelError> {
+        self.validate_transfer_scope(
+            &scope,
+            UserTransferDirection::FromUser,
+            LINUX_X86_64_NANOSLEEP,
+            LINUX_TIMESPEC_BYTES,
+        )?;
+        if readable_prefix >= scope.extent {
+            let value = decoded.ok_or_else(|| {
+                user_transfer_error("complete timespec transfer requires one decoded value")
+            })?;
+            value.validate()?;
+            if value != LinuxTimespec::zero() {
+                return Err(user_transfer_error(
+                    "initial nanosleep requires the sealed zero-duration timespec",
+                ));
+            }
+            return Ok(UserInputTransferOutcome::Complete {
+                copied: scope.extent,
+                value,
+                scope,
+            });
+        }
+        if decoded.is_some()
+            || scope.candidate != INITIAL_USER_TIMESPEC_FAULT_CANDIDATE
+            || readable_prefix != 8
+        {
+            return Err(user_transfer_error(
+                "faulting timespec transfer exposes no value and requires the exact guard-page prefix",
+            ));
+        }
+        Ok(UserInputTransferOutcome::Fault {
+            scope,
+            copied_prefix: readable_prefix,
         })
     }
 
@@ -393,7 +549,12 @@ impl SystemsUserExecutionProtocol {
                 (scope, LINUX_X86_64_EFAULT_RESULT, false)
             }
         };
-        self.validate_transfer_scope(&scope)?;
+        self.validate_transfer_scope(
+            &scope,
+            UserTransferDirection::ToUser,
+            LINUX_X86_64_UNAME,
+            LINUX_NEW_UTSNAME_BYTES,
+        )?;
         if result != required_result {
             return Err(user_transfer_error(
                 "uname return result must match its complete or fault outcome",
@@ -407,6 +568,69 @@ impl SystemsUserExecutionProtocol {
             _ => {
                 return Err(user_transfer_error(
                     "uname transfer outcome does not match the sealed probe stage",
+                ));
+            }
+        };
+        Ok(scope.entry.active)
+    }
+
+    /// Reunite a completed or faulting timespec input with its nanosleep entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for an outcome/result/value mismatch or
+    /// wrong probe stage.
+    pub fn return_nanosleep(
+        &self,
+        outcome: UserInputTransferOutcome,
+        result: u64,
+    ) -> Result<ActiveUserExecution, SystemsModelError> {
+        let (mut scope, required_result, complete) = match outcome {
+            UserInputTransferOutcome::Complete {
+                scope,
+                copied,
+                value,
+            } => {
+                if copied != LINUX_TIMESPEC_BYTES || value != LinuxTimespec::zero() {
+                    return Err(user_transfer_error(
+                        "complete nanosleep transfer requires the entire zero-duration layout",
+                    ));
+                }
+                (scope, 0, true)
+            }
+            UserInputTransferOutcome::Fault {
+                scope,
+                copied_prefix,
+            } => {
+                if copied_prefix >= LINUX_TIMESPEC_BYTES {
+                    return Err(user_transfer_error(
+                        "faulting nanosleep transfer requires a proper copied prefix",
+                    ));
+                }
+                (scope, LINUX_X86_64_EFAULT_RESULT, false)
+            }
+        };
+        self.validate_transfer_scope(
+            &scope,
+            UserTransferDirection::FromUser,
+            LINUX_X86_64_NANOSLEEP,
+            LINUX_TIMESPEC_BYTES,
+        )?;
+        if result != required_result {
+            return Err(user_transfer_error(
+                "nanosleep return result must match its complete or fault outcome",
+            ));
+        }
+        scope.entry.active.suspended.stage = match (scope.entry.active.suspended.stage, complete) {
+            (UserProbeStage::ReturnedFromFaultingUname, true) => {
+                UserProbeStage::ReturnedFromValidNanosleep
+            }
+            (UserProbeStage::ReturnedFromValidNanosleep, false) => {
+                UserProbeStage::ReturnedFromFaultingNanosleep
+            }
+            _ => {
+                return Err(user_transfer_error(
+                    "nanosleep transfer outcome does not match the sealed probe stage",
                 ));
             }
         };
@@ -448,7 +672,7 @@ impl SystemsUserExecutionProtocol {
     ) -> Result<CompletedUserExecution, SystemsModelError> {
         self.validate_entry(&entry)?;
         if entry.number != LINUX_X86_64_EXIT_GROUP
-            || entry.active.suspended.stage != UserProbeStage::ReturnedFromFaultingUname
+            || entry.active.suspended.stage != UserProbeStage::ReturnedFromFaultingNanosleep
             || status != entry.arguments[0]
         {
             return Err(user_error(
@@ -524,12 +748,19 @@ impl SystemsUserExecutionProtocol {
         Ok(())
     }
 
-    fn validate_transfer_scope(&self, scope: &UserTransferScope) -> Result<(), SystemsModelError> {
+    fn validate_transfer_scope(
+        &self,
+        scope: &UserTransferScope,
+        direction: UserTransferDirection,
+        number: u64,
+        extent: u64,
+    ) -> Result<(), SystemsModelError> {
         self.validate_entry(&scope.entry)?;
         if scope.transfer_identity == 0
-            || scope.entry.number != LINUX_X86_64_UNAME
+            || scope.entry.number != number
             || scope.candidate != scope.entry.arguments[0]
-            || scope.extent != LINUX_NEW_UTSNAME_BYTES
+            || scope.extent != extent
+            || scope.direction != direction
         {
             return Err(user_transfer_error(
                 "user transfer scope must retain its exact syscall entry, candidate, extent, and identity",
@@ -551,8 +782,45 @@ fn user_transfer_error(message: impl Into<String>) -> SystemsModelError {
 mod tests {
     use super::*;
 
+    fn active_after_uname_fault(
+        protocol: &mut SystemsUserExecutionProtocol,
+    ) -> ActiveUserExecution {
+        let suspended = protocol.prepare_probe(1).unwrap();
+        let active = protocol.enter(suspended).unwrap();
+        let getpid = protocol
+            .enter_syscall(active, LINUX_X86_64_GETPID, [0; 6])
+            .unwrap();
+        let active = protocol.return_getpid(getpid, 1).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let outcome = protocol
+            .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), LINUX_NEW_UTSNAME_BYTES)
+            .unwrap();
+        let active = protocol.return_uname(outcome, 0).unwrap();
+        let uname = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_uname_transfer(uname).unwrap();
+        let outcome = protocol
+            .copy_initial_utsname_to_user(scope, &LinuxUtsName::initial(), 256)
+            .unwrap();
+        protocol
+            .return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)
+            .unwrap()
+    }
+
     #[test]
-    fn completes_getpid_uname_transfers_and_exit_group_termination() {
+    fn completes_getpid_uname_timespec_transfers_and_exit_group_termination() {
         // TOPAL-SYSTEMS-CONTEXT-006, TOPAL-SYSTEMS-RECOVERY-001.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         let suspended = protocol.prepare_probe(1).unwrap();
@@ -589,6 +857,36 @@ mod tests {
         let active = protocol
             .return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)
             .unwrap();
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        let outcome = protocol
+            .copy_initial_timespec_from_user(
+                scope,
+                Some(LinuxTimespec::zero()),
+                LINUX_TIMESPEC_BYTES,
+            )
+            .unwrap();
+        let active = protocol.return_nanosleep(outcome, 0).unwrap();
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        let outcome = protocol
+            .copy_initial_timespec_from_user(scope, None, 8)
+            .unwrap();
+        let active = protocol
+            .return_nanosleep(outcome, LINUX_X86_64_EFAULT_RESULT)
+            .unwrap();
         let exit = protocol
             .enter_syscall(active, LINUX_X86_64_EXIT_GROUP, [0; 6])
             .unwrap();
@@ -596,7 +894,7 @@ mod tests {
         let summary = protocol.complete(completed).unwrap();
         assert_eq!(summary.process_identity, 1);
         assert_eq!(summary.kernel_continuation_identity, 1);
-        assert_eq!(summary.terminal_entry_identity, 4);
+        assert_eq!(summary.terminal_entry_identity, 6);
         assert_eq!(summary.status, 0);
     }
 
@@ -734,6 +1032,101 @@ mod tests {
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"
+        );
+    }
+
+    #[test]
+    fn rejects_partial_or_invalid_timespec_values() {
+        // TOPAL-SYSTEMS-RECOVERY-001 negative conformance.
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let active = active_after_uname_fault(&mut protocol);
+        assert_eq!(
+            protocol
+                .enter_syscall(
+                    active,
+                    LINUX_X86_64_NANOSLEEP,
+                    [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 1, 0, 0, 0, 0],
+                )
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let active = active_after_uname_fault(&mut protocol);
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        assert_eq!(
+            protocol
+                .copy_initial_timespec_from_user(scope, None, LINUX_TIMESPEC_BYTES)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-TRANSFER"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let active = active_after_uname_fault(&mut protocol);
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        assert_eq!(
+            protocol
+                .copy_initial_timespec_from_user(
+                    scope,
+                    Some(LinuxTimespec {
+                        seconds: -1,
+                        nanoseconds: 0,
+                    }),
+                    LINUX_TIMESPEC_BYTES,
+                )
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-TRANSFER"
+        );
+
+        let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+        let active = active_after_uname_fault(&mut protocol);
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        let outcome = protocol
+            .copy_initial_timespec_from_user(
+                scope,
+                Some(LinuxTimespec::zero()),
+                LINUX_TIMESPEC_BYTES,
+            )
+            .unwrap();
+        let active = protocol.return_nanosleep(outcome, 0).unwrap();
+        let nanosleep = protocol
+            .enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [INITIAL_USER_TIMESPEC_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )
+            .unwrap();
+        let scope = protocol.begin_nanosleep_transfer(nanosleep).unwrap();
+        assert_eq!(
+            protocol
+                .copy_initial_timespec_from_user(scope, Some(LinuxTimespec::zero()), 8)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-TRANSFER"
         );
     }
 }
