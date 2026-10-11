@@ -81,8 +81,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/29";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/29";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/30";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/30";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -4035,7 +4035,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1061);
+        assert_eq!(relocation_targets.len(), 1090);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4187,7 +4187,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            875
+            904
         );
         assert_eq!(
             relocation_targets
@@ -4413,7 +4413,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 62);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 176);
+        assert_eq!(decoded.semantic_trace.len(), 177);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4432,17 +4432,24 @@ mod tests {
         assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
         assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
         assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA));
-        assert!(decoded.semantic_trace[132].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[133], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[135], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[132],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_READY")
+            )
+        );
+        assert!(decoded.semantic_trace[133].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[134], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[136], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[169].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[170], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[171].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(169..172);
-        decoded.semantic_trace.drain(120..138);
+        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[170].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[171], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[172].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(170..173);
+        decoded.semantic_trace.drain(120..139);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
