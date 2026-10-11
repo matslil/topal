@@ -138,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 26 ordered serial markers. The generated real-mode adapter
+and waits for the 27 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -158,7 +158,10 @@ requires the allocator-backed user code, stack, and leaf-table extent to have
 its mappings revoked, its three relevant virtual locations invalidated, its
 opaque address-space state reclaimed, its exact affine ownership returned, and
 the extent released by source. Construction, user-context binding, revocation,
-and reclaim are separate checked operations in the artifact trace. The harness
+and reclaim are separate checked operations in the artifact trace. The
+`TOPAL_KERNEL_FRAME_DISJOINT_OK` marker additionally requires the prepared
+address space and one source-owned frame to coexist without overlap, followed
+by release of that frame before user-context binding. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
