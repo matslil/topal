@@ -167,9 +167,10 @@ RW/NX at the sealed guard location, return distinct affine map, stored,
 read-only protected, and verified refinements through two fresh sequential
 generations and clear writable authority before each load. It then promotes
 the first verified RO/NX mapping to role-specific RO/X code with target
-invalidation, while separately proving that the second mapping remains RO/NX
-before sealing it as immutable data. Each role-specific refinement is revoked
-through a separate unmap operation that returns the exact frame. The harness
+invalidation and retains it while a separately allocated, disjoint frame is
+mapped at the sealed data location. The second mapping remains RO/NX when it
+is sealed as immutable data, so both role owners coexist before data-first and
+code-second revocation return their exact frames. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
