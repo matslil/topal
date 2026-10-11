@@ -383,10 +383,18 @@ backing SHALL be invariant across all four operations.
 Skipping, reordering, duplicating, or using a consumed refinement; releasing
 the extent or preparing user state while a mapping is live; using another
 address space, extent, layout, right, or byte; and recoverable disposition
-after publication failure SHALL be invalid. The initial refinement SHALL
-admit only the sealed `probe-guard` layout, RW/NX rights, one fixed byte, one
-mapping, and one lifecycle. It SHALL expose no address or descriptor value and
-SHALL NOT constitute a general user-mapping or image-construction API.
+after publication failure SHALL be invalid. The initial refinement SHALL admit
+only the sealed `probe-guard` layout, RW/NX rights, and one fixed byte. A
+bounded reuse refinement MAY admit exactly two explicit sequential lifecycles
+over the same returned extent. Each map SHALL create a fresh opaque mapping
+identity, and the second map SHALL begin only after first-generation revocation
+and target translation completion. No first-generation access or refinement
+SHALL survive or be accepted by the second generation. Release SHALL follow
+the second unmap. Identity reuse, cross-generation substitution, release
+between generations, a third generation, simultaneous mappings, and user-state
+preparation before final release SHALL be invalid. The refinement SHALL expose
+no address or descriptor value and SHALL NOT constitute a general user-mapping
+or image-construction API.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 

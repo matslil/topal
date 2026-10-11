@@ -575,6 +575,14 @@ execution while any mapping refinement is live. The fixed layout, rights, and
 byte remain sealed provider policy; this is not a general address or mapping
 API.
 
+The initial reuse refinement permits the exact extent returned by unmap to
+enter one second complete affine lifecycle. Each map produces a fresh opaque
+mapping identity. The second publication cannot begin until the first mapping
+has been revoked and target translation completion has finished; no access or
+refinement from the first generation survives. Source releases the extent and
+prepares user execution only after the second unmap. This remains a bounded
+two-generation qualification, not simultaneous mapping or image policy.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

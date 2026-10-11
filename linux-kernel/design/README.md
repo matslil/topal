@@ -39,6 +39,7 @@ records, not this directory alone, define language meaning.
 - [Bounded disjoint live-frame-extent contract](disjoint-live-frame-extent.md)
 - [Sealed user mapping round-trip contract](sealed-user-mapping-round-trip.md)
 - [Bounded affine user-mapping lifecycle](affine-user-mapping-lifecycle.md)
+- [Sequential affine user-mapping generations](sequential-user-mapping-generations.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

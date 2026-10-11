@@ -449,6 +449,14 @@ duplicate use, reordering, or recoverable disposition while a mapping is live
 shall fail closed. Layout, rights, byte value, addresses, and target
 translation mechanics shall remain sealed.
 
+The sequential mapping-generation refinement shall admit exactly two complete
+lifecycles over the same returned extent. Each map shall create a fresh opaque
+identity. The second map shall begin only after first-generation revocation and
+target completion; stale or cross-generation refinement use, identity reuse,
+release between generations, a third generation, or user-context binding
+before the second release shall fail closed. Simultaneous mappings and
+persistent image policy remain excluded.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,
