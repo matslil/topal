@@ -199,6 +199,13 @@ records distinct simultaneous ownership, provider-private interval exclusion,
 exact release before user binding, structural x86-64 inspection, and two
 deterministic pinned-QEMU runs without changing core-language meaning.
 
+The current systems-only refinement consumes that disjoint frame in one
+[sealed user-mapping round trip](design/sealed-user-mapping-round-trip.md).
+Its [implementation and qualification report](step-4-sealed-user-mapping-round-trip.md)
+records opaque map/access/revoke ownership, private x86-64 RW/NX leaf
+publication and invalidation, exact extent return, structural inspection, and
+two deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
