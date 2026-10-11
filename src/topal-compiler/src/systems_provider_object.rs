@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/17";
+    "topal.provider-object.x86_64-qemu-pc-q35/18";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -297,6 +297,11 @@ fn append_user_functions(
 fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
+    if probe.len() > 4096 {
+        return Err(CompileError::Tool(
+            "initial user probe exceeds its sealed executable page".into(),
+        ));
+    }
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
@@ -309,9 +314,10 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     for (index, chunk) in probe.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
-        let displacement = u8::try_from(index * 8)
-            .map_err(|_| CompileError::Tool("user probe displacement exceeds u8".into()))?;
-        code.bytes(&[0x49, 0x89, 0x40, displacement]);
+        let displacement = u32::try_from(index * 8)
+            .map_err(|_| CompileError::Tool("user probe displacement exceeds u32".into()))?;
+        code.bytes(&[0x49, 0x89, 0x80]);
+        code.bytes(&displacement.to_le_bytes());
     }
     code.bytes(&[0x0f, 0x20, 0xd8]); // active root from CR3
     code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
@@ -358,6 +364,21 @@ fn initial_user_probe() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xbf]);
     code.bytes(&0x0060_1f00_u32.to_le_bytes());
     code.bytes(&[0xb8, 0x3f, 0x00, 0x00, 0x00, 0x0f, 0x05]); // uname(guard crossing)
+    code.bytes(&[0x48, 0x83, 0xf8, 0xf2]); // -EFAULT
+    code.jump_if(0x85, "probe-fail");
+
+    code.bytes(&[0x48, 0x83, 0xec, 0x10]); // native timespec staging
+    code.bytes(&[0x31, 0xc0, 0x48, 0x89, 0x04, 0x24]);
+    code.bytes(&[0x48, 0x89, 0x44, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x89, 0xe7, 0x31, 0xf6]);
+    code.bytes(&[0xb8, 0x23, 0x00, 0x00, 0x00, 0x0f, 0x05]); // nanosleep(valid zero)
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "probe-fail");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+
+    code.bytes(&[0xbf]);
+    code.bytes(&0x0060_1ff8_u32.to_le_bytes());
+    code.bytes(&[0x31, 0xf6, 0xb8, 0x23, 0x00, 0x00, 0x00, 0x0f, 0x05]);
     code.bytes(&[0x48, 0x83, 0xf8, 0xf2]); // -EFAULT
     code.jump_if(0x85, "probe-fail");
 
@@ -423,6 +444,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "getpid");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
+    code.bytes(&[0x83, 0xf8, 0x23]);
+    code.jump_if(0x84, "nanosleep");
     code.bytes(&[0x3d, 0xe7, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "exit-group");
     code.jump("fail");
@@ -483,6 +506,67 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x88, 0x14, 0x25, 0x00, 0x00, 0x00, 0x00]);
     code.jump("return-user");
 
+    code.bind("nanosleep")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x05]);
+    code.jump_if(0x84, "nanosleep-valid");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x06]);
+    code.jump_if(0x84, "nanosleep-fault");
+    code.jump("fail");
+
+    code.bind("nanosleep-valid")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0060_1ff0_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x19, 0x00, 0x00, 0x00, 0x06]);
+    code.jump("copy-from-user");
+
+    code.bind("nanosleep-fault")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0060_1ff8_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x19, 0x00, 0x00, 0x00, 0x07]);
+
+    code.bind("copy-from-user")?;
+    code.bytes(&[0x48, 0x83, 0xec, 0x10]); // private kernel staging
+    code.bytes(&[0x49, 0x89, 0xf8]); // source candidate
+    code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix in R10
+    code.rip_lea(&[0x48, 0x8d, 0x05], "copy-from-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "copy-from-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x02]);
+    code.bind("copy-from-loop")?;
+    code.bind("copy-from-fault-site")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x10]); // user candidate[index]
+    code.bytes(&[0x42, 0x88, 0x04, 0x14]); // private staging[index]
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x83, 0xfa, 0x10]);
+    code.jump_if(0x85, "copy-from-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
+    code.jump_if(0x85, "copy-from-invalid");
+    code.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x08, 0x00]);
+    code.jump_if(0x85, "copy-from-invalid");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0x31, 0xc0]);
+    code.jump("copy-from-complete");
+
+    code.bind("copy-from-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]); // -EFAULT
+    code.bind("copy-from-complete")?;
+    code.bytes(&[0x65, 0x8a, 0x14, 0x25, 0x19, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x88, 0x14, 0x25, 0x00, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("copy-from-invalid")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    code.jump("fail");
+
     code.bind("return-user")?;
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0x48, 0x00, 0x00, 0x00]);
@@ -494,11 +578,11 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]); // swapgs; sysretq
 
     code.bind("exit-group")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x05]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x06]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x08]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.bytes(&[0x0f, 0x01, 0xf8, 0xc3]); // restore kernel GS base; return continuation
 
@@ -531,9 +615,18 @@ fn initial_utsname_bytes() -> [u8; 390] {
 fn user_copy_page_fault_entry() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
-    code.jump_if(0x85, "fault-fatal");
+    code.jump_if(0x84, "fault-copy-to");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x18, 0x00, 0x00, 0x00, 0x02]);
+    code.jump_if(0x84, "fault-copy-from");
+    code.jump("fault-fatal");
+    code.bind("fault-copy-to")?;
     code.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x02]); // non-present supervisor write
     code.jump_if(0x85, "fault-fatal");
+    code.jump("fault-site");
+    code.bind("fault-copy-from")?;
+    code.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]); // non-present supervisor read
+    code.jump_if(0x85, "fault-fatal");
+    code.bind("fault-site")?;
     code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x08]);
     code.bytes(&[0x65, 0x48, 0x3b, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fault-fatal");
@@ -1901,6 +1994,39 @@ mod tests {
             user_syscall.windows(8).any(|bytes| bytes == b"7.2.9-to"),
             "uname bytes must come from the checked source-owned value"
         );
+        let user_probe = initial_user_probe().unwrap();
+        assert!(
+            user_probe
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x23, 0x00, 0x00, 0x00, 0x0f, 0x05])
+                .count()
+                >= 2,
+            "the generated user probe must invoke both nanosleep qualification paths"
+        );
+        assert!(
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == [0x49, 0x83, 0xfa, 0x10]),
+            "copy_from_user must retain the exact native timespec extent"
+        );
+        assert!(
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == [0x43, 0x8a, 0x04, 0x10]),
+            "copy_from_user must load through the generated user candidate site"
+        );
+        assert!(
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == [0x42, 0x88, 0x04, 0x14]),
+            "copy_from_user must stage bytes in private kernel storage"
+        );
+        assert!(
+            user_syscall
+                .windows(9)
+                .any(|bytes| { bytes == [0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x02] }),
+            "copy_from_user must publish only its private read-direction recovery state"
+        );
         let copy_fault = symbol_bytes(&file, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL);
         assert!(
             copy_fault
@@ -1908,6 +2034,18 @@ mod tests {
                 .any(|bytes| bytes == [0x0f, 0x20, 0xd0])
         );
         assert!(copy_fault.windows(2).any(|bytes| bytes == [0x48, 0xcf]));
+        assert!(
+            copy_fault
+                .windows(5)
+                .any(|bytes| bytes == [0x48, 0x83, 0x3c, 0x24, 0x02]),
+            "copy_to_user recovery must require a supervisor write fault"
+        );
+        assert!(
+            copy_fault
+                .windows(5)
+                .any(|bytes| bytes == [0x48, 0x83, 0x3c, 0x24, 0x00]),
+            "copy_from_user recovery must require a supervisor read fault"
+        );
         assert!(
             copy_fault
                 .windows(4)
