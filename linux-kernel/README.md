@@ -365,6 +365,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 resident user-image mappings](step-4-resident-user-image-mappings.md)
 - [Step 4 resident user-image readiness](step-4-resident-user-image-readiness.md)
 - [Step 4 user-image execution residency](step-4-user-image-execution-residency.md)
+- [Step 4 bounded constructed-image entry](step-4-constructed-image-entry.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

@@ -138,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 28 ordered serial markers. The generated real-mode adapter
+and waits for the 31 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -165,15 +165,19 @@ by release of that frame before user-context binding. The preceding
 `TOPAL_KERNEL_USER_MAPPING_OK` marker requires the provider to map that frame
 RW/NX at the sealed guard location, return distinct affine map, stored,
 read-only protected, and verified refinements through two fresh sequential
-generations and clear writable authority before each load. It then promotes
-the first verified RO/NX mapping to role-specific RO/X code with target
+generations and clear writable authority before verification. For the first
+generation, the provider installs and verifies an exact opaque entry payload;
+the second retains the fixed-byte data qualification. It then promotes the
+first verified RO/NX mapping to role-specific RO/X code with target
 invalidation and retains it while a separately allocated, disjoint frame is
 mapped at the sealed data location. The second mapping remains RO/NX when it
 is sealed as immutable data. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
 coexist. Both mappings then remain resident while the existing sealed probe
-completes its syscall and fault-recovery sequence. After the exact kernel
-return, `TOPAL_KERNEL_USER_IMAGE_RETAINED` proves both role owners still
+begins at the constructed code mapping, whose sealed payload transfers to the
+existing syscall and fault-recovery probe. After the exact kernel return,
+`TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed, and
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` proves both role owners still
 coexist before data-first and code-second revocation return their exact frames.
 The private construction placements remain distinct from the probe's code,
 stack, transfer candidates, and deliberate `0x602000` fault guard. The harness
