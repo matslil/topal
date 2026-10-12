@@ -252,6 +252,14 @@ records two separately allocated disjoint frames, concurrent RO/X and RO/NX
 ownership, data-first teardown, structural x86-64 inspection, and two
 deterministic pinned-QEMU runs without changing core-language meaning.
 
+The latest systems-only refinement requires a
+[bounded constructed-image data observation](design/bounded-constructed-image-data-observation.md)
+before the sealed code payload transfers to the existing probe. Its
+[implementation and qualification report](step-4-constructed-image-data-observation.md)
+records exact payload installation and verification, a fail-closed immutable
+sentinel read, ordered post-return witnesses, structural x86-64 inspection,
+and two deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -366,6 +374,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 resident user-image readiness](step-4-resident-user-image-readiness.md)
 - [Step 4 user-image execution residency](step-4-user-image-execution-residency.md)
 - [Step 4 bounded constructed-image entry](step-4-constructed-image-entry.md)
+- [Step 4 bounded constructed-image data observation](step-4-constructed-image-data-observation.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
