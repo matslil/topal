@@ -1240,6 +1240,7 @@ struct BootstrapAuthorityState {
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
     constructed_user_image_entered: bool,
+    constructed_user_image_data_observed: bool,
     resident_user_image_retained: bool,
 }
 
@@ -2136,6 +2137,23 @@ impl BootstrapAuthorityState {
                 self.constructed_user_image_entered = true;
             }
             SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.constructed_user_image_entered
+                    || self.constructed_user_image_data_observed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed-image data witness requires exact returned entry with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_image_data_observed = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_RETAINED" =>
             {
                 if !matches!(
@@ -2144,6 +2162,7 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.constructed_user_image_entered
+                    || !self.constructed_user_image_data_observed
                     || self.resident_user_image_retained
                 {
                     return Err(SystemsModelError::new(
@@ -4597,6 +4616,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                         },
                         SystemsOperation::UnmapUserAddressSpace,
@@ -4796,6 +4818,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED" =>
                 {
                     false
@@ -5209,6 +5232,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
@@ -5738,6 +5764,7 @@ mod tests {
                     SystemsOperation::ConsoleWrite { text }
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                 )
             });
