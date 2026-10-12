@@ -40,10 +40,10 @@ use crate::{
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
     SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
-    SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
+    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -295,9 +295,7 @@ impl SystemsOperation {
             }
             Self::ProtectUserMappingReadOnly => SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
             Self::LoadUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
-            Self::VerifyUserMappingEntryTrampoline => {
-                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE
-            }
+            Self::VerifyUserMappingEntryTrampoline => SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
             Self::PermitUserMappingExecute => SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
             Self::SealUserMappingImmutableData => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
             Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
@@ -1963,7 +1961,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 2
                     || self.memory_ownership
-                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -2029,7 +2027,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 2
                     || self.memory_ownership
-                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -2970,23 +2968,20 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::StoreUserMappingByte { mapping_identity });
         }
         SystemsOperation::InstallUserMappingEntryTrampoline => {
-            *mapping = Some(
-                protocol.install_user_mapping_entry_trampoline(mapping.take().ok_or_else(
-                    || {
-                        SystemsModelError::new(
-                            "E-SYSTEMS-USER-CONTEXT",
-                            "entry-trampoline installation requires one live affine mapping",
-                        )
-                    },
-                )?)?,
-            );
+            *mapping = Some(protocol.install_user_mapping_entry_trampoline(
+                mapping.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "entry-trampoline installation requires one live affine mapping",
+                    )
+                })?,
+            )?);
             let mapping_identity = mapping
                 .as_ref()
                 .expect("entry-installed mapping was just restored")
                 .identity();
-            transitions.push(SystemsTransition::InstallUserMappingEntryTrampoline {
-                mapping_identity,
-            });
+            transitions
+                .push(SystemsTransition::InstallUserMappingEntryTrampoline { mapping_identity });
         }
         SystemsOperation::ProtectUserMappingReadOnly => {
             *mapping = Some(protocol.protect_user_mapping_read_only(
@@ -3019,23 +3014,20 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
         }
         SystemsOperation::VerifyUserMappingEntryTrampoline => {
-            *mapping = Some(
-                protocol.verify_user_mapping_entry_trampoline(mapping.take().ok_or_else(
-                    || {
-                        SystemsModelError::new(
-                            "E-SYSTEMS-USER-CONTEXT",
-                            "entry-trampoline verification requires one protected affine mapping",
-                        )
-                    },
-                )?)?,
-            );
+            *mapping = Some(protocol.verify_user_mapping_entry_trampoline(
+                mapping.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "entry-trampoline verification requires one protected affine mapping",
+                    )
+                })?,
+            )?);
             let mapping_identity = mapping
                 .as_ref()
                 .expect("entry-verified mapping was just restored")
                 .identity();
-            transitions.push(SystemsTransition::VerifyUserMappingEntryTrampoline {
-                mapping_identity,
-            });
+            transitions
+                .push(SystemsTransition::VerifyUserMappingEntryTrampoline { mapping_identity });
         }
         SystemsOperation::PermitUserMappingExecute => {
             if resident_code.is_some() {

@@ -3832,7 +3832,15 @@ fn parse_user_mapping_entry_trampoline<'a>(
             ));
         }
     };
-    let [receiver, user, mapping, action, entry, trampoline, live_mapping] = items.as_slice()
+    let [
+        receiver,
+        user,
+        mapping,
+        action,
+        entry,
+        trampoline,
+        live_mapping,
+    ] = items.as_slice()
     else {
         return Err(user_context_diagnostic(
             source,

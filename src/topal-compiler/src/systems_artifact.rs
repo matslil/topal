@@ -48,9 +48,8 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END,
+    SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -4503,13 +4502,11 @@ mod tests {
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
         assert!(
-            decoded.semantic_trace[122]
-                .starts_with(SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE)
+            decoded.semantic_trace[122].starts_with(SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE)
         );
         assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
         assert!(
-            decoded.semantic_trace[124]
-                .starts_with(SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE)
+            decoded.semantic_trace[124].starts_with(SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE)
         );
         assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_MAPPING_PERMIT_EXECUTE));
         assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_FRAMES_ALLOCATE));
