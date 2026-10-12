@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/31";
+    "topal.provider-object.x86_64-qemu-pc-q35/32";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -593,10 +593,17 @@ fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_4000_u64.to_le_bytes());
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&0x0000_0060_5000_ba49_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x02]);
-    code.bytes(&[0x41, 0xc7, 0x42, 0x08]);
-    code.bytes(&0xe0ff_0000_u32.to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0c75_6d3a_8041_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x08]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x10]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0b0f_e0ff_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x18]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x05]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -699,11 +706,20 @@ fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_4000_u64.to_le_bytes());
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&0x0000_0060_5000_ba49_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x02]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x41, 0x81, 0x7a, 0x08]);
-    code.bytes(&0xe0ff_0000_u32.to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0c75_6d3a_8041_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x08]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x10]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0b0f_e0ff_0000_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x18]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -2670,14 +2686,25 @@ mod tests {
                 .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
                 && user_install
                     .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_5000_ba49_u64.to_le_bytes())
+                && user_install
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0c75_6d3a_8041_0000_u64.to_le_bytes())
+                && user_install
+                    .windows(8)
                     .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
                 && user_install
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0b0f_e0ff_0000_u64.to_le_bytes())
+                && user_install
                     .windows(4)
-                    .any(|bytes| bytes == 0xe0ff_0000_u32.to_le_bytes())
+                    .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
+                && user_install.windows(2).any(|bytes| bytes == [0x75, 0x0c])
+                && user_install.windows(2).any(|bytes| bytes == [0x0f, 0x0b])
                 && user_install
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05]),
-            "entry installation must write the exact provider-sealed transfer payload"
+            "entry installation must write the exact provider-sealed data-observing transfer payload"
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
@@ -2724,14 +2751,25 @@ mod tests {
                 .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
                 && user_verify
                     .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_5000_ba49_u64.to_le_bytes())
+                && user_verify
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0c75_6d3a_8041_0000_u64.to_le_bytes())
+                && user_verify
+                    .windows(8)
                     .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
                 && user_verify
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0b0f_e0ff_0000_u64.to_le_bytes())
+                && user_verify
                     .windows(4)
-                    .any(|bytes| bytes == 0xe0ff_0000_u32.to_le_bytes())
+                    .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
+                && user_verify.windows(2).any(|bytes| bytes == [0x75, 0x0c])
+                && user_verify.windows(2).any(|bytes| bytes == [0x0f, 0x0b])
                 && user_verify
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
-            "entry verification must compare the exact sealed transfer payload"
+            "entry verification must compare the exact sealed data-observing transfer payload"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
