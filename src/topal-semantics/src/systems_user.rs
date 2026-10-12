@@ -14,6 +14,10 @@ pub const SYSTEMS_USER_MAPPING_STORE_BYTE: &str = "topal.systems.memory.user-map
 pub const SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY: &str =
     "topal.systems.memory.user-mapping.protect-read-only/1";
 pub const SYSTEMS_USER_MAPPING_LOAD_BYTE: &str = "topal.systems.memory.user-mapping.load-byte/1";
+pub const SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE: &str =
+    "topal.systems.memory.user-mapping.install-entry-trampoline/1";
+pub const SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE: &str =
+    "topal.systems.memory.user-mapping.verify-entry-trampoline/1";
 pub const SYSTEMS_USER_MAPPING_PERMIT_EXECUTE: &str =
     "topal.systems.memory.user-mapping.permit-execute/1";
 pub const SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA: &str =
@@ -87,6 +91,7 @@ pub struct PreparedUserAddressSpace {
 enum UserMappingStage {
     Live,
     Stored,
+    EntryInstalled,
     Protected,
     Verified,
     Executable,
@@ -383,7 +388,27 @@ impl SystemsUserExecutionProtocol {
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
         self.validate_user_mapping(&mapping, UserMappingStage::Live)?;
+        if mapping.mapping_identity != 2 {
+            return Err(user_error(
+                "only the second bounded mapping generation admits fixed-byte data storage",
+            ));
+        }
         mapping.stage = UserMappingStage::Stored;
+        Ok(mapping)
+    }
+
+    /// Consume the first live mapping into its provider-sealed entry payload.
+    pub fn install_user_mapping_entry_trampoline(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Live)?;
+        if mapping.mapping_identity != 1 {
+            return Err(user_error(
+                "only the first bounded mapping generation admits the entry trampoline",
+            ));
+        }
+        mapping.stage = UserMappingStage::EntryInstalled;
         Ok(mapping)
     }
 
@@ -397,7 +422,15 @@ impl SystemsUserExecutionProtocol {
         &self,
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
-        self.validate_user_mapping(&mapping, UserMappingStage::Stored)?;
+        if mapping.provider_identity != self.provider_identity
+            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || (mapping.stage != UserMappingStage::Stored
+                && mapping.stage != UserMappingStage::EntryInstalled)
+        {
+            return Err(user_error(
+                "user mapping operation requires the exact preceding affine refinement",
+            ));
+        }
         mapping.stage = UserMappingStage::Protected;
         Ok(mapping)
     }
@@ -413,6 +446,27 @@ impl SystemsUserExecutionProtocol {
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
         self.validate_user_mapping(&mapping, UserMappingStage::Protected)?;
+        if mapping.mapping_identity != 2 {
+            return Err(user_error(
+                "only the second bounded mapping generation admits fixed-byte data verification",
+            ));
+        }
+        mapping.stage = UserMappingStage::Verified;
+        Ok(mapping)
+    }
+
+    /// Consume the first protected mapping into its exact entry-payload
+    /// verified refinement.
+    pub fn verify_user_mapping_entry_trampoline(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Protected)?;
+        if mapping.mapping_identity != 1 {
+            return Err(user_error(
+                "only the first bounded mapping generation admits entry-trampoline verification",
+            ));
+        }
         mapping.stage = UserMappingStage::Verified;
         Ok(mapping)
     }
@@ -1160,9 +1214,13 @@ mod tests {
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
         let first_identity = mapping.identity();
-        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .install_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
-        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .verify_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         let code_mapping = mapping;
         let data_mapping = protocol
@@ -1221,7 +1279,9 @@ mod tests {
         let mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
-        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .install_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         assert_eq!(
             protocol.load_user_mapping_byte(mapping).unwrap_err().code,
             "E-SYSTEMS-USER-CONTEXT"
@@ -1253,9 +1313,13 @@ mod tests {
         let mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
-        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .install_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
-        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .verify_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         assert_eq!(
             protocol
                 .seal_user_mapping_immutable_data(mapping)
@@ -1271,9 +1335,13 @@ mod tests {
         let mapping = protocol
             .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
             .unwrap();
-        let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .install_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();
-        let mapping = protocol.load_user_mapping_byte(mapping).unwrap();
+        let mapping = protocol
+            .verify_user_mapping_entry_trampoline(mapping)
+            .unwrap();
         let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         protocol.unmap_user_frame(&address_space, mapping).unwrap();
         let mapping = protocol

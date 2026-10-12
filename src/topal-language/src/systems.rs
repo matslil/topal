@@ -55,10 +55,12 @@ pub use topal_semantics::{
     SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END, SystemsContextKind as CompilerSystemsContextKind,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
@@ -2958,15 +2960,15 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping publication must be followed by store, protect, load, and unmap",
+            "code mapping publication must be followed by entry installation, protection, verification, and executable promotion",
         ));
     };
-    let (stored_scratch, store_continuation) = parse_user_mapping_refinement(
+    let (stored_scratch, store_continuation) = parse_user_mapping_entry_trampoline(
         source,
         store_mapping,
         &completion_resumed,
         &mapped_scratch,
-        "store",
+        "install",
     )?;
     let after_store = select_user_mapping_continuation(
         source,
@@ -2979,7 +2981,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping store must be followed by protect, load, and unmap",
+            "entry-trampoline installation must be followed by protection, verification, and executable promotion",
         ));
     };
     let (protected_scratch, protect_continuation) = parse_user_mapping_protection(
@@ -2999,15 +3001,15 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "protected user mapping must be loaded before unmap",
+            "protected code mapping must have its entry trampoline verified before executable promotion",
         ));
     };
-    let (verified_scratch, load_continuation) = parse_user_mapping_refinement(
+    let (verified_scratch, load_continuation) = parse_user_mapping_entry_trampoline(
         source,
         load_mapping,
         &completion_resumed,
         &protected_scratch,
-        "load",
+        "verify",
     )?;
     let after_load = select_user_mapping_continuation(
         source,
@@ -3020,7 +3022,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "user mapping load must be followed by execute promotion and unmap",
+            "entry-trampoline verification must be followed by execute promotion",
         ));
     };
     let (executable_scratch, execute_continuation) = parse_user_mapping_execute_promotion(
@@ -3214,6 +3216,7 @@ fn analyze_kernel_context_decision(
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
+        entry_marker_statement,
         retained_marker_statement,
         unmap_mapping_again,
         release_data,
@@ -3285,6 +3288,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_marker_statement),
             "user syscall round trip requires its exact marker",
+        ));
+    }
+    let entry_marker = analyze_operation(
+        source,
+        entry_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entry_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entry_marker_statement),
+            "returned user execution requires its exact constructed-image entry marker",
         ));
     }
     let retained_marker = analyze_operation(
@@ -3460,9 +3480,9 @@ fn analyze_kernel_context_decision(
                 failure_message: scratch_failure_message,
             },
             CompilerSystemsOperation::MapUserAddressSpace,
-            CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::InstallUserMappingEntryTrampoline,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
-            CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::VerifyUserMappingEntryTrampoline,
             CompilerSystemsOperation::PermitUserMappingExecute,
             CompilerSystemsOperation::AllocatePhysicalFrames {
                 request: data_request,
@@ -3481,6 +3501,7 @@ fn analyze_kernel_context_decision(
             user_copy_to_marker,
             user_copy_from_marker,
             user_marker,
+            entry_marker,
             retained_marker,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -3779,6 +3800,60 @@ fn parse_user_mapping_refinement<'a>(
             source,
             *span,
             format!("user mapping {operation} requires the exact preceding mapping refinement"),
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_entry_trampoline<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+    operation: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user entry-trampoline operation must bind its affine mapping refinement",
+            ));
+        }
+    };
+    let [receiver, user, mapping, action, entry, trampoline, live_mapping] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user entry-trampoline operation requires the exact preceding mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, action, operation)
+        || !identifier_is(source, entry, "entry")
+        || !identifier_is(source, trampoline, "trampoline")
+        || !identifier_is(source, live_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            format!(
+                "user mapping {operation} entry trampoline requires the exact preceding mapping refinement"
+            ),
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -5593,11 +5668,13 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -5995,13 +6072,13 @@ mod tests {
                     address_space_identity: 1,
                     mapping_identity: 1,
                 },
-                CompilerSystemsTransition::StoreUserMappingByte {
+                CompilerSystemsTransition::InstallUserMappingEntryTrampoline {
                     mapping_identity: 1,
                 },
                 CompilerSystemsTransition::ProtectUserMappingReadOnly {
                     mapping_identity: 1,
                 },
-                CompilerSystemsTransition::LoadUserMappingByte {
+                CompilerSystemsTransition::VerifyUserMappingEntryTrampoline {
                     mapping_identity: 1,
                 },
                 CompilerSystemsTransition::PermitUserMappingExecute {
@@ -6166,6 +6243,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                 },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
@@ -6210,7 +6290,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 117);
+        assert_eq!(program.bootstrap.handler.operations.len(), 118);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -6253,11 +6333,13 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,

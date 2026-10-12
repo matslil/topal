@@ -232,8 +232,8 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "user mapping store byte mapped-scratch",
-                "user mapping store byte other-mapping",
+                "user mapping install entry trampoline mapped-scratch",
+                "user mapping install entry trampoline other-mapping",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
@@ -246,8 +246,8 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "user mapping load byte protected-scratch",
-                "user mapping load byte stored-scratch",
+                "user mapping verify entry trampoline protected-scratch",
+                "user mapping verify entry trampoline stored-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
@@ -309,6 +309,13 @@ fn requires_exact_affine_user_syscall_round_trip() {
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_IMAGE_READY",
                 "TOPAL_KERNEL_USER_IMAGE_NOT_READY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+                "TOPAL_KERNEL_USER_IMAGE_ENTRY_EARLY",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

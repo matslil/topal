@@ -36,9 +36,11 @@ use crate::{
     SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY,
     SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END, SuspendedUserContext, SystemsUserExecutionProtocol,
     TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
@@ -211,8 +213,10 @@ pub enum SystemsOperation {
     VerifyUserAddressSpaceMapping,
     MapUserAddressSpace,
     StoreUserMappingByte,
+    InstallUserMappingEntryTrampoline,
     ProtectUserMappingReadOnly,
     LoadUserMappingByte,
+    VerifyUserMappingEntryTrampoline,
     PermitUserMappingExecute,
     SealUserMappingImmutableData,
     UnmapUserAddressSpace,
@@ -286,8 +290,14 @@ impl SystemsOperation {
             Self::VerifyUserAddressSpaceMapping => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_MAP,
             Self::StoreUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::InstallUserMappingEntryTrampoline => {
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE
+            }
             Self::ProtectUserMappingReadOnly => SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
             Self::LoadUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::VerifyUserMappingEntryTrampoline => {
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE
+            }
             Self::PermitUserMappingExecute => SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
             Self::SealUserMappingImmutableData => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
             Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
@@ -576,10 +586,16 @@ pub enum SystemsTransition {
     StoreUserMappingByte {
         mapping_identity: u64,
     },
+    InstallUserMappingEntryTrampoline {
+        mapping_identity: u64,
+    },
     ProtectUserMappingReadOnly {
         mapping_identity: u64,
     },
     LoadUserMappingByte {
+        mapping_identity: u64,
+    },
+    VerifyUserMappingEntryTrampoline {
         mapping_identity: u64,
     },
     PermitUserMappingExecute {
@@ -788,8 +804,14 @@ impl SystemsTransition {
             Self::VerifyUserAddressSpaceMapping { .. } => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_MAP,
             Self::StoreUserMappingByte { .. } => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::InstallUserMappingEntryTrampoline { .. } => {
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE
+            }
             Self::ProtectUserMappingReadOnly { .. } => SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
             Self::LoadUserMappingByte { .. } => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::VerifyUserMappingEntryTrampoline { .. } => {
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE
+            }
             Self::PermitUserMappingExecute { .. } => SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
             Self::SealUserMappingImmutableData { .. } => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
             Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
@@ -1219,6 +1241,7 @@ struct BootstrapAuthorityState {
     kernel_completion: BootstrapKernelCompletionState,
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
+    constructed_user_image_entered: bool,
     resident_user_image_retained: bool,
 }
 
@@ -1287,6 +1310,7 @@ enum BootstrapUserExecutionState {
     AddressSpacePrepared(PhysicalFrameRequest),
     MappingLive(PhysicalFrameRequest, u8),
     MappingStored(PhysicalFrameRequest, u8),
+    MappingEntryInstalled(PhysicalFrameRequest, u8),
     MappingProtected(PhysicalFrameRequest, u8),
     MappingVerified(PhysicalFrameRequest, u8),
     MappingExecutable(PhysicalFrameRequest, u8),
@@ -1937,7 +1961,8 @@ impl BootstrapAuthorityState {
                         "user mapping store requires the exact live mapping",
                     ));
                 };
-                if self.memory_ownership
+                if generation != 2
+                    || self.memory_ownership
                     != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
@@ -1948,14 +1973,39 @@ impl BootstrapAuthorityState {
                 self.user_execution =
                     BootstrapUserExecutionState::MappingStored(backing, generation);
             }
-            SystemsOperation::ProtectUserMappingReadOnly => {
-                let BootstrapUserExecutionState::MappingStored(backing, generation) =
+            SystemsOperation::InstallUserMappingEntryTrampoline => {
+                let BootstrapUserExecutionState::MappingLive(backing, generation) =
                     self.user_execution
                 else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user mapping protection requires the exact stored writable mapping",
+                        "entry-trampoline installation requires the exact live mapping",
                     ));
+                };
+                if generation != 1
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "entry-trampoline installation requires the first owned disjoint mapping",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingEntryInstalled(backing, generation);
+            }
+            SystemsOperation::ProtectUserMappingReadOnly => {
+                let (backing, generation) = match self.user_execution {
+                    BootstrapUserExecutionState::MappingStored(backing, generation)
+                    | BootstrapUserExecutionState::MappingEntryInstalled(backing, generation) => {
+                        (backing, generation)
+                    }
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "user mapping protection requires the exact populated writable mapping",
+                        ));
+                    }
                 };
                 if self.memory_ownership
                     != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
@@ -1977,12 +2027,34 @@ impl BootstrapAuthorityState {
                         "user mapping load requires the exact protected mapping",
                     ));
                 };
-                if self.memory_ownership
+                if generation != 2
+                    || self.memory_ownership
                     != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
                         "user mapping load requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingVerified(backing, generation);
+            }
+            SystemsOperation::VerifyUserMappingEntryTrampoline => {
+                let BootstrapUserExecutionState::MappingProtected(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "entry-trampoline verification requires the exact protected mapping",
+                    ));
+                };
+                if generation != 1
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "entry-trampoline verification requires the first owned disjoint mapping",
                     ));
                 }
                 self.user_execution =
@@ -2049,6 +2121,23 @@ impl BootstrapAuthorityState {
                 self.resident_user_image_ready = true;
             }
             SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || self.constructed_user_image_entered
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed-image entry witness requires exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_image_entered = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_RETAINED" =>
             {
                 if !matches!(
@@ -2056,6 +2145,7 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
+                    || !self.constructed_user_image_entered
                     || self.resident_user_image_retained
                 {
                     return Err(SystemsModelError::new(
@@ -2646,10 +2736,12 @@ fn validate_bootstrap_storage_operation(
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
         | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::InstallUserMappingEntryTrampoline
         | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::PermitUserMappingExecute
         | SystemsOperation::SealUserMappingImmutableData
         | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
@@ -2877,6 +2969,25 @@ fn model_user_execution_transition(
                 .identity();
             transitions.push(SystemsTransition::StoreUserMappingByte { mapping_identity });
         }
+        SystemsOperation::InstallUserMappingEntryTrampoline => {
+            *mapping = Some(
+                protocol.install_user_mapping_entry_trampoline(mapping.take().ok_or_else(
+                    || {
+                        SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "entry-trampoline installation requires one live affine mapping",
+                        )
+                    },
+                )?)?,
+            );
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("entry-installed mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::InstallUserMappingEntryTrampoline {
+                mapping_identity,
+            });
+        }
         SystemsOperation::ProtectUserMappingReadOnly => {
             *mapping = Some(protocol.protect_user_mapping_read_only(
                 mapping.take().ok_or_else(|| {
@@ -2906,6 +3017,25 @@ fn model_user_execution_transition(
                 .expect("verified mapping was just restored")
                 .identity();
             transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
+        }
+        SystemsOperation::VerifyUserMappingEntryTrampoline => {
+            *mapping = Some(
+                protocol.verify_user_mapping_entry_trampoline(mapping.take().ok_or_else(
+                    || {
+                        SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "entry-trampoline verification requires one protected affine mapping",
+                        )
+                    },
+                )?)?,
+            );
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("entry-verified mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::VerifyUserMappingEntryTrampoline {
+                mapping_identity,
+            });
         }
         SystemsOperation::PermitUserMappingExecute => {
             if resident_code.is_some() {
@@ -4186,10 +4316,12 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
         | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::InstallUserMappingEntryTrampoline
         | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::PermitUserMappingExecute
         | SystemsOperation::SealUserMappingImmutableData
         | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
@@ -4311,8 +4443,10 @@ mod tests {
             SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
             SYSTEMS_USER_ADDRESS_SPACE_MAP.into(),
             SYSTEMS_USER_MAPPING_STORE_BYTE.into(),
+            SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE.into(),
             SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY.into(),
             SYSTEMS_USER_MAPPING_LOAD_BYTE.into(),
+            SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE.into(),
             SYSTEMS_USER_MAPPING_PERMIT_EXECUTE.into(),
             SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA.into(),
             SYSTEMS_USER_ADDRESS_SPACE_UNMAP.into(),
@@ -4447,9 +4581,9 @@ mod tests {
                             failure_message: "disjoint frame allocation failed".into(),
                         },
                         SystemsOperation::MapUserAddressSpace,
-                        SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::InstallUserMappingEntryTrampoline,
                         SystemsOperation::ProtectUserMappingReadOnly,
-                        SystemsOperation::LoadUserMappingByte,
+                        SystemsOperation::VerifyUserMappingEntryTrampoline,
                         SystemsOperation::PermitUserMappingExecute,
                         SystemsOperation::AllocatePhysicalFrames {
                             request: INITIAL_SINGLE_FRAME_REQUEST,
@@ -4467,6 +4601,9 @@ mod tests {
                             process_identity: 1,
                         },
                         SystemsOperation::EnterUserContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                         },
@@ -4648,10 +4785,12 @@ mod tests {
                 | SystemsOperation::VerifyUserAddressSpaceMapping
                 | SystemsOperation::MapUserAddressSpace
                 | SystemsOperation::StoreUserMappingByte
+                | SystemsOperation::InstallUserMappingEntryTrampoline
                 | SystemsOperation::ProtectUserMappingReadOnly
                 | SystemsOperation::PermitUserMappingExecute
                 | SystemsOperation::SealUserMappingImmutableData
                 | SystemsOperation::LoadUserMappingByte
+                | SystemsOperation::VerifyUserMappingEntryTrampoline
                 | SystemsOperation::UnmapUserAddressSpace
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::EnterUserContext
@@ -4664,6 +4803,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_FRAME_DISJOINT_OK"
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED" =>
                 {
                     false
@@ -4917,13 +5057,13 @@ mod tests {
                     address_space_identity: 1,
                     mapping_identity: 1,
                 },
-                SystemsTransition::StoreUserMappingByte {
+                SystemsTransition::InstallUserMappingEntryTrampoline {
                     mapping_identity: 1,
                 },
                 SystemsTransition::ProtectUserMappingReadOnly {
                     mapping_identity: 1,
                 },
-                SystemsTransition::LoadUserMappingByte {
+                SystemsTransition::VerifyUserMappingEntryTrampoline {
                     mapping_identity: 1,
                 },
                 SystemsTransition::PermitUserMappingExecute {
@@ -5074,6 +5214,9 @@ mod tests {
                 SystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
@@ -5602,6 +5745,7 @@ mod tests {
                     operation,
                     SystemsOperation::ConsoleWrite { text }
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                 )
             });
@@ -5618,10 +5762,12 @@ mod tests {
                         | SystemsOperation::VerifyUserAddressSpaceMapping
                         | SystemsOperation::MapUserAddressSpace
                         | SystemsOperation::StoreUserMappingByte
+                        | SystemsOperation::InstallUserMappingEntryTrampoline
                         | SystemsOperation::ProtectUserMappingReadOnly
                         | SystemsOperation::PermitUserMappingExecute
                         | SystemsOperation::SealUserMappingImmutableData
                         | SystemsOperation::LoadUserMappingByte
+                        | SystemsOperation::VerifyUserMappingEntryTrampoline
                         | SystemsOperation::UnmapUserAddressSpace
                         | SystemsOperation::PrepareUserProbe { .. }
                         | SystemsOperation::EnterUserContext

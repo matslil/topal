@@ -194,9 +194,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                 backing is scratch-frame,
                                                                                                                 layout is probe-code
                                                                                                               )
-                                                                                                              stored-scratch is completion-resumed user mapping store byte mapped-scratch
+                                                                                                              stored-scratch is completion-resumed user mapping install entry trampoline mapped-scratch
                                                                                                               protected-scratch is completion-resumed user mapping protect read only stored-scratch
-                                                                                                              verified-scratch is completion-resumed user mapping load byte protected-scratch
+                                                                                                              verified-scratch is completion-resumed user mapping verify entry trampoline protected-scratch
                                                                                                               executable-scratch is completion-resumed user mapping permit execute verified-scratch
                                                                                                               completion-resumed frames allocate (
                                                                                                                 frame-count is 1,
@@ -221,6 +221,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                                                                                                                   returned-data is completion-resumed user address space unmap (
                                                                                                                     address-space is user-space,
