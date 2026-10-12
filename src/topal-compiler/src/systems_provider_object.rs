@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/30";
+    "topal.provider-object.x86_64-qemu-pc-q35/31";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -69,10 +69,14 @@ pub const X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL: &str =
     "topal_x86_systems_user_map_initial_frame";
 pub const X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL: &str =
     "topal_x86_systems_user_store_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL: &str =
+    "topal_x86_systems_user_install_initial_entry_trampoline";
 pub const X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL: &str =
     "topal_x86_systems_user_protect_initial_mapping_read_only";
 pub const X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL: &str =
     "topal_x86_systems_user_load_initial_mapping_byte";
+pub const X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL: &str =
+    "topal_x86_systems_user_verify_initial_entry_trampoline";
 pub const X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL: &str =
     "topal_x86_systems_user_permit_initial_mapping_execute";
 pub const X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL: &str =
@@ -314,12 +318,20 @@ fn append_user_functions(
             user_store_initial_mapping_byte()?,
         ),
         (
+            X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
+            user_install_initial_entry_trampoline()?,
+        ),
+        (
             X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
             user_protect_initial_mapping_read_only()?,
         ),
         (
             X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
             user_load_initial_mapping_byte()?,
+        ),
+        (
+            X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL,
+            user_verify_initial_entry_trampoline()?,
         ),
         (
             X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
@@ -555,30 +567,37 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x04]);
-    code.jump_if(0x84, "generation-one");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x11]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xb8, 0x12, 0x00, 0x00, 0x00]);
-    code.jump("generation-accepted");
-    code.bind("generation-one")?;
-    code.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00]);
-    code.bind("generation-accepted")?;
-    code.bytes(&[0x3c, 0x05]);
-    code.jump_if(0x84, "select-generation-one");
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_5000_u64.to_le_bytes());
-    code.jump("mapping-selected");
-    code.bind("select-generation-one")?;
-    code.bytes(&[0x4c, 0x8b, 0x47, 0x78]);
-    code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
-    code.bind("mapping-selected")?;
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_5000_u64.to_le_bytes());
     code.bytes(&[0x41, 0xc6, 0x02, 0x6d]);
-    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x12]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x04]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x02]);
+    code.bytes(&[0x41, 0xc7, 0x42, 0x08]);
+    code.bytes(&0xe0ff_0000_u32.to_le_bytes());
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x05]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -645,8 +664,6 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
-    code.jump_if(0x84, "generation-one");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x13]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xb8, 0x14, 0x00, 0x00, 0x00]);
@@ -656,16 +673,6 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_5000_u64.to_le_bytes());
-    code.jump("generation-selected");
-    code.bind("generation-one")?;
-    code.bytes(&[0xb8, 0x06, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
-    code.bytes(&[0x48, 0x85, 0xc9]);
-    code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xc1, 0x10, 0x20, 0x00, 0x00]);
-    code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
-    code.bind("generation-selected")?;
     code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
     code.jump_if(0x85, "cleanup-fail");
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
@@ -674,14 +681,32 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bind("cleanup-fail")?;
     code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
     code.bytes(&[0x0f, 0xae, 0xf0, 0x41, 0x0f, 0x01, 0x3a]);
-    code.bytes(&[0x3c, 0x06]);
-    code.jump_if(0x84, "cleanup-one");
     code.bytes(&[0x48, 0xc7, 0x87, 0x80, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0e]);
-    code.jump("fail");
-    code.bind("cleanup-one")?;
-    code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
-    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0c]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0x81, 0x7a, 0x08]);
+    code.bytes(&0xe0ff_0000_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
@@ -945,7 +970,7 @@ fn user_enter_initial_context() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x6a, 0x02]); // user RFLAGS, interrupts masked
     code.bytes(&[0x6a, 0x2b]); // user CS
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0060_0000_u64.to_le_bytes());
+    code.bytes(&0x0060_4000_u64.to_le_bytes());
     code.bytes(&[0x50, 0x48, 0xcf]); // user RIP; iretq
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -2629,14 +2654,30 @@ mod tests {
                 .windows(4)
                 .any(|bytes| bytes == [0x41, 0xc6, 0x02, 0x6d])
                 && user_store
-                    .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x05, 0, 0, 0])
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x12])
                 && user_store
-                    .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x12, 0, 0, 0])
-                && user_store
-                    .windows(6)
-                    .any(|bytes| bytes == [0x88, 0x87, 0x70, 0, 0, 0])
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
+        );
+        let user_install = symbol_bytes(
+            &file,
+            X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
+        );
+        assert!(
+            user_install
+                .windows(8)
+                .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                && user_install
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
+                && user_install
+                    .windows(4)
+                    .any(|bytes| bytes == 0xe0ff_0000_u32.to_le_bytes())
+                && user_install
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05]),
+            "entry installation must write the exact provider-sealed transfer payload"
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
@@ -2664,23 +2705,33 @@ mod tests {
                 .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
                 && user_load
                     .windows(7)
-                    .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x0c])
-                && user_load
-                    .windows(7)
                     .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x13])
-                && user_load
-                    .windows(5)
-                    .any(|bytes| bytes == [0xb8, 0x06, 0, 0, 0])
                 && user_load
                     .windows(5)
                     .any(|bytes| bytes == [0xb8, 0x14, 0, 0, 0])
                 && user_load
-                    .windows(8)
-                    .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0])
-                && user_load
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0]),
             "user load must compare the fixed byte and revoke on mismatch"
+        );
+        let user_verify = symbol_bytes(
+            &file,
+            X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL,
+        );
+        assert!(
+            user_verify
+                .windows(8)
+                .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                && user_verify
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
+                && user_verify
+                    .windows(4)
+                    .any(|bytes| bytes == 0xe0ff_0000_u32.to_le_bytes())
+                && user_verify
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
+            "entry verification must compare the exact sealed transfer payload"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
@@ -2767,6 +2818,15 @@ mod tests {
             user_enter
                 .windows(8)
                 .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes())
+        );
+        assert!(
+            user_enter
+                .windows(8)
+                .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                && !user_enter
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0060_0000_u64.to_le_bytes()),
+            "initial user instruction fetch must begin in the constructed code mapping"
         );
         let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
         assert_eq!(

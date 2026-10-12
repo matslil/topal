@@ -48,7 +48,9 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -74,15 +76,17 @@ use crate::{
     X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
-    X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL, X86_SYSTEMS_USER_PREPARE_SYMBOL,
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/31";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/31";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/32";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/32";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -948,8 +952,10 @@ enum ProviderSymbol {
     VerifyUserAddressSpaceMapping,
     MapUserAddressSpace,
     StoreUserMappingByte,
+    InstallUserMappingEntryTrampoline,
     ProtectUserMappingReadOnly,
     LoadUserMappingByte,
+    VerifyUserMappingEntryTrampoline,
     PermitUserMappingExecute,
     SealUserMappingImmutableData,
     UnmapUserAddressSpace,
@@ -1005,8 +1011,14 @@ impl ProviderSymbol {
             }
             Self::MapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
             Self::StoreUserMappingByte => X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            Self::InstallUserMappingEntryTrampoline => {
+                X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL
+            }
             Self::ProtectUserMappingReadOnly => X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
             Self::LoadUserMappingByte => X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            Self::VerifyUserMappingEntryTrampoline => {
+                X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL
+            }
             Self::PermitUserMappingExecute => X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
             Self::SealUserMappingImmutableData => {
                 X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL
@@ -1063,8 +1075,10 @@ impl ProviderSymbol {
             | Self::VerifyUserAddressSpaceMapping
             | Self::MapUserAddressSpace
             | Self::StoreUserMappingByte
+            | Self::InstallUserMappingEntryTrampoline
             | Self::ProtectUserMappingReadOnly
             | Self::LoadUserMappingByte
+            | Self::VerifyUserMappingEntryTrampoline
             | Self::PermitUserMappingExecute
             | Self::SealUserMappingImmutableData
             | Self::UnmapUserAddressSpace
@@ -1250,6 +1264,7 @@ enum RootUserExecutionState {
     AddressSpacePrepared,
     UserMappingLive(u8),
     UserMappingStored(u8),
+    UserMappingEntryInstalled(u8),
     UserMappingProtected(u8),
     UserMappingVerified(u8),
     UserMappingExecutable(u8),
@@ -1297,8 +1312,10 @@ struct ProviderSymbols {
     verify_user_address_space_mapping: SymbolId,
     map_user_address_space: SymbolId,
     store_user_mapping_byte: SymbolId,
+    install_user_mapping_entry_trampoline: SymbolId,
     protect_user_mapping_read_only: SymbolId,
     load_user_mapping_byte: SymbolId,
+    verify_user_mapping_entry_trampoline: SymbolId,
     permit_user_mapping_execute: SymbolId,
     seal_user_mapping_immutable_data: SymbolId,
     unmap_user_address_space: SymbolId,
@@ -2536,10 +2553,7 @@ impl RootEncoder {
 
     fn store_user_mapping_byte(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || !matches!(
-                self.user_execution,
-                RootUserExecutionState::UserMappingLive(_)
-            )
+            || self.user_execution != RootUserExecutionState::UserMappingLive(2)
             || self.physical_frame_count.is_some()
         {
             return Err(CompileError::Tool(
@@ -2555,11 +2569,27 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn install_user_mapping_entry_trampoline(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingLive(1)
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 entry-trampoline installation requires the first exact live mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::InstallUserMappingEntryTrampoline)?;
+        self.user_execution = RootUserExecutionState::UserMappingEntryInstalled(1);
+        Ok(())
+    }
+
     fn protect_user_mapping_read_only(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || !matches!(
                 self.user_execution,
                 RootUserExecutionState::UserMappingStored(_)
+                    | RootUserExecutionState::UserMappingEntryInstalled(_)
             )
             || self.physical_frame_count.is_some()
         {
@@ -2569,8 +2599,10 @@ impl RootEncoder {
         }
         self.load_bootstrap_storage_address(176)?;
         self.call_checked_bool(ProviderSymbol::ProtectUserMappingReadOnly)?;
-        let RootUserExecutionState::UserMappingStored(generation) = self.user_execution else {
-            unreachable!("stored mapping checked above");
+        let generation = match self.user_execution {
+            RootUserExecutionState::UserMappingStored(generation)
+            | RootUserExecutionState::UserMappingEntryInstalled(generation) => generation,
+            _ => unreachable!("populated mapping checked above"),
         };
         self.user_execution = RootUserExecutionState::UserMappingProtected(generation);
         Ok(())
@@ -2578,10 +2610,7 @@ impl RootEncoder {
 
     fn load_user_mapping_byte(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || !matches!(
-                self.user_execution,
-                RootUserExecutionState::UserMappingProtected(_)
-            )
+            || self.user_execution != RootUserExecutionState::UserMappingProtected(2)
             || self.physical_frame_count.is_some()
         {
             return Err(CompileError::Tool(
@@ -2594,6 +2623,22 @@ impl RootEncoder {
             unreachable!("protected mapping checked above");
         };
         self.user_execution = RootUserExecutionState::UserMappingVerified(generation);
+        Ok(())
+    }
+
+    fn verify_user_mapping_entry_trampoline(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingProtected(1)
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 entry-trampoline verification requires the first exact protected mapping"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::VerifyUserMappingEntryTrampoline)?;
+        self.user_execution = RootUserExecutionState::UserMappingVerified(1);
         Ok(())
     }
 
@@ -2826,8 +2871,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::PrepareUserAddressSpace
                     | CompilerSystemsOperation::MapUserAddressSpace
                     | CompilerSystemsOperation::StoreUserMappingByte
+                    | CompilerSystemsOperation::InstallUserMappingEntryTrampoline
                     | CompilerSystemsOperation::ProtectUserMappingReadOnly
                     | CompilerSystemsOperation::LoadUserMappingByte
+                    | CompilerSystemsOperation::VerifyUserMappingEntryTrampoline
                     | CompilerSystemsOperation::PermitUserMappingExecute
                     | CompilerSystemsOperation::SealUserMappingImmutableData
                     | CompilerSystemsOperation::UnmapUserAddressSpace
@@ -2961,6 +3008,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::StoreUserMappingByte,
         ),
+        install_user_mapping_entry_trampoline: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::InstallUserMappingEntryTrampoline,
+        ),
         protect_user_mapping_read_only: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ProtectUserMappingReadOnly,
@@ -2968,6 +3019,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         load_user_mapping_byte: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::LoadUserMappingByte,
+        ),
+        verify_user_mapping_entry_trampoline: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::VerifyUserMappingEntryTrampoline,
         ),
         permit_user_mapping_execute: undefined_provider_symbol(
             &mut object,
@@ -3445,11 +3500,17 @@ fn encode_operations(
             CompilerSystemsOperation::StoreUserMappingByte => {
                 encoder.store_user_mapping_byte()?;
             }
+            CompilerSystemsOperation::InstallUserMappingEntryTrampoline => {
+                encoder.install_user_mapping_entry_trampoline()?;
+            }
             CompilerSystemsOperation::ProtectUserMappingReadOnly => {
                 encoder.protect_user_mapping_read_only()?;
             }
             CompilerSystemsOperation::LoadUserMappingByte => {
                 encoder.load_user_mapping_byte()?;
+            }
+            CompilerSystemsOperation::VerifyUserMappingEntryTrampoline => {
+                encoder.verify_user_mapping_entry_trampoline()?;
             }
             CompilerSystemsOperation::PermitUserMappingExecute => {
                 encoder.permit_user_mapping_execute()?;
@@ -3554,10 +3615,16 @@ fn append_root(
             }
             ProviderSymbol::MapUserAddressSpace => provider_symbols.map_user_address_space,
             ProviderSymbol::StoreUserMappingByte => provider_symbols.store_user_mapping_byte,
+            ProviderSymbol::InstallUserMappingEntryTrampoline => {
+                provider_symbols.install_user_mapping_entry_trampoline
+            }
             ProviderSymbol::ProtectUserMappingReadOnly => {
                 provider_symbols.protect_user_mapping_read_only
             }
             ProviderSymbol::LoadUserMappingByte => provider_symbols.load_user_mapping_byte,
+            ProviderSymbol::VerifyUserMappingEntryTrampoline => {
+                provider_symbols.verify_user_mapping_entry_trampoline
+            }
             ProviderSymbol::PermitUserMappingExecute => {
                 provider_symbols.permit_user_mapping_execute
             }
@@ -3805,8 +3872,14 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     "{identity}:address-space={address_space_identity}:mapping={mapping_identity}"
                 ),
                 CompilerSystemsTransition::StoreUserMappingByte { mapping_identity }
+                | CompilerSystemsTransition::InstallUserMappingEntryTrampoline {
+                    mapping_identity,
+                }
                 | CompilerSystemsTransition::ProtectUserMappingReadOnly { mapping_identity }
-                | CompilerSystemsTransition::LoadUserMappingByte { mapping_identity } => {
+                | CompilerSystemsTransition::LoadUserMappingByte { mapping_identity }
+                | CompilerSystemsTransition::VerifyUserMappingEntryTrampoline {
+                    mapping_identity,
+                } => {
                     format!("{identity}:mapping={mapping_identity}")
                 }
                 CompilerSystemsTransition::PermitUserMappingExecute { mapping_identity }
@@ -4038,7 +4111,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1122);
+        assert_eq!(relocation_targets.len(), 1154);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4145,9 +4218,7 @@ mod tests {
         );
         for target in [
             X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
-            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
             X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
-            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
             X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
         ] {
             assert_eq!(
@@ -4159,6 +4230,10 @@ mod tests {
             );
         }
         for target in [
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL,
             X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
             X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
         ] {
@@ -4190,7 +4265,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            936
+            968
         );
         assert_eq!(
             relocation_targets
@@ -4366,8 +4441,10 @@ mod tests {
                 "topal_x86_systems_user_verify_initial_mapping",
                 "topal_x86_systems_user_map_initial_frame",
                 "topal_x86_systems_user_store_initial_mapping_byte",
+                "topal_x86_systems_user_install_initial_entry_trampoline",
                 "topal_x86_systems_user_protect_initial_mapping_read_only",
                 "topal_x86_systems_user_load_initial_mapping_byte",
+                "topal_x86_systems_user_verify_initial_entry_trampoline",
                 "topal_x86_systems_user_permit_initial_mapping_execute",
                 "topal_x86_systems_user_seal_initial_mapping_immutable_data",
                 "topal_x86_systems_user_unmap_initial_frame",
@@ -4416,7 +4493,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 62);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 178);
+        assert_eq!(decoded.semantic_trace.len(), 179);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4425,9 +4502,15 @@ mod tests {
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
-        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
+        assert!(
+            decoded.semantic_trace[122]
+                .starts_with(SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE)
+        );
         assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
-        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
+        assert!(
+            decoded.semantic_trace[124]
+                .starts_with(SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE)
+        );
         assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_MAPPING_PERMIT_EXECUTE));
         assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
@@ -4447,20 +4530,27 @@ mod tests {
             decoded.semantic_trace[163],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[164],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
-        assert!(decoded.semantic_trace[164].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[165], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[166].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[167], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[168].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[165].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[166], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[167].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[168], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[169].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[171].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[172], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[173].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(171..174);
-        decoded.semantic_trace.drain(163..170);
+        assert!(decoded.semantic_trace[170].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[172].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[173], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[174].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(172..175);
+        decoded.semantic_trace.drain(163..171);
         decoded.semantic_trace.drain(120..133);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));

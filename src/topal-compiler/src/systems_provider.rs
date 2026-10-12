@@ -26,9 +26,10 @@ use topal_language::compiler::{
     SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
     SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
     SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE,
-    SYSTEMS_USER_MAPPING_PERMIT_EXECUTE, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
-    SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
@@ -38,7 +39,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/30";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/31";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -88,8 +89,10 @@ pub enum X86SystemsLowering {
     VerifyInitialUserMapping,
     MapInitialUserFrame,
     StoreInitialUserMappingByte,
+    InstallInitialUserEntryTrampoline,
     ProtectInitialUserMappingReadOnly,
     LoadInitialUserMappingByte,
+    VerifyInitialUserEntryTrampoline,
     PermitInitialUserMappingExecute,
     SealInitialUserMappingImmutableData,
     UnmapInitialUserFrame,
@@ -193,11 +196,17 @@ impl X86SystemsLowering {
             Self::StoreInitialUserMappingByte => {
                 "topal.provider.x86_64.user.store-initial-mapping-byte/1"
             }
+            Self::InstallInitialUserEntryTrampoline => {
+                "topal.provider.x86_64.user.install-initial-entry-trampoline/1"
+            }
             Self::ProtectInitialUserMappingReadOnly => {
                 "topal.provider.x86_64.user.protect-initial-mapping-read-only/1"
             }
             Self::LoadInitialUserMappingByte => {
                 "topal.provider.x86_64.user.load-initial-mapping-byte/1"
+            }
+            Self::VerifyInitialUserEntryTrampoline => {
+                "topal.provider.x86_64.user.verify-initial-entry-trampoline/1"
             }
             Self::PermitInitialUserMappingExecute => {
                 "topal.provider.x86_64.user.permit-initial-mapping-execute/1"
@@ -268,8 +277,10 @@ impl X86SystemsLowering {
                 | Self::VerifyInitialUserMapping
                 | Self::MapInitialUserFrame
                 | Self::StoreInitialUserMappingByte
+                | Self::InstallInitialUserEntryTrampoline
                 | Self::ProtectInitialUserMappingReadOnly
                 | Self::LoadInitialUserMappingByte
+                | Self::VerifyInitialUserEntryTrampoline
                 | Self::PermitInitialUserMappingExecute
                 | Self::SealInitialUserMappingImmutableData
                 | Self::UnmapInitialUserFrame
@@ -446,10 +457,16 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING => X86SystemsLowering::VerifyInitialUserMapping,
         SYSTEMS_USER_ADDRESS_SPACE_MAP => X86SystemsLowering::MapInitialUserFrame,
         SYSTEMS_USER_MAPPING_STORE_BYTE => X86SystemsLowering::StoreInitialUserMappingByte,
+        SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE => {
+            X86SystemsLowering::InstallInitialUserEntryTrampoline
+        }
         SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY => {
             X86SystemsLowering::ProtectInitialUserMappingReadOnly
         }
         SYSTEMS_USER_MAPPING_LOAD_BYTE => X86SystemsLowering::LoadInitialUserMappingByte,
+        SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE => {
+            X86SystemsLowering::VerifyInitialUserEntryTrampoline
+        }
         SYSTEMS_USER_MAPPING_PERMIT_EXECUTE => X86SystemsLowering::PermitInitialUserMappingExecute,
         SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA => {
             X86SystemsLowering::SealInitialUserMappingImmutableData
@@ -535,10 +552,16 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::MapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_MAP,
             X86SystemsLowering::StoreInitialUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            X86SystemsLowering::InstallInitialUserEntryTrampoline => {
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE
+            }
             X86SystemsLowering::ProtectInitialUserMappingReadOnly => {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY
             }
             X86SystemsLowering::LoadInitialUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86SystemsLowering::VerifyInitialUserEntryTrampoline => {
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE
+            }
             X86SystemsLowering::PermitInitialUserMappingExecute => {
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE
             }
@@ -602,7 +625,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 61);
+        assert_eq!(plan.operations.len(), 63);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -699,12 +722,20 @@ mod tests {
                 X86SystemsLowering::StoreInitialUserMappingByte,
             ),
             (
+                SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+                X86SystemsLowering::InstallInitialUserEntryTrampoline,
+            ),
+            (
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 X86SystemsLowering::ProtectInitialUserMappingReadOnly,
             ),
             (
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 X86SystemsLowering::LoadInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                X86SystemsLowering::VerifyInitialUserEntryTrampoline,
             ),
             (
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
