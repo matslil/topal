@@ -47,6 +47,7 @@ records, not this directory alone, define language meaning.
 - [Resident user-image readiness witness](resident-user-image-readiness.md)
 - [Bounded user-image execution residency](user-image-execution-residency.md)
 - [Bounded constructed-image entry](bounded-constructed-image-entry.md)
+- [Bounded constructed-image data observation](bounded-constructed-image-data-observation.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -70,3 +70,14 @@ traceability ledger.
   receives implementation scope.
 - Protected Topal meaning remains unchanged until explicit human approval and
   authority-ordered propagation.
+
+## Current Step 4 image refinement
+
+`TK-DEC-049` traces through the
+[constructed-image data-observation contract](design/bounded-constructed-image-data-observation.md),
+the checked root, x86-64 provider lowering, structural tests, and
+[pinned-QEMU evidence](labs/qemu/x86_64/results/topal-toolchain-gate.json).
+The evidence must prove a provider-sealed read-only sentinel observation before
+fail-closed transfer, an exact post-return witness, and deterministic physical
+execution without introducing source-visible addresses or general loader
+policy.
