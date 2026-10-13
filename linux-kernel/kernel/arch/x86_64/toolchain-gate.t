@@ -213,6 +213,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
                                                                                                                   immutable-data is completion-resumed user mapping seal immutable data verified-data
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                                                                                                                   user-probe is completion-resumed user probe prepare (
                                                                                                                     process-identity is 1,
                                                                                                                     address-space is user-space

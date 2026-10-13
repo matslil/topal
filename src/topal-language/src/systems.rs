@@ -3171,6 +3171,7 @@ fn analyze_kernel_context_decision(
     )?;
     let [
         image_ready_marker_statement,
+        boot_resource_marker_statement,
         prepare_user,
         after_prepare_user @ ..,
     ] = after_second_seal
@@ -3196,6 +3197,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(image_ready_marker_statement),
             "resident user image requires its exact readiness marker before teardown",
+        ));
+    }
+    let boot_resource_marker = analyze_operation(
+        source,
+        boot_resource_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if boot_resource_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_BOOT_RESOURCE_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(boot_resource_marker_statement),
+            "initial user image requires its exact boot-resource marker before user preparation",
         ));
     }
     let (user_probe, probe_continuation) =
@@ -3674,6 +3692,7 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::SealUserMappingImmutableData,
             image_ready_marker,
+            boot_resource_marker,
             CompilerSystemsOperation::PrepareUserProbe {
                 process_identity: 1,
             },
@@ -6307,6 +6326,9 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_BOOT_RESOURCE_OK".into(),
+                },
                 CompilerSystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
@@ -6518,7 +6540,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 128);
+        assert_eq!(program.bootstrap.handler.operations.len(), 129);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
