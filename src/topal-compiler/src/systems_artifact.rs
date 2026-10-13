@@ -84,8 +84,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/33";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/33";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/34";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/34";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -4110,7 +4110,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1185);
+        assert_eq!(relocation_targets.len(), 1219);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4264,7 +4264,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            999
+            1033
         );
         assert_eq!(
             relocation_targets
@@ -4492,7 +4492,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 62);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 180);
+        assert_eq!(decoded.semantic_trace.len(), 181);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4541,20 +4541,27 @@ mod tests {
             decoded.semantic_trace[165],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[166],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
-        assert!(decoded.semantic_trace[166].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[167], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[168].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[169], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[170].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[167].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[168], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[169].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[170], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[171].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[173].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[174], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[175].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(173..176);
-        decoded.semantic_trace.drain(163..172);
+        assert!(decoded.semantic_trace[172].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[174].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[175], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[176].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(174..177);
+        decoded.semantic_trace.drain(163..173);
         decoded.semantic_trace.drain(120..133);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
