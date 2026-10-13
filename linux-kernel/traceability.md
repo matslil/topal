@@ -87,8 +87,10 @@ policy.
 
 `TK-DEC-050` traces through the
 [constructed-image syscall contract](design/bounded-constructed-image-syscall.md),
-the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
-evidence. The evidence must prove a Linux-compatible `getpid` transition from
-the constructed code mapping after its data observation, PID-one validation
-before transfer, an exact post-return witness, and deterministic physical
-execution without exposing general syscall selection to source.
+the checked root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-constructed-image-syscall.md),
+and pinned-QEMU evidence. The evidence must prove a Linux-compatible `getpid` transition from
+the sealed constructed-code continuation after its data observation and the
+existing probe, PID-one validation before terminal `exit_group(0)`, an exact
+post-return witness, and deterministic physical execution without exposing
+general syscall selection to source.
