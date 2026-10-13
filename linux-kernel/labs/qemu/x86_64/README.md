@@ -138,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 47 ordered serial markers. The generated real-mode adapter
+and waits for the 48 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -217,6 +217,9 @@ provider-embedded executable identity,
 `TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK` proves executable copy and
 post-protection comparison used the relationally validated runtime ELF extent
 rather than a build-time unrolled byte count,
+`TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK` proves the initial instruction
+pointer and `AT_ENTRY` were both taken from one ELF entry value validated
+inside that executable extent rather than a provider-embedded runtime address,
 `TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK` proves initialized-data copying,
 explicit BSS zeroing, and post-protection verification used the relationally
 validated runtime ELF file and memory extents rather than fixed qword counts,

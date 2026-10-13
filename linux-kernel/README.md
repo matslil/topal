@@ -375,6 +375,13 @@ records relational file/memory-size validation, complete bounded copy and
 explicit-zero loops, post-protection comparison and zero verification, and two
 deterministic pinned-QEMU runs.
 
+The following systems-only refinement derives the
+[initial instruction pointer from runtime ELF metadata](design/runtime-derived-entry.md).
+Its [implementation and qualification report](step-4-runtime-derived-entry.md)
+records executable-extent containment, one retained selected entry, consistent
+`AT_ENTRY` and ring-3 entry use, resident-header comparison, and two
+deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -505,6 +512,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded external data and BSS](step-4-bounded-external-data-bss.md)
 - [Step 4 runtime-derived executable extent](step-4-runtime-derived-executable-extent.md)
 - [Step 4 runtime-derived data and BSS extent](step-4-runtime-derived-data-extent.md)
+- [Step 4 runtime-derived ELF entry](step-4-runtime-derived-entry.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
