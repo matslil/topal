@@ -209,6 +209,8 @@ and shared in-block string validation,
 credential fact group,
 `TOPAL_KERNEL_USER_IMAGE_ELF_OK` proves the resident ELF64 header, two-entry
 program-header table, selected entry, and initial PHDR facts agree,
+`TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK` proves that the executable mapping was
+populated from the validated external `init` member before W^X finalization,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,
