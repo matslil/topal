@@ -1249,6 +1249,7 @@ struct BootstrapAuthorityState {
     constructed_user_elf_identity_validated: bool,
     external_user_elf_loaded: bool,
     external_user_elf_copy_verified: bool,
+    runtime_user_code_extent_validated: bool,
     external_user_bss_validated: bool,
     constructed_user_image_data_observed: bool,
     constructed_user_image_copy_to_completed: bool,
@@ -2301,12 +2302,30 @@ impl BootstrapAuthorityState {
                 }
                 self.external_user_elf_copy_verified = true;
             }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.external_user_elf_copy_verified
+                    || self.runtime_user_code_extent_validated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "runtime executable-extent witness requires the verified external copy exactly once",
+                    ));
+                }
+                self.runtime_user_code_extent_validated = true;
+            }
             SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_IMAGE_BSS_OK" => {
                 if !matches!(
                     self.user_execution,
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.external_user_elf_copy_verified
+                    || !self.runtime_user_code_extent_validated
                     || self.external_user_bss_validated
                 {
                     return Err(SystemsModelError::new(
@@ -2326,6 +2345,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_elf_identity_validated
                     || !self.external_user_elf_loaded
                     || !self.external_user_elf_copy_verified
+                    || !self.runtime_user_code_extent_validated
                     || !self.external_user_bss_validated
                     || self.constructed_user_image_data_observed
                 {
@@ -2404,6 +2424,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_elf_identity_validated
                     || !self.external_user_elf_loaded
                     || !self.external_user_elf_copy_verified
+                    || !self.runtime_user_code_extent_validated
                     || !self.external_user_bss_validated
                     || !self.constructed_user_image_data_observed
                     || !self.constructed_user_image_copy_to_completed
@@ -4889,6 +4910,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_BSS_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -5112,6 +5136,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
@@ -5557,6 +5582,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_BSS_OK".into(),
@@ -6344,6 +6372,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
