@@ -306,6 +306,12 @@ agreement with its own sealed entry point. Its
 records exact construction, correspondence validation, bounded consumption,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The following systems-only refinement adds a
+[bounded initial `AT_EXECFN` fact](design/bounded-initial-auxv-execfn.md) that
+aliases the already validated `argv[0]` string. It keeps the tag, pointer, and
+layout provider-owned while requiring constructed code to prove exact pointer
+identity and in-block string validation.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
