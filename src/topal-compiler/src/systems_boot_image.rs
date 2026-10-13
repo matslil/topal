@@ -14,7 +14,7 @@ use crate::systems_boot_resource::{
     X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
     X86_INITIAL_BOOT_RESOURCE_REVISION, generate_initial_boot_resource,
 };
-use crate::systems_provider_object::initial_user_code_image;
+use crate::systems_provider_object::initial_user_elf_file;
 use crate::{
     CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
     X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/7";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/8";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -170,7 +170,7 @@ pub fn generate_x86_64_linux_boot_image(
     bytes.extend_from_slice(&protected);
     let linked_kernel_sha256 = sha256(kernel);
     let boot_image_sha256 = sha256(&bytes);
-    let initial_user_image = initial_user_code_image()?;
+    let initial_user_image = initial_user_elf_file()?;
     let boot_resource = generate_initial_boot_resource(&initial_user_image)?;
     Ok(GeneratedX86LinuxBootImage {
         bytes,

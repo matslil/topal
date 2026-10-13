@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/44";
+    "topal.provider-object.x86_64-qemu-pc-q35/45";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -98,6 +98,8 @@ pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
 const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
 const INITIAL_USER_ENTRY_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 256;
+const INITIAL_USER_DATA_ADDRESS: u64 = 0x0060_5000;
+const INITIAL_USER_DATA_FILE_OFFSET: usize = 4096;
 const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
@@ -383,7 +385,7 @@ fn append_user_functions(
 
 fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
-    let expected_boot_resource = generate_initial_boot_resource(&initial_user_code_image()?)?;
+    let expected_boot_resource = generate_initial_boot_resource(&initial_user_elf_file()?)?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
     if probe.len() > 4096 {
         return Err(CompileError::Tool(
@@ -423,7 +425,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x40]); // within initial identity map
     code.jump_if(0x87, "fail");
     let image_end =
-        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + initial_user_code_image()?.len();
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + initial_user_elf_file()?.len();
     let metadata_offsets = (0..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize)
         .chain(
             X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
@@ -628,12 +630,22 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x11]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
     code.jump_if(0x84, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    let data_payload_offset = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET
+        .checked_add(
+            u32::try_from(INITIAL_USER_DATA_FILE_OFFSET)
+                .map_err(|_| CompileError::Tool("external user data offset exceeds u32".into()))?,
+        )
+        .ok_or_else(|| CompileError::Tool("external user data offset overflow".into()))?;
+    code.bytes(&[0x49, 0x81, 0xc0]);
+    code.bytes(&data_payload_offset.to_le_bytes());
+    code.bytes(&[0x49, 0x8b, 0x00]); // initialized qword from bounded resource
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_5000_u64.to_le_bytes());
-    code.bytes(&[0x41, 0xc6, 0x02, 0x6d]);
+    code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x02]);
+    code.bytes(&[0x49, 0xc7, 0x42, 0x08, 0, 0, 0, 0]); // explicit BSS zero-fill
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x12]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -667,7 +679,7 @@ fn initial_user_stack_bytes() -> [u8; 224] {
     bytes[160..168].copy_from_slice(&4_u64.to_le_bytes());
     bytes[168..176].copy_from_slice(&56_u64.to_le_bytes());
     bytes[176..184].copy_from_slice(&5_u64.to_le_bytes());
-    bytes[184..192].copy_from_slice(&2_u64.to_le_bytes());
+    bytes[184..192].copy_from_slice(&3_u64.to_le_bytes());
     bytes[208..219].copy_from_slice(b"topal-probe");
     bytes
 }
@@ -682,7 +694,7 @@ fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
     bytes[32..40].copy_from_slice(&64_u64.to_le_bytes());
     bytes[52..54].copy_from_slice(&64_u16.to_le_bytes());
     bytes[54..56].copy_from_slice(&56_u16.to_le_bytes());
-    bytes[56..58].copy_from_slice(&2_u16.to_le_bytes());
+    bytes[56..58].copy_from_slice(&3_u16.to_le_bytes());
     bytes[58..60].copy_from_slice(&64_u16.to_le_bytes());
 
     bytes[64..68].copy_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
@@ -693,9 +705,18 @@ fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
     bytes[104..112].copy_from_slice(&image_size.to_le_bytes());
     bytes[112..120].copy_from_slice(&4096_u64.to_le_bytes());
 
-    bytes[120..124].copy_from_slice(&0x6474_e551_u32.to_le_bytes()); // PT_GNU_STACK
-    bytes[124..128].copy_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
-    bytes[168..176].copy_from_slice(&16_u64.to_le_bytes());
+    bytes[120..124].copy_from_slice(&1_u32.to_le_bytes()); // PT_LOAD data
+    bytes[124..128].copy_from_slice(&4_u32.to_le_bytes()); // PF_R
+    bytes[128..136].copy_from_slice(&(INITIAL_USER_DATA_FILE_OFFSET as u64).to_le_bytes());
+    bytes[136..144].copy_from_slice(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    bytes[144..152].copy_from_slice(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    bytes[152..160].copy_from_slice(&8_u64.to_le_bytes());
+    bytes[160..168].copy_from_slice(&16_u64.to_le_bytes());
+    bytes[168..176].copy_from_slice(&4096_u64.to_le_bytes());
+
+    bytes[176..180].copy_from_slice(&0x6474_e551_u32.to_le_bytes()); // PT_GNU_STACK
+    bytes[180..184].copy_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
+    bytes[224..232].copy_from_slice(&16_u64.to_le_bytes());
     bytes
 }
 
@@ -711,6 +732,13 @@ pub(crate) fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
             "constructed ELF image exceeds its sealed executable page".into(),
         ));
     }
+    Ok(bytes)
+}
+
+pub(crate) fn initial_user_elf_file() -> Result<Vec<u8>, CompileError> {
+    let mut bytes = initial_user_code_image()?;
+    bytes.resize(INITIAL_USER_DATA_FILE_OFFSET, 0);
+    bytes.extend_from_slice(&[0x6d, 0, 0, 0, 0, 0, 0, 0]);
     Ok(bytes)
 }
 
@@ -760,7 +788,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         (0xa0_u32, 4_u8),
         (0xa8, 56),
         (0xb0, 5),
-        (0xb8, 2),
+        (0xb8, 3),
         (0xc0, 0),
         (0xc8, 0),
     ] {
@@ -781,8 +809,10 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x81, 0xc4]);
     entry.bytes(&224_u32.to_le_bytes()); // consume bounded initial block
     entry.bytes(&[0x49, 0xba]);
-    entry.bytes(&0x0060_5000_u64.to_le_bytes());
+    entry.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x49, 0x83, 0x7a, 0x08, 0x00]);
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&0x0060_0000_u64.to_le_bytes());
@@ -949,14 +979,28 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x13]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
+    code.jump_if(0x84, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    let data_payload_offset = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET
+        .checked_add(
+            u32::try_from(INITIAL_USER_DATA_FILE_OFFSET)
+                .map_err(|_| CompileError::Tool("external user data offset exceeds u32".into()))?,
+        )
+        .ok_or_else(|| CompileError::Tool("external user data offset overflow".into()))?;
+    code.bytes(&[0x49, 0x81, 0xc0]);
+    code.bytes(&data_payload_offset.to_le_bytes());
+    code.bytes(&[0x4d, 0x8b, 0x18]); // initialized qword from bounded resource
     code.bytes(&[0xb8, 0x14, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_5000_u64.to_le_bytes());
-    code.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
+    code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    code.bytes(&[0x4d, 0x39, 0x1a]);
+    code.jump_if(0x85, "cleanup-fail");
+    code.bytes(&[0x49, 0x83, 0x7a, 0x08, 0x00]); // complete BSS tail remains zero
     code.jump_if(0x85, "cleanup-fail");
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -2101,7 +2145,7 @@ fn append_encoded_function(
 fn emit_initial_boot_resource_handoff_validation(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
-    let expected = generate_initial_boot_resource(&initial_user_code_image()?)?;
+    let expected = generate_initial_boot_resource(&initial_user_elf_file()?)?;
     let expected_size = u32::try_from(expected.len())
         .map_err(|_| CompileError::Tool("initial boot resource exceeds u32".into()))?;
     code.bytes(&[0x83, 0xbe, 0xc0, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_image
@@ -3021,7 +3065,7 @@ mod tests {
         for (offset, tag, value) in [
             (144, 3_u64, INITIAL_USER_PROGRAM_HEADER_ADDRESS),
             (160, 4, 56),
-            (176, 5, 2),
+            (176, 5, 3),
         ] {
             assert_eq!(
                 u64::from_le_bytes(initial_stack[offset..offset + 8].try_into().unwrap()),
@@ -3111,16 +3155,28 @@ mod tests {
                     .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes())
         );
         let user_store = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL);
+        let data_payload_offset = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET
+            + u32::try_from(INITIAL_USER_DATA_FILE_OFFSET).unwrap();
         assert!(
             user_store
-                .windows(4)
-                .any(|bytes| bytes == [0x41, 0xc6, 0x02, 0x6d])
+                .windows(3)
+                .any(|bytes| bytes == [0x49, 0x8b, 0x00])
+                && user_store
+                    .windows(3)
+                    .any(|bytes| bytes == [0x49, 0x89, 0x02])
+                && user_store
+                    .windows(8)
+                    .any(|bytes| bytes == [0x49, 0xc7, 0x42, 0x08, 0, 0, 0, 0])
+                && user_store
+                    .windows(4)
+                    .any(|bytes| bytes == data_payload_offset.to_le_bytes())
                 && user_store
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x12])
                 && user_store
                     .windows(8)
-                    .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
+                    .any(|bytes| bytes == INITIAL_USER_DATA_ADDRESS.to_le_bytes()),
+            "user store must copy the initialized qword from the bounded ELF and zero its BSS tail"
         );
         let user_install = symbol_bytes(
             &file,
@@ -3128,8 +3184,9 @@ mod tests {
         );
         let entry_payload = initial_user_entry_payload().unwrap();
         let code_image = initial_user_code_image().unwrap();
-        assert_eq!(entry_payload.bytes.len(), 592);
-        assert_eq!(code_image.len(), 848);
+        let elf_file = initial_user_elf_file().unwrap();
+        assert_eq!(code_image.len(), 256 + entry_payload.bytes.len());
+        assert_eq!(elf_file.len(), INITIAL_USER_DATA_FILE_OFFSET + 8);
         assert_eq!(&code_image[0..4], b"\x7fELF");
         assert_eq!(
             u16::from_le_bytes(code_image[18..20].try_into().unwrap()),
@@ -3149,7 +3206,7 @@ mod tests {
         );
         assert_eq!(
             u16::from_le_bytes(code_image[56..58].try_into().unwrap()),
-            2
+            3
         );
         assert_eq!(
             u64::from_le_bytes(code_image[80..88].try_into().unwrap()),
@@ -3157,15 +3214,43 @@ mod tests {
         );
         assert_eq!(
             u64::from_le_bytes(code_image[96..104].try_into().unwrap()),
-            848
+            u64::try_from(code_image.len()).unwrap()
         );
         assert_eq!(
             u32::from_le_bytes(code_image[120..124].try_into().unwrap()),
-            0x6474_e551
+            1
         );
         assert_eq!(
             u32::from_le_bytes(code_image[124..128].try_into().unwrap()),
+            4
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[128..136].try_into().unwrap()),
+            u64::try_from(INITIAL_USER_DATA_FILE_OFFSET).unwrap()
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[136..144].try_into().unwrap()),
+            INITIAL_USER_DATA_ADDRESS
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[152..160].try_into().unwrap()),
+            8
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[160..168].try_into().unwrap()),
+            16
+        );
+        assert_eq!(
+            u32::from_le_bytes(code_image[176..180].try_into().unwrap()),
+            0x6474_e551
+        );
+        assert_eq!(
+            u32::from_le_bytes(code_image[180..184].try_into().unwrap()),
             6
+        );
+        assert_eq!(
+            &elf_file[INITIAL_USER_DATA_FILE_OFFSET..],
+            &[0x6d, 0, 0, 0, 0, 0, 0, 0]
         );
         assert_eq!(&code_image[256..], entry_payload.bytes.as_slice());
         assert!(
@@ -3321,8 +3406,17 @@ mod tests {
         let user_load = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL);
         assert!(
             user_load
-                .windows(4)
-                .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
+                .windows(3)
+                .any(|bytes| bytes == [0x4d, 0x8b, 0x18])
+                && user_load
+                    .windows(3)
+                    .any(|bytes| bytes == [0x4d, 0x39, 0x1a])
+                && user_load
+                    .windows(5)
+                    .any(|bytes| bytes == [0x49, 0x83, 0x7a, 0x08, 0x00])
+                && user_load
+                    .windows(4)
+                    .any(|bytes| bytes == data_payload_offset.to_le_bytes())
                 && user_load
                     .windows(7)
                     .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x13])
@@ -3332,7 +3426,7 @@ mod tests {
                 && user_load
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0]),
-            "user load must compare the fixed byte and revoke on mismatch"
+            "user load must compare external initialized data and the complete BSS tail, revoking on mismatch"
         );
         let user_verify = symbol_bytes(
             &file,
