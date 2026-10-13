@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/34";
+    "topal.provider-object.x86_64-qemu-pc-q35/35";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -95,6 +95,7 @@ pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 const INITIAL_USER_ENTRY_ADDRESS: u64 = 0x0060_4000;
 const INITIAL_USER_ENTRY_CONTINUATION_ADDRESS: u64 = 0x0060_4020;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
+const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum X86Instruction {
@@ -588,6 +589,7 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
 struct InitialUserEntryPayload {
     bytes: Vec<u8>,
     uname_return_address: u64,
+    nanosleep_return_address: u64,
     getpid_return_address: u64,
 }
 
@@ -616,13 +618,23 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     let uname_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
         + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
-    continuation.jump_if(0x85, "buffer-fail");
+    continuation.jump_if(0x85, "uname-buffer-fail");
     continuation.bytes(&[0x81, 0x3c, 0x24]);
     continuation.bytes(&u32::from_le_bytes(*b"Linu").to_le_bytes());
-    continuation.jump_if(0x85, "buffer-fail");
+    continuation.jump_if(0x85, "uname-buffer-fail");
     continuation.bytes(&[0x80, 0x7c, 0x24, 0x04, b'x']);
-    continuation.jump_if(0x85, "buffer-fail");
+    continuation.jump_if(0x85, "uname-buffer-fail");
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x02, 0x00, 0x00]); // release output
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // bounded native timespec
+    continuation.bytes(&[0x31, 0xc0, 0x48, 0x89, 0x04, 0x24]);
+    continuation.bytes(&[0x48, 0x89, 0x44, 0x24, 0x08]);
+    continuation.bytes(&[0x48, 0x89, 0xe7, 0x31, 0xf6]);
+    continuation.bytes(&[0xb8, 0x23, 0x00, 0x00, 0x00, 0x0f, 0x05]); // nanosleep
+    let nanosleep_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
+        + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "nanosleep-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]); // release input
     continuation.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
     let getpid_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
         + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
@@ -631,8 +643,11 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
-    continuation.bind("buffer-fail")?;
+    continuation.bind("uname-buffer-fail")?;
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x02, 0x00, 0x00]);
+    continuation.jump("fail");
+    continuation.bind("nanosleep-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
     bytes.extend(continuation.finish()?);
@@ -645,6 +660,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     Ok(InitialUserEntryPayload {
         bytes,
         uname_return_address,
+        nanosleep_return_address,
         getpid_return_address,
     })
 }
@@ -1058,6 +1074,10 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     let uname_return_address = u32::try_from(payload.uname_return_address).map_err(|_| {
         CompileError::Tool("constructed uname return address exceeds x86 imm32".into())
     })?;
+    let nanosleep_return_address =
+        u32::try_from(payload.nanosleep_return_address).map_err(|_| {
+            CompileError::Tool("constructed nanosleep return address exceeds x86 imm32".into())
+        })?;
     let getpid_return_address = u32::try_from(payload.getpid_return_address).map_err(|_| {
         CompileError::Tool("constructed getpid return address exceeds x86 imm32".into())
     })?;
@@ -1162,15 +1182,29 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump("return-user");
 
     code.bind("nanosleep")?;
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&nanosleep_return_address.to_le_bytes());
+    code.jump_if(0x84, "nanosleep-constructed");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x05]);
     code.jump_if(0x84, "nanosleep-valid");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x06]);
     code.jump_if(0x84, "nanosleep-fault");
     code.jump("fail");
 
+    code.bind("nanosleep-constructed")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&INITIAL_USER_NANOSLEEP_CANDIDATE.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x19, 0x00, 0x00, 0x00, 0x07]);
+    code.jump("copy-from-user");
+
     code.bind("nanosleep-valid")?;
     code.bytes(&[0x48, 0x81, 0xff]);
-    code.bytes(&0x0060_1ff0_u32.to_le_bytes());
+    code.bytes(&INITIAL_USER_NANOSLEEP_CANDIDATE.to_le_bytes());
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x85, "fail");
@@ -2783,7 +2817,7 @@ mod tests {
                 && user_install
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05]),
-            "entry installation must write every qword of the exact provider-sealed output payload"
+            "entry installation must write every qword of the exact provider-sealed transfer payload"
         );
         assert!(
             entry_payload
@@ -2801,13 +2835,29 @@ mod tests {
                 && entry_payload
                     .bytes
                     .windows(7)
+                    .any(|bytes| bytes == [0xb8, 0x23, 0, 0, 0, 0x0f, 0x05])
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xec, 0x10])
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xc4, 0x10])
+                && entry_payload
+                    .bytes
+                    .windows(6)
+                    .any(|bytes| bytes == [0x31, 0xc0, 0x48, 0x89, 0x04, 0x24])
+                && entry_payload
+                    .bytes
+                    .windows(7)
                     .any(|bytes| bytes == [0xb8, 0x27, 0, 0, 0, 0x0f, 0x05])
                 && entry_payload.bytes.windows(4).any(|bytes| bytes == b"Linu")
                 && entry_payload
                     .bytes
                     .windows(2)
                     .any(|bytes| bytes == [0x31, 0xff]),
-            "constructed output payload must reserve and restore its stack, call uname, validate Linux, then call getpid and exit with status zero"
+            "constructed transfer payload must qualify uname output and zero-duration nanosleep input before getpid and status-zero exit"
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
@@ -2859,7 +2909,7 @@ mod tests {
                 && user_verify
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
-            "entry verification must compare every qword of the exact sealed output payload"
+            "entry verification must compare every qword of the exact sealed transfer payload"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
@@ -2990,6 +3040,16 @@ mod tests {
                     .windows(4)
                     .any(|bytes| bytes == INITIAL_USER_UNAME_CANDIDATE.to_le_bytes()),
             "constructed uname must admit only its sealed return site and exact writable stack candidate"
+        );
+        assert!(
+            user_syscall.windows(4).any(|bytes| bytes
+                == u32::try_from(entry_payload.nanosleep_return_address)
+                    .unwrap()
+                    .to_le_bytes())
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == INITIAL_USER_NANOSLEEP_CANDIDATE.to_le_bytes()),
+            "constructed nanosleep must admit only its sealed return site and exact readable stack candidate"
         );
         assert!(
             user_syscall
