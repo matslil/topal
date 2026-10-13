@@ -36,7 +36,8 @@ tables, or resource bytes.
 ## Initial bounded x86-64 qualification
 
 The first ELF64 file has three program headers. Its first `PT_LOAD` describes
-the existing 848-byte `PF_R|PF_X` code image at `0x604000`. Its second
+the bounded `PF_R|PF_X` code image at `0x604000`, including the new BSS
+observation. Its second
 `PT_LOAD` describes one 8-byte `PF_R` initialized extent at file offset 4096
 and user address `0x605000`, with a 16-byte memory size. Its third header
 retains the non-executable GNU-stack policy. `AT_PHNUM` changes coherently from

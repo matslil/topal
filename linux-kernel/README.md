@@ -354,6 +354,13 @@ records sealed metadata validation, same-resource installation and post-copy
 comparison, W^X publication, and two deterministic pinned-QEMU runs without a
 provider-embedded executable equality oracle.
 
+The next systems-only refinement adds a distinct
+[external data segment and explicit BSS](design/bounded-external-data-bss.md).
+Its [implementation and qualification report](step-4-bounded-external-data-bss.md)
+records resource-backed initialized-data copying, complete BSS zeroing,
+RO/NX publication, coherent three-entry program-header facts, and two
+deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -481,6 +488,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
 - [Step 4 external ELF payload authority](step-4-external-elf-payload-authority.md)
+- [Step 4 bounded external data and BSS](step-4-bounded-external-data-bss.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
