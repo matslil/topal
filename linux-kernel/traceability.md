@@ -99,8 +99,9 @@ general syscall selection to source.
 
 `TK-DEC-051` traces through the
 [constructed-image `uname` contract](design/bounded-constructed-image-uname.md),
-the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
-evidence. The evidence must prove a sealed `uname` output into bounded writable
+the checked root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-constructed-image-uname.md),
+and pinned-QEMU evidence. The evidence must prove a sealed `uname` output into bounded writable
 user-stack storage, complete transfer and returned `Linux` validation,
 balanced disposal before the existing constructed identity call, an exact
 post-return witness, and deterministic physical execution without exposing

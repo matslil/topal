@@ -267,6 +267,13 @@ records sealed transfer back into constructed code, direct `getpid` and PID-one
 validation, terminal `exit_group(0)`, exact call-site inspection, and two
 deterministic pinned-QEMU runs without changing core-language meaning.
 
+The next systems-only refinement adds bounded pointer-bearing output through
+[constructed-image `uname`](design/bounded-constructed-image-uname.md). Its
+[implementation and qualification report](step-4-constructed-image-uname.md)
+records sealed writable-stack staging, complete `copy_to_user`, returned
+`Linux` validation, balanced disposal, exact call-site inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -383,6 +390,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded constructed-image entry](step-4-constructed-image-entry.md)
 - [Step 4 bounded constructed-image data observation](step-4-constructed-image-data-observation.md)
 - [Step 4 bounded constructed-image syscall](step-4-constructed-image-syscall.md)
+- [Step 4 bounded constructed-image `uname` output](step-4-constructed-image-uname.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
