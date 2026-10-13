@@ -288,6 +288,12 @@ records exact `argc`/`argv`/empty-environment/`AT_NULL` initialization,
 constructed validation and bounded consumption, structural inspection, and
 two deterministic pinned-QEMU runs without changing core-language meaning.
 
+The following systems-only refinement adds a
+[bounded initial `AT_PAGESZ` auxiliary-vector entry](design/bounded-initial-auxv-pagesz.md).
+It keeps the tag, value, word layout, and addresses provider-owned while
+requiring constructed code to validate the Linux base-page-size fact before
+continuing.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
