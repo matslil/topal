@@ -1241,6 +1241,7 @@ struct BootstrapAuthorityState {
     resident_user_image_ready: bool,
     constructed_user_image_entered: bool,
     constructed_user_image_data_observed: bool,
+    constructed_user_image_copy_to_completed: bool,
     constructed_user_image_syscall_completed: bool,
     resident_user_image_retained: bool,
 }
@@ -2155,13 +2156,30 @@ impl BootstrapAuthorityState {
                 self.constructed_user_image_data_observed = true;
             }
             SystemsOperation::ConsoleWrite { text }
-                if text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK" =>
+                if text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK" =>
             {
                 if !matches!(
                     self.user_execution,
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.constructed_user_image_data_observed
+                    || self.constructed_user_image_copy_to_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed-image copy-to-user witness requires exact returned data observation with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_image_copy_to_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.constructed_user_image_copy_to_completed
                     || self.constructed_user_image_syscall_completed
                 {
                     return Err(SystemsModelError::new(
@@ -2181,6 +2199,7 @@ impl BootstrapAuthorityState {
                     || !self.resident_user_image_ready
                     || !self.constructed_user_image_entered
                     || !self.constructed_user_image_data_observed
+                    || !self.constructed_user_image_copy_to_completed
                     || !self.constructed_user_image_syscall_completed
                     || self.resident_user_image_retained
                 {
@@ -4638,6 +4657,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -4841,6 +4863,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED" =>
                 {
@@ -5260,6 +5283,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
@@ -5530,6 +5556,32 @@ mod tests {
             );
         assert_eq!(
             validate_systems_program(&duplicate_image_readiness)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut late_image_copy_to = program(SystemsDisposition::Resume);
+        let image_copy_to = late_image_copy_to
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
+                )
+            })
+            .unwrap();
+        late_image_copy_to
+            .bootstrap
+            .handler
+            .operations
+            .swap(image_copy_to, image_copy_to + 1);
+        assert_eq!(
+            validate_systems_program(&late_image_copy_to)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"
@@ -5817,6 +5869,7 @@ mod tests {
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                 )

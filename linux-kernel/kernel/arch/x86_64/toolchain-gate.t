@@ -223,6 +223,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                                                                                                                   returned-data is completion-resumed user address space unmap (
