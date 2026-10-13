@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/43";
+    "topal.provider-object.x86_64-qemu-pc-q35/44";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -422,7 +422,16 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x40]); // within initial identity map
     code.jump_if(0x87, "fail");
-    for (offset, expected) in expected_boot_resource.iter().copied().enumerate() {
+    let image_end =
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + initial_user_code_image()?.len();
+    let metadata_offsets = (0..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize)
+        .chain(
+            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + 256,
+        )
+        .chain(image_end..expected_boot_resource.len());
+    for offset in metadata_offsets {
+        let expected = expected_boot_resource[offset];
         code.bytes(&[0x41, 0x80, 0xb8]); // cmp byte ptr [r8 + displacement], immediate
         code.bytes(
             &u32::try_from(offset)
@@ -970,15 +979,26 @@ fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
+    code.jump_if(0x84, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    code.bytes(&[0x49, 0x81, 0xc0]); // exact `init` payload in r8
+    code.bytes(&X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
     let image = initial_user_code_image()?;
-    for (index, chunk) in image.chunks_exact(8).enumerate() {
-        code.bytes(&[0x48, 0xb8]);
-        code.bytes(chunk);
+    let chunks = image.chunks_exact(8);
+    if !chunks.remainder().is_empty() {
+        return Err(CompileError::Tool(
+            "external initial ELF verification requires a qword-complete image".into(),
+        ));
+    }
+    for (index, _) in chunks.enumerate() {
         let displacement = u32::try_from(index * 8).map_err(|_| {
-            CompileError::Tool("constructed user payload displacement exceeds u32".into())
+            CompileError::Tool("external user payload displacement exceeds u32".into())
         })?;
+        code.bytes(&[0x49, 0x8b, 0x80]); // load qword from bounded resource
+        code.bytes(&displacement.to_le_bytes());
         code.bytes(&[0x49, 0x39, 0x82]);
         code.bytes(&displacement.to_le_bytes());
         code.jump_if(0x85, "fail");
@@ -3322,13 +3342,20 @@ mod tests {
             user_verify
                 .windows(8)
                 .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
-                && code_image
-                    .chunks_exact(8)
-                    .all(|chunk| user_verify.windows(8).any(|bytes| bytes == chunk))
+                && user_verify
+                    .windows(3)
+                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x80])
+                    .count()
+                    == code_image.len() / 8
+                && user_verify
+                    .windows(3)
+                    .filter(|bytes| *bytes == [0x49, 0x39, 0x82])
+                    .count()
+                    == code_image.len() / 8
                 && user_verify
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
-            "entry verification must compare every qword of the exact sealed ELF image"
+            "entry verification must compare every mapping qword to the external ELF source"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
