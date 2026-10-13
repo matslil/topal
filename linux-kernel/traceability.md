@@ -106,3 +106,14 @@ user-stack storage, complete transfer and returned `Linux` validation,
 balanced disposal before the existing constructed identity call, an exact
 post-return witness, and deterministic physical execution without exposing
 general user candidates or layouts to source.
+
+## Next Step 4 constructed-input refinement
+
+`TK-DEC-052` traces through the
+[constructed-image `nanosleep` contract](design/bounded-constructed-image-nanosleep.md),
+the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
+evidence. The evidence must prove sealed zero-duration input from bounded
+writable user-stack storage, complete transfer and value validation, balanced
+disposal before the existing constructed identity call, an exact post-return
+witness, and deterministic physical execution without exposing general user
+candidates, values, or layouts to source.

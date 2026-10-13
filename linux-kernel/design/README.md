@@ -50,6 +50,7 @@ records, not this directory alone, define language meaning.
 - [Bounded constructed-image data observation](bounded-constructed-image-data-observation.md)
 - [Bounded constructed-image syscall](bounded-constructed-image-syscall.md)
 - [Bounded constructed-image `uname` output](bounded-constructed-image-uname.md)
+- [Bounded constructed-image `nanosleep` input](bounded-constructed-image-nanosleep.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
