@@ -20,10 +20,11 @@ must construct an aligned initial stack containing:
 5. the immutable null-terminated `argv[0]` bytes within the same writable stack
    mapping.
 
-The entry context begins at that block. After the compatibility probe returns,
-the sealed constructed continuation must validate the exact semantic contents,
-consume the bounded block without retaining a candidate, restore the prior
-stack-top position, and continue through its existing data, output, input,
+The entry context begins at that block. The sealed constructed entry must
+validate the exact semantic contents, consume the bounded block without
+retaining a candidate, restore the prior stack-top position, and only then
+observe immutable data and transfer to the compatibility probe. The returned
+constructed continuation proceeds through its existing output, input,
 identity, and terminal qualifications.
 
 After exact kernel return, source publishes the entry witness,
@@ -33,17 +34,18 @@ all observations and are subsequently revoked data first and code second.
 
 ```text
 prepare address space -> construct aligned bounded initial stack
-  -> enter user at stack block -> compatibility probe preserves stack
-  -> constructed continuation validates argc/argv/envp/AT_NULL/string
-  -> consume block and restore stack top -> existing qualifications
+  -> enter constructed code at stack block
+  -> validate argc/argv/envp/AT_NULL/string -> consume bounded block
+  -> restore stack top -> observe data -> compatibility probe
+  -> returned constructed continuation -> existing qualifications
   -> exact kernel return -> entry -> stack -> data -> transfers -> residency
 ```
 
 Source names neither pointer width, stack direction, alignment, word order,
 addresses, padding, string bytes, nor auxiliary-vector encoding. Structural
 evidence must prove exact bounded initialization, entry stack selection,
-constructed validation and consumption, preservation across the compatibility
-probe, subsequent stack balance, and fail-closed branches.
+constructed validation and consumption before the compatibility probe,
+subsequent stack balance, and fail-closed branches.
 
 ## Isolation and failure contract
 
