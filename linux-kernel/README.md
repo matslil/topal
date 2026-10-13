@@ -297,6 +297,12 @@ continuing. Its
 records exact construction, validation, bounded consumption, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement binds a
+[bounded initial `AT_ENTRY` fact](design/bounded-initial-auxv-entry.md) to the
+first instruction selected by the provider. It keeps the tag, address, and
+layout provider-owned while requiring constructed code to validate exact
+agreement with its own sealed entry point.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a

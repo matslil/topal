@@ -142,3 +142,15 @@ one provider-consistent Linux base-page-size entry before `AT_NULL`, exact
 constructed validation and bounded consumption, an ordered post-return
 witness, and deterministic physical execution without exposing general
 auxiliary-vector or loader policy to source.
+
+## Next Step 4 executable-entry auxiliary-vector refinement
+
+`TK-DEC-055` traces through the
+[bounded initial `AT_ENTRY` contract](design/bounded-initial-auxv-entry.md), the
+checked root, x86-64 provider lowering, structural tests, the implementation
+and qualification report, and pinned-QEMU evidence. The evidence must prove
+one sealed executable-entry fact after `AT_PAGESZ` and before `AT_NULL`, exact
+agreement with the selected initial instruction, constructed validation and
+bounded consumption, an ordered post-return witness, and deterministic
+physical execution without exposing addresses or general ELF-loader policy to
+source.
