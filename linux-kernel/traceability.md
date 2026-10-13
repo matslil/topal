@@ -94,3 +94,14 @@ the sealed constructed-code continuation after its data observation and the
 existing probe, PID-one validation before terminal `exit_group(0)`, an exact
 post-return witness, and deterministic physical execution without exposing
 general syscall selection to source.
+
+## Next Step 4 constructed-output refinement
+
+`TK-DEC-051` traces through the
+[constructed-image `uname` contract](design/bounded-constructed-image-uname.md),
+the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
+evidence. The evidence must prove a sealed `uname` output into bounded writable
+user-stack storage, complete transfer and returned `Linux` validation,
+balanced disposal before the existing constructed identity call, an exact
+post-return witness, and deterministic physical execution without exposing
+general user candidates or layouts to source.

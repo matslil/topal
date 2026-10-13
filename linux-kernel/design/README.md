@@ -49,6 +49,7 @@ records, not this directory alone, define language meaning.
 - [Bounded constructed-image entry](bounded-constructed-image-entry.md)
 - [Bounded constructed-image data observation](bounded-constructed-image-data-observation.md)
 - [Bounded constructed-image syscall](bounded-constructed-image-syscall.md)
+- [Bounded constructed-image `uname` output](bounded-constructed-image-uname.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
