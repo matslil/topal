@@ -596,20 +596,23 @@ fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x0000_0060_5000_ba49_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x02]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x1975_6d3a_8041_0000_u64.to_le_bytes());
+    code.bytes(&0x0c75_6d3a_8041_0000_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x08]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x4805_0f00_0000_27b8_u64.to_le_bytes());
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x10]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x00b8_480c_7501_f883_u64.to_le_bytes());
+    code.bytes(&0x0000_0b0f_e0ff_0000_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x18]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0xff00_0000_0060_0000_u64.to_le_bytes());
+    code.bytes(&0x4805_0f00_0000_27b8_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x20]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0000_000b_0fe0_u64.to_le_bytes());
+    code.bytes(&0xb8ff_3109_7501_f883_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x28]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0b0f_050f_0000_00e7_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x30]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x05]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -716,24 +719,28 @@ fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x39, 0x02]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x1975_6d3a_8041_0000_u64.to_le_bytes());
+    code.bytes(&0x0c75_6d3a_8041_0000_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x42, 0x08]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x4805_0f00_0000_27b8_u64.to_le_bytes());
+    code.bytes(&0x0000_0060_0000_b848_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x42, 0x10]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x00b8_480c_7501_f883_u64.to_le_bytes());
+    code.bytes(&0x0000_0b0f_e0ff_0000_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x42, 0x18]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0xff00_0000_0060_0000_u64.to_le_bytes());
+    code.bytes(&0x4805_0f00_0000_27b8_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x42, 0x20]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0000_000b_0fe0_u64.to_le_bytes());
+    code.bytes(&0xb8ff_3109_7501_f883_u64.to_le_bytes());
     code.bytes(&[0x49, 0x39, 0x42, 0x28]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0b0f_050f_0000_00e7_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x30]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -960,9 +967,9 @@ fn initial_user_probe() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x83, 0xf8, 0xf2]); // -EFAULT
     code.jump_if(0x85, "probe-fail");
 
-    code.bytes(&[
-        0x31, 0xff, 0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b,
-    ]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0060_4020_u64.to_le_bytes());
+    code.bytes(&[0xff, 0xe0, 0x0f, 0x0b]);
     code.bind("probe-fail")?;
     code.bytes(&[
         0xbf, 0x01, 0x00, 0x00, 0x00, 0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05, 0x0f, 0x0b,
@@ -1029,6 +1036,18 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump("fail");
 
     code.bind("getpid")?;
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0060_0007_u32.to_le_bytes());
+    code.jump_if(0x84, "getpid-provider-probe");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0060_4027_u32.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("getpid-provider-probe")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x02]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x03]);
@@ -2703,19 +2722,22 @@ mod tests {
                     .any(|bytes| bytes == 0x0000_0060_5000_ba49_u64.to_le_bytes())
                 && user_install
                     .windows(8)
-                    .any(|bytes| bytes == 0x1975_6d3a_8041_0000_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0c75_6d3a_8041_0000_u64.to_le_bytes())
+                && user_install
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
+                && user_install
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0b0f_e0ff_0000_u64.to_le_bytes())
                 && user_install
                     .windows(8)
                     .any(|bytes| bytes == 0x4805_0f00_0000_27b8_u64.to_le_bytes())
                 && user_install
                     .windows(8)
-                    .any(|bytes| bytes == 0x00b8_480c_7501_f883_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0xb8ff_3109_7501_f883_u64.to_le_bytes())
                 && user_install
                     .windows(8)
-                    .any(|bytes| bytes == 0xff00_0000_0060_0000_u64.to_le_bytes())
-                && user_install
-                    .windows(8)
-                    .any(|bytes| bytes == 0x0000_0000_000b_0fe0_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0b0f_050f_0000_00e7_u64.to_le_bytes())
                 && user_install
                     .windows(4)
                     .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
@@ -2723,8 +2745,8 @@ mod tests {
                     .windows(5)
                     .any(|bytes| bytes == [0xb8, 0x27, 0, 0, 0])
                 && user_install.windows(2).any(|bytes| bytes == [0x0f, 0x05])
-                && user_install.windows(2).any(|bytes| bytes == [0x75, 0x19])
                 && user_install.windows(2).any(|bytes| bytes == [0x75, 0x0c])
+                && user_install.windows(2).any(|bytes| bytes == [0x75, 0x09])
                 && user_install.windows(2).any(|bytes| bytes == [0x0f, 0x0b])
                 && user_install
                     .windows(7)
@@ -2779,19 +2801,22 @@ mod tests {
                     .any(|bytes| bytes == 0x0000_0060_5000_ba49_u64.to_le_bytes())
                 && user_verify
                     .windows(8)
-                    .any(|bytes| bytes == 0x1975_6d3a_8041_0000_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0c75_6d3a_8041_0000_u64.to_le_bytes())
+                && user_verify
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0060_0000_b848_u64.to_le_bytes())
+                && user_verify
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0000_0b0f_e0ff_0000_u64.to_le_bytes())
                 && user_verify
                     .windows(8)
                     .any(|bytes| bytes == 0x4805_0f00_0000_27b8_u64.to_le_bytes())
                 && user_verify
                     .windows(8)
-                    .any(|bytes| bytes == 0x00b8_480c_7501_f883_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0xb8ff_3109_7501_f883_u64.to_le_bytes())
                 && user_verify
                     .windows(8)
-                    .any(|bytes| bytes == 0xff00_0000_0060_0000_u64.to_le_bytes())
-                && user_verify
-                    .windows(8)
-                    .any(|bytes| bytes == 0x0000_0000_000b_0fe0_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0b0f_050f_0000_00e7_u64.to_le_bytes())
                 && user_verify
                     .windows(4)
                     .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0x6d])
@@ -2799,8 +2824,8 @@ mod tests {
                     .windows(5)
                     .any(|bytes| bytes == [0xb8, 0x27, 0, 0, 0])
                 && user_verify.windows(2).any(|bytes| bytes == [0x0f, 0x05])
-                && user_verify.windows(2).any(|bytes| bytes == [0x75, 0x19])
                 && user_verify.windows(2).any(|bytes| bytes == [0x75, 0x0c])
+                && user_verify.windows(2).any(|bytes| bytes == [0x75, 0x09])
                 && user_verify.windows(2).any(|bytes| bytes == [0x0f, 0x0b])
                 && user_verify
                     .windows(7)
@@ -2920,6 +2945,15 @@ mod tests {
         assert!(
             user_syscall
                 .windows(4)
+                .any(|bytes| bytes == 0x0060_4027_u32.to_le_bytes())
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == 0x0060_0007_u32.to_le_bytes()),
+            "getpid must admit only the sealed constructed-image and provider-probe return sites"
+        );
+        assert!(
+            user_syscall
+                .windows(4)
                 .any(|bytes| bytes == 390_u32.to_le_bytes()),
             "copy_to_user must retain the exact new_utsname extent"
         );
@@ -2928,6 +2962,12 @@ mod tests {
             "uname bytes must come from the checked source-owned value"
         );
         let user_probe = initial_user_probe().unwrap();
+        assert!(
+            user_probe
+                .windows(8)
+                .any(|bytes| bytes == 0x0060_4020_u64.to_le_bytes()),
+            "the provider probe must transfer to the sealed constructed-image syscall continuation"
+        );
         assert!(
             user_probe
                 .windows(7)
