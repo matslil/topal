@@ -1248,6 +1248,7 @@ struct BootstrapAuthorityState {
     constructed_user_initial_credential_auxv_validated: bool,
     constructed_user_elf_identity_validated: bool,
     external_user_elf_loaded: bool,
+    external_user_elf_copy_verified: bool,
     constructed_user_image_data_observed: bool,
     constructed_user_image_copy_to_completed: bool,
     constructed_user_image_copy_from_completed: bool,
@@ -2283,6 +2284,23 @@ impl BootstrapAuthorityState {
                 self.external_user_elf_loaded = true;
             }
             SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.external_user_elf_loaded
+                    || self.external_user_elf_copy_verified
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "external ELF-copy witness requires the loaded resource payload exactly once",
+                    ));
+                }
+                self.external_user_elf_copy_verified = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK" =>
             {
                 if !matches!(
@@ -2291,6 +2309,7 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.constructed_user_elf_identity_validated
                     || !self.external_user_elf_loaded
+                    || !self.external_user_elf_copy_verified
                     || self.constructed_user_image_data_observed
                 {
                     return Err(SystemsModelError::new(
@@ -2367,6 +2386,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_initial_credential_auxv_validated
                     || !self.constructed_user_elf_identity_validated
                     || !self.external_user_elf_loaded
+                    || !self.external_user_elf_copy_verified
                     || !self.constructed_user_image_data_observed
                     || !self.constructed_user_image_copy_to_completed
                     || !self.constructed_user_image_copy_from_completed
@@ -4848,6 +4868,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -5067,6 +5090,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
@@ -5508,6 +5532,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
@@ -6291,6 +6318,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
