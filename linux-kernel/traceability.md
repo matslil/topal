@@ -111,8 +111,9 @@ general user candidates or layouts to source.
 
 `TK-DEC-052` traces through the
 [constructed-image `nanosleep` contract](design/bounded-constructed-image-nanosleep.md),
-the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
-evidence. The evidence must prove sealed zero-duration input from bounded
+the checked root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-constructed-image-nanosleep.md),
+and pinned-QEMU evidence. The evidence must prove sealed zero-duration input from bounded
 writable user-stack storage, complete transfer and value validation, balanced
 disposal before the existing constructed identity call, an exact post-return
 witness, and deterministic physical execution without exposing general user
