@@ -36,19 +36,34 @@ product, and binding syntax under the sealed `lang systems` namespace. A root
 SHALL construct exactly one `lang systems artifact` whose `bootstrap-storage`
 member is one `lang systems bounded-bootstrap-storage`, whose `bootstrap`
 member is one `lang systems bootstrap-entry`, and whose `debug-break` member is
-one `lang systems synchronous-exception-entry`. The storage constructor SHALL
+one `lang systems synchronous-exception-entry`, and whose
+`local-notification` member is one `lang systems external-interrupt-entry`.
+It SHALL also contain exactly one `deadline-notification` member constructed as
+one `lang systems external-interrupt-entry`.
+It SHALL also contain exactly one `kernel-thread` member constructed as one
+`lang systems resumed-thread-entry`.
+The storage constructor SHALL
 contain exactly positive `capacity-bytes` and `alignment-bytes` natural-number
 fields. Alignment SHALL be a power of two and SHALL NOT exceed capacity. The
 bootstrap entry SHALL have one handler from `BootstrapContext` to
 `BootstrapDisposition`; the debug-break entry SHALL have one handler from
-`DebugBreakContext` to `DebugBreakDisposition`.
+`DebugBreakContext` to `DebugBreakDisposition`; and the local-notification
+entry SHALL have one handler from `LocalNotificationInterruptContext` to
+`LocalNotificationInterruptDisposition`; and the deadline-notification entry
+SHALL have one handler from `DeadlineInterruptContext InitialMonotonicClock` to
+`DeadlineInterruptDisposition InitialMonotonicClock`; and the kernel-thread
+entry SHALL have one handler accepting `KernelThreadContext InitialProcessor`
+and `SuspendedKernelContext InitialProcessor` and producing
+`KernelThreadDisposition InitialProcessor`.
 
 The only admitted initial handler operations SHALL be context-qualified
-`console write`, `debug break`, `resume`, and `fatal`. Console write SHALL
+`console write`, `debug break`, local-notification completion,
+deadline-notification completion, kernel-context terminal retirement, `resume`,
+and `fatal`. Console write SHALL
 borrow the live board console capability and this increment SHALL accept only a
 static text value. Debug break SHALL borrow the bootstrap context and declare
 one synchronous debug-break observation. Resume SHALL consume one live
-debug-break context and resume exactly its interrupted continuation. Fatal
+completed entry context and resume exactly its interrupted continuation. Fatal
 SHALL consume its live entry context and SHALL NOT return.
 
 Every handler SHALL end in one disposition admitted by its context. The
@@ -151,6 +166,102 @@ Absent `Observe` or `Linearize` input/effects, systems code SHALL retain the
 portable schedule-equivalence requirement. These events SHALL NOT authorize a
 data race, arbitrary random choice, invented event, or removal, duplication,
 merging, or speculation of a required observation.
+
+### TOPAL-SYSTEMS-LOCAL-INTERRUPT-001 — Local-notification interrupt lifecycle
+
+`local notification send` SHALL consume one admitted processor context and
+produce one affine pending session with source identity `s`, the source's next
+monotonic event identity `q`, and the exact prior local maskable-interrupt
+state. The consumed context SHALL be invalid until the matching wait completes.
+A second send, ordinary use of the consumed context, escape, duplication, or
+ordinary completion while the session is live SHALL be rejected.
+
+`local notification wait` SHALL consume that pending session. Successful wait
+completion SHALL require, in order, `Observe(s,q)`, entry through the declared
+local-notification external-interrupt entry, consumption of its completion
+obligation, resumption of the interrupted continuation, and restoration of the
+recorded prior maskable-interrupt state. Another event SHALL NOT satisfy the
+wait. The provider MAY temporarily change local mask state inside the sealed
+wait transition but source SHALL NOT observe or retain that state.
+
+The external entry SHALL receive one affine
+`LocalNotificationInterruptContext(s,q)`. `local notification complete` SHALL
+consume it and produce one completed context admitting only the declared
+resume or fatal disposition. Resume before completion, completion outside the
+matching entry, duplicate completion, context escape, or ordinary return SHALL
+be rejected. Completion SHALL discharge the target acknowledgement or pending-
+state obligation; a zero-instruction completion SHALL require target evidence
+that the complete obligation is otherwise satisfied.
+
+The initial profile SHALL admit exactly one local-notification handler and one
+send/wait event. It SHALL make no timer, bounded-latency, fairness, nested-entry,
+SMP-delivery, shared-device-routing, or scheduler-disposition guarantee.
+
+### TOPAL-SYSTEMS-MONOTONIC-CLOCK-001 — Monotonic-clock observation
+
+The initial systems profile SHALL provide one opaque provider-created
+`Clock InitialMonotonicClock` borrowed through each admitted processor context.
+`monotonic clock now` SHALL borrow that context and clock and SHALL return one
+immutable `Instant InitialMonotonicClock`. Neither authority SHALL be consumed
+or widened by observation.
+
+For clock identity `c`, its next observation identity `q`, and provider value
+`t`, a successful observation SHALL record
+`Observe(c,q,Instant(c,t))`. Observation identities SHALL increase in source
+order. An accepted value SHALL be greater than or equal to the preceding value
+accepted from `c`; equality SHALL be permitted. A decreasing value SHALL fail
+closed and SHALL NOT be clamped, replaced, or exposed as an accepted instant.
+
+Instants SHALL retain exact clock identity and SHALL NOT compare, subtract, or
+substitute across clocks. The provider SHALL own counter selection, scale,
+resolution, enablement, access, wrap extension, regression detection, and the
+target state required for monotonicity. Source SHALL NOT observe a counter
+address, register, instruction, width, frequency, calibration mechanism, or
+wrap state. The compiler SHALL NOT invent, predict, merge, duplicate, remove,
+or speculate a required clock observation.
+
+The initial executable slice SHALL admit exactly two observations after its
+local-notification wait and before its time-success marker. It SHALL make no
+wall-clock, periodic-release, sleep, timeout,
+bounded-latency, rate-accuracy, SMP, suspend, migration, userspace-ABI, or
+real-time guarantee.
+
+### TOPAL-SYSTEMS-DEADLINE-EVENT-001 — One-shot deadline event
+
+Constructing `Deadline c` from `Instant c` and an exact positive `Duration`
+SHALL preserve the absolute same-clock instant and SHALL fail on range
+overflow. It SHALL NOT observe the clock. A deadline from another clock SHALL
+NOT substitute, arm, or satisfy the event.
+
+`deadline notification arm` SHALL borrow one admitted processor context,
+consume one deadline, and produce one affine `ArmedDeadline c` with one new
+monotonic event identity `q`. The deadline, armed event, and temporarily
+consumed context SHALL NOT be duplicated, escaped, or used by another event.
+`deadline notification wait` SHALL consume the armed event and return the
+processor context only after the matching observation, typed entry, consuming
+completion, and resumption have occurred.
+
+Delivery SHALL record `DeadlineEvent(c,q,scheduled,observed)`, where scheduled
+is the deadline's instant and observed is one newly accepted `Instant c`.
+Observed SHALL be greater than or equal to scheduled. Late delivery SHALL
+retain both values. If the deadline is already expired when armed, the event
+SHALL become immediately deliverable against the original scheduled instant;
+the provider SHALL NOT restart the relative duration.
+
+The entry SHALL receive one affine `DeadlineInterruptContext(c,q,scheduled,
+observed)`. `deadline notification complete` SHALL consume that context and
+produce one completed context admitting only resume or fatal disposition.
+Resume before completion, completion outside the matching entry, duplicate
+completion, an early observation, or ordinary completion with a live deadline
+authority SHALL be rejected.
+
+The initial executable slice SHALL admit exactly one deadline constructed from
+the second qualified monotonic observation and `1[ms]`, one arm/wait lifecycle,
+and one declared handler. Comparator, timer, route, vector, controller,
+acknowledgement, wait, frame, and return representation SHALL remain private to
+the provider. Cancellation, rearming, periodic release, scheduler integration,
+multiple outstanding events, bounded latency, rate accuracy, SMP delivery,
+suspend/migration guarantees, and userspace timer ABI SHALL remain unavailable.
 
 ### TOPAL-SYSTEMS-MACHINE-001 — Closed machine-provider transition
 
@@ -268,6 +379,62 @@ completes. A provider MAY adopt a pre-existing sealed translation only when it
 proves the same rights, lifetime, inaccessibility-after-unmap, and reuse
 observations as a constructed translation.
 
+Bootstrap translation replacement SHALL begin by borrowing one live allocator
+and consuming provider-selected backing authority into one exclusive affine
+`TranslationUpdate`. The initial request SHALL be exactly template
+`bootstrap-equivalent` with page policy `provider-selected`. The update SHALL
+retain a snapshot of the current qualified bootstrap coverage and access
+observations without exposing backing addresses, table levels, entries, or
+target state.
+
+`translation commit` SHALL consume one live validated update into one inactive
+affine `TranslationSpace`. `translation activate` SHALL consume that inactive
+space and the current translation authority, perform the provider-required
+publication, synchronization, activation, and completion relations, and
+produce a refined bootstrap context owning the new active space. On activation
+success, subsequent operations SHALL use only the refined context. On an
+indeterminate activation result, the initial slice SHALL admit only fatal
+termination.
+
+The replacement SHALL preserve the existing bootstrap coverage and permissions
+and SHALL NOT add user authority, widen access, or make physical and virtual
+families interchangeable. Duplicate or escaped updates, use after commit,
+activation before commit, wrong-provider activation, backing release while
+owned by an update or space, reuse of the prior translation by ordinary source,
+and disposition with a live inactive update or space SHALL be rejected before
+lowering or fail closed.
+
+An active translation edit SHALL consume one active context into one exclusive
+affine `TranslationEdit`. While the edit is live, the prior context SHALL admit
+no operation or disposition. The initial map request SHALL be exactly normal,
+read-write, non-executable kernel memory with placement `provider-selected`.
+Map SHALL consume one live frame extent into one provisional opaque
+`KernelMapping`; that mapping SHALL admit no access before commit.
+
+`translation commit` SHALL consume the edit, validate the complete candidate
+state, publish the provider-private translation changes, perform the required
+ordering and invalidation completion relations, and return a refined active
+context. Commit failure with indeterminate target visibility SHALL admit only
+fatal termination. On success, the provisional mapping SHALL become live and
+bounded by its consumed extent.
+
+Unmap in an exclusive edit SHALL consume the live mapping into a provisional
+returned extent. That extent SHALL NOT be accessed, released, or remapped until
+commit has removed the translation and completed the required invalidation
+scope. After successful commit, the old mapping SHALL be unusable and the
+returned extent SHALL regain ordinary frame ownership. Abandonment, duplicate
+edit or mapping authority, access before map commit, access after unmap,
+release before unmap commit, nested or concurrent edits, wrong-space commit,
+and disposition with a live edit SHALL be rejected before lowering or fail
+closed.
+
+Source SHALL NOT observe or select a virtual address, granule, table level,
+entry, address-space identifier, invalidation address, processor mask,
+register, or instruction. The initial slice SHALL admit one live dynamic
+mapping and SHALL leave user mappings, device memory, permission changes,
+executable mappings, remote-processor shootdown, and provider-metadata
+reclamation unsupported.
+
 ### TOPAL-SYSTEMS-RECOVERY-001 — Closed fault recovery and user transfer
 
 A recovery scope SHALL name a finite fault class, admitted generated
@@ -304,6 +471,22 @@ Plain conflicting access to live atomic storage SHALL be invalid. Atomicity
 SHALL NOT grant access to overlapping storage, repair an invalid lifetime, or
 imply device/DMA atomicity.
 
+For the initial `atomic word` form, construction SHALL consume one live
+ordinary region and select one naturally aligned provider-width unsigned word
+wholly contained at the requested byte offset. The only admitted domain SHALL
+be `cpu-shared`. The whole region SHALL remain unavailable for plain access or
+release while the atomic location is live. `atomic end` SHALL consume the
+location only when no operation remains in flight, retain its final word
+contents, and return the same region identity and extent to plain ownership.
+
+Initial compare/exchange SHALL return `Exchanged previous` exactly when the
+observed value equals `expected`; that successful transition SHALL replace the
+value with `desired` at one point in `mo_l`. Otherwise it SHALL return
+`Observed actual` without modifying `l`. The source result SHALL be exhaustive,
+and every ordinary continuation SHALL end the location before region release.
+Source SHALL NOT observe a machine address, provider word spelling, register,
+instruction, exclusive-monitor state, or retry attempt.
+
 ### TOPAL-SYSTEMS-ORDER-001 — Atomic and visibility relations
 
 Atomic orders SHALL be:
@@ -322,6 +505,13 @@ failure order SHALL be `AtomicOnly` or `Acquire`. A provider MAY strengthen an
 implementation order but SHALL NOT expose a result forbidden by the selected
 order.
 
+The initial atomic-word increment SHALL admit `AcquireRelease` success and
+`Acquire` failure for compare/exchange and `Acquire` for the following load.
+These orders apply only to CPU-shared normal memory. Target implementations MAY
+use one locked instruction, an architectural atomic extension, or a qualified
+exclusive-reservation loop provided the observable result and progress
+contract are preserved.
+
 CPU memory, device/MMIO, DMA ownership, cache maintenance, instruction
 synchronization, and translation maintenance SHALL be distinct relation
 families. Each operation SHALL name direction, observations, agents, topology
@@ -335,6 +525,20 @@ token containing processor identity, domain, nesting identity, and exact prior
 state. The token SHALL be consumed exactly once by the matching restoration or
 an admitted disposition transfer on every exit path. It SHALL NOT escape,
 suspend, cross a processor, or be restored out of nesting order.
+
+For the initial `local-maskable-interrupts` domain, `critical enter` SHALL
+consume the current execution context and produce a context refined to that
+domain plus opaque restoration authority for the exact immediately preceding
+state. `critical restore` SHALL consume that refined context and authority and
+produce the preceding context. A nested entry, where supported, SHALL allocate
+a distinct nesting identity, and restoration SHALL consume identities in
+last-in-first-out order. Completion, disposition, suspension, blocking, and
+processor transfer with a live critical context SHALL be rejected.
+
+Target interrupt flags, registers, controller masks, and instructions SHALL
+NOT be source-observable values. A provider SHALL restore exactly the state
+captured by the matching entry; it SHALL NOT unconditionally enable a domain
+which was disabled before entry.
 
 The exclusion established by a critical scope SHALL contain only the producers
 named by its domain. Masking local interrupts SHALL NOT establish exclusion
@@ -354,6 +558,158 @@ address-space transition, and resume exactly one continuation. It SHALL be
 nonordinary control flow and SHALL NOT expose register slots, stack pointers,
 or continuation instruction addresses to source. User/debug state SHALL use a
 separate validated semantic view.
+
+The initial executable slice SHALL construct exactly one
+`SuspendedKernelContext InitialProcessor` by borrowing the admitted running
+context and consuming one 16 KiB, 16-byte-aligned, bootstrap-reclaimable
+ordinary region plus the static `kernel-thread` entry. Construction SHALL NOT
+run the entry. The suspended context SHALL retain the originating pool,
+region, processor, thread, address-space, entry, and extended-state-policy
+identities without exposing their target representation.
+
+The initial `kernel context transfer` SHALL consume the bootstrap running
+context and that suspended context, suspend the caller at one typed
+continuation, retain the active address-space identity, and resume the worker
+on `InitialProcessor`. Local maskable interrupts SHALL be disabled at the
+transfer boundary. The worker entry SHALL receive its running context and the
+affine suspended caller.
+
+`kernel context retire to caller` SHALL be a terminal worker disposition. It
+SHALL be legal only with no live region, mapping, frame, atomic, critical,
+interrupt, recovery, or cleanup obligation. It SHALL consume the worker and
+suspended caller, mark the worker terminal, and resume exactly that caller.
+The caller SHALL receive one affine `CompletedKernelContextTransfer
+InitialProcessor` owning its restored running authority and the retired
+worker's stack. `kernel context reclaim` SHALL consume that completion, return
+the stack region to its originating monotonic pool, and produce the resumed
+caller context. Use after transfer, duplicate transfer, wrong-processor or
+wrong-entry use, retirement with a live obligation, ordinary worker return,
+and disposition with a live suspended or completed context SHALL be rejected.
+
+This slice SHALL NOT admit involuntary preemption, scheduler policy, run
+queues, priority, timeslicing, blocking, general yield, arbitrary cancellation,
+multiple threads, migration, SMP, address-space switching, user contexts,
+floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
+unwinding across transfer. X86-64, AArch64, and RISC-V register and frame sets
+SHALL remain provider evidence rather than portable source meaning.
+
+### TOPAL-SYSTEMS-CONTEXT-002 — Cooperative context handoff
+
+A qualified cooperative transfer SHALL consume one running context and one
+matching suspended target. If the old continuation is later resumed, it SHALL
+receive exactly one affine outcome which restores its running authority and
+either returns the peer as suspended or owns the peer as terminal until
+reclamation. An outcome SHALL retain provider, processor, address-space,
+context, stack, entry, and continuation identities. Source SHALL NOT copy,
+forge, widen, or reinterpret an outcome.
+
+A closed entry protocol MAY statically refine the outcome when the checker can
+prove whether that selected continuation hands off or retires. A mismatch
+between the declared result classifier and the selected entry protocol SHALL
+be rejected. `kernel context retire to target` SHALL consume the running
+context and one matching suspended target at a transfer-safe point, mark the
+running context terminal, and resume exactly the target with a
+`CompletedKernelContextTransfer InitialProcessor`. Reclamation SHALL consume
+the completion and return the retired stack to its originating pool.
+
+The initial cooperative slice SHALL construct exactly two suspended contexts
+from disjoint 16 KiB, 16-byte-aligned, bootstrap-reclaimable regions. Its
+checked source order SHALL be cooperative-worker transfer and suspended
+handoff, terminal-worker transfer and retirement/reclamation, cooperative-
+worker resumption and retirement/reclamation, then bootstrap disposition with
+no live context. The cooperative worker SHALL hand off exactly once before
+retirement; the terminal worker SHALL retire on first entry. Target reuse,
+wrong order, overlapping stack ownership, wrong result refinement, retirement
+with a live obligation, and disposition with a live or unreclaimed context
+SHALL be rejected.
+
+Runnable selection SHALL remain source policy. The provider SHALL NOT own a
+run queue or select the next context. This slice SHALL retain one processor,
+one active address space, and disabled local maskable interrupts and SHALL NOT
+admit involuntary preemption, blocking, dynamic run queues, priority,
+timeslicing, cancellation, migration, SMP, user contexts, floating-point or
+vector ownership, TLS/per-CPU switching, stack growth, guard pages, or
+cross-transfer unwinding.
+
+### TOPAL-SYSTEMS-CONTEXT-003 — Bounded affine runnable queue
+
+A `BoundedKernelRunnableQueue P` SHALL be an opaque affine FIFO with retained
+positive fixed capacity. It SHALL own each enqueued `SuspendedKernelContext P` and
+retain the queue, provider, processor, active-address-space, context, and stack
+identities needed for later selection. It SHALL NOT expose or confer access to
+target context representation.
+
+Enqueue SHALL consume the prior queue and one suspended context. Success SHALL
+place that context at the tail; a full result SHALL return the unchanged queue
+and context without copying or loss. Dequeue SHALL consume the prior queue. A
+ready result SHALL return the oldest context and remaining queue; an empty
+result SHALL return the unchanged queue. Static refinement of either result
+SHALL require proof of the exact capacity and occupancy history.
+
+A queue SHALL reject a running, retired, completed, duplicate,
+wrong-processor, wrong-provider, or wrong-address-space context. Copying,
+serialization, use after consumption, dropping a nonempty queue, and final
+disposition with a live queue or queued context SHALL be rejected. Consuming
+an empty queue SHALL discharge its final obligation.
+
+The initial executable queue SHALL have capacity two. It SHALL enqueue the
+cooperative context followed by the terminal context, dequeue the cooperative
+context, enqueue its suspended handoff at the tail, then dequeue terminal and
+cooperative in that order. Both terminal outcomes SHALL be reclaimed and the
+empty queue SHALL be consumed before bootstrap disposition. The queue SHALL be
+ordinary source policy and SHALL introduce no provider queue operation. This
+slice SHALL NOT admit unbounded or dynamically allocated runnable storage,
+preemption, blocking, wakeup, priorities, timeslicing, cancellation, migration,
+SMP, or multiple address spaces.
+
+### TOPAL-SYSTEMS-CONTEXT-004 — Deadline-preemptible context transfer
+
+`kernel context transfer until deadline` SHALL consume one running dispatcher
+context, one matching suspended kernel context, and one same-provider
+`Deadline c`. Before interrupt delivery is admitted, it SHALL atomically bind
+the dispatcher's exact suspended continuation as the sole preemption target
+and arm one fresh event. The binding SHALL retain processor, provider,
+address-space, clock, event, context, stack, and continuation identities. An
+already-expired deadline SHALL become deliverable only after the target is
+bound.
+
+After consuming the matching deadline completion obligation,
+`preempt current kernel context` SHALL consume the running selected context,
+capture its exact interrupted continuation as one opaque suspended context,
+and resume only the registered dispatcher. The dispatcher SHALL receive one
+affine `PreemptedKernelContextTransfer P C` which restores its running
+authority and owns that suspended context plus scheduled and observed delivery
+evidence. Consuming the outcome SHALL return the suspended context for
+source-owned enqueue. The outcome SHALL NOT be copied, dropped, forged,
+widened, or reinterpreted as cooperative or terminal completion.
+
+Preemption without a matching active transfer, before completion, for a wrong
+clock, event, processor, provider, address space, context, or continuation, or
+after resolution SHALL be rejected. The handler SHALL NOT inspect the
+interrupted frame, access a runnable queue, choose another context, redirect
+the disposition, or resume normally after selecting preemption. Later transfer
+to the suspended target SHALL restore the exact interrupted machine
+continuation and frozen affine source obligations. Before that restoration,
+the provider SHALL bind the newly suspended dispatcher as the target's current
+return continuation; terminal retirement SHALL NOT refer to the dispatcher
+binding consumed by the earlier preemption.
+
+The initial executable profile SHALL use one one-shot deadline to preempt the
+first context selected from the capacity-two queue, enqueue that suspended
+context at the tail, retire and reclaim the terminal context, then restore,
+retire, and reclaim the preempted context before consuming the empty queue.
+The first worker's sealed `kernel context await deadline preemption` operation
+SHALL NOT return on initial entry. Matching deadline preemption SHALL suspend
+it, and only later source-selected transfer to that exact context SHALL restore
+the interrupted continuation and complete the operation. This operation SHALL
+NOT define a general wait, sleep, blocking, or wakeup protocol.
+It SHALL retain one processor and active address space and SHALL NOT admit
+cancellation, rearming, periodic ticks, general timeslices, priority,
+blocking, wakeup, nested preemption, migration, SMP, user contexts,
+floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
+cross-transfer unwinding. Target interrupt frames, register sets, mask state,
+stack-switch instructions, and interrupt-return mechanics SHALL remain
+provider evidence.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

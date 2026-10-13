@@ -52,22 +52,52 @@ debug-break-handler is fn (
 ) -> DebugBreakDisposition
   context resume
 
+local-notification-handler is fn (
+  context : LocalNotificationInterruptContext
+) -> LocalNotificationInterruptDisposition
+  completed is context local notification complete
+  completed resume
+
+deadline-notification-handler is fn (
+  context : DeadlineInterruptContext InitialMonotonicClock
+) -> DeadlineInterruptDisposition InitialMonotonicClock
+  completed is context deadline notification complete
+  completed resume
+
+kernel-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_ENTERED"
+  context kernel context retire to caller
+
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096
   ),
   bootstrap is lang systems bootstrap-entry boot,
-  debug-break is lang systems synchronous-exception-entry debug-break-handler
+  debug-break is lang systems synchronous-exception-entry debug-break-handler,
+  local-notification is lang systems external-interrupt-entry
+    local-notification-handler,
+  deadline-notification is lang systems external-interrupt-entry
+    deadline-notification-handler,
+  kernel-thread is lang systems resumed-thread-entry kernel-thread-handler
 )
 ```
 
-`BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`, and
-`DebugBreakDisposition` are sealed systems classifiers, not constructible
-ordinary values. `bootstrap-entry` specializes `SystemEntry Bootstrap`;
-`synchronous-exception-entry` specializes `SystemEntry
-SynchronousException` to the resumable debug-break cause used by the first
-machine qualification.
+`BootstrapContext`, `BootstrapDisposition`, `DebugBreakContext`,
+`DebugBreakDisposition`, `LocalNotificationInterruptContext`,
+`LocalNotificationInterruptDisposition`, `DeadlineInterruptContext C`, and
+`DeadlineInterruptDisposition C` are sealed systems classifiers, not
+constructible ordinary values. `bootstrap-entry` specializes `SystemEntry
+Bootstrap`; `synchronous-exception-entry` specializes `SystemEntry
+SynchronousException`; and `external-interrupt-entry` specializes the typed
+local-notification and deadline causes used by the first machine
+qualification. `KernelThreadContext P`, `SuspendedKernelContext P`,
+`CompletedKernelContextTransfer P`, and `KernelThreadDisposition P` are sealed
+affine classifiers, and `resumed-thread-entry` specializes `SystemEntry
+ResumeThread`.
 
 `context console write` borrows the board-provided console session and accepts
 a static text value in this first increment. `context debug break` is a
@@ -266,6 +296,216 @@ A disposition is accepted only after the checker proves that acknowledgement,
 resource, recovery, masking, preemption, and context-validation obligations are
 discharged. Source does not select a machine return instruction.
 
+### Local-notification external entry
+
+The initial external-interrupt specialization uses an affine local-notification
+session. Sending consumes the current processor context into one pending event;
+waiting consumes that event and returns a refined context only after the
+matching typed handler has completed the interrupt and resumed the interrupted
+continuation. The exact local maskable-interrupt state from before the send is
+restored when waiting completes.
+
+The handler receives one opaque `LocalNotificationInterruptContext`. It must
+consume that context through `local notification complete` before its
+`resume` disposition becomes legal. Source cannot observe or select the event's
+vector, controller, machine frame, acknowledgement mechanism, wait sequence,
+or return instruction. The source-local event identity is monotonic and binds
+send, observation, entry, completion, resumption, and wait completion.
+
+The common contract is implementable by a local-APIC self-notification on
+x86-64, a GIC software-generated interrupt on AArch64, or a supervisor software
+interrupt/IPI facility on RISC-V. Those mechanisms remain private provider
+evidence. The first executable profile admits one event and makes no timer,
+latency, fairness, nesting, SMP, device-routing, or scheduler claim.
+
+### Monotonic-clock observation
+
+The initial time specialization borrows one provider-created monotonic clock
+through the live processor context:
+
+```topal
+first : Instant InitialMonotonicClock is resumed monotonic clock now
+second : Instant InitialMonotonicClock is resumed monotonic clock now
+resumed console write "TOPAL_KERNEL_TIME_OK"
+```
+
+Each `now` returns an immutable instant retaining the exact clock identity and
+records a distinct external observation. Successive accepted observations from
+one clock are nondecreasing; equal instants are permitted. Instants from
+different clocks cannot compare, subtract, or substitute for one another.
+Observing the clock borrows rather than consumes the processor context and
+clock capability.
+
+The provider owns clock construction, discovery or fixed-board selection,
+counter access, scale and resolution, enablement, wrap extension, regression
+detection, and qualification across processor, suspend, migration, or
+frequency changes. Source cannot observe a register, address, instruction,
+counter width, frequency, calibration mechanism, or wrap state. The compiler
+cannot invent, predict, clamp, merge, duplicate, or remove a clock
+observation.
+
+The first x86-64 provider uses the pinned Q35 HPET and validates its 64-bit
+capability and period before accepting two observations. AArch64 generic
+counters and RISC-V time sources constrain the same clock identity and
+monotonic meaning without becoming source spellings. This increment makes no
+wall-clock, periodic, sleep, timeout, latency, rate-accuracy, SMP, suspend,
+migration, userspace-ABI, or real-time guarantee.
+
+### One-shot deadline event
+
+An absolute deadline retains the identity of the instant from which it is
+constructed. The initial specialization constructs exactly one `Deadline
+InitialMonotonicClock` from `second` and the exact duration `1[ms]`, then uses
+one affine event:
+
+```topal
+deadline : Deadline InitialMonotonicClock is second deadline after 1[ms]
+armed : ArmedDeadline InitialMonotonicClock is
+  resumed deadline notification arm deadline
+resumed is resumed deadline notification wait armed
+resumed console write "TOPAL_KERNEL_DEADLINE_OK"
+```
+
+Arming borrows the live processor context, consumes the deadline, and produces
+an `ArmedDeadline` which cannot be copied, escaped, or reused. Waiting consumes
+the armed event and temporarily consumes the processor context. The context is
+returned only after the matching typed entry has completed and resumed.
+
+Delivery records the scheduled deadline and a distinct observed instant from
+the same clock. It may be late but cannot precede the deadline. An already-
+expired absolute deadline becomes immediately deliverable and does not restart
+the original duration. The handler must consume its affine
+`DeadlineInterruptContext` through `deadline notification complete` before
+resume is legal.
+
+The portable contract names neither a timer nor an interrupt mechanism. The
+initial x86-64 provider uses a one-shot Q35 HPET comparator and I/O-APIC route;
+an AArch64 provider can use a generic-timer compare and GIC PPI, while a RISC-V
+provider can use `stimecmp` or SBI timer delivery and the supervisor timer
+interrupt. The first slice admits one `1[ms]` deadline and excludes
+cancellation, rearming, periodic release, scheduler integration, bounded
+latency, rate accuracy, SMP delivery, suspend/migration guarantees, and a
+userspace timer ABI.
+
+### Kernel-context transfer
+
+The initial scheduler-foundation specialization constructs one suspended
+kernel context from one checked exclusive region and one static typed entry:
+
+```topal
+deadline-resumed bootstrap allocate (
+  byte-count is 16384,
+  alignment-bytes is 16,
+  placement is bootstrap-reclaimable
+)
+  Ok stack-region then {
+    worker : SuspendedKernelContext InitialProcessor is
+      deadline-resumed kernel context create (
+        stack is stack-region,
+        entry is kernel-thread
+      )
+    completed : CompletedKernelContextTransfer InitialProcessor is
+      deadline-resumed kernel context transfer worker
+    completed console write "TOPAL_KERNEL_CONTEXT_RESUMED"
+    context-resumed is completed kernel context reclaim
+    context-resumed fatal "toolchain gate complete"
+  }
+  Error problem then {
+    deadline-resumed fatal "kernel context stack allocation failed"
+  }
+```
+
+`kernel context create` borrows the running context and consumes the complete
+stack region into one affine `SuspendedKernelContext InitialProcessor` without
+running its entry. The suspended context owns the stack, saved target state,
+thread identity, active address-space relationship, and declared extended-
+state policy. Source cannot inspect, copy, serialize, widen, or derive an
+address from it.
+
+`kernel context transfer` consumes the running caller and the suspended worker,
+suspends the caller at a typed continuation point, and resumes the worker. It
+is nonordinary control flow. The worker receives its running context and the
+affine suspended caller. Its terminal `kernel context retire to caller`
+disposition is admitted only when the checker proves that the worker has no
+live resource, critical, interrupt, recovery, or cleanup obligation. The
+disposition consumes both contexts, marks the worker terminal, and resumes
+exactly that caller.
+
+The caller resumes with one `CompletedKernelContextTransfer` owning its running
+authority and the retired worker's stack. It may borrow the running console
+capability. `kernel context reclaim` consumes the completion, returns the stack
+to its originating monotonic pool, and yields the resumed caller context. This
+closed terminal operation is not general cancellation.
+
+The x86-64 provider privately constructs and switches a callee-saved frame;
+AArch64 and RISC-V providers use their own qualified state sets. The common
+contract exposes no stack pointer, register, frame layout, continuation
+address, or save/restore instruction. The first slice stays on
+`InitialProcessor`, retains one address space, requires local interrupts masked
+at transfer, and excludes preemption, scheduler policy, run queues, blocking,
+general yield or cancellation, multiple threads, migration, SMP, user
+contexts, extended-state switching, TLS/per-CPU switching, stack growth, and
+unwinding across transfer.
+
+The cooperative extension permits two disjoint suspended contexts and makes
+the transfer outcome explicit. A resumed continuation receives either the
+context which cooperatively handed control back or a completed terminal
+context requiring stack reclamation. Closed entry protocols may statically
+refine the outcome when the checker proves whether the selected continuation
+hands off or retires. `kernel context retire to target` resumes a matching
+suspended target and transfers ownership of the retiring stack to that
+target's completion value.
+
+The first executable dispatcher is a fixed FIFO sequence in ordinary Topal:
+one worker enters and hands back its suspended context, a second worker enters
+and retires, and the first worker is selected again and retires. The provider
+does not contain a run queue or selection policy. Both contexts stay on the
+initial processor and address space with local interrupts masked; preemption,
+blocking, dynamic runnable collections, migration, SMP, userspace, TLS,
+extended state, and stack growth remain excluded.
+
+The bounded runnable-queue extension replaces those fixed variables with an
+ordinary affine FIFO value. Its fixed capacity is established before dispatch;
+enqueue consumes a queue and suspended context, while dequeue consumes a queue
+and returns its oldest context plus the remaining queue. Full and empty results
+retain every input obligation, and statically refined success requires proof
+of the exact occupancy history. Queued contexts must share processor, provider,
+and address-space identity. A nonempty queue cannot be dropped or cross final
+disposition, and a running, retired, or completed context cannot be enqueued.
+
+The initial queue has capacity two. It enqueues cooperative then terminal,
+dequeues cooperative, re-enqueues its suspended handoff at the tail, then
+dequeues terminal and cooperative in that order. Both retired stacks are
+reclaimed and the empty queue is consumed before fatal disposition. Queue
+representation may be erased or lowered as a fixed aggregate, but runnable
+selection remains source policy and no machine provider owns a run queue.
+Unbounded or dynamically allocated queues, preemption, blocking, wakeup,
+priorities, timeslicing, cancellation, migration, and SMP remain excluded.
+
+The deadline-preemptible transfer extension combines one selected suspended
+kernel context and one absolute deadline in a single nonordinary dispatch.
+Before the provider admits interrupt delivery, it atomically registers the
+dispatcher's exact suspended continuation as the sole target and arms the
+event. Matching typed completion may choose `preempt current kernel context`;
+that disposition captures the interrupted worker as an opaque suspended
+context and resumes only the registered dispatcher. The dispatcher receives
+an affine preempted outcome and may re-enqueue that worker using the ordinary
+bounded runnable queue.
+
+The initial worker uses one sealed `kernel context await deadline preemption`
+test region. It cannot return on first entry: matching delivery first preempts
+the worker, and only a later source-selected transfer restores the interrupted
+continuation and completes the region. This makes physical preemption
+deterministic without defining a general wait or sleep operation.
+
+Later dispatch restores the exact interrupted continuation and its frozen
+affine obligations. Target interrupt frames, status fields, stack switching,
+and return instructions remain provider-private, while dequeue and re-enqueue
+remain source policy. The initial profile admits one deadline-preempted worker
+on one processor and address space. It excludes cancellation, rearming,
+periodic ticks, general timeslices, priority, blocking, wakeup, nested
+preemption, migration, SMP, userspace, and extended-state switching.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
@@ -324,6 +564,132 @@ Page-table construction uses an exclusive builder. Activation, protection
 change, unmapping, and reuse require the mapping and target-qualified
 translation/invalidation evidence appropriate to every affected processor.
 
+### Translation-space construction and activation
+
+The initial construction vocabulary exposes the builder lifecycle without
+exposing a page-table format:
+
+```topal
+memory translation begin (
+  template is bootstrap-equivalent,
+  page-policy is provider-selected
+)
+  Ok update then {
+    memory translation commit update
+      Ok space then {
+        memory translation activate space
+          Ok translated then {
+            translated console write "TOPAL_KERNEL_TRANSLATION_ACTIVE"
+            translated fatal "complete"
+          }
+          Error failure then {
+            failure fatal "translation activation failed"
+          }
+      }
+      Error failure then {
+        failure fatal "translation commit failed"
+      }
+  }
+  Error failure then {
+    failure fatal "translation construction failed"
+  }
+```
+
+`translation begin` borrows the live frame allocator, reserves the
+provider-selected backing required by the qualified target, and returns one
+affine exclusive `TranslationUpdate`. The update owns that backing and a
+snapshot of the requested semantic mapping template. It exposes neither table
+entries nor backing addresses. The initial template is exactly
+`bootstrap-equivalent`: it preserves the current bootstrap coverage and access
+observations. It does not add a user mapping, widen a permission, or imply that
+physical and virtual identities are interchangeable.
+
+`translation commit` consumes the update after provider validation and returns
+one inactive affine `TranslationSpace`. Commit failure consumes the incomplete
+builder into a fatal-only failure context in the initial slice. `translation
+activate` consumes the inactive space and the current translation authority,
+performs the target-qualified publication, synchronization, activation, and
+completion protocol, and returns a refined bootstrap context owning the new
+active space. The previous bootstrap translation remains provider-owned and
+unavailable to ordinary source.
+
+Builder duplication or escape, activation before commit, use after commit,
+activation of the wrong provider space, backing-frame release while owned by
+an update or space, and a recoverable continuation after an indeterminate
+activation all fail closed. The first x86-64 provider constructs a replacement
+four-level root using provider-owned frames and 2 MiB identity leaves for the
+already qualified first-GiB bootstrap coverage, then activates it with the
+required control-state transition. AArch64 and RISC-V providers may select
+different granules, levels, descriptor formats, and maintenance sequences
+while preserving the same builder, commit, activation, coverage, permission,
+and ownership observations.
+
+This initial operation replaces a bootstrap-equivalent translation only. It
+does not yet create arbitrary ranges, change permissions, construct user
+spaces, support multiple active spaces, or expose general invalidation.
+
+### Active translation edits
+
+Mappings on an active translation space change only through an exclusive
+transaction. The initial map lifecycle is:
+
+```topal
+active translation edit begin
+  Ok edit then {
+    edit kernel map frames (
+      rights is read-write,
+      execution is denied,
+      memory-kind is normal,
+      placement is provider-selected
+    )
+      Ok mapping then {
+        edit translation commit
+          Ok edited then {
+            mapping byte store (offset-bytes is 0, value is 60)
+            edited fatal "complete"
+          }
+          Error failure then {
+            failure fatal "translation edit commit failed"
+          }
+      }
+      Error failure then {
+        failure fatal "translation edit mapping failed"
+      }
+  }
+  Error failure then {
+    failure fatal "translation edit construction failed"
+  }
+```
+
+`translation edit begin` consumes the active context into one affine
+`TranslationEdit`; ordinary operations through the old context are unavailable
+until commit succeeds. Mapping consumes a live physical-frame extent into one
+provisional opaque `KernelMapping`. The mapping grants no access before
+`translation commit` consumes the edit, publishes the target-qualified
+translation changes, completes required ordering and invalidation, and returns
+a refined active context. A failed or indeterminate commit is fatal-only.
+
+Unmapping uses a second exclusive edit. It consumes the live mapping into a
+provisional returned frame extent. That extent cannot be accessed, released,
+or remapped until commit removes the translation, performs the complete
+target-qualified invalidation protocol, and returns the next refined context.
+The mapping becomes unusable when unmap enters the transaction, not after a
+later best-effort cleanup.
+
+The initial placement is exactly `provider-selected`: source observes only the
+mapping capability, bounds, rights, memory kind, and ownership transitions. It
+cannot observe or choose a virtual address, page size, table level, entry,
+address-space identifier, invalidation address, processor mask, register, or
+instruction. The first x86-64 provider admits one 4 KiB normal read-write,
+non-executable mapping in a reserved kernel window and invalidates it before
+returning its frame. AArch64 and RISC-V providers may use different granules,
+levels, address-space identifiers, barriers, and invalidation scopes while
+preserving the same transaction, visibility, and ownership observations.
+
+This slice does not yet admit concurrent edits, multiple live dynamic
+mappings, user mappings, device memory, permission changes, executable
+mappings, remote-processor shootdown, or reclamation of provider metadata.
+
 ## Fault-contained access
 
 User addresses are untrusted ABI values rather than Topal references. A user
@@ -366,6 +732,49 @@ invariant holds for every transition. Non-atomic conflicting access remains a
 rejected race. Mixed access requires a proved ownership transition which ends
 all atomic access first.
 
+The initial source form specializes that lifecycle to one unsigned machine
+word in CPU-shared normal memory:
+
+```topal
+atomic is region atomic word create (
+  offset-bytes is 8,
+  initial-value is 41,
+  domain is cpu-shared
+)
+atomic compare exchange (
+  expected is 41,
+  desired is 42,
+  success-order is acquire-release,
+  failure-order is acquire
+)
+  Exchanged previous then {
+    observed : Nat is atomic load (order is acquire)
+    observed = 42
+      true then {
+        region is atomic end
+        restored bootstrap release region
+      }
+      false then {
+        region is atomic end
+        restored bootstrap release region
+        restored fatal "atomic load mismatch"
+      }
+  }
+  Observed actual then {
+    region is atomic end
+    restored bootstrap release region
+    restored fatal "atomic compare exchange lost"
+  }
+```
+
+`atomic word create` consumes the entire region even though only its selected
+word is the atomic location, so no plain alias remains usable. `atomic end`
+consumes the location, proves that no operation remains in flight, retains the
+final word contents, and returns that same region to plain ownership. The
+machine-word width is supplied by the qualified target; source cannot select
+an instruction width or address. The initial `cpu-shared` domain excludes
+MMIO, device, DMA, firmware, and user memory.
+
 Mutex, spin-style, sequence, reference-count, epoch/RCU, wait, and completion
 algorithms are libraries over atomic and critical-scope elements. The language
 does not standardize one universal lock.
@@ -376,6 +785,31 @@ Interrupt masking and scheduler-preemption control are scoped, affine state
 transitions tied to one processor and domain. Entering returns a restoration
 token containing the exact previous state. Every exit path consumes it once;
 it cannot cross processors, suspend, escape, or restore out of nesting order.
+
+The initial local-interrupt form consumes the current execution context and
+returns a context refined to `local-maskable-interrupts`:
+
+```topal
+context critical enter (
+  domain is local-maskable-interrupts
+)
+  Ok critical then {
+    critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+    restored is critical restore
+    restored console write "continued"
+  }
+  Error failure then {
+    failure fatal "critical entry failed"
+  }
+```
+
+`critical restore` consumes the refined context and returns the context state
+that existed immediately before the matching entry. Nested scopes, when a
+provider admits them, restore in last-in-first-out order. Neither source nor
+the common semantic model can observe the saved flags, registers, masks, or
+instructions. A local-interrupt critical context cannot be used for an
+operation which may suspend or block, and it must be restored before control
+can escape its lexical continuation.
 
 Masking local interrupts does not exclude another processor, an NMI, DMA, or a
 device. An exclusion proof names the exact producers removed by the scope.
@@ -400,6 +834,12 @@ suspended context. It applies the scheduler's per-CPU and address-space
 transition and resumes exactly one continuation. It is nonordinary control
 flow: it does not return as a normal function, although a later transfer may
 resume the old typed continuation point.
+
+A cooperative transfer may later resume that point with either an affine
+suspended context returned by the peer or an affine completed context for a
+peer which retired to it. Closed entry protocols may refine the result, but
+source cannot forge or reinterpret that refinement. Runnable selection is
+ordinary kernel policy and is not performed by the context provider.
 
 Source cannot inspect or construct register slots. Debugger and user-process
 ABI adapters use separate validated semantic state views.

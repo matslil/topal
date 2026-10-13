@@ -8,37 +8,59 @@ use std::collections::BTreeMap;
 
 use topal_source::{Diagnostic, SourceText, Span};
 use topal_syntax::{
-    CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses, ProductField,
-    Statement, lex, parse,
+    CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses, FunctionParameter,
+    ProductField, Statement, lex, parse,
 };
 
 pub use topal_semantics::{
-    BootstrapRegion as CompilerBootstrapRegion,
+    AtomicCompareExchangeResult as CompilerAtomicCompareExchangeResult,
+    AtomicDomain as CompilerAtomicDomain, AtomicOrder as CompilerAtomicOrder,
+    AtomicWordRequest as CompilerAtomicWordRequest, BootstrapRegion as CompilerBootstrapRegion,
     BootstrapStorageDescriptor as CompilerBootstrapStorageDescriptor,
     BootstrapStorageErrorCode as CompilerBootstrapStorageErrorCode,
     BootstrapStoragePlacement as CompilerBootstrapStoragePlacement,
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
-    BootstrapStorageTransition as CompilerBootstrapStorageTransition, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
-    KernelExecutionPolicy as CompilerKernelExecutionPolicy,
+    BootstrapStorageTransition as CompilerBootstrapStorageTransition,
+    CriticalDomain as CompilerCriticalDomain, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE,
+    INITIAL_SYSTEMS_TARGET, KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
-    PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
-    SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED, SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
-    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
-    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK,
+    PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+    SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
+    SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
+    SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_EXHAUSTED,
+    SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
     SystemsTargetSelection as CompilerSystemsTargetSelection,
-    SystemsTransition as CompilerSystemsTransition, model_systems_transitions,
+    SystemsTransition as CompilerSystemsTransition,
+    TranslationEditKind as CompilerTranslationEditKind,
+    TranslationMappingRequest as CompilerTranslationMappingRequest,
+    TranslationPagePolicy as CompilerTranslationPagePolicy,
+    TranslationPlacement as CompilerTranslationPlacement,
+    TranslationTemplate as CompilerTranslationTemplate,
+    TranslationUpdateRequest as CompilerTranslationUpdateRequest, model_systems_transitions,
     validate_systems_program,
 };
 
@@ -56,6 +78,145 @@ pub fn analyze_systems_for_compiler(
     target: &CompilerSystemsTargetSelection,
 ) -> Result<CompilerSystemsProgram, Diagnostic> {
     validate_target(text, target)?;
+    let (source, statements) = parse_systems_source(text)?;
+    let Some((selection, remaining)) = statements.split_first() else {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-CONTEXT",
+            Span::new(0, 0),
+            "a systems root begins with `use language ( version is v0.1, features is ( systems ) )`",
+        ));
+    };
+    validate_language_selection(&source, selection)?;
+    let Some((root, declarations)) = remaining.split_last() else {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-ARTIFACT",
+            statement_span(selection),
+            "a systems root requires one `lang systems artifact`",
+        ));
+    };
+
+    let functions = collect_handler_declarations(&source, declarations)?;
+
+    let root_entries = parse_artifact_root(&source, root)?;
+    if functions.len() != 6 {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-ENTRY-SET",
+            statement_span(root),
+            "the cooperative systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread handlers",
+        ));
+    }
+    if root_entries.bootstrap == root_entries.debug_break
+        || root_entries.bootstrap == root_entries.local_notification
+        || root_entries.bootstrap == root_entries.deadline_notification
+        || root_entries.debug_break == root_entries.local_notification
+        || root_entries.debug_break == root_entries.deadline_notification
+        || root_entries.debug_break == root_entries.kernel_thread
+        || root_entries.local_notification == root_entries.deadline_notification
+        || root_entries.local_notification == root_entries.kernel_thread
+        || root_entries.deadline_notification == root_entries.kernel_thread
+        || root_entries.bootstrap == root_entries.kernel_thread
+        || root_entries.bootstrap == root_entries.terminal_thread
+        || root_entries.debug_break == root_entries.terminal_thread
+        || root_entries.local_notification == root_entries.terminal_thread
+        || root_entries.deadline_notification == root_entries.terminal_thread
+        || root_entries.kernel_thread == root_entries.terminal_thread
+    {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-ENTRY-SET",
+            statement_span(root),
+            "bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread entries require distinct handlers",
+        ));
+    }
+    let bootstrap = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "bootstrap",
+        &root_entries.bootstrap,
+        CompilerSystemsContextKind::Bootstrap,
+        Some(&root_entries.bootstrap_storage),
+    )?;
+    let debug_break = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "debug-break",
+        &root_entries.debug_break,
+        CompilerSystemsContextKind::DebugBreak,
+        None,
+    )?;
+    let local_notification = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "local-notification",
+        &root_entries.local_notification,
+        CompilerSystemsContextKind::LocalNotificationInterrupt,
+        None,
+    )?;
+    let deadline_notification = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "deadline-notification",
+        &root_entries.deadline_notification,
+        CompilerSystemsContextKind::DeadlineInterrupt,
+        None,
+    )?;
+    let kernel_thread = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "kernel-thread",
+        &root_entries.kernel_thread,
+        CompilerSystemsContextKind::KernelThread,
+        None,
+    )?;
+    let terminal_thread = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "terminal-thread",
+        &root_entries.terminal_thread,
+        CompilerSystemsContextKind::KernelThread,
+        None,
+    )?;
+
+    Ok(CompilerSystemsProgram {
+        target: target.clone(),
+        bootstrap_storage: root_entries.bootstrap_storage,
+        bootstrap: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::Bootstrap,
+            handler: bootstrap,
+        },
+        debug_break: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::SynchronousExceptionDebugBreak,
+            handler: debug_break,
+        },
+        local_notification: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ExternalInterruptLocalNotification,
+            handler: local_notification,
+        },
+        deadline_notification: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ExternalInterruptDeadline,
+            handler: deadline_notification,
+        },
+        kernel_thread: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ResumedKernelThread,
+            handler: kernel_thread,
+        },
+        terminal_thread: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ResumedKernelThread,
+            handler: terminal_thread,
+        },
+    })
+}
+
+fn parse_systems_source(text: &str) -> Result<(SourceText, Vec<Statement>), Diagnostic> {
     let source = SourceText::new(text).map_err(|error| {
         Diagnostic::error(error.code, 1, 1, error.message).with_source_span(error.span)
     })?;
@@ -77,74 +238,7 @@ pub fn analyze_systems_for_compiler(
             error.message.clone(),
         ));
     }
-    let Some((selection, remaining)) = parsed.statements.split_first() else {
-        return Err(source_diagnostic(
-            &source,
-            "E-SYSTEMS-CONTEXT",
-            Span::new(0, 0),
-            "a systems root begins with `use language ( version is v0.1, features is ( systems ) )`",
-        ));
-    };
-    validate_language_selection(&source, selection)?;
-    let Some((root, declarations)) = remaining.split_last() else {
-        return Err(source_diagnostic(
-            &source,
-            "E-SYSTEMS-ARTIFACT",
-            statement_span(selection),
-            "a systems root requires one `lang systems artifact`",
-        ));
-    };
-
-    let functions = collect_handler_declarations(&source, declarations)?;
-
-    let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 2 {
-        return Err(source_diagnostic(
-            &source,
-            "E-SYSTEMS-ENTRY-SET",
-            statement_span(root),
-            "the initial systems artifact requires exactly its bootstrap and debug-break handlers",
-        ));
-    }
-    if root_entries.bootstrap == root_entries.debug_break {
-        return Err(source_diagnostic(
-            &source,
-            "E-SYSTEMS-ENTRY-SET",
-            statement_span(root),
-            "bootstrap and debug-break entries require distinct handlers",
-        ));
-    }
-    let bootstrap = analyze_named_handler(
-        &source,
-        &functions,
-        root,
-        "bootstrap",
-        &root_entries.bootstrap,
-        CompilerSystemsContextKind::Bootstrap,
-        Some(&root_entries.bootstrap_storage),
-    )?;
-    let debug_break = analyze_named_handler(
-        &source,
-        &functions,
-        root,
-        "debug-break",
-        &root_entries.debug_break,
-        CompilerSystemsContextKind::DebugBreak,
-        None,
-    )?;
-
-    Ok(CompilerSystemsProgram {
-        target: target.clone(),
-        bootstrap_storage: root_entries.bootstrap_storage,
-        bootstrap: CompilerSystemsEntry {
-            kind: CompilerSystemsEntryKind::Bootstrap,
-            handler: bootstrap,
-        },
-        debug_break: CompilerSystemsEntry {
-            kind: CompilerSystemsEntryKind::SynchronousExceptionDebugBreak,
-            handler: debug_break,
-        },
-    })
+    Ok((source, parsed.statements))
 }
 
 fn analyze_named_handler(
@@ -247,6 +341,10 @@ struct ArtifactEntries {
     bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
+    local_notification: String,
+    deadline_notification: String,
+    kernel_thread: String,
+    terminal_thread: String,
 }
 
 fn parse_artifact_root(
@@ -290,7 +388,15 @@ fn parse_artifact_root(
             if bootstrap_storage.replace(descriptor).is_some() {
                 return Err(duplicate_artifact_field(source, label, label_text));
             }
-        } else if matches!(label_text, "bootstrap" | "debug-break") {
+        } else if matches!(
+            label_text,
+            "bootstrap"
+                | "debug-break"
+                | "local-notification"
+                | "deadline-notification"
+                | "kernel-thread"
+                | "terminal-thread"
+        ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
                 return Err(duplicate_artifact_field(source, label, label_text));
@@ -304,11 +410,24 @@ fn parse_artifact_root(
             ));
         }
     }
-    let (Some(bootstrap_storage), Some(bootstrap), Some(debug_break)) = (
+    let (
+        Some(bootstrap_storage),
+        Some(bootstrap),
+        Some(debug_break),
+        Some(local_notification),
+        Some(deadline_notification),
+        Some(kernel_thread),
+        Some(terminal_thread),
+    ) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
         entries.remove("debug-break"),
-    ) else {
+        entries.remove("local-notification"),
+        entries.remove("deadline-notification"),
+        entries.remove("kernel-thread"),
+        entries.remove("terminal-thread"),
+    )
+    else {
         return Err(invalid_entry_set(source, *span));
     };
     if !entries.is_empty() {
@@ -318,6 +437,10 @@ fn parse_artifact_root(
         bootstrap_storage,
         bootstrap,
         debug_break,
+        local_notification,
+        deadline_notification,
+        kernel_thread,
+        terminal_thread,
     })
 }
 
@@ -327,7 +450,7 @@ fn artifact_field_label(source: &SourceText, field: &ProductField) -> Result<Spa
             source,
             "E-SYSTEMS-ENTRY-SET",
             field.value.span(),
-            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, and `debug-break` fields",
+            "systems artifact entries require named `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, `kernel-thread`, and `terminal-thread` fields",
         )
     })
 }
@@ -349,6 +472,9 @@ fn parse_entry_field(
     let expected_constructor = match label_text {
         "bootstrap" => "bootstrap-entry",
         "debug-break" => "synchronous-exception-entry",
+        "local-notification" => "external-interrupt-entry",
+        "deadline-notification" => "external-interrupt-entry",
+        "kernel-thread" | "terminal-thread" => "resumed-thread-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -498,12 +624,44 @@ fn storage_diagnostic(source: &SourceText, span: Span, message: impl Into<String
     source_diagnostic(source, "E-SYSTEMS-STORAGE", span, message)
 }
 
+fn atomic_diagnostic(source: &SourceText, span: Span, message: impl Into<String>) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-ATOMIC", span, message)
+}
+
+fn local_interrupt_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-LOCAL-INTERRUPT", span, message)
+}
+
+fn monotonic_clock_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-MONOTONIC-CLOCK", span, message)
+}
+
+fn deadline_diagnostic(source: &SourceText, span: Span, message: impl Into<String>) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-DEADLINE-EVENT", span, message)
+}
+
+fn kernel_context_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-CONTEXT-TRANSFER", span, message)
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
         "E-SYSTEMS-ENTRY-SET",
         span,
-        "the initial systems artifact requires exactly `bootstrap-storage`, `bootstrap`, and `debug-break` entries",
+        "the cooperative systems artifact requires exactly `bootstrap-storage`, `bootstrap`, `debug-break`, `local-notification`, `deadline-notification`, `kernel-thread`, and `terminal-thread` entries",
     )
 }
 
@@ -526,9 +684,31 @@ fn analyze_handler(
     else {
         unreachable!("handler table retains only functions")
     };
+    if context == CompilerSystemsContextKind::KernelThread {
+        return analyze_kernel_thread_handler(
+            source,
+            source.slice(*name),
+            *is_static,
+            parameters,
+            *result,
+            effect_bound.as_ref(),
+            clauses,
+            body,
+            *span,
+        );
+    }
     let (context_classifier, disposition_classifier) = match context {
         CompilerSystemsContextKind::Bootstrap => ("BootstrapContext", "BootstrapDisposition"),
         CompilerSystemsContextKind::DebugBreak => ("DebugBreakContext", "DebugBreakDisposition"),
+        CompilerSystemsContextKind::LocalNotificationInterrupt => (
+            "LocalNotificationInterruptContext",
+            "LocalNotificationInterruptDisposition",
+        ),
+        CompilerSystemsContextKind::DeadlineInterrupt => (
+            "DeadlineInterruptContext InitialMonotonicClock",
+            "DeadlineInterruptDisposition InitialMonotonicClock",
+        ),
+        CompilerSystemsContextKind::KernelThread => unreachable!("handled above"),
     };
     if *is_static
         || parameters.len() != 1
@@ -552,23 +732,19 @@ fn analyze_handler(
     }
     let context_name = source.slice(parameters[0].name);
     if context == CompilerSystemsContextKind::Bootstrap {
-        let storage = bootstrap_storage.expect("bootstrap handler carries its storage descriptor");
-        let checked = analyze_boot_memory_decision(source, body, context_name, storage)?;
-        let mut effects = checked
-            .operations
-            .iter()
-            .map(|operation| operation.semantic_identity().to_owned())
-            .collect::<Vec<_>>();
-        effects.push(checked.disposition.semantic_identity().to_owned());
-        effects.sort();
-        effects.dedup();
-        return Ok(CompilerSystemsHandler {
-            name: source.slice(*name).to_owned(),
-            context,
-            operations: checked.operations,
-            disposition: checked.disposition,
-            effects,
-        });
+        return analyze_bootstrap_handler(
+            source,
+            source.slice(*name),
+            body,
+            context_name,
+            bootstrap_storage.expect("bootstrap handler carries its storage descriptor"),
+        );
+    }
+    if context == CompilerSystemsContextKind::LocalNotificationInterrupt {
+        return analyze_local_notification_handler(source, source.slice(*name), body, context_name);
+    }
+    if context == CompilerSystemsContextKind::DeadlineInterrupt {
+        return analyze_deadline_handler(source, source.slice(*name), body, context_name);
     }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
@@ -598,7 +774,7 @@ fn analyze_handler(
         .iter()
         .map(|operation| operation.semantic_identity().to_owned())
         .collect::<Vec<_>>();
-    effects.push(disposition.semantic_identity().to_owned());
+    effects.push(disposition.semantic_identity(context).to_owned());
     effects.sort();
     effects.dedup();
     Ok(CompilerSystemsHandler {
@@ -610,9 +786,376 @@ fn analyze_handler(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+fn analyze_kernel_thread_handler(
+    source: &SourceText,
+    name: &str,
+    is_static: bool,
+    parameters: &[FunctionParameter],
+    result: Span,
+    effect_bound: Option<&Span>,
+    clauses: &FunctionClauses,
+    body: &[Statement],
+    span: Span,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    if is_static
+        || parameters.len() != 2
+        || source.slice(parameters[0].classifier) != "KernelThreadContext InitialProcessor"
+        || source.slice(parameters[1].classifier) != "SuspendedKernelContext InitialProcessor"
+        || source.slice(result) != "KernelThreadDisposition InitialProcessor"
+        || parameters.iter().any(|parameter| {
+            parameter.qualifier.is_some()
+                || !parameter.fields.is_empty()
+                || parameter.default.is_some()
+        })
+        || effect_bound.is_some()
+        || !clauses_are_empty(clauses)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            span,
+            format!(
+                "handler `{name}` must have exactly `fn (context : KernelThreadContext InitialProcessor, caller : SuspendedKernelContext InitialProcessor) -> KernelThreadDisposition InitialProcessor`"
+            ),
+        ));
+    }
+    let terminal = name == "terminal-thread-handler";
+    let cooperative = name == "kernel-thread-handler";
+    if !terminal && !cooperative {
+        return Err(kernel_context_diagnostic(
+            source,
+            span,
+            "the cooperative profile requires `kernel-thread-handler` and `terminal-thread-handler`",
+        ));
+    }
+    let context_name = source.slice(parameters[0].name);
+    let caller_name = source.slice(parameters[1].name);
+    let (_marker, retirement, returned_caller, operations) = if cooperative {
+        let [marker, await_preemption, resumed_marker, retirement] = body else {
+            return Err(kernel_context_diagnostic(
+                source,
+                span,
+                "the deadline-preemptible kernel thread must enter, await preemption, resume, and retire",
+            ));
+        };
+        let entered = analyze_operation(
+            source,
+            marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if entered
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(marker),
+                "the deadline-preemptible kernel thread requires its exact entry marker",
+            ));
+        }
+        let await_preemption_span = statement_span(await_preemption);
+        let await_preemption = analyze_operation(
+            source,
+            await_preemption,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if await_preemption != CompilerSystemsOperation::AwaitDeadlinePreemption {
+            return Err(kernel_context_diagnostic(
+                source,
+                await_preemption_span,
+                "the deadline-preemptible kernel thread requires its sealed preemption region",
+            ));
+        }
+        let resumed = analyze_operation(
+            source,
+            resumed_marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if resumed
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(resumed_marker),
+                "the deadline-preemptible kernel thread requires its exact resumed marker",
+            ));
+        }
+        (
+            marker,
+            retirement,
+            caller_name.to_owned(),
+            vec![entered, await_preemption, resumed],
+        )
+    } else {
+        let [marker, retirement] = body else {
+            return Err(kernel_context_diagnostic(
+                source,
+                span,
+                "the terminal kernel thread must write its entry marker and retire",
+            ));
+        };
+        let entered = analyze_operation(
+            source,
+            marker,
+            CompilerSystemsContextKind::KernelThread,
+            context_name,
+        )?;
+        if entered
+            != (CompilerSystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+            })
+        {
+            return Err(kernel_context_diagnostic(
+                source,
+                statement_span(marker),
+                "the terminal kernel thread requires its exact entry marker",
+            ));
+        }
+        (marker, retirement, caller_name.to_owned(), vec![entered])
+    };
+    let Statement::Expression(Expression::Application {
+        items,
+        span: retirement_span,
+    }) = retirement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(retirement),
+            "kernel-thread retirement must be `context kernel context retire to caller`",
+        ));
+    };
+    let [context, kernel, context_word, retire, to, caller] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *retirement_span,
+            "kernel-thread retirement must be `context kernel context retire to caller`",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, retire, "retire")
+        || !identifier_is(source, to, "to")
+        || !identifier_is(source, caller, &returned_caller)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *retirement_span,
+            "kernel-thread retirement must consume its live context and matching suspended caller",
+        ));
+    }
+    let mut effects = vec![
+        SYSTEMS_CONSOLE_WRITE.to_owned(),
+        SYSTEMS_KERNEL_CONTEXT_RETIRE.to_owned(),
+    ];
+    if cooperative {
+        effects.push(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.to_owned());
+        effects.sort();
+    }
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::KernelThread,
+        operations,
+        disposition: CompilerSystemsDisposition::RetireKernelContextToCaller,
+        effects,
+    })
+}
+
+fn analyze_bootstrap_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let checked = analyze_boot_memory_decision(source, body, context_name, storage)?;
+    let mut effects = checked
+        .operations
+        .iter()
+        .map(|operation| operation.semantic_identity().to_owned())
+        .collect::<Vec<_>>();
+    effects.push(
+        checked
+            .disposition
+            .semantic_identity(CompilerSystemsContextKind::Bootstrap)
+            .to_owned(),
+    );
+    effects.sort();
+    effects.dedup();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::Bootstrap,
+        operations: checked.operations,
+        disposition: checked.disposition,
+        effects,
+    })
+}
+
+fn analyze_local_notification_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [complete, disposition] = body else {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "local-notification handler requires consuming completion followed by resume",
+        ));
+    };
+    let (completed, items, span) = affine_application_binding(source, complete, "completion")?;
+    let [receiver, local, notification, complete_operation] = items else {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            span,
+            "completion must bind `completed is context local notification complete`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, complete_operation, "complete")
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            span,
+            "completion must consume the live local-notification interrupt context",
+        ));
+    }
+    let completed_name = source.slice(completed);
+    let disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::LocalNotificationInterrupt,
+        completed_name,
+    )?;
+    if disposition != CompilerSystemsDisposition::Resume {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-LOCAL-INTERRUPT",
+            statement_span(body.last().expect("two statements")),
+            "local-notification completion must end in resume",
+        ));
+    }
+    let operations = vec![CompilerSystemsOperation::CompleteLocalNotification];
+    let mut effects = vec![
+        SYSTEMS_LOCAL_NOTIFICATION_COMPLETE.to_owned(),
+        disposition
+            .semantic_identity(CompilerSystemsContextKind::LocalNotificationInterrupt)
+            .to_owned(),
+    ];
+    effects.sort();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::LocalNotificationInterrupt,
+        operations,
+        disposition,
+        effects,
+    })
+}
+
+fn analyze_deadline_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [complete, disposition] = body else {
+        return Err(deadline_diagnostic(
+            source,
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "deadline handler requires consuming completion followed by bound-context preemption",
+        ));
+    };
+    let (completed, items, span) = affine_application_binding(source, complete, "completion")?;
+    let [receiver, deadline, notification, complete_operation] = items else {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "completion must bind `completed is context deadline notification complete`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, complete_operation, "complete")
+    {
+        return Err(deadline_diagnostic(
+            source,
+            span,
+            "completion must consume the live deadline interrupt context",
+        ));
+    }
+    let completed_name = source.slice(completed);
+    let disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::DeadlineInterrupt,
+        completed_name,
+    )?;
+    if disposition != CompilerSystemsDisposition::PreemptKernelContext {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(body.last().expect("two statements")),
+            "deadline completion must preempt the bound kernel context",
+        ));
+    }
+    let operations = vec![CompilerSystemsOperation::CompleteDeadline];
+    let mut effects = vec![
+        SYSTEMS_DEADLINE_COMPLETE.to_owned(),
+        SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT.to_owned(),
+    ];
+    effects.sort();
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::DeadlineInterrupt,
+        operations,
+        disposition,
+        effects,
+    })
+}
+
+fn affine_application_binding<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    operation: &str,
+) -> Result<(Span, &'a [Expression], Span), Diagnostic> {
+    match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => Ok((*name, items, *span)),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => Ok((*name, items, *span)),
+        _ => Err(local_interrupt_diagnostic(
+            source,
+            statement_span(statement),
+            format!("{operation} must use one unclassified affine binding"),
+        )),
+    }
+}
+
 include!("systems_boot_memory.rs");
 include!("systems_frames.rs");
 include!("systems_mapping.rs");
+include!("systems_translation.rs");
+include!("systems_translation_edit.rs");
+include!("systems_critical.rs");
 
 struct CheckedBootstrapRegionDecision {
     operations: Vec<CompilerSystemsOperation>,
@@ -642,6 +1185,7 @@ fn analyze_bootstrap_region_decision(
         ok_action,
         error_action,
         context_name,
+        storage,
     )
 }
 
@@ -668,6 +1212,7 @@ fn analyze_bootstrap_region_sequence(
         ok_action,
         error_action,
         context_name,
+        storage,
     )
 }
 
@@ -732,6 +1277,7 @@ fn analyze_bootstrap_region_actions(
     ok_action: &Expression,
     error_action: &Expression,
     context_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
 ) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
     let error_disposition = action_disposition(source, error_action, context_name)?;
     if !matches!(error_disposition, CompilerSystemsDisposition::Fatal { .. }) {
@@ -766,9 +1312,13 @@ fn analyze_bootstrap_region_actions(
         comparison,
         true_rule,
         false_rule,
-        context_name,
-        ok_binding,
-        &loaded_name,
+        RegionComparisonContext {
+            context_name,
+            region_name: ok_binding,
+            loaded_name: &loaded_name,
+            region_request: request,
+            storage,
+        },
     )?;
     for offset in [store_offset, load_offset] {
         if offset >= request.byte_count {
@@ -782,23 +1332,21 @@ fn analyze_bootstrap_region_actions(
             ));
         }
     }
+    let mut operations = vec![
+        CompilerSystemsOperation::BootstrapAllocate { request },
+        CompilerSystemsOperation::BootstrapStoreByte {
+            offset_bytes: store_offset,
+            value,
+        },
+        CompilerSystemsOperation::BootstrapLoadByteEquals {
+            offset_bytes: load_offset,
+            expected: comparison.expected,
+            failure_message: comparison.failure_message,
+        },
+    ];
+    operations.extend(comparison.success_operations);
     Ok(CheckedBootstrapRegionDecision {
-        operations: vec![
-            CompilerSystemsOperation::BootstrapAllocate { request },
-            CompilerSystemsOperation::BootstrapStoreByte {
-                offset_bytes: store_offset,
-                value,
-            },
-            CompilerSystemsOperation::BootstrapLoadByteEquals {
-                offset_bytes: load_offset,
-                expected: comparison.expected,
-                failure_message: comparison.failure_message,
-            },
-            CompilerSystemsOperation::ConsoleWrite {
-                text: comparison.success_text,
-            },
-            CompilerSystemsOperation::BootstrapRelease,
-        ],
+        operations,
         disposition: comparison.success_disposition,
     })
 }
@@ -989,6 +1537,35 @@ fn result_actions<'a>(
     Ok((binding, ok, error))
 }
 
+fn raw_result_action<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    expected: &str,
+) -> Result<(String, &'a Expression), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "nested context allocation requires explicit `Ok` and `Error` actions",
+        ));
+    };
+    let [constructor, Expression::Identifier(binding), then, action] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "nested context allocation action must bind its result before `then`",
+        ));
+    };
+    if !identifier_is(source, constructor, expected) || !identifier_is(source, then, "then") {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            format!("nested context allocation requires the `{expected}` action in order"),
+        ));
+    }
+    Ok((source.slice(*binding).to_owned(), action))
+}
+
 fn parse_region_store(
     source: &SourceText,
     statement: &Statement,
@@ -1125,9 +1702,18 @@ fn named_static_natural(
 
 struct CheckedRegionComparison {
     expected: u8,
-    success_text: String,
+    success_operations: Vec<CompilerSystemsOperation>,
     failure_message: String,
     success_disposition: CompilerSystemsDisposition,
+}
+
+#[derive(Clone, Copy)]
+struct RegionComparisonContext<'a> {
+    context_name: &'a str,
+    region_name: &'a str,
+    loaded_name: &'a str,
+    region_request: CompilerBootstrapStorageRequest,
+    storage: &'a CompilerBootstrapStorageDescriptor,
 }
 
 fn parse_region_comparison(
@@ -1135,9 +1721,7 @@ fn parse_region_comparison(
     statement: &Statement,
     true_rule: &Statement,
     false_rule: &Statement,
-    context_name: &str,
-    region_name: &str,
-    loaded_name: &str,
+    context: RegionComparisonContext<'_>,
 ) -> Result<CheckedRegionComparison, Diagnostic> {
     let Statement::Expression(Expression::Application { items, .. }) = statement else {
         return Err(storage_diagnostic(
@@ -1161,7 +1745,7 @@ fn parse_region_comparison(
             "loaded byte decision subject must use equality with a static byte",
         ));
     };
-    if !identifier_is(source, loaded, loaded_name) {
+    if !identifier_is(source, loaded, context.loaded_name) {
         return Err(storage_diagnostic(
             source,
             loaded.span(),
@@ -1178,28 +1762,13 @@ fn parse_region_comparison(
     let true_action = parse_boolean_rule(source, true_rule, true)?;
     let false_action = parse_boolean_rule(source, false_rule, false)?;
     let true_statements = action_block(source, true_action, "successful byte comparison")?;
-    let [console, release, disposition] = true_statements else {
-        return Err(storage_diagnostic(
-            source,
-            true_action.span(),
-            "successful byte comparison requires console marker, region release, and final disposition",
-        ));
-    };
-    let CompilerSystemsOperation::ConsoleWrite { text } = analyze_operation(
+    let atomic = parse_atomic_word_sequence(
         source,
-        console,
-        CompilerSystemsContextKind::Bootstrap,
-        context_name,
-    )?
-    else {
-        unreachable!("only the console operation passes the success check")
-    };
-    parse_region_release(source, release, context_name, region_name)?;
-    let success_disposition = analyze_disposition(
-        source,
-        disposition,
-        CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        true_statements,
+        context.context_name,
+        context.region_name,
+        context.region_request,
+        context.storage,
     )?;
 
     let false_statements = action_block(source, false_action, "failed byte comparison")?;
@@ -1210,12 +1779,12 @@ fn parse_region_comparison(
             "failed byte comparison requires region release and fatal disposition",
         ));
     };
-    parse_region_release(source, release, context_name, region_name)?;
+    parse_region_release(source, release, context.context_name, context.region_name)?;
     let failure = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        context_name,
+        context.context_name,
     )?;
     let CompilerSystemsDisposition::Fatal {
         message: failure_message,
@@ -1229,9 +1798,1590 @@ fn parse_region_comparison(
     };
     Ok(CheckedRegionComparison {
         expected,
-        success_text: text,
+        success_operations: atomic.operations,
         failure_message,
+        success_disposition: atomic.disposition,
+    })
+}
+
+struct CheckedAtomicSequence {
+    operations: Vec<CompilerSystemsOperation>,
+    disposition: CompilerSystemsDisposition,
+}
+
+fn parse_atomic_word_sequence(
+    source: &SourceText,
+    statements: &[Statement],
+    context_name: &str,
+    region_name: &str,
+    region_request: CompilerBootstrapStorageRequest,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedAtomicSequence, Diagnostic> {
+    let [create] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            statements.first().map_or(Span::new(0, 0), statement_span),
+            "atomic word lifecycle requires create and exhaustive `Exchanged`/`Observed` compare/exchange actions",
+        ));
+    };
+    let (atomic_name, request, continuation) =
+        parse_atomic_word_create(source, create, region_name)?;
+    if request != CompilerAtomicWordRequest::initial()
+        || request.offset_bytes % 8 != 0
+        || request
+            .offset_bytes
+            .checked_add(8)
+            .is_none_or(|end| end > region_request.byte_count)
+    {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(create),
+            "the initial atomic word requires aligned offset 8, initial value 41, cpu-shared domain, and eight in-bounds bytes",
+        ));
+    }
+    let [
+        Statement::Expression(Expression::DecisionTable {
+            subject: compare_exchange,
+            rules,
+            span,
+        }),
+    ] = continuation
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(create),
+            "atomic creation must continue directly into one exhaustive compare/exchange decision",
+        ));
+    };
+    let (expected, desired, success_order, failure_order) =
+        parse_atomic_compare_exchange(source, compare_exchange, &atomic_name)?;
+    if (expected, desired, success_order, failure_order)
+        != (
+            41,
+            42,
+            CompilerAtomicOrder::AcquireRelease,
+            CompilerAtomicOrder::Acquire,
+        )
+    {
+        return Err(atomic_diagnostic(
+            source,
+            compare_exchange.span(),
+            "the initial compare/exchange requires expected 41, desired 42, acquire-release success, and acquire failure",
+        ));
+    }
+    let (exchanged_action, observed_action) = atomic_result_actions(source, rules, *span)?;
+    let exchanged = parse_atomic_exchanged_action(
+        source,
+        exchanged_action,
+        context_name,
+        region_name,
+        &atomic_name,
+        storage,
+    )?;
+    let compare_failure_message = parse_atomic_observed_action(
+        source,
+        observed_action,
+        context_name,
+        region_name,
+        &atomic_name,
+    )?;
+
+    let mut operations = vec![
+        CompilerSystemsOperation::AtomicWordCreate { request },
+        CompilerSystemsOperation::AtomicCompareExchangeEquals {
+            expected,
+            desired,
+            success_order,
+            failure_order,
+            failure_message: compare_failure_message,
+        },
+        CompilerSystemsOperation::AtomicLoadEquals {
+            order: exchanged.load_order,
+            expected: exchanged.expected,
+            failure_message: exchanged.load_failure_message,
+        },
+        CompilerSystemsOperation::AtomicWordEnd,
+    ];
+    operations.extend(exchanged.success_operations);
+    Ok(CheckedAtomicSequence {
+        operations,
+        disposition: exchanged.success_disposition,
+    })
+}
+
+fn parse_atomic_observed_action(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<String, Diagnostic> {
+    let statements = action_block(source, action, "observed compare/exchange")?;
+    let [end] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires atomic end, region release, and fatal disposition",
+        ));
+    };
+    let continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [release, disposition] = continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "observed compare/exchange requires region release and fatal disposition after atomic end",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let CompilerSystemsDisposition::Fatal { message } = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(disposition),
+            "observed compare/exchange must enter the fatal disposition",
+        ));
+    };
+    Ok(message)
+}
+
+fn parse_atomic_word_create<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    region_name: &str,
+) -> Result<(String, CompilerAtomicWordRequest, &'a [Statement]), Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic creation must bind `atomic is region atomic word create (...)`",
+        ));
+    };
+    let [
+        region,
+        atomic,
+        word,
+        create,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic creation must bind `atomic is region atomic word create (...)`",
+        ));
+    };
+    if !identifier_is(source, region, region_name)
+        || !identifier_is(source, atomic, "atomic")
+        || !identifier_is(source, word, "word")
+        || !identifier_is(source, create, "create")
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic word creation must consume the live ordinary region",
+        ));
+    }
+    let offset_bytes = atomic_natural_field(source, fields, "offset-bytes")?;
+    let initial_value = atomic_natural_field(source, fields, "initial-value")?;
+    let domain = atomic_identity_field(source, fields, "domain", "cpu-shared")?;
+    if fields.len() != 3 {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic word creation requires exactly `offset-bytes`, `initial-value`, and `domain`",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerAtomicWordRequest {
+            offset_bytes,
+            initial_value,
+            domain: match domain.as_str() {
+                "cpu-shared" => CompilerAtomicDomain::CpuShared,
+                _ => unreachable!("identity helper checks the sealed domain"),
+            },
+        },
+        declarations,
+    ))
+}
+
+fn parse_atomic_compare_exchange(
+    source: &SourceText,
+    expression: &Expression,
+    atomic_name: &str,
+) -> Result<(u64, u64, CompilerAtomicOrder, CompilerAtomicOrder), Diagnostic> {
+    let Expression::Application { items, span } = expression else {
+        return Err(atomic_diagnostic(
+            source,
+            expression.span(),
+            "compare/exchange must use the live atomic location",
+        ));
+    };
+    let [
+        atomic,
+        compare,
+        exchange,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "compare/exchange must be `atomic compare exchange (...)`",
+        ));
+    };
+    if !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, compare, "compare")
+        || !identifier_is(source, exchange, "exchange")
+        || fields.len() != 4
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "compare/exchange requires the live atomic location and four named parameters",
+        ));
+    }
+    Ok((
+        atomic_natural_field(source, fields, "expected")?,
+        atomic_natural_field(source, fields, "desired")?,
+        atomic_order_field(source, fields, "success-order")?,
+        atomic_order_field(source, fields, "failure-order")?,
+    ))
+}
+
+fn atomic_result_actions<'a>(
+    source: &SourceText,
+    rules: &'a [DecisionRule],
+    span: Span,
+) -> Result<(&'a Expression, &'a Expression), Diagnostic> {
+    let [exchanged, observed] = rules else {
+        return Err(atomic_diagnostic(
+            source,
+            span,
+            "compare/exchange requires exactly one `Exchanged` and one `Observed` action",
+        ));
+    };
+    match (&exchanged.matcher, &observed.matcher) {
+        (
+            DecisionMatcher::Union {
+                alternative: exchanged_name,
+                ..
+            },
+            DecisionMatcher::Union {
+                alternative: observed_name,
+                ..
+            },
+        ) if source.slice(*exchanged_name) == "Exchanged"
+            && source.slice(*observed_name) == "Observed" =>
+        {
+            Ok((&exchanged.action, &observed.action))
+        }
+        _ => Err(atomic_diagnostic(
+            source,
+            span,
+            "compare/exchange actions must appear once in `Exchanged`, `Observed` order and bind the observed value",
+        )),
+    }
+}
+
+struct CheckedAtomicExchanged {
+    load_order: CompilerAtomicOrder,
+    expected: u64,
+    load_failure_message: String,
+    success_operations: Vec<CompilerSystemsOperation>,
+    success_disposition: CompilerSystemsDisposition,
+}
+
+fn parse_atomic_exchanged_action(
+    source: &SourceText,
+    action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedAtomicExchanged, Diagnostic> {
+    let statements = action_block(source, action, "exchanged compare/exchange")?;
+    let [load, comparison, true_rule, false_rule] = statements else {
+        return Err(atomic_diagnostic(
+            source,
+            action.span(),
+            "exchanged compare/exchange requires acquire load and exhaustive equality actions",
+        ));
+    };
+    let (loaded_name, load_order) = parse_atomic_load(source, load, atomic_name)?;
+    let expected = parse_atomic_equality(source, comparison, &loaded_name)?;
+    let true_action = parse_boolean_rule(source, true_rule, true)?;
+    let false_action = parse_boolean_rule(source, false_rule, false)?;
+    let (success_operations, success_disposition) = parse_atomic_exchanged_success(
+        source,
+        true_action,
+        context_name,
+        region_name,
+        atomic_name,
+        storage,
+    )?;
+    let load_failure_message = parse_atomic_exchanged_failure(
+        source,
+        false_action,
+        context_name,
+        region_name,
+        atomic_name,
+    )?;
+    Ok(CheckedAtomicExchanged {
+        load_order,
+        expected,
+        load_failure_message,
+        success_operations,
         success_disposition,
+    })
+}
+
+#[allow(clippy::too_many_lines)] // The sealed atomic-to-interrupt-to-deadline success path is audited together.
+fn parse_atomic_exchanged_success(
+    source: &SourceText,
+    true_action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<(Vec<CompilerSystemsOperation>, CompilerSystemsDisposition), Diagnostic> {
+    let success = action_block(source, true_action, "successful atomic load")?;
+    let [end] = success else {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load requires atomic end, atomic and memory markers, region release, and final disposition",
+        ));
+    };
+    let success_continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [
+        atomic_console,
+        memory_console,
+        release,
+        send,
+        wait,
+        interrupt_console,
+        first_clock,
+        second_clock,
+        time_console,
+        deadline,
+        context_decision,
+    ] = success_continuation
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load requires atomic and memory markers, region release, local-notification completion, two monotonic-clock observations, one deadline-preemptible context lifecycle, and final disposition after atomic end",
+        ));
+    };
+    let atomic_marker = analyze_operation(
+        source,
+        atomic_console,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    let memory_marker = analyze_operation(
+        source,
+        memory_console,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    if !matches!(atomic_marker, CompilerSystemsOperation::ConsoleWrite { .. })
+        || !matches!(memory_marker, CompilerSystemsOperation::ConsoleWrite { .. })
+    {
+        return Err(atomic_diagnostic(
+            source,
+            true_action.span(),
+            "successful atomic load markers must be console writes",
+        ));
+    }
+    parse_region_release(source, release, context_name, region_name)?;
+    let (pending_name, send_operation) = parse_local_notification_send(source, send, context_name)?;
+    let (resumed_name, wait_operation) =
+        parse_local_notification_wait(source, wait, &pending_name)?;
+    let interrupt_marker = analyze_operation(
+        source,
+        interrupt_console,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if interrupt_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_INTERRUPT_OK".into(),
+        })
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            statement_span(interrupt_console),
+            "local-notification wait must be followed by the exact interrupt success marker",
+        ));
+    }
+    let (first_name, first_clock_operation) =
+        parse_monotonic_clock_now(source, first_clock, &resumed_name)?;
+    let (second_name, second_clock_operation) =
+        parse_monotonic_clock_now(source, second_clock, &resumed_name)?;
+    if first_name == second_name {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(second_clock),
+            "monotonic-clock observations require distinct instant bindings",
+        ));
+    }
+    let time_marker = analyze_operation(
+        source,
+        time_console,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if time_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_TIME_OK".into(),
+        })
+    {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(time_console),
+            "the two clock observations must be followed by the exact time success marker",
+        ));
+    }
+    let (deadline_name, deadline_operation) = parse_deadline_after(source, deadline, &second_name)?;
+    let checked_context = analyze_kernel_context_decision(
+        source,
+        context_decision,
+        &resumed_name,
+        &deadline_name,
+        storage,
+    )?;
+    let mut operations = vec![
+        atomic_marker,
+        memory_marker,
+        CompilerSystemsOperation::BootstrapRelease,
+        send_operation,
+        wait_operation,
+        interrupt_marker,
+        first_clock_operation,
+        second_clock_operation,
+        time_marker,
+        deadline_operation,
+    ];
+    operations.extend(checked_context.operations);
+    Ok((operations, checked_context.disposition))
+}
+
+fn analyze_kernel_context_decision(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    deadline_name: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let Statement::Expression(Expression::DecisionTable {
+        subject,
+        rules,
+        span,
+    }) = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "kernel-context stack allocation requires a subject and exhaustive `Ok`/`Error` actions",
+        ));
+    };
+    let request = parse_bootstrap_allocation(source, subject, context_name, storage)?;
+    if request
+        != (CompilerBootstrapStorageRequest {
+            byte_count: 16_384,
+            alignment_bytes: 16,
+            placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            subject.span(),
+            "the initial kernel context requires one 16 KiB, 16-byte-aligned bootstrap-reclaimable stack",
+        ));
+    }
+    let (stack_name, ok_action, error_action) = result_actions(source, rules, *span)?;
+    let CompilerSystemsDisposition::Fatal { .. } =
+        action_disposition(source, error_action, context_name)?
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            error_action.span(),
+            "kernel-context stack allocation failure must enter the fatal disposition",
+        ));
+    };
+    let statements = action_block(source, ok_action, "kernel-context stack allocation")?;
+    let [
+        create_cooperative,
+        terminal_subject_statement,
+        terminal_ok_statement,
+        terminal_error_statement,
+    ] = statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            ok_action.span(),
+            "cooperative context success requires the first create followed by the second stack allocation",
+        ));
+    };
+    let cooperative_name = parse_kernel_context_create(
+        source,
+        create_cooperative,
+        context_name,
+        &stack_name,
+        "kernel-thread",
+    )?;
+    let Statement::Expression(terminal_subject) = terminal_subject_statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(terminal_subject_statement),
+            "cooperative context creation must be followed by the terminal stack allocation",
+        ));
+    };
+    let terminal_request =
+        parse_bootstrap_allocation(source, terminal_subject, context_name, storage)?;
+    if terminal_request != request {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_subject.span(),
+            "both cooperative contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+        ));
+    }
+    let (terminal_stack_name, terminal_ok) =
+        raw_result_action(source, terminal_ok_statement, "Ok")?;
+    let (_, terminal_error) = raw_result_action(source, terminal_error_statement, "Error")?;
+    let CompilerSystemsDisposition::Fatal { .. } =
+        action_disposition(source, terminal_error, context_name)?
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_error.span(),
+            "terminal stack allocation failure must enter the fatal disposition",
+        ));
+    };
+    let terminal_statements = action_block(
+        source,
+        terminal_ok,
+        "terminal kernel-context stack allocation",
+    )?;
+    let [
+        create_terminal,
+        create_queue,
+        enqueue_cooperative,
+        enqueue_terminal,
+        dequeue_cooperative,
+        preemptible_transfer,
+        take_preempted,
+        preemption_marker_statement,
+        enqueue_preempted,
+        dequeue_terminal,
+        transfer_terminal,
+        terminal_marker_statement,
+        reclaim_terminal,
+    ] = terminal_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            terminal_ok.span(),
+            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, deadline preemption, both retirement transfers, and reclamation",
+        ));
+    };
+    let terminal_name = parse_kernel_context_create(
+        source,
+        create_terminal,
+        context_name,
+        &terminal_stack_name,
+        "terminal-thread",
+    )?;
+    let queue_name = parse_runnable_queue_create(source, create_queue, context_name)?;
+    parse_runnable_queue_enqueue(source, enqueue_cooperative, &queue_name, &cooperative_name)?;
+    parse_runnable_queue_enqueue(source, enqueue_terminal, &queue_name, &terminal_name)?;
+    let selected_cooperative =
+        parse_runnable_queue_dequeue(source, dequeue_cooperative, &queue_name)?;
+    let preempted_name = parse_kernel_context_transfer_until_deadline(
+        source,
+        preemptible_transfer,
+        context_name,
+        &selected_cooperative,
+        deadline_name,
+    )?;
+    let preempted_worker =
+        parse_take_preempted_kernel_context(source, take_preempted, &preempted_name)?;
+    let preemption_marker = analyze_operation(
+        source,
+        preemption_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    if preemption_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(preemption_marker_statement),
+            "the deadline-preemptible transfer requires its exact success marker",
+        ));
+    }
+    parse_runnable_queue_enqueue(source, enqueue_preempted, &queue_name, &preempted_worker)?;
+    let selected_terminal = parse_runnable_queue_dequeue(source, dequeue_terminal, &queue_name)?;
+    let terminal_completed = parse_kernel_context_transfer(
+        source,
+        transfer_terminal,
+        context_name,
+        &selected_terminal,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let terminal_marker = analyze_operation(
+        source,
+        terminal_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?;
+    if terminal_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(terminal_marker_statement),
+            "terminal retirement requires its exact marker",
+        ));
+    }
+    let (after_terminal, after_terminal_statements) =
+        parse_kernel_context_reclaim(source, reclaim_terminal, &terminal_completed)?;
+    let [
+        dequeue_cooperative_final,
+        transfer_cooperative,
+        cooperative_marker_statement,
+        reclaim_cooperative,
+    ] = after_terminal_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(reclaim_terminal),
+            "terminal reclamation must dequeue, restore, and reclaim the preempted worker",
+        ));
+    };
+    let selected_cooperative_final =
+        parse_runnable_queue_dequeue(source, dequeue_cooperative_final, &queue_name)?;
+    let cooperative_completed = parse_kernel_context_transfer(
+        source,
+        transfer_cooperative,
+        &after_terminal,
+        &selected_cooperative_final,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let cooperative_marker = analyze_operation(
+        source,
+        cooperative_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &after_terminal,
+    )?;
+    if cooperative_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(cooperative_marker_statement),
+            "preemptible-worker retirement requires its exact marker",
+        ));
+    }
+    let (resumed_name, continuation) =
+        parse_kernel_context_reclaim(source, reclaim_cooperative, &cooperative_completed)?;
+    let [consume_queue, disposition] = continuation else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(reclaim_cooperative),
+            "cooperative reclamation must consume the empty runnable queue before final disposition",
+        ));
+    };
+    parse_runnable_queue_consume(source, consume_queue, &resumed_name, &queue_name)?;
+    let disposition = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    Ok(CheckedBootstrapRegionDecision {
+        operations: vec![
+            CompilerSystemsOperation::BootstrapAllocate { request },
+            CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::BootstrapAllocate {
+                request: terminal_request,
+            },
+            CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::CreateRunnableQueue { capacity: 2 },
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContextUntilDeadline,
+            CompilerSystemsOperation::TakePreemptedKernelContext,
+            preemption_marker,
+            CompilerSystemsOperation::EnqueueRunnableContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContext,
+            terminal_marker,
+            CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContext,
+            cooperative_marker,
+            CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
+        ],
+        disposition,
+    })
+}
+
+fn parse_kernel_context_create(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    stack_name: &str,
+    entry_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "kernel-context creation must bind `SuspendedKernelContext InitialProcessor`",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        context_word,
+        create,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-context creation requires named `stack` and `entry` arguments",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, create, "create")
+        || !kernel_context_create_fields(source, fields, stack_name, entry_name)?
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            format!(
+                "kernel-context creation requires the live context, allocated stack, and typed `{entry_name}` entry"
+            ),
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_create(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable-queue creation must bind its exact bounded affine classifier",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        runnable,
+        queue,
+        create,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable-queue creation requires one named capacity",
+        ));
+    };
+    let [field] = fields.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "the initial runnable queue requires exactly `capacity is 2`",
+        ));
+    };
+    let capacity_is_two = field
+        .label
+        .is_some_and(|label| source.slice(label) == "capacity")
+        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "2");
+    if source.slice(*classifier) != "BoundedKernelRunnableQueue InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, queue, "queue")
+        || !identifier_is(source, create, "create")
+        || !capacity_is_two
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "the initial runnable queue requires its live context, capacity two, and exact bounded classifier",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_enqueue(
+    source: &SourceText,
+    statement: &Statement,
+    queue_name: &str,
+    context_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable enqueue must refine the affine queue in place",
+        ));
+    };
+    let [queue, kernel, runnable, enqueue, context] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable enqueue must consume one queue and one suspended context",
+        ));
+    };
+    if !identifier_is(source, queue, queue_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, enqueue, "enqueue")
+        || !identifier_is(source, context, context_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable enqueue must refine the queue and consume the selected suspended context",
+        ));
+    }
+    Ok(())
+}
+
+fn parse_runnable_queue_dequeue(
+    source: &SourceText,
+    statement: &Statement,
+    queue_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "runnable dequeue must bind one suspended context",
+        ));
+    };
+    let [queue, kernel, runnable, dequeue] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable dequeue must consume the current queue state",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, queue, queue_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, dequeue, "dequeue")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable dequeue must select the FIFO head from the exact queue binding",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_runnable_queue_consume(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    queue_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "empty runnable-queue consumption must be an explicit operation",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        runnable,
+        queue,
+        consume,
+        empty,
+        queue_value,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "empty runnable-queue consumption requires the live context and queue",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, runnable, "runnable")
+        || !identifier_is(source, queue, "queue")
+        || !identifier_is(source, consume, "consume")
+        || !identifier_is(source, empty, "empty")
+        || !identifier_is(source, queue_value, queue_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "runnable-queue consumption requires the exact empty queue before disposition",
+        ));
+    }
+    Ok(())
+}
+
+fn kernel_context_create_fields(
+    source: &SourceText,
+    fields: &[ProductField],
+    stack_name: &str,
+    entry_name: &str,
+) -> Result<bool, Diagnostic> {
+    let mut stack = None;
+    let mut entry = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Ok(false);
+        };
+        match source.slice(label) {
+            "stack" if stack.is_none() => stack = Some(&field.value),
+            "entry" if entry.is_none() => entry = Some(&field.value),
+            _ => return Ok(false),
+        }
+    }
+    Ok(
+        matches!(stack, Some(value) if identifier_is(source, value, stack_name))
+            && matches!(entry, Some(value) if identifier_is(source, value, entry_name)),
+    )
+}
+
+fn parse_kernel_context_transfer(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    worker_name: &str,
+    result_classifier: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            format!("kernel-context transfer must bind `{result_classifier}`"),
+        ));
+    };
+    let [context, kernel, context_word, transfer, worker] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-context transfer must consume one suspended context",
+        ));
+    };
+    if source.slice(*classifier) != result_classifier
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, transfer, "transfer")
+        || !identifier_is(source, worker, worker_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-context transfer requires the live caller and matching suspended context",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_context_transfer_until_deadline(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    worker_name: &str,
+    deadline_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "deadline-preemptible transfer must bind its exact affine outcome",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        context_word,
+        transfer,
+        worker,
+        until,
+        deadline,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "deadline-preemptible transfer must consume one selected context and deadline",
+        ));
+    };
+    if source.slice(*classifier)
+        != "PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, transfer, "transfer")
+        || !identifier_is(source, worker, worker_name)
+        || !identifier_is(source, until, "until")
+        || !identifier_is(source, deadline, deadline_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "deadline-preemptible transfer requires the live dispatcher, FIFO-selected context, and exact deadline",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_take_preempted_kernel_context(
+    source: &SourceText,
+    statement: &Statement,
+    preempted_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "taking a preempted outcome must bind one suspended kernel context",
+        ));
+    };
+    let [receiver, kernel, context_word, take, preempted] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "taking a preempted outcome must consume the exact affine result",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, receiver, preempted_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, take, "take")
+        || !identifier_is(source, preempted, "preempted")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "taking preemption requires the exact completed outcome before runnable enqueue",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_context_reclaim<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    completed_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "kernel-context reclaim must bind the resumed caller and continue into its final disposition",
+        ));
+    };
+    let [completed, kernel, context, reclaim] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-context reclaim must consume one completed transfer",
+        ));
+    };
+    if !identifier_is(source, completed, completed_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context, "context")
+        || !identifier_is(source, reclaim, "reclaim")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-context reclaim must consume the matching completed transfer",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_deadline_after(
+    source: &SourceText,
+    statement: &Statement,
+    instant_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(deadline_diagnostic(
+            source,
+            statement_span(statement),
+            "deadline construction must bind `Deadline InitialMonotonicClock`",
+        ));
+    };
+    let [
+        instant,
+        deadline,
+        after,
+        Expression::Measured { value, unit, .. },
+    ] = items.as_slice()
+    else {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "deadline construction must be `deadline : Deadline InitialMonotonicClock is instant deadline after 1[ms]`",
+        ));
+    };
+    if source.slice(*classifier) != "Deadline InitialMonotonicClock"
+        || !identifier_is(source, instant, instant_name)
+        || !identifier_is(source, deadline, "deadline")
+        || !identifier_is(source, after, "after")
+        || source.slice(*value) != "1"
+        || source.slice(*unit) != "ms"
+    {
+        return Err(deadline_diagnostic(
+            source,
+            *span,
+            "the initial deadline must derive from the second observation and exact duration 1[ms]",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerSystemsOperation::ConstructDeadline {
+            duration_nanoseconds: 1_000_000,
+        },
+    ))
+}
+
+fn parse_monotonic_clock_now(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            statement_span(statement),
+            "clock observation must bind `Instant InitialMonotonicClock`",
+        ));
+    };
+    let [context, monotonic, clock, now] = items.as_slice() else {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            *span,
+            "clock observation must be `instant : Instant InitialMonotonicClock is context monotonic clock now`",
+        ));
+    };
+    if source.slice(*classifier) != "Instant InitialMonotonicClock"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, monotonic, "monotonic")
+        || !identifier_is(source, clock, "clock")
+        || !identifier_is(source, now, "now")
+    {
+        return Err(monotonic_clock_diagnostic(
+            source,
+            *span,
+            "clock observation requires the resumed context and initial monotonic clock classifier",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        CompilerSystemsOperation::ObserveMonotonicClock,
+    ))
+}
+
+fn parse_atomic_exchanged_failure(
+    source: &SourceText,
+    false_action: &Expression,
+    context_name: &str,
+    region_name: &str,
+    atomic_name: &str,
+) -> Result<String, Diagnostic> {
+    let failure = action_block(source, false_action, "failed atomic load")?;
+    let [end] = failure else {
+        return Err(atomic_diagnostic(
+            source,
+            false_action.span(),
+            "failed atomic load requires atomic end, region release, and fatal disposition",
+        ));
+    };
+    let failure_continuation = parse_atomic_end(source, end, atomic_name, region_name)?;
+    let [release, disposition] = failure_continuation else {
+        return Err(atomic_diagnostic(
+            source,
+            false_action.span(),
+            "failed atomic load requires region release and fatal disposition after atomic end",
+        ));
+    };
+    parse_region_release(source, release, context_name, region_name)?;
+    let CompilerSystemsDisposition::Fatal {
+        message: load_failure_message,
+    } = analyze_disposition(
+        source,
+        disposition,
+        CompilerSystemsContextKind::Bootstrap,
+        context_name,
+    )?
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(disposition),
+            "failed atomic load must enter the fatal disposition",
+        ));
+    };
+    Ok(load_failure_message)
+}
+
+fn parse_local_notification_send(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let (name, items, span) = affine_application_binding(source, statement, "send")?;
+    let [context, local, notification, send] = items else {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "send must bind `pending is context local notification send`",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, send, "send")
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "local-notification send must consume the current processor context",
+        ));
+    }
+    Ok((
+        source.slice(name).to_owned(),
+        CompilerSystemsOperation::SendLocalNotification,
+    ))
+}
+
+fn parse_local_notification_wait(
+    source: &SourceText,
+    statement: &Statement,
+    pending_name: &str,
+) -> Result<(String, CompilerSystemsOperation), Diagnostic> {
+    let (name, items, span) = affine_application_binding(source, statement, "wait")?;
+    let [pending, local, notification, wait] = items else {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "wait must bind `resumed is pending local notification wait`",
+        ));
+    };
+    if !identifier_is(source, pending, pending_name)
+        || !identifier_is(source, local, "local")
+        || !identifier_is(source, notification, "notification")
+        || !identifier_is(source, wait, "wait")
+    {
+        return Err(local_interrupt_diagnostic(
+            source,
+            span,
+            "local-notification wait must consume the matching pending session",
+        ));
+    }
+    Ok((
+        source.slice(name).to_owned(),
+        CompilerSystemsOperation::WaitLocalNotification,
+    ))
+}
+
+fn parse_atomic_load(
+    source: &SourceText,
+    statement: &Statement,
+    atomic_name: &str,
+) -> Result<(String, CompilerAtomicOrder), Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic load must bind its `Nat` result",
+        ));
+    };
+    let [atomic, load, Expression::Product { fields, .. }] = items.as_slice() else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load must be `observed : Nat is atomic load (order is acquire)`",
+        ));
+    };
+    if source.slice(*classifier) != "Nat"
+        || !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, load, "load")
+        || fields.len() != 1
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load requires the live location and one named order",
+        ));
+    }
+    Ok((
+        source.slice(*name).to_owned(),
+        atomic_order_field(source, fields, "order")?,
+    ))
+}
+
+fn parse_atomic_equality(
+    source: &SourceText,
+    statement: &Statement,
+    loaded_name: &str,
+) -> Result<u64, Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic load requires an exhaustive equality decision",
+        ));
+    };
+    let [
+        loaded,
+        Expression::Callable {
+            kind: CallableKind::Equal,
+            ..
+        },
+        expected,
+    ] = items.as_slice()
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic load decision must compare its binding with a static natural",
+        ));
+    };
+    if !identifier_is(source, loaded, loaded_name) {
+        return Err(atomic_diagnostic(
+            source,
+            loaded.span(),
+            "atomic comparison must use the immediately preceding load binding",
+        ));
+    }
+    parse_storage_natural(source, expected)
+}
+
+fn parse_atomic_end<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    atomic_name: &str,
+    region_name: &str,
+) -> Result<&'a [Statement], Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(atomic_diagnostic(
+            source,
+            statement_span(statement),
+            "atomic lifecycle must return its region through `region is atomic end`",
+        ));
+    };
+    let [atomic, end] = items.as_slice() else {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic lifecycle must return its region through `region is atomic end`",
+        ));
+    };
+    if source.slice(*name) != region_name
+        || !identifier_is(source, atomic, atomic_name)
+        || !identifier_is(source, end, "end")
+    {
+        return Err(atomic_diagnostic(
+            source,
+            *span,
+            "atomic end must consume the live location and restore the original region binding",
+        ));
+    }
+    Ok(declarations)
+}
+
+fn atomic_natural_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+) -> Result<u64, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    parse_storage_natural(source, &field.value)
+}
+
+fn atomic_identity_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+    required: &str,
+) -> Result<String, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    let Expression::Identifier(value) = field.value else {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic parameter `{name}` must be a static identity"),
+        ));
+    };
+    let value = source.slice(value).to_owned();
+    if value != required {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic parameter `{name}` requires `{required}`"),
+        ));
+    }
+    Ok(value)
+}
+
+fn atomic_order_field(
+    source: &SourceText,
+    fields: &[ProductField],
+    name: &str,
+) -> Result<CompilerAtomicOrder, Diagnostic> {
+    let field = unique_atomic_field(source, fields, name)?;
+    let Expression::Identifier(value) = field.value else {
+        return Err(atomic_diagnostic(
+            source,
+            field.value.span(),
+            format!("atomic order `{name}` must be a static identity"),
+        ));
+    };
+    match source.slice(value) {
+        "atomic-only" => Ok(CompilerAtomicOrder::AtomicOnly),
+        "acquire" => Ok(CompilerAtomicOrder::Acquire),
+        "release" => Ok(CompilerAtomicOrder::Release),
+        "acquire-release" => Ok(CompilerAtomicOrder::AcquireRelease),
+        "sequential" => Ok(CompilerAtomicOrder::Sequential),
+        other => Err(atomic_diagnostic(
+            source,
+            value,
+            format!("unknown atomic order `{other}`"),
+        )),
+    }
+}
+
+fn unique_atomic_field<'a>(
+    source: &SourceText,
+    fields: &'a [ProductField],
+    name: &str,
+) -> Result<&'a ProductField, Diagnostic> {
+    let mut found = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(atomic_diagnostic(
+                source,
+                field.value.span(),
+                "atomic parameters must be named",
+            ));
+        };
+        if source.slice(label) == name && found.replace(field).is_some() {
+            return Err(atomic_diagnostic(
+                source,
+                label,
+                format!("atomic parameter `{name}` is duplicated"),
+            ));
+        }
+    }
+    found.ok_or_else(|| {
+        atomic_diagnostic(
+            source,
+            fields
+                .first()
+                .map_or(Span::new(0, 0), |field| field.value.span()),
+            format!("atomic operation requires `{name}`"),
+        )
     })
 }
 
@@ -1375,6 +3525,24 @@ fn analyze_operation(
     {
         return Ok(CompilerSystemsOperation::DebugBreak);
     }
+    if context == CompilerSystemsContextKind::KernelThread
+        && let [
+            receiver,
+            kernel,
+            context_word,
+            await_word,
+            deadline,
+            preemption,
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, context_word, "context")
+        && identifier_is(source, await_word, "await")
+        && identifier_is(source, deadline, "deadline")
+        && identifier_is(source, preemption, "preemption")
+    {
+        return Ok(CompilerSystemsOperation::AwaitDeadlinePreemption);
+    }
     Err(source_diagnostic(
         source,
         "E-SYSTEMS-OPERATION",
@@ -1397,12 +3565,26 @@ fn analyze_disposition(
             "a systems handler must end in one context-consuming disposition",
         ));
     };
-    if context == CompilerSystemsContextKind::DebugBreak
-        && let [receiver, resume] = items.as_slice()
+    if matches!(
+        context,
+        CompilerSystemsContextKind::DebugBreak
+            | CompilerSystemsContextKind::LocalNotificationInterrupt
+            | CompilerSystemsContextKind::DeadlineInterrupt
+    ) && let [receiver, resume] = items.as_slice()
         && identifier_is(source, receiver, context_name)
         && identifier_is(source, resume, "resume")
     {
         return Ok(CompilerSystemsDisposition::Resume);
+    }
+    if context == CompilerSystemsContextKind::DeadlineInterrupt
+        && let [receiver, preempt, current, kernel, context_word] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, preempt, "preempt")
+        && identifier_is(source, current, "current")
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, context_word, "context")
+    {
+        return Ok(CompilerSystemsDisposition::PreemptKernelContext);
     }
     if let [receiver, fatal, Expression::String(message)] = items.as_slice()
         && identifier_is(source, receiver, context_name)
@@ -1504,10 +3686,12 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)] // One assertion retains the complete ordered systems trace.
     fn checks_the_initial_artifact_and_models_entry_transitions() {
         // TOPAL-SYSTEMS-VOCABULARY-001, TOPAL-SYSTEMS-ENTRY-001,
         // TOPAL-SYSTEMS-DISPOSITION-001, TOPAL-SYSTEMS-OBSERVATION-001,
-        // TOPAL-SYSTEMS-FRAMES-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-MONOTONIC-CLOCK-001,
+        // TOPAL-SYSTEMS-DEADLINE-EVENT-001.
         let program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -1523,11 +3707,28 @@ mod tests {
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+                SYSTEMS_ATOMIC_WORD_CREATE,
+                SYSTEMS_ATOMIC_END,
+                SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_CONTEXT_CREATE,
+                SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+                SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_CRITICAL_ENTER,
+                SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
+                SYSTEMS_LOCAL_NOTIFICATION_SEND,
+                SYSTEMS_LOCAL_NOTIFICATION_WAIT,
                 SYSTEMS_DEBUG_BREAK,
                 SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
                 SYSTEMS_KERNEL_MAP,
@@ -1538,6 +3739,15 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_DEADLINE_AFTER,
+                SYSTEMS_MONOTONIC_CLOCK_NOW,
+                SYSTEMS_TRANSLATION_ACTIVATE,
+                SYSTEMS_TRANSLATION_BEGIN,
+                SYSTEMS_TRANSLATION_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_BEGIN,
+                SYSTEMS_TRANSLATION_EDIT_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_MAP,
+                SYSTEMS_TRANSLATION_EDIT_UNMAP,
             ]
         );
         assert_eq!(
@@ -1575,6 +3785,59 @@ mod tests {
                     text: "TOPAL_KERNEL_FRAME_MAPPED".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::BeginTranslationUpdate {
+                    request: CompilerTranslationUpdateRequest::initial_bootstrap_equivalent(),
+                },
+                CompilerSystemsTransition::CommitTranslationUpdate,
+                CompilerSystemsTransition::ActivateTranslationSpace,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TRANSLATION_ACTIVE".into(),
+                },
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::BeginTranslationEdit {
+                    kind: CompilerTranslationEditKind::Map,
+                },
+                CompilerSystemsTransition::MapTranslationFrames {
+                    request: CompilerTranslationMappingRequest::initial_read_write(),
+                },
+                CompilerSystemsTransition::CommitTranslationEdit {
+                    kind: CompilerTranslationEditKind::Map,
+                },
+                CompilerSystemsTransition::StoreKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 60,
+                },
+                CompilerSystemsTransition::LoadKernelMappingByte {
+                    offset_bytes: 0,
+                    value: 60,
+                },
+                CompilerSystemsTransition::BeginTranslationEdit {
+                    kind: CompilerTranslationEditKind::Unmap,
+                },
+                CompilerSystemsTransition::UnmapTranslationMapping,
+                CompilerSystemsTransition::CommitTranslationEdit {
+                    kind: CompilerTranslationEditKind::Unmap,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TRANSLATION_EDITED".into(),
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::EnterCritical {
+                    domain: CompilerCriticalDomain::LocalMaskableInterrupts,
+                    nesting_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_INTERRUPTS_MASKED".into(),
+                },
+                CompilerSystemsTransition::RestoreCritical {
+                    domain: CompilerCriticalDomain::LocalMaskableInterrupts,
+                    nesting_identity: 1,
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
                 },
@@ -1602,10 +3865,167 @@ mod tests {
                     offset_bytes: 0,
                     value: 90,
                 },
+                CompilerSystemsTransition::CreateAtomicWord {
+                    request: CompilerAtomicWordRequest::initial(),
+                },
+                CompilerSystemsTransition::CompareExchangeAtomicWord {
+                    expected: 41,
+                    desired: 42,
+                    observed: 41,
+                    exchanged: true,
+                    success_order: CompilerAtomicOrder::AcquireRelease,
+                    failure_order: CompilerAtomicOrder::Acquire,
+                },
+                CompilerSystemsTransition::LoadAtomicWord {
+                    value: 42,
+                    order: CompilerAtomicOrder::Acquire,
+                },
+                CompilerSystemsTransition::EndAtomicWord,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ATOMIC_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_OK".into(),
                 },
                 CompilerSystemsTransition::ReleaseBootstrapRegion,
+                CompilerSystemsTransition::SendLocalNotification { event_identity: 1 },
+                CompilerSystemsTransition::BeginLocalNotificationWait { event_identity: 1 },
+                CompilerSystemsTransition::ObserveLocalNotification { event_identity: 1 },
+                CompilerSystemsTransition::EnterLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::CompleteLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::ResumeLocalNotificationInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::EndLocalNotificationWait { event_identity: 1 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_INTERRUPT_OK".into(),
+                },
+                CompilerSystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 1,
+                },
+                CompilerSystemsTransition::ObserveMonotonicClock {
+                    observation_identity: 2,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_TIME_OK".into(),
+                },
+                CompilerSystemsTransition::ConstructDeadline {
+                    source_observation_identity: 2,
+                    duration_nanoseconds: 1_000_000,
+                },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::CreateKernelContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::CreateKernelContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::CreateRunnableQueue { capacity: 2 },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::ArmDeadline { event_identity: 1 },
+                CompilerSystemsTransition::TransferKernelContextUntilDeadline {
+                    context_identity: 1,
+                    caller_identity: 1,
+                    event_identity: 1,
+                },
+                CompilerSystemsTransition::EnterKernelThread {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
+                },
+                CompilerSystemsTransition::AwaitDeadlinePreemption {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::ObserveDeadline { event_identity: 1 },
+                CompilerSystemsTransition::EnterDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::CompleteDeadlineInterrupt { event_identity: 1 },
+                CompilerSystemsTransition::PreemptKernelContext {
+                    event_identity: 1,
+                    context_identity: 1,
+                    caller_identity: 1,
+                },
+                CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity: 1 },
+                CompilerSystemsTransition::TakePreemptedKernelContext {
+                    context_identity: 1,
+                    event_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_DEADLINE_PREEMPTED".into(),
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                },
+                CompilerSystemsTransition::EnterKernelThread {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 2,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
+                },
+                CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 1,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::RestorePreemptedKernelContext {
+                    context_identity: 1,
+                    caller_identity: 3,
+                    event_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 1,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
+                },
+                CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 1,
+                },
+                CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -1622,15 +4042,32 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 19);
+        assert_eq!(program.bootstrap.handler.operations.len(), 70);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
+                SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
+                SYSTEMS_ATOMIC_WORD_CREATE,
+                SYSTEMS_ATOMIC_END,
+                SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_CONTEXT_CREATE,
+                SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+                SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+                SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+                SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_CRITICAL_ENTER,
+                SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
+                SYSTEMS_LOCAL_NOTIFICATION_SEND,
+                SYSTEMS_LOCAL_NOTIFICATION_WAIT,
                 SYSTEMS_DEBUG_BREAK,
                 SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
                 SYSTEMS_KERNEL_MAP,
@@ -1641,6 +4078,15 @@ mod tests {
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
                 SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
+                SYSTEMS_DEADLINE_AFTER,
+                SYSTEMS_MONOTONIC_CLOCK_NOW,
+                SYSTEMS_TRANSLATION_ACTIVATE,
+                SYSTEMS_TRANSLATION_BEGIN,
+                SYSTEMS_TRANSLATION_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_BEGIN,
+                SYSTEMS_TRANSLATION_EDIT_COMMIT,
+                SYSTEMS_TRANSLATION_EDIT_MAP,
+                SYSTEMS_TRANSLATION_EDIT_UNMAP,
             ]
         );
         let transitions = model_systems_transitions(&program).unwrap();
@@ -1687,19 +4133,25 @@ mod tests {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-STORAGE-001.
         for (source, code, expected) in [
             (
-                memory_source().replace("offset-bytes is 0, value", "offset-bytes is 64, value"),
+                memory_source().replace(
+                    "region byte store (offset-bytes is 0, value is 90)",
+                    "region byte store (offset-bytes is 64, value is 90)",
+                ),
                 "E-SYSTEMS-STORAGE",
                 "outside the static region size",
             ),
             (
-                memory_source().replace("value is 90)", "value is 256)"),
+                memory_source().replace(
+                    "region byte store (offset-bytes is 0, value is 90)",
+                    "region byte store (offset-bytes is 0, value is 256)",
+                ),
                 "E-SYSTEMS-STORAGE",
                 "from 0 through 255",
             ),
             (
                 memory_source().replacen(
-                    "memory bootstrap release region",
-                    "memory console write \"not released\"",
+                    "restored bootstrap release region",
+                    "restored console write \"not released\"",
                     1,
                 ),
                 "E-SYSTEMS-STORAGE",
@@ -1707,7 +4159,7 @@ mod tests {
             ),
             (
                 memory_source().replace(
-                    "memory fatal \"toolchain gate allocation failed\"",
+                    "restored fatal \"toolchain gate allocation failed\"",
                     "region byte load (offset-bytes is 0)",
                 ),
                 "E-SYSTEMS-DISPOSITION",
@@ -1720,6 +4172,49 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_the_sealed_affine_atomic_word_lifecycle() {
+        // TOPAL-SYSTEMS-ATOMIC-001, TOPAL-SYSTEMS-ORDER-001,
+        // TOPAL-SYSTEMS-QUALIFY-001.
+        for (source, expected) in [
+            (
+                memory_source().replace("domain is cpu-shared", "domain is device"),
+                "requires `cpu-shared`",
+            ),
+            (
+                memory_source().replace("offset-bytes is 8", "offset-bytes is 9"),
+                "requires aligned offset 8",
+            ),
+            (
+                memory_source().replace(
+                    "success-order is acquire-release",
+                    "success-order is release",
+                ),
+                "initial compare/exchange requires",
+            ),
+            (
+                memory_source().replace("failure-order is acquire", "failure-order is release"),
+                "initial compare/exchange requires",
+            ),
+            (
+                memory_source().replacen("region is atomic end", "wrong-region is atomic end", 1),
+                "restore the original region binding",
+            ),
+            (
+                memory_source().replace("Observed actual then", "Exchanged actual then"),
+                "`Exchanged`, `Observed` order",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-ATOMIC");
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }
@@ -1762,8 +4257,8 @@ mod tests {
     fn rejects_context_escape_unknown_operations_and_missing_dispositions() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-DISPOSITION-001.
         let escaped = SOURCE.replace(
-            "memory console write \"TOPAL_KERNEL_BOOT\"",
-            "saved is memory",
+            "restored console write \"TOPAL_KERNEL_BOOT\"",
+            "saved is translated",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -1775,7 +4270,7 @@ mod tests {
             "E-SYSTEMS-AFFINE-CONTEXT"
         );
 
-        let unknown = SOURCE.replace("memory debug break", "memory machine instruction");
+        let unknown = SOURCE.replace("restored debug break", "restored machine instruction");
         assert_eq!(
             analyze_systems_for_compiler(
                 &unknown,
@@ -1814,7 +4309,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "memory console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
+                    "restored console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                     "context console write \"TOPAL_KERNEL_MEMORY_DESCRIBED\"",
                 ),
                 "E-SYSTEMS-OPERATION",
@@ -1904,8 +4399,8 @@ mod tests {
         );
 
         let open_entries = SOURCE.replace(
-            "  debug-break is lang systems synchronous-exception-entry debug-break-handler\n",
-            "  debug-break is lang systems synchronous-exception-entry debug-break-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler\n",
+            "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,\n",
+            "  deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,\n  interrupt is lang systems interrupt-entry interrupt-handler,\n",
         );
         assert_eq!(
             analyze_systems_for_compiler(
@@ -1992,4 +4487,11 @@ mod tests {
     }
 
     include!("systems_mapping_tests.rs");
+    include!("systems_translation_tests.rs");
+    include!("systems_translation_edit_tests.rs");
+    include!("systems_critical_tests.rs");
+    include!("systems_interrupt_tests.rs");
+    include!("systems_clock_tests.rs");
+    include!("systems_deadline_tests.rs");
+    include!("systems_context_tests.rs");
 }

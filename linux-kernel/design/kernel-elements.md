@@ -97,6 +97,14 @@ these declared observations or protocol results. Differential tests compare
 the set and constraints of Linux-permitted outcomes rather than requiring one
 fixed interleaving.
 
+An absolute one-shot deadline is one such protocol. Its affine arm/wait
+lifecycle binds the scheduled same-clock instant, delivery observation, typed
+entry, mandatory completion, resumption, and result to one event identity.
+Delivery may be late but never earlier than the deadline; an already-expired
+deadline becomes immediately deliverable without restarting a relative
+interval. Timer devices, routes, vectors, and acknowledgements remain provider
+facts.
+
 ## TK-ELEMENT-MACHINE-001 — Sealed machine-provider operations
 
 Privileged operations are closed typed provider interfaces, not a universal
@@ -194,6 +202,15 @@ RISC-V A-extension/LR-SC implementations from qualified target evidence. A
 fallback lock is permitted only when it satisfies context, progress, and
 recursion requirements. Source never selects the instruction strategy.
 
+The approved initial specialization consumes an entire ordinary region into
+one naturally aligned unsigned machine-word location at a checked offset in
+the `cpu-shared` domain. It admits compare/exchange with acquire-release
+success and acquire failure, an acquire load, and a consuming `atomic end`
+which returns the original region and retained contents to plain ownership.
+This whole-region transition deliberately prevents an overlapping plain alias
+even when bytes outside the word are not accessed. The exact source and
+provider contract is [TK-DEC-023](atomic-word-location.md).
+
 ## TK-ELEMENT-CRITICAL-001 — Scoped interrupt and preemption control
 
 Masking and preemption are scoped state transitions tied to the current CPU,
@@ -242,6 +259,41 @@ Source cannot inspect register slots or manufacture a context. Debug/ptrace
 adapters use a separately validated semantic user-state view. Backend evidence
 proves the callee-saved, stack, extended-state, TLS/per-CPU, unwind, and address-
 space rules for the target.
+
+The approved initial specialization consumes one checked 16 KiB ordinary
+region into one same-processor suspended kernel-thread context. One transfer
+suspends the bootstrap caller, enters the worker on its owned stack, and permits
+terminal retirement only at a statically verified point with no live worker
+obligation. Retirement resumes exactly that caller; a consuming reclaim then
+returns the retired stack to its monotonic pool. The slice retains one address
+space and disabled local interrupts and excludes scheduler policy, preemption,
+multiple threads, migration, SMP, user contexts, general cancellation, extended
+state, TLS/per-CPU switching, stack growth, and cross-transfer unwinding. The
+exact source and provider contract is
+[TK-DEC-027](kernel-context-transfer.md).
+
+The approved cooperative extension admits two independently owned suspended
+contexts and a symmetric handoff. A resumed transfer yields either the context
+which handed control back or a completed terminal context whose stack must be
+reclaimed. The initial executable profile statically refines those outcomes
+from two closed worker protocols and implements bounded FIFO selection in
+ordinary source. The provider performs no runnable selection. See
+[TK-DEC-028](cooperative-context-handoff.md).
+
+The approved runnable-queue extension makes that source policy reusable. A
+fixed-capacity affine FIFO owns its suspended contexts, returns ownership on
+full or empty results, selects only the oldest context, and must be consumed
+empty before disposition. It is an ordinary checked Topal composite rather
+than a provider operation; provider-specific context state remains opaque. See
+[TK-DEC-029](affine-runnable-queue.md).
+
+The approved deadline-preemption extension atomically binds one selected
+context, one absolute deadline, and the dispatcher's exact suspended
+continuation before admitting interrupt delivery. Matching typed completion
+may return the interrupted context to that dispatcher as an opaque affine
+suspended value. Source owns dequeue and re-enqueue policy; the provider owns
+only exact interrupt-state capture and continuation transfer. See
+[TK-DEC-030](deadline-preemptible-context-transfer.md).
 
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 

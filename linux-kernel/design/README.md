@@ -18,10 +18,22 @@ records, not this directory alone, define language meaning.
 - [Portable boot-memory description contract](boot-memory-description.md)
 - [Affine physical-frame allocation contract](physical-frame-allocation.md)
 - [Opaque kernel-mapping contract](kernel-mapping.md)
+- [Translation-space construction and activation contract](translation-space.md)
+- [Active translation-edit contract](active-translation-edit.md)
+- [Local-interrupt critical-scope contract](local-interrupt-critical-scope.md)
+- [Atomic-word location contract](atomic-word-location.md)
+- [Local-notification interrupt contract](local-notification-interrupt.md)
+- [Monotonic-clock observation contract](monotonic-clock-observation.md)
+- [One-shot deadline-event contract](deadline-event.md)
+- [Kernel-context transfer contract](kernel-context-transfer.md)
+- [Cooperative kernel-context handoff contract](cooperative-context-handoff.md)
+- [Bounded affine runnable-queue contract](affine-runnable-queue.md)
+- [Deadline-preemptible kernel-context transfer contract](deadline-preemptible-context-transfer.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
-The semantic proposal was approved in the project discussion after PR #790.
+The base semantic proposal was approved in the project discussion after PR
+#790; subsequent resolved decision records carry their own recorded approval.
 It is adopted through `docs/systems-profile.md`, the `TOPAL-REQ-SYSTEMS-*`
 requirements, and `spec/systems-profile.md`. The approved profile adds no new
 grammar; its sealed vocabulary uses ordinary Topal construction syntax.

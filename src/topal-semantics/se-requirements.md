@@ -50,6 +50,28 @@ operation. It shall reject forgery, wrong context, escaped affine resources,
 invalid state transitions, insufficient ordering, plain/atomic conflicts, and
 unsupported providers deterministically.
 
+The cooperative context model shall retain two disjoint stack and context
+identities, distinguish the first suspended handoff from terminal retirement,
+enforce source-selected cooperative/terminal/cooperative FIFO order, and
+require both terminal stacks to be reclaimed. It shall reject wrong entry
+protocol, repeated handoff, retirement with live obligations, wrong order, and
+completion with a live context.
+
+The bounded runnable-queue model shall own suspended contexts in exact FIFO
+order, retain queue and context obligations on full and empty results, and
+require empty consumption before disposition. The initial profile shall prove
+capacity two and cooperative/terminal/cooperative selection while negative
+tests cover zero capacity, full, empty, duplicate or mismatched ownership, and
+nonempty consumption.
+
+The deadline-preemption model shall bind one selected suspended context, one
+same-clock deadline event, and one exact dispatcher. It shall produce an affine
+preempted-transfer result only after event completion and dispatcher
+resumption, permit its suspended context to be taken once and re-enqueued, and
+restore the exact interrupted continuation only when source selects it again.
+It shall reject mismatched identities, wrong order, repeated take or restore,
+and completion with any live transfer obligation.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
@@ -86,6 +108,81 @@ returns the original extent; and rejection of wrong-provider mapping,
 out-of-bounds access, writable execution, frame release while mapped, use after
 unmap, or completion with a live mapping. Model virtual identities shall not
 grant numeric address or page-table authority.
+
+The translation-space increment shall model the affine lifecycle from an
+exclusive bootstrap-equivalent `TranslationUpdate`, through consuming commit
+to an inactive `TranslationSpace`, through activation into a refined bootstrap
+context. It shall retain provider and backing provenance, preserved coverage
+and permission observations, and reject duplication, use after commit,
+activation before commit, wrong-provider activation, backing reuse, and
+completion with a live inactive update or space. Target table formats and
+activation state shall remain outside the common model.
+
+The active-translation-edit increment shall consume an active context into one
+exclusive edit, consume a frame extent into a provisional inaccessible mapping,
+and refine both mapping visibility and the active context only on successful
+commit. Unmap shall consume the live mapping into a provisional unavailable
+extent and restore releasable frame ownership only after committed target
+invalidation. The model shall reject old-context use, nested edits, access
+before map commit or after unmap, premature frame reuse, wrong-space commit,
+and completion with a live edit while retaining opaque provider placement.
+
+The first critical-scope increment shall model local maskable interrupts as an
+affine context refinement bound to one processor and exact prior state. It
+shall assign nesting identities, require last-in-first-out restoration,
+consume restoration authority exactly once, and reject escape, disposition,
+suspension, blocking, processor transfer, or completion with a live scope.
+The model shall not expose target flags, registers, masks, or instructions and
+shall not claim exclusion of non-maskable events, other processors, devices,
+or DMA agents.
+
+The first atomic-location increment shall model one provider-width unsigned
+word whose construction consumes an exclusive ordinary region and whose end
+transition returns that same region. It shall retain location identity,
+alignment, domain, current value, and one modification order; distinguish
+successful from observed-failure compare/exchange; validate success and
+failure orders; and reject plain access, release, escape, or completion while
+the location is live. Machine addresses, instruction strategies, registers,
+and exclusive-monitor retries shall remain outside the common model.
+
+The first external-interrupt increment shall model one affine local-
+notification session with a monotonic event identity, consuming send, matching
+observation and entry, mandatory completion, interrupted-context resumption,
+wait completion, and exact prior local mask-state restoration. It shall reject
+context use while pending, unmatched or duplicate events, resume before
+completion, completion outside the handler, duplicate completion, and ordinary
+completion with live notification authority. Vectors, controller state,
+machine frames, acknowledgement encodings, wait instructions, and return
+instructions shall remain outside the common model.
+
+The first systems time increment shall model a provider-created monotonic clock
+with exact clock identity, source-ordered observation identities, immutable
+same-clock instants, and nondecreasing accepted values. It shall accept equal
+successive observations and reject decreasing observations, cross-clock
+comparison, invented or duplicate identities, and completion without the
+required observations. Counter representation, target access, scale,
+enablement, calibration, and wrap state shall remain outside the common model.
+
+The first deadline-event increment shall model construction from one exact
+same-clock instant and duration, one affine arm/wait lifecycle, one delivery
+observation no earlier than the scheduled instant, mandatory matching entry
+completion, resumption, and processor-context return. It shall retain both
+scheduled and observed instants, admit late and already-expired delivery without
+restarting the interval, and reject wrong-clock, early, duplicate, unmatched,
+escaped, or incomplete lifecycles. Timer, comparator, routing, vector,
+controller, acknowledgement, wait, frame, and return mechanics shall remain
+outside the common model.
+
+The first context-transfer increment shall model consuming one checked
+exclusive region into one suspended initial kernel context, consuming transfer
+of the running bootstrap context to that worker, terminal retirement only with
+no live worker obligation, exact caller resumption, and consuming reclamation
+of the retired worker and stack. It shall retain processor, stack, thread,
+entry, address-space, and extended-state-policy identities and reject wrong-
+processor, wrong-entry, duplicate, escaped, use-after-transfer, incomplete, or
+ordinary-return lifecycles. Register sets, stack pointers, frame layouts,
+continuation addresses, and save/restore instructions shall remain outside the
+common model.
 
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and

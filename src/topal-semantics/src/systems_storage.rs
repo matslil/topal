@@ -387,6 +387,57 @@ impl BootstrapStorageState {
         Ok(region.allocation_id)
     }
 
+    pub(crate) fn atomic_store_word(
+        &mut self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+        value: u64,
+    ) -> Result<(), SystemsModelError> {
+        let allocation_id = self.validate_word_access(region, offset_bytes)?;
+        for (index, byte) in value.to_le_bytes().into_iter().enumerate() {
+            self.contents
+                .insert((allocation_id, offset_bytes + index as u64), byte);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn atomic_load_word(
+        &self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+    ) -> Result<u64, SystemsModelError> {
+        let allocation_id = self.validate_word_access(region, offset_bytes)?;
+        let mut bytes = [0_u8; 8];
+        for (index, byte) in bytes.iter_mut().enumerate() {
+            *byte = self
+                .contents
+                .get(&(allocation_id, offset_bytes + index as u64))
+                .copied()
+                .unwrap_or(0);
+        }
+        Ok(u64::from_le_bytes(bytes))
+    }
+
+    fn validate_word_access(
+        &self,
+        region: &BootstrapRegion,
+        offset_bytes: u64,
+    ) -> Result<u64, SystemsModelError> {
+        let end = offset_bytes.checked_add(8).ok_or_else(|| {
+            SystemsModelError::new(
+                "E-SYSTEMS-ATOMIC-BOUNDS",
+                "atomic word extent overflows its region",
+            )
+        })?;
+        if end > region.byte_count {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ATOMIC-BOUNDS",
+                "atomic word must be wholly contained in its region",
+            ));
+        }
+        self.validate_byte_access(region, offset_bytes)
+    }
+
     /// Consume one region while retaining monotonic pool consumption.
     ///
     /// # Errors

@@ -2,28 +2,60 @@
 
 ## Outcome
 
-This is the seventh implementation increment of Step 4. The checked Topal
+This report tracks the current executable Step 4 gate. The checked Topal
 kernel source now builds through the ordinary `topalc` target publisher, boots
 as the replacement `bzImage` on the pinned `pc-q35-10.2`/`qemu64-v1` QEMU
 profile, validates the Linux E820 handoff and reserved bootstrap floor, selects
-and accesses an E820 frame through an opaque kernel mapping, writes through the
-polling 16550 provider, enters and resumes from the generated vector-3 handler,
-stores and reloads sentinels in kernel-owned memory, and reaches the
+and accesses an E820 frame through an opaque kernel mapping, constructs and
+activates a replacement bootstrap-equivalent translation, commits and removes
+one opaque 4 KiB mapping through that active space, writes through the
+polling 16550 provider, enters and restores one affine local-interrupt critical
+scope, enters and resumes from the generated vector-3 handler,
+stores and reloads sentinels in kernel-owned memory, consumes that ordinary
+region into one aligned atomic word, executes a locked compare/exchange and
+acquire load, returns the region to plain ownership, sends one local-APIC self-
+notification, enters its generated typed external-interrupt handler, completes
+the event, resumes the wait continuation, performs two accepted observations
+of the provider-created monotonic clock, constructs one absolute one-shot
+deadline, creates two suspended kernel contexts, and selects the first through
+a deadline-bound transfer. The worker enters a sealed wait region; the
+HPET/I/O-APIC event enters its typed handler no earlier than the deadline,
+completes, suspends the interrupted worker, and restores the exact dispatcher.
+Source re-enqueues that worker behind the terminal context, runs and reclaims
+the terminal context, then redispatches the interrupted context. The retained
+handler frame returns to the interrupted instruction, the worker resumes and
+retires, both stacks and the empty queue are consumed, and the root reaches the
 nonreturning fatal provider.
 
 The observed serial byte sequence is exactly:
 
 ```text
-TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_MEMORY_OK
+TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTEREDTOPAL_KERNEL_DEADLINE_PREEMPTEDTOPAL_KERNEL_CONTEXT_TERMINAL_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_RETIREDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMEDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED
 ```
 
-After all six ordered markers, QEMU remained running and the serial stream
+After all eighteen ordered markers, QEMU remained running and the serial stream
 stayed unchanged for the settling interval. Combined with structural inspection
-of the bounded E820 validator and selector, fail-to-fatal branches, reserved
-image floor, fatal provider's interrupt-disable/halt loop, and the root's
+of the bounded E820 validators and selectors, replacement page-table
+zeroing/population, CR3 activation, private leaf construction, commit-time
+parent publication, exact local invalidation, fail-to-fatal branches, reserved image
+floor, flags capture, local interrupt disable, conditional exact restoration,
+aligned atomic initialization, locked 64-bit compare/exchange, acquire load,
+atomic success/failure branches, ownership return, private local-APIC
+translation, IDT gate, self-notification, completion-aware wait, EOI, saved
+entry state, and interrupt return,
+private HPET translation, 64-bit capability and pinned-period validation,
+main-counter enablement, two counter observations, private wrap/regression
+state, both fail-to-fatal clock edges, exact deadline-tick construction, HPET
+timer and route capability checks, legacy-PIC masking, I/O APIC route and IDT
+gate, comparator programming, no-early completion check, HPET status clear,
+local-APIC EOI, saved deadline-entry state, provider-private worker-stack
+construction, callee-saved continuation switching, interrupt-frame retention,
+exact dispatcher restore, later interrupt return, both context reclamations,
+and the root's source-owned queue order and
 separate register-indirect and bootstrap-pool store/load/compare sequences,
 this is physical evidence that the checked bootstrap refined its handoff,
-accessed both an owned frame and its generated `.bss` pool, and completed its
+activated and edited a replacement translation, accessed both an owned frame
+through the committed private mapping and its generated `.bss` pool, and completed its
 expected path without returning to a host runtime.
 
 ## Reproduction and evidence
@@ -60,10 +92,19 @@ same linked-artifact, boot-image, provenance, and serial-observation digests.
 This completes the repository's toolchain phase gate for the initial admitted
 systems slice: bootstrap entry, polling console write, synchronous debug-break
 observation, context-preserving resume, checked bootstrap storage, one affine
-physical-frame mapping, and fatal disposition. Both byte loads are retained
+physical-frame mapping, one replacement translation space, one active
+map/unmap edit transaction, one affine local-maskable-interrupt critical scope,
+one affine CPU-shared atomic-word lifecycle, one typed local-notification
+external-interrupt lifecycle, two same-clock monotonic observations, one typed
+deadline-preemptible context transfer, an intervening terminal context,
+two affine context reclamations, empty queue consumption, and fatal
+disposition. Both byte loads are retained
 machine operations rather than constant-folded echoes of their sentinels. This
-gate does not claim general memory management, general interrupts, ACPI/PCI
-discovery, SMP, time, virtio, a
+gate does not claim general address-space management, general timer or
+shared-device interrupt routing, general controller management, ACPI/PCI
+discovery, SMP, multiple deadlines, cancellation, periodic or wall-clock
+behavior, general blocking or scheduling, task migration, extended context state,
+userspace clock publication, virtio, a
 userspace ABI, containers, or hosted virtualization.
 
 The ordinary `topalc` target registry and output path publish the qualified
@@ -74,6 +115,8 @@ packaging remains a separate adapter.
 Risk remains high because the evidence covers one closed privileged path and a
 small observation window. Mitigations are the sealed source vocabulary,
 affine handoff and region checking, conservative range and byte-content
-reference models, deterministic typed provider, structural ELF and boot-image
-inspection, exact machine identity, no guest devices beyond the serial port,
+reference models, explicit atomic modification-order and mixed-access
+rejection, deterministic typed provider, structural ELF and boot-image
+inspection, exact machine identity, no attached guest devices beyond the
+serial port, explicit use of the machine's built-in HPET,
 content-addressed evidence, and continued fail-closed ordinary target selection.

@@ -25,10 +25,22 @@ EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
     b"TOPAL_KERNEL_FRAME_MAPPED",
+    b"TOPAL_KERNEL_TRANSLATION_ACTIVE",
+    b"TOPAL_KERNEL_TRANSLATION_EDITED",
+    b"TOPAL_KERNEL_INTERRUPTS_MASKED",
     b"TOPAL_KERNEL_MEMORY_DESCRIBED",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
+    b"TOPAL_KERNEL_ATOMIC_OK",
     b"TOPAL_KERNEL_MEMORY_OK",
+    b"TOPAL_KERNEL_INTERRUPT_OK",
+    b"TOPAL_KERNEL_TIME_OK",
+    b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
+    b"TOPAL_KERNEL_DEADLINE_PREEMPTED",
+    b"TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+    b"TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+    b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+    b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
 )
 
 
@@ -136,7 +148,7 @@ def qemu_command(image: Path, serial: Path) -> list[str]:
         f"{emulator['machine']},smm={'on' if machine['smm'] else 'off'},"
         f"vmport={'on' if machine['vmport'] else 'off'},"
         f"usb={'on' if machine['usb'] else 'off'},"
-        f"sata={'on' if machine['sata'] else 'off'},dump-guest-core=off",
+        f"sata={'on' if machine['sata'] else 'off'},hpet=on,dump-guest-core=off",
         "-accel",
         f"tcg,thread={emulator['tcg_thread']}",
         "-cpu",
@@ -212,7 +224,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/5",
+        "schema": "topal-kernel-toolchain-gate-qemu/16",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

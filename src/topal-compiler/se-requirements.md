@@ -88,6 +88,131 @@ same extent before release, and reject wrong context, unsupported policy,
 frame release while mapped, mapping escape, use after unmap, or disposition
 with a live mapping before lowering.
 
+The translation-space increment shall check the exact
+`bootstrap-equivalent`/`provider-selected` request, exhaustive begin, commit,
+and activation results, affine update and inactive-space identities, fatal-only
+failures, and exclusive continuation through the refined success context. The
+x86-64 lowering shall privately reserve complete E820 backing frames below the
+qualified identity-map limit, construct and validate a replacement root,
+activate it through a typed provider operation, structurally retain the table
+construction and activation instruction, and reject incomplete lifecycle or
+unsupported source before publication.
+
+The active-translation-edit increment shall check exclusive begin/map/commit
+and begin/unmap/commit lifecycles, the sealed provider-selected mapping policy,
+provisional mapping and returned-frame states, refined-context continuation,
+and fatal-only failures. The x86-64 lowering shall reserve non-overlapping E820
+backing, construct a private 4 KiB mapping hierarchy, publish only at commit,
+remove the mapping and retain the exact local invalidation instruction before
+frame reuse, and structurally reject incomplete lifecycle or missing
+publication/invalidation evidence.
+
+The first critical-scope increment shall check exhaustive
+`local-maskable-interrupts` entry, one affine refined context, fatal-only entry
+failure, and consuming restoration before the continuation resumes. It shall
+reject escape, use of the prior context, duplicate or out-of-order restore,
+blocking, suspension, processor transfer, disposition, and completion while
+the scope is live. The x86-64 provider shall privately capture the prior
+maskable-interrupt state, disable local maskable interrupts, and restore that
+exact state without exposing flags, registers, masks, or instructions to
+source. Structural and pinned-QEMU evidence shall retain both provider paths
+and ordered execution through the masked scope.
+
+The first atomic-location increment shall check one aligned machine word in a
+consumed bootstrap region, the sealed `cpu-shared` domain, explicit
+`acquire-release` success and `acquire` failure compare/exchange orders, an
+`acquire` load, exhaustive result branches, and consuming `atomic end` before
+region release. It shall reject aliases, unsupported orders or domains,
+out-of-bounds or misaligned words, duplicate end, and completion while the
+location is live. The x86-64 provider shall privately initialize the selected
+word, execute a locked compare/exchange, and perform the qualified acquire load
+without exposing addresses, registers, encodings, or order implementation to
+source. Structural and pinned-QEMU evidence shall retain the locked operation,
+success/failure control flow, load, and ownership return.
+
+The first external-interrupt increment shall check exactly one local-
+notification handler, one affine send/wait lifecycle, one matching monotonic
+observation, consuming completion, external-interrupt resume, and restoration
+of the prior local mask state before bootstrap continuation. It shall reject
+missing or duplicate entries, wait without send, context use while pending,
+completion outside the handler, resume before completion, duplicate completion,
+and live notification authority at ordinary completion. The x86-64 provider
+shall privately install one interrupt gate, send one local-APIC self-
+notification, execute an interrupt-safe wait, complete the controller event,
+restore the interrupted register state, and return through the target interrupt
+mechanism. Structural and pinned-QEMU evidence shall retain every transition
+without exposing vectors, controller registers, frames, instructions, or mask
+bits to source.
+
+The first systems time increment shall check exactly two context-borrowing
+`now` observations returning `Instant InitialMonotonicClock` after the local-
+notification wait and before the time-success marker. It shall reject an
+unknown clock, wrong context or classifier, missing or extra observation, and
+misordered success. The x86-64 provider shall privately select and validate the
+pinned Q35 HPET, map its device page in initial and replacement translations,
+enable and read its 64-bit main counter, preserve monotonic wrap state, and
+fail closed on regression. Structural and pinned-QEMU evidence shall retain
+both reads, capability/period checks, state, and failure branches without
+exposing target representation to source.
+
+The first deadline-event increment shall check exactly one deadline formed
+from the second qualified clock observation and `1[ms]`, one affine arm/wait
+lifecycle, one matching typed handler, consuming completion, and resumption
+before the deadline-success marker. It shall reject wrong-clock values, early
+delivery, missing or duplicate operations, resume before completion, context
+use while waiting, and live deadline authority at ordinary completion. The
+x86-64 provider shall privately program one Q35 HPET comparator in one-shot
+mode, route its event through the I/O APIC, enter a generated interrupt gate,
+observe the same HPET clock no earlier than the scheduled instant, acknowledge
+the event, and return through the target interrupt mechanism. Structural and
+pinned-QEMU evidence shall retain each transition without exposing comparator,
+route, vector, controller, frame, instruction, or acknowledgement details to
+source.
+
+The first context-transfer increment shall check exactly one 16 KiB,
+16-byte-aligned bootstrap-reclaimable stack region, one static resumed-thread
+entry, one affine suspended worker, one caller-to-worker transfer, terminal
+retirement with no live worker obligations, exact caller resumption, and one
+consuming stack reclamation before fatal disposition. It shall reject wrong
+processor or entry, unsupported stack policy, duplicate or missing transition,
+ordinary worker return, live obligations at retirement, and disposition with a
+live suspended or completed context. The x86-64 provider shall privately build
+an initial stack frame, save and restore the qualified callee-saved state and
+stack position with local interrupts disabled, retain the active address space,
+and resume the generated typed continuation. Structural and pinned-QEMU
+evidence shall retain entry on the distinct stack and caller resumption without
+exposing registers, stack pointers, frame layouts, continuation addresses, or
+instructions to source.
+
+The cooperative context increment shall check two disjoint 16 KiB stacks, one
+handoff-once entry, one terminal entry, statically refined suspended and
+retired results, source-selected cooperative/terminal/cooperative FIFO order,
+and consuming reclamation of both stacks. The x86-64 provider shall keep two
+private context records, save either dispatcher or worker state according to
+the opaque transfer state, and generate both typed worker roots. Structural
+and pinned-QEMU evidence shall prove the handoff, intervening terminal worker,
+cooperative resumption, both retirements, and both reclamations without a
+provider-owned run queue.
+
+The bounded runnable-queue increment shall check capacity-two construction,
+cooperative then terminal enqueue, three FIFO dequeues, suspended cooperative
+re-enqueue, and empty consumption after both reclamations. Queue operations
+shall remain source-owned typestate: they may be erased when statically proven
+and shall add no provider symbol, call, relocation, instruction, or run queue.
+Artifact evidence shall retain every queue transition and prove the provider
+operation and undefined-dependency sets are unchanged.
+
+The deadline-preemption increment shall check one atomic
+context/deadline/dispatcher binding, one sealed worker preemption region, one
+preempting deadline disposition, affine extraction and re-enqueue of the
+interrupted worker, and later restoration before retirement and reclamation.
+The x86-64 provider shall privately arm the qualified event, retain the saved
+interrupt continuation in the bound context, restore the exact dispatcher,
+and resume through the retained interrupt return only after source selects that
+context again. Structural and pinned-QEMU evidence shall prove this causal
+order without exposing interrupt frames, registers, stack pointers, vectors,
+routes, or scheduler selection to source.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

@@ -1287,6 +1287,11 @@ impl Parser<'_> {
                 result.end.max(closing.span.end),
             ));
         }
+        if self.source.slice(first.span) == "PreemptedKernelContextTransfer" {
+            let _processor = self.generator_classifier()?;
+            let clock = self.generator_classifier()?;
+            return Some(Span::new(first.span.start, clock.end));
+        }
         if matches!(
             self.source.slice(first.span),
             "Array" | "Map" | "Result" | "Record"
@@ -1316,7 +1321,21 @@ impl Parser<'_> {
         }
         if matches!(
             self.source.slice(first.span),
-            "Bag" | "List" | "Optional" | "Range" | "Set"
+            "ArmedDeadline"
+                | "Bag"
+                | "BoundedKernelRunnableQueue"
+                | "CompletedKernelContextTransfer"
+                | "Deadline"
+                | "DeadlineInterruptContext"
+                | "DeadlineInterruptDisposition"
+                | "Instant"
+                | "KernelThreadContext"
+                | "KernelThreadDisposition"
+                | "List"
+                | "Optional"
+                | "Range"
+                | "Set"
+                | "SuspendedKernelContext"
         ) {
             let payload = self.generator_classifier()?;
             return Some(Span::new(first.span.start, payload.end));

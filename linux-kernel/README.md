@@ -36,7 +36,7 @@ without routing it through the Linux-process pipeline. Boot packaging remains
 a separate qualified adapter, and the pinned-QEMU evidence consumes the
 ordinary compiler output before packaging.
 
-The latest Step 4 kernel-foundation slice uses the approved
+An earlier Step 4 kernel-foundation slice uses the approved
 [portable boot-memory description contract](design/boot-memory-description.md)
 to refine the provider-private Linux x86 handoff into architecture-neutral
 physical-range capabilities before ordinary kernel initialization continues.
@@ -49,12 +49,91 @@ The following Step 4 slice adds the approved
 the architecture-neutral ownership model, sealed one-frame x86 provider
 lowering, structural artifact checks, and two deterministic pinned-QEMU runs.
 
-The latest Step 4 slice adds the approved
+The next Step 4 slice adds the approved
 [opaque kernel mapping](design/kernel-mapping.md). Its
 [implementation and qualification report](step-4-kernel-mapping.md) records
 affine map/access/unmap semantics, an adopted x86-64 bootstrap identity
 mapping, real indirect frame access, structural checks, and two deterministic
 pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[translation-space lifecycle](design/translation-space.md). Its
+[implementation and qualification report](step-4-translation-space.md) records
+the architecture-independent affine builder/commit/activation model, a
+replacement x86-64 four-level root, structural CR3 evidence, and two
+deterministic pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[active translation-edit lifecycle](design/active-translation-edit.md). Its
+[implementation and qualification report](step-4-active-translation-edit.md)
+records exclusive provisional map/unmap transactions, an opaque x86-64 4 KiB
+mapping window, commit-time publication and invalidation, and two deterministic
+pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[local-interrupt critical scope](design/local-interrupt-critical-scope.md). Its
+[implementation and qualification report](step-4-local-interrupt-critical-scope.md)
+records the affine context refinement, exact prior-state restoration model,
+private x86 flags lowering, structural instruction checks, and two
+deterministic pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[atomic-word location lifecycle](design/atomic-word-location.md). Its
+[implementation and qualification report](step-4-atomic-word-location.md)
+records the affine region transition, modification-order model, private x86
+locked compare/exchange and acquire load, structural instruction checks, and
+two deterministic pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[local-notification interrupt lifecycle](design/local-notification-interrupt.md).
+Its [implementation and qualification report](step-4-local-notification-interrupt.md)
+records the affine send/wait observation model, mandatory typed-entry
+completion, private x86-64 local-APIC delivery and EOI, generated interrupt
+gate and state preservation, structural inspection, and two deterministic
+pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[monotonic-clock observation](design/monotonic-clock-observation.md). Its
+[implementation and qualification report](step-4-monotonic-clock-observation.md)
+records the same-clock nondecreasing observation model, private Q35 HPET
+provider, initial and replacement MMIO mappings, structural inspection, and
+two deterministic pinned-QEMU runs.
+
+An earlier Step 4 slice adds the approved
+[one-shot deadline event](design/deadline-event.md). Its
+[implementation and qualification report](step-4-deadline-event.md) records
+same-clock absolute-deadline semantics, affine arm/wait/completion, a private
+Q35 HPET comparator and I/O APIC route, generated typed entry, structural
+inspection, and two deterministic pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[kernel-context transfer](design/kernel-context-transfer.md). Its
+[implementation and qualification report](step-4-kernel-context-transfer.md)
+records affine continuation and stack ownership, terminal worker retirement,
+exact suspended-caller resumption, private x86-64 callee-saved state, a
+separate worker stack, structural inspection, and two deterministic pinned-QEMU
+runs.
+
+The current Step 4 slice adds the approved
+[cooperative context handoff](design/cooperative-context-handoff.md). Its
+[implementation and qualification report](step-4-cooperative-context-handoff.md)
+records two affine worker contexts, source-level FIFO selection, one suspended
+handoff, two terminal retirements and reclamations, a symmetric private x86-64
+stack switch, structural inspection, and two deterministic pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved
+[bounded affine runnable queue](design/affine-runnable-queue.md). Its
+[implementation and qualification report](step-4-affine-runnable-queue.md)
+records a capacity-two source-owned FIFO, full/empty ownership semantics,
+provider-free queue lowering, a 99-transition artifact trace, and two
+deterministic pinned-QEMU runs with unchanged kernel and serial hashes.
+
+The current Step 4 slice adds the approved
+[deadline-preemptible context transfer](design/deadline-preemptible-context-transfer.md).
+Its [implementation and qualification report](step-4-deadline-preemptible-context-transfer.md)
+records one deadline-bound worker, exact interrupt-continuation preservation,
+return to the source dispatcher, affine queue re-enqueue, later restoration,
+and two deterministic pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -141,6 +220,17 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Step 4 affine physical-frame allocation](step-4-frame-allocation.md)
 - [Step 4 opaque kernel mapping](step-4-kernel-mapping.md)
+- [Step 4 translation-space activation](step-4-translation-space.md)
+- [Step 4 active translation edits](step-4-active-translation-edit.md)
+- [Step 4 local-interrupt critical scope](step-4-local-interrupt-critical-scope.md)
+- [Step 4 atomic-word location](step-4-atomic-word-location.md)
+- [Step 4 local-notification interrupt](step-4-local-notification-interrupt.md)
+- [Step 4 monotonic-clock observation](step-4-monotonic-clock-observation.md)
+- [Step 4 one-shot deadline event](step-4-deadline-event.md)
+- [Step 4 kernel-context transfer](step-4-kernel-context-transfer.md)
+- [Step 4 cooperative context handoff](step-4-cooperative-context-handoff.md)
+- [Step 4 bounded affine runnable queue](step-4-affine-runnable-queue.md)
+- [Step 4 deadline-preemptible context transfer](step-4-deadline-preemptible-context-transfer.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

@@ -28,6 +28,7 @@ device on which an operation is authorized. Neither substitutes for the other.
 | user return | fast syscall return or general interrupt return | exception return | supervisor return | typed disposition; backend proves legal return path |
 | per-CPU base | segment-base facilities commonly used | thread-pointer/system-register choices | thread-pointer/CSR convention | semantic per-CPU location provider |
 | extended state | XSAVE-family feature-dependent state | FP/SIMD/SVE/SME feature-dependent state | FP/vector extension state | opaque feature-qualified context component |
+| suspended kernel context | stack position plus ABI/feature-qualified callee-saved state | `SP`, `x19`–`x30`, and qualified system state | `sp`, `ra`, `s0`–`s11`, and qualified system state | affine continuation owning a stack and provider-declared state policy |
 
 Consequences:
 
@@ -37,6 +38,32 @@ Consequences:
 - target return validation is mandatory; and
 - lazy/eager extended-state policy belongs to the scheduler provider, not the
   semantic user context.
+
+The initial context-transfer slice keeps one processor and address space and
+excludes extended state. This is a qualification boundary, not permission for
+portable source to assume the x86-64 callee-saved set. AArch64 and RISC-V can
+preserve the same suspend/resume ownership contract with different private
+frames and state sets.
+
+The cooperative handoff extension does not change that target boundary.
+X86-64, AArch64, and RISC-V providers each preserve their qualified
+call-boundary state while the portable operation exchanges only opaque running
+and suspended identities. A provider-owned run queue is deliberately excluded:
+runnable selection remains architecture-independent Topal policy.
+
+The bounded runnable queue likewise has no target-specific operation. Its
+affine FIFO ownership contract is identical for x86-64, AArch64, and RISC-V;
+only the opaque suspended values selected from it reach each architecture's
+context provider. A compiler may choose different fixed aggregate layouts, but
+capacity, order, identity, and move-only observations must remain unchanged.
+
+Deadline preemption binds the same portable identities on every target: the
+selected context, event, processor, address space, and exact dispatcher
+continuation. X86-64 interrupt frames and interrupt return, AArch64 exception
+return state, and RISC-V supervisor trap state stay provider-private. Each
+provider must prove that the target binding precedes delivery enablement and
+that later dispatch restores the exact interrupted continuation; none may
+select or store the runnable queue.
 
 ## Translation and user access
 
@@ -142,4 +169,3 @@ A new common element is accepted only after:
 5. negative tests reject wrong context, authority, lifetime, scope, and target;
    and
 6. x86-64 artifact and QEMU evidence proves the first implementation.
-

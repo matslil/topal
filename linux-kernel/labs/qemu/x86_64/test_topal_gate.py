@@ -34,6 +34,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn("pc-q35-10.2", joined)
         self.assertIn("qemu64-v1", joined)
         self.assertIn("tcg,thread=multi", joined)
+        self.assertIn("hpet=on", joined)
         self.assertIn("-nodefaults", command)
         self.assertIn("-kernel", command)
         self.assertIn("isa-serial", joined)
@@ -42,16 +43,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/5")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/16")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/4")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/14")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/4",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/14",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/2",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/5",
         )
         self.assertEqual(evidence["manifest_sha256"], sha256(LAB / "manifest.json"))
         self.assertEqual(
@@ -77,10 +78,22 @@ class TopalToolchainGateTests(unittest.TestCase):
             [
                 "TOPAL_KERNEL_FRAME_ALLOCATED",
                 "TOPAL_KERNEL_FRAME_MAPPED",
+                "TOPAL_KERNEL_TRANSLATION_ACTIVE",
+                "TOPAL_KERNEL_TRANSLATION_EDITED",
+                "TOPAL_KERNEL_INTERRUPTS_MASKED",
                 "TOPAL_KERNEL_MEMORY_DESCRIBED",
                 "TOPAL_KERNEL_BOOT",
                 "TOPAL_KERNEL_FAULT_RESUMED",
+                "TOPAL_KERNEL_ATOMIC_OK",
                 "TOPAL_KERNEL_MEMORY_OK",
+                "TOPAL_KERNEL_INTERRUPT_OK",
+                "TOPAL_KERNEL_TIME_OK",
+                "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
+                "TOPAL_KERNEL_DEADLINE_PREEMPTED",
+                "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+                "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+                "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+                "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
             ],
         )
         self.assertEqual(observations["result"], "pass")
