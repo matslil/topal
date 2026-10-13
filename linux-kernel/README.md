@@ -346,6 +346,14 @@ resource into the existing allocator-backed code-role mapping. Its
 records exact member discovery, resource-to-mapping population, W^X
 finalization, structural inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement makes the
+[external ELF payload authoritative](design/external-elf-payload-authority.md)
+at runtime. Its
+[implementation and qualification report](step-4-external-elf-payload-authority.md)
+records sealed metadata validation, same-resource installation and post-copy
+comparison, W^X publication, and two deterministic pinned-QEMU runs without a
+provider-embedded executable equality oracle.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -472,6 +480,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
+- [Step 4 external ELF payload authority](step-4-external-elf-payload-authority.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
