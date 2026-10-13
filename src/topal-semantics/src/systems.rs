@@ -1245,6 +1245,7 @@ struct BootstrapAuthorityState {
     constructed_user_initial_entry_auxv_validated: bool,
     constructed_user_initial_execfn_auxv_validated: bool,
     constructed_user_initial_credential_auxv_validated: bool,
+    constructed_user_elf_identity_validated: bool,
     constructed_user_image_data_observed: bool,
     constructed_user_image_copy_to_completed: bool,
     constructed_user_image_copy_from_completed: bool,
@@ -2229,6 +2230,21 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_initial_credential_auxv_validated = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.constructed_user_initial_credential_auxv_validated
+                    || self.constructed_user_elf_identity_validated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed-image ELF witness requires exact returned credential validation with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_elf_identity_validated = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK" =>
             {
@@ -2236,7 +2252,7 @@ impl BootstrapAuthorityState {
                     self.user_execution,
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
-                    || !self.constructed_user_initial_credential_auxv_validated
+                    || !self.constructed_user_elf_identity_validated
                     || self.constructed_user_image_data_observed
                 {
                     return Err(SystemsModelError::new(
@@ -2311,6 +2327,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_initial_entry_auxv_validated
                     || !self.constructed_user_initial_execfn_auxv_validated
                     || !self.constructed_user_initial_credential_auxv_validated
+                    || !self.constructed_user_elf_identity_validated
                     || !self.constructed_user_image_data_observed
                     || !self.constructed_user_image_copy_to_completed
                     || !self.constructed_user_image_copy_from_completed
@@ -4783,6 +4800,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_ELF_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -4999,6 +5019,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
@@ -5433,6 +5454,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_ELF_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
@@ -5847,6 +5871,32 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
+        let mut late_elf_identity = program(SystemsDisposition::Resume);
+        let elf_identity = late_elf_identity
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
+                )
+            })
+            .unwrap();
+        late_elf_identity
+            .bootstrap
+            .handler
+            .operations
+            .swap(elf_identity, elf_identity + 1);
+        assert_eq!(
+            validate_systems_program(&late_elf_identity)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
         let mut late_image_copy_to = program(SystemsDisposition::Resume);
         let image_copy_to = late_image_copy_to
             .bootstrap
@@ -6185,6 +6235,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
