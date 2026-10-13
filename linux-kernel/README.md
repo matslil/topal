@@ -281,6 +281,13 @@ records sealed zero-duration stack staging, complete `copy_from_user`, input
 validation, balanced disposal, exact call-site inspection, and repeated
 pinned-QEMU qualification without changing core-language meaning.
 
+The next systems-only refinement constructs a
+[bounded Linux-compatible initial user stack](design/bounded-initial-user-stack.md).
+Its [implementation and qualification report](step-4-initial-user-stack.md)
+records exact `argc`/`argv`/empty-environment/`AT_NULL` initialization,
+constructed validation and bounded consumption, structural inspection, and
+two deterministic pinned-QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -399,6 +406,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded constructed-image syscall](step-4-constructed-image-syscall.md)
 - [Step 4 bounded constructed-image `uname` output](step-4-constructed-image-uname.md)
 - [Step 4 bounded constructed-image `nanosleep` input](step-4-constructed-image-nanosleep.md)
+- [Step 4 bounded Linux-compatible initial user stack](step-4-initial-user-stack.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

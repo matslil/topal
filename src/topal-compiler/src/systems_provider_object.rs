@@ -2847,6 +2847,7 @@ mod tests {
             X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
         );
         let entry_payload = initial_user_entry_payload().unwrap();
+        assert_eq!(entry_payload.bytes.len(), 304);
         assert!(
             user_install
                 .windows(8)

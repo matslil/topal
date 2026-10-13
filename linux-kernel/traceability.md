@@ -123,8 +123,9 @@ candidates, values, or layouts to source.
 
 `TK-DEC-053` traces through the
 [bounded initial-stack contract](design/bounded-initial-user-stack.md), the
-checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
-evidence. The evidence must prove aligned bounded initialization, exact
+checked root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-initial-user-stack.md), and
+pinned-QEMU evidence. The evidence must prove aligned bounded initialization, exact
 `argc`/`argv`/empty-environment/`AT_NULL` contents, entry at that block,
 constructed validation and consumption, balanced continuation stacks, an exact
 post-return witness, and deterministic physical execution without exposing
