@@ -327,7 +327,10 @@ The following systems-only refinement adds a
 [bounded ELF identity and program-header facts](design/bounded-elf-identity.md)
 inside the existing code-role mapping. It binds the selected entry and
 `AT_PHDR`/`AT_PHENT`/`AT_PHNUM` facts to one provider-sealed resident ELF64
-header and table without admitting arbitrary ELF input or general loading.
+header and table without admitting arbitrary ELF input or general loading. Its
+[implementation and qualification report](step-4-bounded-elf-identity.md)
+records exact image installation, entry and table correspondence, bounded
+stack consumption, structural inspection, and two deterministic QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -452,6 +455,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
 - [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
+- [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

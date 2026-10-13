@@ -184,8 +184,9 @@ encoding or transition policy to source.
 
 `TK-DEC-058` traces through the
 [bounded ELF identity contract](design/bounded-elf-identity.md), the checked
-root, x86-64 provider lowering, structural tests, the implementation and
-qualification report, and pinned-QEMU evidence. The evidence must prove a
+root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-bounded-elf-identity.md), and pinned-QEMU
+evidence. The evidence must prove a
 valid resident target ELF header and program-header table, agreement among the
 ELF entry, selected first instruction, and `AT_PHDR`/`AT_PHENT`/`AT_PHNUM`
 facts, exact constructed validation and stack consumption, an ordered witness,
