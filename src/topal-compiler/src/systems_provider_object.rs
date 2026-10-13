@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/40";
+    "topal.provider-object.x86_64-qemu-pc-q35/41";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -92,8 +92,10 @@ pub const X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL: &str =
 pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispatch_initial_syscall";
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
-const INITIAL_USER_ENTRY_ADDRESS: u64 = 0x0060_4000;
-const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f50;
+const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
+const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
+const INITIAL_USER_ENTRY_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 256;
+const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
@@ -409,7 +411,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     for (index, chunk) in initial_user_stack_bytes().chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
-        let displacement = u32::try_from(0x1f50 + index * 8).map_err(|_| {
+        let displacement = u32::try_from(0x1f20 + index * 8).map_err(|_| {
             CompileError::Tool("initial user stack displacement exceeds u32".into())
         })?;
         code.bytes(&[0x48, 0x89, 0x82]);
@@ -603,8 +605,8 @@ struct InitialUserEntryPayload {
     getpid_return_address: u64,
 }
 
-fn initial_user_stack_bytes() -> [u8; 176] {
-    let mut bytes = [0_u8; 176];
+fn initial_user_stack_bytes() -> [u8; 224] {
+    let mut bytes = [0_u8; 224];
     bytes[0..8].copy_from_slice(&1_u64.to_le_bytes());
     bytes[8..16].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
     bytes[32..40].copy_from_slice(&6_u64.to_le_bytes());
@@ -616,8 +618,56 @@ fn initial_user_stack_bytes() -> [u8; 176] {
     for (offset, tag) in [(80, 11_u64), (96, 12), (112, 13), (128, 14)] {
         bytes[offset..offset + 8].copy_from_slice(&tag.to_le_bytes());
     }
-    bytes[160..171].copy_from_slice(b"topal-probe");
+    bytes[144..152].copy_from_slice(&3_u64.to_le_bytes());
+    bytes[152..160].copy_from_slice(&INITIAL_USER_PROGRAM_HEADER_ADDRESS.to_le_bytes());
+    bytes[160..168].copy_from_slice(&4_u64.to_le_bytes());
+    bytes[168..176].copy_from_slice(&56_u64.to_le_bytes());
+    bytes[176..184].copy_from_slice(&5_u64.to_le_bytes());
+    bytes[184..192].copy_from_slice(&2_u64.to_le_bytes());
+    bytes[208..219].copy_from_slice(b"topal-probe");
     bytes
+}
+
+fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
+    let mut bytes = [0_u8; 256];
+    bytes[0..16].copy_from_slice(&[0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    bytes[16..18].copy_from_slice(&2_u16.to_le_bytes()); // ET_EXEC
+    bytes[18..20].copy_from_slice(&62_u16.to_le_bytes()); // EM_X86_64
+    bytes[20..24].copy_from_slice(&1_u32.to_le_bytes());
+    bytes[24..32].copy_from_slice(&INITIAL_USER_ENTRY_ADDRESS.to_le_bytes());
+    bytes[32..40].copy_from_slice(&64_u64.to_le_bytes());
+    bytes[52..54].copy_from_slice(&64_u16.to_le_bytes());
+    bytes[54..56].copy_from_slice(&56_u16.to_le_bytes());
+    bytes[56..58].copy_from_slice(&2_u16.to_le_bytes());
+    bytes[58..60].copy_from_slice(&64_u16.to_le_bytes());
+
+    bytes[64..68].copy_from_slice(&1_u32.to_le_bytes()); // PT_LOAD
+    bytes[68..72].copy_from_slice(&5_u32.to_le_bytes()); // PF_R | PF_X
+    bytes[80..88].copy_from_slice(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
+    bytes[88..96].copy_from_slice(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
+    bytes[96..104].copy_from_slice(&image_size.to_le_bytes());
+    bytes[104..112].copy_from_slice(&image_size.to_le_bytes());
+    bytes[112..120].copy_from_slice(&4096_u64.to_le_bytes());
+
+    bytes[120..124].copy_from_slice(&0x6474_e551_u32.to_le_bytes()); // PT_GNU_STACK
+    bytes[124..128].copy_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
+    bytes[168..176].copy_from_slice(&16_u64.to_le_bytes());
+    bytes
+}
+
+fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
+    let payload = initial_user_entry_payload()?;
+    let image_size = 256_u64
+        .checked_add(u64::try_from(payload.bytes.len()).unwrap_or(u64::MAX))
+        .ok_or_else(|| CompileError::Tool("constructed ELF image size overflow".into()))?;
+    let mut bytes = initial_user_elf_prefix(image_size).to_vec();
+    bytes.extend(payload.bytes);
+    if bytes.len() > 4096 {
+        return Err(CompileError::Tool(
+            "constructed ELF image exceeds its sealed executable page".into(),
+        ));
+    }
+    Ok(bytes)
 }
 
 fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError> {
@@ -652,7 +702,24 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement + 8, 0x00]);
         entry.jump_if(0x85, "entry-fail");
     }
-    for (displacement, expected) in [(0x80_u32, 14_u8), (0x88, 0), (0x90, 0), (0x98, 0)] {
+    for (displacement, expected) in [(0x80_u32, 14_u8), (0x88, 0), (0x90, 3)] {
+        entry.bytes(&[0x48, 0x83, 0xbc, 0x24]);
+        entry.bytes(&displacement.to_le_bytes());
+        entry.bytes(&[expected]);
+        entry.jump_if(0x85, "entry-fail");
+    }
+    entry.bytes(&[0x48, 0x81, 0xbc, 0x24]);
+    entry.bytes(&0x98_u32.to_le_bytes());
+    entry.bytes(&(INITIAL_USER_PROGRAM_HEADER_ADDRESS as u32).to_le_bytes());
+    entry.jump_if(0x85, "entry-fail");
+    for (displacement, expected) in [
+        (0xa0_u32, 4_u8),
+        (0xa8, 56),
+        (0xb0, 5),
+        (0xb8, 2),
+        (0xc0, 0),
+        (0xc8, 0),
+    ] {
         entry.bytes(&[0x48, 0x83, 0xbc, 0x24]);
         entry.bytes(&displacement.to_le_bytes());
         entry.bytes(&[expected]);
@@ -661,14 +728,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"topal-pr").to_le_bytes());
     entry.bytes(&[0x48, 0x39, 0x84, 0x24]);
-    entry.bytes(&0xa0_u32.to_le_bytes());
+    entry.bytes(&0xd0_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x81, 0xbc, 0x24]);
-    entry.bytes(&0xa8_u32.to_le_bytes());
+    entry.bytes(&0xd8_u32.to_le_bytes());
     entry.bytes(&u32::from_le_bytes(*b"obe\0").to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0x81, 0xc4]);
-    entry.bytes(&176_u32.to_le_bytes()); // consume bounded initial block
+    entry.bytes(&224_u32.to_le_bytes()); // consume bounded initial block
     entry.bytes(&[0x49, 0xba]);
     entry.bytes(&0x0060_5000_u64.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
@@ -747,9 +814,9 @@ fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&INITIAL_USER_ENTRY_ADDRESS.to_le_bytes());
-    let payload = initial_user_entry_payload()?;
-    for (index, chunk) in payload.bytes.chunks_exact(8).enumerate() {
+    code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
+    let image = initial_user_code_image()?;
+    for (index, chunk) in image.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
         let displacement = u32::try_from(index * 8).map_err(|_| {
@@ -858,9 +925,9 @@ fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&INITIAL_USER_ENTRY_ADDRESS.to_le_bytes());
-    let payload = initial_user_entry_payload()?;
-    for (index, chunk) in payload.bytes.chunks_exact(8).enumerate() {
+    code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
+    let image = initial_user_code_image()?;
+    for (index, chunk) in image.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
         let displacement = u32::try_from(index * 8).map_err(|_| {
@@ -2835,9 +2902,23 @@ mod tests {
             );
             assert_eq!(initial_stack[offset + 8..offset + 16], [0; 8]);
         }
-        assert_eq!(initial_stack[144..160], [0; 16]);
-        assert_eq!(&initial_stack[160..171], b"topal-probe");
-        assert_eq!(initial_stack[171], 0);
+        for (offset, tag, value) in [
+            (144, 3_u64, INITIAL_USER_PROGRAM_HEADER_ADDRESS),
+            (160, 4, 56),
+            (176, 5, 2),
+        ] {
+            assert_eq!(
+                u64::from_le_bytes(initial_stack[offset..offset + 8].try_into().unwrap()),
+                tag
+            );
+            assert_eq!(
+                u64::from_le_bytes(initial_stack[offset + 8..offset + 16].try_into().unwrap()),
+                value
+            );
+        }
+        assert_eq!(initial_stack[192..208], [0; 16]);
+        assert_eq!(&initial_stack[208..219], b"topal-probe");
+        assert_eq!(initial_stack[219], 0);
         assert!(
             initial_stack
                 .chunks_exact(8)
@@ -2930,13 +3011,52 @@ mod tests {
             X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
         );
         let entry_payload = initial_user_entry_payload().unwrap();
-        assert_eq!(entry_payload.bytes.len(), 496);
+        let code_image = initial_user_code_image().unwrap();
+        assert_eq!(entry_payload.bytes.len(), 592);
+        assert_eq!(code_image.len(), 848);
+        assert_eq!(&code_image[0..4], b"\x7fELF");
+        assert_eq!(
+            u16::from_le_bytes(code_image[18..20].try_into().unwrap()),
+            62
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[24..32].try_into().unwrap()),
+            INITIAL_USER_ENTRY_ADDRESS
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[32..40].try_into().unwrap()),
+            64
+        );
+        assert_eq!(
+            u16::from_le_bytes(code_image[54..56].try_into().unwrap()),
+            56
+        );
+        assert_eq!(
+            u16::from_le_bytes(code_image[56..58].try_into().unwrap()),
+            2
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[80..88].try_into().unwrap()),
+            INITIAL_USER_CODE_ADDRESS
+        );
+        assert_eq!(
+            u64::from_le_bytes(code_image[96..104].try_into().unwrap()),
+            848
+        );
+        assert_eq!(
+            u32::from_le_bytes(code_image[120..124].try_into().unwrap()),
+            0x6474_e551
+        );
+        assert_eq!(
+            u32::from_le_bytes(code_image[124..128].try_into().unwrap()),
+            6
+        );
+        assert_eq!(&code_image[256..], entry_payload.bytes.as_slice());
         assert!(
             user_install
                 .windows(8)
-                .any(|bytes| bytes == INITIAL_USER_ENTRY_ADDRESS.to_le_bytes())
-                && entry_payload
-                    .bytes
+                .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
+                && code_image
                     .chunks_exact(8)
                     .all(|chunk| user_install.windows(8).any(|bytes| bytes == chunk))
                 && user_install
@@ -2960,7 +3080,7 @@ mod tests {
                 && entry_payload
                     .bytes
                     .windows(9)
-                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x38, 0x00, 0x40, 0x60, 0x00])
+                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x38, 0x00, 0x41, 0x60, 0x00])
                 && entry_payload
                     .bytes
                     .windows(7)
@@ -2987,9 +3107,22 @@ mod tests {
                     .any(|bytes| bytes == [0x48, 0x83, 0xbc, 0x24, 0x80, 0, 0, 0, 0x0e])
                 && entry_payload
                     .bytes
+                    .windows(12)
+                    .any(|bytes| bytes
+                        == [0x48, 0x81, 0xbc, 0x24, 0x98, 0, 0, 0, 0x40, 0x40, 0x60, 0])
+                && entry_payload
+                    .bytes
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xbc, 0x24, 0xa0, 0, 0, 0, 4])
+                && entry_payload
+                    .bytes
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xbc, 0x24, 0xa8, 0, 0, 0, 56])
+                && entry_payload
+                    .bytes
                     .windows(7)
-                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0xb0, 0, 0, 0]),
-            "constructed entry must validate page, entry, executable-name, and root credential facts before consuming the complete bounded stack"
+                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0xe0, 0, 0, 0]),
+            "constructed entry must validate process facts and resident program-header metadata before consuming the complete bounded stack"
         );
         assert!(
             entry_payload
@@ -3073,15 +3206,14 @@ mod tests {
         assert!(
             user_verify
                 .windows(8)
-                .any(|bytes| bytes == INITIAL_USER_ENTRY_ADDRESS.to_le_bytes())
-                && entry_payload
-                    .bytes
+                .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
+                && code_image
                     .chunks_exact(8)
                     .all(|chunk| user_verify.windows(8).any(|bytes| bytes == chunk))
                 && user_verify
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
-            "entry verification must compare every qword of the exact sealed transfer payload"
+            "entry verification must compare every qword of the exact sealed ELF image"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
@@ -3172,11 +3304,11 @@ mod tests {
         assert!(
             user_enter
                 .windows(8)
-                .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                .any(|bytes| bytes == INITIAL_USER_ENTRY_ADDRESS.to_le_bytes())
                 && !user_enter
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_0000_u64.to_le_bytes()),
-            "initial user instruction fetch must begin in the constructed code mapping"
+            "initial user instruction fetch must begin at the ELF entry in the constructed code mapping"
         );
         let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
         assert_eq!(
