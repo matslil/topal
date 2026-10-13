@@ -161,7 +161,8 @@ source.
 `TK-DEC-056` traces through the
 [bounded initial `AT_EXECFN` contract](design/bounded-initial-auxv-execfn.md),
 the checked root, x86-64 provider lowering, structural tests, the implementation
-and qualification report, and pinned-QEMU evidence. The evidence must prove
+and [qualification report](step-4-initial-auxv-execfn.md), and pinned-QEMU
+evidence. The evidence must prove
 one sealed executable-name fact after `AT_ENTRY` and before `AT_NULL`, exact
 pointer identity with the bounded `argv[0]` string, constructed validation and
 consumption, an ordered post-return witness, and deterministic physical
