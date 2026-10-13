@@ -148,7 +148,8 @@ auxiliary-vector or loader policy to source.
 `TK-DEC-055` traces through the
 [bounded initial `AT_ENTRY` contract](design/bounded-initial-auxv-entry.md), the
 checked root, x86-64 provider lowering, structural tests, the implementation
-and qualification report, and pinned-QEMU evidence. The evidence must prove
+and [qualification report](step-4-initial-auxv-entry.md), and pinned-QEMU
+evidence. The evidence must prove
 one sealed executable-entry fact after `AT_PAGESZ` and before `AT_NULL`, exact
 agreement with the selected initial instruction, constructed validation and
 bounded consumption, an ordered post-return witness, and deterministic
