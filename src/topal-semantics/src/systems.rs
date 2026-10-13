@@ -1241,6 +1241,7 @@ struct BootstrapAuthorityState {
     resident_user_image_ready: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
+    constructed_user_initial_auxv_validated: bool,
     constructed_user_image_data_observed: bool,
     constructed_user_image_copy_to_completed: bool,
     constructed_user_image_copy_from_completed: bool,
@@ -2158,13 +2159,30 @@ impl BootstrapAuthorityState {
                 self.constructed_user_initial_stack_validated = true;
             }
             SystemsOperation::ConsoleWrite { text }
-                if text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK" =>
+                if text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK" =>
             {
                 if !matches!(
                     self.user_execution,
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.constructed_user_initial_stack_validated
+                    || self.constructed_user_initial_auxv_validated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed-image auxiliary-vector witness requires exact returned initial-stack validation with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_initial_auxv_validated = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.constructed_user_initial_auxv_validated
                     || self.constructed_user_image_data_observed
                 {
                     return Err(SystemsModelError::new(
@@ -2235,6 +2253,7 @@ impl BootstrapAuthorityState {
                     || !self.resident_user_image_ready
                     || !self.constructed_user_image_entered
                     || !self.constructed_user_initial_stack_validated
+                    || !self.constructed_user_initial_auxv_validated
                     || !self.constructed_user_image_data_observed
                     || !self.constructed_user_image_copy_to_completed
                     || !self.constructed_user_image_copy_from_completed
@@ -4695,6 +4714,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_STACK_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_AUXV_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -4907,6 +4929,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
@@ -5329,6 +5352,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_STACK_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_AUXV_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
@@ -5634,6 +5660,32 @@ mod tests {
             .swap(initial_stack, initial_stack + 1);
         assert_eq!(
             validate_systems_program(&late_initial_stack)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut late_initial_auxv = program(SystemsDisposition::Resume);
+        let initial_auxv = late_initial_auxv
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    SystemsOperation::ConsoleWrite { text }
+                        if text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
+                )
+            })
+            .unwrap();
+        late_initial_auxv
+            .bootstrap
+            .handler
+            .operations
+            .swap(initial_auxv, initial_auxv + 1);
+        assert_eq!(
+            validate_systems_program(&late_initial_auxv)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"
@@ -5973,6 +6025,7 @@ mod tests {
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"

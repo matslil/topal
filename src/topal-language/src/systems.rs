@@ -3218,6 +3218,7 @@ fn analyze_kernel_context_decision(
         user_marker_statement,
         entry_marker_statement,
         stack_marker_statement,
+        auxv_marker_statement,
         data_marker_statement,
         image_copy_to_marker_statement,
         image_copy_from_marker_statement,
@@ -3327,6 +3328,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(stack_marker_statement),
             "returned user execution requires its exact constructed-image initial-stack marker",
+        ));
+    }
+    let auxv_marker = analyze_operation(
+        source,
+        auxv_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if auxv_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_AUXV_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(auxv_marker_statement),
+            "returned user execution requires its exact constructed-image auxiliary-vector marker",
         ));
     }
     let data_marker = analyze_operation(
@@ -3593,6 +3611,7 @@ fn analyze_kernel_context_decision(
             user_marker,
             entry_marker,
             stack_marker,
+            auxv_marker,
             data_marker,
             image_copy_to_marker,
             image_copy_from_marker,
@@ -6352,6 +6371,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_STACK_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_AUXV_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6408,7 +6430,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 123);
+        assert_eq!(program.bootstrap.handler.operations.len(), 124);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
