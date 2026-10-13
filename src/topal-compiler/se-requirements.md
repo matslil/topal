@@ -298,6 +298,16 @@ publish only the boot image and canonical adapter provenance. Structural
 packaging alone shall not executable-qualify the systems target; qualification
 requires separate execution under the pinned QEMU board and CPU.
 
+The initial user-image publication increment shall add exactly one canonical
+ELF image to the atomic systems-artifact directory and bind its filename and
+digest in artifact provenance. The boot adapter shall read that published
+image, reject absence, digest mismatch, or an unbound output identity, and use
+the exact verified bytes for the deterministic initial boot resource. It shall
+not privately regenerate or silently substitute the user image. Unit tests
+shall cover canonical output closure, repeatable publication, and tamper
+rejection; pinned-QEMU evidence shall bind the published image digest through
+the boot resource and completed user execution.
+
 The first executable bootstrap-region increment shall accept only an
 exhaustively handled static allocation request whose capacity and alignment
 are proven against the artifact pool. It shall check a closed success action
