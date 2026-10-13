@@ -82,3 +82,13 @@ The evidence must prove a provider-sealed read-only sentinel observation before
 fail-closed transfer, an exact post-return witness, and deterministic physical
 execution without introducing source-visible addresses or general loader
 policy.
+
+## Next Step 4 syscall refinement
+
+`TK-DEC-050` traces through the
+[constructed-image syscall contract](design/bounded-constructed-image-syscall.md),
+the checked root, x86-64 provider lowering, structural tests, and pinned-QEMU
+evidence. The evidence must prove a Linux-compatible `getpid` transition from
+the constructed code mapping after its data observation, PID-one validation
+before transfer, an exact post-return witness, and deterministic physical
+execution without exposing general syscall selection to source.
