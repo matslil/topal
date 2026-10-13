@@ -64,6 +64,7 @@ records, not this directory alone, define language meaning.
 - [Runtime-derived executable-extent contract](runtime-derived-executable-extent.md)
 - [Runtime-derived data/BSS-extent contract](runtime-derived-data-extent.md)
 - [Runtime-derived ELF-entry contract](runtime-derived-entry.md)
+- [Published initial user-image artifact contract](published-initial-user-image.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
