@@ -3218,6 +3218,7 @@ fn analyze_kernel_context_decision(
         user_marker_statement,
         entry_marker_statement,
         data_marker_statement,
+        image_syscall_marker_statement,
         retained_marker_statement,
         unmap_mapping_again,
         release_data,
@@ -3323,6 +3324,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(data_marker_statement),
             "returned user execution requires its exact constructed-image data marker",
+        ));
+    }
+    let image_syscall_marker = analyze_operation(
+        source,
+        image_syscall_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if image_syscall_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(image_syscall_marker_statement),
+            "returned user execution requires its exact constructed-image syscall marker",
         ));
     }
     let retained_marker = analyze_operation(
@@ -3521,6 +3539,7 @@ fn analyze_kernel_context_decision(
             user_marker,
             entry_marker,
             data_marker,
+            image_syscall_marker,
             retained_marker,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -6276,6 +6295,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                 },
                 CompilerSystemsTransition::UnmapUserAddressSpace {
@@ -6320,7 +6342,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 119);
+        assert_eq!(program.bootstrap.handler.operations.len(), 120);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
