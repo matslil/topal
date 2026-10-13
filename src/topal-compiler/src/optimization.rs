@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::fs;
 use std::path::PathBuf;
 
@@ -286,7 +287,7 @@ impl OptimizationPlan {
     /// Render the canonical, deterministic decision explanation.
     #[must_use]
     pub fn explanation(&self) -> String {
-        serde_json::to_string_pretty(&serde_json::json!({
+        let explanation = serde_json::to_string_pretty(&serde_json::json!({
             "schema": "topal.optimization-explanation/1",
             "plan_revision": self.revision,
             "profile": self.level.name(),
@@ -304,9 +305,17 @@ impl OptimizationPlan {
                 serde_json::json!({"identity": identity, "decision": "enabled"})
             }).collect::<Vec<_>>(),
             "remarks": self.remarks,
-        }))
-        .expect("optimization explanation contains only serializable values")
-            + "\n"
+        }));
+        match explanation {
+            Ok(mut explanation) => {
+                explanation.push('\n');
+                explanation
+            }
+            Err(error) => format!(
+                "{{\"schema\":\"topal.optimization-explanation-error/1\",\"message\":{}}}\n",
+                serde_json::Value::String(error.to_string())
+            ),
+        }
     }
 
     /// Publish an explicitly requested decision explanation.
@@ -327,7 +336,7 @@ impl OptimizationPlan {
                         "cannot write optimization explanation {}: {error}",
                         path.display()
                     ))
-                })?
+                })?;
             }
         }
         Ok(())
@@ -340,9 +349,11 @@ impl OptimizationPlan {
     /// Returns an error when the generated artifact exceeds a selected limit.
     pub fn validate_output_limits(&self, output: &[u8]) -> Result<(), CompileError> {
         for limit in &self.limits {
-            let (dimension, quantity) = limit
-                .split_once('=')
-                .expect("resolved limits were validated");
+            let Some((dimension, quantity)) = limit.split_once('=') else {
+                return Err(CompileError::Tool(format!(
+                    "resolved optimization limit is malformed: `{limit}`"
+                )));
+            };
             if dimension == "code-size" {
                 let maximum = parse_code_size(quantity)?;
                 if output.len() as u64 > maximum {
@@ -494,7 +505,8 @@ pub fn target_listing() -> String {
     for entry in TARGET_QUALIFICATIONS {
         let target = entry.target.unwrap_or("unassigned");
         let board = entry.board.unwrap_or("none");
-        listing.push_str(&format!(
+        let _ = write!(
+            listing,
             "{}\n  Target: {target}; CPU: {}; features: {}; board: {board}\n  Model: {}; source: {}\n  Status: {}; missing: {}.\n",
             entry.profile,
             entry.cpu,
@@ -503,7 +515,7 @@ pub fn target_listing() -> String {
             entry.source,
             entry.status.name(),
             entry.missing,
-        ));
+        );
     }
     listing
 }

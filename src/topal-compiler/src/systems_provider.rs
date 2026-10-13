@@ -7,12 +7,13 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_RESUME_DEBUG_BREAK, validate_systems_program,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_RESUME_DEBUG_BREAK, validate_systems_program,
 };
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/3";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/4";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -23,6 +24,10 @@ pub enum X86SystemsLowering {
     RetainedE820FrameAuthority,
     E820SingleFrameSelect,
     ConsumePhysicalFrameExtent,
+    AdoptBootstrapIdentityMapping,
+    PlainKernelMappingStoreByte,
+    PlainKernelMappingLoadByte,
+    ConsumeKernelMapping,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -45,6 +50,12 @@ impl X86SystemsLowering {
             }
             Self::E820SingleFrameSelect => "topal.provider.x86_64.frames.select-one-e820/1",
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
+            Self::AdoptBootstrapIdentityMapping => {
+                "topal.provider.x86_64.mapping.adopt-bootstrap-identity/1"
+            }
+            Self::PlainKernelMappingStoreByte => "topal.provider.x86_64.mapping.plain-store-byte/1",
+            Self::PlainKernelMappingLoadByte => "topal.provider.x86_64.mapping.plain-load-byte/1",
+            Self::ConsumeKernelMapping => "topal.provider.x86_64.mapping.consume/1",
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -171,6 +182,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
         SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820SingleFrameSelect,
         SYSTEMS_FRAMES_RELEASE => X86SystemsLowering::ConsumePhysicalFrameExtent,
+        SYSTEMS_KERNEL_MAP => X86SystemsLowering::AdoptBootstrapIdentityMapping,
+        SYSTEMS_KERNEL_MAPPING_STORE_BYTE => X86SystemsLowering::PlainKernelMappingStoreByte,
+        SYSTEMS_KERNEL_MAPPING_LOAD_BYTE => X86SystemsLowering::PlainKernelMappingLoadByte,
+        SYSTEMS_KERNEL_UNMAP => X86SystemsLowering::ConsumeKernelMapping,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -193,6 +208,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             X86SystemsLowering::E820SingleFrameSelect => SYSTEMS_FRAMES_ALLOCATE,
             X86SystemsLowering::ConsumePhysicalFrameExtent => SYSTEMS_FRAMES_RELEASE,
+            X86SystemsLowering::AdoptBootstrapIdentityMapping => SYSTEMS_KERNEL_MAP,
+            X86SystemsLowering::PlainKernelMappingStoreByte => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+            X86SystemsLowering::PlainKernelMappingLoadByte => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+            X86SystemsLowering::ConsumeKernelMapping => SYSTEMS_KERNEL_UNMAP,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -240,7 +259,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 14);
+        assert_eq!(plan.operations.len(), 18);
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_BOOT_MEMORY_DESCRIBE
                 && operation.lowering == X86SystemsLowering::LinuxBootParamsE820
@@ -256,6 +275,22 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_RELEASE
                 && operation.lowering == X86SystemsLowering::ConsumePhysicalFrameExtent
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_KERNEL_MAP
+                && operation.lowering == X86SystemsLowering::AdoptBootstrapIdentityMapping
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_KERNEL_MAPPING_STORE_BYTE
+                && operation.lowering == X86SystemsLowering::PlainKernelMappingStoreByte
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_KERNEL_MAPPING_LOAD_BYTE
+                && operation.lowering == X86SystemsLowering::PlainKernelMappingLoadByte
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_KERNEL_UNMAP
+                && operation.lowering == X86SystemsLowering::ConsumeKernelMapping
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE

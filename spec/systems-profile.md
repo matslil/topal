@@ -246,6 +246,28 @@ one declared state protocol and SHALL name every affected processor/scope.
 Storage or address reuse SHALL be invalid until the provider's completion
 contract establishes that no stale translation can authorize access.
 
+`kernel map` SHALL borrow one live frame-allocator context and consume one
+affine `PhysicalFrameExtent`. Success SHALL produce one affine
+`KernelMapping` recording opaque source and provider-selected kernel-virtual
+extents, rights, execution policy, memory kind, owner, lifetime, and provider
+evidence without exposing either numeric base. Failure SHALL admit only the
+declared context-preserving failure action or a consuming disposition; it
+SHALL NOT duplicate or silently release the extent.
+
+A live read-write, non-executable normal-memory mapping MAY authorize bounded
+plain byte load and store. Such access SHALL NOT imply physical, user, device,
+DMA, firmware, volatile, atomic, or executable authority. Writable execution,
+out-of-bounds access, wrong-provider use, frame release while mapped, mapping
+escape, use after unmap, and a disposition with a live mapping SHALL be
+invalid.
+
+`kernel unmap` SHALL consume the mapping, revoke its access authority, satisfy
+the provider completion contract, and return exactly the original opaque frame
+extent. Physical storage reuse SHALL remain invalid until this transition
+completes. A provider MAY adopt a pre-existing sealed translation only when it
+proves the same rights, lifetime, inaccessibility-after-unmap, and reuse
+observations as a constructed translation.
+
 ### TOPAL-SYSTEMS-RECOVERY-001 — Closed fault recovery and user transfer
 
 A recovery scope SHALL name a finite fault class, admitted generated

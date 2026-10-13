@@ -8,6 +8,7 @@ mod portable_runtime;
 mod systems;
 mod systems_boot_memory;
 mod systems_frames;
+mod systems_mapping;
 mod systems_storage;
 pub mod tracing;
 
@@ -18,6 +19,7 @@ pub use portable_runtime::*;
 pub use systems::*;
 pub use systems_boot_memory::*;
 pub use systems_frames::*;
+pub use systems_mapping::*;
 pub use systems_storage::*;
 
 use std::collections::{BTreeMap, BTreeSet};

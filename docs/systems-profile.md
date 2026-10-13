@@ -189,8 +189,55 @@ X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
 sizes. The first executable x86-64 slice admits one statically proved frame
-aligned to one frame. Multiple live extents, dynamic requests, reclamation, and
-mapping remain unavailable until separately qualified.
+aligned to one frame. Multiple live extents, dynamic requests, and reclamation
+remain unavailable. Mapping is admitted only through the separately qualified
+opaque capability below.
+
+### Opaque kernel mapping
+
+`context kernel map frames (...)` borrows the live allocator context and
+consumes one affine physical-frame extent. The initial request names semantic
+rights, execution permission, and memory kind:
+
+```topal
+memory kernel map frames (
+  rights is read-write,
+  execution is denied,
+  memory-kind is normal
+)
+  Ok mapping then {
+    mapping byte store (offset-bytes is 0, value is 165)
+    observed : Nat is mapping byte load (offset-bytes is 0)
+    frames is memory kernel unmap mapping
+    memory frames release frames
+    memory fatal "complete"
+  }
+  Error problem then {
+    memory fatal "kernel mapping failed"
+  }
+```
+
+Success produces one affine `KernelMapping` which owns the frame extent while
+live and records an opaque provider-selected kernel-virtual extent, rights,
+memory kind, owner, lifetime, and translation-provider evidence. It reveals
+neither range as a number. The initial mapping grants bounded plain byte load
+and store only for read-write, non-executable normal memory. It does not grant
+physical, user, device, DMA, firmware, volatile, atomic, or executable access.
+
+`kernel unmap` consumes the mapping and returns exactly its original opaque
+frame extent after the provider proves that the mapping no longer authorizes
+access. The extent can then be released to its allocator. Frame release while
+mapped, mapping use after unmap, cross-provider use, writable execution,
+out-of-bounds access, and a disposition with a live mapping are invalid.
+
+The first x86-64 provider may adopt its sealed bootstrap identity mapping for
+one selected frame below the qualified identity-map limit. This is a provider
+implementation fact, not portable identity between physical and virtual
+families. AArch64 and RISC-V providers may adopt or construct different
+translations while preserving the same ownership, rights, access, unmap, and
+reuse observations. Page-table builders, activation, permission changes,
+translation invalidation, multiple mappings, and user mappings remain
+separate fail-closed increments.
 
 ## Special entries
 

@@ -73,14 +73,14 @@ fn analyze_physical_frame_sequence(
             "physical-frame allocation success requires a block releasing its affine extent",
         ));
     };
-    if success_statements.len() < 5 {
+    if success_statements.len() < 2 {
         return Err(frame_diagnostic(
             source,
             success.span(),
-            "the initial frame success action requires a marker, extent release, and bootstrap allocation decision",
+            "the initial frame success action requires a marker and kernel-mapping decision",
         ));
     }
-    let [marker, release, rest @ ..] = success_statements.as_slice() else {
+    let [marker, mapping @ ..] = success_statements.as_slice() else {
         unreachable!("length was checked")
     };
     let marker = analyze_operation(
@@ -93,33 +93,23 @@ fn analyze_physical_frame_sequence(
         return Err(frame_diagnostic(
             source,
             statement_span(success_statements.first().unwrap()),
-            "physical-frame allocation must publish its success marker before release",
+            "physical-frame allocation must publish its success marker before mapping",
         ));
     };
-    parse_physical_frame_release(source, release, allocator_context, &extent_name)?;
-    let (ordinary, bootstrap) = rest.split_at(rest.len() - 3);
+    let checked = analyze_kernel_mapping_sequence(
+        source,
+        mapping,
+        allocator_context,
+        &extent_name,
+        storage,
+    )?;
     let mut operations = vec![
         CompilerSystemsOperation::AllocatePhysicalFrames {
             request,
             failure_message,
         },
         marker,
-        CompilerSystemsOperation::ReleasePhysicalFrames,
     ];
-    for operation in ordinary {
-        operations.push(analyze_operation(
-            source,
-            operation,
-            CompilerSystemsContextKind::Bootstrap,
-            allocator_context,
-        )?);
-    }
-    let checked = analyze_bootstrap_region_sequence(
-        source,
-        bootstrap,
-        allocator_context,
-        storage,
-    )?;
     operations.extend(checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,

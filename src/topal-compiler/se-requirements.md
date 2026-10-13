@@ -80,6 +80,14 @@ require same-allocator consuming release before any disposition, and reject
 context reuse, extent escape, cross-allocator release, double release, and
 unsupported dynamic or multi-extent forms before lowering.
 
+The kernel-mapping increment shall accept only the approved static
+read-write, non-executable normal-memory request. It shall consume the one live
+frame extent into an affine mapping, admit statically bounded plain byte
+store/load only through that mapping, require consuming unmap to return the
+same extent before release, and reject wrong context, unsupported policy,
+frame release while mapped, mapping escape, use after unmap, or disposition
+with a live mapping before lowering.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

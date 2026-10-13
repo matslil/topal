@@ -79,6 +79,14 @@ rejection of escape, cross-allocator release, double release, or completion
 with live extents. Model frame indices shall not grant machine-address or
 mapping authority.
 
+The kernel-mapping increment shall model consuming frame ownership into one
+opaque provider-qualified kernel mapping; explicit rights, execution, and
+normal-memory policy; bounded retained byte contents; consuming unmap which
+returns the original extent; and rejection of wrong-provider mapping,
+out-of-bounds access, writable execution, frame release while mapped, use after
+unmap, or completion with a live mapping. Model virtual identities shall not
+grant numeric address or page-table authority.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine

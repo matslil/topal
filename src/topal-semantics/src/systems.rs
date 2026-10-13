@@ -4,10 +4,12 @@ use std::fmt;
 
 use crate::{
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    PhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    KernelMappingRequest, PhysicalFrameRequest, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE,
+    SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+    SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -61,6 +63,20 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     ReleasePhysicalFrames,
+    MapKernelFrames {
+        request: KernelMappingRequest,
+        failure_message: String,
+    },
+    KernelMappingStoreByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    KernelMappingLoadByteEquals {
+        offset_bytes: u64,
+        expected: u8,
+        failure_message: String,
+    },
+    UnmapKernelFrames,
     ConsoleWrite {
         text: String,
     },
@@ -88,6 +104,10 @@ impl SystemsOperation {
             Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
+            Self::KernelMappingStoreByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+            Self::KernelMappingLoadByteEquals { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+            Self::UnmapKernelFrames => SYSTEMS_KERNEL_UNMAP,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -150,6 +170,18 @@ pub enum SystemsTransition {
         request: PhysicalFrameRequest,
     },
     ReleasePhysicalFrames,
+    MapKernelFrames {
+        request: KernelMappingRequest,
+    },
+    StoreKernelMappingByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    LoadKernelMappingByte {
+        offset_bytes: u64,
+        value: u8,
+    },
+    UnmapKernelFrames,
     ConsoleWrite {
         text: String,
     },
@@ -206,6 +238,10 @@ impl SystemsTransition {
             Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
+            Self::StoreKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+            Self::LoadKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
+            Self::UnmapKernelFrames => SYSTEMS_KERNEL_UNMAP,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
@@ -279,6 +315,10 @@ fn validate_entry(
                     | SystemsOperation::CreateFrameAllocator { .. }
                     | SystemsOperation::AllocatePhysicalFrames { .. }
                     | SystemsOperation::ReleasePhysicalFrames
+                    | SystemsOperation::MapKernelFrames { .. }
+                    | SystemsOperation::KernelMappingStoreByte { .. }
+                    | SystemsOperation::KernelMappingLoadByteEquals { .. }
+                    | SystemsOperation::UnmapKernelFrames
                     | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
@@ -328,7 +368,15 @@ fn validate_entry(
 struct BootstrapAuthorityState {
     memory_described: bool,
     allocator_created: bool,
-    frames_live: bool,
+    memory_ownership: BootstrapMemoryOwnership,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum BootstrapMemoryOwnership {
+    #[default]
+    None,
+    Frames,
+    Mapping,
 }
 
 impl BootstrapAuthorityState {
@@ -358,7 +406,7 @@ impl BootstrapAuthorityState {
             }
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
                 if !self.allocator_created
-                    || self.frames_live
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
                     || request.frame_count == 0
                     || request.alignment_frames == 0
                     || !request.alignment_frames.is_power_of_two()
@@ -368,16 +416,47 @@ impl BootstrapAuthorityState {
                         "physical-frame allocation requires one allocator, a valid request, and no live extent",
                     ));
                 }
-                self.frames_live = true;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
             SystemsOperation::ReleasePhysicalFrames => {
-                if !self.frames_live {
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "physical-frame release requires one live extent",
                     ));
                 }
-                self.frames_live = false;
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+            }
+            SystemsOperation::MapKernelFrames { request, .. } => {
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames
+                    || *request != KernelMappingRequest::initial_read_write()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MAPPING",
+                        "kernel mapping requires one live extent and the sealed mapping policy",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::Mapping;
+            }
+            SystemsOperation::KernelMappingStoreByte { offset_bytes, .. }
+            | SystemsOperation::KernelMappingLoadByteEquals { offset_bytes, .. } => {
+                if self.memory_ownership != BootstrapMemoryOwnership::Mapping
+                    || *offset_bytes >= 4096
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MAPPING",
+                        "kernel mapping byte access requires one live mapping and an in-bounds offset",
+                    ));
+                }
+            }
+            SystemsOperation::UnmapKernelFrames => {
+                if self.memory_ownership != BootstrapMemoryOwnership::Mapping {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MAPPING",
+                        "kernel unmap requires one live mapping",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::Frames;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -403,11 +482,20 @@ impl BootstrapAuthorityState {
                 "the bootstrap handler must consume memory description through frame-allocator creation",
             ));
         }
-        if self.frames_live {
-            return Err(SystemsModelError::new(
-                "E-SYSTEMS-FRAMES-LIVE",
-                "bootstrap handler consumes its context while a physical-frame extent remains live",
-            ));
+        match self.memory_ownership {
+            BootstrapMemoryOwnership::None => {}
+            BootstrapMemoryOwnership::Frames => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES-LIVE",
+                    "bootstrap handler consumes its context while a physical-frame extent remains live",
+                ));
+            }
+            BootstrapMemoryOwnership::Mapping => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-MAPPING-LIVE",
+                    "bootstrap handler consumes its context while a kernel mapping remains live",
+                ));
+            }
         }
         Ok(())
     }
@@ -480,6 +568,12 @@ fn validate_bootstrap_storage_operations(
             | SystemsOperation::ReleasePhysicalFrames => {
                 unreachable!("authority operations continue above")
             }
+            SystemsOperation::MapKernelFrames { .. }
+            | SystemsOperation::KernelMappingStoreByte { .. }
+            | SystemsOperation::KernelMappingLoadByteEquals { .. }
+            | SystemsOperation::UnmapKernelFrames => {
+                unreachable!("mapping authority operations continue above")
+            }
             SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
         }
     }
@@ -528,6 +622,27 @@ pub fn model_systems_transitions(
             }
             SystemsOperation::ReleasePhysicalFrames => {
                 transitions.push(SystemsTransition::ReleasePhysicalFrames);
+            }
+            SystemsOperation::MapKernelFrames { request, .. } => {
+                transitions.push(SystemsTransition::MapKernelFrames { request: *request });
+            }
+            SystemsOperation::KernelMappingStoreByte {
+                offset_bytes,
+                value,
+            } => transitions.push(SystemsTransition::StoreKernelMappingByte {
+                offset_bytes: *offset_bytes,
+                value: *value,
+            }),
+            SystemsOperation::KernelMappingLoadByteEquals {
+                offset_bytes,
+                expected,
+                ..
+            } => transitions.push(SystemsTransition::LoadKernelMappingByte {
+                offset_bytes: *offset_bytes,
+                value: *expected,
+            }),
+            SystemsOperation::UnmapKernelFrames => {
+                transitions.push(SystemsTransition::UnmapKernelFrames);
             }
             SystemsOperation::ConsoleWrite { text } => {
                 transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
@@ -591,8 +706,12 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::CreateFrameAllocator { .. }
         | SystemsOperation::AllocatePhysicalFrames { .. }
-        | SystemsOperation::ReleasePhysicalFrames => {
-            unreachable!("physical-frame operations are modeled by the caller")
+        | SystemsOperation::ReleasePhysicalFrames
+        | SystemsOperation::MapKernelFrames { .. }
+        | SystemsOperation::KernelMappingStoreByte { .. }
+        | SystemsOperation::KernelMappingLoadByteEquals { .. }
+        | SystemsOperation::UnmapKernelFrames => {
+            unreachable!("physical-frame and mapping operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {

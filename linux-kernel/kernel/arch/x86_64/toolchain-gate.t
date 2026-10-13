@@ -14,32 +14,54 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
           )
             Ok frames then {
               memory console write "TOPAL_KERNEL_FRAME_ALLOCATED"
-              memory frames release frames
-              memory console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
-              memory console write "TOPAL_KERNEL_BOOT"
-              memory debug break
-              memory console write "TOPAL_KERNEL_FAULT_RESUMED"
-              memory bootstrap allocate (
-                byte-count is 64,
-                alignment-bytes is 8,
-                placement is bootstrap-reclaimable
+              memory kernel map frames (
+                rights is read-write,
+                execution is denied,
+                memory-kind is normal
               )
-                Ok region then {
-                  region byte store (offset-bytes is 0, value is 90)
-                  observed : Nat is region byte load (offset-bytes is 0)
-                  observed = 90
+                Ok mapping then {
+                  mapping byte store (offset-bytes is 0, value is 165)
+                  mapped-observed : Nat is mapping byte load (offset-bytes is 0)
+                  mapped-observed = 165
                     true then {
-                      memory console write "TOPAL_KERNEL_MEMORY_OK"
-                      memory bootstrap release region
-                      memory fatal "toolchain gate complete"
+                      frames is memory kernel unmap mapping
+                      memory console write "TOPAL_KERNEL_FRAME_MAPPED"
+                      memory frames release frames
+                      memory console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
+                      memory console write "TOPAL_KERNEL_BOOT"
+                      memory debug break
+                      memory console write "TOPAL_KERNEL_FAULT_RESUMED"
+                      memory bootstrap allocate (
+                        byte-count is 64,
+                        alignment-bytes is 8,
+                        placement is bootstrap-reclaimable
+                      )
+                        Ok region then {
+                          region byte store (offset-bytes is 0, value is 90)
+                          observed : Nat is region byte load (offset-bytes is 0)
+                          observed = 90
+                            true then {
+                              memory console write "TOPAL_KERNEL_MEMORY_OK"
+                              memory bootstrap release region
+                              memory fatal "toolchain gate complete"
+                            }
+                            false then {
+                              memory bootstrap release region
+                              memory fatal "toolchain gate memory mismatch"
+                            }
+                        }
+                        Error problem then {
+                          memory fatal "toolchain gate allocation failed"
+                        }
                     }
                     false then {
-                      memory bootstrap release region
-                      memory fatal "toolchain gate memory mismatch"
+                      frames is memory kernel unmap mapping
+                      memory frames release frames
+                      memory fatal "kernel mapping mismatch"
                     }
                 }
                 Error problem then {
-                  memory fatal "toolchain gate allocation failed"
+                  memory fatal "kernel mapping failed"
                 }
             }
             Error problem then {

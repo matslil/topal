@@ -351,6 +351,16 @@ Release shall consume an extent back into its originating allocator. Invalid,
 exhausted, cross-allocator, double-release, escaping, or disposition-with-live-
 extent behavior shall fail closed.
 
+Mapping an owned physical-frame extent for kernel access shall consume that
+extent into one affine mapping with opaque provider-selected kernel-virtual
+identity, explicit rights, execution policy, normal-memory kind, owner,
+lifetime, and translation evidence. Only a live mapping shall authorize
+bounds-checked plain byte access. Unmapping shall consume the mapping and
+return exactly its original extent only after access authority is revoked;
+frame release while mapped, use after unmap, cross-provider use, writable
+execution, or disposition with a live mapping shall fail closed. No source
+operation shall expose or equate its physical and virtual representations.
+
 An ordinary kernel-owned region shall provide bounds-checked plain byte access
 without exposing a machine address. Load and store shall borrow a live region,
 release shall consume it, and no access shall silently acquire volatile,
