@@ -3244,6 +3244,7 @@ fn analyze_kernel_context_decision(
         external_elf_marker_statement,
         external_elf_copy_marker_statement,
         runtime_extent_marker_statement,
+        runtime_entry_marker_statement,
         runtime_data_marker_statement,
         external_bss_marker_statement,
         data_marker_statement,
@@ -3491,6 +3492,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(runtime_extent_marker_statement),
             "returned user execution requires its exact runtime-derived executable-extent marker",
+        ));
+    }
+    let runtime_entry_marker = analyze_operation(
+        source,
+        runtime_entry_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if runtime_entry_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(runtime_entry_marker_statement),
+            "returned user execution requires its exact runtime-derived ELF-entry marker",
         ));
     }
     let runtime_data_marker = analyze_operation(
@@ -3800,6 +3818,7 @@ fn analyze_kernel_context_decision(
             external_elf_marker,
             external_elf_copy_marker,
             runtime_extent_marker,
+            runtime_entry_marker,
             runtime_data_marker,
             external_bss_marker,
             data_marker,
@@ -6588,6 +6607,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6650,7 +6672,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 134);
+        assert_eq!(program.bootstrap.handler.operations.len(), 135);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
