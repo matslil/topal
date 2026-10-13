@@ -8,14 +8,16 @@ use object::{
 };
 use topal_language::compiler::CompilerSystemsProgram;
 
-use crate::systems_boot_resource::generate_initial_boot_resource;
+use crate::systems_boot_resource::{
+    X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET, generate_initial_boot_resource,
+};
 use crate::{
     CompileError, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsProviderPlan,
     plan_x86_64_systems_provider,
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/42";
+    "topal.provider-object.x86_64-qemu-pc-q35/43";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -846,15 +848,26 @@ fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x83, 0x7f, 0x78, 0x00]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
+    code.jump_if(0x84, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    code.bytes(&[0x49, 0x81, 0xc0]); // exact `init` payload in r8
+    code.bytes(&X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
     let image = initial_user_code_image()?;
-    for (index, chunk) in image.chunks_exact(8).enumerate() {
-        code.bytes(&[0x48, 0xb8]);
-        code.bytes(chunk);
+    let chunks = image.chunks_exact(8);
+    if !chunks.remainder().is_empty() {
+        return Err(CompileError::Tool(
+            "external initial ELF load requires a qword-complete image".into(),
+        ));
+    }
+    for (index, _) in chunks.enumerate() {
         let displacement = u32::try_from(index * 8).map_err(|_| {
-            CompileError::Tool("constructed user payload displacement exceeds u32".into())
+            CompileError::Tool("external user payload displacement exceeds u32".into())
         })?;
+        code.bytes(&[0x49, 0x8b, 0x80]); // load qword from bounded resource
+        code.bytes(&displacement.to_le_bytes());
         code.bytes(&[0x49, 0x89, 0x82]);
         code.bytes(&displacement.to_le_bytes());
     }
@@ -3139,13 +3152,32 @@ mod tests {
             user_install
                 .windows(8)
                 .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
-                && code_image
-                    .chunks_exact(8)
-                    .all(|chunk| user_install.windows(8).any(|bytes| bytes == chunk))
+                && user_install
+                    .windows(3)
+                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x80])
+                    .count()
+                    == code_image.len() / 8
+                && user_install
+                    .windows(3)
+                    .filter(|bytes| *bytes == [0x49, 0x89, 0x82])
+                    .count()
+                    == code_image.len() / 8
+                && user_install.windows(7).any(|bytes| {
+                    bytes
+                        == [
+                            0x49,
+                            0x81,
+                            0xc0,
+                            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as u8,
+                            0,
+                            0,
+                            0,
+                        ]
+                })
                 && user_install
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05]),
-            "entry installation must write every qword of the exact provider-sealed transfer payload"
+            "entry installation must copy every qword from the bounded external ELF member"
         );
         assert!(
             entry_payload
