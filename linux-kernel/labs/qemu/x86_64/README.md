@@ -138,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 28 ordered serial markers. The generated real-mode adapter
+and waits for the 35 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -163,10 +163,40 @@ and reclaim are separate checked operations in the artifact trace. The
 address space and one source-owned frame to coexist without overlap, followed
 by release of that frame before user-context binding. The preceding
 `TOPAL_KERNEL_USER_MAPPING_OK` marker requires the provider to map that frame
-RW/NX at the sealed guard location, return distinct affine map, stored, and
-verified refinements through two fresh sequential generations, revoke each
-leaf through a separate unmap operation, and complete invalidation before
-returning the exact frame. The harness
+RW/NX at the sealed guard location, return distinct affine map, stored,
+read-only protected, and verified refinements through two fresh sequential
+generations and clear writable authority before verification. For the first
+generation, the provider installs and verifies an exact opaque entry payload;
+the second retains the fixed-byte data qualification. It then promotes the
+first verified RO/NX mapping to role-specific RO/X code with target
+invalidation and retains it while a separately allocated, disjoint frame is
+mapped at the sealed data location. The second mapping remains RO/NX when it
+is sealed as immutable data. The intervening
+`TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
+coexist. Both mappings then remain resident while the existing sealed probe
+begins at the constructed code mapping, whose sealed payload transfers to the
+existing syscall and fault-recovery probe only after directly observing the
+immutable sentinel in the constructed data mapping. A mismatch takes the
+payload's fail-closed trap instead. After its existing compatibility checks,
+the probe transfers to a sealed continuation in the constructed mapping. That
+continuation reserves a bounded buffer in the existing RW/NX user stack,
+invokes Linux x86-64 `uname`, requires a complete transfer, validates the
+returned `Linux` identity, and restores the stack. After output disposal it
+stages a zero-duration native timespec in the same
+stack, invokes `nanosleep` with no remainder candidate, requires complete
+input transfer and a successful return, and restores the stack again. It then
+invokes `getpid`, requires PID one, takes the same trap on mismatch, and issues
+terminal `exit_group(0)` without returning to the provider probe. After the
+exact kernel return,
+`TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
+`TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
+`TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
+`TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,
+`TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK` proves the bounded syscall succeeded, while
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` proves both role owners still
+coexist before data-first and code-second revocation return their exact frames.
+The private construction placements remain distinct from the probe's code,
+stack, transfer candidates, and deliberate `0x602000` fault guard. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,

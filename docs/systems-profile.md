@@ -583,6 +583,56 @@ refinement from the first generation survives. Source releases the extent and
 prepares user execution only after the second unmap. This remains a bounded
 two-generation qualification, not simultaneous mapping or image policy.
 
+Each admitted generation then tightens its populated mapping before
+verification. `user mapping protect read only` consumes the stored RW/NX
+refinement and returns an opaque read-only/NX refinement only after write
+authority is revoked and target translation completion finishes. Load consumes
+that protected refinement. Protection preserves identity, placement, contents,
+user accessibility, and non-executable policy; it cannot widen authority or
+expose target permission representation.
+
+After verification, `user mapping permit execute` consumes the exact RO/NX
+refinement and returns an opaque RO/X refinement only after executable
+authority publication and the target's translation and instruction-
+observation completion. Promotion preserves read-only authority, identity,
+placement, contents, and user accessibility. It cannot restore write
+authority, create W+X access, or expose target permission representation.
+Unmap consumes the executable refinement.
+
+The bounded image-role refinement uses executable promotion only for the first
+generation, classifying it as immutable code. The second generation remains
+RO/NX: `user mapping seal immutable data` consumes its verified refinement and
+returns an opaque immutable-data refinement after the provider proves the
+completed read-only, non-executable authority is unchanged. Code and data
+refinements are distinct and cannot be substituted at unmap.
+
+The bounded residency refinement replaces sequential backing reuse with two
+separately allocated disjoint extents and sealed `probe-code` and `probe-data`
+placements. Executable code remains mapped while immutable data is built, so
+both role-specific affine refinements coexist. Source then unmaps and releases
+data before unmapping and releasing code. User preparation requires both
+mappings revoked and both returned extents released. This is exactly a two-
+mapping construction proof, not a general mapping collection or image loader.
+
+The resident-image readiness refinement emits the exact
+`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after immutable data is
+sealed and before either finalized mapping is unmapped. At that boundary one
+RO/X code mapping and one RO/NX data mapping coexist with pairwise-disjoint
+backing. Console output preserves both affine owners: the marker grants no
+mapping or access authority and exposes no address, permission encoding, or
+target representation. It is a bounded physical witness, not an application
+image, loader, or transfer into user execution.
+
+The bounded execution-residency refinement preserves both finalized mapping
+owners while the existing sealed user probe is prepared, entered, services its
+fixed syscall and fault-recovery sequence, exits, and returns to the exact
+kernel continuation. The probe does not access or execute constructed image
+contents. After return, source emits the exact
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` marker while both mappings remain live,
+then revokes and releases data before code and only afterward completes and
+reclaims the address space. Provider-private construction placements cannot
+alias probe code, stack, transfer candidates, or its deliberate fault guard.
+
 The backend owns privilege transition, kernel entry stack, saved state,
 security sequence, result placement, return validation, and selection of a
 legal fast or general return mechanism. The provider cannot select a syscall

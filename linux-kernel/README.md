@@ -191,6 +191,13 @@ records distinct preparation, context binding, revocation, reclaim, and release
 transitions; split x86-64 provider operations; and two deterministic pinned-
 QEMU runs without changing core-language meaning.
 
+The following systems-only refinement adds
+[affine executable promotion](design/user-mapping-executable-promotion.md)
+after read-only verification. Its
+[implementation and qualification report](step-4-user-mapping-executable-promotion.md)
+records W^X-preserving RO/NX-to-RO/X authority, provider-private completion,
+structural inspection, and two deterministic pinned-QEMU runs.
+
 The latest systems-only refinement qualifies a
 [bounded disjoint live-frame extent](design/disjoint-live-frame-extent.md)
 while the prepared address space retains its backing. Its
@@ -220,6 +227,59 @@ over that exact returned frame. Its
 records fresh opaque identities, complete inter-generation revocation,
 provider-state reset, exact final frame return, and two deterministic pinned-
 QEMU runs without changing core-language meaning.
+
+The current systems-only refinement adds
+[affine user-mapping permission tightening](design/user-mapping-permission-tightening.md)
+to both generations. Its
+[implementation and qualification report](step-4-user-mapping-permission-tightening.md)
+records the stored-to-protected ownership transition, provider-private x86-64
+RW-to-RO publication and invalidation, structural inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The following systems-only refinement assigns
+[sealed immutable code and data roles](design/user-mapping-image-roles.md) to
+the two verified generations. Its
+[implementation and qualification report](step-4-user-mapping-image-roles.md)
+records disjoint RO/X code and RO/NX data refinements, role-specific x86-64
+validation, structural inspection, and two deterministic pinned-QEMU runs
+without changing core-language meaning.
+
+The next systems-only refinement keeps those roles in
+[bounded resident code and data mappings](design/resident-user-image-mappings.md)
+during construction. Its
+[implementation and qualification report](step-4-resident-user-image-mappings.md)
+records two separately allocated disjoint frames, concurrent RO/X and RO/NX
+ownership, data-first teardown, structural x86-64 inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The latest systems-only refinement requires a
+[bounded constructed-image data observation](design/bounded-constructed-image-data-observation.md)
+before the sealed code payload transfers to the existing probe. Its
+[implementation and qualification report](step-4-constructed-image-data-observation.md)
+records exact payload installation and verification, a fail-closed immutable
+sentinel read, ordered post-return witnesses, structural x86-64 inspection,
+and two deterministic pinned-QEMU runs without changing core-language meaning.
+
+The following systems-only refinement adds a
+[bounded constructed-image syscall](design/bounded-constructed-image-syscall.md).
+Its [implementation and qualification report](step-4-constructed-image-syscall.md)
+records sealed transfer back into constructed code, direct `getpid` and PID-one
+validation, terminal `exit_group(0)`, exact call-site inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The next systems-only refinement adds bounded pointer-bearing output through
+[constructed-image `uname`](design/bounded-constructed-image-uname.md). Its
+[implementation and qualification report](step-4-constructed-image-uname.md)
+records sealed writable-stack staging, complete `copy_to_user`, returned
+`Linux` validation, balanced disposal, exact call-site inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The following systems-only refinement adds bounded pointer-bearing input
+through [constructed-image `nanosleep`](design/bounded-constructed-image-nanosleep.md).
+Its [implementation and qualification report](step-4-constructed-image-nanosleep.md)
+records sealed zero-duration stack staging, complete `copy_from_user`, input
+validation, balanced disposal, exact call-site inspection, and repeated
+pinned-QEMU qualification without changing core-language meaning.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -328,6 +388,17 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 sealed user-mapping round trip](step-4-sealed-user-mapping-round-trip.md)
 - [Step 4 affine user-mapping lifecycle](step-4-affine-user-mapping-lifecycle.md)
 - [Step 4 sequential user-mapping generations](step-4-sequential-user-mapping-generations.md)
+- [Step 4 user-mapping permission tightening](step-4-user-mapping-permission-tightening.md)
+- [Step 4 user-mapping executable promotion](step-4-user-mapping-executable-promotion.md)
+- [Step 4 sealed user-mapping roles](step-4-user-mapping-image-roles.md)
+- [Step 4 resident user-image mappings](step-4-resident-user-image-mappings.md)
+- [Step 4 resident user-image readiness](step-4-resident-user-image-readiness.md)
+- [Step 4 user-image execution residency](step-4-user-image-execution-residency.md)
+- [Step 4 bounded constructed-image entry](step-4-constructed-image-entry.md)
+- [Step 4 bounded constructed-image data observation](step-4-constructed-image-data-observation.md)
+- [Step 4 bounded constructed-image syscall](step-4-constructed-image-syscall.md)
+- [Step 4 bounded constructed-image `uname` output](step-4-constructed-image-uname.md)
+- [Step 4 bounded constructed-image `nanosleep` input](step-4-constructed-image-nanosleep.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

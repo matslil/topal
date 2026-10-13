@@ -227,49 +227,130 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
-            SOURCE.replace("layout is probe-guard", "layout is other-layout"),
+            SOURCE.replace("layout is probe-code", "layout is other-layout"),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "user mapping store byte mapped-scratch",
-                "user mapping store byte other-mapping",
+                "user mapping install entry trampoline mapped-scratch",
+                "user mapping install entry trampoline other-mapping",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "user mapping load byte stored-scratch",
-                "user mapping load byte mapped-scratch",
+                "user mapping protect read only stored-scratch",
+                "user mapping protect read only mapped-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
-            SOURCE.replace("mapping is verified-scratch", "mapping is stored-scratch"),
+            SOURCE.replace(
+                "user mapping verify entry trampoline protected-scratch",
+                "user mapping verify entry trampoline stored-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("mapping is executable-scratch", "mapping is stored-scratch"),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "completion-resumed frames release returned-scratch-again",
+                "user mapping permit execute verified-scratch",
+                "user mapping permit execute protected-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "completion-resumed frames release returned-data",
                 "completion-resumed frames release other-scratch",
             ),
             "E-SYSTEMS-FRAMES",
         ),
         (
-            SOURCE.replace("backing is returned-scratch", "backing is scratch-frame"),
+            SOURCE.replace("backing is data-frame", "backing is scratch-frame"),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "user mapping store byte mapped-scratch-again",
+                "user mapping store byte mapped-data",
                 "user mapping store byte mapped-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "mapping is verified-scratch-again",
-                "mapping is verified-scratch",
+                "user mapping protect read only stored-data",
+                "user mapping protect read only stored-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "mapping is immutable-data",
+                "mapping is executable-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "user mapping seal immutable data verified-data",
+                "user mapping seal immutable data verified-scratch",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("layout is probe-data", "layout is probe-code"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_READY",
+                "TOPAL_KERNEL_USER_IMAGE_NOT_READY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+                "TOPAL_KERNEL_USER_IMAGE_ENTRY_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+                "TOPAL_KERNEL_USER_IMAGE_DATA_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
+                "TOPAL_KERNEL_USER_IMAGE_COPY_TO_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+                "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
+                "TOPAL_KERNEL_USER_IMAGE_SYSCALL_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_RETAINED",
+                "TOPAL_KERNEL_USER_IMAGE_NOT_RETAINED",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

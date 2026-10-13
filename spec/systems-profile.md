@@ -396,6 +396,105 @@ preparation before final release SHALL be invalid. The refinement SHALL expose
 no address or descriptor value and SHALL NOT constitute a general user-mapping
 or image-construction API.
 
+The permission-tightening refinement SHALL insert `user mapping protect read
+only` between store and load in each admitted generation. The operation SHALL
+consume `StoredUserMapping` and SHALL produce a `ProtectedUserMapping` with the
+same provider, address-space, mapping, backing, placement, memory-kind,
+user-access, non-executable, and content identities but without write
+authority. Revocation of writable authority and target translation completion
+SHALL precede observable success. Load SHALL consume only that protected
+refinement.
+
+Store through protected authority, load or unmap through a stale stored
+refinement, skipped or duplicate protection, permission widening, executable
+authority, identity substitution, and recoverable failure after permission
+publication begins SHALL be invalid. The initial profile SHALL admit only the
+sealed RW/NX-to-RO/NX transition and SHALL expose no permission bit or
+invalidation mechanism.
+
+The executable-promotion refinement SHALL insert `user mapping permit execute`
+between load verification and unmap in each admitted generation. The operation
+SHALL consume `VerifiedUserMapping` and SHALL produce an
+`ExecutableUserMapping` with the same provider, address-space, mapping,
+backing, placement, memory-kind, user-access, content, and read-only identities
+but with executable authority replacing non-executable authority. Executable
+publication and target translation and instruction-observation completion
+SHALL precede observable success. Unmap SHALL consume only that executable
+refinement.
+
+Promotion from writable, stored, protected, or otherwise unverified authority;
+write-authority restoration; W+X authority; skipped or duplicate promotion;
+stale refinement use; identity substitution; and recoverable failure after
+publication begins SHALL be invalid. The initial profile SHALL admit only the
+sealed RO/NX-to-RO/X transition and SHALL expose no permission bit, cache,
+barrier, or invalidation mechanism.
+
+The sealed image-role refinement SHALL classify generation one as
+`ExecutableCodeMapping` through executable promotion. For generation two,
+`user mapping seal immutable data` SHALL consume `VerifiedUserMapping` and
+produce `ImmutableDataMapping` while preserving provider, address-space,
+mapping, backing, placement, memory-kind, user-access, content, read-only, and
+non-executable identities. The provider SHALL prove that no permission or
+content changed. Unmap SHALL consume the exact role-specific final refinement.
+
+Executable promotion of generation two, data sealing of generation one,
+cross-role substitution, unclassified unmap, write-authority restoration, and
+W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
+permission representation, or target validation mechanism.
+
+The bounded resident-image refinement SHALL consume two separately allocated
+one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
+`ExecutableCodeMapping` SHALL remain live while the data mapping advances to
+`ImmutableDataMapping`; the provider SHALL prove the address-space backing and
+both mapping extents are pairwise disjoint. The two finalized mappings SHALL
+coexist with RO/X and RO/NX authority respectively.
+
+Source SHALL unmap and release immutable data before unmapping and releasing
+executable code. Each unmap SHALL revoke only its exact mapping, complete the
+target-required observation boundary, and return its exact original extent.
+User-context preparation SHALL require both mappings revoked and both extents
+released. A third mapping, backing reuse, swapped placement or role, cross-role
+unmap, code-first teardown, release while mapped, or recoverable exit with live
+construction authority SHALL be invalid. This refinement SHALL NOT constitute
+a general mapping collection, layout API, application image, or loader.
+
+The resident-image readiness qualification SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_READY` console observation after
+`ImmutableDataMapping` is produced and before either finalized mapping is
+unmapped. At emission, the exact generation-one `ExecutableCodeMapping` and
+generation-two `ImmutableDataMapping` SHALL both remain live. Emission SHALL
+preserve their identities, backing, placements, contents, permissions, and
+affine ownership and SHALL produce no mapping or access authority.
+
+Emission before both mappings are finalized, after either unmap begins, with
+substituted roles or identities, or with a missing, duplicate, or renamed
+marker SHALL be invalid. The observation SHALL expose no address, permission
+encoding, page-table representation, or target completion mechanism and SHALL
+NOT imply readiness for user entry or constitute an application-image or
+loader interface.
+
+The bounded execution-residency refinement SHALL preserve the exact
+generation-one `ExecutableCodeMapping` and generation-two
+`ImmutableDataMapping` across preparation, entry, syscall dispatch, contained
+user-copy faults, terminal exit, and kernel-continuation restoration of the
+sealed initial probe. Probe execution SHALL borrow but SHALL NOT consume,
+duplicate, transfer, mutate, access, or execute either mapping.
+
+After the probe returns, source SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_RETAINED` console observation while both finalized
+mappings remain live. Source SHALL then unmap and release immutable data before
+unmapping and releasing executable code. User-execution completion and address-
+space reclaim SHALL require both mappings absent and both returned extents
+released.
+
+The provider SHALL prove that construction placements do not alias probe code,
+stack, user-transfer candidates, or the deliberate fault-guard range. Entry
+without both roles, teardown before exact return, mutation or substitution
+during execution, missing or early retained-image observation, completion with
+either mapping live, and recoverable exit with live construction authority
+SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
+contents or define a loader or general process-image interface.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

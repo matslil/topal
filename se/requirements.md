@@ -457,6 +457,60 @@ release between generations, a third generation, or user-context binding
 before the second release shall fail closed. Simultaneous mappings and
 persistent image policy remain excluded.
 
+The affine user-mapping permission refinement shall require each stored RW/NX
+generation to pass through a distinct read-only/NX refinement before load and
+verification. Protection shall preserve mapping, address-space, and backing
+identity and contents, remove only write authority, and complete target stale-
+translation revocation before success. Store after protection, load from stale
+writable authority, permission widening, skipped protection, or recoverable
+failure after update publication shall fail closed.
+
+The affine user-mapping executable refinement shall require each verified
+RO/NX generation to pass through a distinct executable RO/X refinement before
+unmap. Promotion shall preserve mapping, address-space, backing, placement,
+and content identity, shall never restore write authority, and shall complete
+target translation and instruction-observation requirements before success.
+Promotion from writable or unverified authority, W+X authority, skipped or
+duplicate promotion, stale refinement use, or recoverable failure after
+publication begins shall fail closed.
+
+The sealed user-mapping role refinement shall classify the first verified
+generation as immutable executable code through the approved RO/NX-to-RO/X
+promotion and the second as immutable non-executable data through an explicit
+RO/NX-preserving seal. Cross-role substitution, executable promotion of the
+data generation, data sealing of the code generation, unclassified unmap,
+write-authority restoration, or W+X authority shall fail closed. Both roles
+shall remain opaque and shall be revoked before frame return.
+
+The bounded resident-image refinement shall allocate distinct one-frame code
+and data extents, retain finalized executable-code ownership while constructing
+immutable data, and prove both mappings coexist with pairwise-disjoint backing
+and sealed placements. Data unmap and release shall precede code unmap and
+release; user preparation shall require both mappings absent. A third mapping,
+backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
+release while mapped, or recoverable disposition with either mapping live shall
+fail closed. Provider-private placement and revocation mechanics shall remain
+unobservable.
+
+The resident-image qualification shall emit the exact
+`TOPAL_KERNEL_USER_IMAGE_READY` marker after both role-specific mappings are
+finalized and before either is unmapped. Emission shall preserve both affine
+mapping owners and grant no additional authority. Missing, duplicate, renamed,
+early, or late emission shall fail closed. The marker shall expose no mapping
+identity, address, permission representation, or target mechanism and shall
+not imply that the image can enter user execution.
+
+The bounded execution-residency qualification shall preserve the finalized
+RO/X code and RO/NX data mappings across preparation, entry, syscall and fault
+handling, exit, and exact kernel-continuation restoration of the sealed user
+probe. The probe shall not access or execute either constructed mapping.
+Source shall emit exactly one `TOPAL_KERNEL_USER_IMAGE_RETAINED` marker after
+return and before data-first teardown, and shall complete or reclaim the
+address space only after both mappings are revoked and their extents released.
+Construction placements shall not alias probe code, stack, transfer
+candidates, or deliberate fault guards. Early teardown, mutation, missing or
+early witness, or completion with either mapping live shall fail closed.
+
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
 identity, explicit rights, execution policy, normal-memory kind, owner,
