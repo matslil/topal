@@ -9,6 +9,7 @@ mod pipeline;
 mod standard_library;
 mod systems_artifact;
 mod systems_boot_image;
+mod systems_boot_resource;
 mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
@@ -45,6 +46,10 @@ pub use systems_boot_image::{
     X86_KERNEL_MINIMUM_ADDRESS, X86_LINUX_BOOT_ADAPTER_REVISION, X86_LINUX_BOOT_PROTOCOL,
     X86_LINUX_SETUP_SECTORS, X86_PROTECTED_PAYLOAD_ADDRESS, X86LinuxBootImageProvenance,
     generate_x86_64_linux_boot_image, publish_x86_64_linux_boot_image,
+};
+pub use systems_boot_resource::{
+    X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
+    X86_INITIAL_BOOT_RESOURCE_REVISION,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,

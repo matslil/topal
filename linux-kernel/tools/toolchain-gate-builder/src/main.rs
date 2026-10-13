@@ -60,7 +60,8 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use topal_compiler::{
-        LlvmTools, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE, publish_x86_64_systems_artifact,
+        LlvmTools, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
+        publish_x86_64_systems_artifact,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
@@ -89,6 +90,7 @@ mod tests {
         publish(&linked, &boot).unwrap();
         assert!(boot.join(X86_BOOT_IMAGE_FILE).is_file());
         assert!(boot.join(X86_BOOT_PROVENANCE_FILE).is_file());
+        assert!(boot.join(X86_INITIAL_BOOT_RESOURCE_FILE).is_file());
         fs::remove_dir_all(parent).unwrap();
     }
 }
