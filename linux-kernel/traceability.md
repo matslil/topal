@@ -136,7 +136,8 @@ general loader stack policy to source.
 `TK-DEC-054` traces through the
 [bounded initial `AT_PAGESZ` contract](design/bounded-initial-auxv-pagesz.md),
 the checked root, x86-64 provider lowering, structural tests, the implementation
-and qualification report, and pinned-QEMU evidence. The evidence must prove
+and [qualification report](step-4-initial-auxv-pagesz.md), and pinned-QEMU
+evidence. The evidence must prove
 one provider-consistent Linux base-page-size entry before `AT_NULL`, exact
 constructed validation and bounded consumption, an ordered post-return
 witness, and deterministic physical execution without exposing general

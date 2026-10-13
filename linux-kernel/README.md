@@ -292,7 +292,10 @@ The following systems-only refinement adds a
 [bounded initial `AT_PAGESZ` auxiliary-vector entry](design/bounded-initial-auxv-pagesz.md).
 It keeps the tag, value, word layout, and addresses provider-owned while
 requiring constructed code to validate the Linux base-page-size fact before
-continuing.
+continuing. Its
+[implementation and qualification report](step-4-initial-auxv-pagesz.md)
+records exact construction, validation, bounded consumption, structural
+inspection, and two deterministic pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -413,6 +416,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded constructed-image `uname` output](step-4-constructed-image-uname.md)
 - [Step 4 bounded constructed-image `nanosleep` input](step-4-constructed-image-nanosleep.md)
 - [Step 4 bounded Linux-compatible initial user stack](step-4-initial-user-stack.md)
+- [Step 4 bounded initial `AT_PAGESZ` auxiliary vector](step-4-initial-auxv-pagesz.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
