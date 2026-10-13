@@ -319,6 +319,9 @@ The next systems-only refinement adds the
 [bounded initial credential fact group](design/bounded-initial-auxv-credentials.md)
 for the sealed PID-one root profile. It keeps tag and credential encodings
 provider-owned while requiring coherent real/effective user/group validation.
+Its [implementation and qualification report](step-4-initial-auxv-credentials.md)
+records exact construction, ordered validation, bounded consumption, structural
+inspection, and two deterministic pinned-QEMU runs.
 
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
@@ -442,6 +445,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial `AT_PAGESZ` auxiliary vector](step-4-initial-auxv-pagesz.md)
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
+- [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
