@@ -315,6 +315,11 @@ identity and in-block string validation. Its
 records exact construction, alias validation, bounded consumption, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement adds the
+[bounded initial credential fact group](design/bounded-initial-auxv-credentials.md)
+for the sealed PID-one root profile. It keeps tag and credential encodings
+provider-owned while requiring coherent real/effective user/group validation.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
