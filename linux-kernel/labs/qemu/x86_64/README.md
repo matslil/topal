@@ -138,7 +138,7 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 35 ordered serial markers. The generated real-mode adapter
+and waits for the 36 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -174,10 +174,12 @@ mapped at the sealed data location. The second mapping remains RO/NX when it
 is sealed as immutable data. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
 coexist. Both mappings then remain resident while the existing sealed probe
-begins at the constructed code mapping, whose sealed payload transfers to the
-existing syscall and fault-recovery probe only after directly observing the
-immutable sentinel in the constructed data mapping. A mismatch takes the
-payload's fail-closed trap instead. After its existing compatibility checks,
+begins at the constructed code mapping with an aligned sealed initial stack.
+The constructed entry validates and consumes exact `argc`, `argv`, empty
+environment, terminating auxiliary-vector, and `argv[0]` contents before
+directly observing the immutable sentinel and transferring to the existing
+syscall and fault-recovery probe. A mismatch takes the payload's fail-closed
+trap instead. After its existing compatibility checks,
 the probe transfers to a sealed continuation in the constructed mapping. That
 continuation reserves a bounded buffer in the existing RW/NX user stack,
 invokes Linux x86-64 `uname`, requires a complete transfer, validates the
@@ -189,6 +191,7 @@ invokes `getpid`, requires PID one, takes the same trap on mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
+`TOPAL_KERNEL_USER_IMAGE_STACK_OK` proves initial-stack validation succeeded,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,

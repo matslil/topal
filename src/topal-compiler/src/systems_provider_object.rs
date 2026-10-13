@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/35";
+    "topal.provider-object.x86_64-qemu-pc-q35/36";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -93,7 +93,7 @@ pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispat
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 const INITIAL_USER_ENTRY_ADDRESS: u64 = 0x0060_4000;
-const INITIAL_USER_ENTRY_CONTINUATION_ADDRESS: u64 = 0x0060_4020;
+const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1fc0;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
@@ -406,6 +406,15 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x49, 0x89, 0x80]);
         code.bytes(&displacement.to_le_bytes());
     }
+    for (index, chunk) in initial_user_stack_bytes().chunks_exact(8).enumerate() {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(chunk);
+        let displacement = u32::try_from(0x1fc0 + index * 8).map_err(|_| {
+            CompileError::Tool("initial user stack displacement exceeds u32".into())
+        })?;
+        code.bytes(&[0x48, 0x89, 0x82]);
+        code.bytes(&displacement.to_le_bytes());
+    }
     code.bytes(&[0x4c, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
     code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]); // clear frame
@@ -588,35 +597,59 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
 
 struct InitialUserEntryPayload {
     bytes: Vec<u8>,
+    continuation_address: u64,
     uname_return_address: u64,
     nanosleep_return_address: u64,
     getpid_return_address: u64,
 }
 
+fn initial_user_stack_bytes() -> [u8; 64] {
+    let mut bytes = [0_u8; 64];
+    bytes[0..8].copy_from_slice(&1_u64.to_le_bytes());
+    bytes[8..16].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[48..59].copy_from_slice(b"topal-probe");
+    bytes
+}
+
 fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError> {
-    let mut bytes = vec![
-        0x49, 0xba, 0x00, 0x50, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, // data address
-        0x41, 0x80, 0x3a, 0x6d, // cmp byte [r10], 'm'
-        0x75, 0x0c, // jne entry-fail
-        0x48, 0xb8, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00, 0x00, // provider probe
-        0xff, 0xe0, // jmp rax
-        0x0f, 0x0b, // entry-fail: ud2
-        0x90, 0x90, // continuation alignment
-    ];
-    if INITIAL_USER_ENTRY_ADDRESS + u64::try_from(bytes.len()).unwrap_or(u64::MAX)
-        != INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
-    {
-        return Err(CompileError::Tool(
-            "constructed user continuation has an invalid sealed offset".into(),
-        ));
+    let mut entry = X86FunctionEncoder::default();
+    entry.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x01]); // argc = 1
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x08]);
+    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // argv[0]
+    entry.jump_if(0x85, "entry-fail");
+    for displacement in [0x10_u8, 0x18, 0x20, 0x28] {
+        entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, 0x00]);
+        entry.jump_if(0x85, "entry-fail");
     }
+    entry.bytes(&[0x48, 0xb8]);
+    entry.bytes(&u64::from_le_bytes(*b"topal-pr").to_le_bytes());
+    entry.bytes(&[0x48, 0x39, 0x44, 0x24, 0x30]);
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x81, 0x7c, 0x24, 0x38]);
+    entry.bytes(&u32::from_le_bytes(*b"obe\0").to_le_bytes());
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x83, 0xc4, 0x40]); // consume bounded initial block
+    entry.bytes(&[0x49, 0xba]);
+    entry.bytes(&0x0060_5000_u64.to_le_bytes());
+    entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0xb8]);
+    entry.bytes(&0x0060_0000_u64.to_le_bytes());
+    entry.bytes(&[0xff, 0xe0]);
+    entry.bind("entry-fail")?;
+    entry.bytes(&[0x0f, 0x0b]);
+    let mut bytes = entry.finish()?;
+    bytes.resize(bytes.len().next_multiple_of(32), 0x90);
+    let continuation_address =
+        INITIAL_USER_ENTRY_ADDRESS + u64::try_from(bytes.len()).unwrap_or(u64::MAX);
 
     let mut continuation = X86FunctionEncoder::default();
     continuation.bytes(&[0x48, 0x81, 0xec, 0x00, 0x02, 0x00, 0x00]); // bounded output
     continuation.bytes(&[0x48, 0x89, 0xe7]); // candidate = rsp
     continuation.bytes(&[0xb8, 0x3f, 0x00, 0x00, 0x00, 0x0f, 0x05]); // uname
-    let uname_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
-        + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
+    let uname_return_address =
+        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "uname-buffer-fail");
     continuation.bytes(&[0x81, 0x3c, 0x24]);
@@ -630,14 +663,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x89, 0x44, 0x24, 0x08]);
     continuation.bytes(&[0x48, 0x89, 0xe7, 0x31, 0xf6]);
     continuation.bytes(&[0xb8, 0x23, 0x00, 0x00, 0x00, 0x0f, 0x05]); // nanosleep
-    let nanosleep_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
-        + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
+    let nanosleep_return_address =
+        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "nanosleep-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]); // release input
     continuation.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
-    let getpid_return_address = INITIAL_USER_ENTRY_CONTINUATION_ADDRESS
-        + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
+    let getpid_return_address =
+        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
@@ -659,6 +692,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     }
     Ok(InitialUserEntryPayload {
         bytes,
+        continuation_address,
         uname_return_address,
         nanosleep_return_address,
         getpid_return_address,
@@ -980,6 +1014,7 @@ fn user_reclaim_initial_address_space() -> Result<Vec<u8>, CompileError> {
 }
 
 fn initial_user_probe() -> Result<Vec<u8>, CompileError> {
+    let continuation_address = initial_user_entry_payload()?.continuation_address;
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
     code.bytes(&[0x48, 0x83, 0xf8, 0x01]);
@@ -1023,7 +1058,7 @@ fn initial_user_probe() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "probe-fail");
 
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&INITIAL_USER_ENTRY_CONTINUATION_ADDRESS.to_le_bytes());
+    code.bytes(&continuation_address.to_le_bytes());
     code.bytes(&[0xff, 0xe0, 0x0f, 0x0b]);
     code.bind("probe-fail")?;
     code.bytes(&[
@@ -1057,7 +1092,7 @@ fn user_enter_initial_context() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xc6, 0x07, 0x02]);
     code.bytes(&[0x6a, 0x23]); // user SS
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0060_2000_u64.to_le_bytes());
+    code.bytes(&INITIAL_USER_STACK_ADDRESS.to_le_bytes());
     code.bytes(&[0x50]); // user RSP
     code.bytes(&[0x6a, 0x02]); // user RFLAGS, interrupts masked
     code.bytes(&[0x6a, 0x2b]); // user CS
@@ -2721,6 +2756,12 @@ mod tests {
             "address-space preparation must retain the allocator-owned backing identity"
         );
         assert!(
+            initial_user_stack_bytes()
+                .chunks_exact(8)
+                .all(|chunk| user_address_prepare.windows(8).any(|bytes| bytes == chunk)),
+            "address-space preparation must initialize every word of the sealed initial stack"
+        );
+        assert!(
             user_address_prepare
                 .windows(7)
                 .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]),
@@ -2806,6 +2847,7 @@ mod tests {
             X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
         );
         let entry_payload = initial_user_entry_payload().unwrap();
+        assert_eq!(entry_payload.bytes.len(), 304);
         assert!(
             user_install
                 .windows(8)
@@ -2995,7 +3037,7 @@ mod tests {
         assert!(
             user_enter
                 .windows(8)
-                .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes())
+                .any(|bytes| bytes == INITIAL_USER_STACK_ADDRESS.to_le_bytes())
         );
         assert!(
             user_enter
@@ -3065,7 +3107,7 @@ mod tests {
         assert!(
             user_probe
                 .windows(8)
-                .any(|bytes| bytes == INITIAL_USER_ENTRY_CONTINUATION_ADDRESS.to_le_bytes()),
+                .any(|bytes| bytes == entry_payload.continuation_address.to_le_bytes()),
             "the provider probe must transfer to the sealed constructed-image syscall continuation"
         );
         assert!(
