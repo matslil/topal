@@ -8,19 +8,26 @@ use topal_language::compiler::{
     SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, validate_systems_program,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
+    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE,
+    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, validate_systems_program,
 };
 use topal_language::compiler::{
     SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
@@ -29,7 +36,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/14";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/25";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -38,7 +45,7 @@ pub const X86_SYSTEMS_DATA_LAYOUT: &str =
 pub enum X86SystemsLowering {
     LinuxBootParamsE820,
     RetainedE820FrameAuthority,
-    E820SingleFrameSelect,
+    E820StaticFrameExtentSelect,
     ConsumePhysicalFrameExtent,
     AdoptBootstrapIdentityMapping,
     PlainKernelMappingStoreByte,
@@ -70,10 +77,24 @@ pub enum X86SystemsLowering {
     CreateKernelContext,
     TransferKernelContextUntilDeadline,
     AwaitDeadlinePreemption,
+    BlockOneShotCompletion,
     PreemptCurrentKernelContext,
     TransferKernelContext,
     RetireKernelContext,
     ReclaimKernelContext,
+    PrepareInitialUserAddressSpace,
+    VerifyInitialUserMapping,
+    MapInitialUserFrame,
+    StoreInitialUserMappingByte,
+    LoadInitialUserMappingByte,
+    UnmapInitialUserFrame,
+    PrepareInitialUserProbe,
+    EnterInitialUserContext,
+    CompleteInitialUserBacking,
+    ReclaimInitialUserAddressSpace,
+    CopyInitialUnameToUser,
+    CopyInitialTimespecFromUser,
+    DispatchInitialUserSyscall,
     StaticBootstrapStorage,
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
@@ -94,7 +115,9 @@ impl X86SystemsLowering {
             Self::RetainedE820FrameAuthority => {
                 "topal.provider.x86_64.frames.retained-e820-authority/1"
             }
-            Self::E820SingleFrameSelect => "topal.provider.x86_64.frames.select-one-e820/1",
+            Self::E820StaticFrameExtentSelect => {
+                "topal.provider.x86_64.frames.select-static-e820-extent/1"
+            }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
             Self::AdoptBootstrapIdentityMapping => {
                 "topal.provider.x86_64.mapping.adopt-bootstrap-identity/1"
@@ -150,10 +173,42 @@ impl X86SystemsLowering {
             Self::AwaitDeadlinePreemption => {
                 "topal.provider.x86_64.context.await-deadline-preemption/1"
             }
+            Self::BlockOneShotCompletion => {
+                "topal.provider.x86_64.context.block-one-shot-completion/1"
+            }
             Self::PreemptCurrentKernelContext => "topal.provider.x86_64.context.preempt-current/1",
             Self::TransferKernelContext => "topal.provider.x86_64.context.transfer/1",
             Self::RetireKernelContext => "topal.provider.x86_64.context.retire/1",
             Self::ReclaimKernelContext => "topal.provider.x86_64.context.reclaim/1",
+            Self::PrepareInitialUserAddressSpace => {
+                "topal.provider.x86_64.user.prepare-initial-address-space/1"
+            }
+            Self::VerifyInitialUserMapping => "topal.provider.x86_64.user.verify-initial-mapping/1",
+            Self::MapInitialUserFrame => "topal.provider.x86_64.user.map-initial-frame/1",
+            Self::StoreInitialUserMappingByte => {
+                "topal.provider.x86_64.user.store-initial-mapping-byte/1"
+            }
+            Self::LoadInitialUserMappingByte => {
+                "topal.provider.x86_64.user.load-initial-mapping-byte/1"
+            }
+            Self::UnmapInitialUserFrame => "topal.provider.x86_64.user.unmap-initial-frame/1",
+            Self::PrepareInitialUserProbe => "topal.provider.x86_64.user.prepare-initial-probe/1",
+            Self::EnterInitialUserContext => "topal.provider.x86_64.user.enter-initial-context/1",
+            Self::CompleteInitialUserBacking => {
+                "topal.provider.x86_64.user.complete-initial-backing/1"
+            }
+            Self::ReclaimInitialUserAddressSpace => {
+                "topal.provider.x86_64.user.reclaim-initial-address-space/1"
+            }
+            Self::CopyInitialUnameToUser => {
+                "topal.provider.x86_64.user.copy-to-with-page-fault-recovery/1"
+            }
+            Self::CopyInitialTimespecFromUser => {
+                "topal.provider.x86_64.user.copy-from-with-page-fault-recovery/1"
+            }
+            Self::DispatchInitialUserSyscall => {
+                "topal.provider.x86_64.user.dispatch-initial-syscall/1"
+            }
             Self::StaticBootstrapStorage => "topal.provider.x86_64.storage.static-nobits/1",
             Self::MonotonicBootstrapAllocate => {
                 "topal.provider.x86_64.storage.monotonic-allocate/1"
@@ -193,7 +248,21 @@ impl X86SystemsLowering {
                 | Self::ResumeDeadline
                 | Self::TransferKernelContextUntilDeadline
                 | Self::AwaitDeadlinePreemption
+                | Self::BlockOneShotCompletion
                 | Self::PreemptCurrentKernelContext
+                | Self::PrepareInitialUserAddressSpace
+                | Self::VerifyInitialUserMapping
+                | Self::MapInitialUserFrame
+                | Self::StoreInitialUserMappingByte
+                | Self::LoadInitialUserMappingByte
+                | Self::UnmapInitialUserFrame
+                | Self::PrepareInitialUserProbe
+                | Self::EnterInitialUserContext
+                | Self::CompleteInitialUserBacking
+                | Self::ReclaimInitialUserAddressSpace
+                | Self::CopyInitialUnameToUser
+                | Self::CopyInitialTimespecFromUser
+                | Self::DispatchInitialUserSyscall
                 | Self::InterruptReturn
                 | Self::InterruptsDisabledHalt
         )
@@ -258,7 +327,9 @@ pub fn plan_x86_64_systems_provider(
         .chain(&program.local_notification.handler.effects)
         .chain(&program.deadline_notification.handler.effects)
         .chain(&program.kernel_thread.handler.effects)
+        .chain(&program.completion_thread.handler.effects)
         .chain(&program.terminal_thread.handler.effects)
+        .chain(&program.user_syscall.handler.effects)
         .map(String::as_str)
         .collect::<Vec<_>>();
     semantic_identities.extend([
@@ -277,6 +348,9 @@ pub fn plan_x86_64_systems_provider(
                 | SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE
                 | SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
                 | SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED
+                | SYSTEMS_KERNEL_COMPLETION_CREATE
+                | SYSTEMS_KERNEL_COMPLETION_SIGNAL
+                | SYSTEMS_KERNEL_COMPLETION_CONSUME
         )
     });
 
@@ -310,7 +384,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
     let lowering = match identity {
         SYSTEMS_BOOT_MEMORY_DESCRIBE => X86SystemsLowering::LinuxBootParamsE820,
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
-        SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820SingleFrameSelect,
+        SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
         SYSTEMS_FRAMES_RELEASE => X86SystemsLowering::ConsumePhysicalFrameExtent,
         SYSTEMS_KERNEL_MAP => X86SystemsLowering::AdoptBootstrapIdentityMapping,
         SYSTEMS_KERNEL_MAPPING_STORE_BYTE => X86SystemsLowering::PlainKernelMappingStoreByte,
@@ -346,10 +420,24 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION => {
             X86SystemsLowering::AwaitDeadlinePreemption
         }
+        SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE => X86SystemsLowering::BlockOneShotCompletion,
         SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT => X86SystemsLowering::PreemptCurrentKernelContext,
         SYSTEMS_KERNEL_CONTEXT_TRANSFER => X86SystemsLowering::TransferKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RETIRE => X86SystemsLowering::RetireKernelContext,
         SYSTEMS_KERNEL_CONTEXT_RECLAIM => X86SystemsLowering::ReclaimKernelContext,
+        SYSTEMS_USER_ADDRESS_SPACE_PREPARE => X86SystemsLowering::PrepareInitialUserAddressSpace,
+        SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING => X86SystemsLowering::VerifyInitialUserMapping,
+        SYSTEMS_USER_ADDRESS_SPACE_MAP => X86SystemsLowering::MapInitialUserFrame,
+        SYSTEMS_USER_MAPPING_STORE_BYTE => X86SystemsLowering::StoreInitialUserMappingByte,
+        SYSTEMS_USER_MAPPING_LOAD_BYTE => X86SystemsLowering::LoadInitialUserMappingByte,
+        SYSTEMS_USER_ADDRESS_SPACE_UNMAP => X86SystemsLowering::UnmapInitialUserFrame,
+        SYSTEMS_USER_CONTEXT_PREPARE => X86SystemsLowering::PrepareInitialUserProbe,
+        SYSTEMS_USER_CONTEXT_ENTER => X86SystemsLowering::EnterInitialUserContext,
+        SYSTEMS_USER_CONTEXT_COMPLETE => X86SystemsLowering::CompleteInitialUserBacking,
+        SYSTEMS_USER_ADDRESS_SPACE_RECLAIM => X86SystemsLowering::ReclaimInitialUserAddressSpace,
+        SYSTEMS_USER_COPY_TO => X86SystemsLowering::CopyInitialUnameToUser,
+        SYSTEMS_USER_COPY_FROM => X86SystemsLowering::CopyInitialTimespecFromUser,
+        SYSTEMS_USER_SYSCALL_DISPATCH => X86SystemsLowering::DispatchInitialUserSyscall,
         SYSTEMS_BOOTSTRAP_STORAGE_PROVISION => X86SystemsLowering::StaticBootstrapStorage,
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
@@ -370,7 +458,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         semantic_identity: match lowering {
             X86SystemsLowering::LinuxBootParamsE820 => SYSTEMS_BOOT_MEMORY_DESCRIBE,
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
-            X86SystemsLowering::E820SingleFrameSelect => SYSTEMS_FRAMES_ALLOCATE,
+            X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
             X86SystemsLowering::ConsumePhysicalFrameExtent => SYSTEMS_FRAMES_RELEASE,
             X86SystemsLowering::AdoptBootstrapIdentityMapping => SYSTEMS_KERNEL_MAP,
             X86SystemsLowering::PlainKernelMappingStoreByte => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
@@ -408,12 +496,32 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::AwaitDeadlinePreemption => {
                 SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION
             }
+            X86SystemsLowering::BlockOneShotCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
             X86SystemsLowering::PreemptCurrentKernelContext => {
                 SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT
             }
             X86SystemsLowering::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             X86SystemsLowering::RetireKernelContext => SYSTEMS_KERNEL_CONTEXT_RETIRE,
             X86SystemsLowering::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            X86SystemsLowering::PrepareInitialUserAddressSpace => {
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE
+            }
+            X86SystemsLowering::VerifyInitialUserMapping => {
+                SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING
+            }
+            X86SystemsLowering::MapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            X86SystemsLowering::StoreInitialUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            X86SystemsLowering::LoadInitialUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86SystemsLowering::UnmapInitialUserFrame => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            X86SystemsLowering::PrepareInitialUserProbe => SYSTEMS_USER_CONTEXT_PREPARE,
+            X86SystemsLowering::EnterInitialUserContext => SYSTEMS_USER_CONTEXT_ENTER,
+            X86SystemsLowering::CompleteInitialUserBacking => SYSTEMS_USER_CONTEXT_COMPLETE,
+            X86SystemsLowering::ReclaimInitialUserAddressSpace => {
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM
+            }
+            X86SystemsLowering::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
+            X86SystemsLowering::CopyInitialTimespecFromUser => SYSTEMS_USER_COPY_FROM,
+            X86SystemsLowering::DispatchInitialUserSyscall => SYSTEMS_USER_SYSCALL_DISPATCH,
             X86SystemsLowering::StaticBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             X86SystemsLowering::MonotonicBootstrapAllocate => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             X86SystemsLowering::PlainBootstrapRegionStoreByte => {
@@ -461,13 +569,16 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 45);
+        assert_eq!(plan.operations.len(), 58);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
             SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+            SYSTEMS_KERNEL_COMPLETION_CREATE,
+            SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+            SYSTEMS_KERNEL_COMPLETION_CONSUME,
         ] {
             assert!(
                 plan.operations
@@ -486,7 +597,7 @@ mod tests {
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_ALLOCATE
-                && operation.lowering == X86SystemsLowering::E820SingleFrameSelect
+                && operation.lowering == X86SystemsLowering::E820StaticFrameExtentSelect
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_RELEASE
@@ -541,6 +652,60 @@ mod tests {
         assert_clock_lowering(&plan);
         assert_deadline_lowerings(&plan);
         assert_context_lowerings(&plan);
+        for (semantic_identity, lowering) in [
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+                X86SystemsLowering::PrepareInitialUserAddressSpace,
+            ),
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
+                X86SystemsLowering::MapInitialUserFrame,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
+                X86SystemsLowering::StoreInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                X86SystemsLowering::LoadInitialUserMappingByte,
+            ),
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                X86SystemsLowering::UnmapInitialUserFrame,
+            ),
+            (
+                SYSTEMS_USER_CONTEXT_PREPARE,
+                X86SystemsLowering::PrepareInitialUserProbe,
+            ),
+            (
+                SYSTEMS_USER_CONTEXT_ENTER,
+                X86SystemsLowering::EnterInitialUserContext,
+            ),
+            (
+                SYSTEMS_USER_CONTEXT_COMPLETE,
+                X86SystemsLowering::CompleteInitialUserBacking,
+            ),
+            (
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                X86SystemsLowering::ReclaimInitialUserAddressSpace,
+            ),
+            (
+                SYSTEMS_USER_COPY_TO,
+                X86SystemsLowering::CopyInitialUnameToUser,
+            ),
+            (
+                SYSTEMS_USER_COPY_FROM,
+                X86SystemsLowering::CopyInitialTimespecFromUser,
+            ),
+            (
+                SYSTEMS_USER_SYSCALL_DISPATCH,
+                X86SystemsLowering::DispatchInitialUserSyscall,
+            ),
+        ] {
+            assert!(plan.operations.iter().any(|operation| {
+                operation.semantic_identity == semantic_identity && operation.lowering == lowering
+            }));
+        }
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_CONSOLE_WRITE
                 && operation.lowering == X86SystemsLowering::PolledUart16550PortIo
@@ -658,6 +823,10 @@ mod tests {
                 X86SystemsLowering::AwaitDeadlinePreemption,
             ),
             (
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                X86SystemsLowering::BlockOneShotCompletion,
+            ),
+            (
                 SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
                 X86SystemsLowering::PreemptCurrentKernelContext,
             ),
@@ -687,7 +856,7 @@ mod tests {
         let second = plan_x86_64_systems_provider(&program()).unwrap();
         assert_eq!(first, second);
         let evidence = format!("{first:?}");
-        for forbidden in ["linux-gnu", "syscall", "libc", "dynamic-loader"] {
+        for forbidden in ["linux-gnu", "libc", "dynamic-loader"] {
             assert!(!evidence.contains(forbidden), "{evidence}");
         }
     }

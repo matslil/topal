@@ -64,12 +64,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                             Ok unmapped then {
                                                               unmapped console write "TOPAL_KERNEL_TRANSLATION_EDITED"
                                                               unmapped frames release removed-frames
-                                                              unmapped critical enter (
-                                                                domain is local-maskable-interrupts
+                                                              unmapped frames allocate (
+                                                                frame-count is 3,
+                                                                alignment-frames is 1
                                                               )
-                                                                Ok critical then {
-                                                                  critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
-                                                                  restored is critical restore
+                                                                Ok frame-extent then {
+                                                                  unmapped console write "TOPAL_KERNEL_FRAME_EXTENT_OK"
+                                                                  unmapped frames release frame-extent
+                                                                  unmapped critical enter (
+                                                                    domain is local-maskable-interrupts
+                                                                  )
+                                                                    Ok critical then {
+                                                                      critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                      restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
@@ -116,6 +123,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                     placement is bootstrap-reclaimable
                                                                                   )
                                                                                     Ok cooperative-stack then {
+                                                                                      one-shot : KernelCompletion InitialProcessor is resumed kernel completion create
                                                                                       cooperative-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
                                                                                         stack is cooperative-stack,
                                                                                         entry is kernel-thread
@@ -125,32 +133,115 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                         alignment-bytes is 16,
                                                                                         placement is bootstrap-reclaimable
                                                                                       )
-                                                                                        Ok terminal-stack then {
-                                                                                          terminal-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
-                                                                                            stack is terminal-stack,
-                                                                                            entry is terminal-thread
+                                                                                        Ok completion-stack then {
+                                                                                          completion-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
+                                                                                            stack is completion-stack,
+                                                                                            entry is completion-thread
                                                                                           )
-                                                                                          runnable : BoundedKernelRunnableQueue InitialProcessor is resumed kernel runnable queue create (capacity is 2)
-                                                                                          runnable kernel runnable enqueue cooperative-worker
-                                                                                          runnable kernel runnable enqueue terminal-worker
-                                                                                          selected-cooperative : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                          preempted : PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock is resumed kernel context transfer selected-cooperative until deadline
-                                                                                          preempted-worker : SuspendedKernelContext InitialProcessor is preempted kernel context take preempted
-                                                                                          resumed console write "TOPAL_KERNEL_DEADLINE_PREEMPTED"
-                                                                                          runnable kernel runnable enqueue preempted-worker
-                                                                                          selected-terminal : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                          terminal-completed : CompletedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-terminal
-                                                                                          resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
-                                                                                          after-terminal is terminal-completed kernel context reclaim
-                                                                                            selected-cooperative-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
-                                                                                            cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer selected-cooperative-final
-                                                                                            after-terminal console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED"
-                                                                                            context-resumed is cooperative-completed kernel context reclaim
-                                                                                              context-resumed kernel runnable queue consume empty runnable
-                                                                                              context-resumed fatal "toolchain gate complete"
+                                                                                          resumed bootstrap allocate (
+                                                                                            byte-count is 16384,
+                                                                                            alignment-bytes is 16,
+                                                                                            placement is bootstrap-reclaimable
+                                                                                          )
+                                                                                            Ok terminal-stack then {
+                                                                                              terminal-worker : SuspendedKernelContext InitialProcessor is resumed kernel context create (
+                                                                                                stack is terminal-stack,
+                                                                                                entry is terminal-thread
+                                                                                              )
+                                                                                              runnable : BoundedKernelRunnableQueue InitialProcessor is resumed kernel runnable queue create (capacity is 3)
+                                                                                              runnable kernel runnable enqueue cooperative-worker
+                                                                                              runnable kernel runnable enqueue completion-worker
+                                                                                              runnable kernel runnable enqueue terminal-worker
+                                                                                              selected-cooperative : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              preempted : PreemptedKernelContextTransfer InitialProcessor InitialMonotonicClock is resumed kernel context transfer selected-cooperative until deadline
+                                                                                              preempted-worker : SuspendedKernelContext InitialProcessor is preempted kernel context take preempted
+                                                                                              resumed console write "TOPAL_KERNEL_DEADLINE_PREEMPTED"
+                                                                                              runnable kernel runnable enqueue preempted-worker
+                                                                                              selected-completion : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              blocked-completion : BlockedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-completion until one-shot
+                                                                                              selected-terminal : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                              terminal-completed : CompletedKernelContextTransfer InitialProcessor is resumed kernel context transfer selected-terminal
+                                                                                              resumed console write "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED"
+                                                                                              after-terminal is terminal-completed kernel context reclaim
+                                                                                                awakened-completion : SuspendedKernelContext InitialProcessor is blocked-completion kernel completion signal one-shot
+                                                                                                runnable kernel runnable enqueue awakened-completion
+                                                                                                selected-cooperative-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                                cooperative-completed : CompletedKernelContextTransfer InitialProcessor is after-terminal kernel context transfer selected-cooperative-final
+                                                                                                after-terminal console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED"
+                                                                                                context-resumed is cooperative-completed kernel context reclaim
+                                                                                                  selected-completion-final : SuspendedKernelContext InitialProcessor is runnable kernel runnable dequeue
+                                                                                                  completion-completed : CompletedKernelContextTransfer InitialProcessor is context-resumed kernel context transfer selected-completion-final
+                                                                                                  context-resumed console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED"
+                                                                                                  completion-resumed is completion-completed kernel context reclaim
+                                                                                                    completion-resumed kernel completion consume one-shot
+                                                                                                    completion-resumed kernel runnable queue consume empty runnable
+                                                                                                    completion-resumed frames allocate (
+                                                                                                      frame-count is 3,
+                                                                                                      alignment-frames is 1
+                                                                                                    )
+                                                                                                      Ok user-frames then {
+                                                                                                        user-space is completion-resumed user address space prepare (
+                                                                                                          backing is user-frames,
+                                                                                                          layout is initial-probe
+                                                                                                        )
+                                                                                                          completion-resumed frames allocate (
+                                                                                                            frame-count is 1,
+                                                                                                            alignment-frames is 1
+                                                                                                          )
+                                                                                                            Ok scratch-frame then {
+                                                                                                              mapped-scratch is completion-resumed user address space map (
+                                                                                                                address-space is user-space,
+                                                                                                                backing is scratch-frame,
+                                                                                                                layout is probe-guard
+                                                                                                              )
+                                                                                                              stored-scratch is completion-resumed user mapping store byte mapped-scratch
+                                                                                                              verified-scratch is completion-resumed user mapping load byte stored-scratch
+                                                                                                              returned-scratch is completion-resumed user address space unmap (
+                                                                                                                address-space is user-space,
+                                                                                                                mapping is verified-scratch
+                                                                                                              )
+                                                                                                              mapped-scratch-again is completion-resumed user address space map (
+                                                                                                                address-space is user-space,
+                                                                                                                backing is returned-scratch,
+                                                                                                                layout is probe-guard
+                                                                                                              )
+                                                                                                              stored-scratch-again is completion-resumed user mapping store byte mapped-scratch-again
+                                                                                                              verified-scratch-again is completion-resumed user mapping load byte stored-scratch-again
+                                                                                                              returned-scratch-again is completion-resumed user address space unmap (
+                                                                                                                address-space is user-space,
+                                                                                                                mapping is verified-scratch-again
+                                                                                                              )
+                                                                                                              completion-resumed frames release returned-scratch-again
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
+                                                                                                              user-probe is completion-resumed user probe prepare (
+                                                                                                                process-identity is 1,
+                                                                                                                address-space is user-space
+                                                                                                              )
+                                                                                                              user-completed is completion-resumed user context enter user-probe
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                              revoked-space is completion-resumed user execution complete user-completed
+                                                                                                              returned-frames is completion-resumed user address space reclaim revoked-space
+                                                                                                              completion-resumed frames release returned-frames
+                                                                                                              completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                              completion-resumed fatal "toolchain gate complete"
+                                                                                                            }
+                                                                                                            Error problem then {
+                                                                                                              completion-resumed fatal "disjoint frame allocation failed"
+                                                                                                            }
+                                                                                                      }
+                                                                                                      Error problem then {
+                                                                                                        completion-resumed fatal "user backing allocation failed"
+                                                                                                      }
+                                                                                            }
+                                                                                            Error problem then {
+                                                                                              resumed fatal "terminal context stack allocation failed"
+                                                                                            }
                                                                                         }
                                                                                         Error problem then {
-                                                                                          resumed fatal "terminal context stack allocation failed"
+                                                                                          resumed fatal "completion context stack allocation failed"
                                                                                         }
                                                                                     }
                                                                                     Error problem then {
@@ -178,8 +269,12 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                       restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                Error failure then {
-                                                                  failure fatal "critical entry failed"
+                                                                    Error failure then {
+                                                                      failure fatal "critical entry failed"
+                                                                    }
+                                                                }
+                                                                Error problem then {
+                                                                  unmapped fatal "multi-frame allocation failed"
                                                                 }
                                                             }
                                                             Error failure then {
@@ -280,12 +375,38 @@ kernel-thread-handler is fn (
   context console write "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED"
   context kernel context retire to caller
 
+completion-thread-handler is fn (
+  context : KernelThreadContext InitialProcessor,
+  caller : SuspendedKernelContext InitialProcessor
+) -> KernelThreadDisposition InitialProcessor
+  context console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED"
+  context kernel completion await
+  context console write "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED"
+  context kernel context retire to caller
+
 terminal-thread-handler is fn (
   context : KernelThreadContext InitialProcessor,
   caller : SuspendedKernelContext InitialProcessor
 ) -> KernelThreadDisposition InitialProcessor
   context console write "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED"
   context kernel context retire to caller
+
+user-syscall-handler is fn (
+  context : InitialUserSyscallContext
+) -> InitialUserSyscallDisposition
+  context linux syscall dispatch (
+    getpid-result is 1,
+    uname-sysname is "Linux",
+    uname-nodename is "topal",
+    uname-release is "7.2.9-topal",
+    uname-version is "#1 Topal",
+    uname-machine is "x86_64",
+    uname-domainname is "(none)",
+    nanosleep-seconds is 0,
+    nanosleep-nanoseconds is 0,
+    nanosleep-remainder-candidate is 0,
+    exit-group-status is 0
+  )
 
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (
@@ -297,5 +418,7 @@ lang systems artifact (
   local-notification is lang systems external-interrupt-entry local-notification-handler,
   deadline-notification is lang systems external-interrupt-entry deadline-notification-handler,
   kernel-thread is lang systems resumed-thread-entry kernel-thread-handler,
-  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler
+  completion-thread is lang systems resumed-thread-entry completion-thread-handler,
+  terminal-thread is lang systems resumed-thread-entry terminal-thread-handler,
+  user-syscall is lang systems user-syscall-entry user-syscall-handler
 )

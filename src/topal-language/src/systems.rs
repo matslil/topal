@@ -37,6 +37,8 @@ pub use topal_semantics::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
     SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
     SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
     SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
@@ -49,6 +51,12 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -100,12 +108,12 @@ pub fn analyze_systems_for_compiler(
     let functions = collect_handler_declarations(&source, declarations)?;
 
     let root_entries = parse_artifact_root(&source, root)?;
-    if functions.len() != 6 {
+    if functions.len() != 8 {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "the cooperative systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread handlers",
+            "the systems artifact requires exactly its bootstrap, debug-break, local-notification, deadline-notification, preemptible, completion-blocking, terminal, and user-syscall handlers",
         ));
     }
     if root_entries.bootstrap == root_entries.debug_break
@@ -117,18 +125,31 @@ pub fn analyze_systems_for_compiler(
         || root_entries.local_notification == root_entries.deadline_notification
         || root_entries.local_notification == root_entries.kernel_thread
         || root_entries.deadline_notification == root_entries.kernel_thread
+        || root_entries.bootstrap == root_entries.completion_thread
+        || root_entries.debug_break == root_entries.completion_thread
+        || root_entries.local_notification == root_entries.completion_thread
+        || root_entries.deadline_notification == root_entries.completion_thread
+        || root_entries.kernel_thread == root_entries.completion_thread
         || root_entries.bootstrap == root_entries.kernel_thread
         || root_entries.bootstrap == root_entries.terminal_thread
         || root_entries.debug_break == root_entries.terminal_thread
         || root_entries.local_notification == root_entries.terminal_thread
         || root_entries.deadline_notification == root_entries.terminal_thread
+        || root_entries.completion_thread == root_entries.terminal_thread
         || root_entries.kernel_thread == root_entries.terminal_thread
+        || root_entries.bootstrap == root_entries.user_syscall
+        || root_entries.debug_break == root_entries.user_syscall
+        || root_entries.local_notification == root_entries.user_syscall
+        || root_entries.deadline_notification == root_entries.user_syscall
+        || root_entries.kernel_thread == root_entries.user_syscall
+        || root_entries.completion_thread == root_entries.user_syscall
+        || root_entries.terminal_thread == root_entries.user_syscall
     {
         return Err(source_diagnostic(
             &source,
             "E-SYSTEMS-ENTRY-SET",
             statement_span(root),
-            "bootstrap, debug-break, local-notification, deadline-notification, cooperative kernel-thread, and terminal-thread entries require distinct handlers",
+            "all eight initial systems entries require distinct handlers",
         ));
     }
     let bootstrap = analyze_named_handler(
@@ -185,6 +206,24 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::KernelThread,
         None,
     )?;
+    let completion_thread = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "completion-thread",
+        &root_entries.completion_thread,
+        CompilerSystemsContextKind::KernelThread,
+        None,
+    )?;
+    let user_syscall = analyze_named_handler(
+        &source,
+        &functions,
+        root,
+        "user-syscall",
+        &root_entries.user_syscall,
+        CompilerSystemsContextKind::UserSyscall,
+        None,
+    )?;
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
@@ -209,9 +248,17 @@ pub fn analyze_systems_for_compiler(
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
             handler: kernel_thread,
         },
+        completion_thread: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::ResumedKernelThread,
+            handler: completion_thread,
+        },
         terminal_thread: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::ResumedKernelThread,
             handler: terminal_thread,
+        },
+        user_syscall: CompilerSystemsEntry {
+            kind: CompilerSystemsEntryKind::UserSyscall,
+            handler: user_syscall,
         },
     })
 }
@@ -344,7 +391,9 @@ struct ArtifactEntries {
     local_notification: String,
     deadline_notification: String,
     kernel_thread: String,
+    completion_thread: String,
     terminal_thread: String,
+    user_syscall: String,
 }
 
 fn parse_artifact_root(
@@ -395,7 +444,9 @@ fn parse_artifact_root(
                 | "local-notification"
                 | "deadline-notification"
                 | "kernel-thread"
+                | "completion-thread"
                 | "terminal-thread"
+                | "user-syscall"
         ) {
             let handler = parse_entry_field(source, field, label_text)?;
             if entries.insert(label_text.to_owned(), handler).is_some() {
@@ -417,7 +468,9 @@ fn parse_artifact_root(
         Some(local_notification),
         Some(deadline_notification),
         Some(kernel_thread),
+        Some(completion_thread),
         Some(terminal_thread),
+        Some(user_syscall),
     ) = (
         bootstrap_storage,
         entries.remove("bootstrap"),
@@ -425,7 +478,9 @@ fn parse_artifact_root(
         entries.remove("local-notification"),
         entries.remove("deadline-notification"),
         entries.remove("kernel-thread"),
+        entries.remove("completion-thread"),
         entries.remove("terminal-thread"),
+        entries.remove("user-syscall"),
     )
     else {
         return Err(invalid_entry_set(source, *span));
@@ -440,7 +495,9 @@ fn parse_artifact_root(
         local_notification,
         deadline_notification,
         kernel_thread,
+        completion_thread,
         terminal_thread,
+        user_syscall,
     })
 }
 
@@ -474,7 +531,8 @@ fn parse_entry_field(
         "debug-break" => "synchronous-exception-entry",
         "local-notification" => "external-interrupt-entry",
         "deadline-notification" => "external-interrupt-entry",
-        "kernel-thread" | "terminal-thread" => "resumed-thread-entry",
+        "kernel-thread" | "completion-thread" | "terminal-thread" => "resumed-thread-entry",
+        "user-syscall" => "user-syscall-entry",
         _ => unreachable!("entry caller admits only handler fields"),
     };
     let Expression::Application {
@@ -656,6 +714,67 @@ fn kernel_context_diagnostic(
     source_diagnostic(source, "E-SYSTEMS-CONTEXT-TRANSFER", span, message)
 }
 
+fn user_context_diagnostic(
+    source: &SourceText,
+    span: Span,
+    message: impl Into<String>,
+) -> Diagnostic {
+    source_diagnostic(source, "E-SYSTEMS-USER-CONTEXT", span, message)
+}
+
+fn field_natural(
+    source: &SourceText,
+    field: &ProductField,
+    expected_label: &str,
+) -> Result<u64, Diagnostic> {
+    let Some(label) = field.label else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires named `{expected_label}`"),
+        ));
+    };
+    if source.slice(label) != expected_label {
+        return Err(user_context_diagnostic(
+            source,
+            label,
+            format!("user syscall dispatch requires `{expected_label}` in source order"),
+        ));
+    }
+    parse_storage_natural(source, &field.value)
+}
+
+fn field_static_string(
+    source: &SourceText,
+    field: &ProductField,
+    expected_label: &str,
+) -> Result<String, Diagnostic> {
+    let Some(label) = field.label else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires named `{expected_label}`"),
+        ));
+    };
+    if source.slice(label) != expected_label {
+        return Err(user_context_diagnostic(
+            source,
+            label,
+            format!("user syscall dispatch requires `{expected_label}` in source order"),
+        ));
+    }
+    let Expression::String(value) = field.value else {
+        return Err(user_context_diagnostic(
+            source,
+            field.value.span(),
+            format!("user syscall dispatch requires static string `{expected_label}`"),
+        ));
+    };
+    parse_string(source.slice(value))
+        .map(str::to_owned)
+        .ok_or_else(|| user_context_diagnostic(source, value, "invalid static uname field"))
+}
+
 fn invalid_entry_set(source: &SourceText, span: Span) -> Diagnostic {
     source_diagnostic(
         source,
@@ -708,6 +827,9 @@ fn analyze_handler(
             "DeadlineInterruptContext InitialMonotonicClock",
             "DeadlineInterruptDisposition InitialMonotonicClock",
         ),
+        CompilerSystemsContextKind::UserSyscall => {
+            ("InitialUserSyscallContext", "InitialUserSyscallDisposition")
+        }
         CompilerSystemsContextKind::KernelThread => unreachable!("handled above"),
     };
     if *is_static
@@ -745,6 +867,9 @@ fn analyze_handler(
     }
     if context == CompilerSystemsContextKind::DeadlineInterrupt {
         return analyze_deadline_handler(source, source.slice(*name), body, context_name);
+    }
+    if context == CompilerSystemsContextKind::UserSyscall {
+        return analyze_user_syscall_handler(source, source.slice(*name), body, context_name);
     }
     let Some((last, operations)) = body.split_last() else {
         return Err(source_diagnostic(
@@ -786,6 +911,85 @@ fn analyze_handler(
     })
 }
 
+fn analyze_user_syscall_handler(
+    source: &SourceText,
+    name: &str,
+    body: &[Statement],
+    context_name: &str,
+) -> Result<CompilerSystemsHandler, Diagnostic> {
+    let [Statement::Expression(Expression::Application { items, span })] = body else {
+        return Err(user_context_diagnostic(
+            source,
+            body.first().map_or(Span::new(0, 0), statement_span),
+            "the initial user-syscall handler requires one exhaustive sealed dispatch disposition",
+        ));
+    };
+    let [
+        receiver,
+        linux,
+        syscall,
+        dispatch,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user syscall dispatch requires the sealed getpid, uname, nanosleep, and exit_group fields",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, linux, "linux")
+        || !identifier_is(source, syscall, "syscall")
+        || !identifier_is(source, dispatch, "dispatch")
+        || fields.len() != 11
+        || field_natural(source, &fields[0], "getpid-result")? != 1
+        || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
+        || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
+        || field_static_string(source, &fields[3], "uname-release")? != "7.2.9-topal"
+        || field_static_string(source, &fields[4], "uname-version")? != "#1 Topal"
+        || field_static_string(source, &fields[5], "uname-machine")? != "x86_64"
+        || field_static_string(source, &fields[6], "uname-domainname")? != "(none)"
+        || field_natural(source, &fields[7], "nanosleep-seconds")? != 0
+        || field_natural(source, &fields[8], "nanosleep-nanoseconds")? != 0
+        || field_natural(source, &fields[9], "nanosleep-remainder-candidate")? != 0
+        || field_natural(source, &fields[10], "exit-group-status")? != 0
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept the zero-duration nanosleep value, and terminate exit_group with status zero",
+        ));
+    }
+    let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
+        getpid_result: 1,
+        uname_sysname: "Linux".into(),
+        uname_nodename: "topal".into(),
+        uname_release: "7.2.9-topal".into(),
+        uname_version: "#1 Topal".into(),
+        uname_machine: "x86_64".into(),
+        uname_domainname: "(none)".into(),
+        nanosleep_seconds: 0,
+        nanosleep_nanoseconds: 0,
+        nanosleep_remainder_candidate: 0,
+        exit_group_status: 0,
+    };
+    Ok(CompilerSystemsHandler {
+        name: name.to_owned(),
+        context: CompilerSystemsContextKind::UserSyscall,
+        operations: vec![
+            CompilerSystemsOperation::CopyInitialUnameToUser,
+            CompilerSystemsOperation::CopyInitialTimespecFromUser,
+        ],
+        effects: vec![
+            SYSTEMS_USER_SYSCALL_DISPATCH.to_owned(),
+            SYSTEMS_USER_COPY_FROM.to_owned(),
+            SYSTEMS_USER_COPY_TO.to_owned(),
+        ],
+        disposition,
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 fn analyze_kernel_thread_handler(
     source: &SourceText,
@@ -821,21 +1025,22 @@ fn analyze_kernel_thread_handler(
     }
     let terminal = name == "terminal-thread-handler";
     let cooperative = name == "kernel-thread-handler";
-    if !terminal && !cooperative {
+    let completion_blocking = name == "completion-thread-handler";
+    if !terminal && !cooperative && !completion_blocking {
         return Err(kernel_context_diagnostic(
             source,
             span,
-            "the cooperative profile requires `kernel-thread-handler` and `terminal-thread-handler`",
+            "the profile requires its preemptible, completion-blocking, and terminal thread handlers",
         ));
     }
     let context_name = source.slice(parameters[0].name);
     let caller_name = source.slice(parameters[1].name);
-    let (_marker, retirement, returned_caller, operations) = if cooperative {
-        let [marker, await_preemption, resumed_marker, retirement] = body else {
+    let (_marker, retirement, returned_caller, operations) = if cooperative || completion_blocking {
+        let [marker, await_operation, resumed_marker, retirement] = body else {
             return Err(kernel_context_diagnostic(
                 source,
                 span,
-                "the deadline-preemptible kernel thread must enter, await preemption, resume, and retire",
+                "a suspendable kernel thread must enter, await its exact event, resume, and retire",
             ));
         };
         let entered = analyze_operation(
@@ -844,29 +1049,39 @@ fn analyze_kernel_thread_handler(
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
+        let expected_entered = if cooperative {
+            "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED"
+        } else {
+            "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED"
+        };
         if entered
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
+                text: expected_entered.into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(marker),
-                "the deadline-preemptible kernel thread requires its exact entry marker",
+                "the suspendable kernel thread requires its exact entry marker",
             ));
         }
-        let await_preemption_span = statement_span(await_preemption);
-        let await_preemption = analyze_operation(
+        let await_operation_span = statement_span(await_operation);
+        let await_operation = analyze_operation(
             source,
-            await_preemption,
+            await_operation,
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
-        if await_preemption != CompilerSystemsOperation::AwaitDeadlinePreemption {
+        let expected_await = if cooperative {
+            CompilerSystemsOperation::AwaitDeadlinePreemption
+        } else {
+            CompilerSystemsOperation::AwaitKernelCompletion
+        };
+        if await_operation != expected_await {
             return Err(kernel_context_diagnostic(
                 source,
-                await_preemption_span,
-                "the deadline-preemptible kernel thread requires its sealed preemption region",
+                await_operation_span,
+                "the suspendable kernel thread requires its sealed wait operation",
             ));
         }
         let resumed = analyze_operation(
@@ -875,22 +1090,27 @@ fn analyze_kernel_thread_handler(
             CompilerSystemsContextKind::KernelThread,
             context_name,
         )?;
+        let expected_resumed = if cooperative {
+            "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED"
+        } else {
+            "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED"
+        };
         if resumed
             != (CompilerSystemsOperation::ConsoleWrite {
-                text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
+                text: expected_resumed.into(),
             })
         {
             return Err(kernel_context_diagnostic(
                 source,
                 statement_span(resumed_marker),
-                "the deadline-preemptible kernel thread requires its exact resumed marker",
+                "the suspendable kernel thread requires its exact resumed marker",
             ));
         }
         (
             marker,
             retirement,
             caller_name.to_owned(),
-            vec![entered, await_preemption, resumed],
+            vec![entered, await_operation, resumed],
         )
     } else {
         let [marker, retirement] = body else {
@@ -956,8 +1176,10 @@ fn analyze_kernel_thread_handler(
     ];
     if cooperative {
         effects.push(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION.to_owned());
-        effects.sort();
+    } else if completion_blocking {
+        effects.push(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.to_owned());
     }
+    effects.sort();
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),
         context: CompilerSystemsContextKind::KernelThread,
@@ -2324,18 +2546,20 @@ fn analyze_kernel_context_decision(
     };
     let statements = action_block(source, ok_action, "kernel-context stack allocation")?;
     let [
+        create_completion,
         create_cooperative,
-        terminal_subject_statement,
-        terminal_ok_statement,
-        terminal_error_statement,
+        completion_subject_statement,
+        completion_ok_statement,
+        completion_error_statement,
     ] = statements
     else {
         return Err(kernel_context_diagnostic(
             source,
             ok_action.span(),
-            "cooperative context success requires the first create followed by the second stack allocation",
+            "context success requires completion creation, the preemptible worker, and the completion-worker stack allocation",
         ));
     };
+    let completion_name = parse_kernel_completion_create(source, create_completion, context_name)?;
     let cooperative_name = parse_kernel_context_create(
         source,
         create_cooperative,
@@ -2343,11 +2567,64 @@ fn analyze_kernel_context_decision(
         &stack_name,
         "kernel-thread",
     )?;
+    let Statement::Expression(completion_subject) = completion_subject_statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(completion_subject_statement),
+            "preemptible context creation must be followed by the completion-worker stack allocation",
+        ));
+    };
+    let completion_request =
+        parse_bootstrap_allocation(source, completion_subject, context_name, storage)?;
+    if completion_request != request {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_subject.span(),
+            "all worker contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+        ));
+    }
+    let (completion_stack_name, completion_ok) =
+        raw_result_action(source, completion_ok_statement, "Ok")?;
+    let (_, completion_error) = raw_result_action(source, completion_error_statement, "Error")?;
+    let CompilerSystemsDisposition::Fatal { .. } =
+        action_disposition(source, completion_error, context_name)?
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_error.span(),
+            "completion-worker stack allocation failure must enter the fatal disposition",
+        ));
+    };
+    let completion_statements = action_block(
+        source,
+        completion_ok,
+        "completion kernel-context stack allocation",
+    )?;
+    let [
+        create_completion_worker,
+        terminal_subject_statement,
+        terminal_ok_statement,
+        terminal_error_statement,
+    ] = completion_statements
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            completion_ok.span(),
+            "completion context success requires its create followed by the terminal stack allocation",
+        ));
+    };
+    let completion_worker_name = parse_kernel_context_create(
+        source,
+        create_completion_worker,
+        context_name,
+        &completion_stack_name,
+        "completion-thread",
+    )?;
     let Statement::Expression(terminal_subject) = terminal_subject_statement else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(terminal_subject_statement),
-            "cooperative context creation must be followed by the terminal stack allocation",
+            "completion context creation must be followed by the terminal stack allocation",
         ));
     };
     let terminal_request =
@@ -2356,7 +2633,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_subject.span(),
-            "both cooperative contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
+            "all worker contexts require disjoint 16 KiB bootstrap-reclaimable stacks",
         ));
     }
     let (terminal_stack_name, terminal_ok) =
@@ -2371,21 +2648,20 @@ fn analyze_kernel_context_decision(
             "terminal stack allocation failure must enter the fatal disposition",
         ));
     };
-    let terminal_statements = action_block(
-        source,
-        terminal_ok,
-        "terminal kernel-context stack allocation",
-    )?;
+    let terminal_statements = action_block(source, terminal_ok, "terminal stack allocation")?;
     let [
         create_terminal,
         create_queue,
         enqueue_cooperative,
+        enqueue_completion,
         enqueue_terminal,
         dequeue_cooperative,
         preemptible_transfer,
         take_preempted,
         preemption_marker_statement,
         enqueue_preempted,
+        dequeue_completion,
+        transfer_completion_until_signal,
         dequeue_terminal,
         transfer_terminal,
         terminal_marker_statement,
@@ -2395,7 +2671,7 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             terminal_ok.span(),
-            "the FIFO dispatcher requires queue construction, exact enqueue/dequeue order, deadline preemption, both retirement transfers, and reclamation",
+            "the FIFO dispatcher requires three workers, deadline preemption, completion blocking, exact source order, retirement, and reclamation",
         ));
     };
     let terminal_name = parse_kernel_context_create(
@@ -2407,6 +2683,12 @@ fn analyze_kernel_context_decision(
     )?;
     let queue_name = parse_runnable_queue_create(source, create_queue, context_name)?;
     parse_runnable_queue_enqueue(source, enqueue_cooperative, &queue_name, &cooperative_name)?;
+    parse_runnable_queue_enqueue(
+        source,
+        enqueue_completion,
+        &queue_name,
+        &completion_worker_name,
+    )?;
     parse_runnable_queue_enqueue(source, enqueue_terminal, &queue_name, &terminal_name)?;
     let selected_cooperative =
         parse_runnable_queue_dequeue(source, dequeue_cooperative, &queue_name)?;
@@ -2437,6 +2719,15 @@ fn analyze_kernel_context_decision(
         ));
     }
     parse_runnable_queue_enqueue(source, enqueue_preempted, &queue_name, &preempted_worker)?;
+    let selected_completion =
+        parse_runnable_queue_dequeue(source, dequeue_completion, &queue_name)?;
+    let blocked_completion = parse_kernel_context_transfer_until_completion(
+        source,
+        transfer_completion_until_signal,
+        context_name,
+        &selected_completion,
+        &completion_name,
+    )?;
     let selected_terminal = parse_runnable_queue_dequeue(source, dequeue_terminal, &queue_name)?;
     let terminal_completed = parse_kernel_context_transfer(
         source,
@@ -2465,6 +2756,8 @@ fn analyze_kernel_context_decision(
     let (after_terminal, after_terminal_statements) =
         parse_kernel_context_reclaim(source, reclaim_terminal, &terminal_completed)?;
     let [
+        signal_completion,
+        enqueue_completion,
         dequeue_cooperative_final,
         transfer_cooperative,
         cooperative_marker_statement,
@@ -2474,9 +2767,21 @@ fn analyze_kernel_context_decision(
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_terminal),
-            "terminal reclamation must dequeue, restore, and reclaim the preempted worker",
+            "terminal reclamation must signal and enqueue the blocked worker before restoring the preempted worker",
         ));
     };
+    let awakened_completion = parse_signal_blocked_kernel_completion(
+        source,
+        signal_completion,
+        &blocked_completion,
+        &completion_name,
+    )?;
+    parse_runnable_queue_enqueue(
+        source,
+        enqueue_completion,
+        &queue_name,
+        &awakened_completion,
+    )?;
     let selected_cooperative_final =
         parse_runnable_queue_dequeue(source, dequeue_cooperative_final, &queue_name)?;
     let cooperative_completed = parse_kernel_context_transfer(
@@ -2505,29 +2810,485 @@ fn analyze_kernel_context_decision(
     }
     let (resumed_name, continuation) =
         parse_kernel_context_reclaim(source, reclaim_cooperative, &cooperative_completed)?;
-    let [consume_queue, disposition] = continuation else {
+    let [
+        dequeue_completion_final,
+        transfer_completion,
+        completion_marker_statement,
+        reclaim_completion,
+    ] = continuation
+    else {
         return Err(kernel_context_diagnostic(
             source,
             statement_span(reclaim_cooperative),
-            "cooperative reclamation must consume the empty runnable queue before final disposition",
+            "preemptible reclamation must resume and reclaim the awakened completion worker",
         ));
     };
-    parse_runnable_queue_consume(source, consume_queue, &resumed_name, &queue_name)?;
+    let selected_completion_final =
+        parse_runnable_queue_dequeue(source, dequeue_completion_final, &queue_name)?;
+    let completion_completed = parse_kernel_context_transfer(
+        source,
+        transfer_completion,
+        &resumed_name,
+        &selected_completion_final,
+        "CompletedKernelContextTransfer InitialProcessor",
+    )?;
+    let completion_marker = analyze_operation(
+        source,
+        completion_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &resumed_name,
+    )?;
+    if completion_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(completion_marker_statement),
+            "completion-worker retirement requires its exact marker",
+        ));
+    }
+    let (completion_resumed, completion_continuation) =
+        parse_kernel_context_reclaim(source, reclaim_completion, &completion_completed)?;
+    let [consume_completion, consume_queue, user_allocation @ ..] = completion_continuation else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(reclaim_completion),
+            "completion-worker reclamation must consume completion and empty queue, complete one user syscall round trip, then reach disposition",
+        ));
+    };
+    parse_kernel_completion_consume(
+        source,
+        consume_completion,
+        &completion_resumed,
+        &completion_name,
+    )?;
+    parse_runnable_queue_consume(source, consume_queue, &completion_resumed, &queue_name)?;
+    let (subject, user_frames, success, _problem_name, failure, span) =
+        result_sequence(source, user_allocation, "user backing allocation")?;
+    let backing_request = parse_physical_frame_allocation(source, subject, &completion_resumed)?;
+    if backing_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 3,
+            alignment_frames: 1,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            subject.span(),
+            "initial user backing requires exactly three frames aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: backing_failure,
+    } = action_disposition(source, failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            failure.span(),
+            "user backing allocation failure must preserve the allocator context and enter `fatal`",
+        ));
+    };
+    let user_statements = action_block(source, success, "user backing allocation success")?;
+    let [prepare_address_space] = user_statements else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user backing success must begin with one affine user-address-space preparation scope",
+        ));
+    };
+    let (user_space, address_space_continuation) = parse_user_address_space_prepare(
+        source,
+        prepare_address_space,
+        &completion_resumed,
+        &user_frames,
+    )?;
+    let (scratch_subject, scratch_frames, scratch_success, _scratch_problem, scratch_failure, _) =
+        result_sequence(
+            source,
+            address_space_continuation,
+            "disjoint frame allocation",
+        )?;
+    let scratch_request =
+        parse_physical_frame_allocation(source, scratch_subject, &completion_resumed)?;
+    if scratch_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            scratch_subject.span(),
+            "the disjoint live-extent probe requires exactly one frame aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: scratch_failure_message,
+    } = action_disposition(source, scratch_failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            scratch_failure.span(),
+            "disjoint frame allocation failure must preserve the allocator context and enter `fatal`",
+        ));
+    };
+    let scratch_statements =
+        action_block(source, scratch_success, "disjoint frame allocation success")?;
+    let [map_mapping, scratch_after_map @ ..] = scratch_statements else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "disjoint frame allocation success must map, store, load, unmap, and release its exact extent before consuming the prepared user address space",
+        ));
+    };
+    let (mapped_scratch, map_continuation) = parse_user_address_space_map(
+        source,
+        map_mapping,
+        &completion_resumed,
+        &user_space,
+        &scratch_frames,
+    )?;
+    let after_map =
+        select_user_mapping_continuation(source, span, scratch_after_map, map_continuation, "map")?;
+    let [store_mapping, scratch_after_store @ ..] = after_map else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping publication must be followed by store, load, and unmap",
+        ));
+    };
+    let (stored_scratch, store_continuation) = parse_user_mapping_refinement(
+        source,
+        store_mapping,
+        &completion_resumed,
+        &mapped_scratch,
+        "store",
+    )?;
+    let after_store = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_store,
+        store_continuation,
+        "store",
+    )?;
+    let [load_mapping, scratch_after_load @ ..] = after_store else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping store must be followed by load and unmap",
+        ));
+    };
+    let (verified_scratch, load_continuation) = parse_user_mapping_refinement(
+        source,
+        load_mapping,
+        &completion_resumed,
+        &stored_scratch,
+        "load",
+    )?;
+    let after_load = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_load,
+        load_continuation,
+        "load",
+    )?;
+    let [unmap_mapping, scratch_after_unmap @ ..] = after_load else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping load must be followed by unmap",
+        ));
+    };
+    let (returned_scratch, unmap_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_mapping,
+        &completion_resumed,
+        &user_space,
+        &verified_scratch,
+    )?;
+    let after_first_unmap = select_user_mapping_continuation(
+        source,
+        span,
+        scratch_after_unmap,
+        unmap_continuation,
+        "unmap",
+    )?;
+    let [map_mapping_again, after_second_map @ ..] = after_first_unmap else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "the returned user-mapping extent must enter one fresh mapping generation",
+        ));
+    };
+    let (mapped_scratch_again, map_again_continuation) = parse_user_address_space_map(
+        source,
+        map_mapping_again,
+        &completion_resumed,
+        &user_space,
+        &returned_scratch,
+    )?;
+    let after_second_map = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_map,
+        map_again_continuation,
+        "second map",
+    )?;
+    let [store_mapping_again, after_second_store @ ..] = after_second_map else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping publication must be followed by store, load, and unmap",
+        ));
+    };
+    let (stored_scratch_again, store_again_continuation) = parse_user_mapping_refinement(
+        source,
+        store_mapping_again,
+        &completion_resumed,
+        &mapped_scratch_again,
+        "store",
+    )?;
+    let after_second_store = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_store,
+        store_again_continuation,
+        "second store",
+    )?;
+    let [load_mapping_again, after_second_load @ ..] = after_second_store else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping store must be followed by load and unmap",
+        ));
+    };
+    let (verified_scratch_again, load_again_continuation) = parse_user_mapping_refinement(
+        source,
+        load_mapping_again,
+        &completion_resumed,
+        &stored_scratch_again,
+        "load",
+    )?;
+    let after_second_load = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_load,
+        load_again_continuation,
+        "second load",
+    )?;
+    let [unmap_mapping_again, after_second_unmap @ ..] = after_second_load else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "second user mapping load must be followed by unmap",
+        ));
+    };
+    let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
+        source,
+        unmap_mapping_again,
+        &completion_resumed,
+        &user_space,
+        &verified_scratch_again,
+    )?;
+    let scratch_continuation = select_user_mapping_continuation(
+        source,
+        span,
+        after_second_unmap,
+        unmap_again_continuation,
+        "second unmap",
+    )?;
+    let [
+        release_scratch,
+        mapping_marker_statement,
+        disjoint_marker_statement,
+        prepare_user,
+        scratch_rest @ ..,
+    ] = scratch_continuation
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user mapping unmap must return the extent for release before user preparation",
+        ));
+    };
+    parse_physical_frame_release(
+        source,
+        release_scratch,
+        &completion_resumed,
+        &returned_scratch_again,
+    )?;
+    let mapping_marker = analyze_operation(
+        source,
+        mapping_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if mapping_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(mapping_marker_statement),
+            "user mapping round trip requires its exact marker",
+        ));
+    }
+    let disjoint_marker = analyze_operation(
+        source,
+        disjoint_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if disjoint_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(disjoint_marker_statement),
+            "disjoint frame release requires its exact marker",
+        ));
+    }
+    let (user_probe, probe_continuation) =
+        parse_user_probe_prepare(source, prepare_user, &completion_resumed, &user_space)?;
+    let user_continuation = match (scratch_rest.is_empty(), probe_continuation.is_empty()) {
+        (true, false) => probe_continuation,
+        (false, true) => scratch_rest,
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                span,
+                "prepared user address space must transfer exactly one continuation into its user probe",
+            ));
+        }
+    };
+    let [
+        enter_user,
+        user_copy_to_marker_statement,
+        user_copy_from_marker_statement,
+        user_marker_statement,
+        complete_user,
+        reclaim_user_space,
+        release_user_frames,
+        backing_marker_statement,
+        disposition,
+    ] = user_continuation
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            span,
+            "user probe preparation must enter, revoke, reclaim, release, publish its marker, and reach disposition",
+        ));
+    };
+    let user_completed =
+        parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let user_copy_to_marker = analyze_operation(
+        source,
+        user_copy_to_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_copy_to_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_copy_to_marker_statement),
+            "user copy_to_user recovery requires its exact marker",
+        ));
+    }
+    let user_copy_from_marker = analyze_operation(
+        source,
+        user_copy_from_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_copy_from_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_COPY_FROM_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_copy_from_marker_statement),
+            "user copy_from_user recovery requires its exact marker",
+        ));
+    }
+    let user_marker = analyze_operation(
+        source,
+        user_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
+        })
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(user_marker_statement),
+            "user syscall round trip requires its exact marker",
+        ));
+    }
+    let revoked_space =
+        parse_user_execution_complete(source, complete_user, &completion_resumed, &user_completed)?;
+    let returned_frames = parse_user_address_space_reclaim(
+        source,
+        reclaim_user_space,
+        &completion_resumed,
+        &revoked_space,
+    )?;
+    parse_physical_frame_release(
+        source,
+        release_user_frames,
+        &completion_resumed,
+        &returned_frames,
+    )?;
+    let backing_marker = analyze_operation(
+        source,
+        backing_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if backing_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(backing_marker_statement),
+            "user backing release requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
-        &resumed_name,
+        &completion_resumed,
     )?;
     Ok(CheckedBootstrapRegionDecision {
         operations: vec![
             CompilerSystemsOperation::BootstrapAllocate { request },
+            CompilerSystemsOperation::CreateKernelCompletion,
+            CompilerSystemsOperation::CreateKernelContext,
+            CompilerSystemsOperation::BootstrapAllocate {
+                request: completion_request,
+            },
             CompilerSystemsOperation::CreateKernelContext,
             CompilerSystemsOperation::BootstrapAllocate {
                 request: terminal_request,
             },
             CompilerSystemsOperation::CreateKernelContext,
-            CompilerSystemsOperation::CreateRunnableQueue { capacity: 2 },
+            CompilerSystemsOperation::CreateRunnableQueue { capacity: 3 },
+            CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
@@ -2536,14 +3297,54 @@ fn analyze_kernel_context_decision(
             preemption_marker,
             CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContextUntilCompletion,
+            CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             terminal_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::SignalBlockedKernelCompletion,
+            CompilerSystemsOperation::EnqueueRunnableContext,
             CompilerSystemsOperation::DequeueRunnableContext,
             CompilerSystemsOperation::TransferKernelContext,
             cooperative_marker,
             CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::DequeueRunnableContext,
+            CompilerSystemsOperation::TransferKernelContext,
+            completion_marker,
+            CompilerSystemsOperation::ReclaimKernelContext,
+            CompilerSystemsOperation::ConsumeKernelCompletion,
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: backing_request,
+                failure_message: backing_failure,
+            },
+            CompilerSystemsOperation::PrepareUserAddressSpace,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: scratch_request,
+                failure_message: scratch_failure_message,
+            },
+            CompilerSystemsOperation::MapUserAddressSpace,
+            CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::MapUserAddressSpace,
+            CompilerSystemsOperation::StoreUserMappingByte,
+            CompilerSystemsOperation::LoadUserMappingByte,
+            CompilerSystemsOperation::UnmapUserAddressSpace,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            mapping_marker,
+            disjoint_marker,
+            CompilerSystemsOperation::PrepareUserProbe {
+                process_identity: 1,
+            },
+            CompilerSystemsOperation::EnterUserContext,
+            user_copy_to_marker,
+            user_copy_from_marker,
+            user_marker,
+            CompilerSystemsOperation::CompleteUserExecution,
+            CompilerSystemsOperation::ReclaimUserAddressSpace,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
+            backing_marker,
         ],
         disposition,
     })
@@ -2600,6 +3401,737 @@ fn parse_kernel_context_create(
     Ok(source.slice(*name).to_owned())
 }
 
+fn parse_user_address_space_prepare<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    backing_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let Statement::Implementation {
+        name,
+        classifier: Expression::Application { items, span },
+        declarations,
+        ..
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user-address-space preparation must bind one opaque affine space",
+        ));
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        prepare,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space preparation requires named `backing` and `layout` parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, prepare, "prepare")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user address space requires the exact three-frame backing and sealed initial-probe layout",
+        ));
+    }
+    let mut backing = None;
+    let mut layout = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user-address-space preparation parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user-address-space preparation values must use the live backing and sealed layout identity",
+            ));
+        };
+        match source.slice(label) {
+            "backing" => backing = Some(source.slice(value)),
+            "layout" => layout = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user-address-space preparation parameter",
+                ));
+            }
+        }
+    }
+    if backing != Some(backing_name) || layout != Some("initial-probe") {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user address space requires the exact three-frame backing and sealed initial-probe layout",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_map<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    backing_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping publication must bind one fresh affine mapping",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        map,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping publication requires named address-space, backing, and layout parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, map, "map")
+        || fields.len() != 3
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user mapping requires the exact prepared space, disjoint backing, and probe-guard layout",
+        ));
+    }
+    let mut address_space = None;
+    let mut backing = None;
+    let mut layout = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping publication parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping publication values must use live affine identities",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => address_space = Some(source.slice(value)),
+            "backing" => backing = Some(source.slice(value)),
+            "layout" => layout = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user mapping publication parameter",
+                ));
+            }
+        }
+    }
+    if address_space != Some(address_space_name)
+        || backing != Some(backing_name)
+        || layout != Some("probe-guard")
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user mapping requires the exact prepared space, disjoint backing, and probe-guard layout",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_mapping_refinement<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    mapping_name: &str,
+    operation: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping access must bind its refined affine mapping",
+            ));
+        }
+    };
+    let [receiver, user, mapping, access, byte, live_mapping] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping access requires the exact live mapping refinement",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, mapping, "mapping")
+        || !identifier_is(source, access, operation)
+        || !identifier_is(source, byte, "byte")
+        || !identifier_is(source, live_mapping, mapping_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            format!("user mapping {operation} requires the exact preceding mapping refinement"),
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_unmap<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    mapping_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user mapping revocation must bind the returned affine extent",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        unmap,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user mapping revocation requires named address-space and mapping parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, unmap, "unmap")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user unmap requires the exact prepared space and verified mapping",
+        ));
+    }
+    let mut address_space = None;
+    let mut mapping_identity = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping revocation parameters must be named",
+            ));
+        };
+        let Expression::Identifier(value) = field.value else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user mapping revocation values must use live affine identities",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => address_space = Some(source.slice(value)),
+            "mapping" => mapping_identity = Some(source.slice(value)),
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user mapping revocation parameter",
+                ));
+            }
+        }
+    }
+    if address_space != Some(address_space_name) || mapping_identity != Some(mapping_name) {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial user unmap requires the exact prepared space and verified mapping",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn select_user_mapping_continuation<'a>(
+    source: &SourceText,
+    span: Span,
+    following: &'a [Statement],
+    nested: &'a [Statement],
+    operation: &str,
+) -> Result<&'a [Statement], Diagnostic> {
+    match (following.is_empty(), nested.is_empty()) {
+        (true, false) => Ok(nested),
+        (false, true) => Ok(following),
+        _ => Err(user_context_diagnostic(
+            source,
+            span,
+            format!("user mapping {operation} must transfer exactly one continuation"),
+        )),
+    }
+}
+
+fn parse_user_probe_prepare<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user probe preparation must bind one classified suspended user context",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        probe,
+        prepare,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user probe preparation must use the sealed process-identity request",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, probe, "probe")
+        || !identifier_is(source, prepare, "prepare")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial suspended user probe requires process identity one and exact processor, address-space, thread, and ABI classifiers",
+        ));
+    }
+    let mut process_identity = None;
+    let mut address_space = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "user probe preparation parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "process-identity" => {
+                process_identity = Some(parse_storage_natural(source, &field.value)?);
+            }
+            "address-space" => {
+                let Expression::Identifier(name) = field.value else {
+                    return Err(user_context_diagnostic(
+                        source,
+                        field.value.span(),
+                        "user probe address space must be the live opaque prepared space",
+                    ));
+                };
+                address_space = Some(source.slice(name));
+            }
+            _ => {
+                return Err(user_context_diagnostic(
+                    source,
+                    label,
+                    "unknown user probe preparation parameter",
+                ));
+            }
+        }
+    }
+    if process_identity != Some(1) || address_space != Some(address_space_name) {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the initial suspended user probe requires process identity one and its exact prepared address space",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_context_enter(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    probe_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user entry must bind one classified completed user execution",
+        ));
+    };
+    let [receiver, user, context_word, enter, probe] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user entry must be `context user context enter probe`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, enter, "enter")
+        || !identifier_is(source, probe, probe_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user entry must consume the exact suspended probe and preserve all identities",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_execution_complete(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    completed_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user execution completion must consume the terminal result",
+        ));
+    };
+    let [receiver, user, execution, complete, completed] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user completion must be `context user execution complete completed`",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, execution, "execution")
+        || !identifier_is(source, complete, "complete")
+        || !identifier_is(source, completed, completed_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user completion must consume the exact terminal execution result",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_user_address_space_reclaim(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    revoked_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: None,
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(statement),
+            "user-address-space reclaim must bind the returned affine frame extent",
+        ));
+    };
+    let [receiver, user, address, space, reclaim, revoked] = items.as_slice() else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space reclaim must consume one revoked space",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, reclaim, "reclaim")
+        || !identifier_is(source, revoked, revoked_name)
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "user-address-space reclaim must consume the exact revoked space",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_completion_create(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "kernel-completion creation must bind its affine one-shot state",
+        ));
+    };
+    let [context, kernel, completion, create] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-completion creation requires its live dispatcher",
+        ));
+    };
+    if source.slice(*classifier) != "KernelCompletion InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, create, "create")
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "kernel-completion creation requires the exact affine classifier and live dispatcher",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_context_transfer_until_completion(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    worker_name: &str,
+    completion_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completion-bound transfer must bind its exact blocked outcome",
+        ));
+    };
+    let [
+        context,
+        kernel,
+        context_word,
+        transfer,
+        worker,
+        until,
+        completion,
+    ] = items.as_slice()
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion-bound transfer requires a selected worker and one-shot completion",
+        ));
+    };
+    if source.slice(*classifier) != "BlockedKernelContextTransfer InitialProcessor"
+        || !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, context_word, "context")
+        || !identifier_is(source, transfer, "transfer")
+        || !identifier_is(source, worker, worker_name)
+        || !identifier_is(source, until, "until")
+        || !identifier_is(source, completion, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion-bound transfer requires the exact dispatcher, selected worker, and completion identity",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_signal_blocked_kernel_completion(
+    source: &SourceText,
+    statement: &Statement,
+    blocked_name: &str,
+    completion_name: &str,
+) -> Result<String, Diagnostic> {
+    let Statement::Binding {
+        name,
+        classifier: Some(classifier),
+        value: Expression::Application { items, span },
+    } = statement
+    else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completion signal must bind the exact awakened suspended context",
+        ));
+    };
+    let [blocked, kernel, completion, signal, completion_value] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion signal must consume the blocked outcome and matching signal endpoint",
+        ));
+    };
+    if source.slice(*classifier) != "SuspendedKernelContext InitialProcessor"
+        || !identifier_is(source, blocked, blocked_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, signal, "signal")
+        || !identifier_is(source, completion_value, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion signal requires the matching blocked context and one-shot completion",
+        ));
+    }
+    Ok(source.slice(*name).to_owned())
+}
+
+fn parse_kernel_completion_consume(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    completion_name: &str,
+) -> Result<(), Diagnostic> {
+    let Statement::Expression(Expression::Application { items, span }) = statement else {
+        return Err(kernel_context_diagnostic(
+            source,
+            statement_span(statement),
+            "completed one-shot state must be consumed before disposition",
+        ));
+    };
+    let [context, kernel, completion, consume, completion_value] = items.as_slice() else {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion consumption requires the live dispatcher and completed state",
+        ));
+    };
+    if !identifier_is(source, context, context_name)
+        || !identifier_is(source, kernel, "kernel")
+        || !identifier_is(source, completion, "completion")
+        || !identifier_is(source, consume, "consume")
+        || !identifier_is(source, completion_value, completion_name)
+    {
+        return Err(kernel_context_diagnostic(
+            source,
+            *span,
+            "completion consumption requires the exact completed one-shot identity",
+        ));
+    }
+    Ok(())
+}
+
 fn parse_runnable_queue_create(
     source: &SourceText,
     statement: &Statement,
@@ -2636,25 +4168,25 @@ fn parse_runnable_queue_create(
         return Err(kernel_context_diagnostic(
             source,
             *span,
-            "the initial runnable queue requires exactly `capacity is 2`",
+            "the initial runnable queue requires exactly `capacity is 3`",
         ));
     };
-    let capacity_is_two = field
+    let capacity_is_three = field
         .label
         .is_some_and(|label| source.slice(label) == "capacity")
-        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "2");
+        && matches!(&field.value, Expression::Integer(value) if source.slice(*value) == "3");
     if source.slice(*classifier) != "BoundedKernelRunnableQueue InitialProcessor"
         || !identifier_is(source, context, context_name)
         || !identifier_is(source, kernel, "kernel")
         || !identifier_is(source, runnable, "runnable")
         || !identifier_is(source, queue, "queue")
         || !identifier_is(source, create, "create")
-        || !capacity_is_two
+        || !capacity_is_three
     {
         return Err(kernel_context_diagnostic(
             source,
             *span,
-            "the initial runnable queue requires its live context, capacity two, and exact bounded classifier",
+            "the initial runnable queue requires its live context, capacity three, and exact bounded classifier",
         ));
     }
     Ok(source.slice(*name).to_owned())
@@ -3543,6 +5075,15 @@ fn analyze_operation(
     {
         return Ok(CompilerSystemsOperation::AwaitDeadlinePreemption);
     }
+    if context == CompilerSystemsContextKind::KernelThread
+        && let [receiver, kernel, completion, await_word] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, kernel, "kernel")
+        && identifier_is(source, completion, "completion")
+        && identifier_is(source, await_word, "await")
+    {
+        return Ok(CompilerSystemsOperation::AwaitKernelCompletion);
+    }
     Err(source_diagnostic(
         source,
         "E-SYSTEMS-OPERATION",
@@ -3712,6 +5253,10 @@ mod tests {
                 SYSTEMS_ATOMIC_END,
                 SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                SYSTEMS_KERNEL_COMPLETION_CONSUME,
+                SYSTEMS_KERNEL_COMPLETION_CREATE,
+                SYSTEMS_KERNEL_COMPLETION_SIGNAL,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
@@ -3721,6 +5266,9 @@ mod tests {
                 SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_USER_CONTEXT_COMPLETE,
+                SYSTEMS_USER_CONTEXT_ENTER,
+                SYSTEMS_USER_CONTEXT_PREPARE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
@@ -3735,6 +5283,12 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -3825,6 +5379,16 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_TRANSLATION_EDITED".into(),
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 3,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_EXTENT_OK".into(),
                 },
                 CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::EnterCritical {
@@ -3918,6 +5482,9 @@ mod tests {
                         placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
                     },
                 },
+                CompilerSystemsTransition::CreateKernelCompletion {
+                    completion_identity: 1,
+                },
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 1,
                 },
@@ -3931,12 +5498,25 @@ mod tests {
                 CompilerSystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
-                CompilerSystemsTransition::CreateRunnableQueue { capacity: 2 },
+                CompilerSystemsTransition::AllocateBootstrapRegion {
+                    request: CompilerBootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: CompilerBootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                CompilerSystemsTransition::CreateKernelContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::CreateRunnableQueue { capacity: 3 },
                 CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
                 },
                 CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
+                    context_identity: 3,
                 },
                 CompilerSystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
@@ -3978,25 +5558,57 @@ mod tests {
                 CompilerSystemsTransition::DequeueRunnableContext {
                     context_identity: 2,
                 },
-                CompilerSystemsTransition::TransferKernelContext {
+                CompilerSystemsTransition::TransferKernelContextUntilCompletion {
                     context_identity: 2,
                     caller_identity: 2,
+                    completion_identity: 1,
                 },
                 CompilerSystemsTransition::EnterKernelThread {
                     context_identity: 2,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                },
+                CompilerSystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 3,
+                    caller_identity: 3,
+                },
+                CompilerSystemsTransition::EnterKernelThread {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 2,
-                    caller_identity: 2,
+                    context_identity: 3,
+                    caller_identity: 3,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 3,
+                },
+                CompilerSystemsTransition::SignalBlockedKernelCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
                 },
                 CompilerSystemsTransition::DequeueRunnableContext {
@@ -4004,11 +5616,11 @@ mod tests {
                 },
                 CompilerSystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
                 CompilerSystemsTransition::RestorePreemptedKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                     event_identity: 1,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -4016,16 +5628,238 @@ mod tests {
                 },
                 CompilerSystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
-                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 CompilerSystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
                 },
+                CompilerSystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                CompilerSystemsTransition::RestoreBlockedKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                    completion_identity: 1,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                },
+                CompilerSystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                },
+                CompilerSystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                CompilerSystemsTransition::ConsumeKernelCompletion {
+                    completion_identity: 1,
+                },
                 CompilerSystemsTransition::ConsumeEmptyRunnableQueue,
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 3,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity: 1,
+                },
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                CompilerSystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                },
+                CompilerSystemsTransition::PrepareUserProbe {
+                    process_identity: 1,
+                    probe_identity: 1,
+                },
+                CompilerSystemsTransition::EnterUserExecution {
+                    process_identity: 1,
+                    kernel_continuation_identity: 1,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 1,
+                    number: 39,
+                    arguments: [0; 6],
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 1,
+                    result: 1,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 2,
+                    number: 63,
+                    arguments: [6_299_136, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                    candidate: 6_299_136,
+                    extent: 390,
+                },
+                CompilerSystemsTransition::CopyToUserComplete {
+                    transfer_identity: 1,
+                    copied: 390,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 2,
+                    result: 0,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 3,
+                    number: 63,
+                    arguments: [6_299_392, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                    candidate: 6_299_392,
+                    extent: 390,
+                },
+                CompilerSystemsTransition::CopyToUserFault {
+                    transfer_identity: 2,
+                    copied_prefix: 256,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 3,
+                    result: u64::MAX - 13,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 4,
+                    number: 35,
+                    arguments: [6_299_632, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                    candidate: 6_299_632,
+                    extent: 16,
+                },
+                CompilerSystemsTransition::CopyFromUserComplete {
+                    transfer_identity: 3,
+                    copied: 16,
+                    seconds: 0,
+                    nanoseconds: 0,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 4,
+                    result: 0,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 5,
+                    number: 35,
+                    arguments: [6_299_640, 0, 0, 0, 0, 0],
+                },
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                    candidate: 6_299_640,
+                    extent: 16,
+                },
+                CompilerSystemsTransition::CopyFromUserFault {
+                    transfer_identity: 4,
+                    copied_prefix: 8,
+                },
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                },
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity: 5,
+                    result: u64::MAX - 13,
+                },
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity: 6,
+                    number: 231,
+                    arguments: [0; 6],
+                },
+                CompilerSystemsTransition::TerminateUser {
+                    entry_identity: 6,
+                    status: 0,
+                },
+                CompilerSystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity: 1,
+                    status: 0,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_COPY_FROM_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_SYSCALL_OK".into(),
+                },
+                CompilerSystemsTransition::CompleteUserExecution {
+                    process_identity: 1,
+                },
+                CompilerSystemsTransition::ReclaimUserAddressSpace {
+                    address_space_identity: 1,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -4042,7 +5876,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 70);
+        assert_eq!(program.bootstrap.handler.operations.len(), 109);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -4051,6 +5885,10 @@ mod tests {
                 SYSTEMS_ATOMIC_END,
                 SYSTEMS_ATOMIC_LOAD,
                 SYSTEMS_BOOT_MEMORY_DESCRIBE,
+                SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+                SYSTEMS_KERNEL_COMPLETION_CONSUME,
+                SYSTEMS_KERNEL_COMPLETION_CREATE,
+                SYSTEMS_KERNEL_COMPLETION_SIGNAL,
                 SYSTEMS_KERNEL_CONTEXT_CREATE,
                 SYSTEMS_KERNEL_CONTEXT_RECLAIM,
                 SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
@@ -4060,6 +5898,9 @@ mod tests {
                 SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+                SYSTEMS_USER_CONTEXT_COMPLETE,
+                SYSTEMS_USER_CONTEXT_ENTER,
+                SYSTEMS_USER_CONTEXT_PREPARE,
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
@@ -4074,6 +5915,12 @@ mod tests {
                 SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
                 SYSTEMS_KERNEL_UNMAP,
                 SYSTEMS_FRAME_ALLOCATOR_CREATE,
+                SYSTEMS_USER_ADDRESS_SPACE_MAP,
+                SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+                SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+                SYSTEMS_USER_MAPPING_LOAD_BYTE,
+                SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -4347,14 +6194,24 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replace("frame-count is 1", "frame-count is 2"),
+                SOURCE.replacen("frame-count is 1", "frame-count is 2", 1),
                 "E-SYSTEMS-FRAMES",
-                "exactly one frame",
+                "only one or three frames",
+            ),
+            (
+                SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
+                "E-SYSTEMS-FRAMES",
+                "initial kernel-mapping probe requires exactly one frame",
+            ),
+            (
+                SOURCE.replace("frame-count is 3", "frame-count is 2"),
+                "E-SYSTEMS-FRAMES",
+                "only one or three frames",
             ),
             (
                 SOURCE.replace("alignment-frames is 1", "alignment-frames is 2"),
                 "E-SYSTEMS-FRAMES",
-                "aligned to one frame",
+                "unit alignment",
             ),
             (
                 SOURCE.replace(

@@ -218,10 +218,11 @@ library policy so long as these observations are preserved.
 X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
-sizes. The first executable x86-64 slice admits one statically proved frame
-aligned to one frame. Multiple live extents, dynamic requests, and reclamation
-remain unavailable. Mapping is admitted only through the separately qualified
-opaque capability below.
+sizes. The executable x86-64 slice admits statically proved extents of one or
+three frames aligned to one frame. Each request still returns one indivisible
+affine extent. Multiple live extents, extent splitting, dynamic requests, and
+reclamation remain unavailable. Mapping is admitted only through the
+separately qualified opaque capability below.
 
 ### Opaque kernel mapping
 
@@ -506,6 +507,93 @@ on one processor and address space. It excludes cancellation, rearming,
 periodic ticks, general timeslices, priority, blocking, wakeup, nested
 preemption, migration, SMP, userspace, and extended-state switching.
 
+The one-shot kernel-completion extension introduces matching affine wait and
+signal endpoints. A worker may consume its wait endpoint to block once while a
+transfer has already registered the exact dispatcher. If blocking wins, that
+dispatcher receives an opaque blocked-context outcome. Consuming the matching
+signal endpoint then yields the suspended worker for source-owned enqueue; a
+later transfer resumes immediately after the block operation.
+
+Completion readiness is persistent. If signalling wins before the block
+linearizes, the worker observes completion and does not sleep. This explicit
+blocked-or-already-complete choice prevents a lost wakeup without defining a
+general predicate wait queue. The initial profile admits one waiter and one
+signal on one processor and address space. Multiple waiters, repeated signals,
+timeouts, cancellation, process signals, priority wakeups, cross-processor
+wakeups, SMP, and user contexts remain excluded.
+
+### User execution and syscall entry
+
+A validated user state is an opaque affine semantic continuation tied to one
+user address space and ABI personality. It proves executable user entry,
+writable non-executable stack state, and target return invariants without
+exposing instruction addresses, stack pointers, registers, descriptor values,
+privilege numbers, entry frames, or return instructions. A suspended user
+context additionally retains its processor and thread identity.
+
+Entering user execution consumes the running kernel context and the exact
+suspended user context. A syscall creates an affine typed entry whose accessors
+expose the ABI syscall number and six arguments as untrusted semantic machine
+words. Kernel source owns dispatch. It must consume that entry by either
+returning one ABI result to the exact revalidated user continuation or
+terminating the user context and restoring its registered kernel
+continuation. Neither path is an ordinary function return.
+
+User-address-space preparation consumes an affine physical-frame extent and
+returns an opaque prepared address space with fresh identity. User-state
+preparation consumes that space into the returned suspended user context,
+which owns it until terminal completion revokes every derived user mapping and
+performs the provider translation-completion contract. Completion returns an
+opaque revoked address space; reclaiming only that revoked state returns the
+exact original extent. Source cannot access, split, release, or otherwise reuse
+backing while either address-space or user-execution state owns it. Target
+page-table roles, virtual placement, publication, invalidation, and entry
+mechanics remain provider-private.
+
+The bounded allocator may return one additional opaque one-frame extent while
+the initial prepared address space owns its three-frame backing. The allocator
+must prove the complete extents disjoint. Source must release the additional
+extent before transferring the prepared space into user execution. This closed
+qualification does not expose either base, permit a third live extent, split
+address-space backing, or define a general concurrent allocator.
+
+The initial prepared address space may consume that additional extent through
+one sealed `probe-guard` mapping round trip. The provider installs an opaque
+read-write, non-executable user mapping, confirms one fixed byte store and
+load, revokes every derived access, completes target-required translation
+invalidation, and returns the exact extent. Source must release the returned
+extent before user-state preparation. Placement, addresses, page-table form,
+and invalidation mechanics remain provider-private.
+
+The bounded affine refinement expresses that round trip as four distinct
+systems operations. `user address space map` consumes the disjoint extent into
+one opaque mapping; `user mapping store byte` and `user mapping load byte`
+consume and return successively refined mapping authority; and `user address
+space unmap` consumes the verified mapping and returns the exact extent after
+revocation and target completion. The address space cannot enter user
+execution while any mapping refinement is live. The fixed layout, rights, and
+byte remain sealed provider policy; this is not a general address or mapping
+API.
+
+The initial reuse refinement permits the exact extent returned by unmap to
+enter one second complete affine lifecycle. Each map produces a fresh opaque
+mapping identity. The second publication cannot begin until the first mapping
+has been revoked and target translation completion has finished; no access or
+refinement from the first generation survives. Source releases the extent and
+prepares user execution only after the second unmap. This remains a bounded
+two-generation qualification, not simultaneous mapping or image policy.
+
+The backend owns privilege transition, kernel entry stack, saved state,
+security sequence, result placement, return validation, and selection of a
+legal fast or general return mechanism. The provider cannot select a syscall
+or invent its result. The first x86-64 qualification uses a generated ring-3
+probe with real Linux `getpid`, `uname`, and `exit_group` numbers. Its sealed
+`initial-probe` address-space layout and allocator-backed RX and RW/NX mappings
+are physical evidence, not a general mapping API, application format, or ELF
+loader. Pointer-bearing syscalls other than the sealed `uname`
+qualification, general user-copy recovery, signals, restart, TLS, multiple
+threads, user preemption, migration, and SMP remain excluded.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
@@ -705,6 +793,30 @@ address or install a catch-all exception handler.
 A recovery scope admits only its declared synchronous faults and operations.
 Unexpected kernel faults, machine-critical events, stack corruption, and
 faults outside the generated scope use their owning fatal or entry protocol.
+
+The initial user-transfer refinement is systems-only. One opaque affine scope
+is derived from the exact live syscall entry and must be returned through every
+complete or fault outcome before that entry can be disposed. `copy_to_user`
+accepts an untrusted ABI candidate and bounded kernel-owned bytes; it reports
+complete extent or the copied prefix permitted by the selected Linux contract.
+The candidate never becomes a Topal reference.
+
+The first x86-64 qualification extends the generated probe with Linux `uname`.
+A complete copy publishes one source-owned `new_utsname`; a copy crossing from
+the writable probe page into an unmapped guard page enters only the generated
+page-fault recovery continuation and produces `-EFAULT`. Other page faults
+remain fatal.
+
+The input-direction refinement uses the same affine scope. `copy_from_user`
+keeps destination staging private until every byte of one selected layout was
+copied and validated. Completion returns the value; a fault returns permitted
+prefix progress but no partial or uninitialized value. The initial x86-64
+probe uses Linux `nanosleep` with a complete zero-duration native `timespec`
+and with a second `timespec` whose final eight bytes cross into the guard page.
+The first returns immediately with zero and the second returns `-EFAULT`.
+Nonzero sleep, remainder output, signals, restart, arbitrary input layouts,
+general user mapping, UTS namespaces, and ordinary core-language recovery
+remain unavailable.
 
 ## Atomic locations and shared state
 

@@ -49,6 +49,14 @@ The following Step 4 slice adds the approved
 the architecture-neutral ownership model, sealed one-frame x86 provider
 lowering, structural artifact checks, and two deterministic pinned-QEMU runs.
 
+The later [bounded multi-frame refinement](design/bounded-multi-frame-extent.md)
+qualifies one static contiguous three-frame request while retaining a single
+indivisible affine extent. Its
+[implementation and qualification report](step-4-bounded-multi-frame-extent.md)
+records exact request-shape checking, complete-extent E820 selection, and two
+deterministic pinned-QEMU runs without admitting dynamic or simultaneous
+extents.
+
 The next Step 4 slice adds the approved
 [opaque kernel mapping](design/kernel-mapping.md). Its
 [implementation and qualification report](step-4-kernel-mapping.md) records
@@ -135,6 +143,84 @@ records one deadline-bound worker, exact interrupt-continuation preservation,
 return to the source dispatcher, affine queue re-enqueue, later restoration,
 and two deterministic pinned-QEMU runs.
 
+The latest Step 4 slice adds the approved
+[one-shot affine kernel completion](design/one-shot-kernel-completion.md). Its
+[implementation and qualification report](step-4-one-shot-kernel-completion.md)
+records persistent signal-first readiness, an exact block-first dispatcher,
+source-owned wakeup and FIFO selection, three private x86-64 context records,
+and two deterministic pinned-QEMU runs.
+
+The current Step 4 slice adds the approved
+[initial user syscall round trip](design/user-syscall-roundtrip.md). Its
+[implementation and qualification report](step-4-user-syscall-roundtrip.md)
+records one affine PID-one user execution, typed Linux syscall entry,
+`getpid` return, `exit_group(0)` termination, private x86-64 ring-3 and
+`SYSCALL`/`SYSRETQ` lowering, structural inspection, and two deterministic
+pinned-QEMU runs.
+
+The current Step 4 slice adds the approved systems-only
+[fault-contained `copy_to_user` and `uname`](design/user-copy-to-uname.md)
+contract. It ties transfer authority to the exact syscall entry, preserves
+untrusted user candidates as non-references, reports explicit prefix progress,
+and qualifies successful and recovered-fault `uname` paths without introducing
+file-descriptor or core-language exception semantics. Its
+[implementation and qualification report](step-4-user-copy-to-uname.md)
+records the checked lifecycle, generated recovery entry, and two deterministic
+pinned-QEMU runs.
+
+The latest Step 4 slice adds the approved systems-only
+[fault-contained `copy_from_user` and zero-duration `nanosleep`](design/user-copy-from-timespec.md)
+contract. It keeps input staging private until a complete selected layout is
+validated and exposes no partial value on fault. Its
+[implementation and qualification report](step-4-user-copy-from-timespec.md)
+records the checked lifecycle, direction-specific generated recovery, and two
+deterministic pinned-QEMU runs without changing the core language.
+
+The allocator-backed user-probe refinement then applies the approved
+[user-backing ownership contract](design/allocator-backed-user-probe.md).
+Its [implementation and qualification report](step-4-allocator-backed-user-probe.md)
+records exact three-frame ownership transfer into user execution, sealed x86-64
+code/stack/translation roles, complete mapping revocation, exact extent return
+and release, and two deterministic pinned-QEMU runs. It changes only the
+systems profile and does not change the core language.
+
+The next systems-only refinement separates that backing into an
+[opaque user-address-space lifecycle](design/opaque-user-address-space.md).
+Its [implementation and qualification report](step-4-opaque-user-address-space.md)
+records distinct preparation, context binding, revocation, reclaim, and release
+transitions; split x86-64 provider operations; and two deterministic pinned-
+QEMU runs without changing core-language meaning.
+
+The latest systems-only refinement qualifies a
+[bounded disjoint live-frame extent](design/disjoint-live-frame-extent.md)
+while the prepared address space retains its backing. Its
+[implementation and qualification report](step-4-disjoint-live-frame-extent.md)
+records distinct simultaneous ownership, provider-private interval exclusion,
+exact release before user binding, structural x86-64 inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The current systems-only refinement consumes that disjoint frame in one
+[sealed user-mapping round trip](design/sealed-user-mapping-round-trip.md).
+Its [implementation and qualification report](step-4-sealed-user-mapping-round-trip.md)
+records opaque map/access/revoke ownership, private x86-64 RW/NX leaf
+publication and invalidation, exact extent return, structural inspection, and
+two deterministic pinned-QEMU runs without changing core-language meaning.
+
+The latest systems-only refinement splits that transaction into a
+[bounded affine user-mapping lifecycle](design/affine-user-mapping-lifecycle.md).
+Its [implementation and qualification report](step-4-affine-user-mapping-lifecycle.md)
+records distinct map, store, load, and unmap refinements, persistent opaque
+mapping ownership, exact frame return, structural x86-64 inspection, and two
+deterministic pinned-QEMU runs without changing core-language meaning.
+
+The next systems-only refinement permits
+[two sequential mapping generations](design/sequential-user-mapping-generations.md)
+over that exact returned frame. Its
+[implementation and qualification report](step-4-sequential-user-mapping-generations.md)
+records fresh opaque identities, complete inter-generation revocation,
+provider-state reset, exact final frame return, and two deterministic pinned-
+QEMU runs without changing core-language meaning.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -219,6 +305,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 ordinary compiler systems publication](step-4-compiler-publication.md)
 - [Step 4 boot-memory refinement](step-4-boot-memory.md)
 - [Step 4 affine physical-frame allocation](step-4-frame-allocation.md)
+- [Step 4 bounded multi-frame extent](step-4-bounded-multi-frame-extent.md)
 - [Step 4 opaque kernel mapping](step-4-kernel-mapping.md)
 - [Step 4 translation-space activation](step-4-translation-space.md)
 - [Step 4 active translation edits](step-4-active-translation-edit.md)
@@ -231,6 +318,16 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 cooperative context handoff](step-4-cooperative-context-handoff.md)
 - [Step 4 bounded affine runnable queue](step-4-affine-runnable-queue.md)
 - [Step 4 deadline-preemptible context transfer](step-4-deadline-preemptible-context-transfer.md)
+- [Step 4 one-shot kernel completion](step-4-one-shot-kernel-completion.md)
+- [Step 4 initial user syscall round trip](step-4-user-syscall-roundtrip.md)
+- [Step 4 fault-contained `copy_to_user` and `uname`](step-4-user-copy-to-uname.md)
+- [Step 4 fault-contained `copy_from_user` and zero-duration `nanosleep`](step-4-user-copy-from-timespec.md)
+- [Step 4 allocator-backed user probe](step-4-allocator-backed-user-probe.md)
+- [Step 4 opaque user-address-space lifecycle](step-4-opaque-user-address-space.md)
+- [Step 4 disjoint live-frame extent](step-4-disjoint-live-frame-extent.md)
+- [Step 4 sealed user-mapping round trip](step-4-sealed-user-mapping-round-trip.md)
+- [Step 4 affine user-mapping lifecycle](step-4-affine-user-mapping-lifecycle.md)
+- [Step 4 sequential user-mapping generations](step-4-sequential-user-mapping-generations.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

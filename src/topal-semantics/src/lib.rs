@@ -17,6 +17,7 @@ mod systems_interrupt;
 mod systems_mapping;
 mod systems_storage;
 mod systems_translation;
+mod systems_user;
 pub mod tracing;
 
 pub use architecture::*;
@@ -35,6 +36,7 @@ pub use systems_interrupt::*;
 pub use systems_mapping::*;
 pub use systems_storage::*;
 pub use systems_translation::*;
+pub use systems_user::*;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;

@@ -201,7 +201,7 @@ fn analyze_translation_edit_unmap_success(
         ));
     }
     parse_physical_frame_release(source, release, &unmapped_name, &returned_frames)?;
-    let mut checked = analyze_local_interrupt_critical_sequence(
+    let mut checked = analyze_bounded_multi_frame_sequence(
         source,
         rest,
         &unmapped_name,
@@ -209,6 +209,81 @@ fn analyze_translation_edit_unmap_success(
     )?;
     operations.push(marker);
     operations.push(CompilerSystemsOperation::ReleasePhysicalFrames);
+    operations.append(&mut checked.operations);
+    Ok(CheckedBootstrapRegionDecision {
+        operations,
+        disposition: checked.disposition,
+    })
+}
+
+fn analyze_bounded_multi_frame_sequence(
+    source: &SourceText,
+    statements: &[Statement],
+    allocator_context: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let (subject, extent_name, success, _problem_name, failure, span) =
+        result_sequence(source, statements, "bounded multi-frame allocation")?;
+    let request = parse_physical_frame_allocation(source, subject, allocator_context)?;
+    if request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 3,
+            alignment_frames: 1,
+        })
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            subject.span(),
+            "the bounded multi-frame probe requires exactly three frames aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: failure_message,
+    } = action_disposition(source, failure, allocator_context)?
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            failure.span(),
+            "bounded multi-frame allocation failure must consume the allocator context through `fatal`",
+        ));
+    };
+    let success_statements = translation_block(
+        source,
+        success,
+        span,
+        "bounded multi-frame allocation success requires marker, whole-extent release, and continuation",
+    )?;
+    let [marker, release, rest @ ..] = success_statements else {
+        return Err(translation_edit_diagnostic(
+            source,
+            success.span(),
+            "bounded multi-frame allocation success requires marker, whole-extent release, and continuation",
+        ));
+    };
+    let marker = analyze_operation(
+        source,
+        marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(marker, CompilerSystemsOperation::ConsoleWrite { .. }) {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(success_statements.first().expect("marker exists")),
+            "bounded multi-frame allocation must publish its marker before release",
+        ));
+    }
+    parse_physical_frame_release(source, release, allocator_context, &extent_name)?;
+    let mut checked =
+        analyze_local_interrupt_critical_sequence(source, rest, allocator_context, storage)?;
+    let mut operations = vec![
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request,
+            failure_message,
+        },
+        marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+    ];
     operations.append(&mut checked.operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,

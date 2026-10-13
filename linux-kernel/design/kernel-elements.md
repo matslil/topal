@@ -167,6 +167,19 @@ resume address. Nested kernel faults outside such a region remain fatal.
 The same abstraction covers x86 SMAP access control, AArch64 PAN/UAO choices,
 and RISC-V SUM-related access without making any one control bit portable.
 
+The first approved refinement derives one affine `UserTransferScope` from the
+exact live syscall entry and requires its refined successor before disposition.
+`copy_to_user` returns either complete extent or fault with copied-prefix
+length; candidates remain untrusted words and the backend binds only generated
+copy sites to generated recovery continuations. See
+[TK-DEC-033](user-copy-to-uname.md).
+
+The input-direction refinement keeps staging storage private until a complete
+selected layout has been copied and validated. `copy_from_user` therefore
+returns either a complete value and extent or a fault with copied-prefix
+length but no partial value. See
+[TK-DEC-034](user-copy-from-timespec.md).
+
 ## TK-ELEMENT-ATOMIC-001 — Typed atomic locations
 
 Kernel-safe shared state requires a source-visible operation stronger than the
@@ -294,6 +307,29 @@ may return the interrupted context to that dispatcher as an opaque affine
 suspended value. Source owns dequeue and re-enqueue policy; the provider owns
 only exact interrupt-state capture and continuation transfer. See
 [TK-DEC-030](deadline-preemptible-context-transfer.md).
+
+The approved blocking extension uses a one-shot affine kernel completion with
+separate wait and signal endpoints. Signal readiness persists when it wins
+before the wait; otherwise the exact blocked context returns to its registered
+dispatcher and signalling yields a suspended context for source-owned enqueue.
+The provider performs no runnable selection. See
+[TK-DEC-031](one-shot-kernel-completion.md).
+
+The approved user-execution extension keeps validated semantic user state
+separate from scheduler and target register frames. Entering one affine user
+context may produce a typed syscall entry whose number and six arguments are
+untrusted ABI words. Source owns dispatch and must consume the entry by either
+returning one encoded result to the exact revalidated continuation or
+terminating that user context and restoring its registered kernel
+continuation. The backend owns privilege, stack, saved-state, security, and
+return mechanics. See [TK-DEC-032](user-syscall-roundtrip.md).
+
+The approved opaque-address-space refinement separates translation ownership
+from user-thread state. Preparation consumes one qualified backing extent into
+a fresh opaque address space; user-state preparation consumes that space;
+terminal completion returns only a revoked space; and reclaim returns the exact
+extent. Source observes lifetime and identity but no address or page-table
+representation. See [TK-DEC-037](opaque-user-address-space.md).
 
 ## TK-ELEMENT-FAULT-001 — Recovery and fatal disposition
 

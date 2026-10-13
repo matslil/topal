@@ -120,7 +120,10 @@ this kernel increment tests boot-memory handoff validation, privileged entry,
 console output, a resumable debug-break exception, checked kernel-owned-memory
 use, one completed local-notification interrupt, two HPET-backed monotonic-clock
 observations, and deadline-driven preemption and later restoration of one
-kernel context before the nonreturning fatal path rather than userspace.
+kernel context, followed by one qualification-only ring-3 syscall sequence
+covering `getpid`, `uname`, zero-duration `nanosleep`, and `exit_group` before
+the nonreturning fatal path. It does not boot a general userspace or attach its
+reference root disk.
 
 From the repository root:
 
@@ -135,15 +138,35 @@ The first command publishes the checked Topal source through the ordinary
 `topalc` systems target, passes that artifact to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
 ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the eighteen ordered serial markers. The generated real-mode adapter
+and waits for the 28 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
-provider's one-frame selector succeeds, and the root establishes and releases
-its affine extent. The final six markers prove that the deadline interrupts the
-worker in its sealed region, the handler returns to the exact dispatcher,
-source runs the terminal worker first, and redispatch resumes then retires the
-interrupted worker. The harness
+provider's initial one-frame selector succeeds, and the root establishes and
+releases its affine extent. The later `TOPAL_KERNEL_FRAME_EXTENT_OK` marker is
+reachable only after the same provider proves that a complete static
+three-frame extent lies in one E820 RAM run and the root releases it as a
+whole. The final context markers prove that the deadline interrupts
+the worker in its sealed region, the handler returns to the exact dispatcher,
+source runs the terminal and completion workers in the checked order, and
+redispatch resumes then retires both suspended workers. The final user marker
+is reachable only after a ring-3 probe receives PID one from Linux x86-64
+`getpid`, completes and faults both output-direction `uname` and
+input-direction zero-duration `nanosleep` transfers, issues `exit_group(0)`,
+and restores the exact kernel continuation. The last marker additionally
+requires the allocator-backed user code, stack, and leaf-table extent to have
+its mappings revoked, its three relevant virtual locations invalidated, its
+opaque address-space state reclaimed, its exact affine ownership returned, and
+the extent released by source. Construction, user-context binding, revocation,
+and reclaim are separate checked operations in the artifact trace. The
+`TOPAL_KERNEL_FRAME_DISJOINT_OK` marker additionally requires the prepared
+address space and one source-owned frame to coexist without overlap, followed
+by release of that frame before user-context binding. The preceding
+`TOPAL_KERNEL_USER_MAPPING_OK` marker requires the provider to map that frame
+RW/NX at the sealed guard location, return distinct affine map, stored, and
+verified refinements through two fresh sequential generations, revoke each
+leaf through a separate unmap operation, and complete invalidation before
+returning the exact frame. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,

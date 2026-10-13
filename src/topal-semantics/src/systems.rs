@@ -5,19 +5,26 @@ use std::fmt;
 use crate::{
     AtomicCompareExchangeResult, AtomicOrder, AtomicWordLocation, AtomicWordRequest,
     BootstrapRegion, BootstrapStorageDescriptor, BootstrapStorageRequest, BootstrapStorageState,
-    CriticalDomain, KernelMappingRequest, LocalInterruptMaskState, LocalNotificationProtocol,
-    PhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    CompletedUserExecution, CriticalDomain, INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+    INITIAL_USER_TIMESPEC_VALID_CANDIDATE, INITIAL_USER_UNAME_FAULT_CANDIDATE,
+    INITIAL_USER_UNAME_VALID_CANDIDATE, KernelMappingRequest, LINUX_NEW_UTSNAME_BYTES,
+    LINUX_TIMESPEC_BYTES, LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_NANOSLEEP, LINUX_X86_64_UNAME,
+    LinuxTimespec, LinuxUtsName, LocalInterruptMaskState, LocalNotificationProtocol,
+    PhysicalFrameRequest, PreparedUserAddressSpace, RevokedUserAddressSpace,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
     SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
     SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
     SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
@@ -25,7 +32,15 @@ use crate::{
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    TranslationEditKind, TranslationMappingRequest, TranslationUpdateRequest,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
+    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
+    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -61,6 +76,7 @@ pub enum SystemsEntryKind {
     ExternalInterruptLocalNotification,
     ExternalInterruptDeadline,
     ResumedKernelThread,
+    UserSyscall,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -70,6 +86,7 @@ pub enum SystemsContextKind {
     LocalNotificationInterrupt,
     DeadlineInterrupt,
     KernelThread,
+    UserSyscall,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -173,17 +190,36 @@ pub enum SystemsOperation {
     WaitDeadline,
     CompleteDeadline,
     CreateKernelContext,
+    CreateKernelCompletion,
     CreateRunnableQueue {
         capacity: usize,
     },
     EnqueueRunnableContext,
     DequeueRunnableContext,
     TransferKernelContextUntilDeadline,
+    TransferKernelContextUntilCompletion,
     TakePreemptedKernelContext,
     TransferKernelContext,
     AwaitDeadlinePreemption,
+    AwaitKernelCompletion,
+    SignalBlockedKernelCompletion,
     ReclaimKernelContext,
+    ConsumeKernelCompletion,
     ConsumeEmptyRunnableQueue,
+    PrepareUserAddressSpace,
+    VerifyUserAddressSpaceMapping,
+    MapUserAddressSpace,
+    StoreUserMappingByte,
+    LoadUserMappingByte,
+    UnmapUserAddressSpace,
+    PrepareUserProbe {
+        process_identity: u64,
+    },
+    EnterUserContext,
+    CompleteUserExecution,
+    ReclaimUserAddressSpace,
+    CopyInitialUnameToUser,
+    CopyInitialTimespecFromUser,
 }
 
 impl SystemsOperation {
@@ -226,17 +262,34 @@ impl SystemsOperation {
             Self::WaitDeadline => SYSTEMS_DEADLINE_WAIT,
             Self::CompleteDeadline => SYSTEMS_DEADLINE_COMPLETE,
             Self::CreateKernelContext => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CREATE,
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
             Self::TransferKernelContextUntilDeadline => {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
+            Self::TransferKernelContextUntilCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
             Self::TakePreemptedKernelContext => SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
             Self::TransferKernelContext => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::AwaitDeadlinePreemption => SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+            Self::AwaitKernelCompletion => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+            Self::SignalBlockedKernelCompletion => SYSTEMS_KERNEL_COMPLETION_SIGNAL,
             Self::ReclaimKernelContext => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+            Self::ConsumeKernelCompletion => SYSTEMS_KERNEL_COMPLETION_CONSUME,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+            Self::PrepareUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+            Self::VerifyUserAddressSpaceMapping => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            Self::MapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::StoreUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::LoadUserMappingByte => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
+            Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
+            Self::ReclaimUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+            Self::CopyInitialUnameToUser => SYSTEMS_USER_COPY_TO,
+            Self::CopyInitialTimespecFromUser => SYSTEMS_USER_COPY_FROM,
         }
     }
 }
@@ -246,7 +299,22 @@ pub enum SystemsDisposition {
     Resume,
     PreemptKernelContext,
     RetireKernelContextToCaller,
-    Fatal { message: String },
+    DispatchInitialUserSyscall {
+        getpid_result: u64,
+        uname_sysname: String,
+        uname_nodename: String,
+        uname_release: String,
+        uname_version: String,
+        uname_machine: String,
+        uname_domainname: String,
+        nanosleep_seconds: u64,
+        nanosleep_nanoseconds: u64,
+        nanosleep_remainder_candidate: u64,
+        exit_group_status: u64,
+    },
+    Fatal {
+        message: String,
+    },
 }
 
 impl SystemsDisposition {
@@ -262,6 +330,7 @@ impl SystemsDisposition {
             Self::Resume => SYSTEMS_RESUME_LOCAL_NOTIFICATION,
             Self::PreemptKernelContext => SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
             Self::RetireKernelContextToCaller => SYSTEMS_KERNEL_CONTEXT_RETIRE,
+            Self::DispatchInitialUserSyscall { .. } => SYSTEMS_USER_SYSCALL_DISPATCH,
             Self::Fatal { .. } => SYSTEMS_FATAL,
         }
     }
@@ -291,7 +360,9 @@ pub struct SystemsProgram {
     pub local_notification: SystemsEntry,
     pub deadline_notification: SystemsEntry,
     pub kernel_thread: SystemsEntry,
+    pub completion_thread: SystemsEntry,
     pub terminal_thread: SystemsEntry,
+    pub user_syscall: SystemsEntry,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -408,6 +479,9 @@ pub enum SystemsTransition {
     CreateKernelContext {
         context_identity: u64,
     },
+    CreateKernelCompletion {
+        completion_identity: u64,
+    },
     CreateRunnableQueue {
         capacity: usize,
     },
@@ -425,6 +499,33 @@ pub enum SystemsTransition {
         context_identity: u64,
         caller_identity: u64,
         event_identity: u64,
+    },
+    TransferKernelContextUntilCompletion {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    AwaitKernelCompletion {
+        context_identity: u64,
+        completion_identity: u64,
+    },
+    BlockKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    ResumeCompletionDispatcher {
+        caller_identity: u64,
+    },
+    SignalBlockedKernelCompletion {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
+    },
+    RestoreBlockedKernelContext {
+        context_identity: u64,
+        caller_identity: u64,
+        completion_identity: u64,
     },
     AwaitDeadlinePreemption {
         context_identity: u64,
@@ -452,6 +553,88 @@ pub enum SystemsTransition {
         context_identity: u64,
     },
     ConsumeEmptyRunnableQueue,
+    ConsumeKernelCompletion {
+        completion_identity: u64,
+    },
+    PrepareUserAddressSpace {
+        address_space_identity: u64,
+    },
+    VerifyUserAddressSpaceMapping {
+        address_space_identity: u64,
+    },
+    MapUserAddressSpace {
+        address_space_identity: u64,
+        mapping_identity: u64,
+    },
+    StoreUserMappingByte {
+        mapping_identity: u64,
+    },
+    LoadUserMappingByte {
+        mapping_identity: u64,
+    },
+    UnmapUserAddressSpace {
+        address_space_identity: u64,
+        mapping_identity: u64,
+    },
+    PrepareUserProbe {
+        process_identity: u64,
+        probe_identity: u64,
+    },
+    EnterUserExecution {
+        process_identity: u64,
+        kernel_continuation_identity: u64,
+    },
+    EnterUserSyscall {
+        entry_identity: u64,
+        number: u64,
+        arguments: [u64; 6],
+    },
+    BeginUserTransfer {
+        entry_identity: u64,
+        transfer_identity: u64,
+        candidate: u64,
+        extent: u64,
+    },
+    CopyToUserComplete {
+        transfer_identity: u64,
+        copied: u64,
+    },
+    CopyToUserFault {
+        transfer_identity: u64,
+        copied_prefix: u64,
+    },
+    CopyFromUserComplete {
+        transfer_identity: u64,
+        copied: u64,
+        seconds: i64,
+        nanoseconds: i64,
+    },
+    CopyFromUserFault {
+        transfer_identity: u64,
+        copied_prefix: u64,
+    },
+    EndUserTransfer {
+        entry_identity: u64,
+        transfer_identity: u64,
+    },
+    ReturnToUser {
+        entry_identity: u64,
+        result: u64,
+    },
+    TerminateUser {
+        entry_identity: u64,
+        status: u64,
+    },
+    ResumeUserKernelContinuation {
+        kernel_continuation_identity: u64,
+        status: u64,
+    },
+    CompleteUserExecution {
+        process_identity: u64,
+    },
+    ReclaimUserAddressSpace {
+        address_space_identity: u64,
+    },
     AllocateBootstrapRegion {
         request: BootstrapStorageRequest,
     },
@@ -560,6 +743,7 @@ impl SystemsTransition {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
             Self::CreateKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_CREATE,
+            Self::CreateKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CREATE,
             Self::CreateRunnableQueue { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             Self::EnqueueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
             Self::DequeueRunnableContext { .. } => SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
@@ -567,6 +751,12 @@ impl SystemsTransition {
             Self::TransferKernelContextUntilDeadline { .. } => {
                 SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE
             }
+            Self::TransferKernelContextUntilCompletion { .. }
+            | Self::AwaitKernelCompletion { .. }
+            | Self::BlockKernelContext { .. }
+            | Self::ResumeCompletionDispatcher { .. } => SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+            Self::SignalBlockedKernelCompletion { .. }
+            | Self::RestoreBlockedKernelContext { .. } => SYSTEMS_KERNEL_COMPLETION_SIGNAL,
             Self::AwaitDeadlinePreemption { .. } => {
                 SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION
             }
@@ -577,6 +767,27 @@ impl SystemsTransition {
             Self::ResumeKernelContextCaller { .. } => SYSTEMS_KERNEL_CONTEXT_TRANSFER,
             Self::ReclaimKernelContext { .. } => SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             Self::ConsumeEmptyRunnableQueue => SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+            Self::ConsumeKernelCompletion { .. } => SYSTEMS_KERNEL_COMPLETION_CONSUME,
+            Self::PrepareUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+            Self::VerifyUserAddressSpaceMapping { .. } => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            Self::MapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::StoreUserMappingByte { .. } => SYSTEMS_USER_MAPPING_STORE_BYTE,
+            Self::LoadUserMappingByte { .. } => SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
+            Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
+            Self::BeginUserTransfer { .. } => SYSTEMS_USER_TRANSFER_BEGIN,
+            Self::CopyToUserComplete { .. } | Self::CopyToUserFault { .. } => SYSTEMS_USER_COPY_TO,
+            Self::CopyFromUserComplete { .. } | Self::CopyFromUserFault { .. } => {
+                SYSTEMS_USER_COPY_FROM
+            }
+            Self::EndUserTransfer { .. } => SYSTEMS_USER_TRANSFER_END,
+            Self::ReturnToUser { .. } => SYSTEMS_USER_SYSCALL_RETURN,
+            Self::TerminateUser { .. } => SYSTEMS_USER_TERMINATE,
+            Self::ResumeUserKernelContinuation { .. } => SYSTEMS_USER_CONTEXT_ENTER,
+            Self::CompleteUserExecution { .. } => SYSTEMS_USER_CONTEXT_COMPLETE,
+            Self::ReclaimUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
             Self::AllocateBootstrapRegion { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::StoreBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
             Self::LoadBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -631,9 +842,19 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         SystemsContextKind::KernelThread,
     )?;
     validate_entry(
+        &program.completion_thread,
+        SystemsEntryKind::ResumedKernelThread,
+        SystemsContextKind::KernelThread,
+    )?;
+    validate_entry(
         &program.terminal_thread,
         SystemsEntryKind::ResumedKernelThread,
         SystemsContextKind::KernelThread,
+    )?;
+    validate_entry(
+        &program.user_syscall,
+        SystemsEntryKind::UserSyscall,
+        SystemsContextKind::UserSyscall,
     )?;
     let names = [
         &program.bootstrap.handler.name,
@@ -641,7 +862,9 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         &program.local_notification.handler.name,
         &program.deadline_notification.handler.name,
         &program.kernel_thread.handler.name,
+        &program.completion_thread.handler.name,
         &program.terminal_thread.handler.name,
+        &program.user_syscall.handler.name,
     ];
     if names
         .iter()
@@ -650,13 +873,24 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-ENTRY-SET",
-            "bootstrap, debug-break, local-notification, deadline, cooperative-thread, and terminal-thread entries require distinct handlers",
+            "bootstrap, debug-break, local-notification, deadline, preemptible-thread, completion-thread, terminal-thread, and user-syscall entries require distinct handlers",
         ));
     }
     validate_local_notification_handler(&program.local_notification.handler)?;
     validate_deadline_handler(&program.deadline_notification.handler)?;
-    validate_kernel_thread_handler(&program.kernel_thread.handler, false)?;
-    validate_kernel_thread_handler(&program.terminal_thread.handler, true)?;
+    validate_kernel_thread_handler(
+        &program.kernel_thread.handler,
+        KernelThreadProfile::Preemptible,
+    )?;
+    validate_kernel_thread_handler(
+        &program.completion_thread.handler,
+        KernelThreadProfile::CompletionBlocking,
+    )?;
+    validate_kernel_thread_handler(
+        &program.terminal_thread.handler,
+        KernelThreadProfile::Terminal,
+    )?;
+    validate_user_syscall_handler(&program.user_syscall.handler)?;
     validate_bootstrap_storage_operations(program)?;
     Ok(())
 }
@@ -715,13 +949,27 @@ fn validate_entry(
                     | SystemsOperation::ArmDeadline
                     | SystemsOperation::WaitDeadline
                     | SystemsOperation::CreateKernelContext
+                    | SystemsOperation::CreateKernelCompletion
                     | SystemsOperation::CreateRunnableQueue { .. }
                     | SystemsOperation::EnqueueRunnableContext
                     | SystemsOperation::DequeueRunnableContext
                     | SystemsOperation::TransferKernelContextUntilDeadline
+                    | SystemsOperation::TransferKernelContextUntilCompletion
                     | SystemsOperation::TakePreemptedKernelContext
+                    | SystemsOperation::SignalBlockedKernelCompletion
                     | SystemsOperation::ReclaimKernelContext
+                    | SystemsOperation::ConsumeKernelCompletion
                     | SystemsOperation::ConsumeEmptyRunnableQueue
+                    | SystemsOperation::PrepareUserAddressSpace
+                    | SystemsOperation::VerifyUserAddressSpaceMapping
+                    | SystemsOperation::MapUserAddressSpace
+                    | SystemsOperation::StoreUserMappingByte
+                    | SystemsOperation::LoadUserMappingByte
+                    | SystemsOperation::UnmapUserAddressSpace
+                    | SystemsOperation::PrepareUserProbe { .. }
+                    | SystemsOperation::EnterUserContext
+                    | SystemsOperation::CompleteUserExecution
+                    | SystemsOperation::ReclaimUserAddressSpace
             );
             bootstrap_only
                 || (required_context != SystemsContextKind::KernelThread
@@ -742,6 +990,13 @@ fn validate_entry(
                         SystemsOperation::ConsoleWrite { .. }
                             | SystemsOperation::TransferKernelContext
                             | SystemsOperation::AwaitDeadlinePreemption
+                            | SystemsOperation::AwaitKernelCompletion
+                    ))
+                || (required_context == SystemsContextKind::UserSyscall
+                    && !matches!(
+                        operation,
+                        SystemsOperation::CopyInitialUnameToUser
+                            | SystemsOperation::CopyInitialTimespecFromUser
                     ))
         })
     {
@@ -765,22 +1020,38 @@ fn validate_entry(
             SystemsDisposition::PreemptKernelContext | SystemsDisposition::Fatal { .. },
         )
         | (SystemsContextKind::KernelThread, SystemsDisposition::RetireKernelContextToCaller) => {}
+        (
+            SystemsContextKind::UserSyscall,
+            SystemsDisposition::DispatchInitialUserSyscall { .. },
+        ) => {}
         (SystemsContextKind::Bootstrap, SystemsDisposition::Resume)
         | (
             SystemsContextKind::Bootstrap
             | SystemsContextKind::DebugBreak
             | SystemsContextKind::LocalNotificationInterrupt
-            | SystemsContextKind::DeadlineInterrupt,
+            | SystemsContextKind::DeadlineInterrupt
+            | SystemsContextKind::UserSyscall,
             SystemsDisposition::RetireKernelContextToCaller,
         )
         | (
             SystemsContextKind::Bootstrap
             | SystemsContextKind::DebugBreak
             | SystemsContextKind::LocalNotificationInterrupt
-            | SystemsContextKind::KernelThread,
+            | SystemsContextKind::KernelThread
+            | SystemsContextKind::UserSyscall,
             SystemsDisposition::PreemptKernelContext,
         )
         | (SystemsContextKind::DeadlineInterrupt, SystemsDisposition::Resume)
+        | (SystemsContextKind::UserSyscall, SystemsDisposition::Resume)
+        | (SystemsContextKind::UserSyscall, SystemsDisposition::Fatal { .. })
+        | (
+            SystemsContextKind::Bootstrap
+            | SystemsContextKind::DebugBreak
+            | SystemsContextKind::LocalNotificationInterrupt
+            | SystemsContextKind::DeadlineInterrupt
+            | SystemsContextKind::KernelThread,
+            SystemsDisposition::DispatchInitialUserSyscall { .. },
+        )
         | (SystemsContextKind::KernelThread, _) => {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DISPOSITION",
@@ -807,7 +1078,10 @@ fn validate_entry(
     if entry.handler.effects != expected_effects {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-EFFECTS",
-            "systems handler effects must equal its sorted, deduplicated semantic identities",
+            format!(
+                "systems handler `{}` effects must equal its sorted, deduplicated semantic identities",
+                entry.handler.name
+            ),
         ));
     }
     Ok(())
@@ -837,16 +1111,48 @@ fn validate_deadline_handler(handler: &SystemsHandler) -> Result<(), SystemsMode
     Ok(())
 }
 
+fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), SystemsModelError> {
+    if handler.operations
+        != [
+            SystemsOperation::CopyInitialUnameToUser,
+            SystemsOperation::CopyInitialTimespecFromUser,
+        ]
+        || handler.disposition
+            != (SystemsDisposition::DispatchInitialUserSyscall {
+                getpid_result: 1,
+                uname_sysname: "Linux".into(),
+                uname_nodename: "topal".into(),
+                uname_release: "7.2.9-topal".into(),
+                uname_version: "#1 Topal".into(),
+                uname_machine: "x86_64".into(),
+                uname_domainname: "(none)".into(),
+                nanosleep_seconds: 0,
+                nanosleep_nanoseconds: 0,
+                nanosleep_remainder_candidate: 0,
+                exit_group_status: 0,
+            })
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-USER-CONTEXT",
+            "the initial user-syscall handler must dispatch the sealed getpid, uname, nanosleep, and exit_group protocol",
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum KernelThreadProfile {
+    Preemptible,
+    CompletionBlocking,
+    Terminal,
+}
+
 fn validate_kernel_thread_handler(
     handler: &SystemsHandler,
-    terminal: bool,
+    profile: KernelThreadProfile,
 ) -> Result<(), SystemsModelError> {
-    let expected = if terminal {
-        vec![SystemsOperation::ConsoleWrite {
-            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
-        }]
-    } else {
-        vec![
+    let expected = match profile {
+        KernelThreadProfile::Preemptible => vec![
             SystemsOperation::ConsoleWrite {
                 text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED".into(),
             },
@@ -854,14 +1160,26 @@ fn validate_kernel_thread_handler(
             SystemsOperation::ConsoleWrite {
                 text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED".into(),
             },
-        ]
+        ],
+        KernelThreadProfile::CompletionBlocking => vec![
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+            },
+            SystemsOperation::AwaitKernelCompletion,
+            SystemsOperation::ConsoleWrite {
+                text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+            },
+        ],
+        KernelThreadProfile::Terminal => vec![SystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
+        }],
     };
     if handler.operations != expected
         || handler.disposition != SystemsDisposition::RetireKernelContextToCaller
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-CONTEXT-TRANSFER",
-            "preemptible and terminal kernel-thread handlers must implement their exact transfer protocols",
+            "preemptible, completion-blocking, and terminal kernel-thread handlers must implement their exact transfer protocols",
         ));
     }
     Ok(())
@@ -879,6 +1197,8 @@ struct BootstrapAuthorityState {
     monotonic_clock_observations: u8,
     deadline: BootstrapDeadlineState,
     kernel_context: BootstrapKernelContextState,
+    kernel_completion: BootstrapKernelCompletionState,
+    user_execution: BootstrapUserExecutionState,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -903,32 +1223,78 @@ enum BootstrapKernelContextState {
     #[default]
     Fresh,
     PreemptibleCreated,
-    BothSuspended,
+    CompletionCreated,
+    AllSuspended,
     QueueCreated,
     PreemptibleEnqueued,
-    BothEnqueued,
+    CompletionEnqueued,
+    AllEnqueued,
     PreemptibleDequeued,
     PreemptedOutcome,
     PreemptedTaken,
     PreemptedEnqueued,
+    CompletionDequeued,
+    CompletionBlocked,
     TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
+    CompletionSignaled,
+    CompletionEnqueuedAgain,
     PreemptibleDequeuedAgain,
     PreemptibleCompleted,
-    Reclaimed,
+    PreemptibleReclaimed,
+    CompletionDequeuedAgain,
+    CompletionCompleted,
+    CompletionReclaimed,
     QueueConsumed,
 }
 
 #[derive(Default, Eq, PartialEq)]
+enum BootstrapKernelCompletionState {
+    #[default]
+    Fresh,
+    Created,
+    Blocked,
+    Signaled,
+    Consumed,
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+enum BootstrapUserExecutionState {
+    #[default]
+    Fresh,
+    AddressSpacePrepared(PhysicalFrameRequest),
+    MappingLive(PhysicalFrameRequest, u8),
+    MappingStored(PhysicalFrameRequest, u8),
+    MappingVerified(PhysicalFrameRequest, u8),
+    AddressSpaceMappedOnce(PhysicalFrameRequest),
+    AddressSpaceVerified(PhysicalFrameRequest),
+    Prepared(PhysicalFrameRequest),
+    Completed(PhysicalFrameRequest),
+    Revoked(PhysicalFrameRequest),
+    Consumed,
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
 enum BootstrapMemoryOwnership {
     #[default]
     None,
-    Frames,
-    Mapping,
-    ProvisionalMapping,
-    ProvisionalFrames,
+    Frames(PhysicalFrameRequest),
+    UserMapping(PhysicalFrameRequest),
+    Mapping(PhysicalFrameRequest),
+    ProvisionalMapping(PhysicalFrameRequest),
+    ProvisionalFrames(PhysicalFrameRequest),
 }
+
+const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 1,
+    alignment_frames: 1,
+};
+
+const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 3,
+    alignment_frames: 1,
+};
 
 #[derive(Default, Eq, PartialEq)]
 enum BootstrapTranslationState {
@@ -964,6 +1330,9 @@ impl BootstrapAuthorityState {
         if self.observe_kernel_context(operation)? {
             return Ok(true);
         }
+        if self.observe_user_execution(operation)? {
+            return Ok(true);
+        }
         match operation {
             SystemsOperation::DescribeBootMemory { .. } => {
                 if index != 0 || self.memory_described {
@@ -986,19 +1355,29 @@ impl BootstrapAuthorityState {
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
                 if !self.allocator_created
                     || self.memory_ownership != BootstrapMemoryOwnership::None
-                    || request.frame_count == 0
-                    || request.alignment_frames == 0
-                    || !request.alignment_frames.is_power_of_two()
+                    || !matches!(
+                        *request,
+                        INITIAL_SINGLE_FRAME_REQUEST | INITIAL_MULTI_FRAME_REQUEST
+                    )
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
-                        "physical-frame allocation requires one allocator, a valid request, and no live extent",
+                        "physical-frame allocation requires one allocator, an admitted static extent shape, and no live extent",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(*request);
             }
             SystemsOperation::ReleasePhysicalFrames => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Frames {
+                if matches!(
+                    self.memory_ownership,
+                    BootstrapMemoryOwnership::UserMapping(_)
+                ) {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "physical-frame release is invalid while a user mapping owns the extent",
+                    ));
+                }
+                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Frames(_)) {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
                         "physical-frame release requires one live extent",
@@ -1007,19 +1386,25 @@ impl BootstrapAuthorityState {
                 self.memory_ownership = BootstrapMemoryOwnership::None;
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Frames
+                let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-MAPPING",
+                        "kernel mapping requires one live single-frame extent and the sealed mapping policy",
+                    ));
+                };
+                if frame_request != INITIAL_SINGLE_FRAME_REQUEST
                     || *request != KernelMappingRequest::initial_read_write()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
-                        "kernel mapping requires one live extent and the sealed mapping policy",
+                        "kernel mapping requires one live single-frame extent and the sealed mapping policy",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Mapping;
+                self.memory_ownership = BootstrapMemoryOwnership::Mapping(frame_request);
             }
             SystemsOperation::KernelMappingStoreByte { offset_bytes, .. }
             | SystemsOperation::KernelMappingLoadByteEquals { offset_bytes, .. } => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Mapping
+                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Mapping(_))
                     || *offset_bytes >= 4096
                 {
                     return Err(SystemsModelError::new(
@@ -1029,13 +1414,13 @@ impl BootstrapAuthorityState {
                 }
             }
             SystemsOperation::UnmapKernelFrames => {
-                if self.memory_ownership != BootstrapMemoryOwnership::Mapping {
+                let BootstrapMemoryOwnership::Mapping(frame_request) = self.memory_ownership else {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-MAPPING",
                         "kernel unmap requires one live mapping",
                     ));
-                }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                };
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(frame_request);
             }
             operation @ (SystemsOperation::BeginTranslationUpdate { .. }
             | SystemsOperation::CommitTranslationUpdate { .. }
@@ -1209,6 +1594,19 @@ impl BootstrapAuthorityState {
         operation: &SystemsOperation,
     ) -> Result<bool, SystemsModelError> {
         match operation {
+            SystemsOperation::CreateKernelCompletion => {
+                if self.deadline != BootstrapDeadlineState::Constructed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Fresh
+                    || self.kernel_context != BootstrapKernelContextState::Fresh
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "one-shot completion creation requires the restored dispatcher before worker creation",
+                    ));
+                }
+                self.kernel_completion = BootstrapKernelCompletionState::Created;
+            }
             SystemsOperation::CreateKernelContext => {
                 if self.deadline != BootstrapDeadlineState::Constructed
                     || !self.critical_stack.is_empty()
@@ -1223,12 +1621,15 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::PreemptibleCreated
                     }
                     BootstrapKernelContextState::PreemptibleCreated => {
-                        BootstrapKernelContextState::BothSuspended
+                        BootstrapKernelContextState::CompletionCreated
+                    }
+                    BootstrapKernelContextState::CompletionCreated => {
+                        BootstrapKernelContextState::AllSuspended
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "the deadline-preemption profile creates exactly two contexts before dispatch",
+                            "the completion profile creates exactly three contexts before dispatch",
                         ));
                     }
                 };
@@ -1247,10 +1648,13 @@ impl BootstrapAuthorityState {
                     BootstrapKernelContextState::PreemptibleDequeuedAgain => {
                         BootstrapKernelContextState::PreemptibleCompleted
                     }
+                    BootstrapKernelContextState::CompletionDequeuedAgain => {
+                        BootstrapKernelContextState::CompletionCompleted
+                    }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "ordinary kernel-context transfers must follow terminal then preemptible redispatch order",
+                            "ordinary kernel-context transfers must follow terminal, preemptible, then awakened-completion redispatch order",
                         ));
                     }
                 };
@@ -1279,13 +1683,38 @@ impl BootstrapAuthorityState {
                 }
                 self.kernel_context = BootstrapKernelContextState::PreemptedTaken;
             }
-            SystemsOperation::CreateRunnableQueue { capacity } => {
-                if self.kernel_context != BootstrapKernelContextState::BothSuspended
-                    || *capacity != 2
+            SystemsOperation::TransferKernelContextUntilCompletion => {
+                if !self.critical_stack.is_empty()
+                    || self.kernel_context != BootstrapKernelContextState::CompletionDequeued
+                    || self.kernel_completion != BootstrapKernelCompletionState::Created
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "the initial runnable queue requires both suspended contexts and capacity two",
+                        "completion-bound transfer requires the selected fresh block-once worker and restored dispatcher",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::CompletionBlocked;
+                self.kernel_completion = BootstrapKernelCompletionState::Blocked;
+            }
+            SystemsOperation::SignalBlockedKernelCompletion => {
+                if self.kernel_context != BootstrapKernelContextState::TerminalReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Blocked
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "completion signal requires the matching blocked worker after terminal reclamation",
+                    ));
+                }
+                self.kernel_context = BootstrapKernelContextState::CompletionSignaled;
+                self.kernel_completion = BootstrapKernelCompletionState::Signaled;
+            }
+            SystemsOperation::CreateRunnableQueue { capacity } => {
+                if self.kernel_context != BootstrapKernelContextState::AllSuspended
+                    || *capacity != 3
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "the initial runnable queue requires all three suspended contexts and capacity three",
                     ));
                 }
                 self.kernel_context = BootstrapKernelContextState::QueueCreated;
@@ -1296,34 +1725,46 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::PreemptibleEnqueued
                     }
                     BootstrapKernelContextState::PreemptibleEnqueued => {
-                        BootstrapKernelContextState::BothEnqueued
+                        BootstrapKernelContextState::CompletionEnqueued
+                    }
+                    BootstrapKernelContextState::CompletionEnqueued => {
+                        BootstrapKernelContextState::AllEnqueued
                     }
                     BootstrapKernelContextState::PreemptedTaken => {
                         BootstrapKernelContextState::PreemptedEnqueued
                     }
+                    BootstrapKernelContextState::CompletionSignaled => {
+                        BootstrapKernelContextState::CompletionEnqueuedAgain
+                    }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable enqueue must preserve preemptible, terminal, preemptible FIFO order",
+                            "runnable enqueue must preserve preemptible, completion, terminal, preemptible, completion FIFO order",
                         ));
                     }
                 };
             }
             SystemsOperation::DequeueRunnableContext => {
                 self.kernel_context = match self.kernel_context {
-                    BootstrapKernelContextState::BothEnqueued => {
+                    BootstrapKernelContextState::AllEnqueued => {
                         BootstrapKernelContextState::PreemptibleDequeued
                     }
                     BootstrapKernelContextState::PreemptedEnqueued => {
+                        BootstrapKernelContextState::CompletionDequeued
+                    }
+                    BootstrapKernelContextState::CompletionBlocked => {
                         BootstrapKernelContextState::TerminalDequeued
                     }
-                    BootstrapKernelContextState::TerminalReclaimed => {
+                    BootstrapKernelContextState::CompletionEnqueuedAgain => {
                         BootstrapKernelContextState::PreemptibleDequeuedAgain
+                    }
+                    BootstrapKernelContextState::PreemptibleReclaimed => {
+                        BootstrapKernelContextState::CompletionDequeuedAgain
                     }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-CONTEXT-TRANSFER",
-                            "runnable dequeue must select preemptible, terminal, preemptible FIFO order",
+                            "runnable dequeue must select preemptible, completion, terminal, preemptible, completion FIFO order",
                         ));
                     }
                 };
@@ -1334,7 +1775,10 @@ impl BootstrapAuthorityState {
                         BootstrapKernelContextState::TerminalReclaimed
                     }
                     BootstrapKernelContextState::PreemptibleCompleted => {
-                        BootstrapKernelContextState::Reclaimed
+                        BootstrapKernelContextState::PreemptibleReclaimed
+                    }
+                    BootstrapKernelContextState::CompletionCompleted => {
+                        BootstrapKernelContextState::CompletionReclaimed
                     }
                     _ => {
                         return Err(SystemsModelError::new(
@@ -1345,13 +1789,221 @@ impl BootstrapAuthorityState {
                 };
             }
             SystemsOperation::ConsumeEmptyRunnableQueue => {
-                if self.kernel_context != BootstrapKernelContextState::Reclaimed {
+                if self.kernel_context != BootstrapKernelContextState::CompletionReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Consumed
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "runnable queue consumption requires an empty queue and both reclaimed contexts",
+                        "runnable queue consumption requires an empty queue, three reclaimed contexts, and consumed completion",
                     ));
                 }
                 self.kernel_context = BootstrapKernelContextState::QueueConsumed;
+            }
+            SystemsOperation::ConsumeKernelCompletion => {
+                if self.kernel_context != BootstrapKernelContextState::CompletionReclaimed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Signaled
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-CONTEXT-TRANSFER",
+                        "one-shot completion consumption requires its awakened worker to be reclaimed",
+                    ));
+                }
+                self.kernel_completion = BootstrapKernelCompletionState::Consumed;
+            }
+            _ => return Ok(false),
+        }
+        Ok(true)
+    }
+
+    fn observe_user_execution(
+        &mut self,
+        operation: &SystemsOperation,
+    ) -> Result<bool, SystemsModelError> {
+        match operation {
+            SystemsOperation::PrepareUserAddressSpace => {
+                if self.kernel_context != BootstrapKernelContextState::QueueConsumed
+                    || self.kernel_completion != BootstrapKernelCompletionState::Consumed
+                    || self.user_execution != BootstrapUserExecutionState::Fresh
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::Frames(INITIAL_MULTI_FRAME_REQUEST)
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user-address-space preparation requires completed kernel-context cleanup, its exact three-frame backing, and no live critical scope",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.user_execution =
+                    BootstrapUserExecutionState::AddressSpacePrepared(INITIAL_MULTI_FRAME_REQUEST);
+            }
+            SystemsOperation::PrepareUserProbe { process_identity } => {
+                let BootstrapUserExecutionState::AddressSpaceVerified(backing) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe preparation requires the exact prepared user address space",
+                    ));
+                };
+                if *process_identity != 1
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe preparation requires PID one, the exact prepared address space, no source-owned extent, and no live critical scope",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Prepared(backing);
+            }
+            SystemsOperation::VerifyUserAddressSpaceMapping => {
+                let BootstrapUserExecutionState::AddressSpacePrepared(backing) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping verification requires the exact unverified prepared address space",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping verification requires one disjoint source-owned frame and no live critical scope",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::AddressSpaceVerified(backing);
+            }
+            SystemsOperation::MapUserAddressSpace => {
+                let (backing, generation) = match self.user_execution {
+                    BootstrapUserExecutionState::AddressSpacePrepared(backing) => (backing, 1),
+                    BootstrapUserExecutionState::AddressSpaceMappedOnce(backing) => (backing, 2),
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "user mapping publication requires the prepared address space at its next exact generation",
+                        ));
+                    }
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping publication requires one disjoint source-owned frame and no live critical scope",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST);
+                self.user_execution = BootstrapUserExecutionState::MappingLive(backing, generation);
+            }
+            SystemsOperation::StoreUserMappingByte => {
+                let BootstrapUserExecutionState::MappingLive(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires the exact live mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingStored(backing, generation);
+            }
+            SystemsOperation::LoadUserMappingByte => {
+                let BootstrapUserExecutionState::MappingStored(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires the exact stored mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires its owned disjoint frame",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingVerified(backing, generation);
+            }
+            SystemsOperation::UnmapUserAddressSpace => {
+                let BootstrapUserExecutionState::MappingVerified(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires the exact verified mapping",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires its owned disjoint frame",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+                self.user_execution = match generation {
+                    1 => BootstrapUserExecutionState::AddressSpaceMappedOnce(backing),
+                    2 => BootstrapUserExecutionState::AddressSpaceVerified(backing),
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-USER-CONTEXT",
+                            "user unmap requires one of the two admitted mapping generations",
+                        ));
+                    }
+                };
+            }
+            SystemsOperation::EnterUserContext => {
+                let BootstrapUserExecutionState::Prepared(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry requires the exact prepared probe and restored kernel context",
+                    ));
+                };
+                if !self.critical_stack.is_empty() {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry requires the exact prepared probe and restored kernel context",
+                    ));
+                }
+                self.user_execution = BootstrapUserExecutionState::Completed(backing);
+            }
+            SystemsOperation::CompleteUserExecution => {
+                let BootstrapUserExecutionState::Completed(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user completion requires terminal exit_group restoration",
+                    ));
+                };
+                self.user_execution = BootstrapUserExecutionState::Revoked(backing);
+            }
+            SystemsOperation::ReclaimUserAddressSpace => {
+                let BootstrapUserExecutionState::Revoked(backing) = self.user_execution else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user-address-space reclaim requires the exact revoked address space",
+                    ));
+                };
+                self.user_execution = BootstrapUserExecutionState::Consumed;
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(backing);
             }
             _ => return Ok(false),
         }
@@ -1413,13 +2065,17 @@ impl BootstrapAuthorityState {
             SystemsOperation::BeginTranslationEdit { kind, .. } => match kind {
                 TranslationEditKind::Map
                     if self.translation == BootstrapTranslationState::ReplacementActive
-                        && self.memory_ownership == BootstrapMemoryOwnership::Frames =>
+                        && self.memory_ownership
+                            == BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST) =>
                 {
                     self.translation = BootstrapTranslationState::MapEdit;
                 }
                 TranslationEditKind::Unmap
                     if self.translation == BootstrapTranslationState::MappedActive
-                        && self.memory_ownership == BootstrapMemoryOwnership::Mapping =>
+                        && matches!(
+                            self.memory_ownership,
+                            BootstrapMemoryOwnership::Mapping(_)
+                        ) =>
                 {
                     self.translation = BootstrapTranslationState::UnmapEdit;
                 }
@@ -1431,8 +2087,14 @@ impl BootstrapAuthorityState {
                 }
             },
             SystemsOperation::MapTranslationFrames { request, .. } => {
+                let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION-EDIT",
+                        "translation edit map requires the sealed policy, map edit, and live extent",
+                    ));
+                };
                 if self.translation != BootstrapTranslationState::MapEdit
-                    || self.memory_ownership != BootstrapMemoryOwnership::Frames
+                    || frame_request != INITIAL_SINGLE_FRAME_REQUEST
                     || *request != TranslationMappingRequest::initial_read_write()
                 {
                     return Err(SystemsModelError::new(
@@ -1441,35 +2103,52 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.translation = BootstrapTranslationState::MapStaged;
-                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalMapping;
+                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalMapping(frame_request);
             }
             SystemsOperation::UnmapTranslationMapping => {
-                if self.translation != BootstrapTranslationState::UnmapEdit
-                    || self.memory_ownership != BootstrapMemoryOwnership::Mapping
-                {
+                let BootstrapMemoryOwnership::Mapping(frame_request) = self.memory_ownership else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-TRANSLATION-EDIT",
+                        "translation edit unmap requires the matching edit and live mapping",
+                    ));
+                };
+                if self.translation != BootstrapTranslationState::UnmapEdit {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-TRANSLATION-EDIT",
                         "translation edit unmap requires the matching edit and live mapping",
                     ));
                 }
                 self.translation = BootstrapTranslationState::UnmapStaged;
-                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalFrames;
+                self.memory_ownership = BootstrapMemoryOwnership::ProvisionalFrames(frame_request);
             }
             SystemsOperation::CommitTranslationEdit { kind, .. } => match kind {
                 TranslationEditKind::Map
-                    if self.translation == BootstrapTranslationState::MapStaged
-                        && self.memory_ownership
-                            == BootstrapMemoryOwnership::ProvisionalMapping =>
+                    if self.translation == BootstrapTranslationState::MapStaged =>
                 {
+                    let BootstrapMemoryOwnership::ProvisionalMapping(frame_request) =
+                        self.memory_ownership
+                    else {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-TRANSLATION-EDIT",
+                            "translation edit commit requires one complete matching candidate",
+                        ));
+                    };
                     self.translation = BootstrapTranslationState::MappedActive;
-                    self.memory_ownership = BootstrapMemoryOwnership::Mapping;
+                    self.memory_ownership = BootstrapMemoryOwnership::Mapping(frame_request);
                 }
                 TranslationEditKind::Unmap
-                    if self.translation == BootstrapTranslationState::UnmapStaged
-                        && self.memory_ownership == BootstrapMemoryOwnership::ProvisionalFrames =>
+                    if self.translation == BootstrapTranslationState::UnmapStaged =>
                 {
+                    let BootstrapMemoryOwnership::ProvisionalFrames(frame_request) =
+                        self.memory_ownership
+                    else {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-TRANSLATION-EDIT",
+                            "translation edit commit requires one complete matching candidate",
+                        ));
+                    };
                     self.translation = BootstrapTranslationState::RemovedActive;
-                    self.memory_ownership = BootstrapMemoryOwnership::Frames;
+                    self.memory_ownership = BootstrapMemoryOwnership::Frames(frame_request);
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1504,20 +2183,26 @@ impl BootstrapAuthorityState {
         }
         match self.memory_ownership {
             BootstrapMemoryOwnership::None => {}
-            BootstrapMemoryOwnership::Frames => {
+            BootstrapMemoryOwnership::Frames(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
                     "bootstrap handler consumes its context while a physical-frame extent remains live",
                 ));
             }
-            BootstrapMemoryOwnership::Mapping => {
+            BootstrapMemoryOwnership::Mapping(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-MAPPING-LIVE",
                     "bootstrap handler consumes its context while a kernel mapping remains live",
                 ));
             }
-            BootstrapMemoryOwnership::ProvisionalMapping
-            | BootstrapMemoryOwnership::ProvisionalFrames => {
+            BootstrapMemoryOwnership::UserMapping(_) => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "bootstrap handler consumes its context while a user mapping remains live",
+                ));
+            }
+            BootstrapMemoryOwnership::ProvisionalMapping(_)
+            | BootstrapMemoryOwnership::ProvisionalFrames(_) => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-TRANSLATION-EDIT-LIVE",
                     "bootstrap handler consumes its context while a translation edit candidate remains live",
@@ -1559,7 +2244,19 @@ impl BootstrapAuthorityState {
         if self.kernel_context != BootstrapKernelContextState::QueueConsumed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
-                "bootstrap completion requires both worker contexts to be reclaimed and the runnable queue consumed empty",
+                "bootstrap completion requires all worker contexts to be reclaimed and the runnable queue consumed empty",
+            ));
+        }
+        if self.kernel_completion != BootstrapKernelCompletionState::Consumed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-CONTEXT-TRANSFER-LIVE",
+                "bootstrap completion requires the one-shot completion state to be consumed",
+            ));
+        }
+        if self.user_execution != BootstrapUserExecutionState::Consumed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-USER-CONTEXT-LIVE",
+                "bootstrap completion requires one consumed getpid/exit_group user execution",
             ));
         }
         Ok(())
@@ -1691,6 +2388,7 @@ fn validate_kernel_context_storage_operation(
     state: &BootstrapKernelContextState,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::CreateKernelCompletion => {}
         SystemsOperation::CreateKernelContext => {
             let stack = region.take().ok_or_else(|| {
                 SystemsModelError::new(
@@ -1710,7 +2408,8 @@ fn validate_kernel_context_storage_operation(
             context_stacks.push(stack);
         }
         SystemsOperation::TransferKernelContext
-        | SystemsOperation::TransferKernelContextUntilDeadline => {
+        | SystemsOperation::TransferKernelContextUntilDeadline
+        | SystemsOperation::TransferKernelContextUntilCompletion => {
             if context_stacks.is_empty() {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
@@ -1722,11 +2421,14 @@ fn validate_kernel_context_storage_operation(
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
         | SystemsOperation::TakePreemptedKernelContext
+        | SystemsOperation::SignalBlockedKernelCompletion
+        | SystemsOperation::ConsumeKernelCompletion
         | SystemsOperation::ConsumeEmptyRunnableQueue => {}
         SystemsOperation::ReclaimKernelContext => {
             let index = match state {
-                BootstrapKernelContextState::TerminalReclaimed => 1,
-                BootstrapKernelContextState::Reclaimed => 0,
+                BootstrapKernelContextState::TerminalReclaimed => 2,
+                BootstrapKernelContextState::PreemptibleReclaimed
+                | BootstrapKernelContextState::CompletionReclaimed => 0,
                 _ => {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
@@ -1801,6 +2503,16 @@ fn validate_bootstrap_storage_operation(
             storage.release(released)?;
         }
         SystemsOperation::ConsoleWrite { .. } | SystemsOperation::DebugBreak => {}
+        SystemsOperation::PrepareUserAddressSpace
+        | SystemsOperation::VerifyUserAddressSpaceMapping
+        | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::UnmapUserAddressSpace
+        | SystemsOperation::PrepareUserProbe { .. }
+        | SystemsOperation::EnterUserContext
+        | SystemsOperation::CompleteUserExecution
+        | SystemsOperation::ReclaimUserAddressSpace => {}
         _ => unreachable!("authority or atomic operations continue above"),
     }
     Ok(())
@@ -1859,6 +2571,12 @@ pub fn model_systems_transitions(
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
+    let mut user_protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
+    let mut prepared_user_space: Option<PreparedUserAddressSpace> = None;
+    let mut user_mapping: Option<UserMapping> = None;
+    let mut suspended_user: Option<SuspendedUserContext> = None;
+    let mut completed_user: Option<CompletedUserExecution> = None;
+    let mut revoked_user_space: Option<RevokedUserAddressSpace> = None;
     for operation in &program.bootstrap.handler.operations {
         if model_critical_transition(
             operation,
@@ -1896,6 +2614,7 @@ pub fn model_systems_transitions(
         if model_kernel_context_transition(
             operation,
             &program.kernel_thread.handler,
+            &program.completion_thread.handler,
             &program.terminal_thread.handler,
             &program.deadline_notification.handler,
             &mut storage,
@@ -1904,6 +2623,19 @@ pub fn model_systems_transitions(
             &mut kernel_context_state,
             &mut deadline_state,
             &mut next_deadline_event_identity,
+            &mut transitions,
+        )? {
+            continue;
+        }
+        if model_user_execution_transition(
+            operation,
+            &program.user_syscall.handler,
+            &mut user_protocol,
+            &mut prepared_user_space,
+            &mut user_mapping,
+            &mut suspended_user,
+            &mut completed_user,
+            &mut revoked_user_space,
             &mut transitions,
         )? {
             continue;
@@ -1923,10 +2655,443 @@ pub fn model_systems_transitions(
     Ok(transitions)
 }
 
+fn model_user_execution_transition(
+    operation: &SystemsOperation,
+    handler: &SystemsHandler,
+    protocol: &mut SystemsUserExecutionProtocol,
+    prepared: &mut Option<PreparedUserAddressSpace>,
+    mapping: &mut Option<UserMapping>,
+    suspended: &mut Option<SuspendedUserContext>,
+    completed: &mut Option<CompletedUserExecution>,
+    revoked: &mut Option<RevokedUserAddressSpace>,
+    transitions: &mut Vec<SystemsTransition>,
+) -> Result<bool, SystemsModelError> {
+    match operation {
+        SystemsOperation::PrepareUserAddressSpace => {
+            if prepared.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user model admits exactly one live address-space lifecycle",
+                ));
+            }
+            *prepared = Some(protocol.prepare_address_space(INITIAL_MULTI_FRAME_REQUEST)?);
+            transitions.push(SystemsTransition::PrepareUserAddressSpace {
+                address_space_identity: 1,
+            });
+        }
+        SystemsOperation::VerifyUserAddressSpaceMapping => {
+            if prepared.is_none() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user mapping model requires one prepared address space",
+                ));
+            }
+            transitions.push(SystemsTransition::VerifyUserAddressSpaceMapping {
+                address_space_identity: 1,
+            });
+        }
+        SystemsOperation::MapUserAddressSpace => {
+            if prepared.is_none()
+                || mapping.is_some()
+                || suspended.is_some()
+                || completed.is_some()
+                || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user mapping model requires one prepared address space",
+                ));
+            }
+            let fresh_mapping = protocol.map_user_frame(
+                prepared.as_ref().expect("checked prepared user space"),
+                INITIAL_SINGLE_FRAME_REQUEST,
+            )?;
+            let mapping_identity = fresh_mapping.identity();
+            *mapping = Some(fresh_mapping);
+            transitions.push(SystemsTransition::MapUserAddressSpace {
+                address_space_identity: 1,
+                mapping_identity,
+            });
+        }
+        SystemsOperation::StoreUserMappingByte => {
+            *mapping = Some(protocol.store_user_mapping_byte(mapping.take().ok_or_else(
+                || {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping store requires one live affine mapping",
+                    )
+                },
+            )?)?);
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("stored mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::StoreUserMappingByte { mapping_identity });
+        }
+        SystemsOperation::LoadUserMappingByte => {
+            *mapping = Some(protocol.load_user_mapping_byte(mapping.take().ok_or_else(
+                || {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping load requires one stored affine mapping",
+                    )
+                },
+            )?)?);
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("verified mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::LoadUserMappingByte { mapping_identity });
+        }
+        SystemsOperation::UnmapUserAddressSpace => {
+            let mapping = mapping.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user unmap requires one verified affine mapping",
+                )
+            })?;
+            let mapping_identity = mapping.identity();
+            let returned = protocol.unmap_user_frame(
+                prepared.as_ref().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user unmap requires one prepared address space",
+                    )
+                })?,
+                mapping,
+            )?;
+            if returned != INITIAL_SINGLE_FRAME_REQUEST {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user unmap returned the wrong physical-frame extent",
+                ));
+            }
+            transitions.push(SystemsTransition::UnmapUserAddressSpace {
+                address_space_identity: 1,
+                mapping_identity,
+            });
+        }
+        SystemsOperation::PrepareUserProbe { process_identity } => {
+            if mapping.is_some() || suspended.is_some() || completed.is_some() || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user model admits exactly one live probe lifecycle",
+                ));
+            }
+            *suspended = Some(protocol.prepare_probe(
+                *process_identity,
+                prepared.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user probe model requires one prepared address space",
+                    )
+                })?,
+            )?);
+            transitions.push(SystemsTransition::PrepareUserProbe {
+                process_identity: *process_identity,
+                probe_identity: 1,
+            });
+        }
+        SystemsOperation::EnterUserContext => {
+            let suspended_context = suspended.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user entry model requires one prepared suspended context",
+                )
+            })?;
+            let active = protocol.enter(suspended_context)?;
+            transitions.push(SystemsTransition::EnterUserExecution {
+                process_identity: 1,
+                kernel_continuation_identity: 1,
+            });
+            let (
+                getpid_result,
+                uname_value,
+                nanosleep_value,
+                remainder_candidate,
+                exit_group_status,
+            ) = match &handler.disposition {
+                SystemsDisposition::DispatchInitialUserSyscall {
+                    getpid_result,
+                    uname_sysname,
+                    uname_nodename,
+                    uname_release,
+                    uname_version,
+                    uname_machine,
+                    uname_domainname,
+                    nanosleep_seconds,
+                    nanosleep_nanoseconds,
+                    nanosleep_remainder_candidate,
+                    exit_group_status,
+                } => (
+                    *getpid_result,
+                    LinuxUtsName {
+                        sysname: uname_sysname.clone(),
+                        nodename: uname_nodename.clone(),
+                        release: uname_release.clone(),
+                        version: uname_version.clone(),
+                        machine: uname_machine.clone(),
+                        domainname: uname_domainname.clone(),
+                    },
+                    LinuxTimespec {
+                        seconds: i64::try_from(*nanosleep_seconds).map_err(|_| {
+                            SystemsModelError::new(
+                                "E-SYSTEMS-USER-TRANSFER",
+                                "sealed nanosleep seconds exceed the native signed layout",
+                            )
+                        })?,
+                        nanoseconds: i64::try_from(*nanosleep_nanoseconds).map_err(|_| {
+                            SystemsModelError::new(
+                                "E-SYSTEMS-USER-TRANSFER",
+                                "sealed nanosleep nanoseconds exceed the native signed layout",
+                            )
+                        })?,
+                    },
+                    *nanosleep_remainder_candidate,
+                    *exit_group_status,
+                ),
+                _ => {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user entry model requires the checked initial syscall dispatcher",
+                    ));
+                }
+            };
+            let getpid = protocol.enter_syscall(active, crate::LINUX_X86_64_GETPID, [0; 6])?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 1,
+                number: crate::LINUX_X86_64_GETPID,
+                arguments: [0; 6],
+            });
+            let active = protocol.return_getpid(getpid, getpid_result)?;
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 1,
+                result: getpid_result,
+            });
+            let uname = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 2,
+                number: LINUX_X86_64_UNAME,
+                arguments: [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+            });
+            let scope = protocol.begin_uname_transfer(uname)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 2,
+                transfer_identity: 1,
+                candidate: INITIAL_USER_UNAME_VALID_CANDIDATE,
+                extent: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let outcome = protocol.copy_initial_utsname_to_user(
+                scope,
+                &uname_value,
+                LINUX_NEW_UTSNAME_BYTES,
+            )?;
+            transitions.push(SystemsTransition::CopyToUserComplete {
+                transfer_identity: 1,
+                copied: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let active = protocol.return_uname(outcome, 0)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 2,
+                transfer_identity: 1,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 2,
+                result: 0,
+            });
+            let uname = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_UNAME,
+                [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 3,
+                number: LINUX_X86_64_UNAME,
+                arguments: [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+            });
+            let scope = protocol.begin_uname_transfer(uname)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 3,
+                transfer_identity: 2,
+                candidate: INITIAL_USER_UNAME_FAULT_CANDIDATE,
+                extent: LINUX_NEW_UTSNAME_BYTES,
+            });
+            let outcome = protocol.copy_initial_utsname_to_user(scope, &uname_value, 256)?;
+            transitions.push(SystemsTransition::CopyToUserFault {
+                transfer_identity: 2,
+                copied_prefix: 256,
+            });
+            let active = protocol.return_uname(outcome, LINUX_X86_64_EFAULT_RESULT)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 3,
+                transfer_identity: 2,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 3,
+                result: LINUX_X86_64_EFAULT_RESULT,
+            });
+            let nanosleep = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [
+                    INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 4,
+                number: LINUX_X86_64_NANOSLEEP,
+                arguments: [
+                    INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            });
+            let scope = protocol.begin_nanosleep_transfer(nanosleep)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 4,
+                transfer_identity: 3,
+                candidate: INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                extent: LINUX_TIMESPEC_BYTES,
+            });
+            let outcome = protocol.copy_initial_timespec_from_user(
+                scope,
+                Some(nanosleep_value),
+                LINUX_TIMESPEC_BYTES,
+            )?;
+            transitions.push(SystemsTransition::CopyFromUserComplete {
+                transfer_identity: 3,
+                copied: LINUX_TIMESPEC_BYTES,
+                seconds: nanosleep_value.seconds,
+                nanoseconds: nanosleep_value.nanoseconds,
+            });
+            let active = protocol.return_nanosleep(outcome, 0)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 4,
+                transfer_identity: 3,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 4,
+                result: 0,
+            });
+            let nanosleep = protocol.enter_syscall(
+                active,
+                LINUX_X86_64_NANOSLEEP,
+                [
+                    INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 5,
+                number: LINUX_X86_64_NANOSLEEP,
+                arguments: [
+                    INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    remainder_candidate,
+                    0,
+                    0,
+                    0,
+                    0,
+                ],
+            });
+            let scope = protocol.begin_nanosleep_transfer(nanosleep)?;
+            transitions.push(SystemsTransition::BeginUserTransfer {
+                entry_identity: 5,
+                transfer_identity: 4,
+                candidate: INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                extent: LINUX_TIMESPEC_BYTES,
+            });
+            let outcome = protocol.copy_initial_timespec_from_user(scope, None, 8)?;
+            transitions.push(SystemsTransition::CopyFromUserFault {
+                transfer_identity: 4,
+                copied_prefix: 8,
+            });
+            let active = protocol.return_nanosleep(outcome, LINUX_X86_64_EFAULT_RESULT)?;
+            transitions.push(SystemsTransition::EndUserTransfer {
+                entry_identity: 5,
+                transfer_identity: 4,
+            });
+            transitions.push(SystemsTransition::ReturnToUser {
+                entry_identity: 5,
+                result: LINUX_X86_64_EFAULT_RESULT,
+            });
+            let exit = protocol.enter_syscall(
+                active,
+                crate::LINUX_X86_64_EXIT_GROUP,
+                [exit_group_status, 0, 0, 0, 0, 0],
+            )?;
+            transitions.push(SystemsTransition::EnterUserSyscall {
+                entry_identity: 6,
+                number: crate::LINUX_X86_64_EXIT_GROUP,
+                arguments: [exit_group_status, 0, 0, 0, 0, 0],
+            });
+            *completed = Some(protocol.terminate_exit_group(exit, exit_group_status)?);
+            transitions.push(SystemsTransition::TerminateUser {
+                entry_identity: 6,
+                status: exit_group_status,
+            });
+            transitions.push(SystemsTransition::ResumeUserKernelContinuation {
+                kernel_continuation_identity: 1,
+                status: exit_group_status,
+            });
+        }
+        SystemsOperation::CompleteUserExecution => {
+            let summary = protocol.complete(completed.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user completion model requires terminal user execution",
+                )
+            })?)?;
+            transitions.push(SystemsTransition::CompleteUserExecution {
+                process_identity: summary.process_identity,
+            });
+            *revoked = Some(summary.revoked_address_space);
+        }
+        SystemsOperation::ReclaimUserAddressSpace => {
+            let backing = protocol.reclaim_address_space(revoked.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user-address-space reclaim model requires one revoked space",
+                )
+            })?)?;
+            if backing != INITIAL_MULTI_FRAME_REQUEST {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "user-address-space reclaim returned the wrong backing shape",
+                ));
+            }
+            transitions.push(SystemsTransition::ReclaimUserAddressSpace {
+                address_space_identity: 1,
+            });
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn model_kernel_context_transition(
     operation: &SystemsOperation,
     preemptible_handler: &SystemsHandler,
+    completion_handler: &SystemsHandler,
     terminal_handler: &SystemsHandler,
     deadline_handler: &SystemsHandler,
     storage: &mut BootstrapStorageState,
@@ -1938,6 +3103,17 @@ fn model_kernel_context_transition(
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
+        SystemsOperation::CreateKernelCompletion => {
+            if *state != BootstrapKernelContextState::Fresh {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-completion model creates exactly one completion before workers",
+                ));
+            }
+            transitions.push(SystemsTransition::CreateKernelCompletion {
+                completion_identity: 1,
+            });
+        }
         SystemsOperation::CreateKernelContext => {
             context_stacks.push(region.take().ok_or_else(|| {
                 SystemsModelError::new(
@@ -1951,22 +3127,25 @@ fn model_kernel_context_transition(
                     BootstrapKernelContextState::PreemptibleCreated
                 }
                 BootstrapKernelContextState::PreemptibleCreated => {
-                    BootstrapKernelContextState::BothSuspended
+                    BootstrapKernelContextState::CompletionCreated
+                }
+                BootstrapKernelContextState::CompletionCreated => {
+                    BootstrapKernelContextState::AllSuspended
                 }
                 _ => {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-CONTEXT-TRANSFER",
-                        "kernel-context model creates exactly two worker contexts",
+                        "kernel-context model creates exactly three worker contexts",
                     ));
                 }
             };
             transitions.push(SystemsTransition::CreateKernelContext { context_identity });
         }
         SystemsOperation::CreateRunnableQueue { capacity } => {
-            if *state != BootstrapKernelContextState::BothSuspended || *capacity != 2 {
+            if *state != BootstrapKernelContextState::AllSuspended || *capacity != 3 {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires capacity two after creating both workers",
+                    "kernel-context model requires capacity three after creating all workers",
                 ));
             }
             *state = BootstrapKernelContextState::QueueCreated;
@@ -1980,10 +3159,16 @@ fn model_kernel_context_transition(
                     (1, BootstrapKernelContextState::PreemptibleEnqueued)
                 }
                 BootstrapKernelContextState::PreemptibleEnqueued => {
-                    (2, BootstrapKernelContextState::BothEnqueued)
+                    (2, BootstrapKernelContextState::CompletionEnqueued)
+                }
+                BootstrapKernelContextState::CompletionEnqueued => {
+                    (3, BootstrapKernelContextState::AllEnqueued)
                 }
                 BootstrapKernelContextState::PreemptedTaken => {
                     (1, BootstrapKernelContextState::PreemptedEnqueued)
+                }
+                BootstrapKernelContextState::CompletionSignaled => {
+                    (2, BootstrapKernelContextState::CompletionEnqueuedAgain)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -1997,14 +3182,20 @@ fn model_kernel_context_transition(
         }
         SystemsOperation::DequeueRunnableContext => {
             let (context_identity, next_state) = match *state {
-                BootstrapKernelContextState::BothEnqueued => {
+                BootstrapKernelContextState::AllEnqueued => {
                     (1, BootstrapKernelContextState::PreemptibleDequeued)
                 }
                 BootstrapKernelContextState::PreemptedEnqueued => {
-                    (2, BootstrapKernelContextState::TerminalDequeued)
+                    (2, BootstrapKernelContextState::CompletionDequeued)
                 }
-                BootstrapKernelContextState::TerminalReclaimed => {
+                BootstrapKernelContextState::CompletionBlocked => {
+                    (3, BootstrapKernelContextState::TerminalDequeued)
+                }
+                BootstrapKernelContextState::CompletionEnqueuedAgain => {
                     (1, BootstrapKernelContextState::PreemptibleDequeuedAgain)
+                }
+                BootstrapKernelContextState::PreemptibleReclaimed => {
+                    (2, BootstrapKernelContextState::CompletionDequeuedAgain)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -2095,6 +3286,63 @@ fn model_kernel_context_transition(
             });
             *state = BootstrapKernelContextState::PreemptedTaken;
         }
+        SystemsOperation::TransferKernelContextUntilCompletion => {
+            if *state != BootstrapKernelContextState::CompletionDequeued {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion-bound model transfer requires the selected block-once worker",
+                ));
+            }
+            let [
+                SystemsOperation::ConsoleWrite { text: entered },
+                SystemsOperation::AwaitKernelCompletion,
+                SystemsOperation::ConsoleWrite { .. },
+            ] = completion_handler.operations.as_slice()
+            else {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion worker must enter, await its one-shot completion, and resume",
+                ));
+            };
+            transitions.extend([
+                SystemsTransition::TransferKernelContextUntilCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 2,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: entered.clone(),
+                },
+                SystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+            ]);
+            *state = BootstrapKernelContextState::CompletionBlocked;
+        }
+        SystemsOperation::SignalBlockedKernelCompletion => {
+            if *state != BootstrapKernelContextState::TerminalReclaimed {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "completion signal requires the blocked worker after terminal reclamation",
+                ));
+            }
+            transitions.push(SystemsTransition::SignalBlockedKernelCompletion {
+                context_identity: 2,
+                caller_identity: 2,
+                completion_identity: 1,
+            });
+            *state = BootstrapKernelContextState::CompletionSignaled;
+        }
         SystemsOperation::TransferKernelContext => match *state {
             BootstrapKernelContextState::TerminalDequeued => {
                 let [SystemsOperation::ConsoleWrite { text }] =
@@ -2107,18 +3355,18 @@ fn model_kernel_context_transition(
                 };
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
-                        context_identity: 2,
-                        caller_identity: 2,
+                        context_identity: 3,
+                        caller_identity: 3,
                     },
                     SystemsTransition::EnterKernelThread {
-                        context_identity: 2,
+                        context_identity: 3,
                     },
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
-                        context_identity: 2,
-                        caller_identity: 2,
+                        context_identity: 3,
+                        caller_identity: 3,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 ]);
                 *state = BootstrapKernelContextState::TerminalCompleted;
             }
@@ -2131,36 +3379,64 @@ fn model_kernel_context_transition(
                 transitions.extend([
                     SystemsTransition::TransferKernelContext {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                     },
                     SystemsTransition::RestorePreemptedKernelContext {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                         event_identity: next_deadline_event_identity.saturating_sub(1),
                     },
                     SystemsTransition::ConsoleWrite { text: text.clone() },
                     SystemsTransition::RetireKernelContextToCaller {
                         context_identity: 1,
-                        caller_identity: 3,
+                        caller_identity: 4,
                     },
-                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 ]);
                 *state = BootstrapKernelContextState::PreemptibleCompleted;
+            }
+            BootstrapKernelContextState::CompletionDequeuedAgain => {
+                let [_, _, SystemsOperation::ConsoleWrite { text }] =
+                    completion_handler.operations.as_slice()
+                else {
+                    unreachable!("validated completion handler shape")
+                };
+                transitions.extend([
+                    SystemsTransition::TransferKernelContext {
+                        context_identity: 2,
+                        caller_identity: 5,
+                    },
+                    SystemsTransition::RestoreBlockedKernelContext {
+                        context_identity: 2,
+                        caller_identity: 5,
+                        completion_identity: 1,
+                    },
+                    SystemsTransition::ConsoleWrite { text: text.clone() },
+                    SystemsTransition::RetireKernelContextToCaller {
+                        context_identity: 2,
+                        caller_identity: 5,
+                    },
+                    SystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                ]);
+                *state = BootstrapKernelContextState::CompletionCompleted;
             }
             _ => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model requires preemptible, terminal, preemptible FIFO order",
+                    "kernel-context model requires preemptible, completion, terminal, preemptible, completion FIFO order",
                 ));
             }
         },
         SystemsOperation::ReclaimKernelContext => {
             let (stack_index, context_identity, next_state) = match *state {
                 BootstrapKernelContextState::TerminalCompleted => {
-                    (1, 2, BootstrapKernelContextState::TerminalReclaimed)
+                    (2, 3, BootstrapKernelContextState::TerminalReclaimed)
                 }
                 BootstrapKernelContextState::PreemptibleCompleted => {
-                    (0, 1, BootstrapKernelContextState::Reclaimed)
+                    (0, 1, BootstrapKernelContextState::PreemptibleReclaimed)
+                }
+                BootstrapKernelContextState::CompletionCompleted => {
+                    (0, 2, BootstrapKernelContextState::CompletionReclaimed)
                 }
                 _ => {
                     return Err(SystemsModelError::new(
@@ -2181,14 +3457,25 @@ fn model_kernel_context_transition(
             transitions.push(SystemsTransition::ReclaimKernelContext { context_identity });
         }
         SystemsOperation::ConsumeEmptyRunnableQueue => {
-            if *state != BootstrapKernelContextState::Reclaimed {
+            if *state != BootstrapKernelContextState::CompletionReclaimed {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-CONTEXT-TRANSFER",
-                    "kernel-context model consumes only an empty queue after both reclamations",
+                    "kernel-context model consumes only an empty queue after all three reclamations",
                 ));
             }
             *state = BootstrapKernelContextState::QueueConsumed;
             transitions.push(SystemsTransition::ConsumeEmptyRunnableQueue);
+        }
+        SystemsOperation::ConsumeKernelCompletion => {
+            if *state != BootstrapKernelContextState::CompletionReclaimed {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-CONTEXT-TRANSFER",
+                    "kernel-completion model consumes completion only after awakened worker reclamation",
+                ));
+            }
+            transitions.push(SystemsTransition::ConsumeKernelCompletion {
+                completion_identity: 1,
+            });
         }
         _ => return Ok(false),
     }
@@ -2513,6 +3800,9 @@ fn model_debug_break(handler: &SystemsHandler, transitions: &mut Vec<SystemsTran
         SystemsDisposition::PreemptKernelContext => {
             unreachable!("debug-break validation rejects kernel-context preemption")
         }
+        SystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            unreachable!("debug-break validation rejects user-syscall dispatch")
+        }
     }
 }
 
@@ -2660,16 +3950,35 @@ fn model_bootstrap_storage_operation(
             unreachable!("deadline-event operations are modeled by the caller")
         }
         SystemsOperation::CreateKernelContext
+        | SystemsOperation::CreateKernelCompletion
         | SystemsOperation::CreateRunnableQueue { .. }
         | SystemsOperation::EnqueueRunnableContext
         | SystemsOperation::DequeueRunnableContext
         | SystemsOperation::TransferKernelContextUntilDeadline
+        | SystemsOperation::TransferKernelContextUntilCompletion
         | SystemsOperation::TakePreemptedKernelContext
         | SystemsOperation::TransferKernelContext
         | SystemsOperation::AwaitDeadlinePreemption
+        | SystemsOperation::AwaitKernelCompletion
+        | SystemsOperation::SignalBlockedKernelCompletion
         | SystemsOperation::ReclaimKernelContext
+        | SystemsOperation::ConsumeKernelCompletion
         | SystemsOperation::ConsumeEmptyRunnableQueue => {
             unreachable!("kernel-context operations are modeled by the caller")
+        }
+        SystemsOperation::PrepareUserAddressSpace
+        | SystemsOperation::VerifyUserAddressSpaceMapping
+        | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::StoreUserMappingByte
+        | SystemsOperation::LoadUserMappingByte
+        | SystemsOperation::UnmapUserAddressSpace
+        | SystemsOperation::PrepareUserProbe { .. }
+        | SystemsOperation::EnterUserContext
+        | SystemsOperation::CompleteUserExecution
+        | SystemsOperation::ReclaimUserAddressSpace
+        | SystemsOperation::CopyInitialUnameToUser
+        | SystemsOperation::CopyInitialTimespecFromUser => {
+            unreachable!("user-execution operations are modeled by the caller")
         }
         SystemsOperation::BootstrapAllocate { request } => {
             *region = Some(storage.allocate(*request).map_err(|code| {
@@ -2763,8 +4072,14 @@ mod tests {
             SYSTEMS_DEADLINE_AFTER.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
+            SYSTEMS_FRAMES_ALLOCATE.into(),
+            SYSTEMS_FRAMES_RELEASE.into(),
             SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE.into(),
             SYSTEMS_KERNEL_CONTEXT_CREATE.into(),
+            SYSTEMS_KERNEL_COMPLETION_CREATE.into(),
+            SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.into(),
+            SYSTEMS_KERNEL_COMPLETION_SIGNAL.into(),
+            SYSTEMS_KERNEL_COMPLETION_CONSUME.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER.into(),
             SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE.into(),
             SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED.into(),
@@ -2773,6 +4088,15 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE.into(),
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_PREPARE.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_MAP.into(),
+            SYSTEMS_USER_MAPPING_STORE_BYTE.into(),
+            SYSTEMS_USER_MAPPING_LOAD_BYTE.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_UNMAP.into(),
+            SYSTEMS_USER_CONTEXT_PREPARE.into(),
+            SYSTEMS_USER_CONTEXT_ENTER.into(),
+            SYSTEMS_USER_CONTEXT_COMPLETE.into(),
         ];
         bootstrap_effects.sort();
         let mut local_notification_effects = vec![
@@ -2791,6 +4115,12 @@ mod tests {
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
         ];
         kernel_thread_effects.sort();
+        let mut completion_thread_effects = vec![
+            SYSTEMS_CONSOLE_WRITE.into(),
+            SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE.into(),
+            SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
+        ];
+        completion_thread_effects.sort();
         let mut terminal_thread_effects = vec![
             SYSTEMS_CONSOLE_WRITE.into(),
             SYSTEMS_KERNEL_CONTEXT_RETIRE.into(),
@@ -2825,6 +4155,7 @@ mod tests {
                         SystemsOperation::ConstructDeadline {
                             duration_nanoseconds: 1_000_000,
                         },
+                        SystemsOperation::CreateKernelCompletion,
                         SystemsOperation::BootstrapAllocate {
                             request: BootstrapStorageRequest {
                                 byte_count: 16_384,
@@ -2841,7 +4172,16 @@ mod tests {
                             },
                         },
                         SystemsOperation::CreateKernelContext,
-                        SystemsOperation::CreateRunnableQueue { capacity: 2 },
+                        SystemsOperation::BootstrapAllocate {
+                            request: BootstrapStorageRequest {
+                                byte_count: 16_384,
+                                alignment_bytes: 16,
+                                placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                            },
+                        },
+                        SystemsOperation::CreateKernelContext,
+                        SystemsOperation::CreateRunnableQueue { capacity: 3 },
+                        SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
@@ -2852,18 +4192,60 @@ mod tests {
                         },
                         SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
+                        SystemsOperation::TransferKernelContextUntilCompletion,
+                        SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::SignalBlockedKernelCompletion,
+                        SystemsOperation::EnqueueRunnableContext,
                         SystemsOperation::DequeueRunnableContext,
                         SystemsOperation::TransferKernelContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                         },
                         SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::DequeueRunnableContext,
+                        SystemsOperation::TransferKernelContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                        },
+                        SystemsOperation::ReclaimKernelContext,
+                        SystemsOperation::ConsumeKernelCompletion,
                         SystemsOperation::ConsumeEmptyRunnableQueue,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_MULTI_FRAME_REQUEST,
+                            failure_message: "user backing allocation failed".into(),
+                        },
+                        SystemsOperation::PrepareUserAddressSpace,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            failure_message: "disjoint frame allocation failed".into(),
+                        },
+                        SystemsOperation::MapUserAddressSpace,
+                        SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::LoadUserMappingByte,
+                        SystemsOperation::UnmapUserAddressSpace,
+                        SystemsOperation::MapUserAddressSpace,
+                        SystemsOperation::StoreUserMappingByte,
+                        SystemsOperation::LoadUserMappingByte,
+                        SystemsOperation::UnmapUserAddressSpace,
+                        SystemsOperation::ReleasePhysicalFrames,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                        },
+                        SystemsOperation::PrepareUserProbe {
+                            process_identity: 1,
+                        },
+                        SystemsOperation::EnterUserContext,
+                        SystemsOperation::CompleteUserExecution,
+                        SystemsOperation::ReclaimUserAddressSpace,
+                        SystemsOperation::ReleasePhysicalFrames,
                     ],
                     disposition: SystemsDisposition::Fatal {
                         message: "done".into(),
@@ -2923,6 +4305,24 @@ mod tests {
                     effects: kernel_thread_effects,
                 },
             },
+            completion_thread: SystemsEntry {
+                kind: SystemsEntryKind::ResumedKernelThread,
+                handler: SystemsHandler {
+                    name: "completion-thread".into(),
+                    context: SystemsContextKind::KernelThread,
+                    operations: vec![
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                        },
+                        SystemsOperation::AwaitKernelCompletion,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                        },
+                    ],
+                    disposition: SystemsDisposition::RetireKernelContextToCaller,
+                    effects: completion_thread_effects,
+                },
+            },
             terminal_thread: SystemsEntry {
                 kind: SystemsEntryKind::ResumedKernelThread,
                 handler: SystemsHandler {
@@ -2933,6 +4333,35 @@ mod tests {
                     }],
                     disposition: SystemsDisposition::RetireKernelContextToCaller,
                     effects: terminal_thread_effects,
+                },
+            },
+            user_syscall: SystemsEntry {
+                kind: SystemsEntryKind::UserSyscall,
+                handler: SystemsHandler {
+                    name: "user-syscall".into(),
+                    context: SystemsContextKind::UserSyscall,
+                    operations: vec![
+                        SystemsOperation::CopyInitialUnameToUser,
+                        SystemsOperation::CopyInitialTimespecFromUser,
+                    ],
+                    disposition: SystemsDisposition::DispatchInitialUserSyscall {
+                        getpid_result: 1,
+                        uname_sysname: "Linux".into(),
+                        uname_nodename: "topal".into(),
+                        uname_release: "7.2.9-topal".into(),
+                        uname_version: "#1 Topal".into(),
+                        uname_machine: "x86_64".into(),
+                        uname_domainname: "(none)".into(),
+                        nanosleep_seconds: 0,
+                        nanosleep_nanoseconds: 0,
+                        nanosleep_remainder_candidate: 0,
+                        exit_group_status: 0,
+                    },
+                    effects: vec![
+                        SYSTEMS_USER_SYSCALL_DISPATCH.into(),
+                        SYSTEMS_USER_COPY_FROM.into(),
+                        SYSTEMS_USER_COPY_TO.into(),
+                    ],
                 },
             },
         }
@@ -2966,16 +4395,34 @@ mod tests {
             .operations
             .retain(|operation| match operation {
                 SystemsOperation::CreateKernelContext
+                | SystemsOperation::CreateKernelCompletion
                 | SystemsOperation::CreateRunnableQueue { .. }
                 | SystemsOperation::EnqueueRunnableContext
                 | SystemsOperation::DequeueRunnableContext
                 | SystemsOperation::TransferKernelContextUntilDeadline
+                | SystemsOperation::TransferKernelContextUntilCompletion
                 | SystemsOperation::TakePreemptedKernelContext
+                | SystemsOperation::SignalBlockedKernelCompletion
                 | SystemsOperation::TransferKernelContext
                 | SystemsOperation::ReclaimKernelContext
-                | SystemsOperation::ConsumeEmptyRunnableQueue => false,
+                | SystemsOperation::ConsumeKernelCompletion
+                | SystemsOperation::ConsumeEmptyRunnableQueue
+                | SystemsOperation::PrepareUserAddressSpace
+                | SystemsOperation::VerifyUserAddressSpaceMapping
+                | SystemsOperation::MapUserAddressSpace
+                | SystemsOperation::StoreUserMappingByte
+                | SystemsOperation::LoadUserMappingByte
+                | SystemsOperation::UnmapUserAddressSpace
+                | SystemsOperation::PrepareUserProbe { .. }
+                | SystemsOperation::EnterUserContext
+                | SystemsOperation::CompleteUserExecution
+                | SystemsOperation::ReclaimUserAddressSpace
+                | SystemsOperation::AllocatePhysicalFrames { .. }
+                | SystemsOperation::ReleasePhysicalFrames => false,
                 SystemsOperation::ConsoleWrite { text }
-                    if text.starts_with("TOPAL_KERNEL_CONTEXT_") =>
+                    if text.starts_with("TOPAL_KERNEL_CONTEXT_")
+                        || text == "TOPAL_KERNEL_FRAME_DISJOINT_OK"
+                        || text == "TOPAL_KERNEL_USER_MAPPING_OK" =>
                 {
                     false
                 }
@@ -3023,6 +4470,9 @@ mod tests {
                     source_observation_identity: 2,
                     duration_nanoseconds: 1_000_000,
                 },
+                SystemsTransition::CreateKernelCompletion {
+                    completion_identity: 1,
+                },
                 SystemsTransition::AllocateBootstrapRegion {
                     request: BootstrapStorageRequest {
                         byte_count: 16_384,
@@ -3043,12 +4493,25 @@ mod tests {
                 SystemsTransition::CreateKernelContext {
                     context_identity: 2,
                 },
-                SystemsTransition::CreateRunnableQueue { capacity: 2 },
+                SystemsTransition::AllocateBootstrapRegion {
+                    request: BootstrapStorageRequest {
+                        byte_count: 16_384,
+                        alignment_bytes: 16,
+                        placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                    },
+                },
+                SystemsTransition::CreateKernelContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::CreateRunnableQueue { capacity: 3 },
                 SystemsTransition::EnqueueRunnableContext {
                     context_identity: 1,
                 },
                 SystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
+                },
+                SystemsTransition::EnqueueRunnableContext {
+                    context_identity: 3,
                 },
                 SystemsTransition::DequeueRunnableContext {
                     context_identity: 1,
@@ -3090,25 +4553,57 @@ mod tests {
                 SystemsTransition::DequeueRunnableContext {
                     context_identity: 2,
                 },
-                SystemsTransition::TransferKernelContext {
+                SystemsTransition::TransferKernelContextUntilCompletion {
                     context_identity: 2,
                     caller_identity: 2,
+                    completion_identity: 1,
                 },
                 SystemsTransition::EnterKernelThread {
                     context_identity: 2,
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED".into(),
+                },
+                SystemsTransition::AwaitKernelCompletion {
+                    context_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::BlockKernelContext {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ResumeCompletionDispatcher { caller_identity: 2 },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 3,
+                    caller_identity: 3,
+                },
+                SystemsTransition::EnterKernelThread {
+                    context_identity: 3,
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED".into(),
                 },
                 SystemsTransition::RetireKernelContextToCaller {
-                    context_identity: 2,
-                    caller_identity: 2,
+                    context_identity: 3,
+                    caller_identity: 3,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 2 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
+                    context_identity: 3,
+                },
+                SystemsTransition::SignalBlockedKernelCompletion {
+                    context_identity: 2,
+                    caller_identity: 2,
+                    completion_identity: 1,
+                },
+                SystemsTransition::EnqueueRunnableContext {
                     context_identity: 2,
                 },
                 SystemsTransition::DequeueRunnableContext {
@@ -3116,11 +4611,11 @@ mod tests {
                 },
                 SystemsTransition::TransferKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
                 SystemsTransition::RestorePreemptedKernelContext {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                     event_identity: 1,
                 },
                 SystemsTransition::ConsoleWrite {
@@ -3128,20 +4623,356 @@ mod tests {
                 },
                 SystemsTransition::RetireKernelContextToCaller {
                     context_identity: 1,
-                    caller_identity: 3,
+                    caller_identity: 4,
                 },
-                SystemsTransition::ResumeKernelContextCaller { caller_identity: 3 },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 4 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED".into(),
                 },
                 SystemsTransition::ReclaimKernelContext {
                     context_identity: 1,
                 },
+                SystemsTransition::DequeueRunnableContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::TransferKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                SystemsTransition::RestoreBlockedKernelContext {
+                    context_identity: 2,
+                    caller_identity: 5,
+                    completion_identity: 1,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED".into(),
+                },
+                SystemsTransition::RetireKernelContextToCaller {
+                    context_identity: 2,
+                    caller_identity: 5,
+                },
+                SystemsTransition::ResumeKernelContextCaller { caller_identity: 5 },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED".into(),
+                },
+                SystemsTransition::ReclaimKernelContext {
+                    context_identity: 2,
+                },
+                SystemsTransition::ConsumeKernelCompletion {
+                    completion_identity: 1,
+                },
                 SystemsTransition::ConsumeEmptyRunnableQueue,
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_MULTI_FRAME_REQUEST,
+                },
+                SystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity: 1,
+                },
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                },
+                SystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                SystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 1,
+                },
+                SystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 1,
+                },
+                SystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 1,
+                },
+                SystemsTransition::MapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                SystemsTransition::StoreUserMappingByte {
+                    mapping_identity: 2,
+                },
+                SystemsTransition::LoadUserMappingByte {
+                    mapping_identity: 2,
+                },
+                SystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity: 1,
+                    mapping_identity: 2,
+                },
+                SystemsTransition::ReleasePhysicalFrames,
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_MAPPING_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_FRAME_DISJOINT_OK".into(),
+                },
+                SystemsTransition::PrepareUserProbe {
+                    process_identity: 1,
+                    probe_identity: 1,
+                },
+                SystemsTransition::EnterUserExecution {
+                    process_identity: 1,
+                    kernel_continuation_identity: 1,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 1,
+                    number: 39,
+                    arguments: [0; 6],
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 1,
+                    result: 1,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 2,
+                    number: 63,
+                    arguments: [INITIAL_USER_UNAME_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                    candidate: INITIAL_USER_UNAME_VALID_CANDIDATE,
+                    extent: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::CopyToUserComplete {
+                    transfer_identity: 1,
+                    copied: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 2,
+                    transfer_identity: 1,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 2,
+                    result: 0,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 3,
+                    number: 63,
+                    arguments: [INITIAL_USER_UNAME_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                    candidate: INITIAL_USER_UNAME_FAULT_CANDIDATE,
+                    extent: LINUX_NEW_UTSNAME_BYTES,
+                },
+                SystemsTransition::CopyToUserFault {
+                    transfer_identity: 2,
+                    copied_prefix: 256,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 3,
+                    transfer_identity: 2,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 3,
+                    result: LINUX_X86_64_EFAULT_RESULT,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 4,
+                    number: LINUX_X86_64_NANOSLEEP,
+                    arguments: [INITIAL_USER_TIMESPEC_VALID_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                    candidate: INITIAL_USER_TIMESPEC_VALID_CANDIDATE,
+                    extent: LINUX_TIMESPEC_BYTES,
+                },
+                SystemsTransition::CopyFromUserComplete {
+                    transfer_identity: 3,
+                    copied: LINUX_TIMESPEC_BYTES,
+                    seconds: 0,
+                    nanoseconds: 0,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 4,
+                    transfer_identity: 3,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 4,
+                    result: 0,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 5,
+                    number: LINUX_X86_64_NANOSLEEP,
+                    arguments: [INITIAL_USER_TIMESPEC_FAULT_CANDIDATE, 0, 0, 0, 0, 0],
+                },
+                SystemsTransition::BeginUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                    candidate: INITIAL_USER_TIMESPEC_FAULT_CANDIDATE,
+                    extent: LINUX_TIMESPEC_BYTES,
+                },
+                SystemsTransition::CopyFromUserFault {
+                    transfer_identity: 4,
+                    copied_prefix: 8,
+                },
+                SystemsTransition::EndUserTransfer {
+                    entry_identity: 5,
+                    transfer_identity: 4,
+                },
+                SystemsTransition::ReturnToUser {
+                    entry_identity: 5,
+                    result: LINUX_X86_64_EFAULT_RESULT,
+                },
+                SystemsTransition::EnterUserSyscall {
+                    entry_identity: 6,
+                    number: 231,
+                    arguments: [0; 6],
+                },
+                SystemsTransition::TerminateUser {
+                    entry_identity: 6,
+                    status: 0,
+                },
+                SystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity: 1,
+                    status: 0,
+                },
+                SystemsTransition::CompleteUserExecution {
+                    process_identity: 1,
+                },
+                SystemsTransition::ReclaimUserAddressSpace {
+                    address_space_identity: 1,
+                },
+                SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::Fatal {
                     message: "done".into(),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn prepared_user_space_requires_two_mapping_generations_and_released_extent() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001,
+        // TOPAL-SYSTEMS-CONTEXT-006.
+        let mut live_at_probe = program(SystemsDisposition::Resume);
+        let scratch_release = live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserAddressSpace))
+            .unwrap()
+            + 3;
+        let prepare_probe = live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserProbe { .. }))
+            .unwrap();
+        live_at_probe
+            .bootstrap
+            .handler
+            .operations
+            .swap(scratch_release, prepare_probe);
+        assert_eq!(
+            validate_systems_program(&live_at_probe).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut third_extent = program(SystemsDisposition::Resume);
+        let scratch_allocation = third_extent
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::PrepareUserAddressSpace))
+            .unwrap()
+            + 2;
+        third_extent.bootstrap.handler.operations.insert(
+            scratch_allocation,
+            SystemsOperation::AllocatePhysicalFrames {
+                request: INITIAL_SINGLE_FRAME_REQUEST,
+                failure_message: "third frame allocation failed".into(),
+            },
+        );
+        assert_eq!(
+            validate_systems_program(&third_extent).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+
+        let mut missing_unmap = program(SystemsDisposition::Resume);
+        let unmap = missing_unmap
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::UnmapUserAddressSpace))
+            .unwrap();
+        missing_unmap.bootstrap.handler.operations.remove(unmap);
+        refresh_bootstrap_effects(&mut missing_unmap);
+        assert_eq!(
+            validate_systems_program(&missing_unmap).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicate_store = program(SystemsDisposition::Resume);
+        let store = duplicate_store
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
+            .unwrap();
+        duplicate_store
+            .bootstrap
+            .handler
+            .operations
+            .insert(store + 1, SystemsOperation::StoreUserMappingByte);
+        assert_eq!(
+            validate_systems_program(&duplicate_store).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut reordered_access = program(SystemsDisposition::Resume);
+        let store = reordered_access
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::StoreUserMappingByte))
+            .unwrap();
+        reordered_access
+            .bootstrap
+            .handler
+            .operations
+            .swap(store, store + 1);
+        assert_eq!(
+            validate_systems_program(&reordered_access)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut third_generation = program(SystemsDisposition::Resume);
+        let release = third_generation
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter(|(_, operation)| matches!(operation, SystemsOperation::UnmapUserAddressSpace))
+            .nth(1)
+            .map(|(index, _)| index + 1)
+            .unwrap();
+        third_generation.bootstrap.handler.operations.splice(
+            release..release,
+            [
+                SystemsOperation::MapUserAddressSpace,
+                SystemsOperation::StoreUserMappingByte,
+                SystemsOperation::LoadUserMappingByte,
+                SystemsOperation::UnmapUserAddressSpace,
+            ],
+        );
+        assert_eq!(
+            validate_systems_program(&third_generation)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-USER-CONTEXT"
         );
     }
 
@@ -3305,7 +5136,25 @@ mod tests {
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::ConsumeEmptyRunnableQueue));
+            .retain(|operation| {
+                !matches!(
+                    operation,
+                    SystemsOperation::ConsumeKernelCompletion
+                        | SystemsOperation::ConsumeEmptyRunnableQueue
+                        | SystemsOperation::PrepareUserAddressSpace
+                        | SystemsOperation::VerifyUserAddressSpaceMapping
+                        | SystemsOperation::MapUserAddressSpace
+                        | SystemsOperation::StoreUserMappingByte
+                        | SystemsOperation::LoadUserMappingByte
+                        | SystemsOperation::UnmapUserAddressSpace
+                        | SystemsOperation::PrepareUserProbe { .. }
+                        | SystemsOperation::EnterUserContext
+                        | SystemsOperation::CompleteUserExecution
+                        | SystemsOperation::ReclaimUserAddressSpace
+                        | SystemsOperation::AllocatePhysicalFrames { .. }
+                        | SystemsOperation::ReleasePhysicalFrames
+                )
+            });
         refresh_bootstrap_effects(&mut missing_reclaim);
         assert_eq!(
             validate_systems_program(&missing_reclaim).unwrap_err().code,
@@ -3490,7 +5339,7 @@ mod tests {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-FRAMES-001.
         let mut program = program(SystemsDisposition::Resume);
         let request = PhysicalFrameRequest {
-            frame_count: 1,
+            frame_count: 3,
             alignment_frames: 1,
         };
         program.bootstrap.handler.operations.splice(
@@ -3513,16 +5362,44 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AllocatePhysicalFrames { request }));
         assert!(transitions.contains(&SystemsTransition::ReleasePhysicalFrames));
 
+        let mut unsupported = program.clone();
+        let SystemsOperation::AllocatePhysicalFrames {
+            request: unsupported_request,
+            ..
+        } = &mut unsupported.bootstrap.handler.operations[2]
+        else {
+            unreachable!("test inserted the allocation at index two")
+        };
+        unsupported_request.frame_count = 2;
+        assert_eq!(
+            validate_systems_program(&unsupported).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+
+        let mut mapped = program.clone();
+        mapped.bootstrap.handler.operations.insert(
+            3,
+            SystemsOperation::MapKernelFrames {
+                request: KernelMappingRequest::initial_read_write(),
+                failure_message: "mapping failed".into(),
+            },
+        );
+        refresh_bootstrap_effects(&mut mapped);
+        assert_eq!(
+            validate_systems_program(&mapped).unwrap_err().code,
+            "E-SYSTEMS-MAPPING"
+        );
+
+        program.bootstrap.handler.operations.drain(2..4);
         program
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !matches!(operation, SystemsOperation::ReleasePhysicalFrames));
-        program
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| effect != SYSTEMS_FRAMES_RELEASE);
+            .push(SystemsOperation::AllocatePhysicalFrames {
+                request,
+                failure_message: "late frame allocation failed".into(),
+            });
+        refresh_bootstrap_effects(&mut program);
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-FRAMES-LIVE"

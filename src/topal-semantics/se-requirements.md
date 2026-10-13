@@ -72,6 +72,15 @@ restore the exact interrupted continuation only when source selects it again.
 It shall reject mismatched identities, wrong order, repeated take or restore,
 and completion with any live transfer obligation.
 
+The one-shot completion model shall create matching affine wait and signal
+endpoints with one fresh identity. It shall distinguish block-first from
+signal-first linearization, retain signal-first readiness, bind a blocked
+worker to its exact suspended dispatcher, and return only the matching
+awakened context for source-owned enqueue. It shall reject wrong completion,
+context, dispatcher, provider, processor, or address-space identity, repeated
+wait or signal, blocking with incompatible live obligations, and disposition
+with any live endpoint, blocked context, dispatcher, or completed state.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
@@ -183,6 +192,16 @@ processor, wrong-entry, duplicate, escaped, use-after-transfer, incomplete, or
 ordinary-return lifecycles. Register sets, stack pointers, frame layouts,
 continuation addresses, and save/restore instructions shall remain outside the
 common model.
+
+The first user-execution increment shall model one opaque validated user state,
+one suspended user context, exact kernel-continuation registration, affine
+syscall entry, source-owned `getpid` result, return to the exact captured user
+continuation, `exit_group` termination, and restoration of the exact kernel
+continuation. It shall retain processor, address-space, thread, process, ABI,
+probe, entry, and continuation identities and reject wrong order, syscall,
+result, status, or identity. Registers, privilege encodings, entry frames,
+stacks, security sequences, instructions, and return-path selection shall
+remain outside the common model.
 
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and

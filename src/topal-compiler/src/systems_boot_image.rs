@@ -14,10 +14,11 @@ use crate::{
     CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
     X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/5";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/6";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -47,6 +48,7 @@ const HPET_MMIO_LEAF_ADDRESS: u64 = 0xfec0_0000;
 const LOCAL_APIC_PAGE_ADDRESS: u64 = 0xfee0_0000;
 const LOCAL_NOTIFICATION_VECTOR: usize = 0xf1;
 const DEADLINE_VECTOR: usize = 0xf2;
+const PAGE_FAULT_VECTOR: usize = 14;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
@@ -73,6 +75,7 @@ pub struct X86LinuxBootImageProvenance {
     pub debug_break_entry: u64,
     pub local_notification_entry: u64,
     pub deadline_entry: u64,
+    pub user_copy_fault_entry: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -131,6 +134,8 @@ pub fn generate_x86_64_linux_boot_image(
     let local_notification_entry =
         required_executable_symbol(&file, &segments, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)?;
     let deadline_entry = required_executable_symbol(&file, &segments, X86_SYSTEMS_DEADLINE_ENTRY)?;
+    let user_copy_fault_entry =
+        required_executable_symbol(&file, &segments, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL)?;
     let mut protected = materialize_protected_payload(&segments)?;
     install_transition_support(
         &mut protected,
@@ -138,6 +143,7 @@ pub fn generate_x86_64_linux_boot_image(
         debug_break_entry,
         local_notification_entry,
         deadline_entry,
+        user_copy_fault_entry,
     )?;
     pad_to(&mut protected, 16);
 
@@ -173,6 +179,7 @@ pub fn generate_x86_64_linux_boot_image(
             debug_break_entry,
             local_notification_entry,
             deadline_entry,
+            user_copy_fault_entry,
         },
     })
 }
@@ -387,6 +394,7 @@ fn install_transition_support(
     debug_break_entry: u64,
     local_notification_entry: u64,
     deadline_entry: u64,
+    user_copy_fault_entry: u64,
 ) -> Result<(), CompileError> {
     if X86_KERNEL_MINIMUM_ADDRESS < TRANSITION_RESERVED_END {
         return Err(CompileError::Tool(
@@ -407,6 +415,7 @@ fn install_transition_support(
         debug_break_entry,
         local_notification_entry,
         deadline_entry,
+        user_copy_fault_entry,
     )?;
     Ok(())
 }
@@ -490,12 +499,14 @@ fn install_page_tables(protected: &mut [u8]) -> Result<(), CompileError> {
 }
 
 fn install_gdt(protected: &mut [u8]) -> Result<(), CompileError> {
-    let gdt = payload_offset(GDT_ADDRESS, 32, protected.len())?;
+    let gdt = payload_offset(GDT_ADDRESS, 48, protected.len())?;
     let descriptors = [
         0_u64,
         0x00cf_9a00_0000_ffff,
         0x00af_9a00_0000_ffff,
         0x00cf_9200_0000_ffff,
+        0x00cf_f200_0000_ffff,
+        0x00af_fa00_0000_ffff,
     ];
     for (index, descriptor) in descriptors.into_iter().enumerate() {
         write_u64(protected, gdt + index * 8, descriptor);
@@ -508,6 +519,7 @@ fn install_idt(
     debug_break_entry: u64,
     local_notification_entry: u64,
     deadline_entry: u64,
+    user_copy_fault_entry: u64,
 ) -> Result<(), CompileError> {
     let idt = payload_offset(IDT_ADDRESS, 4096, protected.len())?;
     let gate = idt + 3 * 16;
@@ -531,6 +543,33 @@ fn install_idt(
         gate + 8,
         u32::try_from(debug_break_entry >> 32)
             .map_err(|_| CompileError::Tool("debug entry high word does not fit u32".into()))?,
+    );
+    write_u32(protected, gate + 12, 0);
+
+    let gate = idt + PAGE_FAULT_VECTOR * 16;
+    write_u16(
+        protected,
+        gate,
+        u16::try_from(user_copy_fault_entry & 0xffff).map_err(|_| {
+            CompileError::Tool("user-copy fault entry low word does not fit u16".into())
+        })?,
+    );
+    write_u16(protected, gate + 2, 0x10);
+    protected[gate + 4] = 0;
+    protected[gate + 5] = 0x8e;
+    write_u16(
+        protected,
+        gate + 6,
+        u16::try_from((user_copy_fault_entry >> 16) & 0xffff).map_err(|_| {
+            CompileError::Tool("user-copy fault entry middle word does not fit u16".into())
+        })?,
+    );
+    write_u32(
+        protected,
+        gate + 8,
+        u32::try_from(user_copy_fault_entry >> 32).map_err(|_| {
+            CompileError::Tool("user-copy fault entry high word does not fit u32".into())
+        })?,
     );
     write_u32(protected, gate + 12, 0);
 
@@ -742,7 +781,7 @@ fn real_mode_continuation_code() -> Result<Vec<u8>, CompileError> {
         &narrow_u32(X86_PROTECTED_PAYLOAD_ADDRESS, "protected payload")?.to_le_bytes(),
     );
     code.extend_from_slice(&0x08_u16.to_le_bytes());
-    code.extend_from_slice(&31_u16.to_le_bytes());
+    code.extend_from_slice(&47_u16.to_le_bytes());
     code.extend_from_slice(&narrow_u32(GDT_ADDRESS, "GDT")?.to_le_bytes());
     Ok(code)
 }
@@ -908,11 +947,23 @@ mod tests {
             u64::from_le_bytes(protected[pml4..pml4 + 8].try_into().unwrap()),
             PAGE_TABLE_PDPT_ADDRESS | 3
         );
+        let gdt = usize::try_from(GDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 32..gdt + 40].try_into().unwrap()),
+            0x00cf_f200_0000_ffff
+        );
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 40..gdt + 48].try_into().unwrap()),
+            0x00af_fa00_0000_ffff
+        );
         let gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap() + 3 * 16;
         assert_eq!(protected[gate + 5], 0x8f);
         let local_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
             + LOCAL_NOTIFICATION_VECTOR * 16;
         assert_eq!(protected[local_gate + 5], 0x8e);
+        let page_fault_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
+            + PAGE_FAULT_VECTOR * 16;
+        assert_eq!(protected[page_fault_gate + 5], 0x8e);
         let deadline_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
             + DEADLINE_VECTOR * 16;
         assert_eq!(protected[deadline_gate + 5], 0x8e);

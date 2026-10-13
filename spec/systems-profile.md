@@ -344,6 +344,58 @@ escape, and a bootstrap disposition with a live extent SHALL be invalid.
 Allocation choice and coalescing MAY vary only when success, failure, alignment,
 non-overlap, ownership, and provenance observations remain equivalent.
 
+The initial x86-64 executable profile SHALL admit only the static allocation
+shapes `(frame-count: 1, alignment-frames: 1)` and `(frame-count: 3,
+alignment-frames: 1)`. Either successful request SHALL produce one indivisible
+extent and SHALL require release of that complete extent. The profile SHALL
+reject every other count or alignment, a dynamic request, extent splitting,
+and more than one simultaneously live extent before artifact publication.
+
+The disjoint-live-extent refinement SHALL permit one exception to that last
+restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
+extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
+identity. The complete returned interval SHALL be disjoint from the prepared
+space's complete backing interval, all reservations, and all non-allocatable
+ranges. The additional extent SHALL be released before user-state preparation.
+No third live extent, alternative shape, split, address observation, or
+recoverable disposition with the additional extent live SHALL be admitted.
+
+The initial `PreparedUserAddressSpace` MAY consume that additional extent in
+one `probe-guard` verification transaction. The transaction SHALL derive only
+RW/NX user mapping authority, SHALL confirm one fixed byte store/load through
+that mapping, SHALL revoke all derived access, SHALL complete the target
+translation-invalidation contract, and SHALL return the exact input extent.
+Success SHALL NOT be observable before revocation and completion. The prepared
+address-space identity and backing SHALL remain unchanged, and user-state
+preparation SHALL remain invalid until source releases the returned extent.
+
+The affine refinement SHALL represent that transaction with four closed
+operations. `user address space map` SHALL consume the additional extent and
+produce one fresh opaque `LiveUserMapping`; `user mapping store byte` SHALL
+consume it and produce `StoredUserMapping`; `user mapping load byte` SHALL
+consume that refinement, compare the fixed byte, and produce
+`VerifiedUserMapping`; and `user address space unmap` SHALL consume the
+verified mapping and return exactly the original extent. Publication SHALL
+complete before map success, and revocation plus target translation completion
+SHALL precede unmap success. The prepared address-space identity and original
+backing SHALL be invariant across all four operations.
+
+Skipping, reordering, duplicating, or using a consumed refinement; releasing
+the extent or preparing user state while a mapping is live; using another
+address space, extent, layout, right, or byte; and recoverable disposition
+after publication failure SHALL be invalid. The initial refinement SHALL admit
+only the sealed `probe-guard` layout, RW/NX rights, and one fixed byte. A
+bounded reuse refinement MAY admit exactly two explicit sequential lifecycles
+over the same returned extent. Each map SHALL create a fresh opaque mapping
+identity, and the second map SHALL begin only after first-generation revocation
+and target translation completion. No first-generation access or refinement
+SHALL survive or be accepted by the second generation. Release SHALL follow
+the second unmap. Identity reuse, cross-generation substitution, release
+between generations, a third generation, simultaneous mappings, and user-state
+preparation before final release SHALL be invalid. The refinement SHALL expose
+no address or descriptor value and SHALL NOT constitute a general user-mapping
+or image-construction API.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
@@ -448,6 +500,42 @@ untrusted candidate range and maximum extent, direction, layout or byte policy,
 kernel-owned storage, and partial-progress/interruption policy. It SHALL return
 validated data, permitted partial progress, or a structured fault. Direct
 source access through a user candidate SHALL be invalid.
+
+The initial `copy_to_user` form SHALL derive exactly one opaque affine
+`UserTransferScope P A T B I` from a live `UserSyscallContext P A T B I`.
+Opening the scope SHALL suspend disposition of that entry. Each transfer SHALL
+consume one scope and return exactly one refined successor with either
+`Complete(copied = extent)` or `Fault(copied-prefix)`; reunion with the exact
+successor SHALL be required before return or termination. Candidate overflow,
+wrong identity, duplicate scope use, direct candidate access, and disposition
+with a live scope SHALL be rejected before lowering or fail closed.
+
+The initial executable x86-64 profile SHALL extend its generated probe with
+native Linux syscall 63 (`uname`). One valid call SHALL receive a source-owned,
+six-field, 65-byte-per-field `new_utsname` and result zero. One call whose
+390-byte destination crosses from its writable user page into an unmapped
+guard page SHALL enter only the generated page-fault recovery continuation and
+return Linux `-EFAULT`. Prefix stores before fault MAY remain observable.
+Unscoped or mismatched page faults SHALL remain fatal.
+
+The initial `copy_from_user` form SHALL consume and return the same exact
+entry-bound affine scope. Its destination staging SHALL remain inaccessible to
+source unless the selected layout was copied completely and validated.
+`Complete(value, copied = extent)` SHALL expose that value;
+`Fault(copied-prefix)` SHALL expose no staging bytes or partial value.
+
+The executable x86-64 profile SHALL then invoke native Linux syscall 35
+(`nanosleep`) with a null remainder candidate. One call SHALL copy and validate
+a native 16-byte `{ tv_sec = 0, tv_nsec = 0 }` and return zero without arming a
+deadline. One call SHALL copy its first eight bytes before the final field
+crosses into the unmapped guard page, recover only at the generated supervisor
+read site, discard the staging value, and return Linux `-EFAULT`. A direction,
+fault class, site, address, entry, extent, layout, or prefix mismatch SHALL
+remain fatal or fail closed.
+
+These initial forms SHALL NOT admit arbitrary extents or input layouts,
+concurrent mapping changes, nonzero sleep, remainder output, interruption,
+restart, general UTS namespaces, or core-language exception handling.
 
 An unlisted fault, nested fault outside its own admitted scope,
 machine-critical event, or corrupted entry/stack state SHALL NOT be caught by
@@ -710,6 +798,100 @@ floating-point or vector ownership, TLS/per-CPU switching, stack growth, or
 cross-transfer unwinding. Target interrupt frames, register sets, mask state,
 stack-switch instructions, and interrupt-return mechanics SHALL remain
 provider evidence.
+
+### TOPAL-SYSTEMS-CONTEXT-005 — One-shot affine kernel completion
+
+A one-shot `KernelCompletion P I` SHALL create exactly one affine wait endpoint
+and one affine signal endpoint with matching fresh identity `I`. Neither
+endpoint SHALL be copied, forged, serialized, substituted across processor,
+provider, address-space, or completion identities, or survive completion.
+
+A completion-bound transfer SHALL register the dispatcher's exact suspended
+continuation before its selected worker may consume the wait endpoint. The
+block and signal transitions SHALL have one declared linearization order. If
+blocking linearizes first, the provider SHALL capture the exact worker as one
+opaque `BlockedKernelContextTransfer P I` and resume only the registered
+dispatcher. Consuming that outcome with the matching signal endpoint SHALL
+produce one `SuspendedKernelContext P` for source-owned enqueue. Later transfer
+to that context SHALL resume immediately after the block operation.
+
+If signalling linearizes first, readiness SHALL persist and the matching block
+operation SHALL complete without sleeping. Repeated wait, repeated signal,
+wrong identity, wrong dispatcher, dropped blocked state, enqueue before wake,
+and disposition with a live endpoint or blocked context SHALL be rejected.
+The provider SHALL NOT select a runnable context or own a run queue.
+
+The initial executable profile SHALL statically refine the block-first branch,
+run and reclaim the terminal context, signal and enqueue the blocked worker,
+then resume, retire, and reclaim it before consuming the empty runnable queue
+and completion. It SHALL retain one processor, one active address space, one
+waiter, and one signal and SHALL NOT admit multiple waiters, repeated signals,
+predicate wait queues, spurious wakeups, timeouts, cancellation, process
+signals, priority ordering, cross-processor wakeup, SMP, or user contexts.
+
+### TOPAL-SYSTEMS-CONTEXT-006 — Affine user execution and syscall round trip
+
+`ValidatedUserState A B` SHALL be opaque affine authority for one legal user
+continuation in address space `A` under ABI personality `B`. A
+`SuspendedUserContext P A T B` SHALL additionally retain processor `P` and
+thread `T`. Source SHALL NOT inspect, construct, copy, serialize, or reinterpret
+their instruction, stack, status, register, descriptor, privilege, frame, or
+return representation.
+
+Entering user execution SHALL consume one running kernel context and one
+matching suspended user context. A syscall SHALL produce exactly one affine
+`UserSyscallContext P A T B I` with fresh entry identity `I`. Its accessors
+SHALL expose the ABI syscall number and six arguments only as untrusted
+semantic machine words. The handler SHALL consume it through exactly one
+closed disposition: `ReturnToUser(result)` SHALL encode one ABI result,
+revalidate, and resume only the captured user continuation;
+`TerminateUser(status)` SHALL consume that continuation and restore only its
+registered kernel continuation with terminal status.
+
+The backend SHALL own privilege transition, kernel entry stack, saved target
+state, speculation/security sequence, result placement, return validation, and
+legal fast or general return mechanics. A provider SHALL NOT select a syscall,
+invent a result, expose its frame, or own Linux dispatch policy. Wrong
+processor, address-space, thread, ABI, entry, or continuation identity;
+duplicate entry or disposition; return after termination; and disposition with
+a live syscall context SHALL be rejected.
+
+Initial user-address-space preparation SHALL consume exactly one live
+three-frame `PhysicalFrameExtent` and the sealed `initial-probe` layout into a
+fresh opaque `PreparedUserAddressSpace A`. Initial user-state preparation SHALL
+consume that exact space into its `SuspendedUserContext P A T B`. The user
+context SHALL exclusively own the space and complete extent through every
+entry, syscall return, and terminal transition.
+
+Terminal completion SHALL revoke all mappings derived from the extent, satisfy
+the provider translation-invalidation contract, and return exactly one opaque
+`RevokedUserAddressSpace A`. Reclaim SHALL consume that revoked state and
+return exactly the original indivisible extent. Wrong identity, reclaim before
+revocation, duplicate transition, release, splitting, access, reuse, or
+disposition while either address-space or user-execution state owns the extent
+SHALL be invalid. Failure after publication begins SHALL be fatal-only in the
+initial profile.
+
+The initial executable x86-64 profile SHALL create one process/thread and one
+generated ring-3 probe in allocator-backed validated RX and RW/NX user
+mappings. The probe
+SHALL invoke native Linux syscall 39 (`getpid`), verify the source-owned PID
+result after one return to user mode, exercise syscall 63 (`uname`) through the
+separately specified initial `copy_to_user` success and fault paths, exercise
+syscall 35 (`nanosleep`) through the initial `copy_from_user` success and fault
+paths, and invoke syscall 231 (`exit_group`) with status zero. Termination SHALL
+restore the exact registered kernel continuation. The probe SHALL be
+qualification evidence, not an executable format or loader. ELF, dynamic
+linking, pointer-bearing syscalls other than sealed `uname` and zero-duration
+`nanosleep`, general user copy, signals, restart, seccomp, audit, ptrace, TLS,
+extended state, fork/clone, multiple processes or threads, user preemption,
+migration, SMP, and the complete syscall table SHALL remain unavailable.
+
+The initial profile SHALL admit one live `initial-probe` address space. It
+SHALL NOT expose or admit source-selected virtual addresses, page-table levels
+or entries, arbitrary permissions, ELF segments, dynamic stack construction,
+concurrent address-space edits, multiple live spaces, or address-space
+switching.
 
 ### TOPAL-SYSTEMS-DEVICE-001 — Register protocol access
 

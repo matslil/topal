@@ -31,15 +31,23 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    model_systems_transitions,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
 use topal_language::compiler::{
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
     SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
     SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -61,29 +69,37 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL, X86_SYSTEMS_USER_SYSCALL_SYMBOL,
     generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/14";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/14";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/25";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/25";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
 pub const X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY: &str = "topal_x86_systems_local_notification_entry";
 pub const X86_SYSTEMS_DEADLINE_ENTRY: &str = "topal_x86_systems_deadline_entry";
 pub const X86_SYSTEMS_KERNEL_THREAD_ENTRY: &str = "topal_x86_systems_kernel_thread_entry";
+pub const X86_SYSTEMS_COMPLETION_THREAD_ENTRY: &str = "topal_x86_systems_completion_thread_entry";
 pub const X86_SYSTEMS_TERMINAL_THREAD_ENTRY: &str = "topal_x86_systems_terminal_thread_entry";
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 37] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 45] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_DEADLINE_ENTRY,
     X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+    X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
     X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
@@ -113,6 +129,13 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 37] = [
     X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
     X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ENTER_SYMBOL,
+    X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -416,6 +439,7 @@ fn artifact_provenance(
             X86_SYSTEMS_DEBUG_BREAK_ENTRY.into(),
             X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY.into(),
             X86_SYSTEMS_DEADLINE_ENTRY.into(),
+            X86_SYSTEMS_USER_COPY_FAULT_SYMBOL.into(),
         ],
         bootstrap_storage_capacity: plan.bootstrap_placement.capacity_bytes,
         bootstrap_storage_alignment: plan.bootstrap_placement.alignment_bytes,
@@ -620,6 +644,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_KERNEL_ENTRY,
         X86_SYSTEMS_DEBUG_BREAK_ENTRY,
         X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+        X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
         X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
         X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
@@ -637,6 +662,7 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
         X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL,
         X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
         X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+        X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
         "topal_x86_systems_uart16550_write",
         "topal_bootstrap_storage",
     ] {
@@ -678,6 +704,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
         (
             "topal.systems.entry.resumed.kernel-thread/1",
             X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+        ),
+        (
+            "topal.systems.entry.resumed.completion-thread/1",
+            X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
         ),
         (
             "topal.systems.entry.resumed.terminal-thread/1",
@@ -772,6 +802,49 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             SYSTEMS_KERNEL_CONTEXT_RECLAIM,
             X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
         ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_MAPPING_STORE_BYTE,
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_MAPPING_LOAD_BYTE,
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_CONTEXT_PREPARE,
+            X86_SYSTEMS_USER_PREPARE_SYMBOL,
+        ),
+        (SYSTEMS_USER_CONTEXT_ENTER, X86_SYSTEMS_USER_ENTER_SYMBOL),
+        (
+            SYSTEMS_USER_CONTEXT_COMPLETE,
+            X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+        ),
+        (SYSTEMS_USER_COPY_TO, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
+        (SYSTEMS_USER_COPY_FROM, X86_SYSTEMS_USER_SYSCALL_SYMBOL),
+        (
+            SYSTEMS_USER_SYSCALL_DISPATCH,
+            X86_SYSTEMS_USER_SYSCALL_SYMBOL,
+        ),
         (SYSTEMS_CONSOLE_WRITE, "topal_x86_systems_uart16550_write"),
         (SYSTEMS_DEBUG_BREAK, "topal_x86_systems_debug_break"),
         (
@@ -856,7 +929,19 @@ enum ProviderSymbol {
     PreemptCurrentKernelContext,
     RetireKernelContext,
     ReclaimKernelContext,
+    PrepareUserAddressSpace,
+    VerifyUserAddressSpaceMapping,
+    MapUserAddressSpace,
+    StoreUserMappingByte,
+    LoadUserMappingByte,
+    UnmapUserAddressSpace,
+    PrepareUserProbe,
+    EnterUserContext,
+    CompleteUserBacking,
+    ReclaimUserAddressSpace,
+    UserSyscall,
     KernelThreadEntry,
+    CompletionThreadEntry,
     TerminalThreadEntry,
     Uart16550Write,
     DebugBreak,
@@ -896,7 +981,21 @@ impl ProviderSymbol {
             Self::PreemptCurrentKernelContext => X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL,
             Self::RetireKernelContext => X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
             Self::ReclaimKernelContext => X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
+            Self::PrepareUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+            Self::VerifyUserAddressSpaceMapping => {
+                X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL
+            }
+            Self::MapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+            Self::StoreUserMappingByte => X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            Self::LoadUserMappingByte => X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            Self::UnmapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+            Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
+            Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
+            Self::CompleteUserBacking => X86_SYSTEMS_USER_COMPLETE_SYMBOL,
+            Self::ReclaimUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+            Self::UserSyscall => X86_SYSTEMS_USER_SYSCALL_SYMBOL,
             Self::KernelThreadEntry => X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+            Self::CompletionThreadEntry => X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
             Self::TerminalThreadEntry => X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
             Self::Uart16550Write => "topal_x86_systems_uart16550_write",
             Self::DebugBreak => "topal_x86_systems_debug_break",
@@ -937,7 +1036,19 @@ impl ProviderSymbol {
             | Self::PreemptCurrentKernelContext
             | Self::RetireKernelContext
             | Self::ReclaimKernelContext
+            | Self::PrepareUserAddressSpace
+            | Self::VerifyUserAddressSpaceMapping
+            | Self::MapUserAddressSpace
+            | Self::StoreUserMappingByte
+            | Self::LoadUserMappingByte
+            | Self::UnmapUserAddressSpace
+            | Self::PrepareUserProbe
+            | Self::EnterUserContext
+            | Self::CompleteUserBacking
+            | Self::ReclaimUserAddressSpace
+            | Self::UserSyscall
             | Self::KernelThreadEntry
+            | Self::CompletionThreadEntry
             | Self::TerminalThreadEntry
             | Self::Uart16550Write
             | Self::DebugBreak
@@ -997,7 +1108,7 @@ struct RootEncoder {
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
-    physical_frames_live: bool,
+    physical_frame_count: Option<u64>,
     kernel_mapping_live: bool,
     translation: RootTranslationState,
     critical: RootCriticalState,
@@ -1008,7 +1119,9 @@ struct RootEncoder {
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
     bootstrap_next_offset: u64,
-    context_stack_offsets: [Option<u64>; 2],
+    context_stack_offsets: [Option<u64>; 3],
+    completion: RootCompletionState,
+    user_execution: RootUserExecutionState,
     role: RootRole,
 }
 
@@ -1020,6 +1133,7 @@ enum RootRole {
     LocalNotificationHandler,
     DeadlineHandler,
     CooperativeKernelThreadHandler,
+    CompletionKernelThreadHandler,
     TerminalKernelThreadHandler,
 }
 
@@ -1067,21 +1181,56 @@ enum RootKernelContextState {
     #[default]
     Fresh,
     CooperativeCreated,
-    BothSuspended,
+    CompletionCreated,
+    AllSuspended,
     QueueCreated,
     CooperativeEnqueued,
-    BothEnqueued,
+    CompletionEnqueued,
+    AllEnqueued,
     CooperativeDequeued,
     CooperativeYielded,
     PreemptedTaken,
     HandoffEnqueued,
+    CompletionDequeued,
+    CompletionBlocked,
     TerminalDequeued,
     TerminalCompleted,
     TerminalReclaimed,
+    CompletionSignaled,
+    CompletionEnqueuedAgain,
     CooperativeDequeuedAgain,
     CooperativeCompleted,
-    Reclaimed,
+    CooperativeReclaimed,
+    CompletionDequeuedAgain,
+    CompletionCompleted,
+    CompletionReclaimed,
     QueueConsumed,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootCompletionState {
+    #[default]
+    Fresh,
+    Created,
+    Blocked,
+    Signaled,
+    Consumed,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootUserExecutionState {
+    #[default]
+    Fresh,
+    AddressSpacePrepared,
+    UserMappingLive(u8),
+    UserMappingStored(u8),
+    UserMappingVerified(u8),
+    AddressSpaceMappedOnce,
+    AddressSpaceVerified,
+    Prepared,
+    Completed,
+    Revoked,
+    Consumed,
 }
 
 #[derive(Clone, Copy)]
@@ -1114,7 +1263,19 @@ struct ProviderSymbols {
     preempt_current_kernel_context: SymbolId,
     retire_kernel_context: SymbolId,
     reclaim_kernel_context: SymbolId,
+    prepare_user_address_space: SymbolId,
+    verify_user_address_space_mapping: SymbolId,
+    map_user_address_space: SymbolId,
+    store_user_mapping_byte: SymbolId,
+    load_user_mapping_byte: SymbolId,
+    unmap_user_address_space: SymbolId,
+    prepare_user_probe: SymbolId,
+    enter_user_context: SymbolId,
+    complete_user_backing: SymbolId,
+    reclaim_user_address_space: SymbolId,
+    user_syscall: SymbolId,
     kernel_thread_entry: Option<SymbolId>,
+    completion_thread_entry: Option<SymbolId>,
     terminal_thread_entry: Option<SymbolId>,
     uart16550_write: SymbolId,
     debug_break: SymbolId,
@@ -1145,24 +1306,31 @@ impl RootEncoder {
         alignment_frames: u64,
     ) -> Result<(), CompileError> {
         if !self.frame_allocator_created
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
-            || frame_count != 1
+            || !matches!(frame_count, 1 | 3)
             || alignment_frames != 1
+            || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
+                && frame_count != 1)
         {
             return Err(CompileError::Tool(
-                "x86 root lowering requires one live allocator and the sealed one-frame request"
-                    .into(),
+                "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
             ));
+        }
+        if self.user_execution == RootUserExecutionState::AddressSpacePrepared {
+            self.load_bootstrap_storage_address(176)?;
+            self.bytes.extend_from_slice(&[0x48, 0x8b, 0x4f, 0x68]); // excluded backing base in rcx
+        } else {
+            self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
         }
         match self.translation {
             RootTranslationState::BootstrapActive => {
                 self.bytes
                     .extend_from_slice(&[0xbf, 0x00, 0x00, 0x00, 0x01]);
             }
-            RootTranslationState::ReplacementActive => {
+            RootTranslationState::ReplacementActive | RootTranslationState::RemovedActive => {
                 self.bytes
-                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x40, 0x00, 0x00]);
+                    .extend_from_slice(&[0x49, 0x8d, 0xbf, 0x00, 0x50, 0x00, 0x00]);
             }
             _ => {
                 return Err(CompileError::Tool(
@@ -1171,11 +1339,15 @@ impl RootEncoder {
             }
         }
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // rsi = retained boot params
+        let frame_count = u32::try_from(frame_count)
+            .map_err(|_| CompileError::Tool("physical frame count exceeds u32".into()))?;
+        self.bytes.push(0xba); // edx = frame count
+        self.bytes.extend_from_slice(&frame_count.to_le_bytes());
         self.call(ProviderSymbol::AllocatePhysicalFrames);
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
-        self.physical_frames_live = true;
+        self.physical_frame_count = Some(u64::from(frame_count));
         Ok(())
     }
 
@@ -1183,7 +1355,7 @@ impl RootEncoder {
         &mut self,
         request: CompilerKernelMappingRequest,
     ) -> Result<(), CompileError> {
-        if !self.physical_frames_live
+        if self.physical_frame_count != Some(1)
             || self.kernel_mapping_live
             || request != CompilerKernelMappingRequest::initial_read_write()
         {
@@ -1192,7 +1364,7 @@ impl RootEncoder {
                     .into(),
             ));
         }
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.kernel_mapping_live = true;
         Ok(())
     }
@@ -1242,24 +1414,25 @@ impl RootEncoder {
     }
 
     fn unmap_kernel_frames(&mut self) -> Result<(), CompileError> {
-        if !self.kernel_mapping_live || self.physical_frames_live {
+        if !self.kernel_mapping_live || self.physical_frame_count.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered unmap without a live kernel mapping".into(),
             ));
         }
         self.kernel_mapping_live = false;
-        self.physical_frames_live = true;
+        self.physical_frame_count = Some(1);
         Ok(())
     }
 
     fn release_physical_frames(&mut self) -> Result<(), CompileError> {
-        if !self.physical_frames_live {
+        if self.physical_frame_count.is_none() {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
         }
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
+        self.bytes.extend_from_slice(&[0x31, 0xd2]); // clear transient frame count
         Ok(())
     }
 
@@ -1268,7 +1441,7 @@ impl RootEncoder {
         request: CompilerTranslationUpdateRequest,
     ) -> Result<(), CompileError> {
         if !self.frame_allocator_created
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::BootstrapActive
             || request != CompilerTranslationUpdateRequest::initial_bootstrap_equivalent()
@@ -1319,7 +1492,7 @@ impl RootEncoder {
         match kind {
             CompilerTranslationEditKind::Map
                 if self.translation == RootTranslationState::ReplacementActive
-                    && self.physical_frames_live
+                    && self.physical_frame_count == Some(1)
                     && !self.kernel_mapping_live =>
             {
                 self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // payload in rdi
@@ -1334,7 +1507,7 @@ impl RootEncoder {
             CompilerTranslationEditKind::Unmap
                 if self.translation == RootTranslationState::MappedActive
                     && self.kernel_mapping_live
-                    && !self.physical_frames_live =>
+                    && self.physical_frame_count.is_none() =>
             {
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xff]); // active root
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf6]); // mapping
@@ -1357,7 +1530,7 @@ impl RootEncoder {
         request: CompilerTranslationMappingRequest,
     ) -> Result<(), CompileError> {
         if self.translation != RootTranslationState::MapEdit
-            || !self.physical_frames_live
+            || self.physical_frame_count != Some(1)
             || self.kernel_mapping_live
             || request != CompilerTranslationMappingRequest::initial_read_write()
         {
@@ -1368,7 +1541,7 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe7]); // metadata PD
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // payload frame
         self.call_checked_bool(ProviderSymbol::MapTranslationFrames)?;
-        self.physical_frames_live = false;
+        self.physical_frame_count = None;
         self.translation = RootTranslationState::MapStaged;
         Ok(())
     }
@@ -1376,7 +1549,7 @@ impl RootEncoder {
     fn unmap_translation_mapping(&mut self) -> Result<(), CompileError> {
         if self.translation != RootTranslationState::UnmapEdit
             || !self.kernel_mapping_live
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires an unmap edit and its live mapping".into(),
@@ -1418,7 +1591,7 @@ impl RootEncoder {
                     .extend_from_slice(&[0xba, 0x01, 0x00, 0x00, 0x00]);
                 self.call_checked_bool(ProviderSymbol::CommitTranslationEdit)?;
                 self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]);
-                self.physical_frames_live = true;
+                self.physical_frame_count = Some(1);
                 self.translation = RootTranslationState::RemovedActive;
             }
             _ => {
@@ -1433,7 +1606,7 @@ impl RootEncoder {
     fn enter_critical(&mut self, domain: CompilerCriticalDomain) -> Result<(), CompileError> {
         if domain != CompilerCriticalDomain::LocalMaskableInterrupts
             || self.critical == RootCriticalState::Live
-            || self.physical_frames_live
+            || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -1475,7 +1648,7 @@ impl RootEncoder {
                 "x86 root lowering ended with a live bootstrap region".into(),
             ));
         }
-        if self.physical_frames_live {
+        if self.physical_frame_count.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live physical-frame extent".into(),
             ));
@@ -1515,13 +1688,27 @@ impl RootEncoder {
             && self.kernel_context != RootKernelContextState::QueueConsumed
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without reclaiming both contexts and consuming its runnable queue"
+                "x86 root lowering ended without reclaiming all contexts and consuming its runnable queue"
                     .into(),
             ));
         }
-        if self.context_stack_offsets != [None, None] {
+        if self.context_stack_offsets != [None, None, None] {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live cooperative context stack".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && self.completion != RootCompletionState::Consumed
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live one-shot completion".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && self.user_execution != RootUserExecutionState::Consumed
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended with a live initial user execution".into(),
             ));
         }
         if matches!(
@@ -1904,11 +2091,16 @@ impl RootEncoder {
             RootKernelContextState::CooperativeCreated
                 if self.bootstrap_region_offset == Some(20_480) =>
             {
-                (1, 112, 20_480, ProviderSymbol::TerminalThreadEntry)
+                (1, 112, 20_480, ProviderSymbol::CompletionThreadEntry)
+            }
+            RootKernelContextState::CompletionCreated
+                if self.bootstrap_region_offset == Some(36_864) =>
+            {
+                (2, 144, 36_864, ProviderSymbol::TerminalThreadEntry)
             }
             _ => {
                 return Err(CompileError::Tool(
-                    "x86 cooperative profile creates exactly two contexts from its sealed disjoint stacks"
+                    "x86 profile creates exactly three contexts from its sealed disjoint stacks"
                         .into(),
                 ));
             }
@@ -1922,11 +2114,25 @@ impl RootEncoder {
         self.rip_relative_symbol(entry, 0)?;
         self.call_checked_bool(ProviderSymbol::CreateKernelContext)?;
         self.context_stack_offsets[index] = self.bootstrap_region_offset.take();
-        self.kernel_context = if index == 0 {
-            RootKernelContextState::CooperativeCreated
-        } else {
-            RootKernelContextState::BothSuspended
+        self.kernel_context = match index {
+            0 => RootKernelContextState::CooperativeCreated,
+            1 => RootKernelContextState::CompletionCreated,
+            2 => RootKernelContextState::AllSuspended,
+            _ => unreachable!("closed context index"),
         };
+        Ok(())
+    }
+
+    fn create_kernel_completion(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.completion != RootCompletionState::Fresh
+            || self.kernel_context != RootKernelContextState::Fresh
+        {
+            return Err(CompileError::Tool(
+                "x86 completion creation requires one fresh dispatcher state".into(),
+            ));
+        }
+        self.completion = RootCompletionState::Created;
         Ok(())
     }
 
@@ -1943,23 +2149,28 @@ impl RootEncoder {
         }
         let (state_offset, next_state) = match self.kernel_context {
             RootKernelContextState::CooperativeDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
+                if self.context_stack_offsets == [Some(4096), Some(20_480), Some(36_864)] =>
             {
                 (80, RootKernelContextState::CooperativeYielded)
             }
             RootKernelContextState::TerminalDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480)] =>
+                if self.context_stack_offsets == [Some(4096), Some(20_480), Some(36_864)] =>
             {
-                (112, RootKernelContextState::TerminalCompleted)
+                (144, RootKernelContextState::TerminalCompleted)
             }
             RootKernelContextState::CooperativeDequeuedAgain
-                if self.context_stack_offsets == [Some(4096), None] =>
+                if self.context_stack_offsets == [Some(4096), Some(20_480), None] =>
             {
                 (80, RootKernelContextState::CooperativeCompleted)
             }
+            RootKernelContextState::CompletionDequeuedAgain
+                if self.context_stack_offsets == [None, Some(20_480), None] =>
+            {
+                (112, RootKernelContextState::CompletionCompleted)
+            }
             _ => {
                 return Err(CompileError::Tool(
-                    "x86 kernel-context transfers must follow cooperative, terminal, cooperative FIFO order"
+                    "x86 kernel-context transfers must follow terminal, preemptible, then awakened-completion order"
                         .into(),
                 ));
             }
@@ -1973,7 +2184,7 @@ impl RootEncoder {
     fn transfer_kernel_context_until_deadline(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.kernel_context != RootKernelContextState::CooperativeDequeued
-            || self.context_stack_offsets != [Some(4096), Some(20_480)]
+            || self.context_stack_offsets != [Some(4096), Some(20_480), Some(36_864)]
             || self.deadline != RootDeadlineState::Constructed
             || self.critical != RootCriticalState::Restored
         {
@@ -2001,6 +2212,63 @@ impl RootEncoder {
         self.call_checked_bool(ProviderSymbol::AwaitDeadlinePreemption)
     }
 
+    fn transfer_kernel_context_until_completion(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::CompletionDequeued
+            || self.completion != RootCompletionState::Created
+            || self.context_stack_offsets != [Some(4096), Some(20_480), Some(36_864)]
+            || self.critical != RootCriticalState::Restored
+        {
+            return Err(CompileError::Tool(
+                "x86 completion-bound transfer requires the fresh selected block-once worker"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(112)?;
+        self.call_checked_bool(ProviderSymbol::TransferKernelContext)?;
+        self.kernel_context = RootKernelContextState::CompletionBlocked;
+        self.completion = RootCompletionState::Blocked;
+        Ok(())
+    }
+
+    fn await_kernel_completion(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::CompletionKernelThreadHandler {
+            return Err(CompileError::Tool(
+                "x86 completion await is admitted only in its bound block-once worker".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(112)?;
+        self.call_checked_bool(ProviderSymbol::TransferKernelContext)
+    }
+
+    fn signal_blocked_kernel_completion(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::TerminalReclaimed
+            || self.completion != RootCompletionState::Blocked
+        {
+            return Err(CompileError::Tool(
+                "x86 completion signal requires the exact blocked worker after terminal reclamation"
+                    .into(),
+            ));
+        }
+        self.kernel_context = RootKernelContextState::CompletionSignaled;
+        self.completion = RootCompletionState::Signaled;
+        Ok(())
+    }
+
+    fn consume_kernel_completion(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::CompletionReclaimed
+            || self.completion != RootCompletionState::Signaled
+        {
+            return Err(CompileError::Tool(
+                "x86 completion consumption requires its awakened worker reclamation".into(),
+            ));
+        }
+        self.completion = RootCompletionState::Consumed;
+        Ok(())
+    }
+
     fn take_preempted_kernel_context(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.kernel_context != RootKernelContextState::CooperativeYielded
@@ -2026,11 +2294,12 @@ impl RootEncoder {
 
     fn create_runnable_queue(&mut self, capacity: usize) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.kernel_context != RootKernelContextState::BothSuspended
-            || capacity != 2
+            || self.kernel_context != RootKernelContextState::AllSuspended
+            || capacity != 3
         {
             return Err(CompileError::Tool(
-                "x86 root runnable queue requires both suspended contexts and capacity two".into(),
+                "x86 root runnable queue requires three suspended contexts and capacity three"
+                    .into(),
             ));
         }
         self.kernel_context = RootKernelContextState::QueueCreated;
@@ -2040,11 +2309,17 @@ impl RootEncoder {
     fn enqueue_runnable_context(&mut self) -> Result<(), CompileError> {
         self.kernel_context = match self.kernel_context {
             RootKernelContextState::QueueCreated => RootKernelContextState::CooperativeEnqueued,
-            RootKernelContextState::CooperativeEnqueued => RootKernelContextState::BothEnqueued,
+            RootKernelContextState::CooperativeEnqueued => {
+                RootKernelContextState::CompletionEnqueued
+            }
+            RootKernelContextState::CompletionEnqueued => RootKernelContextState::AllEnqueued,
             RootKernelContextState::PreemptedTaken => RootKernelContextState::HandoffEnqueued,
+            RootKernelContextState::CompletionSignaled => {
+                RootKernelContextState::CompletionEnqueuedAgain
+            }
             _ => {
                 return Err(CompileError::Tool(
-                    "x86 root runnable enqueue violates cooperative, terminal, cooperative FIFO ownership"
+                    "x86 root runnable enqueue violates the sealed three-worker FIFO ownership"
                         .into(),
                 ));
             }
@@ -2054,14 +2329,18 @@ impl RootEncoder {
 
     fn dequeue_runnable_context(&mut self) -> Result<(), CompileError> {
         self.kernel_context = match self.kernel_context {
-            RootKernelContextState::BothEnqueued => RootKernelContextState::CooperativeDequeued,
-            RootKernelContextState::HandoffEnqueued => RootKernelContextState::TerminalDequeued,
-            RootKernelContextState::TerminalReclaimed => {
+            RootKernelContextState::AllEnqueued => RootKernelContextState::CooperativeDequeued,
+            RootKernelContextState::HandoffEnqueued => RootKernelContextState::CompletionDequeued,
+            RootKernelContextState::CompletionBlocked => RootKernelContextState::TerminalDequeued,
+            RootKernelContextState::CompletionEnqueuedAgain => {
                 RootKernelContextState::CooperativeDequeuedAgain
+            }
+            RootKernelContextState::CooperativeReclaimed => {
+                RootKernelContextState::CompletionDequeuedAgain
             }
             _ => {
                 return Err(CompileError::Tool(
-                    "x86 root runnable dequeue violates cooperative, terminal, cooperative FIFO ownership"
+                    "x86 root runnable dequeue violates the sealed three-worker FIFO ownership"
                         .into(),
                 ));
             }
@@ -2070,9 +2349,11 @@ impl RootEncoder {
     }
 
     fn consume_empty_runnable_queue(&mut self) -> Result<(), CompileError> {
-        if self.kernel_context != RootKernelContextState::Reclaimed {
+        if self.kernel_context != RootKernelContextState::CompletionReclaimed
+            || self.completion != RootCompletionState::Consumed
+        {
             return Err(CompileError::Tool(
-                "x86 root runnable queue must be empty after both context reclamations".into(),
+                "x86 root runnable queue must be empty after all context and completion reclamations".into(),
             ));
         }
         self.kernel_context = RootKernelContextState::QueueConsumed;
@@ -2082,7 +2363,8 @@ impl RootEncoder {
     fn retire_kernel_context(&mut self) -> Result<(), CompileError> {
         let state_offset = match self.role {
             RootRole::CooperativeKernelThreadHandler => 80,
-            RootRole::TerminalKernelThreadHandler => 112,
+            RootRole::CompletionKernelThreadHandler => 112,
+            RootRole::TerminalKernelThreadHandler => 144,
             _ => {
                 return Err(CompileError::Tool(
                     "x86 kernel-context retirement is admitted only in a resumed entry".into(),
@@ -2102,14 +2384,19 @@ impl RootEncoder {
         }
         let (index, state_offset, next_state) = match self.kernel_context {
             RootKernelContextState::TerminalCompleted
-                if self.context_stack_offsets[1] == Some(20_480) =>
+                if self.context_stack_offsets[2] == Some(36_864) =>
             {
-                (1, 112, RootKernelContextState::TerminalReclaimed)
+                (2, 144, RootKernelContextState::TerminalReclaimed)
             }
             RootKernelContextState::CooperativeCompleted
                 if self.context_stack_offsets[0] == Some(4096) =>
             {
-                (0, 80, RootKernelContextState::Reclaimed)
+                (0, 80, RootKernelContextState::CooperativeReclaimed)
+            }
+            RootKernelContextState::CompletionCompleted
+                if self.context_stack_offsets[1] == Some(20_480) =>
+            {
+                (1, 112, RootKernelContextState::CompletionReclaimed)
             }
             _ => {
                 return Err(CompileError::Tool(
@@ -2121,6 +2408,202 @@ impl RootEncoder {
         self.call_checked_bool(ProviderSymbol::ReclaimKernelContext)?;
         self.context_stack_offsets[index] = None;
         self.kernel_context = next_state;
+        Ok(())
+    }
+
+    fn prepare_user_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.kernel_context != RootKernelContextState::QueueConsumed
+            || self.completion != RootCompletionState::Consumed
+            || self.user_execution != RootUserExecutionState::Fresh
+            || self.physical_frame_count != Some(3)
+            || self.translation != RootTranslationState::RemovedActive
+            || self.critical != RootCriticalState::Restored
+        {
+            return Err(CompileError::Tool(
+                "x86 user-address-space preparation requires completed kernel cleanup, exact three-frame backing, and the restored replacement translation".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]); // backing base in rdx
+        self.call_checked_bool(ProviderSymbol::PrepareUserAddressSpace)?;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+        self.physical_frame_count = None;
+        self.user_execution = RootUserExecutionState::AddressSpacePrepared;
+        Ok(())
+    }
+
+    fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::AddressSpaceVerified
+            || self.physical_frame_count.is_some()
+            || process_identity != 1
+        {
+            return Err(CompileError::Tool(
+                "x86 user probe preparation requires PID one, the exact prepared address space, and no source-owned extent".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]); // syscall entry in RSI
+        self.rip_relative_symbol(ProviderSymbol::UserSyscall, 0)?;
+        self.call_checked_bool(ProviderSymbol::PrepareUserProbe)?;
+        self.user_execution = RootUserExecutionState::Prepared;
+        Ok(())
+    }
+
+    fn verify_user_address_space_mapping(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::AddressSpacePrepared
+            || self.physical_frame_count != Some(1)
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping verification requires the prepared address space and one disjoint frame".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]); // disjoint frame base in rdx
+        self.call_checked_bool(ProviderSymbol::VerifyUserAddressSpaceMapping)?;
+        self.user_execution = RootUserExecutionState::AddressSpaceVerified;
+        Ok(())
+    }
+
+    fn map_user_address_space(&mut self) -> Result<(), CompileError> {
+        let generation = match self.user_execution {
+            RootUserExecutionState::AddressSpacePrepared => 1,
+            RootUserExecutionState::AddressSpaceMappedOnce => 2,
+            _ => 0,
+        };
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || generation == 0
+            || self.physical_frame_count != Some(1)
+        {
+            return Err(CompileError::Tool(
+                "x86 user map requires the prepared address space and one disjoint frame".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xda]);
+        self.call_checked_bool(ProviderSymbol::MapUserAddressSpace)?;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+        self.physical_frame_count = None;
+        self.user_execution = RootUserExecutionState::UserMappingLive(generation);
+        Ok(())
+    }
+
+    fn store_user_mapping_byte(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || !matches!(
+                self.user_execution,
+                RootUserExecutionState::UserMappingLive(_)
+            )
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping store requires the exact live mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::StoreUserMappingByte)?;
+        let RootUserExecutionState::UserMappingLive(generation) = self.user_execution else {
+            unreachable!("live mapping checked above");
+        };
+        self.user_execution = RootUserExecutionState::UserMappingStored(generation);
+        Ok(())
+    }
+
+    fn load_user_mapping_byte(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || !matches!(
+                self.user_execution,
+                RootUserExecutionState::UserMappingStored(_)
+            )
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user mapping load requires the exact stored mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::LoadUserMappingByte)?;
+        let RootUserExecutionState::UserMappingStored(generation) = self.user_execution else {
+            unreachable!("stored mapping checked above");
+        };
+        self.user_execution = RootUserExecutionState::UserMappingVerified(generation);
+        Ok(())
+    }
+
+    fn unmap_user_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || !matches!(
+                self.user_execution,
+                RootUserExecutionState::UserMappingVerified(_)
+            )
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 user unmap requires the exact verified mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call(ProviderSymbol::UnmapUserAddressSpace);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
+        self.physical_frame_count = Some(1);
+        let RootUserExecutionState::UserMappingVerified(generation) = self.user_execution else {
+            unreachable!("verified mapping checked above");
+        };
+        self.user_execution = match generation {
+            1 => RootUserExecutionState::AddressSpaceMappedOnce,
+            2 => RootUserExecutionState::AddressSpaceVerified,
+            _ => unreachable!("only two mapping generations are constructed"),
+        };
+        Ok(())
+    }
+
+    fn enter_user_context(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::Prepared
+        {
+            return Err(CompileError::Tool(
+                "x86 user entry requires the exact prepared affine user context".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::EnterUserContext)?;
+        self.user_execution = RootUserExecutionState::Completed;
+        Ok(())
+    }
+
+    fn complete_user_execution(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::Completed
+        {
+            return Err(CompileError::Tool(
+                "x86 user completion requires terminal exit_group restoration".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::CompleteUserBacking)?;
+        self.user_execution = RootUserExecutionState::Revoked;
+        Ok(())
+    }
+
+    fn reclaim_user_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::Revoked
+        {
+            return Err(CompileError::Tool(
+                "x86 user-address-space reclaim requires the exact revoked space".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call(ProviderSymbol::ReclaimUserAddressSpace);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
+        self.physical_frame_count = Some(3);
+        self.user_execution = RootUserExecutionState::Consumed;
         Ok(())
     }
 
@@ -2237,6 +2720,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::ArmDeadline
                     | CompilerSystemsOperation::WaitDeadline
                     | CompilerSystemsOperation::BootstrapRelease
+                    | CompilerSystemsOperation::PrepareUserAddressSpace
+                    | CompilerSystemsOperation::MapUserAddressSpace
+                    | CompilerSystemsOperation::StoreUserMappingByte
+                    | CompilerSystemsOperation::LoadUserMappingByte
+                    | CompilerSystemsOperation::UnmapUserAddressSpace
+                    | CompilerSystemsOperation::PrepareUserProbe { .. }
+                    | CompilerSystemsOperation::EnterUserContext
+                    | CompilerSystemsOperation::CompleteUserExecution
             )
         })
         || program
@@ -2348,7 +2839,49 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ReclaimKernelContext,
         ),
+        prepare_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PrepareUserAddressSpace,
+        ),
+        verify_user_address_space_mapping: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::VerifyUserAddressSpaceMapping,
+        ),
+        map_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::MapUserAddressSpace,
+        ),
+        store_user_mapping_byte: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::StoreUserMappingByte,
+        ),
+        load_user_mapping_byte: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::LoadUserMappingByte,
+        ),
+        unmap_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::UnmapUserAddressSpace,
+        ),
+        prepare_user_probe: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PrepareUserProbe,
+        ),
+        complete_user_backing: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CompleteUserBacking,
+        ),
+        reclaim_user_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReclaimUserAddressSpace,
+        ),
+        enter_user_context: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::EnterUserContext,
+        ),
+        user_syscall: undefined_provider_symbol(&mut object, ProviderSymbol::UserSyscall),
         kernel_thread_entry: None,
+        completion_thread_entry: None,
         terminal_thread_entry: None,
         uart16550_write: undefined_provider_symbol(&mut object, ProviderSymbol::Uart16550Write),
         debug_break: undefined_provider_symbol(&mut object, ProviderSymbol::DebugBreak),
@@ -2381,6 +2914,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 kernel-thread root cannot preempt itself as a deadline entry".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 kernel-thread root cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     let kernel_thread_entry = append_root(
         &mut object,
@@ -2390,6 +2928,38 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         symbols,
     )?;
     symbols.kernel_thread_entry = Some(kernel_thread_entry);
+
+    let mut completion_thread = RootEncoder {
+        role: RootRole::CompletionKernelThreadHandler,
+        ..RootEncoder::default()
+    };
+    encode_operations(
+        &mut completion_thread,
+        &program.completion_thread.handler.operations,
+    )?;
+    match program.completion_thread.handler.disposition {
+        CompilerSystemsDisposition::RetireKernelContextToCaller => {
+            completion_thread.retire_kernel_context()?;
+        }
+        CompilerSystemsDisposition::Fatal { .. } => {
+            completion_thread.jump(ProviderSymbol::Fatal);
+        }
+        CompilerSystemsDisposition::Resume
+        | CompilerSystemsDisposition::PreemptKernelContext
+        | CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 completion-thread root requires retirement disposition".into(),
+            ));
+        }
+    }
+    let completion_thread_entry = append_root(
+        &mut object,
+        text,
+        X86_SYSTEMS_COMPLETION_THREAD_ENTRY,
+        &completion_thread,
+        symbols,
+    )?;
+    symbols.completion_thread_entry = Some(completion_thread_entry);
 
     let mut terminal_thread = RootEncoder {
         role: RootRole::TerminalKernelThreadHandler,
@@ -2414,6 +2984,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 terminal-thread root cannot preempt a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 terminal-thread root cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     let terminal_thread_entry = append_root(
         &mut object,
@@ -2423,6 +2998,32 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         symbols,
     )?;
     symbols.terminal_thread_entry = Some(terminal_thread_entry);
+
+    if program.user_syscall.handler.operations
+        != [
+            CompilerSystemsOperation::CopyInitialUnameToUser,
+            CompilerSystemsOperation::CopyInitialTimespecFromUser,
+        ]
+        || program.user_syscall.handler.disposition
+            != (CompilerSystemsDisposition::DispatchInitialUserSyscall {
+                getpid_result: 1,
+                uname_sysname: "Linux".into(),
+                uname_nodename: "topal".into(),
+                uname_release: "7.2.9-topal".into(),
+                uname_version: "#1 Topal".into(),
+                uname_machine: "x86_64".into(),
+                uname_domainname: "(none)".into(),
+                nanosleep_seconds: 0,
+                nanosleep_nanoseconds: 0,
+                nanosleep_remainder_candidate: 0,
+                exit_group_status: 0,
+            })
+    {
+        return Err(CompileError::Tool(
+            "x86 initial user-syscall entry requires the sealed getpid/uname/nanosleep/exit_group dispatch"
+                .into(),
+        ));
+    }
 
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
@@ -2469,6 +3070,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 deadline entry cannot retire a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 deadline entry cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2509,6 +3115,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 "x86 local-notification entry cannot preempt a kernel context".into(),
             ));
         }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 local-notification entry cannot dispatch a user syscall".into(),
+            ));
+        }
     }
     append_root(
         &mut object,
@@ -2539,6 +3150,11 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         CompilerSystemsDisposition::PreemptKernelContext => {
             return Err(CompileError::Tool(
                 "x86 debug-break entry cannot preempt a kernel context".into(),
+            ));
+        }
+        CompilerSystemsDisposition::DispatchInitialUserSyscall { .. } => {
+            return Err(CompileError::Tool(
+                "x86 debug-break entry cannot dispatch a user syscall".into(),
             ));
         }
     }
@@ -2661,6 +3277,9 @@ fn encode_operations(
             CompilerSystemsOperation::WaitDeadline => encoder.wait_deadline()?,
             CompilerSystemsOperation::CompleteDeadline => encoder.complete_deadline()?,
             CompilerSystemsOperation::CreateKernelContext => encoder.create_kernel_context()?,
+            CompilerSystemsOperation::CreateKernelCompletion => {
+                encoder.create_kernel_completion()?;
+            }
             CompilerSystemsOperation::CreateRunnableQueue { capacity } => {
                 encoder.create_runnable_queue(*capacity)?;
             }
@@ -2673,6 +3292,9 @@ fn encode_operations(
             CompilerSystemsOperation::TransferKernelContextUntilDeadline => {
                 encoder.transfer_kernel_context_until_deadline()?;
             }
+            CompilerSystemsOperation::TransferKernelContextUntilCompletion => {
+                encoder.transfer_kernel_context_until_completion()?;
+            }
             CompilerSystemsOperation::TakePreemptedKernelContext => {
                 encoder.take_preempted_kernel_context()?;
             }
@@ -2680,9 +3302,52 @@ fn encode_operations(
             CompilerSystemsOperation::AwaitDeadlinePreemption => {
                 encoder.await_deadline_preemption()?;
             }
+            CompilerSystemsOperation::AwaitKernelCompletion => {
+                encoder.await_kernel_completion()?;
+            }
+            CompilerSystemsOperation::SignalBlockedKernelCompletion => {
+                encoder.signal_blocked_kernel_completion()?;
+            }
             CompilerSystemsOperation::ReclaimKernelContext => encoder.reclaim_kernel_context()?,
+            CompilerSystemsOperation::ConsumeKernelCompletion => {
+                encoder.consume_kernel_completion()?;
+            }
             CompilerSystemsOperation::ConsumeEmptyRunnableQueue => {
                 encoder.consume_empty_runnable_queue()?;
+            }
+            CompilerSystemsOperation::PrepareUserAddressSpace => {
+                encoder.prepare_user_address_space()?;
+            }
+            CompilerSystemsOperation::VerifyUserAddressSpaceMapping => {
+                encoder.verify_user_address_space_mapping()?;
+            }
+            CompilerSystemsOperation::MapUserAddressSpace => {
+                encoder.map_user_address_space()?;
+            }
+            CompilerSystemsOperation::StoreUserMappingByte => {
+                encoder.store_user_mapping_byte()?;
+            }
+            CompilerSystemsOperation::LoadUserMappingByte => {
+                encoder.load_user_mapping_byte()?;
+            }
+            CompilerSystemsOperation::UnmapUserAddressSpace => {
+                encoder.unmap_user_address_space()?;
+            }
+            CompilerSystemsOperation::PrepareUserProbe { process_identity } => {
+                encoder.prepare_user_probe(*process_identity)?;
+            }
+            CompilerSystemsOperation::EnterUserContext => encoder.enter_user_context()?,
+            CompilerSystemsOperation::CompleteUserExecution => {
+                encoder.complete_user_execution()?;
+            }
+            CompilerSystemsOperation::ReclaimUserAddressSpace => {
+                encoder.reclaim_user_address_space()?;
+            }
+            CompilerSystemsOperation::CopyInitialUnameToUser
+            | CompilerSystemsOperation::CopyInitialTimespecFromUser => {
+                return Err(CompileError::Tool(
+                    "x86 user transfer lowers only inside the sealed user-syscall entry".into(),
+                ));
             }
         }
     }
@@ -2756,10 +3421,30 @@ fn append_root(
             }
             ProviderSymbol::RetireKernelContext => provider_symbols.retire_kernel_context,
             ProviderSymbol::ReclaimKernelContext => provider_symbols.reclaim_kernel_context,
+            ProviderSymbol::PrepareUserAddressSpace => provider_symbols.prepare_user_address_space,
+            ProviderSymbol::VerifyUserAddressSpaceMapping => {
+                provider_symbols.verify_user_address_space_mapping
+            }
+            ProviderSymbol::MapUserAddressSpace => provider_symbols.map_user_address_space,
+            ProviderSymbol::StoreUserMappingByte => provider_symbols.store_user_mapping_byte,
+            ProviderSymbol::LoadUserMappingByte => provider_symbols.load_user_mapping_byte,
+            ProviderSymbol::UnmapUserAddressSpace => provider_symbols.unmap_user_address_space,
+            ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
+            ProviderSymbol::EnterUserContext => provider_symbols.enter_user_context,
+            ProviderSymbol::CompleteUserBacking => provider_symbols.complete_user_backing,
+            ProviderSymbol::ReclaimUserAddressSpace => provider_symbols.reclaim_user_address_space,
+            ProviderSymbol::UserSyscall => provider_symbols.user_syscall,
             ProviderSymbol::KernelThreadEntry => {
                 provider_symbols.kernel_thread_entry.ok_or_else(|| {
                     CompileError::Tool(
                         "x86 bootstrap root references an unplaced kernel-thread entry".into(),
+                    )
+                })?
+            }
+            ProviderSymbol::CompletionThreadEntry => {
+                provider_symbols.completion_thread_entry.ok_or_else(|| {
+                    CompileError::Tool(
+                        "x86 bootstrap root references an unplaced completion-thread entry".into(),
                     )
                 })?
             }
@@ -2893,6 +3578,12 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ReclaimKernelContext { context_identity } => {
                     format!("{identity}:context={context_identity}")
                 }
+                CompilerSystemsTransition::CreateKernelCompletion {
+                    completion_identity,
+                }
+                | CompilerSystemsTransition::ConsumeKernelCompletion {
+                    completion_identity,
+                } => format!("{identity}:completion={completion_identity}"),
                 CompilerSystemsTransition::CreateRunnableQueue { capacity } => {
                     format!("{identity}:capacity={capacity}")
                 }
@@ -2927,8 +3618,135 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 } => format!(
                     "{identity}:context={context_identity}:caller={caller_identity}:event={event_identity}"
                 ),
+                CompilerSystemsTransition::TransferKernelContextUntilCompletion {
+                    context_identity,
+                    caller_identity,
+                    completion_identity,
+                }
+                | CompilerSystemsTransition::BlockKernelContext {
+                    context_identity,
+                    caller_identity,
+                    completion_identity,
+                }
+                | CompilerSystemsTransition::SignalBlockedKernelCompletion {
+                    context_identity,
+                    caller_identity,
+                    completion_identity,
+                }
+                | CompilerSystemsTransition::RestoreBlockedKernelContext {
+                    context_identity,
+                    caller_identity,
+                    completion_identity,
+                } => format!(
+                    "{identity}:context={context_identity}:caller={caller_identity}:completion={completion_identity}"
+                ),
                 CompilerSystemsTransition::AwaitDeadlinePreemption { context_identity } => {
                     format!("{identity}:context={context_identity}")
+                }
+                CompilerSystemsTransition::AwaitKernelCompletion {
+                    context_identity,
+                    completion_identity,
+                } => format!(
+                    "{identity}:context={context_identity}:completion={completion_identity}"
+                ),
+                CompilerSystemsTransition::PrepareUserAddressSpace {
+                    address_space_identity,
+                }
+                | CompilerSystemsTransition::VerifyUserAddressSpaceMapping {
+                    address_space_identity,
+                }
+                | CompilerSystemsTransition::ReclaimUserAddressSpace {
+                    address_space_identity,
+                } => format!("{identity}:address-space={address_space_identity}"),
+                CompilerSystemsTransition::MapUserAddressSpace {
+                    address_space_identity,
+                    mapping_identity,
+                }
+                | CompilerSystemsTransition::UnmapUserAddressSpace {
+                    address_space_identity,
+                    mapping_identity,
+                } => format!(
+                    "{identity}:address-space={address_space_identity}:mapping={mapping_identity}"
+                ),
+                CompilerSystemsTransition::StoreUserMappingByte { mapping_identity }
+                | CompilerSystemsTransition::LoadUserMappingByte { mapping_identity } => {
+                    format!("{identity}:mapping={mapping_identity}")
+                }
+                CompilerSystemsTransition::PrepareUserProbe {
+                    process_identity,
+                    probe_identity,
+                } => format!(
+                    "{identity}:process={process_identity}:probe={probe_identity}"
+                ),
+                CompilerSystemsTransition::EnterUserExecution {
+                    process_identity,
+                    kernel_continuation_identity,
+                } => format!(
+                    "{identity}:process={process_identity}:continuation={kernel_continuation_identity}"
+                ),
+                CompilerSystemsTransition::EnterUserSyscall {
+                    entry_identity,
+                    number,
+                    arguments,
+                } => format!(
+                    "{identity}:entry={entry_identity}:number={number}:arguments={arguments:?}"
+                ),
+                CompilerSystemsTransition::BeginUserTransfer {
+                    entry_identity,
+                    transfer_identity,
+                    candidate,
+                    extent,
+                } => format!(
+                    "{identity}:entry={entry_identity}:transfer={transfer_identity}:candidate={candidate}:extent={extent}"
+                ),
+                CompilerSystemsTransition::CopyToUserComplete {
+                    transfer_identity,
+                    copied,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied={copied}"
+                ),
+                CompilerSystemsTransition::CopyToUserFault {
+                    transfer_identity,
+                    copied_prefix,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied-prefix={copied_prefix}"
+                ),
+                CompilerSystemsTransition::CopyFromUserComplete {
+                    transfer_identity,
+                    copied,
+                    seconds,
+                    nanoseconds,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied={copied}:seconds={seconds}:nanoseconds={nanoseconds}"
+                ),
+                CompilerSystemsTransition::CopyFromUserFault {
+                    transfer_identity,
+                    copied_prefix,
+                } => format!(
+                    "{identity}:transfer={transfer_identity}:copied-prefix={copied_prefix}"
+                ),
+                CompilerSystemsTransition::EndUserTransfer {
+                    entry_identity,
+                    transfer_identity,
+                } => format!(
+                    "{identity}:entry={entry_identity}:transfer={transfer_identity}"
+                ),
+                CompilerSystemsTransition::ReturnToUser {
+                    entry_identity,
+                    result,
+                } => format!("{identity}:entry={entry_identity}:result={result}"),
+                CompilerSystemsTransition::TerminateUser {
+                    entry_identity,
+                    status,
+                } => format!("{identity}:entry={entry_identity}:status={status}"),
+                CompilerSystemsTransition::ResumeUserKernelContinuation {
+                    kernel_continuation_identity,
+                    status,
+                } => format!(
+                    "{identity}:continuation={kernel_continuation_identity}:status={status}"
+                ),
+                CompilerSystemsTransition::CompleteUserExecution { process_identity } => {
+                    format!("{identity}:process={process_identity}")
                 }
                 CompilerSystemsTransition::TakePreemptedKernelContext {
                     context_identity,
@@ -2937,7 +3755,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     "{identity}:context={context_identity}:event={event_identity}"
                 ),
                 CompilerSystemsTransition::ResumeKernelContextCaller { caller_identity }
-                | CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity } => {
+                | CompilerSystemsTransition::ResumePreemptionDispatcher { caller_identity }
+                | CompilerSystemsTransition::ResumeCompletionDispatcher { caller_identity } => {
                     format!("{identity}:caller={caller_identity}")
                 }
                 CompilerSystemsTransition::StoreBootstrapByte {
@@ -3078,7 +3897,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 636);
+        assert_eq!(relocation_targets.len(), 1046);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -3120,12 +3939,12 @@ mod tests {
             );
         }
         for (target, expected) in [
-            (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, 2),
-            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 3),
+            (X86_SYSTEMS_CONTEXT_CREATE_SYMBOL, 3),
+            (X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, 6),
             (X86_SYSTEMS_CONTEXT_AWAIT_DEADLINE_PREEMPTION_SYMBOL, 1),
             (X86_SYSTEMS_CONTEXT_PREEMPT_CURRENT_SYMBOL, 1),
-            (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, 2),
-            (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, 2),
+            (X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL, 3),
+            (X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL, 3),
         ] {
             assert_eq!(
                 relocation_targets
@@ -3139,6 +3958,13 @@ mod tests {
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_COMPLETION_THREAD_ENTRY)
                 .count(),
             1
         );
@@ -3167,8 +3993,29 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            2
+            5
         );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL)
+                .count(),
+            0
+        );
+        for target in [
+            X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                2
+            );
+        }
         assert_translation_relocations(&relocation_targets);
         assert_eq!(
             relocation_targets
@@ -3189,21 +4036,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            531
+            875
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            26
+            47
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            37
+            58
         );
         assert_eq!(
             relocation_targets
@@ -3263,8 +4110,14 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            16,
-            "root must derive opaque storage for atomic, notification, clock, deadline, and context operations"
+            34,
+            "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
+        );
+        assert!(
+            root_bytes
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x8b, 0x4f, 0x68]),
+            "root must pass the prepared user backing only as a provider-private exclusion"
         );
         assert!(
             root_bytes
@@ -3281,6 +4134,10 @@ mod tests {
         assert!(file.symbol_by_name(X86_SYSTEMS_DEADLINE_ENTRY).is_some());
         assert!(
             file.symbol_by_name(X86_SYSTEMS_KERNEL_THREAD_ENTRY)
+                .is_some()
+        );
+        assert!(
+            file.symbol_by_name(X86_SYSTEMS_COMPLETION_THREAD_ENTRY)
                 .is_some()
         );
         assert!(
@@ -3351,6 +4208,17 @@ mod tests {
                 "topal_x86_systems_context_preempt_current",
                 "topal_x86_systems_context_retire",
                 "topal_x86_systems_context_reclaim",
+                "topal_x86_systems_user_prepare_initial_address_space",
+                "topal_x86_systems_user_verify_initial_mapping",
+                "topal_x86_systems_user_map_initial_frame",
+                "topal_x86_systems_user_store_initial_mapping_byte",
+                "topal_x86_systems_user_load_initial_mapping_byte",
+                "topal_x86_systems_user_unmap_initial_frame",
+                "topal_x86_systems_user_prepare_initial_probe",
+                "topal_x86_systems_user_complete_initial_backing",
+                "topal_x86_systems_user_reclaim_initial_address_space",
+                "topal_x86_systems_user_enter_initial_context",
+                "topal_x86_systems_user_dispatch_initial_syscall",
                 "topal_x86_systems_uart16550_write",
                 "topal_x86_systems_debug_break",
                 "topal_x86_systems_interrupt_return",
@@ -3383,15 +4251,39 @@ mod tests {
         assert!(published.map.is_file());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
-        let decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
+        let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
         assert_eq!(decoded, published.record);
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 45);
+        assert_eq!(decoded.placements.len(), 59);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 97);
+        assert_eq!(decoded.semantic_trace.len(), 170);
+        assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..30);
+        assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
+        assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
+        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
+        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_ADDRESS_SPACE_MAP));
+        assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
+        assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
+        assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[129], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[163].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[164], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[165].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(163..166);
+        decoded.semantic_trace.drain(120..132);
+        decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");
         assert_eq!(decoded.semantic_trace[2], SYSTEMS_BOOT_MEMORY_DESCRIBE);
@@ -3466,64 +4358,137 @@ mod tests {
         assert!(decoded.semantic_trace[56].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_DEADLINE_AFTER));
         assert!(decoded.semantic_trace[58].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
-        assert!(decoded.semantic_trace[61].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
-        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
-        assert!(decoded.semantic_trace[63].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[64].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert_eq!(decoded.semantic_trace[66], SYSTEMS_DEADLINE_ARM);
+        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_KERNEL_COMPLETION_CREATE));
+        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[61].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[63].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE));
+        assert!(decoded.semantic_trace[64].starts_with(SYSTEMS_KERNEL_CONTEXT_CREATE));
+        assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE));
+        assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert_eq!(decoded.semantic_trace[70], SYSTEMS_DEADLINE_ARM);
         assert!(
-            decoded.semantic_trace[67].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
+            decoded.semantic_trace[71].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
         );
         assert!(
-            decoded.semantic_trace[68].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[72].starts_with("topal.systems.entry.resumed.kernel-thread/1")
         );
-        assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(
-            decoded.semantic_trace[70]
+            decoded.semantic_trace[74]
                 .starts_with(SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION)
         );
         assert_eq!(
-            decoded.semantic_trace[71],
+            decoded.semantic_trace[75],
             "topal.systems.observation.deadline/1"
         );
         assert_eq!(
-            decoded.semantic_trace[72],
+            decoded.semantic_trace[76],
             "topal.systems.entry.external.deadline/1"
         );
-        assert_eq!(decoded.semantic_trace[73], SYSTEMS_DEADLINE_COMPLETE);
-        assert!(decoded.semantic_trace[74].starts_with(SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT));
+        assert_eq!(decoded.semantic_trace[77], SYSTEMS_DEADLINE_COMPLETE);
+        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT));
         assert!(
-            decoded.semantic_trace[75].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
+            decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE)
         );
-        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED));
-        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
-        assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED));
+        assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE));
         assert!(
-            decoded.semantic_trace[81].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+            decoded.semantic_trace[85].starts_with("topal.systems.entry.resumed.kernel-thread/1")
         );
-        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
-        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
-        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
-        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
-        assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[86].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE));
+        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE));
+        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE));
+        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(
+            decoded.semantic_trace[92].starts_with("topal.systems.entry.resumed.kernel-thread/1")
+        );
         assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[97].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[98].starts_with(SYSTEMS_KERNEL_COMPLETION_SIGNAL));
+        assert!(decoded.semantic_trace[99].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE));
+        assert!(decoded.semantic_trace[100].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[101].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[102].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[103].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[104].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[105].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[106].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[107].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[108].starts_with(SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE));
+        assert!(decoded.semantic_trace[109].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[110].starts_with(SYSTEMS_KERNEL_COMPLETION_SIGNAL));
+        assert!(decoded.semantic_trace[111].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[112].starts_with(SYSTEMS_KERNEL_CONTEXT_RETIRE));
+        assert!(decoded.semantic_trace[113].starts_with(SYSTEMS_KERNEL_CONTEXT_TRANSFER));
+        assert!(decoded.semantic_trace[114].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[115].starts_with(SYSTEMS_KERNEL_CONTEXT_RECLAIM));
+        assert!(decoded.semantic_trace[116].starts_with(SYSTEMS_KERNEL_COMPLETION_CONSUME));
         assert_eq!(
-            decoded.semantic_trace[95],
+            decoded.semantic_trace[117],
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME
         );
-        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
+        assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[120].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[121]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[122].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[123].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[124].starts_with(SYSTEMS_USER_COPY_TO));
+        assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[126]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[127].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_COPY_TO));
+        assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[131]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[132].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[133].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_COPY_FROM));
+        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[136]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[137].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_USER_TRANSFER_BEGIN));
+        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_USER_COPY_FROM));
+        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_USER_TRANSFER_END));
+        assert!(
+            decoded.semantic_trace[141]
+                .starts_with("topal.systems.disposition.user-syscall.return/1")
+        );
+        assert!(decoded.semantic_trace[142].starts_with("topal.systems.entry.user-syscall/1"));
+        assert!(
+            decoded.semantic_trace[143]
+                .starts_with("topal.systems.disposition.user-syscall.terminate/1")
+        );
+        assert!(decoded.semantic_trace[144].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert!(decoded.semantic_trace[145].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
+        assert!(decoded.semantic_trace[149].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

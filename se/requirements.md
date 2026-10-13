@@ -360,6 +360,43 @@ retain bounds, layout, rights, cache/order policy, owner, and lifetime. User
 transfer and other admitted recovery shall use generated closed fault scopes;
 source shall not dereference a user candidate or name a recovery instruction.
 
+The first executable user-transfer refinement shall remain exclusive to the
+systems feature. It shall derive one affine scope from the exact live syscall
+entry, thread, address space, and ABI; consume and return that scope through
+every transfer outcome; and forbid syscall disposition while the scope is
+live. A bounded `copy_to_user` shall return complete extent or structured fault
+with copied-prefix progress without converting its untrusted ABI candidate to
+a Topal reference.
+
+The initial x86-64 qualification shall implement native Linux `uname` number
+63 with a source-owned `new_utsname`, verify a successful copy, and force a
+copy across an unmapped guard page. Only generated copy sites shall recover
+from the matching page fault and the syscall shall return `-EFAULT`; other
+faults shall remain fatal.
+
+The input-direction refinement shall keep destination staging inaccessible
+until a selected layout has been copied completely and validated. A bounded
+`copy_from_user` shall return a complete value and extent or a structured fault
+with copied-prefix progress and no partial value. The initial x86-64
+qualification shall implement native Linux `nanosleep` number 35 for one
+zero-duration native `timespec`, verify an immediate successful result, and
+force a second read across the same unmapped guard page. Only the exact
+generated read site shall recover and return `-EFAULT`; other faults shall
+remain fatal. Nonzero sleep, remainder output, interruption, restart,
+arbitrary layouts and extents, concurrent mapping changes, general UTS
+namespaces, and core-language exception handling remain unavailable.
+
+The initial opaque user-address-space refinement shall consume one qualified
+three-frame physical extent into a prepared user address space with fresh
+identity. User-state preparation shall consume that address space into the
+suspended user context. The provider shall use only its extent for the
+executable page, non-executable stack, and user leaf-translation backing; fixed
+hidden physical user pages are forbidden. Terminal completion shall revoke and
+invalidate every derived user mapping and return a revoked address space.
+Reclaim shall consume only that revoked state and return the exact indivisible
+extent before source release. Source shall observe no physical or virtual
+address, PTE layout, or target return state.
+
 An entered bootstrap context shall refine through one exhaustive, affine
 boot-memory transition. A qualified provider shall validate its opaque native
 handoff; conservatively normalize overlapping source ranges; retain source
@@ -378,6 +415,47 @@ count, alignment, and provenance but no numeric address or access authority.
 Release shall consume an extent back into its originating allocator. Invalid,
 exhausted, cross-allocator, double-release, escaping, or disposition-with-live-
 extent behavior shall fail closed.
+
+The bounded multi-frame qualification shall remain exclusive to the systems
+feature and shall add no address or pointer conversion. The initial x86-64
+profile shall admit only static requests for one or three contiguous base
+frames with unit alignment, return either request as one indivisible affine
+extent, and require whole-extent release before any later bootstrap transition
+or disposition. Other counts, non-unit alignment, dynamic requests, extent
+splitting, and multiple simultaneously live extents shall fail closed.
+
+The bounded disjoint-extent refinement shall admit exactly one additional
+static one-frame, unit-aligned source-owned extent while one prepared initial
+user address space owns its three-frame backing. The allocator and provider
+shall prove complete-interval non-overlap without exposing an address. Source
+shall release the additional extent before user-context binding. A third live
+extent, another request shape, overlap, backing release, or disposition with
+the additional extent live shall fail closed.
+
+The initial prepared user address space shall admit one sealed `probe-guard`
+mapping round trip over that disjoint extent. The provider shall install RW/NX
+user authority, confirm the fixed byte write/read observation, revoke the
+mapping, complete target-required invalidation, and return the exact extent
+before reporting success. Wrong provenance, overlap, partial access, stale
+translation, duplicate verification, or user-context binding before release
+shall fail closed. No numeric address shall become source-observable.
+
+The bounded affine user-mapping refinement shall separate that transaction
+into map, fixed-byte store, fixed-byte load/verification, and unmap operations.
+Each operation shall consume the preceding mapping refinement. Map shall
+consume the exact disjoint extent; unmap shall return that same extent only
+after revocation and target completion. Release, user-context binding,
+duplicate use, reordering, or recoverable disposition while a mapping is live
+shall fail closed. Layout, rights, byte value, addresses, and target
+translation mechanics shall remain sealed.
+
+The sequential mapping-generation refinement shall admit exactly two complete
+lifecycles over the same returned extent. Each map shall create a fresh opaque
+identity. The second map shall begin only after first-generation revocation and
+target completion; stale or cross-generation refinement use, identity reuse,
+release between generations, a third generation, or user-context binding
+before the second release shall fail closed. Simultaneous mappings and
+persistent image policy remain excluded.
 
 Mapping an owned physical-frame extent for kernel access shall consume that
 extent into one affine mapping with opaque provider-selected kernel-virtual
@@ -526,6 +604,55 @@ a general wait or sleep operation. The profile shall remain single-processor
 and single-address-space and shall not imply cancellation, rearming, periodic
 timeslices, priority, blocking, wakeup, nested preemption, migration, SMP, user
 contexts, or extended-state switching.
+
+## TOPAL-REQ-SYSTEMS-CONTEXT-005 — One-shot affine kernel completion
+
+Scheduler source shall be able to create one completion with matching affine
+wait and signal endpoints, dispatch one worker which may block once, receive
+that exact blocked context at its registered dispatcher, signal it, enqueue the
+resulting suspended context, and later resume immediately after the block.
+Signal-before-wait readiness shall persist so that no matching wakeup is lost.
+
+Every transition shall retain processor, provider, address-space, completion,
+context, stack, and continuation identity. Runnable selection shall remain
+source policy. The initial executable profile shall run blocking, terminal,
+awakened order and consume both contexts, the empty runnable queue, and the
+one-shot completion before disposition. It shall not imply multiple waiters,
+repeated signals, arbitrary predicate waits, timeouts, cancellation, process
+signals, priorities, cross-processor wakeup, SMP, or user contexts.
+
+## TOPAL-REQ-SYSTEMS-CONTEXT-006 — Affine user execution and syscall round trip
+
+The systems profile shall represent validated user state as opaque affine
+authority tied to processor, address-space, thread, and ABI identities. Entering
+user execution shall consume the running kernel context and one matching
+suspended user context. A user syscall shall create one affine typed entry that
+exposes an untrusted semantic syscall number and six arguments without exposing
+register slots or a target frame.
+
+Kernel source shall own dispatch and consume each entry by returning one ABI
+result to the exact revalidated user continuation or by terminating that user
+context and restoring its exact registered kernel continuation. The provider
+shall own privilege, stack, saved-state, security, result-placement, and return
+mechanics but shall not select a syscall or invent a result.
+
+The first executable x86-64 profile shall use one generated ring-3 probe and
+the pinned Linux `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
+shall verify ordinary returns, generated output- and input-direction user-copy
+fault recovery, and terminal restoration with status zero. Fixed probe
+mappings shall be qualification evidence only. ELF loading, pointer-bearing
+syscalls other than the sealed `uname` and zero-duration `nanosleep`
+qualifications, general user-copy recovery, signals, restart, TLS, multiple
+processes or threads, user preemption, migration, SMP, and the complete syscall
+table remain unavailable.
+
+The prepared user address space, suspended user context, completed execution,
+and revoked address space shall retain one exact address-space identity through
+their affine transitions. Preparation, context binding, revocation, and
+reclaim shall remain distinct operations. The initial `initial-probe` layout
+shall admit one live user address space and no source-selected mappings,
+arbitrary permissions, ELF segments, dynamic stack construction, concurrent
+edits, address-space switching, or recoverable partial construction.
 
 ## TOPAL-REQ-SYSTEMS-DEVICE-001 — Device and DMA protocol ownership
 
