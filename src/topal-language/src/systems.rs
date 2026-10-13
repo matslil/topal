@@ -3219,6 +3219,7 @@ fn analyze_kernel_context_decision(
         entry_marker_statement,
         data_marker_statement,
         image_copy_to_marker_statement,
+        image_copy_from_marker_statement,
         image_syscall_marker_statement,
         retained_marker_statement,
         unmap_mapping_again,
@@ -3342,6 +3343,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(image_copy_to_marker_statement),
             "returned user execution requires its exact constructed-image copy-to-user marker",
+        ));
+    }
+    let image_copy_from_marker = analyze_operation(
+        source,
+        image_copy_from_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if image_copy_from_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(image_copy_from_marker_statement),
+            "returned user execution requires its exact constructed-image copy-from-user marker",
         ));
     }
     let image_syscall_marker = analyze_operation(
@@ -3558,6 +3576,7 @@ fn analyze_kernel_context_decision(
             entry_marker,
             data_marker,
             image_copy_to_marker,
+            image_copy_from_marker,
             image_syscall_marker,
             retained_marker,
             CompilerSystemsOperation::UnmapUserAddressSpace,
@@ -6317,6 +6336,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6364,7 +6386,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 121);
+        assert_eq!(program.bootstrap.handler.operations.len(), 122);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

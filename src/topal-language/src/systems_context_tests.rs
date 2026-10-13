@@ -335,6 +335,13 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
+                "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+                "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_EARLY",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
                 "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
                 "TOPAL_KERNEL_USER_IMAGE_SYSCALL_EARLY",
             ),
