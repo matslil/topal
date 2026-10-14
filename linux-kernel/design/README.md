@@ -74,6 +74,7 @@ records, not this directory alone, define language meaning.
 - [Bounded initial-process program break](bounded-initial-brk.md)
 - [Initial-process scalar identity syscalls](initial-scalar-identity-syscalls.md)
 - [Initial x86-64 user FS-base control](initial-x86-fs-base.md)
+- [Initial-thread clear-child-TID word](initial-clear-child-tid.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -723,6 +723,14 @@ This target-qualified boundary exposes neither an MSR nor a register, and it
 does not define portable TLS layout, allocation, multiple threads, or a general
 architecture-control interface.
 
+The initial-thread exit-word refinement permits Linux-compatible
+`set_tid_address` to retain either no candidate or one complete writable
+four-byte user extent. It returns the sealed TID one. Terminal thread exit
+stores zero to the retained word under fault recovery before clearing the
+private candidate and completing user execution. This is one single-thread
+lifecycle hook, not cloning, futex service, robust-list processing, or a
+general task table.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
