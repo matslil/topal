@@ -186,6 +186,17 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("write-descriptor is 1", "write-descriptor is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace(
+                "write-payload is \"TOPAL_KERNEL_USER_WRITE_OK\"",
+                "write-payload is \"TOPAL_KERNEL_USER_WRITE_BAD\"",
+            ),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_EARLY",

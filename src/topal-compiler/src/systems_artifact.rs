@@ -92,8 +92,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/52";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/50";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/53";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/51";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -3353,11 +3353,13 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 nanosleep_seconds: 0,
                 nanosleep_nanoseconds: 0,
                 nanosleep_remainder_candidate: 0,
+                write_descriptor: 1,
+                write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
                 exit_group_status: 0,
             })
     {
         return Err(CompileError::Tool(
-            "x86 initial user-syscall entry requires the sealed getpid/uname/nanosleep/exit_group dispatch"
+            "x86 initial user-syscall entry requires the sealed write/getpid/uname/nanosleep/exit_group dispatch"
                 .into(),
         ));
     }

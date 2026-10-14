@@ -328,6 +328,8 @@ pub enum SystemsDisposition {
         nanosleep_seconds: u64,
         nanosleep_nanoseconds: u64,
         nanosleep_remainder_candidate: u64,
+        write_descriptor: u64,
+        write_payload: String,
         exit_group_status: u64,
     },
     Fatal {
@@ -1175,12 +1177,14 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 nanosleep_seconds: 0,
                 nanosleep_nanoseconds: 0,
                 nanosleep_remainder_candidate: 0,
+                write_descriptor: 1,
+                write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
                 exit_group_status: 0,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch the sealed getpid, uname, nanosleep, and exit_group protocol",
+            "the initial user-syscall handler must dispatch the sealed write, getpid, uname, nanosleep, and exit_group protocol",
         ));
     }
     Ok(())
@@ -3528,6 +3532,8 @@ fn model_user_execution_transition(
                     nanosleep_seconds,
                     nanosleep_nanoseconds,
                     nanosleep_remainder_candidate,
+                    write_descriptor: _,
+                    write_payload: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -5144,6 +5150,8 @@ mod tests {
                         nanosleep_seconds: 0,
                         nanosleep_nanoseconds: 0,
                         nanosleep_remainder_candidate: 0,
+                        write_descriptor: 1,
+                        write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
                         exit_group_status: 0,
                     },
                     effects: vec![

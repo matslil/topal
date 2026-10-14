@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/49";
+    "topal.provider-object.x86_64-qemu-pc-q35/50";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -111,6 +111,7 @@ pub(crate) const INITIAL_USER_DATA_CAPACITY: usize = 4096;
 const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
+const INITIAL_USER_WRITE_CANDIDATE: u32 = 0x0060_1fe0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum X86Instruction {
@@ -778,6 +779,7 @@ struct InitialUserEntryPayload {
     continuation_address: u64,
     uname_return_address: u64,
     nanosleep_return_address: u64,
+    write_return_address: u64,
     getpid_return_address: u64,
 }
 
@@ -1001,6 +1003,30 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "nanosleep-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]); // release input
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // bounded stdout payload
+    for (offset, value) in [
+        (0_u8, u64::from_le_bytes(*b"TOPAL_KE")),
+        (8, u64::from_le_bytes(*b"RNEL_USE")),
+        (16, u64::from_le_bytes(*b"R_WRITE_")),
+    ] {
+        continuation.bytes(&[0x48, 0xb8]);
+        continuation.bytes(&value.to_le_bytes());
+        if offset == 0 {
+            continuation.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else {
+            continuation.bytes(&[0x48, 0x89, 0x44, 0x24, offset]);
+        }
+    }
+    continuation.bytes(&[0x66, 0xc7, 0x44, 0x24, 0x18, b'O', b'K']);
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]); // stdout
+    continuation.bytes(&[0x48, 0x89, 0xe6]); // candidate = rsp
+    continuation.bytes(&[0xba, 0x1a, 0x00, 0x00, 0x00]); // 26 bytes
+    continuation.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x05]); // write
+    let write_return_address =
+        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x1a]);
+    continuation.jump_if(0x85, "write-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]); // release stdout payload
     continuation.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
     let getpid_return_address =
         continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
@@ -1014,6 +1040,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump("fail");
     continuation.bind("nanosleep-buffer-fail")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.jump("fail");
+    continuation.bind("write-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
     bytes.extend(continuation.finish()?);
@@ -1028,6 +1057,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         continuation_address,
         uname_return_address,
         nanosleep_return_address,
+        write_return_address,
         getpid_return_address,
     })
 }
@@ -1538,6 +1568,9 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
         u32::try_from(payload.nanosleep_return_address).map_err(|_| {
             CompileError::Tool("constructed nanosleep return address exceeds x86 imm32".into())
         })?;
+    let write_return_address = u32::try_from(payload.write_return_address).map_err(|_| {
+        CompileError::Tool("constructed write return address exceeds x86 imm32".into())
+    })?;
     let getpid_return_address = u32::try_from(payload.getpid_return_address).map_err(|_| {
         CompileError::Tool("constructed getpid return address exceeds x86 imm32".into())
     })?;
@@ -1551,6 +1584,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x50, 0x00, 0x00, 0x00]); // user R10
     code.bytes(&[0x65, 0x48, 0x89, 0x14, 0x25, 0x58, 0x00, 0x00, 0x00]); // user RDX
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 0x08, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x83, 0xf8, 0x01]);
+    code.jump_if(0x84, "write");
     code.bytes(&[0x83, 0xf8, 0x27]);
     code.jump_if(0x84, "getpid");
     code.bytes(&[0x83, 0xf8, 0x3f]);
@@ -1715,6 +1750,69 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bind("copy-from-invalid")?;
     code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     code.jump("fail");
+
+    code.bind("write")?;
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&write_return_address.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xff, 0x01]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&INITIAL_USER_WRITE_CANDIDATE.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xfa, 0x1a]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xec, 0x20]); // private kernel staging
+    code.bytes(&[0x49, 0x89, 0xf0]); // source candidate
+    code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix
+    code.rip_lea(&[0x48, 0x8d, 0x05], "write-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "write-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x02]);
+    code.bind("write-copy-loop")?;
+    code.bind("write-copy-fault-site")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x10]);
+    code.bytes(&[0x42, 0x88, 0x04, 0x14]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x83, 0xfa, 0x1a]);
+    code.jump_if(0x85, "write-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    for (offset, value) in [
+        (0_u8, u64::from_le_bytes(*b"TOPAL_KE")),
+        (8, u64::from_le_bytes(*b"RNEL_USE")),
+        (16, u64::from_le_bytes(*b"R_WRITE_")),
+    ] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if offset == 0 {
+            code.bytes(&[0x48, 0x39, 0x04, 0x24]);
+        } else {
+            code.bytes(&[0x48, 0x39, 0x44, 0x24, offset]);
+        }
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x66, 0x81, 0x7c, 0x24, 0x18, b'O', b'K']);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.bind("write-uart-loop")?;
+    code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
+    code.jump_if(0x84, "write-uart-loop");
+    code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14, 0xee]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x1a]);
+    code.jump_if(0x85, "write-uart-loop");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    code.bytes(&[0xb8, 0x1a, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("write-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
 
     code.bind("return-user")?;
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]);
@@ -3701,7 +3799,47 @@ mod tests {
                     .bytes
                     .windows(2)
                     .any(|bytes| bytes == [0x31, 0xff]),
-            "constructed transfer payload must qualify uname output and zero-duration nanosleep input before getpid and status-zero exit"
+            "constructed transfer payload must qualify uname output, zero-duration nanosleep input, and bounded stdout write before getpid and status-zero exit"
+        );
+        let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .any(|bytes| bytes == [0xb8, 0x01, 0, 0, 0, 0x0f, 0x05])
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == b"TOPAL_KE")
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x83, 0xec, 0x20])
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x83, 0xc4, 0x20])
+        );
+        assert!(
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x83, 0xfa, 0x1a])
+        );
+        assert!(
+            user_syscall
+                .windows(7)
+                .any(|bytes| bytes == [0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20])
+        );
+        assert!(
+            user_syscall
+                .windows(5)
+                .any(|bytes| bytes == [0x42, 0x8a, 0x04, 0x14, 0xee])
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(

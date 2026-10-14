@@ -440,6 +440,8 @@ user-syscall-handler is fn (
     nanosleep-seconds is 0,
     nanosleep-nanoseconds is 0,
     nanosleep-remainder-candidate is 0,
+    write-descriptor is 1,
+    write-payload is "TOPAL_KERNEL_USER_WRITE_OK",
     exit-group-status is 0
   )
 

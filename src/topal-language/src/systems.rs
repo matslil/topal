@@ -939,14 +939,14 @@ fn analyze_user_syscall_handler(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch requires the sealed getpid, uname, nanosleep, and exit_group fields",
+            "user syscall dispatch requires the sealed write, getpid, uname, nanosleep, and exit_group fields",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 11
+        || fields.len() != 13
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -957,12 +957,15 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[7], "nanosleep-seconds")? != 0
         || field_natural(source, &fields[8], "nanosleep-nanoseconds")? != 0
         || field_natural(source, &fields[9], "nanosleep-remainder-candidate")? != 0
-        || field_natural(source, &fields[10], "exit-group-status")? != 0
+        || field_natural(source, &fields[10], "write-descriptor")? != 1
+        || field_static_string(source, &fields[11], "write-payload")?
+            != "TOPAL_KERNEL_USER_WRITE_OK"
+        || field_natural(source, &fields[12], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept the zero-duration nanosleep value, and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write the sealed stdout payload, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
@@ -976,6 +979,8 @@ fn analyze_user_syscall_handler(
         nanosleep_seconds: 0,
         nanosleep_nanoseconds: 0,
         nanosleep_remainder_candidate: 0,
+        write_descriptor: 1,
+        write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {
