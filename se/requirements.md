@@ -799,6 +799,14 @@ and only then continue terminal disposition. Wrong size or extent, early
 dereference, partial copy, nonempty terminal state, clear-before-validation,
 or state surviving mapping teardown shall fail closed.
 
+The bounded initial-resource adapter shall accept `getrlimit(RLIMIT_STACK)`
+and query-only `prlimit64` for PID zero or the sealed self PID, selector
+`RLIMIT_STACK`, a null new-limit candidate, and one complete writable 16-byte
+old-limit extent. Both shall publish the same native 8 MiB soft and unlimited
+hard pair under fault recovery and return zero. Other selectors, mutation,
+other PIDs, invalid output, partial publication, wrong values, or retained
+pointers shall return the declared Linux error or fail closed as applicable.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
