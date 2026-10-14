@@ -407,6 +407,13 @@ Its [implementation and qualification report](step-4-constructed-image-write.md)
 records complete kernel staging before output, exact Linux x86-64 return
 behavior, user-stack restoration, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement performs one bounded
+[initial-process standard-input read](design/bounded-constructed-image-read.md).
+Its [implementation and qualification report](step-4-constructed-image-read.md)
+records deterministic serial injection, provider-private staging, exact
+copy-to-user and return behavior, byte validation, and two deterministic
+pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a

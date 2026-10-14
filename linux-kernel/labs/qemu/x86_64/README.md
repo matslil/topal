@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 50 ordered serial markers. The generated real-mode adapter
+and waits for the 51 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -207,7 +207,14 @@ copies every byte to private kernel staging before output, validates the staged
 payload, publishes it through the checked Q35 serial provider, and returns the
 exact byte count; the user validates that result and restores its stack. The
 payload is consequently observable before the source-owned post-return
-witnesses. The continuation then invokes `getpid`, requires PID one, takes the
+witnesses. The harness connects a pseudo-terminal to the same emulated serial
+device and injects `q` after the boot-resource witness. The continuation next
+invokes `read(0, candidate, 1)` into a bounded RW/NX stack region. Dispatch
+polls and privately stages that byte, copies it to the exact user candidate
+under fault recovery, and returns one; user mode validates the count and byte
+before restoring its stack. `TOPAL_KERNEL_USER_READ_OK` is the first source-
+owned post-return witness and proves that path reached terminal completion.
+The continuation then invokes `getpid`, requires PID one, takes the
 same trap on mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
