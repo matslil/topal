@@ -331,6 +331,16 @@ recovery, retain no pointer, and return zero. Structural and pinned-QEMU
 evidence shall prove both dispatch forms, argument rejection, shared complete
 copy, exact application values, and results.
 
+The initial signal-mask adapter shall lower Linux x86-64 syscall 14 only for a
+live initial context and finalized executable return continuation. It shall
+require native set size eight, stage a complete optional input word, remove
+signal bits 8 and 18, apply query/block/unblock/replacement to one private word,
+and optionally publish the complete prior word after update, with every user
+transfer fault contained. It shall clear state during teardown. Structural and
+pinned-QEMU evidence shall prove all operations, null candidates, exact values,
+unblockable-bit removal, error checks, update-before-output ordering, and state
+clearing.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

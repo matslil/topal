@@ -807,6 +807,15 @@ hard pair under fault recovery and return zero. Other selectors, mutation,
 other PIDs, invalid output, partial publication, wrong values, or retained
 pointers shall return the declared Linux error or fail closed as applicable.
 
+The bounded initial-signal-mask adapter shall accept native `rt_sigprocmask`
+query, block, unblock, and replacement operations for the sole live thread and
+an exact eight-byte set size. It shall stage complete input under fault
+recovery, remove `SIGKILL` and `SIGSTOP`, atomically update private mask state,
+and optionally publish the prior complete word under fault recovery after the
+update. Wrong size or operation, invalid extents, partial transfer, wrong
+update order or values, retained pointers, or state surviving teardown shall
+return the declared Linux error or fail closed as applicable.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
