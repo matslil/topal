@@ -39,6 +39,7 @@ pub use systems_artifact::{
     X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_KERNEL_THREAD_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_ROOT_OBJECT_REVISION,
     X86_SYSTEMS_ROOT_TEXT_SECTION, publish_x86_64_systems_artifact,
+    publish_x86_64_systems_artifact_with_initial_user_image,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
@@ -122,6 +123,7 @@ pub struct CompileOptions {
     pub target: TargetSelection,
     pub optimization: OptimizationRequest,
     pub standard_library: Option<PathBuf>,
+    pub initial_user_image: Option<PathBuf>,
 }
 
 #[derive(Debug)]

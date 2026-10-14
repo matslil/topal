@@ -112,8 +112,9 @@ def verify_host() -> str:
     return version
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
-    linked = destination / "linked"
+def compile_systems_artifact(
+    linked: Path, initial_user_image: Path | None = None
+) -> None:
     compiler_command = [
         "cargo",
         "run",
@@ -131,12 +132,37 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
         "topal-qemu-pc-q35-10.2",
         "--emit",
         "executable",
+    ]
+    if initial_user_image is not None:
+        compiler_command.extend(["--initial-user-image", str(initial_user_image)])
+    compiler_command.extend(
+        [
         "-o",
         str(linked),
         str(SOURCE_PATH),
-    ]
+        ]
+    )
     print("+", " ".join(compiler_command), flush=True)
     subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
+
+
+def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path]:
+    generated = destination / "generated"
+    compile_systems_artifact(generated)
+    generated_initial_user_image = generated / "initial-user.elf"
+    supplied_initial_user_image = destination / "supplied-initial-user.elf"
+    supplied = bytearray(generated_initial_user_image.read_bytes())
+    supplied[4097] = 0xA5
+    supplied_initial_user_image.write_bytes(supplied)
+
+    linked = destination / "linked"
+    compile_systems_artifact(linked, supplied_initial_user_image)
+    published_initial_user_image = linked / "initial-user.elf"
+    if published_initial_user_image.read_bytes() != supplied:
+        raise GateError("compiler did not publish the exact supplied initial user image")
+    if digest(published_initial_user_image) == digest(generated_initial_user_image):
+        raise GateError("supplied initial user image is not distinct from the generated default")
+
     boot = destination / "boot"
     packaging_command = [
         "cargo",
@@ -157,7 +183,13 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
     for path in (image, boot_resource, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
-    return image, boot_resource, boot_provenance, artifact_provenance
+    return (
+        image,
+        boot_resource,
+        boot_provenance,
+        artifact_provenance,
+        generated_initial_user_image,
+    )
 
 
 def qemu_command(image: Path, boot_resource: Path, serial: Path) -> list[str]:
@@ -254,13 +286,14 @@ def evidence_record(
     boot_resource: Path,
     boot_provenance: Path,
     artifact_provenance: Path,
+    generated_initial_user_image: Path,
     serial: bytes,
 ) -> dict[str, Any]:
     data = manifest()
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/52",
+        "schema": "topal-kernel-toolchain-gate-qemu/53",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -276,6 +309,8 @@ def evidence_record(
         "boot_resource_bytes": boot["boot_resource_bytes"],
         "initial_user_image_bytes": boot["initial_user_image_bytes"],
         "initial_user_image_sha256": boot["initial_user_image_sha256"],
+        "generated_initial_user_image_sha256": digest(generated_initial_user_image),
+        "initial_user_image_input": "supplied",
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
@@ -297,9 +332,13 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
         root = Path(temporary)
-        image, boot_resource, boot_provenance, artifact_provenance = build_image(
-            root / "artifact"
-        )
+        (
+            image,
+            boot_resource,
+            boot_provenance,
+            artifact_provenance,
+            generated_initial_user_image,
+        ) = build_image(root / "artifact")
         boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
         if digest(boot_resource) != boot["boot_resource_sha256"]:
             raise GateError("published boot resource does not match boot provenance")
@@ -327,6 +366,7 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             boot_resource,
             boot_provenance,
             artifact_provenance,
+            generated_initial_user_image,
             serial,
         )
     if write_evidence:

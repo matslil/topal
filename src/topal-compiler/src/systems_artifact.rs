@@ -53,7 +53,12 @@ use topal_language::compiler::{
 };
 
 use crate::artifact::sha256;
-use crate::systems_provider_object::initial_user_elf_file;
+use crate::systems_provider_object::{
+    INITIAL_USER_CODE_ADDRESS, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_DATA_CAPACITY,
+    INITIAL_USER_DATA_FILE_OFFSET, INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_ENTRY_ELF_OFFSET, initial_user_elf_file,
+};
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
@@ -85,7 +90,7 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/50";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/51";
 pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/49";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
@@ -222,6 +227,29 @@ pub fn publish_x86_64_systems_artifact(
     tools: &LlvmTools,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_initial_user_image(
+        program,
+        tools,
+        &initial_user_image,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// bounded-profile initial user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the supplied image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_initial_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    validate_x86_64_initial_user_image(initial_user_image)?;
     let generated_provider = generate_x86_64_systems_provider_object(program)?;
     let root_object = generate_root_object(program)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
@@ -239,6 +267,7 @@ pub fn publish_x86_64_systems_artifact(
         &generated_provider.plan,
         &generated_provider.bytes,
         &root_object,
+        initial_user_image,
         &stage,
     );
     let record = match result {
@@ -272,6 +301,7 @@ fn publish_in_stage(
     plan: &crate::X86SystemsProviderPlan,
     provider_object: &[u8],
     root_object: &[u8],
+    initial_user_image: &[u8],
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -305,9 +335,8 @@ fn publish_in_stage(
             }),
     )?;
     let placements = linked_placements(&linked.kernel)?;
-    let initial_user_image = initial_user_elf_file()?;
     let initial_user_image_path = stage.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
-    fs::write(&initial_user_image_path, &initial_user_image).map_err(io_error(
+    fs::write(&initial_user_image_path, initial_user_image).map_err(io_error(
         "write initial user image",
         &initial_user_image_path,
     ))?;
@@ -320,7 +349,7 @@ fn publish_in_stage(
         &linked.kernel,
         &linked.debug,
         &linked.map,
-        &initial_user_image,
+        initial_user_image,
         placements,
     )?;
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
@@ -336,6 +365,88 @@ fn publish_in_stage(
     ))?;
     fs::remove_dir_all(&work).map_err(io_error("remove artifact work directory", &work))?;
     Ok(record)
+}
+
+fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
+    let reference = initial_user_elf_file()?;
+    if image.len() != reference.len() {
+        return Err(CompileError::Tool(format!(
+            "initial user image has {} bytes; the qualified x86-64 profile requires {}",
+            image.len(),
+            reference.len()
+        )));
+    }
+
+    let variable_header_ranges = [
+        INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8,
+        INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET..INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET..INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET..INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET..INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET + 8,
+    ];
+    for offset in 0..256 {
+        if variable_header_ranges
+            .iter()
+            .any(|range| range.contains(&offset))
+        {
+            continue;
+        }
+        if image[offset] != reference[offset] {
+            return Err(CompileError::Tool(format!(
+                "initial user image changes immutable x86-64 ELF metadata at byte {offset}"
+            )));
+        }
+    }
+
+    let code_file_size = image_u64(image, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET);
+    let code_memory_size = image_u64(image, INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET);
+    if code_file_size != code_memory_size
+        || !(264..=4096).contains(&code_file_size)
+        || code_file_size % 8 != 0
+    {
+        return Err(CompileError::Tool(
+            "initial user executable extent must be equal file/memory sizes of 264..4096 bytes aligned to 8"
+                .into(),
+        ));
+    }
+
+    let entry = image_u64(image, INITIAL_USER_ENTRY_ELF_OFFSET);
+    let code_end = INITIAL_USER_CODE_ADDRESS
+        .checked_add(code_file_size)
+        .ok_or_else(|| CompileError::Tool("initial user executable extent overflows".into()))?;
+    if entry < INITIAL_USER_CODE_ADDRESS + 256 || entry >= code_end {
+        return Err(CompileError::Tool(
+            "initial user entry must lie inside the executable payload extent".into(),
+        ));
+    }
+
+    let data_file_size = image_u64(image, INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET);
+    let data_memory_size = image_u64(image, INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET);
+    if !(8..=INITIAL_USER_DATA_CAPACITY as u64).contains(&data_file_size)
+        || data_file_size % 8 != 0
+        || data_memory_size < data_file_size
+        || data_memory_size > INITIAL_USER_DATA_CAPACITY as u64
+        || data_memory_size % 8 != 0
+    {
+        return Err(CompileError::Tool(
+            "initial user data extent requires an 8-byte-aligned file size of 8..4096 and memory size between it and 4096"
+                .into(),
+        ));
+    }
+    if INITIAL_USER_DATA_FILE_OFFSET + INITIAL_USER_DATA_CAPACITY != image.len() {
+        return Err(CompileError::Tool(
+            "initial user data segment is outside the qualified file envelope".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn image_u64(image: &[u8], offset: usize) -> u64 {
+    u64::from_le_bytes(
+        image[offset..offset + 8]
+            .try_into()
+            .expect("validated ELF extent"),
+    )
 }
 
 fn build_linked_outputs(
@@ -4480,6 +4591,43 @@ mod tests {
                 "topal_bootstrap_storage",
             ]
         );
+    }
+
+    #[test]
+    fn supplied_initial_user_image_validation_is_bounded_and_payload_neutral() {
+        // TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let canonical = initial_user_elf_file().unwrap();
+        let mut supplied = canonical.clone();
+        supplied[INITIAL_USER_DATA_FILE_OFFSET + 1] = 0xa5;
+        validate_x86_64_initial_user_image(&supplied).unwrap();
+
+        let mut wrong_size = supplied.clone();
+        wrong_size.pop();
+        assert!(validate_x86_64_initial_user_image(&wrong_size).is_err());
+
+        let mut wrong_metadata = supplied.clone();
+        wrong_metadata[0] = 0;
+        assert!(validate_x86_64_initial_user_image(&wrong_metadata).is_err());
+
+        let mut wrong_code_extent = supplied.clone();
+        wrong_code_extent[INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET
+            ..INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&4096_u64.to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_code_extent).is_err());
+
+        let mut wrong_entry = supplied.clone();
+        wrong_entry[INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8]
+            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 256 - 1).to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_entry).is_err());
+
+        let mut wrong_data_extent = supplied;
+        wrong_data_extent
+            [INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET..INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&24_u64.to_le_bytes());
+        wrong_data_extent[INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET
+            ..INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&16_u64.to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_data_extent).is_err());
     }
 
     #[test]
