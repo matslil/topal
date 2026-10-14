@@ -43,12 +43,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/39")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/40")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/36")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/37")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/37",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/38",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -104,6 +104,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_USER_SYSCALL_OK",
                 "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
                 "TOPAL_KERNEL_USER_IMAGE_STACK_OK",
+                "TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
                 "TOPAL_KERNEL_USER_IMAGE_DATA_OK",
                 "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",

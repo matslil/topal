@@ -130,3 +130,15 @@ pinned-QEMU evidence. The evidence must prove aligned bounded initialization, ex
 constructed validation and consumption, balanced continuation stacks, an exact
 post-return witness, and deterministic physical execution without exposing
 general loader stack policy to source.
+
+## Next Step 4 auxiliary-vector refinement
+
+`TK-DEC-054` traces through the
+[bounded initial `AT_PAGESZ` contract](design/bounded-initial-auxv-pagesz.md),
+the checked root, x86-64 provider lowering, structural tests, the implementation
+and [qualification report](step-4-initial-auxv-pagesz.md), and pinned-QEMU
+evidence. The evidence must prove
+one provider-consistent Linux base-page-size entry before `AT_NULL`, exact
+constructed validation and bounded consumption, an ordered post-return
+witness, and deterministic physical execution without exposing general
+auxiliary-vector or loader policy to source.
