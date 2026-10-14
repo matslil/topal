@@ -639,6 +639,27 @@ expose a syscall number, operation-code representation, instruction, register,
 MSR, saved-frame layout, private state address, TLS layout, allocator, cloning,
 or general architecture-control authority to source.
 
+### TOPAL-SYSTEMS-USER-CLEAR-TID-001 — Initial thread exit word
+
+The initial-process profile MAY dispatch Linux-compatible `set_tid_address`
+only while the initial user context is live and its return continuation lies
+in the finalized executable mapping. A nonnull candidate SHALL name a complete
+writable four-byte extent in an already-owned user mapping; null SHALL disable
+registration. Successful dispatch SHALL retain the candidate as private
+thread state without dereference and SHALL return TID one.
+
+Terminal user exit SHALL, for a nonnull retained candidate, write zero under a
+fault-contained user-output scope. It SHALL clear private candidate state
+after that store and before completing the user context or revoking any user
+mapping. A clear fault SHALL fail closed. The one-thread profile SHALL NOT emit
+a futex wake because no waiter can exist.
+
+Invalid candidates, wrong results, retained user access outside terminal
+clearing, partial stores, terminal transition before clear, duplicate result,
+or live candidate state at mapping teardown SHALL be invalid. This rule SHALL
+NOT expose a syscall number, user address, task structure, futex key or queue,
+clone service, or general thread-lifecycle authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

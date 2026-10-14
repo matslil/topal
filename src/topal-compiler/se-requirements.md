@@ -304,6 +304,15 @@ teardown shall clear it. Structural and pinned-QEMU evidence shall prove the
 set/get/restore sequence, result and word checks, provider installation, fault-
 contained output, and state clearing.
 
+The initial clear-child-TID adapter shall lower Linux x86-64 syscall 218 only
+for a live initial context and a return continuation inside the finalized
+executable mapping. It shall accept null or one complete writable four-byte
+candidate, retain it privately, and return TID one without dereference. The
+terminal `exit_group(0)` path shall fault-contain a zero store to a nonnull
+candidate and clear private state before publishing terminal lifecycle state.
+Structural and pinned-QEMU evidence shall prove registration, exact return,
+terminal store/clear ordering, and no retained state at data teardown.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

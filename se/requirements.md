@@ -779,6 +779,16 @@ value before mapping revocation. Exposed registers or MSRs, incorrect set/get
 identity, retained user pointers, partial output, or live state after teardown
 shall fail closed.
 
+The initial-thread exit-word adapter shall accept `set_tid_address` only for
+the live initial thread and an executable user return continuation. A nonnull
+candidate shall name one complete writable four-byte user extent; null shall
+disable registration. Successful dispatch shall retain the candidate
+privately and return TID one without dereference. Terminal exit shall write
+zero to a retained word under fault recovery, clear the private candidate, and
+only then complete the user context. Invalid candidates, wrong results,
+uncontained clear faults, terminal transition before clearing, or state that
+survives user-mapping teardown shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
