@@ -939,14 +939,14 @@ fn analyze_user_syscall_handler(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch requires the sealed read, write, getpid, uname, nanosleep, and exit_group fields",
+            "user syscall dispatch requires the sealed read, write, brk, getpid, uname, nanosleep, and exit_group fields",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 15
+        || fields.len() != 16
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -961,12 +961,13 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[11], "write-maximum-bytes")? != 256
         || field_natural(source, &fields[12], "read-descriptor")? != 0
         || field_natural(source, &fields[13], "read-maximum-bytes")? != 256
-        || field_natural(source, &fields[14], "exit-group-status")? != 0
+        || field_natural(source, &fields[14], "brk-data-page-bytes")? != 4096
+        || field_natural(source, &fields[15], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write bounded stdout, read bounded stdin, and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write bounded stdout, read bounded stdin, maintain the bounded program break, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
@@ -984,6 +985,7 @@ fn analyze_user_syscall_handler(
         write_maximum_bytes: 256,
         read_descriptor: 0,
         read_maximum_bytes: 256,
+        brk_data_page_bytes: 4096,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {

@@ -332,6 +332,7 @@ pub enum SystemsDisposition {
         write_maximum_bytes: u64,
         read_descriptor: u64,
         read_maximum_bytes: u64,
+        brk_data_page_bytes: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -1183,12 +1184,13 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 write_maximum_bytes: 256,
                 read_descriptor: 0,
                 read_maximum_bytes: 256,
+                brk_data_page_bytes: 4096,
                 exit_group_status: 0,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch the sealed read, write, getpid, uname, nanosleep, and exit_group protocol",
+            "the initial user-syscall handler must dispatch the sealed read, write, brk, getpid, uname, nanosleep, and exit_group protocol",
         ));
     }
     Ok(())
@@ -3558,6 +3560,7 @@ fn model_user_execution_transition(
                     write_maximum_bytes: _,
                     read_descriptor: _,
                     read_maximum_bytes: _,
+                    brk_data_page_bytes: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -5181,6 +5184,7 @@ mod tests {
                         write_maximum_bytes: 256,
                         read_descriptor: 0,
                         read_maximum_bytes: 256,
+                        brk_data_page_bytes: 4096,
                         exit_group_status: 0,
                     },
                     effects: vec![

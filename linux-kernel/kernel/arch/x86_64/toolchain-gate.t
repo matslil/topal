@@ -445,6 +445,7 @@ user-syscall-handler is fn (
     write-maximum-bytes is 256,
     read-descriptor is 0,
     read-maximum-bytes is 256,
+    brk-data-page-bytes is 4096,
     exit-group-status is 0
   )
 

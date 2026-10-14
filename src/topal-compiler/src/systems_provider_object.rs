@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/53";
+    "topal.provider-object.x86_64-qemu-pc-q35/54";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -746,7 +746,16 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&data_file_size_offset.to_le_bytes());
     code.bytes(&[0x4d, 0x8b, 0x98]); // runtime p_memsz
     code.bytes(&data_memory_size_offset.to_le_bytes());
-    code.bytes(&[0x49, 0x29, 0xcb]); // BSS bytes = p_memsz - p_filesz
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    code.bytes(&[0x4c, 0x01, 0xd8]); // initial break = data base + p_memsz
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x89, 0x87, 0x90, 0x00, 0x00, 0x00]); // current break
+    code.bytes(&[0x48, 0x89, 0x87, 0x98, 0x00, 0x00, 0x00]); // initial break
+    code.bytes(&[0x41, 0xbb, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x49, 0x29, 0xcb]); // zero bytes = page size - p_filesz
     code.bytes(&[0x49, 0x81, 0xc0]);
     code.bytes(&data_payload_offset.to_le_bytes());
     code.bytes(&[0x49, 0xba]);
@@ -1034,6 +1043,25 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&u32::from_le_bytes(*b"read").to_le_bytes());
     continuation.jump_if(0x85, "read-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]); // release stdin byte
+    continuation.bytes(&[0x31, 0xff]); // brk(0) query
+    continuation.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x10, 0x50, 0x60, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x20, 0x50, 0x60, 0x00]); // grow 16 bytes
+    continuation.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x20, 0x50, 0x60, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xc6, 0x04, 0x25, 0x10, 0x50, 0x60, 0x00, 0xa5]);
+    continuation.bytes(&[0x80, 0x3c, 0x25, 0x10, 0x50, 0x60, 0x00, 0xa5]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x10, 0x50, 0x60, 0x00]); // shrink to initial
+    continuation.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x10, 0x50, 0x60, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x60, 0x60, 0x00]); // beyond reserve
+    continuation.bytes(&[0xb8, 0x0c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x10, 0x50, 0x60, 0x00]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
     let getpid_return_address =
         continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
@@ -1367,6 +1395,8 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x16]);
     code.jump_if(0x85, "fail");
     code.bind("unmap-data")?;
+    code.bytes(&[0x48, 0xc7, 0x87, 0x90, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0x98, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
@@ -1594,6 +1624,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "read");
     code.bytes(&[0x83, 0xf8, 0x01]);
     code.jump_if(0x84, "write");
+    code.bytes(&[0x83, 0xf8, 0x0c]);
+    code.jump_if(0x84, "brk");
     code.bytes(&[0x83, 0xf8, 0x27]);
     code.jump_if(0x84, "getpid");
     code.bytes(&[0x83, 0xf8, 0x3f]);
@@ -1621,6 +1653,33 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x03]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("brk")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0x90, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x98, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "return-user");
+    code.bytes(&[0x4c, 0x39, 0xc7]);
+    code.jump_if(0x82, "return-user");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "return-user");
+    code.bytes(&[0x65, 0x48, 0x89, 0x3c, 0x25, 0x90, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x89, 0xf8]);
     code.jump("return-user");
 
     code.bind("uname")?;
@@ -3637,12 +3696,21 @@ mod tests {
                     .windows(4)
                     .any(|bytes| bytes == data_payload_offset.to_le_bytes())
                 && user_store
+                    .windows(6)
+                    .any(|bytes| bytes == [0x41, 0xbb, 0x00, 0x10, 0x00, 0x00])
+                && user_store
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x87, 0x90, 0, 0, 0])
+                && user_store
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x87, 0x98, 0, 0, 0])
+                && user_store
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x12])
                 && user_store
                     .windows(8)
                     .any(|bytes| bytes == INITIAL_USER_DATA_ADDRESS.to_le_bytes()),
-            "user store must copy the complete runtime data extent and explicitly zero the complete BSS extent"
+            "user store must copy runtime data, derive both break states, and zero the complete BSS and future-heap page tail"
         );
         let user_install = symbol_bytes(
             &file,
@@ -3666,6 +3734,26 @@ mod tests {
                     .windows(4)
                     .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0xa5]),
             "constructed user code must write and read back one BSS byte"
+        );
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05])
+                .count(),
+            4,
+            "constructed user code must query, grow, shrink, and reject one program break"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0xc6, 0x04, 0x25, 0x10, 0x50, 0x60, 0x00, 0xa5])
+                && entry_payload
+                    .bytes
+                    .windows(8)
+                    .any(|bytes| bytes == [0x80, 0x3c, 0x25, 0x10, 0x50, 0x60, 0x00, 0xa5]),
+            "constructed user code must write and read the first newly admitted heap byte"
         );
         assert_eq!(
             elf_file.len(),
@@ -4035,6 +4123,24 @@ mod tests {
                 "bounded read and write must each retain EBADF, EINVAL, and EFAULT results"
             );
         }
+        assert!(
+            user_syscall
+                .windows(3)
+                .any(|bytes| bytes == [0x83, 0xf8, 0x0c])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x8b, 0x04, 0x25, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x04, 0x25, 0x98, 0, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xff, 0x00, 0x60, 0x60, 0x00])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x89, 0x3c, 0x25, 0x90, 0, 0, 0]),
+            "brk must use private current and initial state and publish only an in-page request"
+        );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
             user_protect
@@ -4190,6 +4296,12 @@ mod tests {
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0])
                 && user_unmap
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x90, 0, 0, 0, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x98, 0, 0, 0, 0, 0, 0, 0])
+                && user_unmap
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
                 && user_unmap
@@ -4198,7 +4310,7 @@ mod tests {
                 && !user_unmap
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes()),
-            "user unmap must revoke, invalidate, consume private mapping state, and return the frame"
+            "user unmap must revoke, invalidate, clear break and mapping state, and return the frame"
         );
         let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);
         assert!(
