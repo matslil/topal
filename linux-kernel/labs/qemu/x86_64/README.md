@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 48 ordered serial markers. The generated real-mode adapter
+and waits for the 49 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -175,8 +175,9 @@ generation, the provider installs and verifies an exact opaque entry payload;
 the second retains the fixed-byte data qualification. It then promotes the
 first verified RO/NX mapping to role-specific RO/X code with target
 invalidation and retains it while a separately allocated, disjoint frame is
-mapped at the sealed data location. The second mapping remains RO/NX when it
-is sealed as immutable data. The intervening
+mapped at the sealed data location. After content verification, the second
+mapping is promoted through a distinct writable-data role from RO/NX to RW/NX
+with target invalidation; execute authority remains absent. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
 coexist. The following `TOPAL_KERNEL_BOOT_RESOURCE_OK` marker proves that the
 provider validated the complete deterministic CPIO resource supplied through
@@ -189,9 +190,10 @@ to its own first instruction, `AT_EXECFN` aliased to `argv[0]`, terminating
 zero-valued `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` root credentials,
 resident `AT_PHDR`/`AT_PHENT`/`AT_PHNUM` facts, terminating auxiliary-vector,
 and the shared string contents before
-directly observing the immutable sentinel and transferring to the existing
-syscall and fault-recovery probe. A mismatch takes the payload's fail-closed
-trap instead. After its existing compatibility checks,
+directly observing the initialized sentinel, proving the BSS byte starts at
+zero, writing `0xa5` through the writable mapping, reading it back, and then
+transferring to the existing syscall and fault-recovery probe. A mismatch
+takes the payload's fail-closed trap instead. After its existing compatibility checks,
 the probe transfers to a sealed continuation in the constructed mapping. That
 continuation reserves a bounded buffer in the existing RW/NX user stack,
 invokes Linux x86-64 `uname`, requires a complete transfer, validates the
@@ -232,6 +234,9 @@ validated runtime ELF file and memory extents rather than fixed qword counts,
 same external ELF resource and the complete memory-only tail remained zero
 after RO/NX publication,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` proves the initialized user program
+successfully changed and reread its BSS through the verified RW/NX data role,
+and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,
 `TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK` proves the bounded syscall succeeded, while

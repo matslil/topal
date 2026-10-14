@@ -395,6 +395,12 @@ records prepublication envelope validation, systems-only CLI selection,
 content-based provenance, a payload distinct from the generated default, and
 two deterministic pinned-QEMU runs.
 
+The next systems-only refinement gives the initial ELF a typed
+[writable non-executable data role](design/writable-user-data.md). Its
+[implementation and qualification report](step-4-writable-user-data.md)
+records verified RO/NX-to-RW/NX promotion, retained W^X, an in-program BSS
+write/read proof, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
