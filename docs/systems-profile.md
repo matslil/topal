@@ -663,6 +663,14 @@ returned to the same user continuation, and terminal execution remains
 fail-closed. This is one standard-output qualification, not a descriptor table,
 VFS write path, arbitrary buffer interface, or partial-write policy.
 
+The matching bounded input refinement permits one sealed Linux-compatible
+`read` from descriptor zero into one byte of already-owned writable user-stack
+memory. The provider receives one checked console byte into private kernel
+staging, copies it to the exact candidate under fault recovery, retains no
+pointer, and returns the exact byte count to the same continuation. This is one
+qualification observation, not a byte stream, blocking policy, line
+discipline, terminal interface, or general VFS read path.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

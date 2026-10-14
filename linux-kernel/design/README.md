@@ -68,6 +68,7 @@ records, not this directory alone, define language meaning.
 - [Supplied initial user-image contract](supplied-initial-user-image.md)
 - [Writable initial user-data contract](writable-user-data.md)
 - [Bounded constructed-image `write` output](bounded-constructed-image-write.md)
+- [Bounded constructed-image `read` input](bounded-constructed-image-read.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
