@@ -570,6 +570,32 @@ address, serial mechanism, arbitrary descriptor, end-of-file, partial-read or
 signal policy, line discipline, terminal interface, or unbounded input buffer
 interface to source.
 
+### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
+
+The initial-process profile MAY dispatch Linux-compatible `brk` when the user
+context is live and the return continuation lies in the finalized executable
+mapping. The provider SHALL derive the immutable initial break from the
+validated runtime ELF data-memory extent and SHALL prove it lies within the
+owned 4096-byte writable, non-executable data page. It SHALL zero the complete
+page tail beginning at the runtime file-data end before user entry and SHALL
+retain one current break in private process state.
+
+A zero request SHALL return the current break without changing it. A byte-
+granular request in the closed interval from initial break through data-page
+end SHALL atomically become and return the new break. Any other request SHALL
+leave state unchanged and return the prior break. Dispatch SHALL NOT return a
+negative errno for an unsupported break. Data-role teardown SHALL clear the
+private break before mapping revocation and backing release.
+
+Compile-time initial-size authority, arithmetic wrap, page-tail allocator
+residue, state publication before successful image construction, wrong entry
+state, non-executable return, a result other than requested or prior break as
+applicable, or live break state after data teardown SHALL be invalid. This rule
+SHALL NOT expose a virtual address, page-table representation, state location,
+syscall number, register convention, instruction, VMA collection, additional
+page allocation, resource-limit policy, overcommit, `mmap`, `mprotect`, or
+`munmap` interface to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

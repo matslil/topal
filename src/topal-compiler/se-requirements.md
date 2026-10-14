@@ -272,6 +272,17 @@ and pinned-QEMU evidence shall prove range rejection, dynamic receive and copy
 bounds, complete staging before user publication, argument-derived return, and
 the ordered post-return witness.
 
+The bounded initial-heap adapter shall lower Linux x86-64 syscall 12 only for a
+live initial context and a return continuation inside the finalized executable
+mapping. Image construction shall derive the initial break from runtime ELF
+`p_memsz`, prove it lies inside the 4096-byte data page, zero the complete tail
+from runtime `p_filesz` through the page end, and publish the break only after
+successful construction. Dispatch shall keep current state provider-private,
+return it for a zero query or unsupported request, and replace it only with an
+in-range byte-granular request. Teardown shall clear it. Structural and pinned-
+QEMU evidence shall prove runtime derivation, complete zeroing, query, grow,
+write/read, shrink, rejected growth, exact returns, and state clearing.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

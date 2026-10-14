@@ -744,6 +744,19 @@ the constructed-image entry marker. Partial reception, early user publication,
 wrong transfer or result, unbalanced disposal, or witness reordering shall fail
 closed.
 
+The initial-process program-break adapter shall derive its initial value from
+the validated runtime ELF data-memory extent and bound it by the already-owned
+4096-byte RW/NX data page. The provider shall zero the complete page tail from
+the runtime file-data end before user entry and keep the current break in
+private process state. A zero request shall query the current break. An in-
+range byte-granular request shall atomically replace and return it; an out-of-
+range request shall preserve and return the prior break as Linux `brk` does.
+Dispatch shall require a live context and executable return continuation, and
+teardown shall clear the private break before releasing the data mapping.
+Compile-time data-size authority, allocator residue exposure, negative errno
+results, additional page mapping, retained user pointers, or state surviving
+teardown shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
