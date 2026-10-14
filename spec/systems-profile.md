@@ -521,25 +521,26 @@ duplicate, early, or late observation SHALL be invalid.
 
 ### TOPAL-SYSTEMS-USER-WRITE-001 — Bounded initial standard output
 
-The initial-process profile MAY dispatch one sealed Linux-compatible `write`
-entry only when the exact user continuation, descriptor-one argument,
-provider-selected readable user-stack candidate, and declared 26-byte extent
-all match the checked disposition. Dispatch SHALL copy the complete extent into
-private kernel staging before any byte becomes externally observable and SHALL
-retain no user pointer after the copy.
+The initial-process profile MAY dispatch Linux-compatible `write` for
+descriptor one when the return continuation lies in the finalized executable
+mapping, length is from one through 256 bytes, and the complete overflow-free
+candidate extent lies in a provider-proved readable user mapping. Dispatch
+SHALL reject invalid descriptor, length, or candidate with the personality's
+Linux-compatible error before dereference or output.
 
-Successful dispatch SHALL publish the exact staged bytes
-`TOPAL_KERNEL_USER_WRITE_OK` through the target's checked console effect and
-return 26 to the same revalidated user continuation. Constructed code SHALL
-validate that exact result and release its bounded stack region before its next
-syscall. A wrong entry state, return site, descriptor, candidate, extent,
-payload byte, partial or faulted copy, short result, early output, retained
-pointer, unbalanced stack, duplicate output, or output after terminal
-disposition SHALL be invalid.
+For a valid request, dispatch SHALL copy the complete caller-selected extent
+into private kernel staging before any byte becomes externally observable and
+SHALL retain no user pointer after the copy. It SHALL publish exactly the staged
+prefix through the target's checked console effect and return the requested
+length to the same revalidated user continuation. The provider SHALL NOT
+require a single embedded payload or call-site address. A wrong entry state,
+non-executable return, cross-hole or wrapping extent, partial or faulted copy,
+short result, early output, retained pointer, duplicate output, or output after
+terminal disposition SHALL be invalid.
 
 This rule SHALL NOT expose a syscall number, register convention, instruction,
 address, serial mechanism, arbitrary descriptor, descriptor table, VFS object,
-partial-write policy, or general output buffer interface to source.
+partial-write policy, or unbounded output interface to source.
 
 ### TOPAL-SYSTEMS-USER-READ-001 — Bounded initial standard input
 

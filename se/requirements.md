@@ -717,14 +717,15 @@ qualifications, general user-copy recovery, signals, restart, TLS, multiple
 processes or threads, user preemption, migration, SMP, and the complete syscall
 table remain unavailable.
 
-The constructed-image write qualification shall accept exactly descriptor one,
-one provider-selected 26-byte user-stack candidate, and the exact
-`TOPAL_KERNEL_USER_WRITE_OK` payload. It shall complete a fault-contained copy
-into private kernel staging before publishing any byte through the checked
-console effect, return the exact byte count to the same continuation, and prove
-user stack restoration. Partial copy, early output, arbitrary descriptor or
-extent, pointer retention, short result, duplicate output, or output after
-terminal disposition shall fail closed.
+The initial-process write adapter shall accept descriptor one, an executable
+user return continuation, and one through 256 caller-selected bytes wholly
+contained in a proved readable user mapping. It shall reject invalid arguments
+before access or output, completely stage valid bytes in private kernel memory,
+publish exactly the staged prefix through the checked console effect, return
+the requested length, and retain no pointer. The provider shall not compare
+against an embedded payload or single call site. Wrapping or cross-hole extents,
+partial copy, early output, arbitrary descriptors, short result, duplicate
+output, or output after terminal disposition shall fail closed.
 
 The constructed-image read qualification shall accept exactly descriptor zero,
 one provider-selected one-byte writable user-stack candidate, and one

@@ -248,15 +248,16 @@ one BSS byte before terminal success. The root shall emit the exact ordered
 return. Structural tests shall reject code-role use, preverification use,
 identity substitution, stale unmap, missing invalidation, or W+X permission.
 
-The bounded initial-output increment shall check one constructed Linux x86-64
-`write(1, candidate, 26)` after the qualified input transfer and before the
-terminal identity and exit calls. The provider shall accept only the exact
-return site, candidate, length, descriptor, lifecycle state, and
-`TOPAL_KERNEL_USER_WRITE_OK` contents; copy all bytes into private kernel
-staging under fault recovery before UART publication; return 26; and preserve
-the exact continuation. Structural and pinned-QEMU evidence shall prove copy
-completion precedes output, exact result validation, balanced stack disposal,
-ordered output, and fail-closed mismatch behavior.
+The bounded initial-output adapter shall accept Linux x86-64 `write` only for
+descriptor one, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's readable user mapping
+set. It shall reject invalid requests before dereference or UART output, copy a
+valid extent completely into fixed private kernel staging, publish exactly the
+argument-selected prefix, return the requested count, and preserve the
+continuation. It shall contain no exact payload or single-return-site oracle.
+Structural and pinned-QEMU evidence shall prove range rejection, dynamic loop
+bounds, staging before output, argument-derived return, and deterministic
+execution of the existing 26-byte application witness.
 
 The bounded initial-input increment shall check one constructed Linux x86-64
 `read(0, candidate, 1)` after the stdout write and before terminal identity and
