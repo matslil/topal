@@ -401,6 +401,12 @@ The next systems-only refinement gives the initial ELF a typed
 records verified RO/NX-to-RW/NX promotion, retained W^X, an in-program BSS
 write/read proof, and two deterministic pinned-QEMU runs.
 
+The following systems-only refinement performs one bounded
+[initial-process standard-output write](design/bounded-constructed-image-write.md).
+Its [implementation and qualification report](step-4-constructed-image-write.md)
+records complete kernel staging before output, exact Linux x86-64 return
+behavior, user-stack restoration, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a

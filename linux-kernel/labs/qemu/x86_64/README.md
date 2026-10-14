@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 49 ordered serial markers. The generated real-mode adapter
+and waits for the 50 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -201,7 +201,14 @@ returned `Linux` identity, and restores the stack. After output disposal it
 stages a zero-duration native timespec in the same
 stack, invokes `nanosleep` with no remainder candidate, requires complete
 input transfer and a successful return, and restores the stack again. It then
-invokes `getpid`, requires PID one, takes the same trap on mismatch, and issues
+constructs the exact 26-byte `TOPAL_KERNEL_USER_WRITE_OK` payload in another
+bounded stack region and invokes Linux `write(1, candidate, 26)`. Dispatch
+copies every byte to private kernel staging before output, validates the staged
+payload, publishes it through the checked Q35 serial provider, and returns the
+exact byte count; the user validates that result and restores its stack. The
+payload is consequently observable before the source-owned post-return
+witnesses. The continuation then invokes `getpid`, requires PID one, takes the
+same trap on mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
