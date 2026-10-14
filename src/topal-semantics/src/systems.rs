@@ -330,6 +330,8 @@ pub enum SystemsDisposition {
         nanosleep_remainder_candidate: u64,
         write_descriptor: u64,
         write_payload: String,
+        read_descriptor: u64,
+        read_byte: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -1179,12 +1181,14 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 nanosleep_remainder_candidate: 0,
                 write_descriptor: 1,
                 write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
+                read_descriptor: 0,
+                read_byte: u64::from(b'q'),
                 exit_group_status: 0,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch the sealed write, getpid, uname, nanosleep, and exit_group protocol",
+            "the initial user-syscall handler must dispatch the sealed read, write, getpid, uname, nanosleep, and exit_group protocol",
         ));
     }
     Ok(())
@@ -1251,6 +1255,7 @@ struct BootstrapAuthorityState {
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
     initial_boot_resource_validated: bool,
+    constructed_user_read_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -2187,6 +2192,22 @@ impl BootstrapAuthorityState {
                 }
                 self.initial_boot_resource_validated = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_READ_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.initial_boot_resource_validated
+                    || self.constructed_user_read_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed read witness requires exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_read_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -2195,6 +2216,7 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
+                    || !self.constructed_user_read_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -3534,6 +3556,8 @@ fn model_user_execution_transition(
                     nanosleep_remainder_candidate,
                     write_descriptor: _,
                     write_payload: _,
+                    read_descriptor: _,
+                    read_byte: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -4975,6 +4999,9 @@ mod tests {
                         },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -5152,6 +5179,8 @@ mod tests {
                         nanosleep_remainder_candidate: 0,
                         write_descriptor: 1,
                         write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
+                        read_descriptor: 0,
+                        read_byte: u64::from(b'q'),
                         exit_group_status: 0,
                     },
                     effects: vec![
@@ -5228,6 +5257,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                        || text == "TOPAL_KERNEL_USER_READ_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -5658,6 +5688,9 @@ mod tests {
                 SystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_READ_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -6472,6 +6505,7 @@ mod tests {
                     SystemsOperation::ConsoleWrite { text }
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                            || text == "TOPAL_KERNEL_USER_READ_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"

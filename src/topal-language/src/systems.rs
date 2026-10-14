@@ -939,14 +939,14 @@ fn analyze_user_syscall_handler(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch requires the sealed write, getpid, uname, nanosleep, and exit_group fields",
+            "user syscall dispatch requires the sealed read, write, getpid, uname, nanosleep, and exit_group fields",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 13
+        || fields.len() != 15
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -960,12 +960,14 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[10], "write-descriptor")? != 1
         || field_static_string(source, &fields[11], "write-payload")?
             != "TOPAL_KERNEL_USER_WRITE_OK"
-        || field_natural(source, &fields[12], "exit-group-status")? != 0
+        || field_natural(source, &fields[12], "read-descriptor")? != 0
+        || field_natural(source, &fields[13], "read-byte")? != u64::from(b'q')
+        || field_natural(source, &fields[14], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write the sealed stdout payload, and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write stdout, read the sealed stdin byte, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
@@ -981,6 +983,8 @@ fn analyze_user_syscall_handler(
         nanosleep_remainder_candidate: 0,
         write_descriptor: 1,
         write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
+        read_descriptor: 0,
+        read_byte: u64::from(b'q'),
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {
@@ -3237,6 +3241,7 @@ fn analyze_kernel_context_decision(
     };
     let [
         enter_user,
+        user_read_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3280,6 +3285,23 @@ fn analyze_kernel_context_decision(
     };
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let user_read_marker = analyze_operation(
+        source,
+        user_read_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_read_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_READ_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_read_marker_statement),
+            "returned user execution requires its exact constructed read marker",
+        ));
+    }
     let user_copy_to_marker = analyze_operation(
         source,
         user_copy_to_marker_statement,
@@ -3829,6 +3851,7 @@ fn analyze_kernel_context_decision(
                 process_identity: 1,
             },
             CompilerSystemsOperation::EnterUserContext,
+            user_read_marker,
             user_copy_to_marker,
             user_copy_from_marker,
             user_marker,
@@ -6593,6 +6616,9 @@ mod tests {
                     status: 0,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6700,7 +6726,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 136);
+        assert_eq!(program.bootstrap.handler.operations.len(), 137);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

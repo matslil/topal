@@ -219,6 +219,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     address-space is user-space
                                                                                                                   )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -442,6 +443,8 @@ user-syscall-handler is fn (
     nanosleep-remainder-candidate is 0,
     write-descriptor is 1,
     write-payload is "TOPAL_KERNEL_USER_WRITE_OK",
+    read-descriptor is 0,
+    read-byte is 113,
     exit-group-status is 0
   )
 
