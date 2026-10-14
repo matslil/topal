@@ -541,6 +541,29 @@ This rule SHALL NOT expose a syscall number, register convention, instruction,
 address, serial mechanism, arbitrary descriptor, descriptor table, VFS object,
 partial-write policy, or general output buffer interface to source.
 
+### TOPAL-SYSTEMS-USER-READ-001 — Bounded initial standard input
+
+The initial-process profile MAY dispatch one sealed Linux-compatible `read`
+entry only when the exact user continuation, descriptor-zero argument,
+provider-selected writable user-stack candidate, and one-byte extent match the
+checked disposition. The provider SHALL receive exactly one declared console
+byte into private kernel staging before beginning a fault-contained transfer to
+that candidate and SHALL retain no user pointer after the transfer.
+
+Successful dispatch SHALL copy the byte `q`, return one to the same revalidated
+user continuation, and require constructed code to validate both result and
+byte before releasing its bounded stack region. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_READ_OK` observation after exact terminal return and before
+the constructed-image entry witness. Wrong state, return site, descriptor,
+candidate, extent, byte, partial or faulted transfer, short result, retained
+pointer, unbalanced stack, or missing, duplicate, early, renamed, or late
+witness SHALL be invalid.
+
+This rule SHALL NOT expose a syscall number, register convention, instruction,
+address, serial mechanism, arbitrary descriptor, input stream, blocking policy,
+line discipline, terminal interface, or general input buffer interface to
+source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -258,6 +258,16 @@ the exact continuation. Structural and pinned-QEMU evidence shall prove copy
 completion precedes output, exact result validation, balanced stack disposal,
 ordered output, and fail-closed mismatch behavior.
 
+The bounded initial-input increment shall check one constructed Linux x86-64
+`read(0, candidate, 1)` after the stdout write and before terminal identity and
+exit. The provider shall accept only the exact return site, candidate, extent,
+descriptor, and lifecycle state; receive the declared byte `q` through the
+checked serial input; stage it privately; complete a fault-contained one-byte
+copy to user memory; return one; and preserve the exact continuation. User code
+shall validate the result and byte before stack disposal. Structural and
+pinned-QEMU evidence shall prove deterministic injection, input polling,
+staging before user transfer, exact return, and the ordered post-return witness.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

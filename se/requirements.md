@@ -726,6 +726,16 @@ user stack restoration. Partial copy, early output, arbitrary descriptor or
 extent, pointer retention, short result, duplicate output, or output after
 terminal disposition shall fail closed.
 
+The constructed-image read qualification shall accept exactly descriptor zero,
+one provider-selected one-byte writable user-stack candidate, and one
+deterministically injected console byte `q`. The provider shall stage that byte
+privately, complete a fault-contained copy to the exact candidate, retain no
+pointer, and return one to the same continuation. User mode shall validate both
+the result and byte before stack disposal. The exact
+`TOPAL_KERNEL_USER_READ_OK` marker shall occur after terminal return and before
+the constructed-image entry marker. Wrong arguments, byte, transfer, result,
+stack balance, or witness ordering shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
