@@ -77,6 +77,7 @@ records, not this directory alone, define language meaning.
 - [Initial-thread clear-child-TID word](initial-clear-child-tid.md)
 - [Initial-thread empty robust-list registration](initial-empty-robust-list.md)
 - [Initial stack resource-limit query](initial-stack-rlimit-query.md)
+- [Initial thread signal mask](initial-signal-mask.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
