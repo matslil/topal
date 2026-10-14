@@ -176,8 +176,9 @@ is sealed as immutable data. The intervening
 coexist. Both mappings then remain resident while the existing sealed probe
 begins at the constructed code mapping with an aligned sealed initial stack.
 The constructed entry validates and consumes exact `argc`, `argv`, empty
-environment, provider-consistent `AT_PAGESZ=4096`, terminating
-auxiliary-vector, and `argv[0]` contents before
+environment, provider-consistent `AT_PAGESZ=4096`, `AT_ENTRY=0x604000` bound
+to its own first instruction, terminating auxiliary-vector, and `argv[0]`
+contents before
 directly observing the immutable sentinel and transferring to the existing
 syscall and fault-recovery probe. A mismatch takes the payload's fail-closed
 trap instead. After its existing compatibility checks,
@@ -195,6 +196,8 @@ exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_STACK_OK` proves initial-stack validation succeeded,
 `TOPAL_KERNEL_USER_IMAGE_AUXV_OK` proves the provider-sealed base-page-size
 entry was validated before `AT_NULL`,
+`TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK` proves the sealed executable-entry
+fact matched the selected first instruction,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,

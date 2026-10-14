@@ -297,6 +297,15 @@ continuing. Its
 records exact construction, validation, bounded consumption, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement binds a
+[bounded initial `AT_ENTRY` fact](design/bounded-initial-auxv-entry.md) to the
+first instruction selected by the provider. It keeps the tag, address, and
+layout provider-owned while requiring constructed code to validate exact
+agreement with its own sealed entry point. Its
+[implementation and qualification report](step-4-initial-auxv-entry.md)
+records exact construction, correspondence validation, bounded consumption,
+structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -417,6 +426,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded constructed-image `nanosleep` input](step-4-constructed-image-nanosleep.md)
 - [Step 4 bounded Linux-compatible initial user stack](step-4-initial-user-stack.md)
 - [Step 4 bounded initial `AT_PAGESZ` auxiliary vector](step-4-initial-auxv-pagesz.md)
+- [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

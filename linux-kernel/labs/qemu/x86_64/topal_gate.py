@@ -52,6 +52,7 @@ MARKERS = (
     b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
     b"TOPAL_KERNEL_USER_IMAGE_STACK_OK",
     b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK",
     b"TOPAL_KERNEL_USER_IMAGE_DATA_OK",
     b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
     b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
@@ -243,7 +244,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/40",
+        "schema": "topal-kernel-toolchain-gate-qemu/41",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

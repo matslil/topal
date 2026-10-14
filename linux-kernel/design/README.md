@@ -53,6 +53,7 @@ records, not this directory alone, define language meaning.
 - [Bounded constructed-image `nanosleep` input](bounded-constructed-image-nanosleep.md)
 - [Bounded Linux-compatible initial user stack](bounded-initial-user-stack.md)
 - [Bounded initial `AT_PAGESZ` auxiliary vector](bounded-initial-auxv-pagesz.md)
+- [Bounded initial `AT_ENTRY` auxiliary-vector fact](bounded-initial-auxv-entry.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
