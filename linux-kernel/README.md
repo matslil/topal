@@ -388,6 +388,13 @@ Its [implementation and qualification report](step-4-published-initial-user-imag
 records atomic publication, artifact-provenance binding, exact-byte boot
 packaging, tamper rejection, and two deterministic pinned-QEMU runs.
 
+The following systems-only refinement accepts one
+[caller-supplied bounded initial ELF](design/supplied-initial-user-image.md).
+Its [implementation and qualification report](step-4-supplied-initial-user-image.md)
+records prepublication envelope validation, systems-only CLI selection,
+content-based provenance, a payload distinct from the generated default, and
+two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -520,6 +527,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 runtime-derived data and BSS extent](step-4-runtime-derived-data-extent.md)
 - [Step 4 runtime-derived ELF entry](step-4-runtime-derived-entry.md)
 - [Step 4 published initial user image](step-4-published-initial-user-image.md)
+- [Step 4 supplied initial user image](step-4-supplied-initial-user-image.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
