@@ -190,10 +190,7 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
-            SOURCE.replace(
-                "write-payload is \"TOPAL_KERNEL_USER_WRITE_OK\"",
-                "write-payload is \"TOPAL_KERNEL_USER_WRITE_BAD\"",
-            ),
+            SOURCE.replace("write-maximum-bytes is 256", "write-maximum-bytes is 255"),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (

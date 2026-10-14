@@ -442,7 +442,7 @@ user-syscall-handler is fn (
     nanosleep-nanoseconds is 0,
     nanosleep-remainder-candidate is 0,
     write-descriptor is 1,
-    write-payload is "TOPAL_KERNEL_USER_WRITE_OK",
+    write-maximum-bytes is 256,
     read-descriptor is 0,
     read-byte is 113,
     exit-group-status is 0

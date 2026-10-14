@@ -958,8 +958,7 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[8], "nanosleep-nanoseconds")? != 0
         || field_natural(source, &fields[9], "nanosleep-remainder-candidate")? != 0
         || field_natural(source, &fields[10], "write-descriptor")? != 1
-        || field_static_string(source, &fields[11], "write-payload")?
-            != "TOPAL_KERNEL_USER_WRITE_OK"
+        || field_natural(source, &fields[11], "write-maximum-bytes")? != 256
         || field_natural(source, &fields[12], "read-descriptor")? != 0
         || field_natural(source, &fields[13], "read-byte")? != u64::from(b'q')
         || field_natural(source, &fields[14], "exit-group-status")? != 0
@@ -982,7 +981,7 @@ fn analyze_user_syscall_handler(
         nanosleep_nanoseconds: 0,
         nanosleep_remainder_candidate: 0,
         write_descriptor: 1,
-        write_payload: "TOPAL_KERNEL_USER_WRITE_OK".into(),
+        write_maximum_bytes: 256,
         read_descriptor: 0,
         read_byte: u64::from(b'q'),
         exit_group_status: 0,

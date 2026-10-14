@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/51";
+    "topal.provider-object.x86_64-qemu-pc-q35/52";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -111,7 +111,6 @@ pub(crate) const INITIAL_USER_DATA_CAPACITY: usize = 4096;
 const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
-const INITIAL_USER_WRITE_CANDIDATE: u32 = 0x0060_1fe0;
 const INITIAL_USER_READ_CANDIDATE: u32 = 0x0060_1ff0;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -780,7 +779,6 @@ struct InitialUserEntryPayload {
     continuation_address: u64,
     uname_return_address: u64,
     nanosleep_return_address: u64,
-    write_return_address: u64,
     read_return_address: u64,
     getpid_return_address: u64,
 }
@@ -1024,8 +1022,6 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x89, 0xe6]); // candidate = rsp
     continuation.bytes(&[0xba, 0x1a, 0x00, 0x00, 0x00]); // 26 bytes
     continuation.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x05]); // write
-    let write_return_address =
-        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x1a]);
     continuation.jump_if(0x85, "write-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]); // release stdout payload
@@ -1074,7 +1070,6 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         continuation_address,
         uname_return_address,
         nanosleep_return_address,
-        write_return_address,
         read_return_address,
         getpid_return_address,
     })
@@ -1586,9 +1581,6 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
         u32::try_from(payload.nanosleep_return_address).map_err(|_| {
             CompileError::Tool("constructed nanosleep return address exceeds x86 imm32".into())
         })?;
-    let write_return_address = u32::try_from(payload.write_return_address).map_err(|_| {
-        CompileError::Tool("constructed write return address exceeds x86 imm32".into())
-    })?;
     let read_return_address = u32::try_from(payload.read_return_address).map_err(|_| {
         CompileError::Tool("constructed read return address exceeds x86 imm32".into())
     })?;
@@ -1775,20 +1767,33 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump("fail");
 
     code.bind("write")?;
-    code.bytes(&[0x48, 0x81, 0xf9]);
-    code.bytes(&write_return_address.to_le_bytes());
-    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x83, 0xff, 0x01]);
-    code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&INITIAL_USER_WRITE_CANDIDATE.to_le_bytes());
-    code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x83, 0xfa, 0x1a]);
-    code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x83, 0xec, 0x20]); // private kernel staging
+    code.jump_if(0x85, "write-ebadf");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "write-einval");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x01, 0x00, 0x00]);
+    code.jump_if(0x87, "write-einval");
     code.bytes(&[0x49, 0x89, 0xf0]); // source candidate
+    code.bytes(&[0x49, 0x89, 0xf1, 0x49, 0x01, 0xd1]); // exclusive end
+    code.jump_if(0x82, "write-efault");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "write-second-range");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "write-candidate-ok");
+    code.bind("write-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "write-efault");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "write-efault");
+    code.bind("write-candidate-ok")?;
+    code.bytes(&[0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00]); // 256 + length
+    code.bytes(&[0x48, 0x89, 0x94, 0x24, 0x00, 0x01, 0x00, 0x00]);
     code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix
     code.rip_lea(&[0x48, 0x8d, 0x05], "write-copy-fault-site");
     code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
@@ -1800,41 +1805,33 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x43, 0x8a, 0x04, 0x10]);
     code.bytes(&[0x42, 0x88, 0x04, 0x14]);
     code.bytes(&[0x49, 0xff, 0xc2]);
-    code.bytes(&[0x49, 0x83, 0xfa, 0x1a]);
+    code.bytes(&[0x4c, 0x3b, 0x94, 0x24, 0x00, 0x01, 0x00, 0x00]);
     code.jump_if(0x85, "write-copy-loop");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
-    for (offset, value) in [
-        (0_u8, u64::from_le_bytes(*b"TOPAL_KE")),
-        (8, u64::from_le_bytes(*b"RNEL_USE")),
-        (16, u64::from_le_bytes(*b"R_WRITE_")),
-    ] {
-        code.bytes(&[0x48, 0xb8]);
-        code.bytes(&value.to_le_bytes());
-        if offset == 0 {
-            code.bytes(&[0x48, 0x39, 0x04, 0x24]);
-        } else {
-            code.bytes(&[0x48, 0x39, 0x44, 0x24, offset]);
-        }
-        code.jump_if(0x85, "fail");
-    }
-    code.bytes(&[0x66, 0x81, 0x7c, 0x24, 0x18, b'O', b'K']);
-    code.jump_if(0x85, "fail");
     code.bytes(&[0x45, 0x31, 0xd2]);
     code.bind("write-uart-loop")?;
     code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
     code.jump_if(0x84, "write-uart-loop");
     code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
     code.bytes(&[0x42, 0x8a, 0x04, 0x14, 0xee]);
-    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x1a]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x4c, 0x3b, 0x94, 0x24, 0x00, 0x01, 0x00, 0x00]);
     code.jump_if(0x85, "write-uart-loop");
-    code.bytes(&[0x48, 0x83, 0xc4, 0x20]);
-    code.bytes(&[0xb8, 0x1a, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x8b, 0x84, 0x24, 0x00, 0x01, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x08, 0x01, 0x00, 0x00]);
     code.jump("return-user");
 
     code.bind("write-copy-recovery")?;
     code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x08, 0x01, 0x00, 0x00]);
+    code.bind("write-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("write-ebadf")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf7, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("write-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("read")?;
@@ -3863,7 +3860,7 @@ mod tests {
                     .bytes
                     .windows(2)
                     .any(|bytes| bytes == [0x31, 0xff]),
-            "constructed transfer payload must qualify uname output, zero-duration nanosleep input, and bounded stdout write before getpid and status-zero exit"
+            "constructed transfer payload must qualify uname output, zero-duration nanosleep input, general bounded stdout write, and bounded stdin read before getpid and status-zero exit"
         );
         let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
         assert!(
@@ -3891,10 +3888,54 @@ mod tests {
                 .any(|bytes| bytes == [0x48, 0x83, 0xc4, 0x20])
         );
         assert!(
-            user_syscall
-                .windows(4)
-                .any(|bytes| bytes == [0x48, 0x83, 0xfa, 0x1a])
+            !user_syscall.windows(8).any(|bytes| bytes == b"TOPAL_KE")
+                && !user_syscall.windows(8).any(|bytes| bytes == b"RNEL_USE")
+                && !user_syscall.windows(8).any(|bytes| bytes == b"R_WRITE_"),
+            "the provider must not use the application payload as a write authorization oracle"
         );
+        assert!(
+            user_syscall
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x81, 0xfa, 0x00, 0x01, 0x00, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x00, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf9, 0x00, 0x20, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x40, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf9, 0x00, 0x60, 0x60, 0x00]),
+            "bounded write must reject zero and oversized lengths and admit only complete readable mapping ranges"
+        );
+        assert!(
+            user_syscall
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00])
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x94, 0x24, 0x00, 0x01, 0x00, 0x00])
+                && user_syscall
+                    .windows(8)
+                    .filter(|bytes| { *bytes == [0x4c, 0x3b, 0x94, 0x24, 0x00, 0x01, 0x00, 0x00] })
+                    .count()
+                    == 2
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0x8b, 0x84, 0x24, 0x00, 0x01, 0x00, 0x00]),
+            "bounded write must finish dynamic private staging before output and return the requested length"
+        );
+        for errno in [0xf7_u8, 0xea, 0xf2] {
+            assert!(
+                user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, errno, 0xff, 0xff, 0xff]),
+                "bounded write must retain distinct EBADF, EINVAL, and EFAULT results"
+            );
+        }
         assert!(
             user_syscall
                 .windows(7)
