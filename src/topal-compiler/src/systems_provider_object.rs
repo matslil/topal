@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/38";
+    "topal.provider-object.x86_64-qemu-pc-q35/39";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -93,7 +93,7 @@ pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispat
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 const INITIAL_USER_ENTRY_ADDRESS: u64 = 0x0060_4000;
-const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1fa0;
+const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f90;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
@@ -409,7 +409,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     for (index, chunk) in initial_user_stack_bytes().chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
-        let displacement = u32::try_from(0x1fa0 + index * 8).map_err(|_| {
+        let displacement = u32::try_from(0x1f90 + index * 8).map_err(|_| {
             CompileError::Tool("initial user stack displacement exceeds u32".into())
         })?;
         code.bytes(&[0x48, 0x89, 0x82]);
@@ -603,15 +603,17 @@ struct InitialUserEntryPayload {
     getpid_return_address: u64,
 }
 
-fn initial_user_stack_bytes() -> [u8; 96] {
-    let mut bytes = [0_u8; 96];
+fn initial_user_stack_bytes() -> [u8; 112] {
+    let mut bytes = [0_u8; 112];
     bytes[0..8].copy_from_slice(&1_u64.to_le_bytes());
     bytes[8..16].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
     bytes[32..40].copy_from_slice(&6_u64.to_le_bytes());
     bytes[40..48].copy_from_slice(&4096_u64.to_le_bytes());
     bytes[48..56].copy_from_slice(&9_u64.to_le_bytes());
     bytes[56..64].copy_from_slice(&INITIAL_USER_ENTRY_ADDRESS.to_le_bytes());
-    bytes[80..91].copy_from_slice(b"topal-probe");
+    bytes[64..72].copy_from_slice(&31_u64.to_le_bytes());
+    bytes[72..80].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[96..107].copy_from_slice(b"topal-probe");
     bytes
 }
 
@@ -636,18 +638,23 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x38]);
     entry.bytes(&(INITIAL_USER_ENTRY_ADDRESS as u32).to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
-    for displacement in [0x40_u8, 0x48] {
+    entry.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x40, 0x1f]); // AT_EXECFN
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x48]);
+    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // same string as argv[0]
+    entry.jump_if(0x85, "entry-fail");
+    for displacement in [0x50_u8, 0x58] {
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, 0x00]);
         entry.jump_if(0x85, "entry-fail");
     }
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"topal-pr").to_le_bytes());
-    entry.bytes(&[0x48, 0x39, 0x44, 0x24, 0x50]);
+    entry.bytes(&[0x48, 0x39, 0x44, 0x24, 0x60]);
     entry.jump_if(0x85, "entry-fail");
-    entry.bytes(&[0x81, 0x7c, 0x24, 0x58]);
+    entry.bytes(&[0x81, 0x7c, 0x24, 0x68]);
     entry.bytes(&u32::from_le_bytes(*b"obe\0").to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
-    entry.bytes(&[0x48, 0x83, 0xc4, 0x60]); // consume bounded initial block
+    entry.bytes(&[0x48, 0x83, 0xc4, 0x70]); // consume bounded initial block
     entry.bytes(&[0x49, 0xba]);
     entry.bytes(&0x0060_5000_u64.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
@@ -2799,9 +2806,17 @@ mod tests {
             u64::from_le_bytes(initial_stack[56..64].try_into().unwrap()),
             INITIAL_USER_ENTRY_ADDRESS
         );
-        assert_eq!(initial_stack[64..80], [0; 16]);
-        assert_eq!(&initial_stack[80..91], b"topal-probe");
-        assert_eq!(initial_stack[91], 0);
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[64..72].try_into().unwrap()),
+            31
+        );
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[72..80].try_into().unwrap()),
+            0x0060_1ff0
+        );
+        assert_eq!(initial_stack[80..96], [0; 16]);
+        assert_eq!(&initial_stack[96..107], b"topal-probe");
+        assert_eq!(initial_stack[107], 0);
         assert!(
             initial_stack
                 .chunks_exact(8)
@@ -2894,7 +2909,7 @@ mod tests {
             X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
         );
         let entry_payload = initial_user_entry_payload().unwrap();
-        assert_eq!(entry_payload.bytes.len(), 368);
+        assert_eq!(entry_payload.bytes.len(), 400);
         assert!(
             user_install
                 .windows(8)
@@ -2927,9 +2942,17 @@ mod tests {
                     .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x38, 0x00, 0x40, 0x60, 0x00])
                 && entry_payload
                     .bytes
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x83, 0x7c, 0x24, 0x40, 0x1f, 0x0f])
+                && entry_payload
+                    .bytes
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x48, 0xf0, 0x1f, 0x60, 0x00])
+                && entry_payload
+                    .bytes
                     .windows(4)
-                    .any(|bytes| bytes == [0x48, 0x83, 0xc4, 0x60]),
-            "constructed entry must validate AT_PAGESZ=4096 and AT_ENTRY=0x604000 before consuming the complete bounded stack"
+                    .any(|bytes| bytes == [0x48, 0x83, 0xc4, 0x70]),
+            "constructed entry must validate AT_PAGESZ=4096, AT_ENTRY=0x604000, and AT_EXECFN=argv[0] before consuming the complete bounded stack"
         );
         assert!(
             entry_payload

@@ -306,6 +306,15 @@ agreement with its own sealed entry point. Its
 records exact construction, correspondence validation, bounded consumption,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The following systems-only refinement adds a
+[bounded initial `AT_EXECFN` fact](design/bounded-initial-auxv-execfn.md) that
+aliases the already validated `argv[0]` string. It keeps the tag, pointer, and
+layout provider-owned while requiring constructed code to prove exact pointer
+identity and in-block string validation. Its
+[implementation and qualification report](step-4-initial-auxv-execfn.md)
+records exact construction, alias validation, bounded consumption, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -427,6 +436,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded Linux-compatible initial user stack](step-4-initial-user-stack.md)
 - [Step 4 bounded initial `AT_PAGESZ` auxiliary vector](step-4-initial-auxv-pagesz.md)
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
+- [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
