@@ -544,26 +544,31 @@ partial-write policy, or unbounded output interface to source.
 
 ### TOPAL-SYSTEMS-USER-READ-001 — Bounded initial standard input
 
-The initial-process profile MAY dispatch one sealed Linux-compatible `read`
-entry only when the exact user continuation, descriptor-zero argument,
-provider-selected writable user-stack candidate, and one-byte extent match the
-checked disposition. The provider SHALL receive exactly one declared console
-byte into private kernel staging before beginning a fault-contained transfer to
-that candidate and SHALL retain no user pointer after the transfer.
+The initial-process profile MAY dispatch Linux-compatible `read` for descriptor
+zero when the return continuation lies in the finalized executable mapping,
+length is from one through 256 bytes, and the complete overflow-free
+destination extent lies in a provider-proved writable user mapping. Dispatch
+SHALL reject an invalid descriptor, length, wrapped or cross-hole extent, or
+read-only destination with the personality's Linux-compatible error before
+input consumption or user-memory access.
 
-Successful dispatch SHALL copy the byte `q`, return one to the same revalidated
-user continuation, and require constructed code to validate both result and
-byte before releasing its bounded stack region. Source SHALL emit exactly one
-`TOPAL_KERNEL_USER_READ_OK` observation after exact terminal return and before
-the constructed-image entry witness. Wrong state, return site, descriptor,
-candidate, extent, byte, partial or faulted transfer, short result, retained
-pointer, unbalanced stack, or missing, duplicate, early, renamed, or late
-witness SHALL be invalid.
+For a valid request, dispatch SHALL receive exactly the requested bounded count
+into private kernel staging before beginning user publication. It SHALL then
+perform one fault-contained copy of the complete staged prefix, retain no user
+pointer, and return the requested length to the same revalidated continuation.
+The provider SHALL NOT require a single input value, candidate, or call-site
+address. Constructed qualification code SHALL validate its deterministic bytes
+and result before releasing its bounded stack region. Source SHALL emit exactly
+one `TOPAL_KERNEL_USER_READ_OK` observation after exact terminal return and
+before the constructed-image entry witness. Wrong state, non-executable return,
+partial reception, early publication, faulted or partial transfer, short
+result, retained pointer, unbalanced stack, or missing, duplicate, early,
+renamed, or late witness SHALL be invalid.
 
 This rule SHALL NOT expose a syscall number, register convention, instruction,
-address, serial mechanism, arbitrary descriptor, input stream, blocking policy,
-line discipline, terminal interface, or general input buffer interface to
-source.
+address, serial mechanism, arbitrary descriptor, end-of-file, partial-read or
+signal policy, line discipline, terminal interface, or unbounded input buffer
+interface to source.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 

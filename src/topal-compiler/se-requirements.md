@@ -259,15 +259,18 @@ Structural and pinned-QEMU evidence shall prove range rejection, dynamic loop
 bounds, staging before output, argument-derived return, and deterministic
 execution of the existing 26-byte application witness.
 
-The bounded initial-input increment shall check one constructed Linux x86-64
-`read(0, candidate, 1)` after the stdout write and before terminal identity and
-exit. The provider shall accept only the exact return site, candidate, extent,
-descriptor, and lifecycle state; receive the declared byte `q` through the
-checked serial input; stage it privately; complete a fault-contained one-byte
-copy to user memory; return one; and preserve the exact continuation. User code
-shall validate the result and byte before stack disposal. Structural and
-pinned-QEMU evidence shall prove deterministic injection, input polling,
-staging before user transfer, exact return, and the ordered post-return witness.
+The bounded initial-input adapter shall accept Linux x86-64 `read` only for
+descriptor zero, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's writable user mapping
+set. It shall reject invalid requests before polling or user access, receive
+exactly the requested bounded count into fixed private kernel staging, perform
+a fault-contained copy of the complete staged prefix, return the requested
+count, and preserve the continuation. It shall contain no exact input-value,
+candidate, or single-return-site oracle. User code shall validate the
+deterministic four-byte qualification input before stack disposal. Structural
+and pinned-QEMU evidence shall prove range rejection, dynamic receive and copy
+bounds, complete staging before user publication, argument-derived return, and
+the ordered post-return witness.
 
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 

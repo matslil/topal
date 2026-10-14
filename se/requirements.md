@@ -708,11 +708,13 @@ shall own privilege, stack, saved-state, security, result-placement, and return
 mechanics but shall not select a syscall or invent a result.
 
 The first executable x86-64 profile shall use one generated ring-3 probe and
-the pinned Linux `write`, `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
-shall verify ordinary returns, generated output- and input-direction user-copy
-fault recovery, and terminal restoration with status zero. Fixed probe
+the pinned Linux `read`, `write`, `getpid`, `uname`, `nanosleep`, and
+`exit_group` numbers. It shall verify ordinary returns, generated output- and
+input-direction user-copy fault recovery, and terminal restoration with status
+zero. Fixed probe
 mappings shall be qualification evidence only. ELF loading, pointer-bearing
-syscalls other than the sealed standard-output `write`, `uname`, and zero-duration `nanosleep`
+syscalls other than the bounded standard-input `read`, bounded standard-output
+`write`, `uname`, and zero-duration `nanosleep`
 qualifications, general user-copy recovery, signals, restart, TLS, multiple
 processes or threads, user preemption, migration, SMP, and the complete syscall
 table remain unavailable.
@@ -727,15 +729,20 @@ against an embedded payload or single call site. Wrapping or cross-hole extents,
 partial copy, early output, arbitrary descriptors, short result, duplicate
 output, or output after terminal disposition shall fail closed.
 
-The constructed-image read qualification shall accept exactly descriptor zero,
-one provider-selected one-byte writable user-stack candidate, and one
-deterministically injected console byte `q`. The provider shall stage that byte
-privately, complete a fault-contained copy to the exact candidate, retain no
-pointer, and return one to the same continuation. User mode shall validate both
-the result and byte before stack disposal. The exact
+The initial-process read adapter shall accept descriptor zero, an executable
+user return continuation, and a destination of one through 256 bytes wholly
+contained in a proved writable user mapping. It shall reject an invalid
+descriptor, length, wrapped or cross-hole extent, or read-only destination
+before consuming input. For a valid request it shall wait for the exact bounded
+count, stage the complete input privately, perform one fault-contained copy of
+the staged prefix to user memory, retain no pointer, and return the requested
+length. It shall not compare against a provider-embedded input value or require
+one exact candidate or call site. User mode shall validate the deterministic
+qualification bytes and result before stack disposal. The exact
 `TOPAL_KERNEL_USER_READ_OK` marker shall occur after terminal return and before
-the constructed-image entry marker. Wrong arguments, byte, transfer, result,
-stack balance, or witness ordering shall fail closed.
+the constructed-image entry marker. Partial reception, early user publication,
+wrong transfer or result, unbalanced disposal, or witness reordering shall fail
+closed.
 
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
