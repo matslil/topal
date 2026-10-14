@@ -179,7 +179,8 @@ The constructed entry validates and consumes exact `argc`, `argv`, empty
 environment, provider-consistent `AT_PAGESZ=4096`, `AT_ENTRY=0x604000` bound
 to its own first instruction, `AT_EXECFN` aliased to `argv[0]`, terminating
 zero-valued `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` root credentials,
-terminating auxiliary-vector, and the shared string contents before
+resident `AT_PHDR`/`AT_PHENT`/`AT_PHNUM` facts, terminating auxiliary-vector,
+and the shared string contents before
 directly observing the immutable sentinel and transferring to the existing
 syscall and fault-recovery probe. A mismatch takes the payload's fail-closed
 trap instead. After its existing compatibility checks,
@@ -203,6 +204,8 @@ fact matched the selected first instruction,
 and shared in-block string validation,
 `TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK` proves the coherent sealed root
 credential fact group,
+`TOPAL_KERNEL_USER_IMAGE_ELF_OK` proves the resident ELF64 header, two-entry
+program-header table, selected entry, and initial PHDR facts agree,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,

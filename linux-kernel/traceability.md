@@ -179,3 +179,15 @@ ordered real/effective user/group fact group matching the sealed process,
 constructed validation and bounded consumption, an ordered post-return
 witness, and deterministic physical execution without exposing credential
 encoding or transition policy to source.
+
+## Next Step 4 bounded ELF identity refinement
+
+`TK-DEC-058` traces through the
+[bounded ELF identity contract](design/bounded-elf-identity.md), the checked
+root, x86-64 provider lowering, structural tests, the
+[implementation and qualification report](step-4-bounded-elf-identity.md), and pinned-QEMU
+evidence. The evidence must prove a
+valid resident target ELF header and program-header table, agreement among the
+ELF entry, selected first instruction, and `AT_PHDR`/`AT_PHENT`/`AT_PHNUM`
+facts, exact constructed validation and stack consumption, an ordered witness,
+and deterministic physical execution without admitting a general loader.
