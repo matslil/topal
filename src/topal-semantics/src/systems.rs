@@ -341,6 +341,7 @@ pub enum SystemsDisposition {
         getegid_result: u64,
         arch_set_fs_result: u64,
         arch_get_fs_result: u64,
+        set_tid_address_result: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -1201,6 +1202,7 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 getegid_result: 0,
                 arch_set_fs_result: 0,
                 arch_get_fs_result: 0,
+                set_tid_address_result: 1,
                 exit_group_status: 0,
             })
     {
@@ -3585,6 +3587,7 @@ fn model_user_execution_transition(
                     getegid_result: _,
                     arch_set_fs_result: _,
                     arch_get_fs_result: _,
+                    set_tid_address_result: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -5217,6 +5220,7 @@ mod tests {
                         getegid_result: 0,
                         arch_set_fs_result: 0,
                         arch_get_fs_result: 0,
+                        set_tid_address_result: 1,
                         exit_group_status: 0,
                     },
                     effects: vec![

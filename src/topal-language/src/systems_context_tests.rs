@@ -222,6 +222,10 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("set-tid-address-result is 1", "set-tid-address-result is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_EARLY",

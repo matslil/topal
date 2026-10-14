@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/56";
+    "topal.provider-object.x86_64-qemu-pc-q35/57";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1082,6 +1082,12 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         }
         continuation.jump_if(0x85, "fail");
     }
+    continuation.bytes(&[0xc7, 0x04, 0x25, 0x08, 0x50, 0x60, 0x00]);
+    continuation.bytes(&1_u32.to_le_bytes()); // clear-child-TID word starts nonzero
+    continuation.bytes(&[0xbf, 0x08, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0xda, 0x00, 0x00, 0x00, 0x0f, 0x05]); // set_tid_address
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // ARCH_GET_FS output
     continuation.bytes(&[0xbf, 0x02, 0x10, 0x00, 0x00]); // ARCH_SET_FS
     continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]); // readable data base
@@ -1437,9 +1443,12 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x16]);
     code.jump_if(0x85, "fail");
     code.bind("unmap-data")?;
+    code.bytes(&[0x48, 0x83, 0xbf, 0xa8, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xc7, 0x87, 0x90, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0x98, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xa8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // clear IA32_FS_BASE
     code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
@@ -1499,6 +1508,7 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     emit_wrmsr_immediate(&mut code, 0xc000_0084, 0x200); // mask IF on entry
     emit_wrmsr_register(&mut code, 0xc000_0102, &[0x48, 0x89, 0xf8]); // kernel GS base
     code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xa8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // initial user FS base
     code.bytes(&[0xc6, 0x07, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -1679,6 +1689,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "identity-one");
     code.bytes(&[0x3d, 0x9e, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "arch-prctl");
+    code.bytes(&[0x3d, 0xda, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "set-tid-address");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -1721,6 +1733,34 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x81, 0xff, 0x03, 0x10, 0x00, 0x00]);
     code.jump_if(0x84, "arch-get-fs");
     code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]); // -EINVAL
+    code.jump("return-user");
+
+    code.bind("set-tid-address")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "set-tid-address-accepted");
+    code.bytes(&[0x49, 0x89, 0xf8, 0x49, 0x83, 0xc0, 0x04]);
+    code.jump_if(0x82, "set-tid-address-efault");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "set-tid-address-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "set-tid-address-accepted");
+    code.bind("set-tid-address-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "set-tid-address-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "set-tid-address-efault");
+    code.bind("set-tid-address-accepted")?;
+    code.bytes(&[0x65, 0x48, 0x89, 0x3c, 0x25, 0xa8, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+    code.bind("set-tid-address-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("arch-set-fs")?;
@@ -2099,9 +2139,29 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0xa8, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "clear-tid-state");
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "clear-tid-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "clear-tid-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("clear-tid-fault-site")?;
+    code.bytes(&[0x41, 0xc7, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bind("clear-tid-state")?;
+    code.bytes(&[
+        0x65, 0x48, 0xc7, 0x04, 0x25, 0xa8, 0x00, 0x00, 0x00, 0, 0, 0, 0,
+    ]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x08]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.bytes(&[0x0f, 0x01, 0xf8, 0xc3]); // restore kernel GS base; return continuation
+
+    code.bind("clear-tid-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.jump("fail");
 
     code.bind("fail")?;
     code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
@@ -4312,6 +4372,32 @@ mod tests {
                     .any(|bytes| bytes == [0x4d, 0x89, 0x01]),
             "arch_prctl must retain and install FS state and publish GET_FS through fault-contained output"
         );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .any(|bytes| bytes == [0xb8, 0xda, 0, 0, 0, 0x0f, 0x05])
+                && entry_payload
+                    .bytes
+                    .windows(11)
+                    .any(|bytes| bytes == [0xc7, 0x04, 0x25, 0x08, 0x50, 0x60, 0, 1, 0, 0, 0])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0x3d, 0xda, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x89, 0x3c, 0x25, 0xa8, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x04, 0x25, 0xa8, 0, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x41, 0xc7, 0x00, 0, 0, 0, 0])
+                && user_syscall
+                    .windows(13)
+                    .any(|bytes| bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xa8, 0, 0, 0, 0, 0, 0, 0]),
+            "set_tid_address must register one checked word, return TID one, and clear the word and state before terminal exit"
+        );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
             user_protect
@@ -4475,6 +4561,12 @@ mod tests {
                 && user_unmap
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xa0, 0, 0, 0, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xbf, 0xa8, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xa8, 0, 0, 0, 0, 0, 0, 0])
                 && user_unmap.windows(2).any(|bytes| bytes == [0x0f, 0x30])
                 && user_unmap
                     .windows(8)
