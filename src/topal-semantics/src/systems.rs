@@ -38,12 +38,13 @@ use crate::{
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
-    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN,
-    SYSTEMS_USER_TERMINATE, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
-    SuspendedUserContext, SystemsUserExecutionProtocol, TranslationEditKind,
-    TranslationMappingRequest, TranslationUpdateRequest, UserMapping,
+    SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_SYSCALL_DISPATCH,
+    SYSTEMS_USER_SYSCALL_ENTRY, SYSTEMS_USER_SYSCALL_RETURN, SYSTEMS_USER_TERMINATE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END, SuspendedUserContext,
+    SystemsUserExecutionProtocol, TranslationEditKind, TranslationMappingRequest,
+    TranslationUpdateRequest, UserMapping,
 };
 
 pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
@@ -219,6 +220,7 @@ pub enum SystemsOperation {
     VerifyUserMappingEntryTrampoline,
     PermitUserMappingExecute,
     SealUserMappingImmutableData,
+    PermitUserMappingWritableData,
     UnmapUserAddressSpace,
     PrepareUserProbe {
         process_identity: u64,
@@ -298,6 +300,7 @@ impl SystemsOperation {
             Self::VerifyUserMappingEntryTrampoline => SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
             Self::PermitUserMappingExecute => SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
             Self::SealUserMappingImmutableData => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
+            Self::PermitUserMappingWritableData => SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
             Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
@@ -325,6 +328,20 @@ pub enum SystemsDisposition {
         nanosleep_seconds: u64,
         nanosleep_nanoseconds: u64,
         nanosleep_remainder_candidate: u64,
+        write_descriptor: u64,
+        write_maximum_bytes: u64,
+        read_descriptor: u64,
+        read_maximum_bytes: u64,
+        brk_data_page_bytes: u64,
+        getppid_result: u64,
+        gettid_result: u64,
+        getuid_result: u64,
+        geteuid_result: u64,
+        getgid_result: u64,
+        getegid_result: u64,
+        arch_set_fs_result: u64,
+        arch_get_fs_result: u64,
+        set_tid_address_result: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -602,6 +619,9 @@ pub enum SystemsTransition {
     SealUserMappingImmutableData {
         mapping_identity: u64,
     },
+    PermitUserMappingWritableData {
+        mapping_identity: u64,
+    },
     UnmapUserAddressSpace {
         address_space_identity: u64,
         mapping_identity: u64,
@@ -812,6 +832,7 @@ impl SystemsTransition {
             }
             Self::PermitUserMappingExecute { .. } => SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
             Self::SealUserMappingImmutableData { .. } => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
+            Self::PermitUserMappingWritableData { .. } => SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
             Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
@@ -1168,12 +1189,26 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 nanosleep_seconds: 0,
                 nanosleep_nanoseconds: 0,
                 nanosleep_remainder_candidate: 0,
+                write_descriptor: 1,
+                write_maximum_bytes: 256,
+                read_descriptor: 0,
+                read_maximum_bytes: 256,
+                brk_data_page_bytes: 4096,
+                getppid_result: 0,
+                gettid_result: 1,
+                getuid_result: 0,
+                geteuid_result: 0,
+                getgid_result: 0,
+                getegid_result: 0,
+                arch_set_fs_result: 0,
+                arch_get_fs_result: 0,
+                set_tid_address_result: 1,
                 exit_group_status: 0,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch the sealed getpid, uname, nanosleep, and exit_group protocol",
+            "the initial user-syscall handler must dispatch the sealed read, write, brk, getpid, uname, nanosleep, and exit_group protocol",
         ));
     }
     Ok(())
@@ -1240,6 +1275,7 @@ struct BootstrapAuthorityState {
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
     initial_boot_resource_validated: bool,
+    constructed_user_read_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -1330,6 +1366,7 @@ enum BootstrapUserExecutionState {
     MappingVerified(PhysicalFrameRequest, u8),
     MappingExecutable(PhysicalFrameRequest, u8),
     MappingImmutableData(PhysicalFrameRequest, u8),
+    MappingWritableData(PhysicalFrameRequest, u8),
     AddressSpaceVerified(PhysicalFrameRequest),
     PreparedWithResidentImage(PhysicalFrameRequest),
     CompletedWithResidentImage(PhysicalFrameRequest),
@@ -1902,7 +1939,7 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::AddressSpacePrepared(INITIAL_MULTI_FRAME_REQUEST);
             }
             SystemsOperation::PrepareUserProbe { process_identity } => {
-                let BootstrapUserExecutionState::MappingImmutableData(backing, 2) =
+                let BootstrapUserExecutionState::MappingWritableData(backing, 2) =
                     self.user_execution
                 else {
                     return Err(SystemsModelError::new(
@@ -2120,9 +2157,31 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::MappingImmutableData(backing, generation);
                 self.memory_ownership = BootstrapMemoryOwnership::None;
             }
+            SystemsOperation::PermitUserMappingWritableData => {
+                let BootstrapUserExecutionState::MappingVerified(backing, generation) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping writable-data promotion requires the exact verified mapping",
+                    ));
+                };
+                if generation != 2
+                    || self.memory_ownership
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping writable-data promotion requires the second generation and its owned frame",
+                    ));
+                }
+                self.user_execution =
+                    BootstrapUserExecutionState::MappingWritableData(backing, generation);
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+            }
             SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_IMAGE_READY" => {
                 if self.user_execution
-                    != BootstrapUserExecutionState::MappingImmutableData(
+                    != BootstrapUserExecutionState::MappingWritableData(
                         INITIAL_MULTI_FRAME_REQUEST,
                         2,
                     )
@@ -2138,7 +2197,7 @@ impl BootstrapAuthorityState {
             }
             SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_BOOT_RESOURCE_OK" => {
                 if self.user_execution
-                    != BootstrapUserExecutionState::MappingImmutableData(
+                    != BootstrapUserExecutionState::MappingWritableData(
                         INITIAL_MULTI_FRAME_REQUEST,
                         2,
                     )
@@ -2153,6 +2212,22 @@ impl BootstrapAuthorityState {
                 }
                 self.initial_boot_resource_validated = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_READ_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.initial_boot_resource_validated
+                    || self.constructed_user_read_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "constructed read witness requires exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_read_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -2161,6 +2236,7 @@ impl BootstrapAuthorityState {
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
+                    || !self.constructed_user_read_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -3063,6 +3139,7 @@ fn validate_bootstrap_storage_operation(
         | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::PermitUserMappingExecute
         | SystemsOperation::SealUserMappingImmutableData
+        | SystemsOperation::PermitUserMappingWritableData
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
@@ -3390,6 +3467,21 @@ fn model_user_execution_transition(
                 .identity();
             transitions.push(SystemsTransition::SealUserMappingImmutableData { mapping_identity });
         }
+        SystemsOperation::PermitUserMappingWritableData => {
+            *mapping = Some(protocol.permit_user_mapping_writable_data(
+                mapping.take().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "user mapping writable-data promotion requires one verified affine mapping",
+                    )
+                })?,
+            )?);
+            let mapping_identity = mapping
+                .as_ref()
+                .expect("writable-data mapping was just restored")
+                .identity();
+            transitions.push(SystemsTransition::PermitUserMappingWritableData { mapping_identity });
+        }
         SystemsOperation::UnmapUserAddressSpace => {
             let mapping = if mapping.is_some() {
                 mapping.take().expect("mapping presence checked")
@@ -3482,6 +3574,20 @@ fn model_user_execution_transition(
                     nanosleep_seconds,
                     nanosleep_nanoseconds,
                     nanosleep_remainder_candidate,
+                    write_descriptor: _,
+                    write_maximum_bytes: _,
+                    read_descriptor: _,
+                    read_maximum_bytes: _,
+                    brk_data_page_bytes: _,
+                    getppid_result: _,
+                    gettid_result: _,
+                    getuid_result: _,
+                    geteuid_result: _,
+                    getgid_result: _,
+                    getegid_result: _,
+                    arch_set_fs_result: _,
+                    arch_get_fs_result: _,
+                    set_tid_address_result: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -4637,6 +4743,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ProtectUserMappingReadOnly
         | SystemsOperation::PermitUserMappingExecute
         | SystemsOperation::SealUserMappingImmutableData
+        | SystemsOperation::PermitUserMappingWritableData
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
@@ -4765,7 +4872,7 @@ mod tests {
             SYSTEMS_USER_MAPPING_LOAD_BYTE.into(),
             SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE.into(),
             SYSTEMS_USER_MAPPING_PERMIT_EXECUTE.into(),
-            SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA.into(),
+            SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA.into(),
             SYSTEMS_USER_ADDRESS_SPACE_UNMAP.into(),
             SYSTEMS_USER_CONTEXT_PREPARE.into(),
             SYSTEMS_USER_CONTEXT_ENTER.into(),
@@ -4910,7 +5017,7 @@ mod tests {
                         SystemsOperation::StoreUserMappingByte,
                         SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
-                        SystemsOperation::SealUserMappingImmutableData,
+                        SystemsOperation::PermitUserMappingWritableData,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                         },
@@ -4921,6 +5028,9 @@ mod tests {
                             process_identity: 1,
                         },
                         SystemsOperation::EnterUserContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
@@ -5097,6 +5207,20 @@ mod tests {
                         nanosleep_seconds: 0,
                         nanosleep_nanoseconds: 0,
                         nanosleep_remainder_candidate: 0,
+                        write_descriptor: 1,
+                        write_maximum_bytes: 256,
+                        read_descriptor: 0,
+                        read_maximum_bytes: 256,
+                        brk_data_page_bytes: 4096,
+                        getppid_result: 0,
+                        gettid_result: 1,
+                        getuid_result: 0,
+                        geteuid_result: 0,
+                        getgid_result: 0,
+                        getegid_result: 0,
+                        arch_set_fs_result: 0,
+                        arch_get_fs_result: 0,
+                        set_tid_address_result: 1,
                         exit_group_status: 0,
                     },
                     effects: vec![
@@ -5157,6 +5281,7 @@ mod tests {
                 | SystemsOperation::ProtectUserMappingReadOnly
                 | SystemsOperation::PermitUserMappingExecute
                 | SystemsOperation::SealUserMappingImmutableData
+                | SystemsOperation::PermitUserMappingWritableData
                 | SystemsOperation::LoadUserMappingByte
                 | SystemsOperation::VerifyUserMappingEntryTrampoline
                 | SystemsOperation::UnmapUserAddressSpace
@@ -5172,6 +5297,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                        || text == "TOPAL_KERNEL_USER_READ_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -5470,7 +5596,7 @@ mod tests {
                 SystemsTransition::LoadUserMappingByte {
                     mapping_identity: 2,
                 },
-                SystemsTransition::SealUserMappingImmutableData {
+                SystemsTransition::PermitUserMappingWritableData {
                     mapping_identity: 2,
                 },
                 SystemsTransition::ConsoleWrite {
@@ -5602,6 +5728,9 @@ mod tests {
                 SystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_READ_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -5832,19 +5961,19 @@ mod tests {
             "E-SYSTEMS-USER-CONTEXT"
         );
 
-        let mut code_sealed_as_data = program(SystemsDisposition::Resume);
-        let execute = code_sealed_as_data
+        let mut code_promoted_to_writable_data = program(SystemsDisposition::Resume);
+        let execute = code_promoted_to_writable_data
             .bootstrap
             .handler
             .operations
             .iter()
             .position(|operation| matches!(operation, SystemsOperation::PermitUserMappingExecute))
             .unwrap();
-        code_sealed_as_data.bootstrap.handler.operations[execute] =
-            SystemsOperation::SealUserMappingImmutableData;
-        refresh_bootstrap_effects(&mut code_sealed_as_data);
+        code_promoted_to_writable_data.bootstrap.handler.operations[execute] =
+            SystemsOperation::PermitUserMappingWritableData;
+        refresh_bootstrap_effects(&mut code_promoted_to_writable_data);
         assert_eq!(
-            validate_systems_program(&code_sealed_as_data)
+            validate_systems_program(&code_promoted_to_writable_data)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"
@@ -5857,7 +5986,7 @@ mod tests {
             .operations
             .iter()
             .position(|operation| {
-                matches!(operation, SystemsOperation::SealUserMappingImmutableData)
+                matches!(operation, SystemsOperation::PermitUserMappingWritableData)
             })
             .unwrap();
         data_promoted_to_code.bootstrap.handler.operations[seal] =
@@ -6416,6 +6545,7 @@ mod tests {
                     SystemsOperation::ConsoleWrite { text }
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                            || text == "TOPAL_KERNEL_USER_READ_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -6453,6 +6583,7 @@ mod tests {
                         | SystemsOperation::ProtectUserMappingReadOnly
                         | SystemsOperation::PermitUserMappingExecute
                         | SystemsOperation::SealUserMappingImmutableData
+                        | SystemsOperation::PermitUserMappingWritableData
                         | SystemsOperation::LoadUserMappingByte
                         | SystemsOperation::VerifyUserMappingEntryTrampoline
                         | SystemsOperation::UnmapUserAddressSpace

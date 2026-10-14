@@ -186,6 +186,46 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("write-descriptor is 1", "write-descriptor is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("write-maximum-bytes is 256", "write-maximum-bytes is 255"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("read-descriptor is 0", "read-descriptor is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("read-maximum-bytes is 256", "read-maximum-bytes is 255"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("brk-data-page-bytes is 4096", "brk-data-page-bytes is 8192"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("gettid-result is 1", "gettid-result is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("geteuid-result is 0", "geteuid-result is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("arch-set-fs-result is 0", "arch-set-fs-result is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("arch-get-fs-result is 0", "arch-get-fs-result is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("set-tid-address-result is 1", "set-tid-address-result is 2"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_EARLY",
@@ -289,15 +329,15 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "mapping is immutable-data",
+                "mapping is writable-data",
                 "mapping is executable-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "user mapping seal immutable data verified-data",
-                "user mapping seal immutable data verified-scratch",
+                "user mapping permit writable data verified-data",
+                "user mapping permit writable data verified-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

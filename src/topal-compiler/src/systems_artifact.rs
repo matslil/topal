@@ -36,8 +36,9 @@ use topal_language::compiler::{
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
-    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
+    SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_SYSCALL_DISPATCH, model_systems_transitions,
 };
 
 #[cfg(test)]
@@ -53,6 +54,12 @@ use topal_language::compiler::{
 };
 
 use crate::artifact::sha256;
+use crate::systems_provider_object::{
+    INITIAL_USER_CODE_ADDRESS, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_DATA_CAPACITY,
+    INITIAL_USER_DATA_FILE_OFFSET, INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET, INITIAL_USER_ENTRY_ELF_OFFSET, initial_user_elf_file,
+};
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
@@ -77,6 +84,7 @@ use crate::{
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
@@ -84,8 +92,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/49";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/49";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/60";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/58";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -97,6 +105,7 @@ pub const X86_SYSTEMS_TERMINAL_THREAD_ENTRY: &str = "topal_x86_systems_terminal_
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
+pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
 const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 45] = [
@@ -200,6 +209,7 @@ pub struct PublishedSystemsArtifact {
     pub kernel: PathBuf,
     pub debug: PathBuf,
     pub map: PathBuf,
+    pub initial_user_image: PathBuf,
     pub provenance: PathBuf,
     pub record: SystemsArtifactProvenance,
 }
@@ -219,6 +229,29 @@ pub fn publish_x86_64_systems_artifact(
     tools: &LlvmTools,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_initial_user_image(
+        program,
+        tools,
+        &initial_user_image,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// bounded-profile initial user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the supplied image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_initial_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    validate_x86_64_initial_user_image(initial_user_image)?;
     let generated_provider = generate_x86_64_systems_provider_object(program)?;
     let root_object = generate_root_object(program)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
@@ -236,6 +269,7 @@ pub fn publish_x86_64_systems_artifact(
         &generated_provider.plan,
         &generated_provider.bytes,
         &root_object,
+        initial_user_image,
         &stage,
     );
     let record = match result {
@@ -257,6 +291,7 @@ pub fn publish_x86_64_systems_artifact(
         kernel: destination.join(SYSTEMS_KERNEL_FILE),
         debug: destination.join(SYSTEMS_DEBUG_FILE),
         map: destination.join(SYSTEMS_MAP_FILE),
+        initial_user_image: destination.join(SYSTEMS_INITIAL_USER_IMAGE_FILE),
         provenance: destination.join(SYSTEMS_PROVENANCE_FILE),
         record,
     })
@@ -268,6 +303,7 @@ fn publish_in_stage(
     plan: &crate::X86SystemsProviderPlan,
     provider_object: &[u8],
     root_object: &[u8],
+    initial_user_image: &[u8],
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -301,6 +337,11 @@ fn publish_in_stage(
             }),
     )?;
     let placements = linked_placements(&linked.kernel)?;
+    let initial_user_image_path = stage.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
+    fs::write(&initial_user_image_path, initial_user_image).map_err(io_error(
+        "write initial user image",
+        &initial_user_image_path,
+    ))?;
     let record = artifact_provenance(
         program,
         tools,
@@ -310,6 +351,7 @@ fn publish_in_stage(
         &linked.kernel,
         &linked.debug,
         &linked.map,
+        initial_user_image,
         placements,
     )?;
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
@@ -325,6 +367,88 @@ fn publish_in_stage(
     ))?;
     fs::remove_dir_all(&work).map_err(io_error("remove artifact work directory", &work))?;
     Ok(record)
+}
+
+fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
+    let reference = initial_user_elf_file()?;
+    if image.len() != reference.len() {
+        return Err(CompileError::Tool(format!(
+            "initial user image has {} bytes; the qualified x86-64 profile requires {}",
+            image.len(),
+            reference.len()
+        )));
+    }
+
+    let variable_header_ranges = [
+        INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8,
+        INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET..INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET..INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET..INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET + 8,
+        INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET..INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET + 8,
+    ];
+    for offset in 0..256 {
+        if variable_header_ranges
+            .iter()
+            .any(|range| range.contains(&offset))
+        {
+            continue;
+        }
+        if image[offset] != reference[offset] {
+            return Err(CompileError::Tool(format!(
+                "initial user image changes immutable x86-64 ELF metadata at byte {offset}"
+            )));
+        }
+    }
+
+    let code_file_size = image_u64(image, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET);
+    let code_memory_size = image_u64(image, INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET);
+    if code_file_size != code_memory_size
+        || !(264..=4096).contains(&code_file_size)
+        || code_file_size % 8 != 0
+    {
+        return Err(CompileError::Tool(
+            "initial user executable extent must be equal file/memory sizes of 264..4096 bytes aligned to 8"
+                .into(),
+        ));
+    }
+
+    let entry = image_u64(image, INITIAL_USER_ENTRY_ELF_OFFSET);
+    let code_end = INITIAL_USER_CODE_ADDRESS
+        .checked_add(code_file_size)
+        .ok_or_else(|| CompileError::Tool("initial user executable extent overflows".into()))?;
+    if entry < INITIAL_USER_CODE_ADDRESS + 256 || entry >= code_end {
+        return Err(CompileError::Tool(
+            "initial user entry must lie inside the executable payload extent".into(),
+        ));
+    }
+
+    let data_file_size = image_u64(image, INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET);
+    let data_memory_size = image_u64(image, INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET);
+    if !(8..=INITIAL_USER_DATA_CAPACITY as u64).contains(&data_file_size)
+        || data_file_size % 8 != 0
+        || data_memory_size < data_file_size
+        || data_memory_size > INITIAL_USER_DATA_CAPACITY as u64
+        || data_memory_size % 8 != 0
+    {
+        return Err(CompileError::Tool(
+            "initial user data extent requires an 8-byte-aligned file size of 8..4096 and memory size between it and 4096"
+                .into(),
+        ));
+    }
+    if INITIAL_USER_DATA_FILE_OFFSET + INITIAL_USER_DATA_CAPACITY != image.len() {
+        return Err(CompileError::Tool(
+            "initial user data segment is outside the qualified file envelope".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn image_u64(image: &[u8], offset: usize) -> u64 {
+    u64::from_le_bytes(
+        image[offset..offset + 8]
+            .try_into()
+            .expect("validated ELF extent"),
+    )
 }
 
 fn build_linked_outputs(
@@ -396,6 +520,7 @@ fn artifact_provenance(
     kernel: &[u8],
     debug: &[u8],
     map: &[u8],
+    initial_user_image: &[u8],
     placements: Vec<SystemsArtifactPlacement>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let mut inputs = vec![
@@ -421,6 +546,10 @@ fn artifact_provenance(
         DigestEntry {
             identity: SYSTEMS_MAP_FILE.into(),
             sha256: sha256(map),
+        },
+        DigestEntry {
+            identity: SYSTEMS_INITIAL_USER_IMAGE_FILE.into(),
+            sha256: sha256(initial_user_image),
         },
     ];
     outputs.sort_by(|left, right| left.identity.cmp(&right.identity));
@@ -841,6 +970,10 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
         ),
         (
+            SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
+            X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
+        ),
+        (
             SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
         ),
@@ -957,6 +1090,7 @@ enum ProviderSymbol {
     VerifyUserMappingEntryTrampoline,
     PermitUserMappingExecute,
     SealUserMappingImmutableData,
+    PermitUserMappingWritableData,
     UnmapUserAddressSpace,
     PrepareUserProbe,
     EnterUserContext,
@@ -1022,6 +1156,9 @@ impl ProviderSymbol {
             Self::SealUserMappingImmutableData => {
                 X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL
             }
+            Self::PermitUserMappingWritableData => {
+                X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL
+            }
             Self::UnmapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
             Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
             Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
@@ -1080,6 +1217,7 @@ impl ProviderSymbol {
             | Self::VerifyUserMappingEntryTrampoline
             | Self::PermitUserMappingExecute
             | Self::SealUserMappingImmutableData
+            | Self::PermitUserMappingWritableData
             | Self::UnmapUserAddressSpace
             | Self::PrepareUserProbe
             | Self::EnterUserContext
@@ -1268,6 +1406,7 @@ enum RootUserExecutionState {
     UserMappingVerified(u8),
     UserMappingExecutable(u8),
     UserMappingImmutableData(u8),
+    UserMappingWritableData(u8),
     AddressSpaceVerified,
     PreparedWithResidentImage,
     CompletedWithResidentImage,
@@ -1317,6 +1456,7 @@ struct ProviderSymbols {
     verify_user_mapping_entry_trampoline: SymbolId,
     permit_user_mapping_execute: SymbolId,
     seal_user_mapping_immutable_data: SymbolId,
+    permit_user_mapping_writable_data: SymbolId,
     unmap_user_address_space: SymbolId,
     prepare_user_probe: SymbolId,
     enter_user_context: SymbolId,
@@ -2496,7 +2636,7 @@ impl RootEncoder {
 
     fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.user_execution != RootUserExecutionState::UserMappingImmutableData(2)
+            || self.user_execution != RootUserExecutionState::UserMappingWritableData(2)
             || self.physical_frame_count.is_some()
             || process_identity != 1
         {
@@ -2676,6 +2816,21 @@ impl RootEncoder {
         self.load_bootstrap_storage_address(176)?;
         self.call_checked_bool(ProviderSymbol::SealUserMappingImmutableData)?;
         self.user_execution = RootUserExecutionState::UserMappingImmutableData(2);
+        Ok(())
+    }
+
+    fn permit_user_mapping_writable_data(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingVerified(2)
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 writable-data promotion requires the exact second verified mapping".into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call_checked_bool(ProviderSymbol::PermitUserMappingWritableData)?;
+        self.user_execution = RootUserExecutionState::UserMappingWritableData(2);
         Ok(())
     }
 
@@ -2881,6 +3036,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                     | CompilerSystemsOperation::VerifyUserMappingEntryTrampoline
                     | CompilerSystemsOperation::PermitUserMappingExecute
                     | CompilerSystemsOperation::SealUserMappingImmutableData
+                    | CompilerSystemsOperation::PermitUserMappingWritableData
                     | CompilerSystemsOperation::UnmapUserAddressSpace
                     | CompilerSystemsOperation::PrepareUserProbe { .. }
                     | CompilerSystemsOperation::EnterUserContext
@@ -3035,6 +3191,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         seal_user_mapping_immutable_data: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::SealUserMappingImmutableData,
+        ),
+        permit_user_mapping_writable_data: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PermitUserMappingWritableData,
         ),
         unmap_user_address_space: undefined_provider_symbol(
             &mut object,
@@ -3193,11 +3353,25 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 nanosleep_seconds: 0,
                 nanosleep_nanoseconds: 0,
                 nanosleep_remainder_candidate: 0,
+                write_descriptor: 1,
+                write_maximum_bytes: 256,
+                read_descriptor: 0,
+                read_maximum_bytes: 256,
+                brk_data_page_bytes: 4096,
+                getppid_result: 0,
+                gettid_result: 1,
+                getuid_result: 0,
+                geteuid_result: 0,
+                getgid_result: 0,
+                getegid_result: 0,
+                arch_set_fs_result: 0,
+                arch_get_fs_result: 0,
+                set_tid_address_result: 1,
                 exit_group_status: 0,
             })
     {
         return Err(CompileError::Tool(
-            "x86 initial user-syscall entry requires the sealed getpid/uname/nanosleep/exit_group dispatch"
+            "x86 initial user-syscall entry requires the sealed read/write/brk/getpid/uname/nanosleep/exit_group dispatch"
                 .into(),
         ));
     }
@@ -3522,6 +3696,9 @@ fn encode_operations(
             CompilerSystemsOperation::SealUserMappingImmutableData => {
                 encoder.seal_user_mapping_immutable_data()?;
             }
+            CompilerSystemsOperation::PermitUserMappingWritableData => {
+                encoder.permit_user_mapping_writable_data()?;
+            }
             CompilerSystemsOperation::UnmapUserAddressSpace => {
                 encoder.unmap_user_address_space()?;
             }
@@ -3634,6 +3811,9 @@ fn append_root(
             }
             ProviderSymbol::SealUserMappingImmutableData => {
                 provider_symbols.seal_user_mapping_immutable_data
+            }
+            ProviderSymbol::PermitUserMappingWritableData => {
+                provider_symbols.permit_user_mapping_writable_data
             }
             ProviderSymbol::UnmapUserAddressSpace => provider_symbols.unmap_user_address_space,
             ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
@@ -3887,7 +4067,10 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     format!("{identity}:mapping={mapping_identity}")
                 }
                 CompilerSystemsTransition::PermitUserMappingExecute { mapping_identity }
-                | CompilerSystemsTransition::SealUserMappingImmutableData { mapping_identity } => {
+                | CompilerSystemsTransition::SealUserMappingImmutableData { mapping_identity }
+                | CompilerSystemsTransition::PermitUserMappingWritableData {
+                    mapping_identity,
+                } => {
                     format!("{identity}:mapping={mapping_identity}")
                 }
                 CompilerSystemsTransition::PrepareUserProbe {
@@ -4115,7 +4298,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1754);
+        assert_eq!(relocation_targets.len(), 1819);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4239,7 +4422,7 @@ mod tests {
             X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL,
             X86_SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE_SYMBOL,
             X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
-            X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
+            X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
         ] {
             assert_eq!(
                 relocation_targets
@@ -4269,7 +4452,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1568
+            1633
         );
         assert_eq!(
             relocation_targets
@@ -4451,6 +4634,7 @@ mod tests {
                 "topal_x86_systems_user_verify_initial_entry_trampoline",
                 "topal_x86_systems_user_permit_initial_mapping_execute",
                 "topal_x86_systems_user_seal_initial_mapping_immutable_data",
+                "topal_x86_systems_user_permit_initial_mapping_writable_data",
                 "topal_x86_systems_user_unmap_initial_frame",
                 "topal_x86_systems_user_prepare_initial_probe",
                 "topal_x86_systems_user_complete_initial_backing",
@@ -4464,6 +4648,43 @@ mod tests {
                 "topal_bootstrap_storage",
             ]
         );
+    }
+
+    #[test]
+    fn supplied_initial_user_image_validation_is_bounded_and_payload_neutral() {
+        // TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let canonical = initial_user_elf_file().unwrap();
+        let mut supplied = canonical.clone();
+        supplied[INITIAL_USER_DATA_FILE_OFFSET + 1] = 0xa5;
+        validate_x86_64_initial_user_image(&supplied).unwrap();
+
+        let mut wrong_size = supplied.clone();
+        wrong_size.pop();
+        assert!(validate_x86_64_initial_user_image(&wrong_size).is_err());
+
+        let mut wrong_metadata = supplied.clone();
+        wrong_metadata[0] = 0;
+        assert!(validate_x86_64_initial_user_image(&wrong_metadata).is_err());
+
+        let mut wrong_code_extent = supplied.clone();
+        wrong_code_extent[INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET
+            ..INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&4096_u64.to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_code_extent).is_err());
+
+        let mut wrong_entry = supplied.clone();
+        wrong_entry[INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8]
+            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 256 - 1).to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_entry).is_err());
+
+        let mut wrong_data_extent = supplied;
+        wrong_data_extent
+            [INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET..INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&24_u64.to_le_bytes());
+        wrong_data_extent[INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET
+            ..INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET + 8]
+            .copy_from_slice(&16_u64.to_le_bytes());
+        assert!(validate_x86_64_initial_user_image(&wrong_data_extent).is_err());
     }
 
     #[test]
@@ -4481,23 +4702,24 @@ mod tests {
         let published = publish_x86_64_systems_artifact(&program(), &tools, &destination).unwrap();
         assert_eq!(
             fs::read_dir(&destination).unwrap().count(),
-            4,
+            5,
             "only canonical outputs are published"
         );
         assert!(published.kernel.is_file());
         assert!(published.debug.is_file());
         assert!(published.map.is_file());
+        assert!(published.initial_user_image.is_file());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
         let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
         assert_eq!(decoded, published.record);
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
-        assert_eq!(decoded.outputs.len(), 3);
-        assert_eq!(decoded.placements.len(), 62);
+        assert_eq!(decoded.outputs.len(), 4);
+        assert_eq!(decoded.placements.len(), 63);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 196);
+        assert_eq!(decoded.semantic_trace.len(), 198);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4519,7 +4741,7 @@ mod tests {
         assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_USER_MAPPING_STORE_BYTE));
         assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
         assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
-        assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA));
+        assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA));
         assert_eq!(
             decoded.semantic_trace[132],
             format!(
@@ -4536,142 +4758,156 @@ mod tests {
         );
         assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
         assert_eq!(
-            decoded.semantic_trace[164],
+            decoded.semantic_trace[161],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_READ_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[165],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[166],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[167],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[168],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[169],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[170],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[171],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[172],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[173],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[174],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[175],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[176],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[177],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[178],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[179],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[180],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[181],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[182],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[183],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
-        assert!(decoded.semantic_trace[182].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[183], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[184].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
         assert_eq!(decoded.semantic_trace[185], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[186].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[187].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[189].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[190], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[191].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(189..192);
-        decoded.semantic_trace.drain(164..188);
+        assert!(decoded.semantic_trace[186].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[187], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[188].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[189].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[191].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[192], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[193].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(191..194);
+        decoded.semantic_trace.drain(164..190);
         decoded.semantic_trace.drain(120..134);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
@@ -4886,6 +5122,7 @@ mod tests {
             (&published.kernel, &repeated.kernel),
             (&published.debug, &repeated.debug),
             (&published.map, &repeated.map),
+            (&published.initial_user_image, &repeated.initial_user_image),
             (&published.provenance, &repeated.provenance),
         ] {
             assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());

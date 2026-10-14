@@ -237,6 +237,82 @@ entry, `SYSCALL` dispatch, exact `SYSRETQ` return, and terminal kernel-stack
 restoration. Structural and pinned-QEMU evidence shall prove the complete
 round trip before its success marker and quiescent fatal disposition.
 
+The writable initial-data increment shall check the typed
+`user mapping permit writable data` transition only after generation-two
+RO/NX verification. Lowering shall restore the qualified data PTE's write
+authority, retain NX, complete translation invalidation, and return one opaque
+writable-data owner accepted by exact data-first unmap. The generated ELF shall
+mark its data segment `PF_R | PF_W`; constructed code shall write and read back
+one BSS byte before terminal success. The root shall emit the exact ordered
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker only after successful user
+return. Structural tests shall reject code-role use, preverification use,
+identity substitution, stale unmap, missing invalidation, or W+X permission.
+
+The bounded initial-output adapter shall accept Linux x86-64 `write` only for
+descriptor one, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's readable user mapping
+set. It shall reject invalid requests before dereference or UART output, copy a
+valid extent completely into fixed private kernel staging, publish exactly the
+argument-selected prefix, return the requested count, and preserve the
+continuation. It shall contain no exact payload or single-return-site oracle.
+Structural and pinned-QEMU evidence shall prove range rejection, dynamic loop
+bounds, staging before output, argument-derived return, and deterministic
+execution of the existing 26-byte application witness.
+
+The bounded initial-input adapter shall accept Linux x86-64 `read` only for
+descriptor zero, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's writable user mapping
+set. It shall reject invalid requests before polling or user access, receive
+exactly the requested bounded count into fixed private kernel staging, perform
+a fault-contained copy of the complete staged prefix, return the requested
+count, and preserve the continuation. It shall contain no exact input-value,
+candidate, or single-return-site oracle. User code shall validate the
+deterministic four-byte qualification input before stack disposal. Structural
+and pinned-QEMU evidence shall prove range rejection, dynamic receive and copy
+bounds, complete staging before user publication, argument-derived return, and
+the ordered post-return witness.
+
+The bounded initial-heap adapter shall lower Linux x86-64 syscall 12 only for a
+live initial context and a return continuation inside the finalized executable
+mapping. Image construction shall derive the initial break from runtime ELF
+`p_memsz`, prove it lies inside the 4096-byte data page, zero the complete tail
+from runtime `p_filesz` through the page end, and publish the break only after
+successful construction. Dispatch shall keep current state provider-private,
+return it for a zero query or unsupported request, and replace it only with an
+in-range byte-granular request. Teardown shall clear it. Structural and pinned-
+QEMU evidence shall prove runtime derivation, complete zeroing, query, grow,
+write/read, shrink, rejected growth, exact returns, and state clearing.
+
+The initial scalar-identity adapter shall lower Linux x86-64 syscall numbers
+39, 102, 104, 107, 108, 110, and 186 only for a live initial context and a
+return continuation inside the finalized executable mapping. It shall return
+PID/TID one, parent PID zero, and real/effective UID/GID zero exactly as the
+checked disposition declares and shall introduce no user-copy or retained
+state. Structural and pinned-QEMU evidence shall prove every dispatch number,
+broad executable-return validation, constant coherence, application result
+checks, and terminal continuation.
+
+The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
+codes `0x1002` and `0x1003`, a live initial context, and a return continuation
+inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or
+a canonical base within the readable user mapping set, retain it privately,
+install it for user return, and return zero. `ARCH_GET_FS` shall copy the same
+private value to a validated writable eight-byte user extent under fault
+recovery and return zero. Invalid base, destination, and operation paths shall
+return Linux-compatible errors without changing retained state, and data-role
+teardown shall clear it. Structural and pinned-QEMU evidence shall prove the
+set/get/restore sequence, result and word checks, provider installation, fault-
+contained output, and state clearing.
+
+The initial clear-child-TID adapter shall lower Linux x86-64 syscall 218 only
+for a live initial context and a return continuation inside the finalized
+executable mapping. It shall accept null or one complete writable four-byte
+candidate, retain it privately, and return TID one without dereference. The
+terminal `exit_group(0)` path shall fault-contain a zero store to a nonnull
+candidate and clear private state before publishing terminal lifecycle state.
+Structural and pinned-QEMU evidence shall prove registration, exact return,
+terminal store/clear ordering, and no retained state at data teardown.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
@@ -297,6 +373,31 @@ assembly, bind IDT vector 3 to the linked debug-break entry, and atomically
 publish only the boot image and canonical adapter provenance. Structural
 packaging alone shall not executable-qualify the systems target; qualification
 requires separate execution under the pinned QEMU board and CPU.
+
+The initial user-image publication increment shall add exactly one canonical
+ELF image to the atomic systems-artifact directory and bind its filename and
+digest in artifact provenance. The boot adapter shall read that published
+image, reject absence, digest mismatch, or an unbound output identity, and use
+the exact verified bytes for the deterministic initial boot resource. It shall
+not privately regenerate or silently substitute the user image. Unit tests
+shall cover canonical output closure, repeatable publication, and tamper
+rejection; pinned-QEMU evidence shall bind the published image digest through
+the boot resource and completed user execution.
+
+The supplied initial user-image increment shall accept
+`--initial-user-image PATH` only for qualified systems publication. Before
+creating publication state, the compiler shall read the complete file and
+validate the current x86-64 bounded ELF envelope: exact file and ELF class,
+machine, type, header, program-header, segment-layout, immutable-metadata, and
+alignment facts; relational page-bounded executable and data/BSS sizes; and an
+entry strictly inside the executable file extent. Executable payload and
+initialized-data bytes shall remain caller authority. Successful publication
+shall copy those exact bytes to the canonical image and bind them through the
+existing content provenance without the host path. Unreadable, duplicate,
+nonsystems, malformed, or out-of-profile input shall fail before publication.
+Tests shall cover every rejected field class, path-independent repeatability,
+a supplied payload distinct from the generated default, exact-byte boot
+packaging, and deterministic pinned-QEMU execution.
 
 The first executable bootstrap-region increment shall accept only an
 exhaustively handled static allocation request whose capacity and alignment

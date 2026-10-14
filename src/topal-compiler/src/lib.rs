@@ -33,12 +33,13 @@ pub use standard_library::{
     StandardLibrarySlice, build_standard_library, standard_library_manifest_path,
 };
 pub use systems_artifact::{
-    PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE,
-    SYSTEMS_PROVENANCE_FILE, SystemsArtifactPlacement, SystemsArtifactProvenance,
-    X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-    X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_KERNEL_THREAD_ENTRY,
+    PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_INITIAL_USER_IMAGE_FILE,
+    SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE, SYSTEMS_PROVENANCE_FILE, SystemsArtifactPlacement,
+    SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEADLINE_ENTRY,
+    X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_KERNEL_THREAD_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_ROOT_OBJECT_REVISION,
     X86_SYSTEMS_ROOT_TEXT_SECTION, publish_x86_64_systems_artifact,
+    publish_x86_64_systems_artifact_with_initial_user_image,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
@@ -80,6 +81,7 @@ pub use systems_provider_object::{
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_LOAD_BYTE_SYMBOL, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL,
+    X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_STORE_BYTE_SYMBOL,
@@ -122,6 +124,7 @@ pub struct CompileOptions {
     pub target: TargetSelection,
     pub optimization: OptimizationRequest,
     pub standard_library: Option<PathBuf>,
+    pub initial_user_image: Option<PathBuf>,
 }
 
 #[derive(Debug)]

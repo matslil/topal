@@ -7,8 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use topal_compiler::{
-    SYSTEMS_KERNEL_FILE, SYSTEMS_PROVENANCE_FILE, SystemsArtifactProvenance,
-    publish_x86_64_linux_boot_image,
+    SYSTEMS_INITIAL_USER_IMAGE_FILE, SYSTEMS_KERNEL_FILE, SYSTEMS_PROVENANCE_FILE,
+    SystemsArtifactProvenance, publish_x86_64_linux_boot_image,
 };
 
 fn main() {
@@ -46,11 +46,14 @@ fn publish(linked: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
         .into());
     }
     let kernel_path = linked.join(SYSTEMS_KERNEL_FILE);
+    let initial_user_image_path = linked.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
     let provenance_path = linked.join(SYSTEMS_PROVENANCE_FILE);
     let kernel = fs::read(&kernel_path)?;
+    let initial_user_image = fs::read(&initial_user_image_path)?;
     let provenance: SystemsArtifactProvenance =
         serde_json::from_slice(&fs::read(&provenance_path)?)?;
-    let boot = publish_x86_64_linux_boot_image(&kernel, &provenance, destination)?;
+    let boot =
+        publish_x86_64_linux_boot_image(&kernel, &provenance, &initial_user_image, destination)?;
     println!("{}", boot.image.display());
     Ok(())
 }
@@ -91,6 +94,13 @@ mod tests {
         assert!(boot.join(X86_BOOT_IMAGE_FILE).is_file());
         assert!(boot.join(X86_BOOT_PROVENANCE_FILE).is_file());
         assert!(boot.join(X86_INITIAL_BOOT_RESOURCE_FILE).is_file());
+        let initial_user_image = linked.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
+        let mut tampered = fs::read(&initial_user_image).unwrap();
+        tampered[0] ^= 0xff;
+        fs::write(&initial_user_image, tampered).unwrap();
+        let rejected = parent.join("tampered-boot");
+        assert!(publish(&linked, &rejected).is_err());
+        assert!(!rejected.exists());
         fs::remove_dir_all(parent).unwrap();
     }
 }

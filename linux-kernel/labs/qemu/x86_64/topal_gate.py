@@ -6,7 +6,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
+import pty
 import shutil
 import subprocess
 import sys
@@ -22,6 +24,7 @@ BUILD_ROOT = LINUX_KERNEL / "build" / "x86_64" / "topal-toolchain-gate"
 MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
+SERIAL_INPUT = b"read"
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
     b"TOPAL_KERNEL_FRAME_MAPPED",
@@ -47,6 +50,8 @@ MARKERS = (
     b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
     b"TOPAL_KERNEL_USER_IMAGE_READY",
     b"TOPAL_KERNEL_BOOT_RESOURCE_OK",
+    b"TOPAL_KERNEL_USER_WRITE_OK",
+    b"TOPAL_KERNEL_USER_READ_OK",
     b"TOPAL_KERNEL_USER_COPY_TO_OK",
     b"TOPAL_KERNEL_USER_COPY_FROM_OK",
     b"TOPAL_KERNEL_USER_SYSCALL_OK",
@@ -64,6 +69,7 @@ MARKERS = (
     b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK",
     b"TOPAL_KERNEL_USER_IMAGE_BSS_OK",
     b"TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK",
     b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
     b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
     b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
@@ -112,8 +118,9 @@ def verify_host() -> str:
     return version
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
-    linked = destination / "linked"
+def compile_systems_artifact(
+    linked: Path, initial_user_image: Path | None = None
+) -> None:
     compiler_command = [
         "cargo",
         "run",
@@ -131,12 +138,37 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
         "topal-qemu-pc-q35-10.2",
         "--emit",
         "executable",
+    ]
+    if initial_user_image is not None:
+        compiler_command.extend(["--initial-user-image", str(initial_user_image)])
+    compiler_command.extend(
+        [
         "-o",
         str(linked),
         str(SOURCE_PATH),
-    ]
+        ]
+    )
     print("+", " ".join(compiler_command), flush=True)
     subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
+
+
+def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path]:
+    generated = destination / "generated"
+    compile_systems_artifact(generated)
+    generated_initial_user_image = generated / "initial-user.elf"
+    supplied_initial_user_image = destination / "supplied-initial-user.elf"
+    supplied = bytearray(generated_initial_user_image.read_bytes())
+    supplied[4097] = 0xA5
+    supplied_initial_user_image.write_bytes(supplied)
+
+    linked = destination / "linked"
+    compile_systems_artifact(linked, supplied_initial_user_image)
+    published_initial_user_image = linked / "initial-user.elf"
+    if published_initial_user_image.read_bytes() != supplied:
+        raise GateError("compiler did not publish the exact supplied initial user image")
+    if digest(published_initial_user_image) == digest(generated_initial_user_image):
+        raise GateError("supplied initial user image is not distinct from the generated default")
+
     boot = destination / "boot"
     packaging_command = [
         "cargo",
@@ -157,10 +189,18 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
     for path in (image, boot_resource, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
-    return image, boot_resource, boot_provenance, artifact_provenance
+    return (
+        image,
+        boot_resource,
+        boot_provenance,
+        artifact_provenance,
+        generated_initial_user_image,
+    )
 
 
-def qemu_command(image: Path, boot_resource: Path, serial: Path) -> list[str]:
+def qemu_command(
+    image: Path, boot_resource: Path, serial: Path, serial_tty: str | None = None
+) -> list[str]:
     data = manifest()
     emulator = data["emulator"]
     machine = data["machine"]
@@ -200,7 +240,11 @@ def qemu_command(image: Path, boot_resource: Path, serial: Path) -> list[str]:
         "-global",
         "ICH9-LPC.disable_s4=1",
         "-chardev",
-        f"file,id=serial0,path={serial}",
+        (
+            f"serial,id=serial0,path={serial_tty}"
+            if serial_tty is not None
+            else f"socket,id=serial0,path={serial.with_suffix('.sock')},server=on,wait=on"
+        ),
         "-device",
         "isa-serial,chardev=serial0,index=0",
         "-kernel",
@@ -213,32 +257,67 @@ def qemu_command(image: Path, boot_resource: Path, serial: Path) -> list[str]:
 def observe_gate(
     image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float
 ) -> bytes:
-    command = qemu_command(image, boot_resource, serial)
+    master_fd, slave_fd = pty.openpty()
+    os.set_blocking(master_fd, False)
+    command = qemu_command(image, boot_resource, serial, os.ttyname(slave_fd))
     print("+", " ".join(map(str, command)), flush=True)
+    injected = False
+    received = bytearray()
+
+    def drain_client() -> None:
+        while True:
+            try:
+                block = os.read(master_fd, 4096)
+            except (BlockingIOError, OSError):
+                break
+            if not block:
+                break
+            received.extend(block)
+        serial.write_bytes(received)
+
     with qemu_log.open("wb") as output:
-        process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(
+            command,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+        )
+        os.close(slave_fd)
         try:
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
                 status = process.poll()
                 if status is not None:
                     raise GateError(f"QEMU exited with status {status} before the gate completed")
-                observed = serial.read_bytes() if serial.exists() else b""
+                drain_client()
+                observed = bytes(received)
+                if (
+                    not injected
+                    and b"TOPAL_KERNEL_BOOT_RESOURCE_OK" in observed
+                ):
+                    os.write(master_fd, SERIAL_INPUT)
+                    injected = True
                 positions = [observed.find(marker) for marker in MARKERS]
                 if positions[0] >= 0 and all(
                     later > earlier for earlier, later in zip(positions, positions[1:])
                 ):
                     time.sleep(0.25)
-                    settled = serial.read_bytes()
+                    drain_client()
+                    settled = bytes(received)
                     time.sleep(1.0)
                     if process.poll() is not None:
                         raise GateError("QEMU exited instead of remaining in the fatal halt")
-                    if serial.read_bytes() != settled:
+                    drain_client()
+                    if bytes(received) != settled:
                         raise GateError("serial output continued after the fatal disposition")
                     return settled
                 time.sleep(0.05)
             raise GateError(f"timed out after {timeout:g}s waiting for all kernel markers")
         finally:
+            os.close(master_fd)
+            try:
+                os.close(slave_fd)
+            except OSError:
+                pass
             if process.poll() is None:
                 process.terminate()
                 try:
@@ -254,13 +333,14 @@ def evidence_record(
     boot_resource: Path,
     boot_provenance: Path,
     artifact_provenance: Path,
+    generated_initial_user_image: Path,
     serial: bytes,
 ) -> dict[str, Any]:
     data = manifest()
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/51",
+        "schema": "topal-kernel-toolchain-gate-qemu/62",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -268,6 +348,8 @@ def evidence_record(
         "firmware_sha256": digest(Path(data["firmware"]["path"])),
         "machine": data["emulator"]["machine"],
         "cpu": data["emulator"]["cpu"],
+        "serial_input_utf8": SERIAL_INPUT.decode("ascii"),
+        "serial_input_sha256": hashlib.sha256(SERIAL_INPUT).hexdigest(),
         "provider": boot["provider"],
         "artifact_schema": artifact["schema"],
         "boot_schema": boot["schema"],
@@ -276,6 +358,8 @@ def evidence_record(
         "boot_resource_bytes": boot["boot_resource_bytes"],
         "initial_user_image_bytes": boot["initial_user_image_bytes"],
         "initial_user_image_sha256": boot["initial_user_image_sha256"],
+        "generated_initial_user_image_sha256": digest(generated_initial_user_image),
+        "initial_user_image_input": "supplied",
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
@@ -297,9 +381,13 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
         root = Path(temporary)
-        image, boot_resource, boot_provenance, artifact_provenance = build_image(
-            root / "artifact"
-        )
+        (
+            image,
+            boot_resource,
+            boot_provenance,
+            artifact_provenance,
+            generated_initial_user_image,
+        ) = build_image(root / "artifact")
         boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
         if digest(boot_resource) != boot["boot_resource_sha256"]:
             raise GateError("published boot resource does not match boot provenance")
@@ -327,6 +415,7 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             boot_resource,
             boot_provenance,
             artifact_provenance,
+            generated_initial_user_image,
             serial,
         )
     if write_evidence:

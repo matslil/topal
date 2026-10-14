@@ -438,18 +438,18 @@ non-executable identities. The provider SHALL prove that no permission or
 content changed. Unmap SHALL consume the exact role-specific final refinement.
 
 Executable promotion of generation two, data sealing of generation one,
-cross-role substitution, unclassified unmap, write-authority restoration, and
-W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
+cross-role substitution, unclassified unmap, unauthorized write-authority
+restoration, and W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
 permission representation, or target validation mechanism.
 
 The bounded resident-image refinement SHALL consume two separately allocated
 one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
 `ExecutableCodeMapping` SHALL remain live while the data mapping advances to
-`ImmutableDataMapping`; the provider SHALL prove the address-space backing and
+`ImmutableDataMapping` or `WritableDataMapping`; the provider SHALL prove the address-space backing and
 both mapping extents are pairwise disjoint. The two finalized mappings SHALL
-coexist with RO/X and RO/NX authority respectively.
+coexist with RO/X and role-appropriate RO/NX or RW/NX authority respectively.
 
-Source SHALL unmap and release immutable data before unmapping and releasing
+Source SHALL unmap and release finalized data before unmapping and releasing
 executable code. Each unmap SHALL revoke only its exact mapping, complete the
 target-required observation boundary, and return its exact original extent.
 User-context preparation SHALL require both mappings revoked and both extents
@@ -460,9 +460,9 @@ a general mapping collection, layout API, application image, or loader.
 
 The resident-image readiness qualification SHALL emit exactly one
 `TOPAL_KERNEL_USER_IMAGE_READY` console observation after
-`ImmutableDataMapping` is produced and before either finalized mapping is
+the generation-two data role is produced and before either finalized mapping is
 unmapped. At emission, the exact generation-one `ExecutableCodeMapping` and
-generation-two `ImmutableDataMapping` SHALL both remain live. Emission SHALL
+generation-two final data mapping SHALL both remain live. Emission SHALL
 preserve their identities, backing, placements, contents, permissions, and
 affine ownership and SHALL produce no mapping or access authority.
 
@@ -475,7 +475,7 @@ loader interface.
 
 The bounded execution-residency refinement SHALL preserve the exact
 generation-one `ExecutableCodeMapping` and generation-two
-`ImmutableDataMapping` across preparation, entry, syscall dispatch, contained
+final data mapping across preparation, entry, syscall dispatch, contained
 user-copy faults, terminal exit, and kernel-continuation restoration of the
 sealed initial probe. Probe execution SHALL borrow but SHALL NOT consume,
 duplicate, transfer, mutate, access, or execute either mapping.
@@ -494,6 +494,171 @@ during execution, missing or early retained-image observation, completion with
 either mapping live, and recoverable exit with live construction authority
 SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
 contents or define a loader or general process-image interface.
+
+### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
+
+`user mapping permit writable data` SHALL consume only the generation-two
+`VerifiedUserMapping` and SHALL produce one `WritableDataMapping`. Provider,
+address-space, mapping, backing, placement, memory-kind, user-access, content,
+and non-executable identities SHALL be unchanged. The transition SHALL restore
+write authority only for the declared data role, and target translation
+completion SHALL precede observable success.
+
+The operation SHALL be invalid for generation one, a mapping which has not
+passed the read-only verification boundary, a stale or substituted identity,
+an executable mapping, or a transition that can produce W+X authority. Unmap
+SHALL consume the exact writable-data refinement and return its original
+backing only after revocation and target completion. Source SHALL observe no
+permission bit, address, page-table representation, invalidation instruction,
+or barrier.
+
+The initial x86-64 qualification SHALL use `WritableDataMapping` for the ELF
+`PF_R | PF_W` data/BSS segment. Constructed user code SHALL write and read back
+one byte inside the memory-only BSS extent before terminal success. The exact
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` observation SHALL occur once after
+successful user return and before retained-image teardown. A missing, renamed,
+duplicate, early, or late observation SHALL be invalid.
+
+### TOPAL-SYSTEMS-USER-WRITE-001 — Bounded initial standard output
+
+The initial-process profile MAY dispatch Linux-compatible `write` for
+descriptor one when the return continuation lies in the finalized executable
+mapping, length is from one through 256 bytes, and the complete overflow-free
+candidate extent lies in a provider-proved readable user mapping. Dispatch
+SHALL reject invalid descriptor, length, or candidate with the personality's
+Linux-compatible error before dereference or output.
+
+For a valid request, dispatch SHALL copy the complete caller-selected extent
+into private kernel staging before any byte becomes externally observable and
+SHALL retain no user pointer after the copy. It SHALL publish exactly the staged
+prefix through the target's checked console effect and return the requested
+length to the same revalidated user continuation. The provider SHALL NOT
+require a single embedded payload or call-site address. A wrong entry state,
+non-executable return, cross-hole or wrapping extent, partial or faulted copy,
+short result, early output, retained pointer, duplicate output, or output after
+terminal disposition SHALL be invalid.
+
+This rule SHALL NOT expose a syscall number, register convention, instruction,
+address, serial mechanism, arbitrary descriptor, descriptor table, VFS object,
+partial-write policy, or unbounded output interface to source.
+
+### TOPAL-SYSTEMS-USER-READ-001 — Bounded initial standard input
+
+The initial-process profile MAY dispatch Linux-compatible `read` for descriptor
+zero when the return continuation lies in the finalized executable mapping,
+length is from one through 256 bytes, and the complete overflow-free
+destination extent lies in a provider-proved writable user mapping. Dispatch
+SHALL reject an invalid descriptor, length, wrapped or cross-hole extent, or
+read-only destination with the personality's Linux-compatible error before
+input consumption or user-memory access.
+
+For a valid request, dispatch SHALL receive exactly the requested bounded count
+into private kernel staging before beginning user publication. It SHALL then
+perform one fault-contained copy of the complete staged prefix, retain no user
+pointer, and return the requested length to the same revalidated continuation.
+The provider SHALL NOT require a single input value, candidate, or call-site
+address. Constructed qualification code SHALL validate its deterministic bytes
+and result before releasing its bounded stack region. Source SHALL emit exactly
+one `TOPAL_KERNEL_USER_READ_OK` observation after exact terminal return and
+before the constructed-image entry witness. Wrong state, non-executable return,
+partial reception, early publication, faulted or partial transfer, short
+result, retained pointer, unbalanced stack, or missing, duplicate, early,
+renamed, or late witness SHALL be invalid.
+
+This rule SHALL NOT expose a syscall number, register convention, instruction,
+address, serial mechanism, arbitrary descriptor, end-of-file, partial-read or
+signal policy, line discipline, terminal interface, or unbounded input buffer
+interface to source.
+
+### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
+
+The initial-process profile MAY dispatch Linux-compatible `brk` when the user
+context is live and the return continuation lies in the finalized executable
+mapping. The provider SHALL derive the immutable initial break from the
+validated runtime ELF data-memory extent and SHALL prove it lies within the
+owned 4096-byte writable, non-executable data page. It SHALL zero the complete
+page tail beginning at the runtime file-data end before user entry and SHALL
+retain one current break in private process state.
+
+A zero request SHALL return the current break without changing it. A byte-
+granular request in the closed interval from initial break through data-page
+end SHALL atomically become and return the new break. Any other request SHALL
+leave state unchanged and return the prior break. Dispatch SHALL NOT return a
+negative errno for an unsupported break. Data-role teardown SHALL clear the
+private break before mapping revocation and backing release.
+
+Compile-time initial-size authority, arithmetic wrap, page-tail allocator
+residue, state publication before successful image construction, wrong entry
+state, non-executable return, a result other than requested or prior break as
+applicable, or live break state after data teardown SHALL be invalid. This rule
+SHALL NOT expose a virtual address, page-table representation, state location,
+syscall number, register convention, instruction, VMA collection, additional
+page allocation, resource-limit policy, overcommit, `mmap`, `mprotect`, or
+`munmap` interface to source.
+
+### TOPAL-SYSTEMS-USER-IDENTITY-001 — Initial scalar identity coherence
+
+The initial-process profile MAY dispatch Linux-compatible scalar process,
+thread, parent, user, and group identity queries only while the user context is
+live and the return continuation lies in the finalized executable mapping.
+`getpid` and `gettid` SHALL return one, `getppid` SHALL return zero, and
+`getuid`, `geteuid`, `getgid`, and `getegid` SHALL return zero. The credential
+results SHALL agree with the initial `AT_UID`, `AT_EUID`, `AT_GID`, and
+`AT_EGID` facts.
+
+Dispatch SHALL retain no argument, pointer, or mutable identity state and SHALL
+return to the same revalidated continuation. A missing family member, wrong or
+incoherent result, wrong entry state, non-executable return, duplicate result,
+or return after terminal disposition SHALL be invalid. This rule SHALL NOT
+expose syscall numbers, register conventions, instructions, task structures,
+namespace representations, credential storage, mutation, lookup, or general
+process-management authority to source.
+
+### TOPAL-SYSTEMS-X64-FS-BASE-001 — Initial x86-64 user FS base
+
+The initial x86-64 profile MAY dispatch Linux-compatible
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only while the initial
+user context is live and the return continuation lies in the finalized
+executable mapping. `ARCH_SET_FS` SHALL accept zero or a canonical candidate whose
+complete one-byte extent lies in an already-owned readable user mapping. On
+success the provider SHALL retain that exact value as private thread state,
+install it as the user FS base before return, and return zero.
+
+`ARCH_GET_FS` SHALL accept only a complete writable eight-byte destination in
+an already-owned user mapping, copy the retained value through a fault-
+contained user-output scope, and return zero. Unsupported operation codes SHALL
+return `-EINVAL`, an invalid base SHALL return `-EPERM`, and an invalid output
+candidate SHALL return `-EFAULT`; these failures SHALL NOT change the retained
+base. Data-role teardown SHALL clear private FS-base state before mapping
+revocation and backing release.
+
+Wrong set/get identity, noncanonical or unmapped bases, partial output, wrong
+entry state, non-executable return, retained user pointers, duplicate result,
+or live private state after teardown SHALL be invalid. This rule SHALL NOT
+expose a syscall number, operation-code representation, instruction, register,
+MSR, saved-frame layout, private state address, TLS layout, allocator, cloning,
+or general architecture-control authority to source.
+
+### TOPAL-SYSTEMS-USER-CLEAR-TID-001 — Initial thread exit word
+
+The initial-process profile MAY dispatch Linux-compatible `set_tid_address`
+only while the initial user context is live and its return continuation lies
+in the finalized executable mapping. A nonnull candidate SHALL name a complete
+writable four-byte extent in an already-owned user mapping; null SHALL disable
+registration. Successful dispatch SHALL retain the candidate as private
+thread state without dereference and SHALL return TID one.
+
+Terminal user exit SHALL, for a nonnull retained candidate, write zero under a
+fault-contained user-output scope. It SHALL clear private candidate state
+after that store and before completing the user context or revoking any user
+mapping. A clear fault SHALL fail closed. The one-thread profile SHALL NOT emit
+a futex wake because no waiter can exist.
+
+Invalid candidates, wrong results, retained user access outside terminal
+clearing, partial stores, terminal transition before clear, duplicate result,
+or live candidate state at mapping teardown SHALL be invalid. This rule SHALL
+NOT expose a syscall number, user address, task structure, futex key or queue,
+clone service, or general thread-lifecycle authority to source.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 

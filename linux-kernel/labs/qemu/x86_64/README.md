@@ -134,11 +134,16 @@ python3 -m unittest \
   linux-kernel/labs/qemu/x86_64/test_topal_gate.py -v
 ```
 
-The first command publishes the checked Topal source through the ordinary
-`topalc` systems target, passes that artifact to the packaging-only
+The first command first publishes the generated qualification image, derives a
+structurally compatible fixture with distinct initialized data, and then
+publishes the checked Topal source through the ordinary `topalc` systems target
+using `--initial-user-image`. It passes that artifact and the exact published
+user image to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
-ignored temporary state. It then boots through QEMU's direct Linux interface
-and waits for the 48 ordered serial markers. The generated real-mode adapter
+ignored temporary state. The packager verifies the image against artifact
+provenance instead of regenerating it. The harness then boots through QEMU's
+direct Linux interface
+and waits for the 51 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -170,8 +175,9 @@ generation, the provider installs and verifies an exact opaque entry payload;
 the second retains the fixed-byte data qualification. It then promotes the
 first verified RO/NX mapping to role-specific RO/X code with target
 invalidation and retains it while a separately allocated, disjoint frame is
-mapped at the sealed data location. The second mapping remains RO/NX when it
-is sealed as immutable data. The intervening
+mapped at the sealed data location. After content verification, the second
+mapping is promoted through a distinct writable-data role from RO/NX to RW/NX
+with target invalidation; execute authority remains absent. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
 coexist. The following `TOPAL_KERNEL_BOOT_RESOURCE_OK` marker proves that the
 provider validated the complete deterministic CPIO resource supplied through
@@ -184,9 +190,10 @@ to its own first instruction, `AT_EXECFN` aliased to `argv[0]`, terminating
 zero-valued `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` root credentials,
 resident `AT_PHDR`/`AT_PHENT`/`AT_PHNUM` facts, terminating auxiliary-vector,
 and the shared string contents before
-directly observing the immutable sentinel and transferring to the existing
-syscall and fault-recovery probe. A mismatch takes the payload's fail-closed
-trap instead. After its existing compatibility checks,
+directly observing the initialized sentinel, proving the BSS byte starts at
+zero, writing `0xa5` through the writable mapping, reading it back, and then
+transferring to the existing syscall and fault-recovery probe. A mismatch
+takes the payload's fail-closed trap instead. After its existing compatibility checks,
 the probe transfers to a sealed continuation in the constructed mapping. That
 continuation reserves a bounded buffer in the existing RW/NX user stack,
 invokes Linux x86-64 `uname`, requires a complete transfer, validates the
@@ -194,7 +201,45 @@ returned `Linux` identity, and restores the stack. After output disposal it
 stages a zero-duration native timespec in the same
 stack, invokes `nanosleep` with no remainder candidate, requires complete
 input transfer and a successful return, and restores the stack again. It then
-invokes `getpid`, requires PID one, takes the same trap on mismatch, and issues
+constructs the 26-byte `TOPAL_KERNEL_USER_WRITE_OK` payload in another bounded
+stack region and invokes Linux `write(1, candidate, 26)`. Dispatch admits a
+caller-selected one-to-256-byte extent only when it is completely contained in
+a known readable user mapping. It copies the complete extent to private kernel
+staging before output, publishes the staged prefix through the checked Q35
+serial provider, and returns the argument-derived byte count; the provider has
+no embedded copy of the application payload and requires no baked call site.
+The user validates that result and restores its stack, so the payload is
+observable before the source-owned post-return witnesses. The harness connects
+a pseudo-terminal to the same emulated serial device and injects `read` after
+the boot-resource witness. The continuation next invokes
+`read(0, candidate, 4)` into a bounded RW/NX stack region. Dispatch accepts a
+caller-selected one-to-256-byte extent only when it lies completely within a
+known writable user mapping. It polls until the exact requested count has been
+received into private staging, then copies the complete prefix to user memory
+under fault recovery and returns the argument-derived count. The provider
+contains no expected input value or baked candidate/call-site equality oracle.
+User mode validates the count and all four bytes before restoring its stack.
+`TOPAL_KERNEL_USER_READ_OK` is the first source-owned post-return witness and
+proves that path reached terminal completion.
+The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
+initial break, grow it by 16 bytes, write and read the first newly admitted
+heap byte, shrink back to the initial break, and prove that an out-of-range
+growth returns the unchanged prior break. The provider keeps current and
+initial values in private process state, accepts calls from any finalized
+executable continuation, and clears both values during data-role teardown.
+Image construction zeroes the complete page tail from runtime `p_filesz`, so
+bounded heap growth cannot reveal allocator residue. The continuation then
+invokes the Linux x86-64 scalar identity family `getpid`, `gettid`, `getppid`,
+`getuid`, `geteuid`, `getgid`, and `getegid`. It requires PID and TID one and
+the single-process root namespace values zero, takes the same trap on any
+mismatch, then uses `arch_prctl` to select an FS base in its writable data
+mapping, read it back through a fault-contained writable stack word, disable it
+with zero, and read back zero. The provider installs `IA32_FS_BASE`, retains no
+user pointer, and clears private and physical state before data teardown. The
+application also initializes a writable data word and registers it with
+`set_tid_address`, requiring the TID-one result. Terminal dispatch zeros that
+word under fault recovery and clears the private candidate before completing
+the user lifecycle. It then issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
@@ -227,6 +272,9 @@ validated runtime ELF file and memory extents rather than fixed qword counts,
 same external ELF resource and the complete memory-only tail remained zero
 after RO/NX publication,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` proves the initialized user program
+successfully changed and reread its BSS through the verified RW/NX data role,
+and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,
 `TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK` proves the bounded syscall succeeded, while

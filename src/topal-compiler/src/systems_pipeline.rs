@@ -7,7 +7,7 @@ use topal_language::compiler::{
 
 use crate::{
     CompileError, CompileOptions, Emit, LlvmTools, OptimizationRequest, PublishedSystemsArtifact,
-    publish_x86_64_systems_artifact,
+    publish_x86_64_systems_artifact, publish_x86_64_systems_artifact_with_initial_user_image,
 };
 
 pub(crate) fn selected(options: &CompileOptions) -> bool {
@@ -25,7 +25,22 @@ pub(crate) fn publish(
     )
     .map_err(CompileError::Diagnostic)?;
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
-    publish_x86_64_systems_artifact(&program, &tools, &options.output)
+    if let Some(path) = &options.initial_user_image {
+        let initial_user_image = std::fs::read(path).map_err(|error| {
+            CompileError::Io(format!(
+                "cannot read initial user image {}: {error}",
+                path.display()
+            ))
+        })?;
+        publish_x86_64_systems_artifact_with_initial_user_image(
+            &program,
+            &tools,
+            &initial_user_image,
+            &options.output,
+        )
+    } else {
+        publish_x86_64_systems_artifact(&program, &tools, &options.output)
+    }
 }
 
 fn validate_options(options: &CompileOptions) -> Result<(), CompileError> {

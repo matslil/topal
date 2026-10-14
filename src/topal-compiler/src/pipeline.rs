@@ -8,6 +8,11 @@ pub(crate) fn compile(
     source: &str,
     options: &CompileOptions,
 ) -> Result<NativeArtifactMetadata, CompileError> {
+    if options.initial_user_image.is_some() {
+        return Err(CompileError::Tool(
+            "--initial-user-image is available only for qualified systems publication".into(),
+        ));
+    }
     let plan = crate::OptimizationPlan::resolve(&options.target, &options.optimization)?;
     if let Some(destination) = &options.optimization.explain {
         plan.publish_explanation(destination)?;

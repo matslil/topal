@@ -606,18 +606,28 @@ returns an opaque immutable-data refinement after the provider proves the
 completed read-only, non-executable authority is unchanged. Code and data
 refinements are distinct and cannot be substituted at unmap.
 
+An explicitly mutable data role uses `user mapping permit writable data` only
+after that same RO/NX verification boundary. It consumes the verified mapping
+and returns an opaque writable-data refinement for the same identity, backing,
+placement, contents, and user accessibility after the provider restores write
+authority, proves executable authority remains absent, and completes the
+target translation-observation requirement. This controlled RO/NX-to-RW/NX
+transition is available only for a declared writable-data role; it is not a
+general protection interface and cannot produce W+X authority. Unmap consumes
+the writable-data refinement exactly as it does other final role owners.
+
 The bounded residency refinement replaces sequential backing reuse with two
 separately allocated disjoint extents and sealed `probe-code` and `probe-data`
-placements. Executable code remains mapped while immutable data is built, so
-both role-specific affine refinements coexist. Source then unmaps and releases
-data before unmapping and releasing code. User preparation requires both
+placements. Executable code remains mapped while immutable or writable data is
+built, so both role-specific affine refinements coexist. Source then unmaps and
+releases data before unmapping and releasing code. User preparation requires both
 mappings revoked and both returned extents released. This is exactly a two-
 mapping construction proof, not a general mapping collection or image loader.
 
 The resident-image readiness refinement emits the exact
-`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after immutable data is
-sealed and before either finalized mapping is unmapped. At that boundary one
-RO/X code mapping and one RO/NX data mapping coexist with pairwise-disjoint
+`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
+and before either mapping is unmapped. At that boundary one RO/X code mapping
+and one role-qualified RO/NX or RW/NX data mapping coexist with pairwise-disjoint
 backing. Console output preserves both affine owners: the marker grants no
 mapping or access authority and exposes no address, permission encoding, or
 target representation. It is a bounded physical witness, not an application
@@ -643,6 +653,83 @@ are physical evidence, not a general mapping API, application format, or ELF
 loader. Pointer-bearing syscalls other than the sealed `uname`
 qualification, general user-copy recovery, signals, restart, TLS, multiple
 threads, user preemption, migration, and SMP remain excluded.
+
+The bounded initial-process output refinement additionally permits one sealed
+Linux-compatible `write` from already-owned readable user-stack memory to
+descriptor one. Dispatch first copies the complete declared extent into
+private kernel staging and only then publishes it through the selected board's
+console effect. The pointer is not retained, the exact byte-count result is
+returned to the same user continuation, and terminal execution remains
+fail-closed. This is one standard-output qualification, not a descriptor table,
+VFS write path, arbitrary buffer interface, or partial-write policy.
+
+The matching bounded input refinement permits one sealed Linux-compatible
+`read` from descriptor zero into one byte of already-owned writable user-stack
+memory. The provider receives one checked console byte into private kernel
+staging, copies it to the exact candidate under fault recovery, retains no
+pointer, and returns the exact byte count to the same continuation. This is one
+qualification observation, not a byte stream, blocking policy, line
+discipline, terminal interface, or general VFS read path.
+
+The bounded general-output refinement removes the provider's embedded payload
+and single-call-site equality checks. Descriptor one may write one through 256
+caller-selected bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free candidate lies in an already-
+mapped readable user extent. Invalid candidates are rejected before access;
+valid bytes are completely staged in private kernel memory before output. The
+adapter returns the requested count and retains no pointer. The explicit cap,
+fixed mapped-set validation, and lack of partial-write behavior remain profile
+limits rather than Linux-wide semantics.
+
+The bounded general-input refinement likewise removes the provider's single-
+byte, exact-candidate, and single-call-site oracle. Descriptor zero may read
+one through 256 bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free destination lies in an
+already-mapped writable user extent. The adapter waits for the requested
+bounded count, stages all received bytes privately, and only then copies the
+complete prefix to user memory under fault recovery. Invalid arguments are
+rejected before input consumption. The adapter returns the requested count
+and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
+signals, partial reads, and terminal policy remain profile limits rather than
+Linux-wide semantics.
+
+The bounded initial-heap refinement gives the initial process one byte-granular
+program-break state within the already-owned RW/NX data page. Its initial value
+is derived from the validated ELF data-memory extent; zero requests query that
+value, in-range requests replace it, and unsupported requests return the prior
+break as Linux `brk` does. The provider zero-initializes the complete page tail
+before user entry and retains the current break in private process state. This
+does not grant a source-visible address, allocate another page, define virtual-
+memory areas, or admit `mmap`, overcommit, resource limits, concurrent address-
+space edits, or general heap policy.
+
+The scalar initial-identity refinement exposes the already-sealed PID-one root
+identity through Linux-compatible `getpid`, `getppid`, `gettid`, `getuid`,
+`geteuid`, `getgid`, and `getegid` results. Dispatch requires the live initial
+context and a return continuation in the finalized executable mapping, returns
+PID and TID one, parent PID zero, and coherent real/effective UID/GID zero, and
+retains no argument or pointer. These constants must agree with the initial
+credential auxiliary-vector facts. This is not a process table, credential
+transition service, namespace view, supplementary-group model, or reusable
+identity API.
+
+The initial x86-64 thread-pointer refinement permits Linux-compatible
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
+initial thread. A nonzero selected FS base must lie within an already-owned
+readable user mapping; zero disables the base. The provider retains it as private thread state, installs it for
+user execution, and clears it before the user mappings are revoked. `GET_FS`
+publishes the same value only through an already-owned writable user extent.
+This target-qualified boundary exposes neither an MSR nor a register, and it
+does not define portable TLS layout, allocation, multiple threads, or a general
+architecture-control interface.
+
+The initial-thread exit-word refinement permits Linux-compatible
+`set_tid_address` to retain either no candidate or one complete writable
+four-byte user extent. It returns the sealed TID one. Terminal thread exit
+stores zero to the retained word under fault recovery before clearing the
+private candidate and completing user execution. This is one single-thread
+lifecycle hook, not cloning, futex service, robust-list processing, or a
+general task table.
 
 ## External observations and permitted choice
 

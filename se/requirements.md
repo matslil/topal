@@ -479,8 +479,16 @@ generation as immutable executable code through the approved RO/NX-to-RO/X
 promotion and the second as immutable non-executable data through an explicit
 RO/NX-preserving seal. Cross-role substitution, executable promotion of the
 data generation, data sealing of the code generation, unclassified unmap,
-write-authority restoration, or W+X authority shall fail closed. Both roles
+unauthorized write-authority restoration, or W+X authority shall fail closed. Both roles
 shall remain opaque and shall be revoked before frame return.
+
+The writable user-data refinement shall alternatively consume the exact second
+verified RO/NX generation into an opaque RW/NX writable-data role. It shall
+preserve mapping, address-space, backing, placement, content, and user-access
+identity; restore only write authority; prove executable authority remains
+absent; and complete target translation observation before success. Use on the
+code generation, use before verification, identity substitution, W+X,
+source-visible permissions, or unmap through stale authority shall fail closed.
 
 The bounded resident-image refinement shall allocate distinct one-frame code
 and data extents, retain finalized executable-code ownership while constructing
@@ -491,6 +499,15 @@ backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
 release while mapped, or recoverable disposition with either mapping live shall
 fail closed. Provider-private placement and revocation mechanics shall remain
 unobservable.
+
+For the initial writable ELF qualification, `WritableDataMapping` shall replace
+the immutable data role while preserving data-first teardown and all resident
+ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and
+constructed code shall write and read one memory-only BSS byte before its
+terminal syscall. The exact
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker shall occur after successful
+return and before retained-image teardown; missing, duplicate, renamed, early,
+or late emission shall fail closed.
 
 The resident-image qualification shall emit the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` marker after both role-specific mappings are
@@ -691,14 +708,86 @@ shall own privilege, stack, saved-state, security, result-placement, and return
 mechanics but shall not select a syscall or invent a result.
 
 The first executable x86-64 profile shall use one generated ring-3 probe and
-the pinned Linux `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
-shall verify ordinary returns, generated output- and input-direction user-copy
-fault recovery, and terminal restoration with status zero. Fixed probe
+the pinned Linux `read`, `write`, `getpid`, `uname`, `nanosleep`, and
+`exit_group` numbers. It shall verify ordinary returns, generated output- and
+input-direction user-copy fault recovery, and terminal restoration with status
+zero. Fixed probe
 mappings shall be qualification evidence only. ELF loading, pointer-bearing
-syscalls other than the sealed `uname` and zero-duration `nanosleep`
+syscalls other than the bounded standard-input `read`, bounded standard-output
+`write`, `uname`, and zero-duration `nanosleep`
 qualifications, general user-copy recovery, signals, restart, TLS, multiple
 processes or threads, user preemption, migration, SMP, and the complete syscall
 table remain unavailable.
+
+The initial-process write adapter shall accept descriptor one, an executable
+user return continuation, and one through 256 caller-selected bytes wholly
+contained in a proved readable user mapping. It shall reject invalid arguments
+before access or output, completely stage valid bytes in private kernel memory,
+publish exactly the staged prefix through the checked console effect, return
+the requested length, and retain no pointer. The provider shall not compare
+against an embedded payload or single call site. Wrapping or cross-hole extents,
+partial copy, early output, arbitrary descriptors, short result, duplicate
+output, or output after terminal disposition shall fail closed.
+
+The initial-process read adapter shall accept descriptor zero, an executable
+user return continuation, and a destination of one through 256 bytes wholly
+contained in a proved writable user mapping. It shall reject an invalid
+descriptor, length, wrapped or cross-hole extent, or read-only destination
+before consuming input. For a valid request it shall wait for the exact bounded
+count, stage the complete input privately, perform one fault-contained copy of
+the staged prefix to user memory, retain no pointer, and return the requested
+length. It shall not compare against a provider-embedded input value or require
+one exact candidate or call site. User mode shall validate the deterministic
+qualification bytes and result before stack disposal. The exact
+`TOPAL_KERNEL_USER_READ_OK` marker shall occur after terminal return and before
+the constructed-image entry marker. Partial reception, early user publication,
+wrong transfer or result, unbalanced disposal, or witness reordering shall fail
+closed.
+
+The initial-process program-break adapter shall derive its initial value from
+the validated runtime ELF data-memory extent and bound it by the already-owned
+4096-byte RW/NX data page. The provider shall zero the complete page tail from
+the runtime file-data end before user entry and keep the current break in
+private process state. A zero request shall query the current break. An in-
+range byte-granular request shall atomically replace and return it; an out-of-
+range request shall preserve and return the prior break as Linux `brk` does.
+Dispatch shall require a live context and executable return continuation, and
+teardown shall clear the private break before releasing the data mapping.
+Compile-time data-size authority, allocator residue exposure, negative errno
+results, additional page mapping, retained user pointers, or state surviving
+teardown shall fail closed.
+
+The initial-process scalar identity adapter shall accept `getpid`, `gettid`,
+`getppid`, `getuid`, `geteuid`, `getgid`, and `getegid` only for the live
+initial context and an executable user return continuation. It shall return
+PID and TID one, parent PID zero, and coherent real/effective UID and GID zero.
+Credential results shall agree with the corresponding initial auxiliary-vector
+facts. Dispatch shall retain no argument, pointer, or mutable identity state.
+A missing family member, wrong or inconsistent result, non-executable return,
+wrong lifecycle state, or result after terminal disposition shall fail closed.
+
+The initial x86-64 thread-pointer adapter shall accept only
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` for the live initial
+thread and an executable user return continuation. `SET_FS` shall require zero
+or a canonical candidate inside an already-owned readable user mapping, retain the
+value as private thread state, install it before return, and return zero.
+`GET_FS` shall require a complete writable eight-byte user destination, copy
+the retained value through fault-contained output, and return zero. Unsupported
+operations, invalid bases, and invalid output candidates shall produce their
+declared Linux errors without changing state. Teardown shall clear the private
+value before mapping revocation. Exposed registers or MSRs, incorrect set/get
+identity, retained user pointers, partial output, or live state after teardown
+shall fail closed.
+
+The initial-thread exit-word adapter shall accept `set_tid_address` only for
+the live initial thread and an executable user return continuation. A nonnull
+candidate shall name one complete writable four-byte user extent; null shall
+disable registration. Successful dispatch shall retain the candidate
+privately and return TID one without dereference. Terminal exit shall write
+zero to a retained word under fault recovery, clear the private candidate, and
+only then complete the user context. Invalid candidates, wrong results,
+uncontained clear faults, terminal transition before clearing, or state that
+survives user-mapping teardown shall fail closed.
 
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through

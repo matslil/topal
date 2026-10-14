@@ -382,6 +382,61 @@ records executable-extent containment, one retained selected entry, consistent
 `AT_ENTRY` and ring-3 entry use, resident-header comparison, and two
 deterministic pinned-QEMU runs.
 
+The next systems-only refinement makes the
+[initial user ELF a canonical published artifact](design/published-initial-user-image.md).
+Its [implementation and qualification report](step-4-published-initial-user-image.md)
+records atomic publication, artifact-provenance binding, exact-byte boot
+packaging, tamper rejection, and two deterministic pinned-QEMU runs.
+
+The following systems-only refinement accepts one
+[caller-supplied bounded initial ELF](design/supplied-initial-user-image.md).
+Its [implementation and qualification report](step-4-supplied-initial-user-image.md)
+records prepublication envelope validation, systems-only CLI selection,
+content-based provenance, a payload distinct from the generated default, and
+two deterministic pinned-QEMU runs.
+
+The next systems-only refinement gives the initial ELF a typed
+[writable non-executable data role](design/writable-user-data.md). Its
+[implementation and qualification report](step-4-writable-user-data.md)
+records verified RO/NX-to-RW/NX promotion, retained W^X, an in-program BSS
+write/read proof, and two deterministic pinned-QEMU runs.
+
+The following systems-only refinement performs one bounded
+[initial-process standard-output write](design/bounded-constructed-image-write.md).
+Its [implementation and qualification report](step-4-constructed-image-write.md)
+records complete kernel staging before output, exact Linux x86-64 return
+behavior, user-stack restoration, and two deterministic pinned-QEMU runs.
+
+The next systems-only refinement performs one bounded
+[initial-process standard-input read](design/bounded-constructed-image-read.md).
+Its [implementation and qualification report](step-4-constructed-image-read.md)
+records deterministic serial injection, provider-private staging, exact
+copy-to-user and return behavior, byte validation, and two deterministic
+pinned-QEMU runs.
+
+The following systems-only refinement generalizes the
+[bounded standard-output write](design/bounded-general-stdout-write.md) to
+caller-selected one-to-256-byte extents in known readable mappings. Its
+[implementation and qualification report](step-4-bounded-general-stdout-write.md)
+records payload-neutral dispatch, complete private staging, Linux-compatible
+argument errors, structural inspection, and two deterministic pinned-QEMU runs.
+
+The next systems-only refinement generalizes the
+[bounded standard-input read](design/bounded-general-stdin-read.md) to caller-
+selected one-to-256-byte extents in known writable mappings. Its
+[implementation and qualification report](step-4-bounded-general-stdin-read.md)
+records input-value-neutral exact-fill reception, complete private staging
+before user publication, Linux-compatible argument errors, structural
+inspection, and two deterministic pinned-QEMU runs.
+
+The following systems-only refinement adds a
+[bounded initial-process program break](design/bounded-initial-brk.md) within
+the existing writable data page. Its
+[implementation and qualification report](step-4-bounded-initial-brk.md)
+records runtime-ELF-derived private state, complete future-heap zeroing,
+query/grow/write-read/shrink/failure behavior, teardown clearing, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -505,6 +560,9 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
 - [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
+- [Step 4 initial scalar identity syscalls](step-4-initial-scalar-identity-syscalls.md)
+- [Step 4 initial x86-64 FS-base control](step-4-initial-x86-fs-base.md)
+- [Step 4 initial clear-child-TID word](step-4-initial-clear-child-tid.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
@@ -513,6 +571,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 runtime-derived executable extent](step-4-runtime-derived-executable-extent.md)
 - [Step 4 runtime-derived data and BSS extent](step-4-runtime-derived-data-extent.md)
 - [Step 4 runtime-derived ELF entry](step-4-runtime-derived-entry.md)
+- [Step 4 published initial user image](step-4-published-initial-user-image.md)
+- [Step 4 supplied initial user image](step-4-supplied-initial-user-image.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

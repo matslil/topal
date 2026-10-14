@@ -243,10 +243,74 @@ fn systems_target_publishes_the_canonical_artifact_set() {
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    for name in ["kernel.elf", "kernel.debug", "kernel.map", "provenance.json"] {
+    for name in [
+        "kernel.elf",
+        "kernel.debug",
+        "kernel.map",
+        "initial-user.elf",
+        "provenance.json",
+    ] {
         assert!(output.join(name).is_file(), "missing {name}");
     }
     assert!(!metadata_path(&output).exists());
+}
+
+#[test]
+fn systems_target_publishes_an_exact_supplied_initial_user_image() {
+    // TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+    let directory = temporary("systems-supplied-initial-user-image");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    let generated = directory.join("generated");
+    let result = run(topalc()
+        .args([
+            "--target",
+            "x86_64-unknown-none",
+            "--board",
+            "topal-qemu-pc-q35-10.2",
+        ])
+        .arg("-o")
+        .arg(&generated)
+        .arg(&source));
+    assert!(result.status.success());
+
+    let supplied_path = directory.join("supplied.elf");
+    let mut supplied = fs::read(generated.join("initial-user.elf")).unwrap();
+    supplied[4097] = 0xa5;
+    fs::write(&supplied_path, &supplied).unwrap();
+    let published = directory.join("published");
+    let result = run(topalc()
+        .args([
+            "--target",
+            "x86_64-unknown-none",
+            "--board",
+            "topal-qemu-pc-q35-10.2",
+            "--initial-user-image",
+        ])
+        .arg(&supplied_path)
+        .arg("-o")
+        .arg(&published)
+        .arg(&source));
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(fs::read(published.join("initial-user.elf")).unwrap(), supplied);
+
+    let native_output = directory.join("native");
+    let result = run(topalc()
+        .arg("--initial-user-image")
+        .arg(&supplied_path)
+        .arg("-o")
+        .arg(&native_output)
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t")));
+    assert!(!result.status.success());
+    assert!(
+        String::from_utf8_lossy(&result.stderr)
+            .contains("available only for qualified systems publication")
+    );
+    assert!(!native_output.exists());
 }
 
 #[test]
