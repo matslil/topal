@@ -766,6 +766,17 @@ generations reuse the same reservation only after complete revocation.
 reservation, returns the exact frame, and preserves address-space ownership.
 This is one bounded runtime page, not a VMA collection or general mapping API.
 
+The bounded anonymous-protection refinement permits Linux-compatible
+`mprotect` on that sole live mapping. The provider may transition the current
+generation among inaccessible, read-only non-executable, and read-write
+non-executable states with ordered target completion while retaining mapping
+identity and contents. The inaccessible state remains an active generation,
+so it neither releases the reservation nor admits another `mmap`. Native
+protection bits, page-table representation, and invalidation instructions stay
+provider-private. This is exact-page protection for one reservation, not
+executable permission, partial splitting, protection keys, concurrent edits,
+or a general virtual-memory-area service.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
