@@ -237,6 +237,17 @@ entry, `SYSCALL` dispatch, exact `SYSRETQ` return, and terminal kernel-stack
 restoration. Structural and pinned-QEMU evidence shall prove the complete
 round trip before its success marker and quiescent fatal disposition.
 
+The writable initial-data increment shall check the typed
+`user mapping permit writable data` transition only after generation-two
+RO/NX verification. Lowering shall restore the qualified data PTE's write
+authority, retain NX, complete translation invalidation, and return one opaque
+writable-data owner accepted by exact data-first unmap. The generated ELF shall
+mark its data segment `PF_R | PF_W`; constructed code shall write and read back
+one BSS byte before terminal success. The root shall emit the exact ordered
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker only after successful user
+return. Structural tests shall reject code-role use, preverification use,
+identity substitution, stale unmap, missing invalidation, or W+X permission.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

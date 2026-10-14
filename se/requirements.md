@@ -479,8 +479,16 @@ generation as immutable executable code through the approved RO/NX-to-RO/X
 promotion and the second as immutable non-executable data through an explicit
 RO/NX-preserving seal. Cross-role substitution, executable promotion of the
 data generation, data sealing of the code generation, unclassified unmap,
-write-authority restoration, or W+X authority shall fail closed. Both roles
+unauthorized write-authority restoration, or W+X authority shall fail closed. Both roles
 shall remain opaque and shall be revoked before frame return.
+
+The writable user-data refinement shall alternatively consume the exact second
+verified RO/NX generation into an opaque RW/NX writable-data role. It shall
+preserve mapping, address-space, backing, placement, content, and user-access
+identity; restore only write authority; prove executable authority remains
+absent; and complete target translation observation before success. Use on the
+code generation, use before verification, identity substitution, W+X,
+source-visible permissions, or unmap through stale authority shall fail closed.
 
 The bounded resident-image refinement shall allocate distinct one-frame code
 and data extents, retain finalized executable-code ownership while constructing
@@ -491,6 +499,15 @@ backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
 release while mapped, or recoverable disposition with either mapping live shall
 fail closed. Provider-private placement and revocation mechanics shall remain
 unobservable.
+
+For the initial writable ELF qualification, `WritableDataMapping` shall replace
+the immutable data role while preserving data-first teardown and all resident
+ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and
+constructed code shall write and read one memory-only BSS byte before its
+terminal syscall. The exact
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker shall occur after successful
+return and before retained-image teardown; missing, duplicate, renamed, early,
+or late emission shall fail closed.
 
 The resident-image qualification shall emit the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` marker after both role-specific mappings are

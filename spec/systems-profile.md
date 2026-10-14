@@ -438,18 +438,18 @@ non-executable identities. The provider SHALL prove that no permission or
 content changed. Unmap SHALL consume the exact role-specific final refinement.
 
 Executable promotion of generation two, data sealing of generation one,
-cross-role substitution, unclassified unmap, write-authority restoration, and
-W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
+cross-role substitution, unclassified unmap, unauthorized write-authority
+restoration, and W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
 permission representation, or target validation mechanism.
 
 The bounded resident-image refinement SHALL consume two separately allocated
 one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
 `ExecutableCodeMapping` SHALL remain live while the data mapping advances to
-`ImmutableDataMapping`; the provider SHALL prove the address-space backing and
+`ImmutableDataMapping` or `WritableDataMapping`; the provider SHALL prove the address-space backing and
 both mapping extents are pairwise disjoint. The two finalized mappings SHALL
-coexist with RO/X and RO/NX authority respectively.
+coexist with RO/X and role-appropriate RO/NX or RW/NX authority respectively.
 
-Source SHALL unmap and release immutable data before unmapping and releasing
+Source SHALL unmap and release finalized data before unmapping and releasing
 executable code. Each unmap SHALL revoke only its exact mapping, complete the
 target-required observation boundary, and return its exact original extent.
 User-context preparation SHALL require both mappings revoked and both extents
@@ -460,9 +460,9 @@ a general mapping collection, layout API, application image, or loader.
 
 The resident-image readiness qualification SHALL emit exactly one
 `TOPAL_KERNEL_USER_IMAGE_READY` console observation after
-`ImmutableDataMapping` is produced and before either finalized mapping is
+the generation-two data role is produced and before either finalized mapping is
 unmapped. At emission, the exact generation-one `ExecutableCodeMapping` and
-generation-two `ImmutableDataMapping` SHALL both remain live. Emission SHALL
+generation-two final data mapping SHALL both remain live. Emission SHALL
 preserve their identities, backing, placements, contents, permissions, and
 affine ownership and SHALL produce no mapping or access authority.
 
@@ -475,7 +475,7 @@ loader interface.
 
 The bounded execution-residency refinement SHALL preserve the exact
 generation-one `ExecutableCodeMapping` and generation-two
-`ImmutableDataMapping` across preparation, entry, syscall dispatch, contained
+final data mapping across preparation, entry, syscall dispatch, contained
 user-copy faults, terminal exit, and kernel-continuation restoration of the
 sealed initial probe. Probe execution SHALL borrow but SHALL NOT consume,
 duplicate, transfer, mutate, access, or execute either mapping.
@@ -494,6 +494,30 @@ during execution, missing or early retained-image observation, completion with
 either mapping live, and recoverable exit with live construction authority
 SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
 contents or define a loader or general process-image interface.
+
+### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
+
+`user mapping permit writable data` SHALL consume only the generation-two
+`VerifiedUserMapping` and SHALL produce one `WritableDataMapping`. Provider,
+address-space, mapping, backing, placement, memory-kind, user-access, content,
+and non-executable identities SHALL be unchanged. The transition SHALL restore
+write authority only for the declared data role, and target translation
+completion SHALL precede observable success.
+
+The operation SHALL be invalid for generation one, a mapping which has not
+passed the read-only verification boundary, a stale or substituted identity,
+an executable mapping, or a transition that can produce W+X authority. Unmap
+SHALL consume the exact writable-data refinement and return its original
+backing only after revocation and target completion. Source SHALL observe no
+permission bit, address, page-table representation, invalidation instruction,
+or barrier.
+
+The initial x86-64 qualification SHALL use `WritableDataMapping` for the ELF
+`PF_R | PF_W` data/BSS segment. Constructed user code SHALL write and read back
+one byte inside the memory-only BSS extent before terminal success. The exact
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` observation SHALL occur once after
+successful user return and before retained-image teardown. A missing, renamed,
+duplicate, early, or late observation SHALL be invalid.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
