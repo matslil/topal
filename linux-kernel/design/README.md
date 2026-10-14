@@ -71,6 +71,7 @@ records, not this directory alone, define language meaning.
 - [Bounded constructed-image `read` input](bounded-constructed-image-read.md)
 - [Bounded general standard-output write](bounded-general-stdout-write.md)
 - [Bounded general standard-input read](bounded-general-stdin-read.md)
+- [Bounded initial-process program break](bounded-initial-brk.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

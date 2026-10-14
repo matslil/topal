@@ -693,6 +693,16 @@ and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
 signals, partial reads, and terminal policy remain profile limits rather than
 Linux-wide semantics.
 
+The bounded initial-heap refinement gives the initial process one byte-granular
+program-break state within the already-owned RW/NX data page. Its initial value
+is derived from the validated ELF data-memory extent; zero requests query that
+value, in-range requests replace it, and unsupported requests return the prior
+break as Linux `brk` does. The provider zero-initializes the complete page tail
+before user entry and retains the current break in private process state. This
+does not grant a source-visible address, allocate another page, define virtual-
+memory areas, or admit `mmap`, overcommit, resource limits, concurrent address-
+space edits, or general heap policy.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
