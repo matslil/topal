@@ -292,6 +292,18 @@ state. Structural and pinned-QEMU evidence shall prove every dispatch number,
 broad executable-return validation, constant coherence, application result
 checks, and terminal continuation.
 
+The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
+codes `0x1002` and `0x1003`, a live initial context, and a return continuation
+inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or
+a canonical base within the readable user mapping set, retain it privately,
+install it for user return, and return zero. `ARCH_GET_FS` shall copy the same
+private value to a validated writable eight-byte user extent under fault
+recovery and return zero. Invalid base, destination, and operation paths shall
+return Linux-compatible errors without changing retained state, and data-role
+teardown shall clear it. Structural and pinned-QEMU evidence shall prove the
+set/get/restore sequence, result and word checks, provider installation, fault-
+contained output, and state clearing.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

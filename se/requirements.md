@@ -766,6 +766,19 @@ facts. Dispatch shall retain no argument, pointer, or mutable identity state.
 A missing family member, wrong or inconsistent result, non-executable return,
 wrong lifecycle state, or result after terminal disposition shall fail closed.
 
+The initial x86-64 thread-pointer adapter shall accept only
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` for the live initial
+thread and an executable user return continuation. `SET_FS` shall require zero
+or a canonical candidate inside an already-owned readable user mapping, retain the
+value as private thread state, install it before return, and return zero.
+`GET_FS` shall require a complete writable eight-byte user destination, copy
+the retained value through fault-contained output, and return zero. Unsupported
+operations, invalid bases, and invalid output candidates shall produce their
+declared Linux errors without changing state. Teardown shall clear the private
+value before mapping revocation. Exposed registers or MSRs, incorrect set/get
+identity, retained user pointers, partial output, or live state after teardown
+shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

@@ -614,6 +614,31 @@ expose syscall numbers, register conventions, instructions, task structures,
 namespace representations, credential storage, mutation, lookup, or general
 process-management authority to source.
 
+### TOPAL-SYSTEMS-X64-FS-BASE-001 — Initial x86-64 user FS base
+
+The initial x86-64 profile MAY dispatch Linux-compatible
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only while the initial
+user context is live and the return continuation lies in the finalized
+executable mapping. `ARCH_SET_FS` SHALL accept zero or a canonical candidate whose
+complete one-byte extent lies in an already-owned readable user mapping. On
+success the provider SHALL retain that exact value as private thread state,
+install it as the user FS base before return, and return zero.
+
+`ARCH_GET_FS` SHALL accept only a complete writable eight-byte destination in
+an already-owned user mapping, copy the retained value through a fault-
+contained user-output scope, and return zero. Unsupported operation codes SHALL
+return `-EINVAL`, an invalid base SHALL return `-EPERM`, and an invalid output
+candidate SHALL return `-EFAULT`; these failures SHALL NOT change the retained
+base. Data-role teardown SHALL clear private FS-base state before mapping
+revocation and backing release.
+
+Wrong set/get identity, noncanonical or unmapped bases, partial output, wrong
+entry state, non-executable return, retained user pointers, duplicate result,
+or live private state after teardown SHALL be invalid. This rule SHALL NOT
+expose a syscall number, operation-code representation, instruction, register,
+MSR, saved-frame layout, private state address, TLS layout, allocator, cloning,
+or general architecture-control authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
