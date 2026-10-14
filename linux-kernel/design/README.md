@@ -66,6 +66,7 @@ records, not this directory alone, define language meaning.
 - [Runtime-derived ELF-entry contract](runtime-derived-entry.md)
 - [Published initial user-image artifact contract](published-initial-user-image.md)
 - [Supplied initial user-image contract](supplied-initial-user-image.md)
+- [Writable initial user-data contract](writable-user-data.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -606,18 +606,28 @@ returns an opaque immutable-data refinement after the provider proves the
 completed read-only, non-executable authority is unchanged. Code and data
 refinements are distinct and cannot be substituted at unmap.
 
+An explicitly mutable data role uses `user mapping permit writable data` only
+after that same RO/NX verification boundary. It consumes the verified mapping
+and returns an opaque writable-data refinement for the same identity, backing,
+placement, contents, and user accessibility after the provider restores write
+authority, proves executable authority remains absent, and completes the
+target translation-observation requirement. This controlled RO/NX-to-RW/NX
+transition is available only for a declared writable-data role; it is not a
+general protection interface and cannot produce W+X authority. Unmap consumes
+the writable-data refinement exactly as it does other final role owners.
+
 The bounded residency refinement replaces sequential backing reuse with two
 separately allocated disjoint extents and sealed `probe-code` and `probe-data`
-placements. Executable code remains mapped while immutable data is built, so
-both role-specific affine refinements coexist. Source then unmaps and releases
-data before unmapping and releasing code. User preparation requires both
+placements. Executable code remains mapped while immutable or writable data is
+built, so both role-specific affine refinements coexist. Source then unmaps and
+releases data before unmapping and releasing code. User preparation requires both
 mappings revoked and both returned extents released. This is exactly a two-
 mapping construction proof, not a general mapping collection or image loader.
 
 The resident-image readiness refinement emits the exact
-`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after immutable data is
-sealed and before either finalized mapping is unmapped. At that boundary one
-RO/X code mapping and one RO/NX data mapping coexist with pairwise-disjoint
+`TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
+and before either mapping is unmapped. At that boundary one RO/X code mapping
+and one role-qualified RO/NX or RW/NX data mapping coexist with pairwise-disjoint
 backing. Console output preserves both affine owners: the marker grants no
 mapping or access authority and exposes no address, permission encoding, or
 target representation. It is a bounded physical witness, not an application
