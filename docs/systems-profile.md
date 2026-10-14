@@ -654,6 +654,15 @@ loader. Pointer-bearing syscalls other than the sealed `uname`
 qualification, general user-copy recovery, signals, restart, TLS, multiple
 threads, user preemption, migration, and SMP remain excluded.
 
+The bounded initial-process output refinement additionally permits one sealed
+Linux-compatible `write` from already-owned readable user-stack memory to
+descriptor one. Dispatch first copies the complete declared extent into
+private kernel staging and only then publishes it through the selected board's
+console effect. The pointer is not retained, the exact byte-count result is
+returned to the same user continuation, and terminal execution remains
+fail-closed. This is one standard-output qualification, not a descriptor table,
+VFS write path, arbitrary buffer interface, or partial-write policy.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
