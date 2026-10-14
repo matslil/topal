@@ -660,6 +660,29 @@ or live candidate state at mapping teardown SHALL be invalid. This rule SHALL
 NOT expose a syscall number, user address, task structure, futex key or queue,
 clone service, or general thread-lifecycle authority to source.
 
+### TOPAL-SYSTEMS-USER-ROBUST-EMPTY-001 — Initial empty robust list
+
+The initial-process profile MAY dispatch Linux-compatible `set_robust_list`
+only while the initial user context is live and its return continuation lies
+in the finalized executable mapping. The declared length SHALL equal the
+native 24-byte head size and the candidate SHALL name a complete readable
+24-byte extent in an already-owned user mapping. Successful dispatch SHALL
+retain the candidate as private thread state without dereference and return
+zero.
+
+Terminal user exit SHALL copy the complete head into private staging under a
+fault-contained user-input scope. The native list link SHALL equal the head
+candidate and the pending-operation pointer SHALL be null. The provider MAY
+ignore the opaque futex offset only because no entry is visited. It SHALL clear
+private candidate state after validation and before completing the user context
+or revoking a user mapping. A copy fault or nonempty state SHALL fail closed.
+
+Wrong size, incomplete extent, registration-time access, partial copy,
+nonempty terminal state, clearing before validation, duplicate result, or live
+candidate state at mapping teardown SHALL be invalid. This rule SHALL NOT
+expose a syscall number, user address, native field offset, futex word, list
+walker, wake queue, clone service, or general robust-list authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

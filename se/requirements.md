@@ -789,6 +789,16 @@ only then complete the user context. Invalid candidates, wrong results,
 uncontained clear faults, terminal transition before clearing, or state that
 survives user-mapping teardown shall fail closed.
 
+The initial-thread robust-list adapter shall accept `set_robust_list` only for
+the live initial thread, an executable user return continuation, exact native
+length 24, and one complete readable 24-byte user extent. Registration shall
+retain the candidate privately without dereference and return zero. Terminal
+exit shall fault-contain a complete private copy of the head, require the list
+link to name the head and the pending pointer to be null, clear private state,
+and only then continue terminal disposition. Wrong size or extent, early
+dereference, partial copy, nonempty terminal state, clear-before-validation,
+or state surviving mapping teardown shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
