@@ -248,6 +248,16 @@ one BSS byte before terminal success. The root shall emit the exact ordered
 return. Structural tests shall reject code-role use, preverification use,
 identity substitution, stale unmap, missing invalidation, or W+X permission.
 
+The bounded initial-output increment shall check one constructed Linux x86-64
+`write(1, candidate, 26)` after the qualified input transfer and before the
+terminal identity and exit calls. The provider shall accept only the exact
+return site, candidate, length, descriptor, lifecycle state, and
+`TOPAL_KERNEL_USER_WRITE_OK` contents; copy all bytes into private kernel
+staging under fault recovery before UART publication; return 26; and preserve
+the exact continuation. Structural and pinned-QEMU evidence shall prove copy
+completion precedes output, exact result validation, balanced stack disposal,
+ordered output, and fail-closed mismatch behavior.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

@@ -519,6 +519,28 @@ one byte inside the memory-only BSS extent before terminal success. The exact
 successful user return and before retained-image teardown. A missing, renamed,
 duplicate, early, or late observation SHALL be invalid.
 
+### TOPAL-SYSTEMS-USER-WRITE-001 — Bounded initial standard output
+
+The initial-process profile MAY dispatch one sealed Linux-compatible `write`
+entry only when the exact user continuation, descriptor-one argument,
+provider-selected readable user-stack candidate, and declared 26-byte extent
+all match the checked disposition. Dispatch SHALL copy the complete extent into
+private kernel staging before any byte becomes externally observable and SHALL
+retain no user pointer after the copy.
+
+Successful dispatch SHALL publish the exact staged bytes
+`TOPAL_KERNEL_USER_WRITE_OK` through the target's checked console effect and
+return 26 to the same revalidated user continuation. Constructed code SHALL
+validate that exact result and release its bounded stack region before its next
+syscall. A wrong entry state, return site, descriptor, candidate, extent,
+payload byte, partial or faulted copy, short result, early output, retained
+pointer, unbalanced stack, duplicate output, or output after terminal
+disposition SHALL be invalid.
+
+This rule SHALL NOT expose a syscall number, register convention, instruction,
+address, serial mechanism, arbitrary descriptor, descriptor table, VFS object,
+partial-write policy, or general output buffer interface to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

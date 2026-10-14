@@ -708,14 +708,23 @@ shall own privilege, stack, saved-state, security, result-placement, and return
 mechanics but shall not select a syscall or invent a result.
 
 The first executable x86-64 profile shall use one generated ring-3 probe and
-the pinned Linux `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
+the pinned Linux `write`, `getpid`, `uname`, `nanosleep`, and `exit_group` numbers. It
 shall verify ordinary returns, generated output- and input-direction user-copy
 fault recovery, and terminal restoration with status zero. Fixed probe
 mappings shall be qualification evidence only. ELF loading, pointer-bearing
-syscalls other than the sealed `uname` and zero-duration `nanosleep`
+syscalls other than the sealed standard-output `write`, `uname`, and zero-duration `nanosleep`
 qualifications, general user-copy recovery, signals, restart, TLS, multiple
 processes or threads, user preemption, migration, SMP, and the complete syscall
 table remain unavailable.
+
+The constructed-image write qualification shall accept exactly descriptor one,
+one provider-selected 26-byte user-stack candidate, and the exact
+`TOPAL_KERNEL_USER_WRITE_OK` payload. It shall complete a fault-contained copy
+into private kernel staging before publishing any byte through the checked
+console effect, return the exact byte count to the same continuation, and prove
+user stack restoration. Partial copy, early output, arbitrary descriptor or
+extent, pointer retention, short result, duplicate output, or output after
+terminal disposition shall fail closed.
 
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
