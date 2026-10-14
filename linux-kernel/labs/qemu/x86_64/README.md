@@ -247,7 +247,11 @@ candidate before clear-child-TID processing. The application then queries the
 initial stack resource limit through both Linux x86-64 `getrlimit` and
 query-only `prlimit64`. Each call publishes the same 8 MiB soft limit and
 infinite hard limit into a complete writable stack pair under fault recovery;
-the application checks both complete results. It then issues
+the application checks both complete results. It then replaces the initial
+thread signal mask through Linux x86-64 `rt_sigprocmask`, proving the prior
+empty word, removal of `SIGKILL` and `SIGSTOP`, query behavior, unblock
+behavior, and the final empty word through fault-contained stack transfers.
+It then issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
