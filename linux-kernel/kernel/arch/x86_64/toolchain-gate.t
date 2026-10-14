@@ -212,6 +212,16 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   protected-data is completion-resumed user mapping protect read only stored-data
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
                                                                                                                   writable-data is completion-resumed user mapping permit writable data verified-data
+                                                                                                                  completion-resumed frames allocate (
+                                                                                                                    frame-count is 1,
+                                                                                                                    alignment-frames is 1
+                                                                                                                  )
+                                                                                                                    Ok anonymous-frame then {
+                                                                                                                      anonymous-page is completion-resumed user address space reserve anonymous (
+                                                                                                                        address-space is user-space,
+                                                                                                                        backing is anonymous-frame,
+                                                                                                                        layout is initial-anonymous-page
+                                                                                                                      )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                                                                                                                   user-probe is completion-resumed user probe prepare (
@@ -242,6 +252,11 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
+                                                                                                                  returned-anonymous is completion-resumed user address space release anonymous (
+                                                                                                                    address-space is user-space,
+                                                                                                                    reservation is anonymous-page
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-anonymous
                                                                                                                   returned-data is completion-resumed user address space unmap (
                                                                                                                     address-space is user-space,
                                                                                                                     mapping is writable-data
@@ -259,6 +274,10 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed frames release returned-frames
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
+                                                                                                                    }
+                                                                                                                    Error problem then {
+                                                                                                                      completion-resumed fatal "anonymous frame allocation failed"
+                                                                                                                    }
                                                                                                                 }
                                                                                                                 Error problem then {
                                                                                                                   completion-resumed fatal "data frame allocation failed"
@@ -459,6 +478,8 @@ user-syscall-handler is fn (
     getrlimit-result is 0,
     prlimit64-result is 0,
     rt-sigprocmask-result is 0,
+    anonymous-page-bytes is 4096,
+    munmap-result is 0,
     exit-group-status is 0
   )
 

@@ -10,6 +10,10 @@ pub const SYSTEMS_USER_ADDRESS_SPACE_RECLAIM: &str =
 pub const SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING: &str =
     "topal.systems.memory.user-address-space.verify-mapping/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_MAP: &str = "topal.systems.memory.user-address-space.map/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS: &str =
+    "topal.systems.memory.user-address-space.reserve-anonymous/1";
+pub const SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS: &str =
+    "topal.systems.memory.user-address-space.release-anonymous/1";
 pub const SYSTEMS_USER_MAPPING_STORE_BYTE: &str = "topal.systems.memory.user-mapping.store-byte/1";
 pub const SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY: &str =
     "topal.systems.memory.user-mapping.protect-read-only/1";
@@ -108,6 +112,22 @@ pub struct UserMapping {
     mapping_identity: u64,
     backing: PhysicalFrameRequest,
     stage: UserMappingStage,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct ReservedAnonymousUserMapping {
+    provider_identity: String,
+    address_space_identity: u64,
+    reservation_identity: u64,
+    backing: PhysicalFrameRequest,
+}
+
+impl ReservedAnonymousUserMapping {
+    /// Return the opaque identity used only for semantic trace correlation.
+    #[must_use]
+    pub const fn identity(&self) -> u64 {
+        self.reservation_identity
+    }
 }
 
 impl UserMapping {
@@ -378,6 +398,55 @@ impl SystemsUserExecutionProtocol {
             backing,
             stage: UserMappingStage::Live,
         })
+    }
+
+    /// Consume one disjoint frame into a non-present runtime reservation.
+    pub fn reserve_anonymous_user_frame(
+        &mut self,
+        address_space: &PreparedUserAddressSpace,
+        backing: PhysicalFrameRequest,
+    ) -> Result<ReservedAnonymousUserMapping, SystemsModelError> {
+        if address_space.provider_identity != self.provider_identity
+            || backing != INITIAL_USER_MAPPING_REQUEST
+        {
+            return Err(user_error(
+                "the bounded anonymous reservation requires its prepared address space and exact one-frame backing",
+            ));
+        }
+        let reservation_identity = self.next_mapping_identity;
+        if reservation_identity != 3 {
+            return Err(user_error(
+                "the bounded anonymous reservation must follow the two resident image mappings",
+            ));
+        }
+        self.next_mapping_identity = reservation_identity
+            .checked_add(1)
+            .ok_or_else(|| user_error("user-mapping identity exhausted"))?;
+        Ok(ReservedAnonymousUserMapping {
+            provider_identity: self.provider_identity.clone(),
+            address_space_identity: address_space.address_space_identity,
+            reservation_identity,
+            backing,
+        })
+    }
+
+    /// Consume the terminally non-present reservation and return its frame.
+    pub fn release_anonymous_user_frame(
+        &self,
+        completed: &CompletedUserExecution,
+        reservation: ReservedAnonymousUserMapping,
+    ) -> Result<PhysicalFrameRequest, SystemsModelError> {
+        if completed.provider_identity != self.provider_identity
+            || reservation.provider_identity != self.provider_identity
+            || reservation.address_space_identity != completed.address_space.address_space_identity
+            || reservation.reservation_identity != 3
+            || reservation.backing != INITIAL_USER_MAPPING_REQUEST
+        {
+            return Err(user_error(
+                "anonymous reservation release requires the exact completed address space and original frame",
+            ));
+        }
+        Ok(reservation.backing)
     }
 
     /// Consume a live mapping into its fixed-byte stored refinement.

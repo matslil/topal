@@ -10,21 +10,21 @@ use crate::{
     INITIAL_USER_UNAME_VALID_CANDIDATE, KernelMappingRequest, LINUX_NEW_UTSNAME_BYTES,
     LINUX_TIMESPEC_BYTES, LINUX_X86_64_EFAULT_RESULT, LINUX_X86_64_NANOSLEEP, LINUX_X86_64_UNAME,
     LinuxTimespec, LinuxUtsName, LocalInterruptMaskState, LocalNotificationProtocol,
-    PhysicalFrameRequest, PreparedUserAddressSpace, RevokedUserAddressSpace,
-    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
-    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    PhysicalFrameRequest, PreparedUserAddressSpace, ReservedAnonymousUserMapping,
+    RevokedUserAddressSpace, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
+    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
+    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
@@ -33,7 +33,8 @@ use crate::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
-    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
@@ -213,6 +214,7 @@ pub enum SystemsOperation {
     PrepareUserAddressSpace,
     VerifyUserAddressSpaceMapping,
     MapUserAddressSpace,
+    ReserveAnonymousUserMapping,
     StoreUserMappingByte,
     InstallUserMappingEntryTrampoline,
     ProtectUserMappingReadOnly,
@@ -222,6 +224,7 @@ pub enum SystemsOperation {
     SealUserMappingImmutableData,
     PermitUserMappingWritableData,
     UnmapUserAddressSpace,
+    ReleaseAnonymousUserMapping,
     PrepareUserProbe {
         process_identity: u64,
     },
@@ -291,6 +294,7 @@ impl SystemsOperation {
             Self::PrepareUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::VerifyUserAddressSpaceMapping => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::ReserveAnonymousUserMapping => SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
             Self::StoreUserMappingByte => SYSTEMS_USER_MAPPING_STORE_BYTE,
             Self::InstallUserMappingEntryTrampoline => {
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE
@@ -302,6 +306,7 @@ impl SystemsOperation {
             Self::SealUserMappingImmutableData => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
             Self::PermitUserMappingWritableData => SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
             Self::UnmapUserAddressSpace => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            Self::ReleaseAnonymousUserMapping => SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserContext => SYSTEMS_USER_CONTEXT_ENTER,
             Self::CompleteUserExecution => SYSTEMS_USER_CONTEXT_COMPLETE,
@@ -346,6 +351,8 @@ pub enum SystemsDisposition {
         getrlimit_result: u64,
         prlimit64_result: u64,
         rt_sigprocmask_result: u64,
+        anonymous_page_bytes: u64,
+        munmap_result: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -602,6 +609,10 @@ pub enum SystemsTransition {
         address_space_identity: u64,
         mapping_identity: u64,
     },
+    ReserveAnonymousUserMapping {
+        address_space_identity: u64,
+        reservation_identity: u64,
+    },
     StoreUserMappingByte {
         mapping_identity: u64,
     },
@@ -629,6 +640,10 @@ pub enum SystemsTransition {
     UnmapUserAddressSpace {
         address_space_identity: u64,
         mapping_identity: u64,
+    },
+    ReleaseAnonymousUserMapping {
+        address_space_identity: u64,
+        reservation_identity: u64,
     },
     PrepareUserProbe {
         process_identity: u64,
@@ -825,6 +840,9 @@ impl SystemsTransition {
             Self::PrepareUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
             Self::VerifyUserAddressSpaceMapping { .. } => SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
             Self::MapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_MAP,
+            Self::ReserveAnonymousUserMapping { .. } => {
+                SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS
+            }
             Self::StoreUserMappingByte { .. } => SYSTEMS_USER_MAPPING_STORE_BYTE,
             Self::InstallUserMappingEntryTrampoline { .. } => {
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE
@@ -838,6 +856,9 @@ impl SystemsTransition {
             Self::SealUserMappingImmutableData { .. } => SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
             Self::PermitUserMappingWritableData { .. } => SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
             Self::UnmapUserAddressSpace { .. } => SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+            Self::ReleaseAnonymousUserMapping { .. } => {
+                SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS
+            }
             Self::PrepareUserProbe { .. } => SYSTEMS_USER_CONTEXT_PREPARE,
             Self::EnterUserExecution { .. } => SYSTEMS_USER_CONTEXT_ENTER,
             Self::EnterUserSyscall { .. } => SYSTEMS_USER_SYSCALL_ENTRY,
@@ -1211,6 +1232,8 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 getrlimit_result: 0,
                 prlimit64_result: 0,
                 rt_sigprocmask_result: 0,
+                anonymous_page_bytes: 4096,
+                munmap_result: 0,
                 exit_group_status: 0,
             })
     {
@@ -1282,6 +1305,7 @@ struct BootstrapAuthorityState {
     kernel_completion: BootstrapKernelCompletionState,
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
+    anonymous_user_mapping_reserved: bool,
     initial_boot_resource_validated: bool,
     constructed_user_read_completed: bool,
     constructed_user_image_entered: bool,
@@ -1959,6 +1983,7 @@ impl BootstrapAuthorityState {
                     || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.initial_boot_resource_validated
+                    || !self.anonymous_user_mapping_reserved
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
@@ -1968,6 +1993,29 @@ impl BootstrapAuthorityState {
                 }
                 self.user_execution =
                     BootstrapUserExecutionState::PreparedWithResidentImage(backing);
+            }
+            SystemsOperation::ReserveAnonymousUserMapping => {
+                let BootstrapUserExecutionState::MappingWritableData(backing, 2) =
+                    self.user_execution
+                else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "anonymous reservation requires both finalized image mappings",
+                    ));
+                };
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                    || self.anonymous_user_mapping_reserved
+                    || !self.critical_stack.is_empty()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "anonymous reservation requires one source-owned frame and no prior reservation",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.anonymous_user_mapping_reserved = true;
+                self.user_execution = BootstrapUserExecutionState::MappingWritableData(backing, 2);
             }
             SystemsOperation::VerifyUserAddressSpaceMapping => {
                 let BootstrapUserExecutionState::AddressSpacePrepared(backing) =
@@ -2602,6 +2650,22 @@ impl BootstrapAuthorityState {
                     }
                 };
             }
+            SystemsOperation::ReleaseAnonymousUserMapping => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.anonymous_user_mapping_reserved
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "anonymous release requires returned user execution and its live reservation",
+                    ));
+                }
+                self.anonymous_user_mapping_reserved = false;
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+            }
             SystemsOperation::EnterUserContext => {
                 let BootstrapUserExecutionState::PreparedWithResidentImage(backing) =
                     self.user_execution
@@ -3142,6 +3206,7 @@ fn validate_bootstrap_storage_operation(
         SystemsOperation::PrepareUserAddressSpace
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::ReserveAnonymousUserMapping
         | SystemsOperation::StoreUserMappingByte
         | SystemsOperation::InstallUserMappingEntryTrampoline
         | SystemsOperation::ProtectUserMappingReadOnly
@@ -3151,6 +3216,7 @@ fn validate_bootstrap_storage_operation(
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
+        | SystemsOperation::ReleaseAnonymousUserMapping
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution
@@ -3217,6 +3283,7 @@ pub fn model_systems_transitions(
     let mut prepared_user_space: Option<PreparedUserAddressSpace> = None;
     let mut user_mapping: Option<UserMapping> = None;
     let mut resident_code_mapping: Option<UserMapping> = None;
+    let mut anonymous_reservation: Option<ReservedAnonymousUserMapping> = None;
     let mut suspended_user: Option<SuspendedUserContext> = None;
     let mut completed_user: Option<CompletedUserExecution> = None;
     let mut revoked_user_space: Option<RevokedUserAddressSpace> = None;
@@ -3277,6 +3344,7 @@ pub fn model_systems_transitions(
             &mut prepared_user_space,
             &mut user_mapping,
             &mut resident_code_mapping,
+            &mut anonymous_reservation,
             &mut suspended_user,
             &mut completed_user,
             &mut revoked_user_space,
@@ -3306,6 +3374,7 @@ fn model_user_execution_transition(
     prepared: &mut Option<PreparedUserAddressSpace>,
     mapping: &mut Option<UserMapping>,
     resident_code: &mut Option<UserMapping>,
+    anonymous_reservation: &mut Option<ReservedAnonymousUserMapping>,
     suspended: &mut Option<SuspendedUserContext>,
     completed: &mut Option<CompletedUserExecution>,
     revoked: &mut Option<RevokedUserAddressSpace>,
@@ -3360,6 +3429,31 @@ fn model_user_execution_transition(
             transitions.push(SystemsTransition::MapUserAddressSpace {
                 address_space_identity: 1,
                 mapping_identity,
+            });
+        }
+        SystemsOperation::ReserveAnonymousUserMapping => {
+            if prepared.is_none()
+                || mapping.is_none()
+                || resident_code.is_none()
+                || anonymous_reservation.is_some()
+                || suspended.is_some()
+                || completed.is_some()
+                || revoked.is_some()
+            {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "anonymous reservation requires both resident image mappings and one prepared address space",
+                ));
+            }
+            let reservation = protocol.reserve_anonymous_user_frame(
+                prepared.as_ref().expect("checked prepared user space"),
+                INITIAL_SINGLE_FRAME_REQUEST,
+            )?;
+            let reservation_identity = reservation.identity();
+            *anonymous_reservation = Some(reservation);
+            transitions.push(SystemsTransition::ReserveAnonymousUserMapping {
+                address_space_identity: 1,
+                reservation_identity,
             });
         }
         SystemsOperation::StoreUserMappingByte => {
@@ -3526,9 +3620,38 @@ fn model_user_execution_transition(
                 mapping_identity,
             });
         }
+        SystemsOperation::ReleaseAnonymousUserMapping => {
+            let reservation = anonymous_reservation.take().ok_or_else(|| {
+                SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "anonymous release requires one live affine reservation",
+                )
+            })?;
+            let reservation_identity = reservation.identity();
+            let returned = protocol.release_anonymous_user_frame(
+                completed.as_ref().ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "anonymous release requires completed user execution",
+                    )
+                })?,
+                reservation,
+            )?;
+            if returned != INITIAL_SINGLE_FRAME_REQUEST {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-USER-CONTEXT",
+                    "anonymous release returned the wrong physical-frame extent",
+                ));
+            }
+            transitions.push(SystemsTransition::ReleaseAnonymousUserMapping {
+                address_space_identity: 1,
+                reservation_identity,
+            });
+        }
         SystemsOperation::PrepareUserProbe { process_identity } => {
             if mapping.is_none()
                 || resident_code.is_none()
+                || anonymous_reservation.is_none()
                 || suspended.is_some()
                 || completed.is_some()
                 || revoked.is_some()
@@ -3600,6 +3723,8 @@ fn model_user_execution_transition(
                     getrlimit_result: _,
                     prlimit64_result: _,
                     rt_sigprocmask_result: _,
+                    anonymous_page_bytes: _,
+                    munmap_result: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -4750,6 +4875,7 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::PrepareUserAddressSpace
         | SystemsOperation::VerifyUserAddressSpaceMapping
         | SystemsOperation::MapUserAddressSpace
+        | SystemsOperation::ReserveAnonymousUserMapping
         | SystemsOperation::StoreUserMappingByte
         | SystemsOperation::InstallUserMappingEntryTrampoline
         | SystemsOperation::ProtectUserMappingReadOnly
@@ -4759,6 +4885,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::LoadUserMappingByte
         | SystemsOperation::VerifyUserMappingEntryTrampoline
         | SystemsOperation::UnmapUserAddressSpace
+        | SystemsOperation::ReleaseAnonymousUserMapping
         | SystemsOperation::PrepareUserProbe { .. }
         | SystemsOperation::EnterUserContext
         | SystemsOperation::CompleteUserExecution
@@ -4877,6 +5004,8 @@ mod tests {
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME.into(),
             SYSTEMS_USER_ADDRESS_SPACE_PREPARE.into(),
             SYSTEMS_USER_ADDRESS_SPACE_RECLAIM.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS.into(),
+            SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS.into(),
             SYSTEMS_USER_ADDRESS_SPACE_MAP.into(),
             SYSTEMS_USER_MAPPING_STORE_BYTE.into(),
             SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE.into(),
@@ -5030,6 +5159,11 @@ mod tests {
                         SystemsOperation::ProtectUserMappingReadOnly,
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::PermitUserMappingWritableData,
+                        SystemsOperation::AllocatePhysicalFrames {
+                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            failure_message: "anonymous frame allocation failed".into(),
+                        },
+                        SystemsOperation::ReserveAnonymousUserMapping,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                         },
@@ -5097,6 +5231,8 @@ mod tests {
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                         },
+                        SystemsOperation::ReleaseAnonymousUserMapping,
+                        SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::UnmapUserAddressSpace,
                         SystemsOperation::ReleasePhysicalFrames,
                         SystemsOperation::UnmapUserAddressSpace,
@@ -5237,6 +5373,8 @@ mod tests {
                         getrlimit_result: 0,
                         prlimit64_result: 0,
                         rt_sigprocmask_result: 0,
+                        anonymous_page_bytes: 4096,
+                        munmap_result: 0,
                         exit_group_status: 0,
                     },
                     effects: vec![
@@ -5292,6 +5430,7 @@ mod tests {
                 | SystemsOperation::PrepareUserAddressSpace
                 | SystemsOperation::VerifyUserAddressSpaceMapping
                 | SystemsOperation::MapUserAddressSpace
+                | SystemsOperation::ReserveAnonymousUserMapping
                 | SystemsOperation::StoreUserMappingByte
                 | SystemsOperation::InstallUserMappingEntryTrampoline
                 | SystemsOperation::ProtectUserMappingReadOnly
@@ -5301,6 +5440,7 @@ mod tests {
                 | SystemsOperation::LoadUserMappingByte
                 | SystemsOperation::VerifyUserMappingEntryTrampoline
                 | SystemsOperation::UnmapUserAddressSpace
+                | SystemsOperation::ReleaseAnonymousUserMapping
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
@@ -5615,6 +5755,13 @@ mod tests {
                 SystemsTransition::PermitUserMappingWritableData {
                     mapping_identity: 2,
                 },
+                SystemsTransition::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                },
+                SystemsTransition::ReserveAnonymousUserMapping {
+                    address_space_identity: 1,
+                    reservation_identity: 3,
+                },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                 },
@@ -5802,6 +5949,11 @@ mod tests {
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                 },
+                SystemsTransition::ReleaseAnonymousUserMapping {
+                    address_space_identity: 1,
+                    reservation_identity: 3,
+                },
+                SystemsTransition::ReleasePhysicalFrames,
                 SystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 2,
@@ -6594,6 +6746,7 @@ mod tests {
                         | SystemsOperation::PrepareUserAddressSpace
                         | SystemsOperation::VerifyUserAddressSpaceMapping
                         | SystemsOperation::MapUserAddressSpace
+                        | SystemsOperation::ReserveAnonymousUserMapping
                         | SystemsOperation::StoreUserMappingByte
                         | SystemsOperation::InstallUserMappingEntryTrampoline
                         | SystemsOperation::ProtectUserMappingReadOnly
@@ -6603,6 +6756,7 @@ mod tests {
                         | SystemsOperation::LoadUserMappingByte
                         | SystemsOperation::VerifyUserMappingEntryTrampoline
                         | SystemsOperation::UnmapUserAddressSpace
+                        | SystemsOperation::ReleaseAnonymousUserMapping
                         | SystemsOperation::PrepareUserProbe { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution

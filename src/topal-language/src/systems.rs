@@ -52,7 +52,8 @@ pub use topal_semantics::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
-    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
@@ -946,7 +947,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 29
+        || fields.len() != 31
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -975,7 +976,9 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[25], "getrlimit-result")? != 0
         || field_natural(source, &fields[26], "prlimit64-result")? != 0
         || field_natural(source, &fields[27], "rt-sigprocmask-result")? != 0
-        || field_natural(source, &fields[28], "exit-group-status")? != 0
+        || field_natural(source, &fields[28], "anonymous-page-bytes")? != 4096
+        || field_natural(source, &fields[29], "munmap-result")? != 0
+        || field_natural(source, &fields[30], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -1012,6 +1015,8 @@ fn analyze_user_syscall_handler(
         getrlimit_result: 0,
         prlimit64_result: 0,
         rt_sigprocmask_result: 0,
+        anonymous_page_bytes: 4096,
+        munmap_result: 0,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {
@@ -3206,12 +3211,70 @@ fn analyze_kernel_context_decision(
         seal_again_continuation,
         "second writable-data promotion",
     )?;
+    let (
+        anonymous_subject,
+        anonymous_frames,
+        anonymous_success,
+        _anonymous_problem,
+        anonymous_failure,
+        anonymous_span,
+    ) = result_sequence(source, after_second_seal, "anonymous frame allocation")?;
+    let anonymous_request =
+        parse_physical_frame_allocation(source, anonymous_subject, &completion_resumed)?;
+    if anonymous_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            anonymous_subject.span(),
+            "the bounded anonymous reservation requires exactly one frame aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: anonymous_failure_message,
+    } = action_disposition(source, anonymous_failure, &completion_resumed)?
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            anonymous_failure.span(),
+            "anonymous frame allocation failure must preserve the allocator context and enter `fatal`",
+        ));
+    };
+    let anonymous_statements = action_block(
+        source,
+        anonymous_success,
+        "anonymous frame allocation success",
+    )?;
+    let [reserve_anonymous, anonymous_continuation @ ..] = anonymous_statements else {
+        return Err(user_context_diagnostic(
+            source,
+            anonymous_span,
+            "anonymous frame allocation success must reserve its exact frame before user entry",
+        ));
+    };
+    let (anonymous_page, reserve_continuation) = parse_user_address_space_reserve_anonymous(
+        source,
+        reserve_anonymous,
+        &completion_resumed,
+        &user_space,
+        &anonymous_frames,
+    )?;
+    let after_anonymous_reserve = select_user_mapping_continuation(
+        source,
+        anonymous_span,
+        anonymous_continuation,
+        reserve_continuation,
+        "anonymous reservation",
+    )?;
     let [
         image_ready_marker_statement,
         boot_resource_marker_statement,
         prepare_user,
         after_prepare_user @ ..,
-    ] = after_second_seal
+    ] = after_anonymous_reserve
     else {
         return Err(user_context_diagnostic(
             source,
@@ -3291,6 +3354,8 @@ fn analyze_kernel_context_decision(
         image_copy_from_marker_statement,
         image_syscall_marker_statement,
         retained_marker_statement,
+        release_anonymous,
+        release_anonymous_frame,
         unmap_mapping_again,
         release_data,
         unmap_code,
@@ -3703,6 +3768,27 @@ fn analyze_kernel_context_decision(
             "returned user execution requires its exact retained-image marker before teardown",
         ));
     }
+    let (returned_anonymous, release_anonymous_continuation) =
+        parse_user_address_space_release_anonymous(
+            source,
+            release_anonymous,
+            &completion_resumed,
+            &user_space,
+            &anonymous_page,
+        )?;
+    if !release_anonymous_continuation.is_empty() {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(release_anonymous),
+            "anonymous release continuation must remain after returned user execution",
+        ));
+    }
+    parse_physical_frame_release(
+        source,
+        release_anonymous_frame,
+        &completion_resumed,
+        &returned_anonymous,
+    )?;
     let (returned_scratch_again, unmap_again_continuation) = parse_user_address_space_unmap(
         source,
         unmap_mapping_again,
@@ -3872,6 +3958,11 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
             CompilerSystemsOperation::PermitUserMappingWritableData,
+            CompilerSystemsOperation::AllocatePhysicalFrames {
+                request: anonymous_request,
+                failure_message: anonymous_failure_message,
+            },
+            CompilerSystemsOperation::ReserveAnonymousUserMapping,
             image_ready_marker,
             boot_resource_marker,
             CompilerSystemsOperation::PrepareUserProbe {
@@ -3901,6 +3992,8 @@ fn analyze_kernel_context_decision(
             image_copy_from_marker,
             image_syscall_marker,
             retained_marker,
+            CompilerSystemsOperation::ReleaseAnonymousUserMapping,
+            CompilerSystemsOperation::ReleasePhysicalFrames,
             CompilerSystemsOperation::UnmapUserAddressSpace,
             CompilerSystemsOperation::ReleasePhysicalFrames,
             CompilerSystemsOperation::UnmapUserAddressSpace,
@@ -4418,6 +4511,178 @@ fn parse_user_mapping_writable_data_promotion<'a>(
             source,
             *span,
             "user mapping permit writable data requires the second verified refinement",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_reserve_anonymous<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    backing_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "anonymous user-page reservation must bind its affine reservation",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        reserve,
+        anonymous,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "anonymous user-page reservation requires named address-space, backing, and layout parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, reserve, "reserve")
+        || !identifier_is(source, anonymous, "anonymous")
+        || fields.len() != 3
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the bounded anonymous reservation requires its exact prepared space, frame, and layout",
+        ));
+    }
+    let mut address_space = false;
+    let mut backing = false;
+    let mut layout = false;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "anonymous reservation parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => {
+                address_space = identifier_is(source, &field.value, address_space_name)
+            }
+            "backing" => backing = identifier_is(source, &field.value, backing_name),
+            "layout" => layout = identifier_is(source, &field.value, "initial-anonymous-page"),
+            _ => {}
+        }
+    }
+    if !address_space || !backing || !layout {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "anonymous reservation must consume the exact frame into `initial-anonymous-page`",
+        ));
+    }
+    Ok((source.slice(*name).to_owned(), declarations))
+}
+
+fn parse_user_address_space_release_anonymous<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    address_space_name: &str,
+    reservation_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (name, items, span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (name, items, span, &[][..]),
+        _ => {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "anonymous user-page release must bind its returned affine frame",
+            ));
+        }
+    };
+    let [
+        receiver,
+        user,
+        address,
+        space,
+        release,
+        anonymous,
+        Expression::Product { fields, .. },
+    ] = items.as_slice()
+    else {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "anonymous user-page release requires named address-space and reservation parameters",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, user, "user")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || !identifier_is(source, release, "release")
+        || !identifier_is(source, anonymous, "anonymous")
+        || fields.len() != 2
+    {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "the bounded anonymous release requires its exact prepared space and reservation",
+        ));
+    }
+    let mut address_space = false;
+    let mut reservation = false;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(user_context_diagnostic(
+                source,
+                field.value.span(),
+                "anonymous release parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "address-space" => {
+                address_space = identifier_is(source, &field.value, address_space_name)
+            }
+            "reservation" => reservation = identifier_is(source, &field.value, reservation_name),
+            _ => {}
+        }
+    }
+    if !address_space || !reservation {
+        return Err(user_context_diagnostic(
+            source,
+            *span,
+            "anonymous release must consume the exact live reservation",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -6073,6 +6338,8 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_MAP,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+                SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
@@ -6512,6 +6779,16 @@ mod tests {
                 CompilerSystemsTransition::PermitUserMappingWritableData {
                     mapping_identity: 2,
                 },
+                CompilerSystemsTransition::AllocatePhysicalFrames {
+                    request: CompilerPhysicalFrameRequest {
+                        frame_count: 1,
+                        alignment_frames: 1,
+                    },
+                },
+                CompilerSystemsTransition::ReserveAnonymousUserMapping {
+                    address_space_identity: 1,
+                    reservation_identity: 3,
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                 },
@@ -6711,6 +6988,11 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RETAINED".into(),
                 },
+                CompilerSystemsTransition::ReleaseAnonymousUserMapping {
+                    address_space_identity: 1,
+                    reservation_identity: 3,
+                },
+                CompilerSystemsTransition::ReleasePhysicalFrames,
                 CompilerSystemsTransition::UnmapUserAddressSpace {
                     address_space_identity: 1,
                     mapping_identity: 2,
@@ -6753,7 +7035,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 137);
+        assert_eq!(program.bootstrap.handler.operations.len(), 141);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -6795,6 +7077,8 @@ mod tests {
                 SYSTEMS_USER_ADDRESS_SPACE_MAP,
                 SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
                 SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+                SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+                SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
                 SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
