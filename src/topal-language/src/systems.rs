@@ -3243,6 +3243,7 @@ fn analyze_kernel_context_decision(
         elf_marker_statement,
         external_elf_marker_statement,
         external_elf_copy_marker_statement,
+        external_bss_marker_statement,
         data_marker_statement,
         image_copy_to_marker_statement,
         image_copy_from_marker_statement,
@@ -3471,6 +3472,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(external_elf_copy_marker_statement),
             "returned user execution requires its exact external ELF-copy marker",
+        ));
+    }
+    let external_bss_marker = analyze_operation(
+        source,
+        external_bss_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if external_bss_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_BSS_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(external_bss_marker_statement),
+            "returned user execution requires its exact external ELF data/BSS marker",
         ));
     }
     let data_marker = analyze_operation(
@@ -3745,6 +3763,7 @@ fn analyze_kernel_context_decision(
             elf_marker,
             external_elf_marker,
             external_elf_copy_marker,
+            external_bss_marker,
             data_marker,
             image_copy_to_marker,
             image_copy_from_marker,
@@ -6528,6 +6547,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_BSS_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6584,7 +6606,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 131);
+        assert_eq!(program.bootstrap.handler.operations.len(), 132);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

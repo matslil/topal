@@ -60,6 +60,7 @@ records, not this directory alone, define language meaning.
 - [Provider-neutral initial boot-resource contract](initial-boot-resource.md)
 - [Bounded external ELF load contract](bounded-external-elf-load.md)
 - [External ELF payload authority contract](external-elf-payload-authority.md)
+- [Bounded external data-segment and BSS contract](bounded-external-data-bss.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
