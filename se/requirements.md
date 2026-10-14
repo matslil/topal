@@ -757,6 +757,15 @@ Compile-time data-size authority, allocator residue exposure, negative errno
 results, additional page mapping, retained user pointers, or state surviving
 teardown shall fail closed.
 
+The initial-process scalar identity adapter shall accept `getpid`, `gettid`,
+`getppid`, `getuid`, `geteuid`, `getgid`, and `getegid` only for the live
+initial context and an executable user return continuation. It shall return
+PID and TID one, parent PID zero, and coherent real/effective UID and GID zero.
+Credential results shall agree with the corresponding initial auxiliary-vector
+facts. Dispatch shall retain no argument, pointer, or mutable identity state.
+A missing family member, wrong or inconsistent result, non-executable return,
+wrong lifecycle state, or result after terminal disposition shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

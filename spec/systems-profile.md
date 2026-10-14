@@ -596,6 +596,24 @@ syscall number, register convention, instruction, VMA collection, additional
 page allocation, resource-limit policy, overcommit, `mmap`, `mprotect`, or
 `munmap` interface to source.
 
+### TOPAL-SYSTEMS-USER-IDENTITY-001 — Initial scalar identity coherence
+
+The initial-process profile MAY dispatch Linux-compatible scalar process,
+thread, parent, user, and group identity queries only while the user context is
+live and the return continuation lies in the finalized executable mapping.
+`getpid` and `gettid` SHALL return one, `getppid` SHALL return zero, and
+`getuid`, `geteuid`, `getgid`, and `getegid` SHALL return zero. The credential
+results SHALL agree with the initial `AT_UID`, `AT_EUID`, `AT_GID`, and
+`AT_EGID` facts.
+
+Dispatch SHALL retain no argument, pointer, or mutable identity state and SHALL
+return to the same revalidated continuation. A missing family member, wrong or
+incoherent result, wrong entry state, non-executable return, duplicate result,
+or return after terminal disposition SHALL be invalid. This rule SHALL NOT
+expose syscall numbers, register conventions, instructions, task structures,
+namespace representations, credential storage, mutation, lookup, or general
+process-management authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

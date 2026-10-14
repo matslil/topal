@@ -283,6 +283,15 @@ in-range byte-granular request. Teardown shall clear it. Structural and pinned-
 QEMU evidence shall prove runtime derivation, complete zeroing, query, grow,
 write/read, shrink, rejected growth, exact returns, and state clearing.
 
+The initial scalar-identity adapter shall lower Linux x86-64 syscall numbers
+39, 102, 104, 107, 108, 110, and 186 only for a live initial context and a
+return continuation inside the finalized executable mapping. It shall return
+PID/TID one, parent PID zero, and real/effective UID/GID zero exactly as the
+checked disposition declares and shall introduce no user-copy or retained
+state. Structural and pinned-QEMU evidence shall prove every dispatch number,
+broad executable-return validation, constant coherence, application result
+checks, and terminal continuation.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
