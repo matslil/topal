@@ -46,16 +46,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/51")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/52")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/48")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/49",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/50",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/10",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/11",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],

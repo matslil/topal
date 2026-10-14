@@ -53,6 +53,7 @@ use topal_language::compiler::{
 };
 
 use crate::artifact::sha256;
+use crate::systems_provider_object::initial_user_elf_file;
 use crate::{
     CompileError, DigestEntry, LlvmTools, X86_SYSTEMS_ALLOCATABLE_FLOOR,
     X86_SYSTEMS_ATOMIC_COMPARE_EXCHANGE_SYMBOL, X86_SYSTEMS_ATOMIC_CREATE_SYMBOL,
@@ -84,7 +85,7 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/49";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/50";
 pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/49";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
@@ -97,6 +98,7 @@ pub const X86_SYSTEMS_TERMINAL_THREAD_ENTRY: &str = "topal_x86_systems_terminal_
 pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
+pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
 const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 45] = [
@@ -200,6 +202,7 @@ pub struct PublishedSystemsArtifact {
     pub kernel: PathBuf,
     pub debug: PathBuf,
     pub map: PathBuf,
+    pub initial_user_image: PathBuf,
     pub provenance: PathBuf,
     pub record: SystemsArtifactProvenance,
 }
@@ -257,6 +260,7 @@ pub fn publish_x86_64_systems_artifact(
         kernel: destination.join(SYSTEMS_KERNEL_FILE),
         debug: destination.join(SYSTEMS_DEBUG_FILE),
         map: destination.join(SYSTEMS_MAP_FILE),
+        initial_user_image: destination.join(SYSTEMS_INITIAL_USER_IMAGE_FILE),
         provenance: destination.join(SYSTEMS_PROVENANCE_FILE),
         record,
     })
@@ -301,6 +305,12 @@ fn publish_in_stage(
             }),
     )?;
     let placements = linked_placements(&linked.kernel)?;
+    let initial_user_image = initial_user_elf_file()?;
+    let initial_user_image_path = stage.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
+    fs::write(&initial_user_image_path, &initial_user_image).map_err(io_error(
+        "write initial user image",
+        &initial_user_image_path,
+    ))?;
     let record = artifact_provenance(
         program,
         tools,
@@ -310,6 +320,7 @@ fn publish_in_stage(
         &linked.kernel,
         &linked.debug,
         &linked.map,
+        &initial_user_image,
         placements,
     )?;
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
@@ -396,6 +407,7 @@ fn artifact_provenance(
     kernel: &[u8],
     debug: &[u8],
     map: &[u8],
+    initial_user_image: &[u8],
     placements: Vec<SystemsArtifactPlacement>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let mut inputs = vec![
@@ -421,6 +433,10 @@ fn artifact_provenance(
         DigestEntry {
             identity: SYSTEMS_MAP_FILE.into(),
             sha256: sha256(map),
+        },
+        DigestEntry {
+            identity: SYSTEMS_INITIAL_USER_IMAGE_FILE.into(),
+            sha256: sha256(initial_user_image),
         },
     ];
     outputs.sort_by(|left, right| left.identity.cmp(&right.identity));
@@ -4481,19 +4497,20 @@ mod tests {
         let published = publish_x86_64_systems_artifact(&program(), &tools, &destination).unwrap();
         assert_eq!(
             fs::read_dir(&destination).unwrap().count(),
-            4,
+            5,
             "only canonical outputs are published"
         );
         assert!(published.kernel.is_file());
         assert!(published.debug.is_file());
         assert!(published.map.is_file());
+        assert!(published.initial_user_image.is_file());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
         let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
         assert_eq!(decoded, published.record);
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
-        assert_eq!(decoded.outputs.len(), 3);
+        assert_eq!(decoded.outputs.len(), 4);
         assert_eq!(decoded.placements.len(), 62);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
@@ -4886,6 +4903,7 @@ mod tests {
             (&published.kernel, &repeated.kernel),
             (&published.debug, &repeated.debug),
             (&published.map, &repeated.map),
+            (&published.initial_user_image, &repeated.initial_user_image),
             (&published.provenance, &repeated.provenance),
         ] {
             assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());
