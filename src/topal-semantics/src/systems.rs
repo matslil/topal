@@ -1250,6 +1250,7 @@ struct BootstrapAuthorityState {
     external_user_elf_loaded: bool,
     external_user_elf_copy_verified: bool,
     runtime_user_code_extent_validated: bool,
+    runtime_user_entry_validated: bool,
     runtime_user_data_extent_validated: bool,
     external_user_bss_validated: bool,
     constructed_user_image_data_observed: bool,
@@ -2321,18 +2322,35 @@ impl BootstrapAuthorityState {
                 self.runtime_user_code_extent_validated = true;
             }
             SystemsOperation::ConsoleWrite { text }
-                if text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK" =>
+                if text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK" =>
             {
                 if !matches!(
                     self.user_execution,
                     BootstrapUserExecutionState::CompletedWithResidentImage(_)
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.runtime_user_code_extent_validated
+                    || self.runtime_user_entry_validated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "runtime ELF-entry witness requires the validated executable extent exactly once",
+                    ));
+                }
+                self.runtime_user_entry_validated = true;
+            }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.runtime_user_entry_validated
                     || self.runtime_user_data_extent_validated
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "runtime data/BSS-extent witness requires the validated executable extent exactly once",
+                        "runtime data/BSS-extent witness requires the validated ELF entry exactly once",
                     ));
                 }
                 self.runtime_user_data_extent_validated = true;
@@ -4934,6 +4952,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -5161,6 +5182,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
@@ -5610,6 +5632,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK".into(),
@@ -6401,6 +6426,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_DATA_OK"

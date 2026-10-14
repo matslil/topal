@@ -63,6 +63,7 @@ records, not this directory alone, define language meaning.
 - [Bounded external data-segment and BSS contract](bounded-external-data-bss.md)
 - [Runtime-derived executable-extent contract](runtime-derived-executable-extent.md)
 - [Runtime-derived data/BSS-extent contract](runtime-derived-data-extent.md)
+- [Runtime-derived ELF-entry contract](runtime-derived-entry.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

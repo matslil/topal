@@ -232,6 +232,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
