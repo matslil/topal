@@ -681,6 +681,18 @@ adapter returns the requested count and retains no pointer. The explicit cap,
 fixed mapped-set validation, and lack of partial-write behavior remain profile
 limits rather than Linux-wide semantics.
 
+The bounded general-input refinement likewise removes the provider's single-
+byte, exact-candidate, and single-call-site oracle. Descriptor zero may read
+one through 256 bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free destination lies in an
+already-mapped writable user extent. The adapter waits for the requested
+bounded count, stages all received bytes privately, and only then copies the
+complete prefix to user memory under fault recovery. Invalid arguments are
+rejected before input consumption. The adapter returns the requested count
+and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
+signals, partial reads, and terminal policy remain profile limits rather than
+Linux-wide semantics.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
