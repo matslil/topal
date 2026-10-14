@@ -3221,6 +3221,7 @@ fn analyze_kernel_context_decision(
         auxv_marker_statement,
         auxv_entry_marker_statement,
         auxv_execfn_marker_statement,
+        auxv_credentials_marker_statement,
         data_marker_statement,
         image_copy_to_marker_statement,
         image_copy_from_marker_statement,
@@ -3381,6 +3382,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(auxv_execfn_marker_statement),
             "returned user execution requires its exact constructed-image auxiliary-vector executable-name marker",
+        ));
+    }
+    let auxv_credentials_marker = analyze_operation(
+        source,
+        auxv_credentials_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if auxv_credentials_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(auxv_credentials_marker_statement),
+            "returned user execution requires its exact constructed-image auxiliary-vector credentials marker",
         ));
     }
     let data_marker = analyze_operation(
@@ -3650,6 +3668,7 @@ fn analyze_kernel_context_decision(
             auxv_marker,
             auxv_entry_marker,
             auxv_execfn_marker,
+            auxv_credentials_marker,
             data_marker,
             image_copy_to_marker,
             image_copy_from_marker,
@@ -6418,6 +6437,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6474,7 +6496,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 126);
+        assert_eq!(program.bootstrap.handler.operations.len(), 127);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

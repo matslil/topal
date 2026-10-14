@@ -167,3 +167,15 @@ one sealed executable-name fact after `AT_ENTRY` and before `AT_NULL`, exact
 pointer identity with the bounded `argv[0]` string, constructed validation and
 consumption, an ordered post-return witness, and deterministic physical
 execution without exposing addresses or general loader policy to source.
+
+## Next Step 4 credential auxiliary-vector refinement
+
+`TK-DEC-057` traces through the
+[bounded initial credential contract](design/bounded-initial-auxv-credentials.md),
+the checked root, x86-64 provider lowering, structural tests, the implementation
+and [qualification report](step-4-initial-auxv-credentials.md), and pinned-QEMU
+evidence. The evidence must prove an
+ordered real/effective user/group fact group matching the sealed process,
+constructed validation and bounded consumption, an ordered post-return
+witness, and deterministic physical execution without exposing credential
+encoding or transition policy to source.
