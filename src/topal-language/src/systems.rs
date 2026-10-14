@@ -946,7 +946,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 22
+        || fields.len() != 24
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -968,7 +968,9 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[18], "geteuid-result")? != 0
         || field_natural(source, &fields[19], "getgid-result")? != 0
         || field_natural(source, &fields[20], "getegid-result")? != 0
-        || field_natural(source, &fields[21], "exit-group-status")? != 0
+        || field_natural(source, &fields[21], "arch-set-fs-result")? != 0
+        || field_natural(source, &fields[22], "arch-get-fs-result")? != 0
+        || field_natural(source, &fields[23], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -998,6 +1000,8 @@ fn analyze_user_syscall_handler(
         geteuid_result: 0,
         getgid_result: 0,
         getegid_result: 0,
+        arch_set_fs_result: 0,
+        arch_get_fs_result: 0,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {

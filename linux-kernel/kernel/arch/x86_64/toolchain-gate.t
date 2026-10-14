@@ -452,6 +452,8 @@ user-syscall-handler is fn (
     geteuid-result is 0,
     getgid-result is 0,
     getegid-result is 0,
+    arch-set-fs-result is 0,
+    arch-get-fs-result is 0,
     exit-group-status is 0
   )
 

@@ -214,6 +214,14 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
+            SOURCE.replace("arch-set-fs-result is 0", "arch-set-fs-result is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
+            SOURCE.replace("arch-get-fs-result is 0", "arch-get-fs-result is 1"),
+            "E-SYSTEMS-USER-CONTEXT",
+        ),
+        (
             SOURCE.replace(
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_EARLY",

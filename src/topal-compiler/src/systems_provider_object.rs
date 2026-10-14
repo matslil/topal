@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/55";
+    "topal.provider-object.x86_64-qemu-pc-q35/56";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1082,6 +1082,31 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         }
         continuation.jump_if(0x85, "fail");
     }
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // ARCH_GET_FS output
+    continuation.bytes(&[0xbf, 0x02, 0x10, 0x00, 0x00]); // ARCH_SET_FS
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]); // readable data base
+    continuation.bytes(&[0xb8, 0x9e, 0x00, 0x00, 0x00, 0x0f, 0x05]); // arch_prctl
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0xbf, 0x03, 0x10, 0x00, 0x00]); // ARCH_GET_FS
+    continuation.bytes(&[0x48, 0x89, 0xe6]);
+    continuation.bytes(&[0xb8, 0x9e, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0x48, 0x81, 0x3c, 0x24, 0x00, 0x50, 0x60, 0x00]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0xbf, 0x02, 0x10, 0x00, 0x00, 0x31, 0xf6]); // clear FS
+    continuation.bytes(&[0xb8, 0x9e, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0xbf, 0x03, 0x10, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0x89, 0xe6]);
+    continuation.bytes(&[0xb8, 0x9e, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
+    continuation.jump_if(0x85, "fs-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -1095,6 +1120,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
     continuation.jump("fail");
     continuation.bind("read-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.jump("fail");
+    continuation.bind("fs-buffer-fail")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
@@ -1411,6 +1439,8 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bind("unmap-data")?;
     code.bytes(&[0x48, 0xc7, 0x87, 0x90, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0x98, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // clear IA32_FS_BASE
     code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
@@ -1468,6 +1498,8 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     emit_wrmsr_register(&mut code, 0xc000_0082, &[0x48, 0x89, 0xf0]); // LSTAR = RSI
     emit_wrmsr_immediate(&mut code, 0xc000_0084, 0x200); // mask IF on entry
     emit_wrmsr_register(&mut code, 0xc000_0102, &[0x48, 0x89, 0xf8]); // kernel GS base
+    code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // initial user FS base
     code.bytes(&[0xc6, 0x07, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -1645,6 +1677,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     }
     code.bytes(&[0x3d, 0xba, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "identity-one");
+    code.bytes(&[0x3d, 0x9e, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "arch-prctl");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -1673,6 +1707,74 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x4c, 0x89, 0xd0]);
+    code.jump("return-user");
+
+    code.bind("arch-prctl")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x81, 0xff, 0x02, 0x10, 0x00, 0x00]);
+    code.jump_if(0x84, "arch-set-fs");
+    code.bytes(&[0x81, 0xff, 0x03, 0x10, 0x00, 0x00]);
+    code.jump_if(0x84, "arch-get-fs");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]); // -EINVAL
+    code.jump("return-user");
+
+    code.bind("arch-set-fs")?;
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "arch-set-fs-accepted");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "arch-set-fs-second-range");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x82, "arch-set-fs-accepted");
+    code.bind("arch-set-fs-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "arch-set-fs-eperm");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x83, "arch-set-fs-eperm");
+    code.bind("arch-set-fs-accepted")?;
+    code.bytes(&[0x65, 0x48, 0x89, 0x34, 0x25, 0xa0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb9, 0x00, 0x01, 0x00, 0xc0]); // IA32_FS_BASE
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x89, 0xc2, 0x48, 0xc1, 0xea, 0x20]);
+    code.bytes(&[0x0f, 0x30, 0x31, 0xc0]); // wrmsr; success
+    code.jump("return-user");
+    code.bind("arch-set-fs-eperm")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff]); // -EPERM
+    code.jump("return-user");
+
+    code.bind("arch-get-fs")?;
+    code.bytes(&[0x49, 0x89, 0xf0, 0x49, 0x83, 0xc0, 0x08]);
+    code.jump_if(0x82, "arch-get-fs-efault");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "arch-get-fs-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "arch-get-fs-candidate-ok");
+    code.bind("arch-get-fs-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "arch-get-fs-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "arch-get-fs-efault");
+    code.bind("arch-get-fs-candidate-ok")?;
+    code.bytes(&[0x49, 0x89, 0xf1]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0xa0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "arch-get-fs-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "arch-get-fs-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("arch-get-fs-fault-site")?;
+    code.bytes(&[0x4d, 0x89, 0x01]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("arch-get-fs-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bind("arch-get-fs-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]); // -EFAULT
     code.jump("return-user");
 
     code.bind("getpid-provider-probe")?;
@@ -4168,6 +4270,48 @@ mod tests {
                     .any(|bytes| bytes == [0x65, 0x48, 0x89, 0x3c, 0x25, 0x90, 0, 0, 0]),
             "brk must use private current and initial state and publish only an in-page request"
         );
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x9e, 0, 0, 0, 0x0f, 0x05])
+                .count(),
+            4,
+            "constructed user code must set, get, clear, and re-read its FS base"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x48, 0x81, 0x3c, 0x24, 0, 0x50, 0x60, 0])
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .any(|bytes| bytes == [0x48, 0x83, 0x3c, 0x24, 0]),
+            "constructed user code must validate both the selected and cleared FS values"
+        );
+        assert!(
+            user_syscall
+                .windows(5)
+                .any(|bytes| bytes == [0x3d, 0x9e, 0, 0, 0])
+                && user_syscall
+                    .windows(6)
+                    .any(|bytes| bytes == [0x81, 0xff, 0x02, 0x10, 0, 0])
+                && user_syscall
+                    .windows(6)
+                    .any(|bytes| bytes == [0x81, 0xff, 0x03, 0x10, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x89, 0x34, 0x25, 0xa0, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x04, 0x25, 0xa0, 0, 0, 0])
+                && user_syscall.windows(2).any(|bytes| bytes == [0x0f, 0x30])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x4d, 0x89, 0x01]),
+            "arch_prctl must retain and install FS state and publish GET_FS through fault-contained output"
+        );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
             user_protect
@@ -4329,6 +4473,10 @@ mod tests {
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x98, 0, 0, 0, 0, 0, 0, 0])
                 && user_unmap
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xa0, 0, 0, 0, 0, 0, 0, 0])
+                && user_unmap.windows(2).any(|bytes| bytes == [0x0f, 0x30])
+                && user_unmap
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
                 && user_unmap
@@ -4337,7 +4485,7 @@ mod tests {
                 && !user_unmap
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes()),
-            "user unmap must revoke, invalidate, clear break and mapping state, and return the frame"
+            "user unmap must revoke, invalidate, clear break, FS, and mapping state, and return the frame"
         );
         let user_complete = symbol_bytes(&file, X86_SYSTEMS_USER_COMPLETE_SYMBOL);
         assert!(
