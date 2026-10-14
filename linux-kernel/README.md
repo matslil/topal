@@ -414,6 +414,13 @@ records deterministic serial injection, provider-private staging, exact
 copy-to-user and return behavior, byte validation, and two deterministic
 pinned-QEMU runs.
 
+The following systems-only refinement generalizes the
+[bounded standard-output write](design/bounded-general-stdout-write.md) to
+caller-selected one-to-256-byte extents in known readable mappings. Its
+[implementation and qualification report](step-4-bounded-general-stdout-write.md)
+records payload-neutral dispatch, complete private staging, Linux-compatible
+argument errors, structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a

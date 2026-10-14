@@ -201,13 +201,16 @@ returned `Linux` identity, and restores the stack. After output disposal it
 stages a zero-duration native timespec in the same
 stack, invokes `nanosleep` with no remainder candidate, requires complete
 input transfer and a successful return, and restores the stack again. It then
-constructs the exact 26-byte `TOPAL_KERNEL_USER_WRITE_OK` payload in another
-bounded stack region and invokes Linux `write(1, candidate, 26)`. Dispatch
-copies every byte to private kernel staging before output, validates the staged
-payload, publishes it through the checked Q35 serial provider, and returns the
-exact byte count; the user validates that result and restores its stack. The
-payload is consequently observable before the source-owned post-return
-witnesses. The harness connects a pseudo-terminal to the same emulated serial
+constructs the 26-byte `TOPAL_KERNEL_USER_WRITE_OK` payload in another bounded
+stack region and invokes Linux `write(1, candidate, 26)`. Dispatch admits a
+caller-selected one-to-256-byte extent only when it is completely contained in
+a known readable user mapping. It copies the complete extent to private kernel
+staging before output, publishes the staged prefix through the checked Q35
+serial provider, and returns the argument-derived byte count; the provider has
+no embedded copy of the application payload and requires no baked call site.
+The user validates that result and restores its stack, so the payload is
+observable before the source-owned post-return witnesses. The harness connects
+a pseudo-terminal to the same emulated serial
 device and injects `q` after the boot-resource witness. The continuation next
 invokes `read(0, candidate, 1)` into a bounded RW/NX stack region. Dispatch
 polls and privately stages that byte, copies it to the exact user candidate
