@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/57";
+    "topal.provider-object.x86_64-qemu-pc-q35/58";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1088,6 +1088,15 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xb8, 0xda, 0x00, 0x00, 0x00, 0x0f, 0x05]); // set_tid_address
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
     continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // native robust_list_head
+    continuation.bytes(&[0x48, 0x89, 0x24, 0x24, 0x31, 0xc0]); // self link; zero
+    continuation.bytes(&[0x48, 0x89, 0x44, 0x24, 0x08]); // futex offset
+    continuation.bytes(&[0x48, 0x89, 0x44, 0x24, 0x10]); // no pending entry
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x18, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xb8, 0x11, 0x01, 0x00, 0x00, 0x0f, 0x05]); // set_robust_list
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // ARCH_GET_FS output
     continuation.bytes(&[0xbf, 0x02, 0x10, 0x00, 0x00]); // ARCH_SET_FS
     continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]); // readable data base
@@ -1445,10 +1454,13 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bind("unmap-data")?;
     code.bytes(&[0x48, 0x83, 0xbf, 0xa8, 0x00, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0xb0, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0xc7, 0x87, 0x90, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0x98, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0xa8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xb0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // clear IA32_FS_BASE
     code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
@@ -1509,6 +1521,7 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     emit_wrmsr_register(&mut code, 0xc000_0102, &[0x48, 0x89, 0xf8]); // kernel GS base
     code.bytes(&[0x48, 0xc7, 0x87, 0xa0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0x48, 0xc7, 0x87, 0xa8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xb0, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     emit_wrmsr_immediate(&mut code, 0xc000_0100, 0); // initial user FS base
     code.bytes(&[0xc6, 0x07, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -1691,6 +1704,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "arch-prctl");
     code.bytes(&[0x3d, 0xda, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "set-tid-address");
+    code.bytes(&[0x3d, 0x11, 0x01, 0x00, 0x00]);
+    code.jump_if(0x84, "set-robust-list");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -1760,6 +1775,37 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.jump("return-user");
     code.bind("set-tid-address-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("set-robust-list")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x18]);
+    code.jump_if(0x85, "set-robust-list-einval");
+    code.bytes(&[0x49, 0x89, 0xf8, 0x49, 0x83, 0xc0, 0x18]);
+    code.jump_if(0x82, "set-robust-list-efault");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "set-robust-list-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "set-robust-list-accepted");
+    code.bind("set-robust-list-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "set-robust-list-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "set-robust-list-efault");
+    code.bind("set-robust-list-accepted")?;
+    code.bytes(&[0x65, 0x48, 0x89, 0x3c, 0x25, 0xb0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("set-robust-list-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("set-robust-list-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
@@ -2139,6 +2185,33 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0xb0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "robust-state-cleared");
+    code.bytes(&[0x48, 0x83, 0xec, 0x18]);
+    code.bytes(&[0x4d, 0x89, 0xc1, 0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "robust-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "robust-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x02]);
+    code.bind("robust-copy-loop")?;
+    code.bind("robust-copy-fault-site")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x11]);
+    code.bytes(&[0x42, 0x88, 0x04, 0x14]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x83, 0xfa, 0x18]);
+    code.jump_if(0x85, "robust-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x39, 0x04, 0x24]);
+    code.jump_if(0x85, "robust-invalid");
+    code.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x10, 0x00]);
+    code.jump_if(0x85, "robust-invalid");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18]);
+    code.bytes(&[
+        0x65, 0x48, 0xc7, 0x04, 0x25, 0xb0, 0x00, 0x00, 0x00, 0, 0, 0, 0,
+    ]);
+    code.bind("robust-state-cleared")?;
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0xa8, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "clear-tid-state");
@@ -2161,6 +2234,11 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
 
     code.bind("clear-tid-recovery")?;
     code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.jump("fail");
+    code.bind("robust-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bind("robust-invalid")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18]);
     code.jump("fail");
 
     code.bind("fail")?;
@@ -4276,14 +4354,18 @@ mod tests {
                     .any(|bytes| bytes == [0x49, 0x81, 0xf9, 0x00, 0x60, 0x60, 0x00]),
             "bounded read must reject zero and oversized lengths and admit only complete writable mapping ranges"
         );
-        let receive_stage = user_syscall
-            .windows(4)
-            .rposition(|bytes| bytes == [0x42, 0x88, 0x04, 0x14])
-            .expect("bounded read must stage received bytes privately");
         let user_publish = user_syscall
             .windows(4)
             .rposition(|bytes| bytes == [0x43, 0x88, 0x04, 0x10])
             .expect("bounded read must copy staged bytes to the user destination");
+        let receive_stage = user_syscall
+            .windows(4)
+            .enumerate()
+            .filter_map(|(position, bytes)| {
+                (position < user_publish && bytes == [0x42, 0x88, 0x04, 0x14]).then_some(position)
+            })
+            .next_back()
+            .expect("bounded read must stage received bytes privately");
         assert!(
             receive_stage < user_publish
                 && user_syscall
@@ -4397,6 +4479,38 @@ mod tests {
                     .windows(13)
                     .any(|bytes| bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xa8, 0, 0, 0, 0, 0, 0, 0]),
             "set_tid_address must register one checked word, return TID one, and clear the word and state before terminal exit"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .any(|bytes| bytes == [0xb8, 0x11, 0x01, 0, 0, 0x0f, 0x05])
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x24, 0x24])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0x3d, 0x11, 0x01, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x89, 0x3c, 0x25, 0xb0, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x04, 0x25, 0xb0, 0, 0, 0])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xfa, 0x18])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x4c, 0x39, 0x04, 0x24])
+                && user_syscall
+                    .windows(6)
+                    .any(|bytes| bytes == [0x48, 0x83, 0x7c, 0x24, 0x10, 0])
+                && user_syscall
+                    .windows(13)
+                    .any(|bytes| bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xb0, 0, 0, 0, 0, 0, 0, 0]),
+            "set_robust_list must register one complete native head and terminally validate its empty state before clearing"
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(
@@ -4567,6 +4681,12 @@ mod tests {
                 && user_unmap
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xa8, 0, 0, 0, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xbf, 0xb0, 0, 0, 0, 0])
+                && user_unmap
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xb0, 0, 0, 0, 0, 0, 0, 0])
                 && user_unmap.windows(2).any(|bytes| bytes == [0x0f, 0x30])
                 && user_unmap
                     .windows(8)
