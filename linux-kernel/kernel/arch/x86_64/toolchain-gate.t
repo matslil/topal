@@ -446,6 +446,12 @@ user-syscall-handler is fn (
     read-descriptor is 0,
     read-maximum-bytes is 256,
     brk-data-page-bytes is 4096,
+    getppid-result is 0,
+    gettid-result is 1,
+    getuid-result is 0,
+    geteuid-result is 0,
+    getgid-result is 0,
+    getegid-result is 0,
     exit-group-status is 0
   )
 

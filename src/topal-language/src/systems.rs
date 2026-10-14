@@ -946,7 +946,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 16
+        || fields.len() != 22
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -962,7 +962,13 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[12], "read-descriptor")? != 0
         || field_natural(source, &fields[13], "read-maximum-bytes")? != 256
         || field_natural(source, &fields[14], "brk-data-page-bytes")? != 4096
-        || field_natural(source, &fields[15], "exit-group-status")? != 0
+        || field_natural(source, &fields[15], "getppid-result")? != 0
+        || field_natural(source, &fields[16], "gettid-result")? != 1
+        || field_natural(source, &fields[17], "getuid-result")? != 0
+        || field_natural(source, &fields[18], "geteuid-result")? != 0
+        || field_natural(source, &fields[19], "getgid-result")? != 0
+        || field_natural(source, &fields[20], "getegid-result")? != 0
+        || field_natural(source, &fields[21], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -986,6 +992,12 @@ fn analyze_user_syscall_handler(
         read_descriptor: 0,
         read_maximum_bytes: 256,
         brk_data_page_bytes: 4096,
+        getppid_result: 0,
+        gettid_result: 1,
+        getuid_result: 0,
+        geteuid_result: 0,
+        getgid_result: 0,
+        getegid_result: 0,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {

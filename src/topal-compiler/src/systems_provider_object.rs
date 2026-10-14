@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/54";
+    "topal.provider-object.x86_64-qemu-pc-q35/55";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -787,7 +787,6 @@ struct InitialUserEntryPayload {
     continuation_address: u64,
     uname_return_address: u64,
     nanosleep_return_address: u64,
-    getpid_return_address: u64,
 }
 
 fn initial_user_stack_bytes() -> [u8; 224] {
@@ -1063,10 +1062,26 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x3d, 0x10, 0x50, 0x60, 0x00]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xb8, 0x27, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getpid
-    let getpid_return_address =
-        continuation_address + u64::try_from(continuation.bytes.len()).unwrap_or(u64::MAX);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
     continuation.jump_if(0x85, "fail");
+    for (number, expected) in [
+        (110_u32, 0_u8), // getppid
+        (186, 1),        // gettid
+        (102, 0),        // getuid
+        (107, 0),        // geteuid
+        (104, 0),        // getgid
+        (108, 0),        // getegid
+    ] {
+        continuation.bytes(&[0xb8]);
+        continuation.bytes(&number.to_le_bytes());
+        continuation.bytes(&[0x0f, 0x05]);
+        if expected == 0 {
+            continuation.bytes(&[0x48, 0x85, 0xc0]);
+        } else {
+            continuation.bytes(&[0x48, 0x83, 0xf8, expected]);
+        }
+        continuation.jump_if(0x85, "fail");
+    }
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -1095,7 +1110,6 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         continuation_address,
         uname_return_address,
         nanosleep_return_address,
-        getpid_return_address,
     })
 }
 
@@ -1607,9 +1621,6 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
         u32::try_from(payload.nanosleep_return_address).map_err(|_| {
             CompileError::Tool("constructed nanosleep return address exceeds x86 imm32".into())
         })?;
-    let getpid_return_address = u32::try_from(payload.getpid_return_address).map_err(|_| {
-        CompileError::Tool("constructed getpid return address exceeds x86 imm32".into())
-    })?;
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x0f, 0x01, 0xf8]); // swapgs
     code.bytes(&[0x65, 0x48, 0x89, 0x24, 0x25, 0x10, 0x00, 0x00, 0x00]);
@@ -1628,6 +1639,12 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "brk");
     code.bytes(&[0x83, 0xf8, 0x27]);
     code.jump_if(0x84, "getpid");
+    for number in [102_u8, 104, 107, 108, 110] {
+        code.bytes(&[0x83, 0xf8, number]);
+        code.jump_if(0x84, "identity-zero");
+    }
+    code.bytes(&[0x3d, 0xba, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "identity-one");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -1640,12 +1657,22 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xf9]);
     code.bytes(&0x0060_0007_u32.to_le_bytes());
     code.jump_if(0x84, "getpid-provider-probe");
-    code.bytes(&[0x48, 0x81, 0xf9]);
-    code.bytes(&getpid_return_address.to_le_bytes());
-    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0xba, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("scalar-identity");
+
+    code.bind("identity-zero")?;
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.jump("scalar-identity");
+    code.bind("identity-one")?;
+    code.bytes(&[0x41, 0xba, 0x01, 0x00, 0x00, 0x00]);
+    code.bind("scalar-identity")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x89, 0xd0]);
     code.jump("return-user");
 
     code.bind("getpid-provider-probe")?;
@@ -4366,15 +4393,60 @@ mod tests {
             "returning user syscalls must use SYSRETQ"
         );
         assert!(
-            user_syscall.windows(4).any(|bytes| bytes
-                == u32::try_from(entry_payload.getpid_return_address)
-                    .unwrap()
-                    .to_le_bytes())
+            user_syscall
+                .windows(4)
+                .any(|bytes| bytes == 0x0060_0007_u32.to_le_bytes())
                 && user_syscall
-                    .windows(4)
-                    .any(|bytes| bytes == 0x0060_0007_u32.to_le_bytes()),
-            "getpid must admit only the sealed constructed-image and provider-probe return sites"
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]),
+            "scalar identity calls must retain the provider probe and admit finalized executable continuations"
         );
+        for (number, expected) in [
+            (39_u32, 1_u8),
+            (102, 0),
+            (104, 0),
+            (107, 0),
+            (108, 0),
+            (110, 0),
+            (186, 1),
+        ] {
+            let mut invocation = [0_u8; 7];
+            invocation[0] = 0xb8;
+            invocation[1..5].copy_from_slice(&number.to_le_bytes());
+            invocation[5..7].copy_from_slice(&[0x0f, 0x05]);
+            let invocation_position = entry_payload
+                .bytes
+                .windows(7)
+                .position(|bytes| bytes == invocation)
+                .expect("constructed image must invoke every scalar identity syscall");
+            if expected == 0 {
+                assert_eq!(
+                    &entry_payload.bytes[invocation_position + 7..invocation_position + 10],
+                    &[0x48, 0x85, 0xc0]
+                );
+            } else {
+                assert_eq!(
+                    &entry_payload.bytes[invocation_position + 7..invocation_position + 11],
+                    &[0x48, 0x83, 0xf8, 0x01]
+                );
+            }
+            if number != 186 {
+                assert!(
+                    user_syscall
+                        .windows(3)
+                        .any(|bytes| bytes == [0x83, 0xf8, number as u8])
+                );
+            } else {
+                assert!(
+                    user_syscall
+                        .windows(5)
+                        .any(|bytes| bytes == [0x3d, 0xba, 0, 0, 0])
+                );
+            }
+        }
         assert!(
             user_syscall.windows(4).any(|bytes| bytes
                 == u32::try_from(entry_payload.uname_return_address)
