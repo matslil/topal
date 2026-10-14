@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/45";
+    "topal.provider-object.x86_64-qemu-pc-q35/46";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -100,6 +100,8 @@ const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
 const INITIAL_USER_ENTRY_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 256;
 const INITIAL_USER_DATA_ADDRESS: u64 = 0x0060_5000;
 const INITIAL_USER_DATA_FILE_OFFSET: usize = 4096;
+const INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET: usize = 96;
+const INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET: usize = 104;
 const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
@@ -431,7 +433,15 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
             X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + 256,
         )
-        .chain(image_end..expected_boot_resource.len());
+        .chain(image_end..expected_boot_resource.len())
+        .filter(|offset| {
+            !(X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET
+                ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                    + INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET
+                    + 8)
+                .contains(offset)
+        });
     for offset in metadata_offsets {
         let expected = expected_boot_resource[offset];
         code.bytes(&[0x41, 0x80, 0xb8]); // cmp byte ptr [r8 + displacement], immediate
@@ -443,6 +453,26 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[expected]);
         code.jump_if(0x85, "fail");
     }
+    let code_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external code-size offset exceeds u32".into()))?;
+    let code_memory_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+            + INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external memory-size offset exceeds u32".into()))?;
+    code.bytes(&[0x49, 0x8b, 0x80]); // executable p_filesz
+    code.bytes(&code_file_size_offset.to_le_bytes());
+    code.bytes(&[0x49, 0x3b, 0x80]); // p_filesz == p_memsz
+    code.bytes(&code_memory_size_offset.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x3d, 0x08, 0x01, 0x00, 0x00]); // includes entry qword
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x10, 0x00, 0x00]); // one base page
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0xa8, 0x07]); // qword complete
+    code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x89, 0xf9]); // retain state in r9
     code.bytes(&[0x48, 0x89, 0x57, 0x68]); // retain backing identity
     code.bytes(&[0x49, 0x89, 0xd0]); // publish through supervisor identity mapping
@@ -890,26 +920,23 @@ fn user_install_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
     code.jump_if(0x84, "fail");
     emit_initial_boot_resource_handoff_validation(&mut code)?;
-    code.bytes(&[0x49, 0x81, 0xc0]); // exact `init` payload in r8
+    let code_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external code-size offset exceeds u32".into()))?;
+    code.bytes(&[0x49, 0x8b, 0x88]); // validated runtime extent
+    code.bytes(&code_file_size_offset.to_le_bytes());
+    code.bytes(&[0x49, 0x81, 0xc0]); // `init` payload in r8
     code.bytes(&X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
-    let image = initial_user_code_image()?;
-    let chunks = image.chunks_exact(8);
-    if !chunks.remainder().is_empty() {
-        return Err(CompileError::Tool(
-            "external initial ELF load requires a qword-complete image".into(),
-        ));
-    }
-    for (index, _) in chunks.enumerate() {
-        let displacement = u32::try_from(index * 8).map_err(|_| {
-            CompileError::Tool("external user payload displacement exceeds u32".into())
-        })?;
-        code.bytes(&[0x49, 0x8b, 0x80]); // load qword from bounded resource
-        code.bytes(&displacement.to_le_bytes());
-        code.bytes(&[0x49, 0x89, 0x82]);
-        code.bytes(&displacement.to_le_bytes());
-    }
+    code.bind("copy-loop")?;
+    code.bytes(&[0x49, 0x8b, 0x00]);
+    code.bytes(&[0x49, 0x89, 0x02]);
+    code.bytes(&[0x49, 0x83, 0xc0, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xe9, 0x08]);
+    code.jump_if(0x85, "copy-loop");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x05]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -1026,27 +1053,24 @@ fn user_verify_initial_entry_trampoline() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
     code.jump_if(0x84, "fail");
     emit_initial_boot_resource_handoff_validation(&mut code)?;
-    code.bytes(&[0x49, 0x81, 0xc0]); // exact `init` payload in r8
+    let code_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external code-size offset exceeds u32".into()))?;
+    code.bytes(&[0x49, 0x8b, 0x88]); // validated runtime extent
+    code.bytes(&code_file_size_offset.to_le_bytes());
+    code.bytes(&[0x49, 0x81, 0xc0]); // `init` payload in r8
     code.bytes(&X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
-    let image = initial_user_code_image()?;
-    let chunks = image.chunks_exact(8);
-    if !chunks.remainder().is_empty() {
-        return Err(CompileError::Tool(
-            "external initial ELF verification requires a qword-complete image".into(),
-        ));
-    }
-    for (index, _) in chunks.enumerate() {
-        let displacement = u32::try_from(index * 8).map_err(|_| {
-            CompileError::Tool("external user payload displacement exceeds u32".into())
-        })?;
-        code.bytes(&[0x49, 0x8b, 0x80]); // load qword from bounded resource
-        code.bytes(&displacement.to_le_bytes());
-        code.bytes(&[0x49, 0x39, 0x82]);
-        code.bytes(&displacement.to_le_bytes());
-        code.jump_if(0x85, "fail");
-    }
+    code.bind("compare-loop")?;
+    code.bytes(&[0x49, 0x8b, 0x00]);
+    code.bytes(&[0x49, 0x39, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x83, 0xc0, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xe9, 0x08]);
+    code.jump_if(0x85, "compare-loop");
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x06]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -3021,6 +3045,34 @@ mod tests {
                 .any(|bytes| bytes == [0x48, 0x89, 0x57, 0x68]),
             "address-space preparation must retain the allocator-owned backing identity"
         );
+        let code_file_size_offset = u32::try_from(
+            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET,
+        )
+        .unwrap();
+        let code_memory_size_offset = u32::try_from(
+            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET,
+        )
+        .unwrap();
+        assert!(
+            user_address_prepare.windows(7).any(|bytes| {
+                bytes[0..3] == [0x49, 0x8b, 0x80]
+                    && bytes[3..7] == code_file_size_offset.to_le_bytes()
+            }) && user_address_prepare.windows(7).any(|bytes| {
+                bytes[0..3] == [0x49, 0x3b, 0x80]
+                    && bytes[3..7] == code_memory_size_offset.to_le_bytes()
+            }) && user_address_prepare
+                .windows(6)
+                .any(|bytes| bytes == [0x48, 0x3d, 0x08, 0x01, 0, 0])
+                && user_address_prepare
+                    .windows(6)
+                    .any(|bytes| bytes == [0x48, 0x3d, 0, 0x10, 0, 0])
+                && user_address_prepare
+                    .windows(2)
+                    .any(|bytes| bytes == [0xa8, 0x07]),
+            "address-space preparation must validate a bounded equal qword-complete runtime code extent"
+        );
         let initial_stack = initial_user_stack_bytes();
         assert_eq!(
             u64::from_le_bytes(initial_stack[0..8].try_into().unwrap()),
@@ -3259,14 +3311,23 @@ mod tests {
                 .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
                 && user_install
                     .windows(3)
-                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x80])
+                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x00])
                     .count()
-                    == code_image.len() / 8
+                    == 1
                 && user_install
                     .windows(3)
-                    .filter(|bytes| *bytes == [0x49, 0x89, 0x82])
+                    .filter(|bytes| *bytes == [0x49, 0x89, 0x02])
                     .count()
-                    == code_image.len() / 8
+                    == 1
+                && user_install
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xc0, 0x08])
+                && user_install
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xc2, 0x08])
+                && user_install
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xe9, 0x08])
                 && user_install.windows(7).any(|bytes| {
                     bytes
                         == [
@@ -3282,7 +3343,7 @@ mod tests {
                 && user_install
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x05]),
-            "entry installation must copy every qword from the bounded external ELF member"
+            "entry installation must copy the runtime-derived bounded extent from the external ELF member"
         );
         assert!(
             entry_payload
@@ -3438,18 +3499,27 @@ mod tests {
                 .any(|bytes| bytes == INITIAL_USER_CODE_ADDRESS.to_le_bytes())
                 && user_verify
                     .windows(3)
-                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x80])
+                    .filter(|bytes| *bytes == [0x49, 0x8b, 0x00])
                     .count()
-                    == code_image.len() / 8
+                    == 1
                 && user_verify
                     .windows(3)
-                    .filter(|bytes| *bytes == [0x49, 0x39, 0x82])
+                    .filter(|bytes| *bytes == [0x49, 0x39, 0x02])
                     .count()
-                    == code_image.len() / 8
+                    == 1
+                && user_verify
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xc0, 0x08])
+                && user_verify
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xc2, 0x08])
+                && user_verify
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xe9, 0x08])
                 && user_verify
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x06]),
-            "entry verification must compare every mapping qword to the external ELF source"
+            "entry verification must compare the complete runtime-derived extent to the external ELF source"
         );
         let user_execute = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL);
         assert!(
