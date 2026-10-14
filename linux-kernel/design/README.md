@@ -69,6 +69,7 @@ records, not this directory alone, define language meaning.
 - [Writable initial user-data contract](writable-user-data.md)
 - [Bounded constructed-image `write` output](bounded-constructed-image-write.md)
 - [Bounded constructed-image `read` input](bounded-constructed-image-read.md)
+- [Bounded general standard-output write](bounded-general-stdout-write.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

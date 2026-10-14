@@ -671,6 +671,16 @@ pointer, and returns the exact byte count to the same continuation. This is one
 qualification observation, not a byte stream, blocking policy, line
 discipline, terminal interface, or general VFS read path.
 
+The bounded general-output refinement removes the provider's embedded payload
+and single-call-site equality checks. Descriptor one may write one through 256
+caller-selected bytes only when the return continuation lies in the finalized
+executable mapping and the complete overflow-free candidate lies in an already-
+mapped readable user extent. Invalid candidates are rejected before access;
+valid bytes are completely staged in private kernel memory before output. The
+adapter returns the requested count and retains no pointer. The explicit cap,
+fixed mapped-set validation, and lack of partial-write behavior remain profile
+limits rather than Linux-wide semantics.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
