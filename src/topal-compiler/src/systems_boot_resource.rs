@@ -5,6 +5,7 @@ use crate::CompileError;
 pub const X86_INITIAL_BOOT_RESOURCE_REVISION: &str = "topal.boot-resource.x86_64-initial-newc/1";
 pub const X86_INITIAL_BOOT_RESOURCE_FILE: &str = "initramfs.cpio";
 pub const X86_INITIAL_BOOT_RESOURCE_MEMBER: &str = "init";
+pub(crate) const X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET: u32 = 116;
 
 const NEWC_MAGIC: &[u8; 6] = b"070701";
 
@@ -25,6 +26,13 @@ pub(crate) fn generate_initial_boot_resource(image: &[u8]) -> Result<Vec<u8>, Co
         image,
         image_size,
     )?;
+    if archive.len()
+        != (X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + image.len()).next_multiple_of(4)
+    {
+        return Err(CompileError::Tool(
+            "initial boot resource payload offset changed unexpectedly".into(),
+        ));
+    }
     append_newc_entry(&mut archive, 2, 0, "TRAILER!!!", &[], 0)?;
     Ok(archive)
 }
@@ -69,6 +77,11 @@ mod tests {
         assert!(first.starts_with(NEWC_MAGIC));
         assert!(first.windows(5).any(|window| window == b"init\0"));
         assert!(first.windows(9).any(|window| window == b"elf-image"));
+        assert_eq!(
+            &first[X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + 9],
+            b"elf-image"
+        );
         assert!(first.windows(11).any(|window| window == b"TRAILER!!!\0"));
         assert_eq!(first.len() % 4, 0);
     }

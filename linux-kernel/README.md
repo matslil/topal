@@ -339,6 +339,13 @@ records deterministic CPIO publication, opaque Linux ramdisk handoff,
 reservation and allocator exclusion, complete identity validation, and two
 deterministic pinned-QEMU runs without exposing transport details to source.
 
+The following systems-only refinement performs a
+[bounded external ELF load](design/bounded-external-elf-load.md) from that
+resource into the existing allocator-backed code-role mapping. Its
+[implementation and qualification report](step-4-bounded-external-elf-load.md)
+records exact member discovery, resource-to-mapping population, W^X
+finalization, structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -464,6 +471,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
+- [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

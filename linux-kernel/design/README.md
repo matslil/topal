@@ -58,6 +58,7 @@ records, not this directory alone, define language meaning.
 - [Bounded initial credential auxiliary-vector facts](bounded-initial-auxv-credentials.md)
 - [Bounded ELF identity and program-header facts](bounded-elf-identity.md)
 - [Provider-neutral initial boot-resource contract](initial-boot-resource.md)
+- [Bounded external ELF load contract](bounded-external-elf-load.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
