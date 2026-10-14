@@ -135,9 +135,11 @@ python3 -m unittest \
 ```
 
 The first command publishes the checked Topal source through the ordinary
-`topalc` systems target, passes that artifact to the packaging-only
+`topalc` systems target, including a digest-bound `initial-user.elf`, passes
+that artifact and the exact published user image to the packaging-only
 `topal-kernel-toolchain-gate-builder`, and writes the Linux boot image into
-ignored temporary state. It then boots through QEMU's direct Linux interface
+ignored temporary state. The packager verifies the image against artifact
+provenance instead of regenerating it. The harness then boots through QEMU's direct Linux interface
 and waits for the 48 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator

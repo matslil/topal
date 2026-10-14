@@ -1,13 +1,13 @@
 {
-  "artifact_provenance_sha256": "7956ded7ca2162fc91b08662613729ff38492d5e755405dd7d2800cf8474c809",
-  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/49",
+  "artifact_provenance_sha256": "5edbc0c543c53b7b414faaa045b0f3d5425ad83568d5e6b80b936a07c3a3dda5",
+  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/50",
   "boot_image_sha256": "15ea7c7a9b75657ecd0decceb2e5c078fa4e92b02b93f970ffb50c58b30f9fc6",
-  "boot_provenance_sha256": "7995c0bac1532af43584694d203302155bef84cfb7fd9225dfe81f07e0c9a6eb",
+  "boot_provenance_sha256": "9e9d1f650e0b6bf23eac0be9b5c38b46e472e302cba15c17aeb57fbb77005874",
   "boot_resource_bytes": 8432,
   "boot_resource_member": "init",
   "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/1",
   "boot_resource_sha256": "2b8238ed1178facff10cd6ddc5af26e0d852682a3a3de32382cab82a587eb5b5",
-  "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/10",
+  "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/11",
   "cpu": "qemu64-v1",
   "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
   "initial_user_image_bytes": 8192,
@@ -75,6 +75,6 @@
   "provider": "topal.provider.x86_64-qemu-pc-q35/48",
   "publication": "topalc-target-interface/1",
   "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-  "schema": "topal-kernel-toolchain-gate-qemu/51",
+  "schema": "topal-kernel-toolchain-gate-qemu/52",
   "source_sha256": "9fd3b92c994e2a5e69f91096824d8f84e2e06ebda5c94341fc61651ff0a6a2bb"
 }
