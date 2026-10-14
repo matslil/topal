@@ -210,13 +210,17 @@ serial provider, and returns the argument-derived byte count; the provider has
 no embedded copy of the application payload and requires no baked call site.
 The user validates that result and restores its stack, so the payload is
 observable before the source-owned post-return witnesses. The harness connects
-a pseudo-terminal to the same emulated serial
-device and injects `q` after the boot-resource witness. The continuation next
-invokes `read(0, candidate, 1)` into a bounded RW/NX stack region. Dispatch
-polls and privately stages that byte, copies it to the exact user candidate
-under fault recovery, and returns one; user mode validates the count and byte
-before restoring its stack. `TOPAL_KERNEL_USER_READ_OK` is the first source-
-owned post-return witness and proves that path reached terminal completion.
+a pseudo-terminal to the same emulated serial device and injects `read` after
+the boot-resource witness. The continuation next invokes
+`read(0, candidate, 4)` into a bounded RW/NX stack region. Dispatch accepts a
+caller-selected one-to-256-byte extent only when it lies completely within a
+known writable user mapping. It polls until the exact requested count has been
+received into private staging, then copies the complete prefix to user memory
+under fault recovery and returns the argument-derived count. The provider
+contains no expected input value or baked candidate/call-site equality oracle.
+User mode validates the count and all four bytes before restoring its stack.
+`TOPAL_KERNEL_USER_READ_OK` is the first source-owned post-return witness and
+proves that path reached terminal completion.
 The continuation then invokes `getpid`, requires PID one, takes the
 same trap on mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the

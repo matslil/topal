@@ -421,6 +421,14 @@ caller-selected one-to-256-byte extents in known readable mappings. Its
 records payload-neutral dispatch, complete private staging, Linux-compatible
 argument errors, structural inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only refinement generalizes the
+[bounded standard-input read](design/bounded-general-stdin-read.md) to caller-
+selected one-to-256-byte extents in known writable mappings. Its
+[implementation and qualification report](step-4-bounded-general-stdin-read.md)
+records input-value-neutral exact-fill reception, complete private staging
+before user publication, Linux-compatible argument errors, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
