@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/46";
+    "topal.provider-object.x86_64-qemu-pc-q35/47";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -102,6 +102,9 @@ const INITIAL_USER_DATA_ADDRESS: u64 = 0x0060_5000;
 const INITIAL_USER_DATA_FILE_OFFSET: usize = 4096;
 const INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET: usize = 96;
 const INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET: usize = 104;
+const INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET: usize = 152;
+const INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET: usize = 160;
+const INITIAL_USER_DATA_CAPACITY: usize = 4096;
 const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1f20;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
@@ -403,6 +406,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0xd0, 0xff, 0x3f]);
     code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x89, 0xd2]); // retain backing identity in r10
     code.bytes(&[0x80, 0x3f, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
@@ -435,12 +439,17 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         )
         .chain(image_end..expected_boot_resource.len())
         .filter(|offset| {
-            !(X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+            let code_size_fields = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET
                 ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                     + INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET
-                    + 8)
-                .contains(offset)
+                    + 8;
+            let data_size_fields = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET
+                ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                    + INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET
+                    + 8;
+            !code_size_fields.contains(offset) && !data_size_fields.contains(offset)
         });
     for offset in metadata_offsets {
         let expected = expected_boot_resource[offset];
@@ -473,9 +482,34 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     code.bytes(&[0xa8, 0x07]); // qword complete
     code.jump_if(0x85, "fail");
+    let data_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external data-size offset exceeds u32".into()))?;
+    let data_memory_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+            + INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external BSS-size offset exceeds u32".into()))?;
+    code.bytes(&[0x49, 0x8b, 0x80]); // data p_filesz
+    code.bytes(&data_file_size_offset.to_le_bytes());
+    code.bytes(&[0x48, 0x83, 0xf8, 0x08]); // at least one initialized qword
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x10, 0x00, 0x00]); // one file page
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0xa8, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x90]); // data p_memsz
+    code.bytes(&data_memory_size_offset.to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0xd0]); // p_filesz <= p_memsz
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0xf6, 0xc2, 0x07]);
+    code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x89, 0xf9]); // retain state in r9
-    code.bytes(&[0x48, 0x89, 0x57, 0x68]); // retain backing identity
-    code.bytes(&[0x49, 0x89, 0xd0]); // publish through supervisor identity mapping
+    code.bytes(&[0x4c, 0x89, 0x57, 0x68]); // retain backing identity
+    code.bytes(&[0x4d, 0x89, 0xd0]); // publish through supervisor identity mapping
     for (index, chunk) in probe.chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
@@ -490,19 +524,19 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         let displacement = u32::try_from(0x1f20 + index * 8).map_err(|_| {
             CompileError::Tool("initial user stack displacement exceeds u32".into())
         })?;
-        code.bytes(&[0x48, 0x89, 0x82]);
+        code.bytes(&[0x49, 0x89, 0x82]);
         code.bytes(&displacement.to_le_bytes());
     }
-    code.bytes(&[0x4c, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
+    code.bytes(&[0x4d, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
     code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]); // clear frame
     code.bytes(&[0x4c, 0x89, 0xcf]); // restore state
-    code.bytes(&[0x49, 0x89, 0xd2, 0x49, 0x83, 0xca, 0x05]); // RX code leaf
-    code.bytes(&[0x4d, 0x89, 0x13]);
-    code.bytes(&[0x4c, 0x8d, 0x92, 0x00, 0x10, 0x00, 0x00]); // stack frame
+    code.bytes(&[0x4c, 0x89, 0xd2, 0x48, 0x83, 0xca, 0x05]); // RX code leaf
+    code.bytes(&[0x49, 0x89, 0x13]);
+    code.bytes(&[0x49, 0x8d, 0x92, 0x00, 0x10, 0x00, 0x00]); // stack frame
     code.bytes(&[0x48, 0xb9]);
     code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
-    code.bytes(&[0x49, 0x09, 0xca, 0x4d, 0x89, 0x53, 0x08]); // RW/NX stack leaf
+    code.bytes(&[0x48, 0x09, 0xca, 0x49, 0x89, 0x53, 0x08]); // RW/NX stack leaf
     code.bytes(&[0x0f, 0x20, 0xd8]); // active root from CR3
     code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x4d, 0x89, 0xda, 0x49, 0x83, 0xca, 0x07]);
@@ -669,13 +703,39 @@ fn user_store_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
                 .map_err(|_| CompileError::Tool("external user data offset exceeds u32".into()))?,
         )
         .ok_or_else(|| CompileError::Tool("external user data offset overflow".into()))?;
+    let data_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external data-size offset exceeds u32".into()))?;
+    let data_memory_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+            + INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external BSS-size offset exceeds u32".into()))?;
+    code.bytes(&[0x49, 0x8b, 0x88]); // runtime p_filesz
+    code.bytes(&data_file_size_offset.to_le_bytes());
+    code.bytes(&[0x4d, 0x8b, 0x98]); // runtime p_memsz
+    code.bytes(&data_memory_size_offset.to_le_bytes());
+    code.bytes(&[0x49, 0x29, 0xcb]); // BSS bytes = p_memsz - p_filesz
     code.bytes(&[0x49, 0x81, 0xc0]);
     code.bytes(&data_payload_offset.to_le_bytes());
-    code.bytes(&[0x49, 0x8b, 0x00]); // initialized qword from bounded resource
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    code.bind("data-copy-loop")?;
+    code.bytes(&[0x49, 0x8b, 0x00]);
     code.bytes(&[0x49, 0x89, 0x02]);
-    code.bytes(&[0x49, 0xc7, 0x42, 0x08, 0, 0, 0, 0]); // explicit BSS zero-fill
+    code.bytes(&[0x49, 0x83, 0xc0, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xe9, 0x08]);
+    code.jump_if(0x85, "data-copy-loop");
+    code.bytes(&[0x4d, 0x85, 0xdb]);
+    code.jump_if(0x84, "data-complete");
+    code.bind("bss-zero-loop")?;
+    code.bytes(&[0x49, 0xc7, 0x02, 0, 0, 0, 0]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xeb, 0x08]);
+    code.jump_if(0x85, "bss-zero-loop");
+    code.bind("data-complete")?;
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x12]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -767,8 +827,11 @@ pub(crate) fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
 
 pub(crate) fn initial_user_elf_file() -> Result<Vec<u8>, CompileError> {
     let mut bytes = initial_user_code_image()?;
-    bytes.resize(INITIAL_USER_DATA_FILE_OFFSET, 0);
-    bytes.extend_from_slice(&[0x6d, 0, 0, 0, 0, 0, 0, 0]);
+    bytes.resize(
+        INITIAL_USER_DATA_FILE_OFFSET + INITIAL_USER_DATA_CAPACITY,
+        0,
+    );
+    bytes[INITIAL_USER_DATA_FILE_OFFSET] = 0x6d;
     Ok(bytes)
 }
 
@@ -842,8 +905,31 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
     entry.jump_if(0x85, "entry-fail");
-    entry.bytes(&[0x49, 0x83, 0x7a, 0x08, 0x00]);
+    entry.bytes(&[0x49, 0xbb]);
+    entry.bytes(&INITIAL_USER_CODE_ADDRESS.to_le_bytes());
+    entry.bytes(&[0x49, 0x8b, 0x8b]); // runtime data p_filesz
+    entry.bytes(
+        &u32::try_from(INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET)
+            .unwrap()
+            .to_le_bytes(),
+    );
+    entry.bytes(&[0x49, 0x8b, 0x93]); // runtime data p_memsz
+    entry.bytes(
+        &u32::try_from(INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET)
+            .unwrap()
+            .to_le_bytes(),
+    );
+    entry.bytes(&[0x49, 0x01, 0xca]); // first BSS qword
+    entry.bytes(&[0x48, 0x29, 0xca]); // complete BSS byte count
+    entry.bytes(&[0x48, 0x85, 0xd2]);
+    entry.jump_if(0x84, "bss-complete");
+    entry.bind("bss-loop")?;
+    entry.bytes(&[0x49, 0x83, 0x3a, 0x00]);
     entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    entry.bytes(&[0x48, 0x83, 0xea, 0x08]);
+    entry.jump_if(0x85, "bss-loop");
+    entry.bind("bss-complete")?;
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&0x0060_0000_u64.to_le_bytes());
     entry.bytes(&[0xff, 0xe0]);
@@ -1015,9 +1101,22 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
                 .map_err(|_| CompileError::Tool("external user data offset exceeds u32".into()))?,
         )
         .ok_or_else(|| CompileError::Tool("external user data offset overflow".into()))?;
+    let data_file_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external data-size offset exceeds u32".into()))?;
+    let data_memory_size_offset = u32::try_from(
+        X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+            + INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET,
+    )
+    .map_err(|_| CompileError::Tool("external BSS-size offset exceeds u32".into()))?;
+    code.bytes(&[0x4d, 0x8b, 0x88]); // runtime p_filesz
+    code.bytes(&data_file_size_offset.to_le_bytes());
+    code.bytes(&[0x4d, 0x8b, 0x98]); // runtime p_memsz
+    code.bytes(&data_memory_size_offset.to_le_bytes());
+    code.bytes(&[0x4d, 0x29, 0xcb]); // BSS bytes = p_memsz - p_filesz
     code.bytes(&[0x49, 0x81, 0xc0]);
     code.bytes(&data_payload_offset.to_le_bytes());
-    code.bytes(&[0x4d, 0x8b, 0x18]); // initialized qword from bounded resource
     code.bytes(&[0xb8, 0x14, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
@@ -1025,11 +1124,24 @@ fn user_load_initial_mapping_byte() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
     code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
-    code.bytes(&[0x4d, 0x39, 0x1a]);
+    code.bind("data-compare-loop")?;
+    code.bytes(&[0x49, 0x8b, 0x00]);
+    code.bytes(&[0x49, 0x39, 0x02]);
     code.jump_if(0x85, "cleanup-fail");
-    code.bytes(&[0x49, 0x83, 0x7a, 0x08, 0x00]); // complete BSS tail remains zero
+    code.bytes(&[0x49, 0x83, 0xc0, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xe9, 0x08]);
+    code.jump_if(0x85, "data-compare-loop");
+    code.bytes(&[0x4d, 0x85, 0xdb]);
+    code.jump_if(0x84, "data-verified");
+    code.bind("bss-compare-loop")?;
+    code.bytes(&[0x49, 0x83, 0x3a, 0x00]);
     code.jump_if(0x85, "cleanup-fail");
-    code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x49, 0x83, 0xeb, 0x08]);
+    code.jump_if(0x85, "bss-compare-loop");
+    code.bind("data-verified")?;
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x14]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
 
     code.bind("cleanup-fail")?;
@@ -3042,7 +3154,7 @@ mod tests {
         assert!(
             user_address_prepare
                 .windows(4)
-                .any(|bytes| bytes == [0x48, 0x89, 0x57, 0x68]),
+                .any(|bytes| bytes == [0x4c, 0x89, 0x57, 0x68]),
             "address-space preparation must retain the allocator-owned backing identity"
         );
         let code_file_size_offset = u32::try_from(
@@ -3072,6 +3184,34 @@ mod tests {
                     .windows(2)
                     .any(|bytes| bytes == [0xa8, 0x07]),
             "address-space preparation must validate a bounded equal qword-complete runtime code extent"
+        );
+        let data_file_size_offset = u32::try_from(
+            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET,
+        )
+        .unwrap();
+        let data_memory_size_offset = u32::try_from(
+            X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
+                + INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET,
+        )
+        .unwrap();
+        assert!(
+            user_address_prepare.windows(7).any(|bytes| {
+                bytes[0..3] == [0x49, 0x8b, 0x80]
+                    && bytes[3..7] == data_file_size_offset.to_le_bytes()
+            }) && user_address_prepare.windows(7).any(|bytes| {
+                bytes[0..3] == [0x49, 0x8b, 0x90]
+                    && bytes[3..7] == data_memory_size_offset.to_le_bytes()
+            }) && user_address_prepare
+                .windows(4)
+                .any(|bytes| bytes == [0x48, 0x83, 0xf8, 0x08])
+                && user_address_prepare
+                    .windows(3)
+                    .any(|bytes| bytes == [0x48, 0x39, 0xd0])
+                && user_address_prepare
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xfa, 0, 0x10, 0, 0]),
+            "address-space preparation must validate bounded ordered qword-complete data and BSS extents"
         );
         let initial_stack = initial_user_stack_bytes();
         assert_eq!(
@@ -3217,8 +3357,14 @@ mod tests {
                     .windows(3)
                     .any(|bytes| bytes == [0x49, 0x89, 0x02])
                 && user_store
-                    .windows(8)
-                    .any(|bytes| bytes == [0x49, 0xc7, 0x42, 0x08, 0, 0, 0, 0])
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0xc7, 0x02, 0, 0, 0, 0])
+                && user_store
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xe9, 0x08])
+                && user_store
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xeb, 0x08])
                 && user_store
                     .windows(4)
                     .any(|bytes| bytes == data_payload_offset.to_le_bytes())
@@ -3228,7 +3374,7 @@ mod tests {
                 && user_store
                     .windows(8)
                     .any(|bytes| bytes == INITIAL_USER_DATA_ADDRESS.to_le_bytes()),
-            "user store must copy the initialized qword from the bounded ELF and zero its BSS tail"
+            "user store must copy the complete runtime data extent and explicitly zero the complete BSS extent"
         );
         let user_install = symbol_bytes(
             &file,
@@ -3238,7 +3384,10 @@ mod tests {
         let code_image = initial_user_code_image().unwrap();
         let elf_file = initial_user_elf_file().unwrap();
         assert_eq!(code_image.len(), 256 + entry_payload.bytes.len());
-        assert_eq!(elf_file.len(), INITIAL_USER_DATA_FILE_OFFSET + 8);
+        assert_eq!(
+            elf_file.len(),
+            INITIAL_USER_DATA_FILE_OFFSET + INITIAL_USER_DATA_CAPACITY
+        );
         assert_eq!(&code_image[0..4], b"\x7fELF");
         assert_eq!(
             u16::from_le_bytes(code_image[18..20].try_into().unwrap()),
@@ -3300,9 +3449,11 @@ mod tests {
             u32::from_le_bytes(code_image[180..184].try_into().unwrap()),
             6
         );
-        assert_eq!(
-            &elf_file[INITIAL_USER_DATA_FILE_OFFSET..],
-            &[0x6d, 0, 0, 0, 0, 0, 0, 0]
+        assert_eq!(elf_file[INITIAL_USER_DATA_FILE_OFFSET], 0x6d);
+        assert!(
+            elf_file[INITIAL_USER_DATA_FILE_OFFSET + 1..]
+                .iter()
+                .all(|byte| *byte == 0)
         );
         assert_eq!(&code_image[256..], entry_payload.bytes.as_slice());
         assert!(
@@ -3468,13 +3619,19 @@ mod tests {
         assert!(
             user_load
                 .windows(3)
-                .any(|bytes| bytes == [0x4d, 0x8b, 0x18])
+                .any(|bytes| bytes == [0x49, 0x8b, 0x00])
                 && user_load
                     .windows(3)
-                    .any(|bytes| bytes == [0x4d, 0x39, 0x1a])
+                    .any(|bytes| bytes == [0x49, 0x39, 0x02])
                 && user_load
-                    .windows(5)
-                    .any(|bytes| bytes == [0x49, 0x83, 0x7a, 0x08, 0x00])
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0x3a, 0x00])
+                && user_load
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xe9, 0x08])
+                && user_load
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xeb, 0x08])
                 && user_load
                     .windows(4)
                     .any(|bytes| bytes == data_payload_offset.to_le_bytes())
@@ -3487,7 +3644,7 @@ mod tests {
                 && user_load
                     .windows(11)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0x80, 0, 0, 0, 0, 0, 0, 0]),
-            "user load must compare external initialized data and the complete BSS tail, revoking on mismatch"
+            "user load must compare complete runtime initialized-data and BSS extents, revoking on mismatch"
         );
         let user_verify = symbol_bytes(
             &file,
