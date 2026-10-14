@@ -289,15 +289,15 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             SOURCE.replace(
-                "mapping is immutable-data",
+                "mapping is writable-data",
                 "mapping is executable-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace(
-                "user mapping seal immutable data verified-data",
-                "user mapping seal immutable data verified-scratch",
+                "user mapping permit writable data verified-data",
+                "user mapping permit writable data verified-scratch",
             ),
             "E-SYSTEMS-USER-CONTEXT",
         ),

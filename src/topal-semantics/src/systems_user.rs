@@ -22,6 +22,8 @@ pub const SYSTEMS_USER_MAPPING_PERMIT_EXECUTE: &str =
     "topal.systems.memory.user-mapping.permit-execute/1";
 pub const SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA: &str =
     "topal.systems.memory.user-mapping.seal-immutable-data/1";
+pub const SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA: &str =
+    "topal.systems.memory.user-mapping.permit-writable-data/1";
 pub const SYSTEMS_USER_ADDRESS_SPACE_UNMAP: &str =
     "topal.systems.memory.user-address-space.unmap/1";
 pub const SYSTEMS_USER_CONTEXT_ENTER: &str = "topal.systems.context.user.enter/1";
@@ -96,6 +98,7 @@ enum UserMappingStage {
     Verified,
     Executable,
     ImmutableData,
+    WritableData,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -501,6 +504,21 @@ impl SystemsUserExecutionProtocol {
         Ok(mapping)
     }
 
+    /// Consume the second verified mapping into its writable-data refinement.
+    pub fn permit_user_mapping_writable_data(
+        &self,
+        mut mapping: UserMapping,
+    ) -> Result<UserMapping, SystemsModelError> {
+        self.validate_user_mapping(&mapping, UserMappingStage::Verified)?;
+        if mapping.mapping_identity != 2 {
+            return Err(user_error(
+                "only the second bounded mapping generation has writable-data role",
+            ));
+        }
+        mapping.stage = UserMappingStage::WritableData;
+        Ok(mapping)
+    }
+
     /// Consume a verified mapping and return its exact original frame extent.
     ///
     /// # Errors
@@ -514,6 +532,7 @@ impl SystemsUserExecutionProtocol {
     ) -> Result<PhysicalFrameRequest, SystemsModelError> {
         if mapping.stage != UserMappingStage::Executable
             && mapping.stage != UserMappingStage::ImmutableData
+            && mapping.stage != UserMappingStage::WritableData
         {
             return Err(user_error(
                 "user unmap requires the exact role-classified affine refinement",
@@ -558,6 +577,7 @@ impl SystemsUserExecutionProtocol {
         }
         if mapping.stage != UserMappingStage::Executable
             && mapping.stage != UserMappingStage::ImmutableData
+            && mapping.stage != UserMappingStage::WritableData
         {
             return Err(user_error(
                 "user unmap requires the exact role-classified affine refinement",
@@ -1233,7 +1253,7 @@ mod tests {
             .unwrap();
         let data_mapping = protocol.load_user_mapping_byte(data_mapping).unwrap();
         let data_mapping = protocol
-            .seal_user_mapping_immutable_data(data_mapping)
+            .permit_user_mapping_writable_data(data_mapping)
             .unwrap();
         assert_eq!(
             protocol
@@ -1305,7 +1325,7 @@ mod tests {
 
     #[test]
     fn rejects_cross_role_user_mapping_finalization() {
-        // TOPAL-SYSTEMS-MAPPING-001, TK-DEC-044.
+        // TOPAL-SYSTEMS-MAPPING-001, TOPAL-SYSTEMS-WRITABLE-DATA-001, TK-DEC-068.
         let mut protocol = SystemsUserExecutionProtocol::initial_linux_x86_64();
         let address_space = protocol
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
@@ -1322,7 +1342,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             protocol
-                .seal_user_mapping_immutable_data(mapping)
+                .permit_user_mapping_writable_data(mapping)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-USER-CONTEXT"

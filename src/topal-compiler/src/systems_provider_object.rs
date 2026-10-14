@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/48";
+    "topal.provider-object.x86_64-qemu-pc-q35/49";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -84,6 +84,8 @@ pub const X86_SYSTEMS_USER_MAPPING_PERMIT_EXECUTE_SYMBOL: &str =
     "topal_x86_systems_user_permit_initial_mapping_execute";
 pub const X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL: &str =
     "topal_x86_systems_user_seal_initial_mapping_immutable_data";
+pub const X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL: &str =
+    "topal_x86_systems_user_permit_initial_mapping_writable_data";
 pub const X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL: &str =
     "topal_x86_systems_user_unmap_initial_frame";
 pub const X86_SYSTEMS_USER_PREPARE_SYMBOL: &str = "topal_x86_systems_user_prepare_initial_probe";
@@ -357,6 +359,10 @@ fn append_user_functions(
         (
             X86_SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA_SYMBOL,
             user_seal_initial_mapping_immutable_data()?,
+        ),
+        (
+            X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
+            user_permit_initial_mapping_writable_data()?,
         ),
         (
             X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
@@ -820,7 +826,7 @@ fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
     bytes[112..120].copy_from_slice(&4096_u64.to_le_bytes());
 
     bytes[120..124].copy_from_slice(&1_u32.to_le_bytes()); // PT_LOAD data
-    bytes[124..128].copy_from_slice(&4_u32.to_le_bytes()); // PF_R
+    bytes[124..128].copy_from_slice(&6_u32.to_le_bytes()); // PF_R | PF_W
     bytes[128..136].copy_from_slice(&(INITIAL_USER_DATA_FILE_OFFSET as u64).to_le_bytes());
     bytes[136..144].copy_from_slice(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
     bytes[144..152].copy_from_slice(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
@@ -956,6 +962,11 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x83, 0xea, 0x08]);
     entry.jump_if(0x85, "bss-loop");
     entry.bind("bss-complete")?;
+    entry.bytes(&[0x49, 0xba]);
+    entry.bytes(&(INITIAL_USER_DATA_ADDRESS + 8).to_le_bytes());
+    entry.bytes(&[0x41, 0xc6, 0x02, 0xa5]);
+    entry.bytes(&[0x41, 0x80, 0x3a, 0xa5]);
+    entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&0x0060_0000_u64.to_le_bytes());
     entry.bytes(&[0xff, 0xe0]);
@@ -1274,6 +1285,38 @@ fn user_seal_initial_mapping_immutable_data() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn user_permit_initial_mapping_writable_data() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x14]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0x80, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf6, 0xc0, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x0f, 0xba, 0xe0, 0x3f]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x49, 0x83, 0xc8, 0x02]);
+    code.bytes(&[0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0xba]);
+    code.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x16]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
@@ -1281,7 +1324,10 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x0e]);
     code.jump_if(0x84, "unmap-code");
     code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x15]);
+    code.jump_if(0x84, "unmap-data");
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x16]);
     code.jump_if(0x85, "fail");
+    code.bind("unmap-data")?;
     code.bytes(&[0xb8, 0x0e, 0x00, 0x00, 0x00]);
     code.bytes(&[0x4c, 0x8b, 0x87, 0x80, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
@@ -1330,7 +1376,7 @@ fn user_prepare_initial_probe() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x3f, 0x00]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x15]);
+    code.bytes(&[0x80, 0xbf, 0x70, 0x00, 0x00, 0x00, 0x16]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xb9]);
     code.bytes(&0xc000_0080_u32.to_le_bytes()); // IA32_EFER
@@ -3169,7 +3215,7 @@ mod tests {
         assert!(
             user_prepare
                 .windows(7)
-                .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x15]),
+                .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x16]),
             "user preparation must require both finalized image mappings resident"
         );
         assert!(
@@ -3426,6 +3472,21 @@ mod tests {
         let code_image = initial_user_code_image().unwrap();
         let elf_file = initial_user_elf_file().unwrap();
         assert_eq!(code_image.len(), 256 + entry_payload.bytes.len());
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == (INITIAL_USER_DATA_ADDRESS + 8).to_le_bytes())
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0xc6, 0x02, 0xa5])
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x80, 0x3a, 0xa5]),
+            "constructed user code must write and read back one BSS byte"
+        );
         assert_eq!(
             elf_file.len(),
             INITIAL_USER_DATA_FILE_OFFSET + INITIAL_USER_DATA_CAPACITY
@@ -3465,7 +3526,7 @@ mod tests {
         );
         assert_eq!(
             u32::from_le_bytes(code_image[124..128].try_into().unwrap()),
-            4
+            6
         );
         assert_eq!(
             u64::from_le_bytes(code_image[128..136].try_into().unwrap()),
@@ -3755,6 +3816,32 @@ mod tests {
                     .windows(7)
                     .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x15]),
             "immutable-data sealing must accept only generation two and preserve its RO/NX permissions"
+        );
+        let writable_data =
+            symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL);
+        assert!(
+            writable_data
+                .windows(7)
+                .any(|bytes| bytes == [0x80, 0xbf, 0x70, 0, 0, 0, 0x14])
+                && writable_data
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0xf6, 0xc0, 0x02])
+                && writable_data
+                    .windows(5)
+                    .any(|bytes| bytes == [0x49, 0x0f, 0xba, 0xe0, 0x3f])
+                && writable_data
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xc8, 0x02])
+                && writable_data
+                    .windows(3)
+                    .any(|bytes| bytes == [0x0f, 0xae, 0xf0])
+                && writable_data
+                    .windows(4)
+                    .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
+                && writable_data
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0x70, 0, 0, 0, 0x16]),
+            "writable-data promotion must accept verified generation two, restore write while retaining NX, and invalidate"
         );
         let user_unmap = symbol_bytes(&file, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL);
         assert!(

@@ -211,7 +211,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   stored-data is completion-resumed user mapping store byte mapped-data
                                                                                                                   protected-data is completion-resumed user mapping protect read only stored-data
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
-                                                                                                                  immutable-data is completion-resumed user mapping seal immutable data verified-data
+                                                                                                                  writable-data is completion-resumed user mapping permit writable data verified-data
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                                                                                                                   user-probe is completion-resumed user probe prepare (
@@ -236,13 +236,14 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                                                                                                                   returned-data is completion-resumed user address space unmap (
                                                                                                                     address-space is user-space,
-                                                                                                                    mapping is immutable-data
+                                                                                                                    mapping is writable-data
                                                                                                                   )
                                                                                                                   completion-resumed frames release returned-data
                                                                                                                   returned-code is completion-resumed user address space unmap (

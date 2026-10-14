@@ -57,9 +57,10 @@ pub use topal_semantics::{
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
-    SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY, SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
-    SYSTEMS_USER_MAPPING_STORE_BYTE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_SYSCALL_DISPATCH, SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
+    SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
+    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_SYSCALL_DISPATCH,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
     SystemsContextKind as CompilerSystemsContextKind,
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
@@ -3152,11 +3153,11 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "second user mapping load must be followed by immutable-data sealing and unmap",
+            "second user mapping load must be followed by writable-data promotion and unmap",
         ));
     };
-    let (immutable_data_scratch_again, seal_again_continuation) =
-        parse_user_mapping_immutable_data_seal(
+    let (writable_data_scratch_again, seal_again_continuation) =
+        parse_user_mapping_writable_data_promotion(
             source,
             seal_mapping_again,
             &completion_resumed,
@@ -3167,7 +3168,7 @@ fn analyze_kernel_context_decision(
         span,
         after_second_seal,
         seal_again_continuation,
-        "second immutable-data seal",
+        "second writable-data promotion",
     )?;
     let [
         image_ready_marker_statement,
@@ -3179,7 +3180,7 @@ fn analyze_kernel_context_decision(
         return Err(user_context_diagnostic(
             source,
             span,
-            "second immutable-data user mapping must publish readiness before user preparation",
+            "second writable-data user mapping must publish readiness before user preparation",
         ));
     };
     let image_ready_marker = analyze_operation(
@@ -3248,6 +3249,7 @@ fn analyze_kernel_context_decision(
         runtime_data_marker_statement,
         external_bss_marker_statement,
         data_marker_statement,
+        writable_data_marker_statement,
         image_copy_to_marker_statement,
         image_copy_from_marker_statement,
         image_syscall_marker_statement,
@@ -3562,6 +3564,23 @@ fn analyze_kernel_context_decision(
             "returned user execution requires its exact constructed-image data marker",
         ));
     }
+    let writable_data_marker = analyze_operation(
+        source,
+        writable_data_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if writable_data_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(writable_data_marker_statement),
+            "returned user execution requires its exact writable-data marker",
+        ));
+    }
     let image_copy_to_marker = analyze_operation(
         source,
         image_copy_to_marker_statement,
@@ -3635,13 +3654,13 @@ fn analyze_kernel_context_decision(
         unmap_mapping_again,
         &completion_resumed,
         &user_space,
-        &immutable_data_scratch_again,
+        &writable_data_scratch_again,
     )?;
     if !unmap_again_continuation.is_empty() {
         return Err(user_context_diagnostic(
             source,
             statement_span(unmap_mapping_again),
-            "immutable-data unmap continuation must remain after returned user execution",
+            "writable-data unmap continuation must remain after returned user execution",
         ));
     }
     parse_physical_frame_release(
@@ -3798,7 +3817,7 @@ fn analyze_kernel_context_decision(
             CompilerSystemsOperation::StoreUserMappingByte,
             CompilerSystemsOperation::ProtectUserMappingReadOnly,
             CompilerSystemsOperation::LoadUserMappingByte,
-            CompilerSystemsOperation::SealUserMappingImmutableData,
+            CompilerSystemsOperation::PermitUserMappingWritableData,
             image_ready_marker,
             boot_resource_marker,
             CompilerSystemsOperation::PrepareUserProbe {
@@ -3822,6 +3841,7 @@ fn analyze_kernel_context_decision(
             runtime_data_marker,
             external_bss_marker,
             data_marker,
+            writable_data_marker,
             image_copy_to_marker,
             image_copy_from_marker,
             image_syscall_marker,
@@ -4289,7 +4309,7 @@ fn parse_user_mapping_execute_promotion<'a>(
     Ok((source.slice(*name).to_owned(), declarations))
 }
 
-fn parse_user_mapping_immutable_data_seal<'a>(
+fn parse_user_mapping_writable_data_promotion<'a>(
     source: &SourceText,
     statement: &'a Statement,
     context_name: &str,
@@ -4311,7 +4331,7 @@ fn parse_user_mapping_immutable_data_seal<'a>(
             return Err(user_context_diagnostic(
                 source,
                 statement_span(statement),
-                "user mapping immutable-data seal must bind its affine refinement",
+                "user mapping writable-data promotion must bind its affine refinement",
             ));
         }
     };
@@ -4319,8 +4339,8 @@ fn parse_user_mapping_immutable_data_seal<'a>(
         receiver,
         user,
         mapping,
-        seal,
-        immutable,
+        permit,
+        writable,
         data,
         verified_mapping,
     ] = items.as_slice()
@@ -4328,21 +4348,21 @@ fn parse_user_mapping_immutable_data_seal<'a>(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user mapping immutable-data seal requires the exact verified mapping refinement",
+            "user mapping writable-data promotion requires the exact verified mapping refinement",
         ));
     };
     if !identifier_is(source, receiver, context_name)
         || !identifier_is(source, user, "user")
         || !identifier_is(source, mapping, "mapping")
-        || !identifier_is(source, seal, "seal")
-        || !identifier_is(source, immutable, "immutable")
+        || !identifier_is(source, permit, "permit")
+        || !identifier_is(source, writable, "writable")
         || !identifier_is(source, data, "data")
         || !identifier_is(source, verified_mapping, mapping_name)
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user mapping seal immutable data requires the second verified refinement",
+            "user mapping permit writable data requires the second verified refinement",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -6002,8 +6022,8 @@ mod tests {
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+                SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
-                SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -6434,7 +6454,7 @@ mod tests {
                 CompilerSystemsTransition::LoadUserMappingByte {
                     mapping_identity: 2,
                 },
-                CompilerSystemsTransition::SealUserMappingImmutableData {
+                CompilerSystemsTransition::PermitUserMappingWritableData {
                     mapping_identity: 2,
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6619,6 +6639,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_IMAGE_DATA_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -6672,7 +6695,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 135);
+        assert_eq!(program.bootstrap.handler.operations.len(), 136);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -6718,8 +6741,8 @@ mod tests {
                 SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
                 SYSTEMS_USER_MAPPING_LOAD_BYTE,
                 SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
+                SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA,
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
-                SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
