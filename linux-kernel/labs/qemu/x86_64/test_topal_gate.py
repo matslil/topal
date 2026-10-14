@@ -29,7 +29,9 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
 
     def test_command_uses_the_pinned_board_without_guest_devices(self) -> None:
-        command = GATE.qemu_command(Path("/tmp/bzImage"), Path("/tmp/serial.log"))
+        command = GATE.qemu_command(
+            Path("/tmp/bzImage"), Path("/tmp/initramfs.cpio"), Path("/tmp/serial.log")
+        )
         joined = " ".join(map(str, command))
         self.assertIn("pc-q35-10.2", joined)
         self.assertIn("qemu64-v1", joined)
@@ -37,23 +39,31 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn("hpet=on", joined)
         self.assertIn("-nodefaults", command)
         self.assertIn("-kernel", command)
+        self.assertIn("-initrd", command)
         self.assertIn("isa-serial", joined)
         self.assertNotIn("-drive", command)
         self.assertNotIn("-netdev", command)
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/44")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/45")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/41")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/42")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/42",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/43",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/6",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/7",
         )
+        self.assertEqual(
+            evidence["boot_resource_schema"],
+            "topal.boot-resource.x86_64-initial-newc/1",
+        )
+        self.assertEqual(evidence["boot_resource_member"], "init")
+        self.assertGreater(evidence["boot_resource_bytes"], 0)
+        self.assertGreater(evidence["initial_user_image_bytes"], 0)
         self.assertEqual(evidence["manifest_sha256"], sha256(LAB / "manifest.json"))
         self.assertEqual(
             evidence["source_sha256"],
@@ -68,6 +78,8 @@ class TopalToolchainGateTests(unittest.TestCase):
             "linked_kernel_sha256",
             "artifact_provenance_sha256",
             "boot_image_sha256",
+            "boot_resource_sha256",
+            "initial_user_image_sha256",
             "boot_provenance_sha256",
         ):
             self.assertRegex(evidence[field], r"^[0-9a-f]{64}$")
@@ -99,6 +111,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
                 "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
                 "TOPAL_KERNEL_USER_IMAGE_READY",
+                "TOPAL_KERNEL_BOOT_RESOURCE_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_FROM_OK",
                 "TOPAL_KERNEL_USER_SYSCALL_OK",

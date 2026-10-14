@@ -1239,6 +1239,7 @@ struct BootstrapAuthorityState {
     kernel_completion: BootstrapKernelCompletionState,
     user_execution: BootstrapUserExecutionState,
     resident_user_image_ready: bool,
+    initial_boot_resource_validated: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -1906,11 +1907,12 @@ impl BootstrapAuthorityState {
                 if *process_identity != 1
                     || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
+                    || !self.initial_boot_resource_validated
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user probe preparation requires PID one, the ready resident image, no source-owned extent, and no live critical scope",
+                        "user probe preparation requires PID one, the validated boot resource, the ready resident image, no source-owned extent, and no live critical scope",
                     ));
                 }
                 self.user_execution =
@@ -2127,6 +2129,23 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.resident_user_image_ready = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_BOOT_RESOURCE_OK" => {
+                if self.user_execution
+                    != BootstrapUserExecutionState::MappingImmutableData(
+                        INITIAL_MULTI_FRAME_REQUEST,
+                        2,
+                    )
+                    || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || self.initial_boot_resource_validated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "boot-resource witness requires one validated opaque resource with both finalized role mappings resident",
+                    ));
+                }
+                self.initial_boot_resource_validated = true;
             }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
@@ -4777,6 +4796,9 @@ mod tests {
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
                         },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_BOOT_RESOURCE_OK".into(),
+                        },
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
@@ -5013,6 +5035,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_FRAME_DISJOINT_OK"
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                        || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -5310,6 +5333,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_READY".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_BOOT_RESOURCE_OK".into(),
                 },
                 SystemsTransition::PrepareUserProbe {
                     process_identity: 1,
@@ -6229,6 +6255,7 @@ mod tests {
                     operation,
                     SystemsOperation::ConsoleWrite { text }
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
+                            || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"

@@ -46,6 +46,7 @@ MARKERS = (
     b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
     b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
     b"TOPAL_KERNEL_USER_IMAGE_READY",
+    b"TOPAL_KERNEL_BOOT_RESOURCE_OK",
     b"TOPAL_KERNEL_USER_COPY_TO_OK",
     b"TOPAL_KERNEL_USER_COPY_FROM_OK",
     b"TOPAL_KERNEL_USER_SYSCALL_OK",
@@ -105,7 +106,7 @@ def verify_host() -> str:
     return version
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path]:
+def build_image(destination: Path) -> tuple[Path, Path, Path, Path]:
     linked = destination / "linked"
     compiler_command = [
         "cargo",
@@ -144,15 +145,16 @@ def build_image(destination: Path) -> tuple[Path, Path, Path]:
     print("+", " ".join(packaging_command), flush=True)
     subprocess.run(packaging_command, cwd=REPOSITORY, check=True)
     image = boot / "bzImage"
+    boot_resource = boot / "initramfs.cpio"
     boot_provenance = boot / "boot-provenance.json"
     artifact_provenance = linked / "provenance.json"
-    for path in (image, boot_provenance, artifact_provenance):
+    for path in (image, boot_resource, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
-    return image, boot_provenance, artifact_provenance
+    return image, boot_resource, boot_provenance, artifact_provenance
 
 
-def qemu_command(image: Path, serial: Path) -> list[str]:
+def qemu_command(image: Path, boot_resource: Path, serial: Path) -> list[str]:
     data = manifest()
     emulator = data["emulator"]
     machine = data["machine"]
@@ -197,11 +199,15 @@ def qemu_command(image: Path, serial: Path) -> list[str]:
         "isa-serial,chardev=serial0,index=0",
         "-kernel",
         str(image),
+        "-initrd",
+        str(boot_resource),
     ]
 
 
-def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> bytes:
-    command = qemu_command(image, serial)
+def observe_gate(
+    image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float
+) -> bytes:
+    command = qemu_command(image, boot_resource, serial)
     print("+", " ".join(map(str, command)), flush=True)
     with qemu_log.open("wb") as output:
         process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT)
@@ -239,6 +245,7 @@ def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> b
 def evidence_record(
     qemu_version: str,
     image: Path,
+    boot_resource: Path,
     boot_provenance: Path,
     artifact_provenance: Path,
     serial: bytes,
@@ -247,7 +254,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/44",
+        "schema": "topal-kernel-toolchain-gate-qemu/45",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -258,9 +265,15 @@ def evidence_record(
         "provider": boot["provider"],
         "artifact_schema": artifact["schema"],
         "boot_schema": boot["schema"],
+        "boot_resource_schema": boot["boot_resource_schema"],
+        "boot_resource_member": boot["boot_resource_member"],
+        "boot_resource_bytes": boot["boot_resource_bytes"],
+        "initial_user_image_bytes": boot["initial_user_image_bytes"],
+        "initial_user_image_sha256": boot["initial_user_image_sha256"],
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
+        "boot_resource_sha256": digest(boot_resource),
         "boot_provenance_sha256": digest(boot_provenance),
         "observations": {
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
@@ -278,11 +291,16 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
         root = Path(temporary)
-        image, boot_provenance, artifact_provenance = build_image(root / "artifact")
+        image, boot_resource, boot_provenance, artifact_provenance = build_image(
+            root / "artifact"
+        )
+        boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
+        if digest(boot_resource) != boot["boot_resource_sha256"]:
+            raise GateError("published boot resource does not match boot provenance")
         serial_path = root / "serial.log"
         qemu_log = root / "qemu.log"
         try:
-            serial = observe_gate(image, serial_path, qemu_log, timeout)
+            serial = observe_gate(image, boot_resource, serial_path, qemu_log, timeout)
         except GateError as error:
             serial_text = (
                 serial_path.read_text(encoding="utf-8", errors="replace")
@@ -298,7 +316,12 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         record = evidence_record(
-            qemu_version, image, boot_provenance, artifact_provenance, serial
+            qemu_version,
+            image,
+            boot_resource,
+            boot_provenance,
+            artifact_provenance,
+            serial,
         )
     if write_evidence:
         EVIDENCE_PATH.parent.mkdir(parents=True, exist_ok=True)

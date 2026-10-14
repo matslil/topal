@@ -8,13 +8,14 @@ use object::{
 };
 use topal_language::compiler::CompilerSystemsProgram;
 
+use crate::systems_boot_resource::generate_initial_boot_resource;
 use crate::{
     CompileError, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsProviderPlan,
     plan_x86_64_systems_provider,
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/41";
+    "topal.provider-object.x86_64-qemu-pc-q35/42";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -380,6 +381,7 @@ fn append_user_functions(
 
 fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
+    let expected_boot_resource = generate_initial_boot_resource(&initial_user_code_image()?)?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
     if probe.len() > 4096 {
         return Err(CompileError::Tool(
@@ -397,6 +399,37 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     code.bytes(&[0x80, 0x3f, 0x00]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // retained Linux boot_params
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x83, 0xbe, 0xc0, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_image
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xbe, 0xc4, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_size
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x44, 0x8b, 0x86, 0x18, 0x02, 0x00, 0x00]); // ramdisk_image
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x8b, 0x8e, 0x1c, 0x02, 0x00, 0x00]); // ramdisk_size
+    code.bytes(&[0x81, 0xf9]);
+    code.bytes(
+        &u32::try_from(expected_boot_resource.len())
+            .map_err(|_| CompileError::Tool("initial boot resource exceeds u32".into()))?
+            .to_le_bytes(),
+    );
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xc0, 0x48, 0x01, 0xc8]); // resource end
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x40]); // within initial identity map
+    code.jump_if(0x87, "fail");
+    for (offset, expected) in expected_boot_resource.iter().copied().enumerate() {
+        code.bytes(&[0x41, 0x80, 0xb8]); // cmp byte ptr [r8 + displacement], immediate
+        code.bytes(
+            &u32::try_from(offset)
+                .map_err(|_| CompileError::Tool("boot resource offset exceeds u32".into()))?
+                .to_le_bytes(),
+        );
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fail");
+    }
     code.bytes(&[0x49, 0x89, 0xf9]); // retain state in r9
     code.bytes(&[0x48, 0x89, 0x57, 0x68]); // retain backing identity
     code.bytes(&[0x49, 0x89, 0xd0]); // publish through supervisor identity mapping
@@ -655,7 +688,7 @@ fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
     bytes
 }
 
-fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
+pub(crate) fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
     let payload = initial_user_entry_payload()?;
     let image_size = 256_u64
         .checked_add(u64::try_from(payload.bytes.len()).unwrap_or(u64::MAX))
@@ -2032,6 +2065,34 @@ fn append_encoded_function(
     });
 }
 
+fn emit_initial_boot_resource_handoff_validation(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    let expected = generate_initial_boot_resource(&initial_user_code_image()?)?;
+    let expected_size = u32::try_from(expected.len())
+        .map_err(|_| CompileError::Tool("initial boot resource exceeds u32".into()))?;
+    code.bytes(&[0x83, 0xbe, 0xc0, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_image
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xbe, 0xc4, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_size
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x44, 0x8b, 0x86, 0x18, 0x02, 0x00, 0x00]); // resource base
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x8b, 0x8e, 0x1c, 0x02, 0x00, 0x00]); // resource size
+    code.bytes(&[0x81, 0xf9]);
+    code.bytes(&expected_size.to_le_bytes());
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4d, 0x89, 0xc1, 0x49, 0x01, 0xc9]); // resource end
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x00, 0x00, 0x40]); // initial map limit
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x41, 0x81, 0x38, 0x30, 0x37, 0x30, 0x37]); // `0707`
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x66, 0x41, 0x81, 0x78, 0x04, 0x30, 0x31]); // `01`
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
 fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xf6]); // test rsi, rsi
@@ -2040,6 +2101,7 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]); // setup_data == 0
     code.jump_if(0x85, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
     code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]); // e820_entries
     code.bytes(&[0x85, 0xc9]); // test ecx, ecx
     code.jump_if(0x84, "fail");
@@ -2117,6 +2179,8 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]); // setup_data == 0
     code.jump_if(0x85, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    code.bytes(&[0x49, 0x89, 0xd0]); // restore byte count after handoff validation
     code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]); // e820_entries
     code.bytes(&[0x85, 0xc9]);
     code.jump_if(0x84, "fail");
@@ -2160,6 +2224,15 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4d, 0x01, 0xc2]);
     code.jump_if(0x82, "fail");
     code.bind("extent-ready")?;
+    code.bytes(&[0x44, 0x8b, 0x8e, 0x18, 0x02, 0x00, 0x00]); // resource base
+    code.bytes(&[0x44, 0x8b, 0x9e, 0x1c, 0x02, 0x00, 0x00]); // resource size
+    code.bytes(&[0x4d, 0x01, 0xcb]); // resource end
+    code.bytes(&[0x4d, 0x39, 0xca]); // extent end <= resource base
+    code.jump_if(0x86, "resource-disjoint");
+    code.bytes(&[0x4c, 0x39, 0xd8]); // candidate >= resource end
+    code.jump_if(0x83, "resource-disjoint");
+    code.jump("next");
+    code.bind("resource-disjoint")?;
     code.bytes(&[0x4d, 0x39, 0xda]); // extent end <= RAM end
     code.jump_if(0x87, "next");
     code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x00, 0x00, 0x40]); // end <= 1 GiB
@@ -2188,6 +2261,7 @@ fn translation_backing_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0x83, 0xbe, 0x50, 0x02, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
     code.bytes(&[0x0f, 0xb6, 0x8e, 0xe8, 0x01, 0x00, 0x00]);
     code.bytes(&[0x85, 0xc9]);
     code.jump_if(0x84, "fail");
@@ -2217,6 +2291,15 @@ fn translation_backing_selector() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x89, 0xc2]); // end of 5 pages = candidate
     code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x50, 0x00, 0x00]);
     code.jump_if(0x82, "next");
+    code.bytes(&[0x44, 0x8b, 0x8e, 0x18, 0x02, 0x00, 0x00]); // resource base
+    code.bytes(&[0x44, 0x8b, 0x9e, 0x1c, 0x02, 0x00, 0x00]); // resource size
+    code.bytes(&[0x4d, 0x01, 0xcb]); // resource end
+    code.bytes(&[0x4d, 0x39, 0xca]); // extent end <= resource base
+    code.jump_if(0x86, "resource-disjoint");
+    code.bytes(&[0x4c, 0x39, 0xd8]); // candidate >= resource end
+    code.jump_if(0x83, "resource-disjoint");
+    code.jump("next");
+    code.bind("resource-disjoint")?;
     code.bytes(&[0x4d, 0x39, 0xda]); // candidate + 5 pages <= RAM end
     code.jump_if(0x87, "next");
     code.bytes(&[0x48, 0x3d, 0x00, 0xb0, 0xff, 0x3f]); // all backing below 1 GiB

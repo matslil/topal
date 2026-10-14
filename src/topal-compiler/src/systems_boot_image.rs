@@ -10,6 +10,11 @@ use object::{
 use serde::{Deserialize, Serialize};
 
 use crate::artifact::sha256;
+use crate::systems_boot_resource::{
+    X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
+    X86_INITIAL_BOOT_RESOURCE_REVISION, generate_initial_boot_resource,
+};
+use crate::systems_provider_object::initial_user_code_image;
 use crate::{
     CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
     X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
@@ -18,7 +23,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/6";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/7";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -70,6 +75,12 @@ pub struct X86LinuxBootImageProvenance {
     pub provider: String,
     pub linked_kernel_sha256: String,
     pub boot_image_sha256: String,
+    pub boot_resource_schema: String,
+    pub boot_resource_member: String,
+    pub boot_resource_bytes: u64,
+    pub boot_resource_sha256: String,
+    pub initial_user_image_bytes: u64,
+    pub initial_user_image_sha256: String,
     pub protected_payload_bytes: u64,
     pub kernel_entry: u64,
     pub debug_break_entry: u64,
@@ -81,6 +92,7 @@ pub struct X86LinuxBootImageProvenance {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedX86LinuxBootImage {
     pub bytes: Vec<u8>,
+    pub boot_resource: Vec<u8>,
     pub provenance: X86LinuxBootImageProvenance,
 }
 
@@ -88,6 +100,7 @@ pub struct GeneratedX86LinuxBootImage {
 pub struct PublishedX86LinuxBootImage {
     pub directory: PathBuf,
     pub image: PathBuf,
+    pub boot_resource: PathBuf,
     pub provenance: PathBuf,
     pub record: X86LinuxBootImageProvenance,
 }
@@ -157,8 +170,11 @@ pub fn generate_x86_64_linux_boot_image(
     bytes.extend_from_slice(&protected);
     let linked_kernel_sha256 = sha256(kernel);
     let boot_image_sha256 = sha256(&bytes);
+    let initial_user_image = initial_user_code_image()?;
+    let boot_resource = generate_initial_boot_resource(&initial_user_image)?;
     Ok(GeneratedX86LinuxBootImage {
         bytes,
+        boot_resource: boot_resource.clone(),
         provenance: X86LinuxBootImageProvenance {
             schema: X86_LINUX_BOOT_ADAPTER_REVISION.into(),
             protocol: X86_LINUX_BOOT_PROTOCOL,
@@ -174,6 +190,16 @@ pub fn generate_x86_64_linux_boot_image(
             provider: artifact.provider.clone(),
             linked_kernel_sha256,
             boot_image_sha256,
+            boot_resource_schema: X86_INITIAL_BOOT_RESOURCE_REVISION.into(),
+            boot_resource_member: X86_INITIAL_BOOT_RESOURCE_MEMBER.into(),
+            boot_resource_bytes: u64::try_from(boot_resource.len()).map_err(|_| {
+                CompileError::Tool("initial boot resource size exceeds provenance limits".into())
+            })?,
+            boot_resource_sha256: sha256(&boot_resource),
+            initial_user_image_bytes: u64::try_from(initial_user_image.len()).map_err(|_| {
+                CompileError::Tool("initial user image size exceeds provenance limits".into())
+            })?,
+            initial_user_image_sha256: sha256(&initial_user_image),
             protected_payload_bytes: u64::from(protected_size),
             kernel_entry,
             debug_break_entry,
@@ -208,6 +234,9 @@ pub fn publish_x86_64_linux_boot_image(
     let result = (|| {
         let image = stage.join(X86_BOOT_IMAGE_FILE);
         fs::write(&image, &generated.bytes).map_err(io_error("write staged boot image", &image))?;
+        let boot_resource = stage.join(X86_INITIAL_BOOT_RESOURCE_FILE);
+        fs::write(&boot_resource, &generated.boot_resource)
+            .map_err(io_error("write staged boot resource", &boot_resource))?;
         let mut encoded = serde_json::to_vec_pretty(&generated.provenance).map_err(|error| {
             CompileError::Tool(format!("cannot encode boot-image provenance: {error}"))
         })?;
@@ -231,6 +260,7 @@ pub fn publish_x86_64_linux_boot_image(
     Ok(PublishedX86LinuxBootImage {
         directory: destination.to_owned(),
         image: destination.join(X86_BOOT_IMAGE_FILE),
+        boot_resource: destination.join(X86_INITIAL_BOOT_RESOURCE_FILE),
         provenance: destination.join(X86_BOOT_PROVENANCE_FILE),
         record: generated.provenance,
     })
@@ -1030,11 +1060,23 @@ mod tests {
             generated.provenance.boot_image_sha256,
             sha256(&generated.bytes)
         );
+        assert_eq!(
+            generated.provenance.boot_resource_sha256,
+            sha256(&generated.boot_resource)
+        );
+        assert_eq!(
+            generated.provenance.boot_resource_schema,
+            X86_INITIAL_BOOT_RESOURCE_REVISION
+        );
+        assert_eq!(
+            generated.provenance.boot_resource_member,
+            X86_INITIAL_BOOT_RESOURCE_MEMBER
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 
     #[test]
-    fn atomically_publishes_a_deterministic_image_and_provenance_pair() {
+    fn atomically_publishes_a_deterministic_image_resource_and_provenance() {
         // TOPAL-SYSTEMS-ARTIFACT-001, TOPAL-SYSTEMS-QUALIFY-001.
         let parent = temporary_parent();
         let (kernel, artifact) = linked_kernel(&parent);
@@ -1042,7 +1084,7 @@ mod tests {
             publish_x86_64_linux_boot_image(&kernel, &artifact, &parent.join("first")).unwrap();
         let second =
             publish_x86_64_linux_boot_image(&kernel, &artifact, &parent.join("second")).unwrap();
-        assert_eq!(fs::read_dir(&first.directory).unwrap().count(), 2);
+        assert_eq!(fs::read_dir(&first.directory).unwrap().count(), 3);
         assert_eq!(
             fs::read(&first.image).unwrap(),
             fs::read(&second.image).unwrap()
@@ -1050,6 +1092,10 @@ mod tests {
         assert_eq!(
             fs::read(&first.provenance).unwrap(),
             fs::read(&second.provenance).unwrap()
+        );
+        assert_eq!(
+            fs::read(&first.boot_resource).unwrap(),
+            fs::read(&second.boot_resource).unwrap()
         );
         let decoded: X86LinuxBootImageProvenance =
             serde_json::from_slice(&fs::read(&first.provenance).unwrap()).unwrap();

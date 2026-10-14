@@ -173,7 +173,10 @@ invalidation and retains it while a separately allocated, disjoint frame is
 mapped at the sealed data location. The second mapping remains RO/NX when it
 is sealed as immutable data. The intervening
 `TOPAL_KERNEL_USER_IMAGE_READY` marker is emitted while both role owners still
-coexist. Both mappings then remain resident while the existing sealed probe
+coexist. The following `TOPAL_KERNEL_BOOT_RESOURCE_OK` marker proves that the
+provider validated the complete deterministic CPIO resource supplied through
+QEMU `-initrd` and kept its physical extent outside frame allocation. Both
+mappings then remain resident while the existing sealed probe
 begins at the constructed code mapping with an aligned sealed initial stack.
 The constructed entry validates and consumes exact `argc`, `argv`, empty
 environment, provider-consistent `AT_PAGESZ=4096`, `AT_ENTRY=0x604000` bound
@@ -217,5 +220,5 @@ stack, transfer candidates, and deliberate `0x602000` fault guard. The harness
 proves QEMU is still running and the serial stream is quiescent in the fatal
 halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
-manifest, firmware, generated artifacts, provider, QEMU identity, and observed
-serial bytes by digest.
+manifest, firmware, generated artifacts, external boot resource, provider,
+QEMU identity, and observed serial bytes by digest.
