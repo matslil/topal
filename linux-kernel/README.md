@@ -560,6 +560,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
 - [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
+- [Step 4 initial scalar identity syscalls](step-4-initial-scalar-identity-syscalls.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

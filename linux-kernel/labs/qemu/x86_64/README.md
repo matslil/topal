@@ -229,8 +229,10 @@ initial values in private process state, accepts calls from any finalized
 executable continuation, and clears both values during data-role teardown.
 Image construction zeroes the complete page tail from runtime `p_filesz`, so
 bounded heap growth cannot reveal allocator residue. The continuation then
-invokes `getpid`, requires PID one, takes the
-same trap on mismatch, and issues
+invokes the Linux x86-64 scalar identity family `getpid`, `gettid`, `getppid`,
+`getuid`, `geteuid`, `getgid`, and `getegid`. It requires PID and TID one and
+the single-process root namespace values zero, takes the same trap on any
+mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
