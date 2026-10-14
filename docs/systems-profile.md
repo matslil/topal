@@ -703,6 +703,16 @@ does not grant a source-visible address, allocate another page, define virtual-
 memory areas, or admit `mmap`, overcommit, resource limits, concurrent address-
 space edits, or general heap policy.
 
+The scalar initial-identity refinement exposes the already-sealed PID-one root
+identity through Linux-compatible `getpid`, `getppid`, `gettid`, `getuid`,
+`geteuid`, `getgid`, and `getegid` results. Dispatch requires the live initial
+context and a return continuation in the finalized executable mapping, returns
+PID and TID one, parent PID zero, and coherent real/effective UID/GID zero, and
+retains no argument or pointer. These constants must agree with the initial
+credential auxiliary-vector facts. This is not a process table, credential
+transition service, namespace view, supplementary-group model, or reusable
+identity API.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
