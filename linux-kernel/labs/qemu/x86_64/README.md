@@ -232,7 +232,11 @@ bounded heap growth cannot reveal allocator residue. The continuation then
 invokes the Linux x86-64 scalar identity family `getpid`, `gettid`, `getppid`,
 `getuid`, `geteuid`, `getgid`, and `getegid`. It requires PID and TID one and
 the single-process root namespace values zero, takes the same trap on any
-mismatch, and issues
+mismatch, then uses `arch_prctl` to select an FS base in its writable data
+mapping, read it back through a fault-contained writable stack word, disable it
+with zero, and read back zero. The provider installs `IA32_FS_BASE`, retains no
+user pointer, and clears private and physical state before data teardown. It
+then issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
