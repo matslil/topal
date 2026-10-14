@@ -308,6 +308,21 @@ shall cover canonical output closure, repeatable publication, and tamper
 rejection; pinned-QEMU evidence shall bind the published image digest through
 the boot resource and completed user execution.
 
+The supplied initial user-image increment shall accept
+`--initial-user-image PATH` only for qualified systems publication. Before
+creating publication state, the compiler shall read the complete file and
+validate the current x86-64 bounded ELF envelope: exact file and ELF class,
+machine, type, header, program-header, segment-layout, immutable-metadata, and
+alignment facts; relational page-bounded executable and data/BSS sizes; and an
+entry strictly inside the executable file extent. Executable payload and
+initialized-data bytes shall remain caller authority. Successful publication
+shall copy those exact bytes to the canonical image and bind them through the
+existing content provenance without the host path. Unreadable, duplicate,
+nonsystems, malformed, or out-of-profile input shall fail before publication.
+Tests shall cover every rejected field class, path-independent repeatability,
+a supplied payload distinct from the generated default, exact-byte boot
+packaging, and deterministic pinned-QEMU execution.
+
 The first executable bootstrap-region increment shall accept only an
 exhaustively handled static allocation request whose capacity and alignment
 are proven against the artifact pool. It shall check a closed success action
