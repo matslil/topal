@@ -731,6 +731,14 @@ private candidate and completing user execution. This is one single-thread
 lifecycle hook, not cloning, futex service, robust-list processing, or a
 general task table.
 
+The initial-thread robust-list refinement permits Linux-compatible
+`set_robust_list` for one readable 24-byte native head whose list is empty and
+whose pending pointer is null at terminal exit. Registration retains the
+candidate privately without dereference. Terminal exit copies and validates
+the complete head under fault recovery before clearing private state. This
+qualifies empty libc registration; it does not walk entries, mutate futex
+words, wake waiters, or define multiple-thread recovery.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
