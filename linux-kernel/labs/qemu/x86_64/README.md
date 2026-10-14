@@ -221,7 +221,15 @@ contains no expected input value or baked candidate/call-site equality oracle.
 User mode validates the count and all four bytes before restoring its stack.
 `TOPAL_KERNEL_USER_READ_OK` is the first source-owned post-return witness and
 proves that path reached terminal completion.
-The continuation then invokes `getpid`, requires PID one, takes the
+The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
+initial break, grow it by 16 bytes, write and read the first newly admitted
+heap byte, shrink back to the initial break, and prove that an out-of-range
+growth returns the unchanged prior break. The provider keeps current and
+initial values in private process state, accepts calls from any finalized
+executable continuation, and clears both values during data-role teardown.
+Image construction zeroes the complete page tail from runtime `p_filesz`, so
+bounded heap growth cannot reveal allocator residue. The continuation then
+invokes `getpid`, requires PID one, takes the
 same trap on mismatch, and issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,

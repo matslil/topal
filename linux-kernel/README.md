@@ -429,6 +429,14 @@ records input-value-neutral exact-fill reception, complete private staging
 before user publication, Linux-compatible argument errors, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The following systems-only refinement adds a
+[bounded initial-process program break](design/bounded-initial-brk.md) within
+the existing writable data page. Its
+[implementation and qualification report](step-4-bounded-initial-brk.md)
+records runtime-ELF-derived private state, complete future-heap zeroing,
+query/grow/write-read/shrink/failure behavior, teardown clearing, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
