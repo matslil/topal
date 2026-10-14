@@ -235,8 +235,11 @@ the single-process root namespace values zero, takes the same trap on any
 mismatch, then uses `arch_prctl` to select an FS base in its writable data
 mapping, read it back through a fault-contained writable stack word, disable it
 with zero, and read back zero. The provider installs `IA32_FS_BASE`, retains no
-user pointer, and clears private and physical state before data teardown. It
-then issues
+user pointer, and clears private and physical state before data teardown. The
+application also initializes a writable data word and registers it with
+`set_tid_address`, requiring the TID-one result. Terminal dispatch zeros that
+word under fault recovery and clears the private candidate before completing
+the user lifecycle. It then issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,
