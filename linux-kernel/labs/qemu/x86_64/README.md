@@ -211,6 +211,9 @@ credential fact group,
 program-header table, selected entry, and initial PHDR facts agree,
 `TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK` proves that the executable mapping was
 populated from the validated external `init` member before W^X finalization,
+`TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK` proves that the finalized mapping
+was compared completely back to that same external payload without a second
+provider-embedded executable identity,
 `TOPAL_KERNEL_USER_IMAGE_DATA_OK` proves the data observation succeeded, and
 `TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK` proves the constructed output transfer,
 `TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK` proves the constructed input transfer,
