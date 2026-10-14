@@ -198,7 +198,7 @@ fn requires_exact_affine_user_syscall_round_trip() {
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (
-            SOURCE.replace("read-byte is 113", "read-byte is 114"),
+            SOURCE.replace("read-maximum-bytes is 256", "read-maximum-bytes is 255"),
             "E-SYSTEMS-USER-CONTEXT",
         ),
         (

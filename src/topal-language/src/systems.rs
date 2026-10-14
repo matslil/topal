@@ -960,13 +960,13 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[10], "write-descriptor")? != 1
         || field_natural(source, &fields[11], "write-maximum-bytes")? != 256
         || field_natural(source, &fields[12], "read-descriptor")? != 0
-        || field_natural(source, &fields[13], "read-byte")? != u64::from(b'q')
+        || field_natural(source, &fields[13], "read-maximum-bytes")? != 256
         || field_natural(source, &fields[14], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
             *span,
-            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write stdout, read the sealed stdin byte, and terminate exit_group with status zero",
+            "user syscall dispatch must exhaustively return PID one, publish the sealed uname value, accept zero-duration nanosleep, write bounded stdout, read bounded stdin, and terminate exit_group with status zero",
         ));
     }
     let disposition = CompilerSystemsDisposition::DispatchInitialUserSyscall {
@@ -983,7 +983,7 @@ fn analyze_user_syscall_handler(
         write_descriptor: 1,
         write_maximum_bytes: 256,
         read_descriptor: 0,
-        read_byte: u64::from(b'q'),
+        read_maximum_bytes: 256,
         exit_group_status: 0,
     };
     Ok(CompilerSystemsHandler {

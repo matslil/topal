@@ -331,7 +331,7 @@ pub enum SystemsDisposition {
         write_descriptor: u64,
         write_maximum_bytes: u64,
         read_descriptor: u64,
-        read_byte: u64,
+        read_maximum_bytes: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -1182,7 +1182,7 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 write_descriptor: 1,
                 write_maximum_bytes: 256,
                 read_descriptor: 0,
-                read_byte: u64::from(b'q'),
+                read_maximum_bytes: 256,
                 exit_group_status: 0,
             })
     {
@@ -3557,7 +3557,7 @@ fn model_user_execution_transition(
                     write_descriptor: _,
                     write_maximum_bytes: _,
                     read_descriptor: _,
-                    read_byte: _,
+                    read_maximum_bytes: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -5180,7 +5180,7 @@ mod tests {
                         write_descriptor: 1,
                         write_maximum_bytes: 256,
                         read_descriptor: 0,
-                        read_byte: u64::from(b'q'),
+                        read_maximum_bytes: 256,
                         exit_group_status: 0,
                     },
                     effects: vec![

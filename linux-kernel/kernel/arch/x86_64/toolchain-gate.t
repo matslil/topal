@@ -444,7 +444,7 @@ user-syscall-handler is fn (
     write-descriptor is 1,
     write-maximum-bytes is 256,
     read-descriptor is 0,
-    read-byte is 113,
+    read-maximum-bytes is 256,
     exit-group-status is 0
   )
 

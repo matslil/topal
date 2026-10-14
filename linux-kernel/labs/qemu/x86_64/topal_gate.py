@@ -24,7 +24,7 @@ BUILD_ROOT = LINUX_KERNEL / "build" / "x86_64" / "topal-toolchain-gate"
 MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
-SERIAL_INPUT = b"q"
+SERIAL_INPUT = b"read"
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
     b"TOPAL_KERNEL_FRAME_MAPPED",
@@ -340,7 +340,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/57",
+        "schema": "topal-kernel-toolchain-gate-qemu/58",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
