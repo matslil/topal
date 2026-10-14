@@ -713,6 +713,16 @@ credential auxiliary-vector facts. This is not a process table, credential
 transition service, namespace view, supplementary-group model, or reusable
 identity API.
 
+The initial x86-64 thread-pointer refinement permits Linux-compatible
+`arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
+initial thread. A nonzero selected FS base must lie within an already-owned
+readable user mapping; zero disables the base. The provider retains it as private thread state, installs it for
+user execution, and clears it before the user mappings are revoked. `GET_FS`
+publishes the same value only through an already-owned writable user extent.
+This target-qualified boundary exposes neither an MSR nor a register, and it
+does not define portable TLS layout, allocation, multiple threads, or a general
+architecture-control interface.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

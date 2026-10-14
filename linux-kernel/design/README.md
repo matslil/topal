@@ -73,6 +73,7 @@ records, not this directory alone, define language meaning.
 - [Bounded general standard-input read](bounded-general-stdin-read.md)
 - [Bounded initial-process program break](bounded-initial-brk.md)
 - [Initial-process scalar identity syscalls](initial-scalar-identity-syscalls.md)
+- [Initial x86-64 user FS-base control](initial-x86-fs-base.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
