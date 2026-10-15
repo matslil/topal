@@ -1520,6 +1520,58 @@ grant or claim general PCI enumeration, assigned-BAR discovery or mapping,
 bus mastering, device-register access, virtio feature negotiation, interrupts,
 DMA, or entropy delivery.
 
+### TOPAL-SYSTEMS-PCI-REGION-001 — Checked region-register access
+
+The bootstrap platform authority MAY derive one transaction-scoped PCI region
+session for one checked register read or write. A request SHALL carry a PCI
+segment and BDF, selected PCI configuration-access capability offset, BAR index
+in `0..5`, BAR-relative region offset and length, register-relative offset,
+access width, direction, and expected or written value. The complete access
+extent SHALL fit within the region without overflow. The value SHALL fit the
+access width. Invalid or target-unrepresentable requests SHALL be rejected
+before artifact generation.
+
+Each operation SHALL perform exactly one observable register access of the
+specified width and direction, consume the transaction session, and return the
+bootstrap authority only after completion. A read SHALL prove equality or
+enter the fatal disposition. A write SHALL publish exactly the supplied value.
+Neither access may be invented, removed, duplicated, widened, combined, or
+reordered across a conflicting event.
+
+Source/library code SHALL own device identity, capability selection, BAR and
+relative-region selection, register protocol, width, direction, value and
+driver policy. The provider SHALL own configuration-gateway or opaque-mapping
+realization, assigned-address resolution, ordering, serialization, privilege,
+memory attributes, and fault behavior. Source SHALL NOT receive an assigned
+BAR address, addressed-I/O port, or physical mapping token from this operation.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001 — Bounded feature negotiation
+
+The initial profile SHALL admit only region offset zero, length `0x1000`, BAR
+4, configuration-access capability offset `0x84`, and function
+`0000:00:05.0`. It SHALL perform exactly the following ordered accesses to the
+virtio common configuration region. Tuples are
+`(direction, register-offset-bytes, width-bytes, value)`:
+
+| Phase | Required tuples |
+| --- | --- |
+| reset | `(write, 0x14, 1, 0)`, `(read, 0x14, 1, 0)` |
+| acknowledge driver | `(write, 0x14, 1, 1)`, `(read, 0x14, 1, 1)`, `(write, 0x14, 1, 3)`, `(read, 0x14, 1, 3)` |
+| observe device features | `(write, 0x00, 4, 0)`, `(read, 0x04, 4, 0x30000000)`, `(write, 0x00, 4, 1)`, `(read, 0x04, 4, 0x00000101)` |
+| publish driver features | `(write, 0x08, 4, 0)`, `(write, 0x0c, 4, 0)`, `(write, 0x08, 4, 1)`, `(write, 0x0c, 4, 1)` |
+| accept features | `(write, 0x14, 1, 11)`, `(read, 0x14, 1, 11)` |
+
+The model SHALL assign transaction identities 1 through 16 in source order.
+The selected driver feature words SHALL accept only
+`VIRTIO_F_VERSION_1` from the exact observed device words. The read after
+status value 11 SHALL establish that the device retained `FEATURES_OK`. The
+profile SHALL leave `DRIVER_OK` clear until queue discovery, setup, and
+population are complete. Any mismatch SHALL be fatal.
+
+The profile SHALL NOT claim arbitrary register access, alternate features,
+queue selection or setup, interrupt configuration, bus mastering, DMA,
+notification, completion, entropy delivery, or failed-device recovery.
+
 ### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
 
 A DMA buffer SHALL have exactly one of `CpuOwned`, `Prepared`, `DeviceOwned`,

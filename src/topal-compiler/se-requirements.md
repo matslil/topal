@@ -444,6 +444,15 @@ before lowering. Each operation shall retain its request and monotonically
 assigned transaction identity; duplicates, omissions, reordering, alternate
 values, and reads outside the sequence shall be rejected.
 
+The PCI region-register refinement shall retain the function, selected
+configuration-access capability, BAR index, BAR-relative region, register
+offset, width, direction, value, and monotonically assigned transaction
+identity. It shall reject overflow, out-of-region access, unsupported widths,
+and non-sealed requests. The bounded virtio negotiation shall accept only its
+exact 16-operation sequence through confirmed `FEATURES_OK`, leave `DRIVER_OK`
+clear for later queue setup, and reject omission, duplication, reordering,
+substitution, or a status transition not confirmed by a following read.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -460,6 +469,14 @@ address/data transaction, compare the request's exact expected value, and fail
 terminally on mismatch. Structural evidence shall prove one generated call per
 request and the shared `0xcf8` write/`0xcfc` read provider operation without
 exposing either port to source.
+
+For bounded PCI region access, the x86-64 provider shall configure the selected
+Virtio PCI Configuration Access capability and access its data field using the
+register's exact byte or dword width. It shall serialize the complete gateway
+transaction with other configuration accesses and shall not interpret common
+configuration offsets, feature bits, or status values. Structural evidence
+shall prove the private mechanism-1 access sequences and one typed provider
+call for each checked region transaction.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
