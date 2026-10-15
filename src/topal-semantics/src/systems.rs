@@ -52,6 +52,8 @@ pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
 pub const INITIAL_SYSTEMS_BOARD: &str = "topal-qemu-pc-q35-10.2";
 pub const INITIAL_SYSTEMS_PROFILE: &str = "topal.systems.x86_64-qemu-pc-q35-10.2/1";
 pub const SYSTEMS_CONSOLE_WRITE: &str = "topal.systems.device.console.write/1";
+pub const SYSTEMS_PCI_CONFIGURATION_READ_DWORD: &str =
+    "topal.systems.device.pci-configuration.read-dword/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
 pub const SYSTEMS_RESUME_DEBUG_BREAK: &str = "topal.systems.disposition.resume-debug-break/1";
 pub const SYSTEMS_FATAL: &str = "topal.systems.disposition.fatal/1";
@@ -92,6 +94,38 @@ pub enum SystemsContextKind {
     DeadlineInterrupt,
     KernelThread,
     UserSyscall,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PciConfigurationDwordRequest {
+    pub segment: u16,
+    pub bus: u8,
+    pub device: u8,
+    pub function: u8,
+    pub register_offset_bytes: u8,
+    pub expected_value: u32,
+}
+
+impl PciConfigurationDwordRequest {
+    #[must_use]
+    pub const fn initial_q35_virtio_rng_identity() -> Self {
+        Self {
+            segment: 0,
+            bus: 0,
+            device: 5,
+            function: 0,
+            register_offset_bytes: 0,
+            expected_value: 0x1044_1af4,
+        }
+    }
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.device <= 31
+            && self.function <= 7
+            && self.register_offset_bytes <= 252
+            && self.register_offset_bytes % 4 == 0
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -153,6 +187,9 @@ pub enum SystemsOperation {
     },
     ConsoleWrite {
         text: String,
+    },
+    ObservePciConfigurationDword {
+        request: PciConfigurationDwordRequest,
     },
     DebugBreak,
     BootstrapAllocate {
@@ -257,6 +294,7 @@ impl SystemsOperation {
             Self::EnterCritical { .. } => SYSTEMS_CRITICAL_ENTER,
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
+            Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::BootstrapStoreByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -464,6 +502,10 @@ pub enum SystemsTransition {
     },
     ConsoleWrite {
         text: String,
+    },
+    ObservePciConfigurationDword {
+        transaction_identity: u64,
+        request: PciConfigurationDwordRequest,
     },
     ObserveDebugBreak,
     EnterDebugBreak,
@@ -790,6 +832,7 @@ impl SystemsTransition {
             Self::EnterCritical { .. } => SYSTEMS_CRITICAL_ENTER,
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
+            Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
             Self::ResumeDebugBreak => SYSTEMS_RESUME_DEBUG_BREAK,
@@ -1338,6 +1381,7 @@ struct BootstrapAuthorityState {
     constructed_user_image_copy_from_completed: bool,
     constructed_user_image_syscall_completed: bool,
     resident_user_image_retained: bool,
+    pci_configuration_observed: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1587,6 +1631,20 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.monotonic_clock_observations += 1;
+            }
+            SystemsOperation::ObservePciConfigurationDword { request } => {
+                if self.pci_configuration_observed
+                    || !self.allocator_created
+                    || !self.critical_stack.is_empty()
+                    || !request.is_well_formed()
+                    || *request != PciConfigurationDwordRequest::initial_q35_virtio_rng_identity()
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-PCI-CONFIG",
+                        "the initial PCI configuration observation requires the sealed Q35 virtio-rng identity request and a restored bootstrap context",
+                    ));
+                }
+                self.pci_configuration_observed = true;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -4557,6 +4615,12 @@ fn model_bootstrap_operation(
         SystemsOperation::ConsoleWrite { text } => {
             transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
         }
+        SystemsOperation::ObservePciConfigurationDword { request } => {
+            transitions.push(SystemsTransition::ObservePciConfigurationDword {
+                transaction_identity: 1,
+                request: *request,
+            });
+        }
         SystemsOperation::DebugBreak => {
             return Ok(model_debug_break(debug_break_handler, transitions));
         }
@@ -4866,6 +4930,9 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::ObserveMonotonicClock => {
             unreachable!("monotonic-clock observations are modeled by the caller")
+        }
+        SystemsOperation::ObservePciConfigurationDword { .. } => {
+            unreachable!("PCI configuration observations are modeled by the caller")
         }
         SystemsOperation::ConstructDeadline { .. }
         | SystemsOperation::ArmDeadline

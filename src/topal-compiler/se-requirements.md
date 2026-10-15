@@ -431,6 +431,11 @@ device and DMA protocols, storage, placement, and artifact obligations. Every
 systems operation shall retain a stable semantic identity and required target
 evidence; LLVM spelling shall not enter the checked model.
 
+The first device refinement shall retain one PCI segment/BDF, aligned dword
+register offset, expected value, and transaction identity in the checked model.
+The checker shall reject out-of-range, misaligned, non-sealed, or unsupported
+requests before lowering and shall not infer PCI enumeration or virtio policy.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -440,6 +445,12 @@ fault-recovery, context-transfer, privileged, atomic, ordering, and device
 support without source assembly, instruction templates, programmer-selected
 registers, or a generic intrinsic escape. AArch64 and RISC-V review evidence
 shall not mark their backends executable-qualified.
+
+For the bounded Q35 PCI observation, the x86-64 provider shall accept only the
+sealed segment-zero `00:05.0` register-zero request, serialize one mechanism-1
+address/data transaction, compare the exact `0x10441af4` result, and fail
+terminally on mismatch. Structural evidence shall prove generated `0xcf8`
+write and `0xcfc` read instructions without exposing either port to source.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,

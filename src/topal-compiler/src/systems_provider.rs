@@ -19,7 +19,8 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
     SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
     SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
@@ -41,7 +42,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/70";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/71";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -114,6 +115,7 @@ pub enum X86SystemsLowering {
     PlainBootstrapRegionLoadByte,
     ConsumeBootstrapRegion,
     CompleteBootstrapStorage,
+    PciConfigurationMechanismOneReadDword,
     PolledUart16550PortIo,
     BreakpointVector3,
     InterruptReturn,
@@ -256,6 +258,9 @@ impl X86SystemsLowering {
             Self::PlainBootstrapRegionLoadByte => "topal.provider.x86_64.storage.plain-load-byte/1",
             Self::ConsumeBootstrapRegion => "topal.provider.x86_64.storage.consume-region/1",
             Self::CompleteBootstrapStorage => "topal.provider.x86_64.storage.complete-bootstrap/1",
+            Self::PciConfigurationMechanismOneReadDword => {
+                "topal.provider.x86_64.pci-configuration.mechanism-one-read-dword/1"
+            }
             Self::PolledUart16550PortIo => "topal.provider.x86_64.uart16550.polled-port-io/1",
             Self::BreakpointVector3 => "topal.provider.x86_64.exception.breakpoint-vector-3/1",
             Self::InterruptReturn => "topal.provider.x86_64.exception.interrupt-return/1",
@@ -269,7 +274,8 @@ impl X86SystemsLowering {
     pub const fn requires_privileged_machine_state(self) -> bool {
         matches!(
             self,
-            Self::PolledUart16550PortIo
+            Self::PciConfigurationMechanismOneReadDword
+                | Self::PolledUart16550PortIo
                 | Self::ActivateTranslationRoot
                 | Self::CommitActiveTranslationEdit
                 | Self::CaptureAndMaskLocalInterrupts
@@ -511,6 +517,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE => X86SystemsLowering::PlainBootstrapRegionLoadByte,
         SYSTEMS_BOOTSTRAP_STORAGE_RELEASE => X86SystemsLowering::ConsumeBootstrapRegion,
         SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE => X86SystemsLowering::CompleteBootstrapStorage,
+        SYSTEMS_PCI_CONFIGURATION_READ_DWORD => {
+            X86SystemsLowering::PciConfigurationMechanismOneReadDword
+        }
         SYSTEMS_CONSOLE_WRITE => X86SystemsLowering::PolledUart16550PortIo,
         SYSTEMS_DEBUG_BREAK => X86SystemsLowering::BreakpointVector3,
         SYSTEMS_RESUME_DEBUG_BREAK => X86SystemsLowering::InterruptReturn,
@@ -621,6 +630,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::PlainBootstrapRegionLoadByte => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             X86SystemsLowering::ConsumeBootstrapRegion => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
             X86SystemsLowering::CompleteBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
+            X86SystemsLowering::PciConfigurationMechanismOneReadDword => {
+                SYSTEMS_PCI_CONFIGURATION_READ_DWORD
+            }
             X86SystemsLowering::PolledUart16550PortIo => SYSTEMS_CONSOLE_WRITE,
             X86SystemsLowering::BreakpointVector3 => SYSTEMS_DEBUG_BREAK,
             X86SystemsLowering::InterruptReturn => SYSTEMS_RESUME_DEBUG_BREAK,
@@ -660,7 +672,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 65);
+        assert_eq!(plan.operations.len(), 66);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -689,6 +701,10 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_ALLOCATE
                 && operation.lowering == X86SystemsLowering::E820StaticFrameExtentSelect
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_PCI_CONFIGURATION_READ_DWORD
+                && operation.lowering == X86SystemsLowering::PciConfigurationMechanismOneReadDword
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_RELEASE

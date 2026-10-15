@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/70";
+    "topal.provider-object.x86_64-qemu-pc-q35/71";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -100,6 +100,8 @@ pub const X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL: &str =
     "topal_x86_systems_user_reclaim_initial_address_space";
 pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispatch_initial_syscall";
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
+pub const X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL: &str =
+    "topal_x86_systems_pci_configuration_read_dword_equals";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 pub(crate) const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
 const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
@@ -125,6 +127,14 @@ enum X86Instruction {
     MoveUartDataPortToDx,
     MoveByteArgumentToAl,
     OutputByteToPort,
+    MovePciAddressPortToDx,
+    MoveDwordSelectorToEax,
+    OutputDwordToPort,
+    MovePciDataPortToDx,
+    InputDwordFromPort,
+    CompareDwordWithExpected,
+    SetEqualAl,
+    ZeroExtendAlToEax,
     Breakpoint,
     InterruptReturn,
     DisableInterrupts,
@@ -149,6 +159,18 @@ impl X86Instruction {
             }
             Self::MoveByteArgumentToAl => output.extend_from_slice(&[0x40, 0x88, 0xf8]),
             Self::OutputByteToPort => output.push(0xee),
+            Self::MovePciAddressPortToDx => {
+                output.extend_from_slice(&[0x66, 0xba, 0xf8, 0x0c]);
+            }
+            Self::MoveDwordSelectorToEax => output.extend_from_slice(&[0x89, 0xf8]),
+            Self::OutputDwordToPort => output.push(0xef),
+            Self::MovePciDataPortToDx => {
+                output.extend_from_slice(&[0x66, 0xba, 0xfc, 0x0c]);
+            }
+            Self::InputDwordFromPort => output.push(0xed),
+            Self::CompareDwordWithExpected => output.extend_from_slice(&[0x39, 0xf0]),
+            Self::SetEqualAl => output.extend_from_slice(&[0x0f, 0x94, 0xc0]),
+            Self::ZeroExtendAlToEax => output.extend_from_slice(&[0x0f, 0xb6, 0xc0]),
             Self::Breakpoint => output.push(0xcc),
             Self::InterruptReturn => output.extend_from_slice(&[0x48, 0xcf]),
             Self::DisableInterrupts => output.push(0xfa),
@@ -195,6 +217,22 @@ pub fn generate_x86_64_systems_provider_object(
             X86Instruction::MoveUartDataPortToDx,
             X86Instruction::MoveByteArgumentToAl,
             X86Instruction::OutputByteToPort,
+            X86Instruction::Return,
+        ],
+    );
+    append_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+        &[
+            X86Instruction::MovePciAddressPortToDx,
+            X86Instruction::MoveDwordSelectorToEax,
+            X86Instruction::OutputDwordToPort,
+            X86Instruction::MovePciDataPortToDx,
+            X86Instruction::InputDwordFromPort,
+            X86Instruction::CompareDwordWithExpected,
+            X86Instruction::SetEqualAl,
+            X86Instruction::ZeroExtendAlToEax,
             X86Instruction::Return,
         ],
     );
@@ -4286,6 +4324,13 @@ mod tests {
                     0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20, 0x74, 0xfb, 0x66, 0xba, 0xf8, 0x03,
                     0x40, 0x88, 0xf8, 0xee, 0xc3,
                 ][..],
+            ),
+            (
+                X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+                &[
+                    0x66, 0xba, 0xf8, 0x0c, 0x89, 0xf8, 0xef, 0x66, 0xba, 0xfc, 0x0c, 0xed, 0x39,
+                    0xf0, 0x0f, 0x94, 0xc0, 0x0f, 0xb6, 0xc0, 0xc3,
+                ],
             ),
             ("topal_x86_systems_debug_break", &[0xcc, 0xc3]),
             ("topal_x86_systems_interrupt_return", &[0x48, 0xcf]),

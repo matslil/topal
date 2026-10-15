@@ -910,6 +910,14 @@ buffer ownership through explicit CPU, prepared, device, completion/failure,
 and reclamation states with mapping, cache, notification, and completion
 evidence. Coherent hardware shall not erase the protocol or evidence boundary.
 
+The initial PCI configuration refinement shall derive one transaction-scoped
+session from bootstrap platform authority. It shall validate segment and BDF
+coordinates plus an aligned dword register offset, perform exactly one
+observable little-endian read, and either prove an expected value before
+returning the authority or fail terminally. The provider shall select and
+serialize the configuration mechanism without owning enumeration, matching,
+resource assignment, capability walking, virtio negotiation, or driver binding.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

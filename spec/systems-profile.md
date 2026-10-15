@@ -1463,6 +1463,36 @@ Target-specific addressed-I/O facilities SHALL satisfy the same resource,
 effect, context, and lifetime rules even when they are not MMIO. Knowledge of
 an address or port number SHALL grant no session or access capability.
 
+### TOPAL-SYSTEMS-PCI-CONFIG-001 — Bounded configuration observation
+
+The bootstrap platform authority MAY derive one transaction-scoped PCI
+configuration session for a checked dword observation. Its request SHALL carry
+a segment in `0..65535`, bus in `0..255`, device in `0..31`, function in
+`0..7`, register offset in `0..252` divisible by four, and expected
+little-endian 32-bit value. Invalid or target-unrepresentable requests SHALL be
+rejected before artifact generation.
+
+The operation SHALL perform exactly one observable 32-bit configuration read,
+consume the transaction session, and return the same bootstrap authority only
+after equality with the expected value is proved. Access failure or mismatch
+SHALL enter the fatal disposition. The read SHALL NOT be invented, removed,
+duplicated, widened, combined, or reordered across a conflicting device event.
+
+The provider SHALL own configuration-mechanism selection, access ordering,
+serialization, privilege, and target fault behavior. Source and ordinary
+kernel/library code SHALL own the PCI coordinates, register selection,
+comparison, enumeration, matching, resource interpretation, and driver policy.
+An x86 provider MAY use configuration mechanism 1; an ECAM provider MAY use a
+qualified mapped window. Neither representation SHALL expose port or physical
+addresses to source or grant device-register, BAR, interrupt, DMA, or virtio
+authority.
+
+The initial x86-64 Q35 profile SHALL admit only segment zero and the sealed
+observation of register zero at `00:05.0`, expecting the combined modern
+virtio-rng device/vendor value `0x10441af4`. It SHALL NOT claim general PCI
+enumeration, BAR access, capability discovery, bus mastering, virtio feature
+negotiation, interrupts, DMA, or entropy delivery.
+
 ### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
 
 A DMA buffer SHALL have exactly one of `CpuOwned`, `Prepared`, `DeviceOwned`,
