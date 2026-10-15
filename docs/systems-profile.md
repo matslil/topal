@@ -1214,6 +1214,17 @@ visibility, notification, completion source, and reclamation. Coherent and
 noncoherent providers implement the same ownership contract; a no-operation
 maintenance path still needs qualified evidence.
 
+The initial PCI configuration refinement derives one transaction-scoped
+configuration session from the bootstrap platform authority. Source supplies a
+PCI segment, bus, device, function, aligned configuration-register offset, and
+expected little-endian 32-bit value. The observable read occurs exactly once
+and either proves equality before returning the bootstrap authority or enters
+the fatal disposition. The provider owns the configuration access mechanism
+and transaction serialization, but not enumeration, matching, capability
+walking, BAR interpretation, or driver binding. Thus an x86 port-I/O lowering
+and an ECAM lowering preserve the same source meaning without making PCI bus
+policy a compiler intrinsic.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
