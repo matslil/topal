@@ -560,6 +560,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded initial `AT_ENTRY` auxiliary-vector fact](step-4-initial-auxv-entry.md)
 - [Step 4 bounded initial `AT_EXECFN` auxiliary-vector fact](step-4-initial-auxv-execfn.md)
 - [Step 4 bounded initial credential auxiliary-vector facts](step-4-initial-auxv-credentials.md)
+- [Step 4 bounded initial `AT_SECURE` fact](step-4-initial-auxv-secure.md)
 - [Step 4 initial scalar identity syscalls](step-4-initial-scalar-identity-syscalls.md)
 - [Step 4 initial x86-64 FS-base control](step-4-initial-x86-fs-base.md)
 - [Step 4 initial clear-child-TID word](step-4-initial-clear-child-tid.md)

@@ -766,6 +766,13 @@ facts. Dispatch shall retain no argument, pointer, or mutable identity state.
 A missing family member, wrong or inconsistent result, non-executable return,
 wrong lifecycle state, or result after terminal disposition shall fail closed.
 
+The initial-process entry adapter shall publish a native zero-valued
+`AT_SECURE` auxiliary-vector fact after the existing program-header facts and
+before `AT_NULL`. It shall agree with the sealed credentials and absence of a
+privilege-changing execution transition. Constructed code shall validate the
+ordered pair, the moved terminator, and complete bounded-stack consumption.
+Wrong order, value, termination, aliasing, or consumption shall fail closed.
+
 The initial x86-64 thread-pointer adapter shall accept only
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` for the live initial
 thread and an executable user return continuation. `SET_FS` shall require zero
