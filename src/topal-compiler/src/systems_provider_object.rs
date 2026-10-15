@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/65";
+    "topal.provider-object.x86_64-qemu-pc-q35/66";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1059,6 +1059,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.bytes(&[0xb8, 0xff, 0xff, 0xff, 0x7f, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xda]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // bounded stdout payload
     for (offset, value) in [
         (0_u8, u64::from_le_bytes(*b"TOPAL_KE")),
@@ -1978,7 +1981,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "nanosleep");
     code.bytes(&[0x3d, 0xe7, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "exit-group");
-    code.jump("fail");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
 
     code.bind("getpid")?;
     code.bytes(&[0x48, 0x81, 0xf9]);
@@ -5615,6 +5619,9 @@ mod tests {
                     .windows(9)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x44, 0x24, 0x08, 0x0a, 0, 0, 0])
                 && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff])
+                && user_syscall
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_6000_u64.to_le_bytes())
                 && user_syscall
@@ -5629,7 +5636,7 @@ mod tests {
                 && user_syscall
                     .windows(9)
                     .any(|bytes| bytes == [0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0, 0, 0]),
-            "the userspace adapter must retain bounded VM lifecycle, monotonic clock, and clock-resolution dispatch"
+            "the userspace adapter must retain bounded VM lifecycle, clock dispatch, and unsupported-syscall failure"
         );
         assert_eq!(
             entry_payload
@@ -5648,6 +5655,15 @@ mod tests {
                 .count(),
             2,
             "constructed code must prove exact and null monotonic clock-resolution queries"
+        );
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0xff, 0xff, 0xff, 0x7f, 0x0f, 0x05])
+                .count(),
+            1,
+            "constructed code must prove one recoverable unsupported-syscall result"
         );
         assert_eq!(
             entry_payload
