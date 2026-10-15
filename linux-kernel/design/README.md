@@ -87,6 +87,7 @@ records, not this directory alone, define language meaning.
 - [Bounded monotonic `clock_gettime`](bounded-monotonic-clock-gettime.md)
 - [Bounded monotonic `clock_getres`](bounded-monotonic-clock-getres.md)
 - [Bounded unsupported-syscall `ENOSYS` fallback](bounded-unsupported-syscall-enosys.md)
+- [Bounded initial `sched_yield`](bounded-initial-sched-yield.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
