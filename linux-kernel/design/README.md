@@ -89,6 +89,7 @@ records, not this directory alone, define language meaning.
 - [Bounded unsupported-syscall `ENOSYS` fallback](bounded-unsupported-syscall-enosys.md)
 - [Bounded initial `sched_yield`](bounded-initial-sched-yield.md)
 - [Bounded PCI configuration observation](bounded-pci-configuration-observation.md)
+- [Bounded virtio-PCI capability discovery](bounded-virtio-pci-capability-discovery.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
