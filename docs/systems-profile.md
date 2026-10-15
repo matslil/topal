@@ -792,6 +792,12 @@ nondecreasing order across completed calls. Counter selection, frequency,
 rollover, and conversion remain provider-private. This does not define
 realtime, vDSO, timers, adjustment, clock namespaces, or SMP migration.
 
+The corresponding bounded resolution refinement permits Linux-compatible
+`clock_getres(CLOCK_MONOTONIC)`. It publishes the exact normalized resolution
+of the qualified provider source through an optional complete native timespec
+output. The initial x86-64 profile reports ten nanoseconds. This adds no new
+clock identity, timer service, or portable counter representation.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
