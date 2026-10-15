@@ -292,6 +292,13 @@ state. Structural and pinned-QEMU evidence shall prove every dispatch number,
 broad executable-return validation, constant coherence, application result
 checks, and terminal continuation.
 
+The initial x86-64 stack adapter shall place native `AT_SECURE` with value zero
+after the program-header facts and before the unique `AT_NULL`. It shall shift
+the bounded block without changing the `argv[0]`/`AT_EXECFN` string alias.
+Constructed code shall validate the pair, terminator, and exact enlarged block
+consumption. Structural and pinned-QEMU evidence shall prove placement, value,
+alias identity, stack alignment, and continued application execution.
+
 The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
 codes `0x1002` and `0x1003`, a live initial context, and a return continuation
 inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or

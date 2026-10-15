@@ -683,6 +683,27 @@ candidate state at mapping teardown SHALL be invalid. This rule SHALL NOT
 expose a syscall number, user address, native field offset, futex word, list
 walker, wake queue, clone service, or general robust-list authority to source.
 
+### TOPAL-SYSTEMS-USER-AUXV-SECURE-001 — Non-secure initial execution
+
+The sole initial process MAY receive one native `AT_SECURE` auxiliary-vector
+entry. It SHALL follow the validated program-header fact group, SHALL precede
+the unique `AT_NULL` terminator, and SHALL contain value zero. The value SHALL
+agree with the sealed real/effective credential facts and the absence of any
+set-user-ID, set-group-ID, file-capability, or security-module execution
+transition.
+
+The provider SHALL own the native tag, word layout, placement, and initial
+stack construction. Constructed user code SHALL validate the exact ordered tag
+and value, the following terminator, and complete bounded-block consumption
+before continuing. Existing `argv[0]` and `AT_EXECFN` SHALL retain exact alias
+identity after the stack layout grows.
+
+A nonzero or missing value, wrong ordering, duplicate fact or terminator,
+credential disagreement, broken alias, incomplete consumption, or unbounded
+stack access SHALL be invalid. This rule SHALL NOT add privilege transitions,
+capabilities, security modules, environment filtering, `AT_RANDOM`, or a
+general auxiliary-vector builder.
+
 ### TOPAL-SYSTEMS-USER-RLIMIT-STACK-001 — Initial stack-limit query
 
 The initial-process profile MAY dispatch Linux-compatible
