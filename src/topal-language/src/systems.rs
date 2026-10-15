@@ -27,6 +27,7 @@ pub use topal_semantics::{
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
+    PciConfigurationDwordRequest as CompilerPciConfigurationDwordRequest,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
     SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
     SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -47,16 +48,16 @@ pub use topal_semantics::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
-    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
-    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
-    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
+    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
+    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -6114,6 +6115,34 @@ fn analyze_operation(
         return Ok(CompilerSystemsOperation::ConsoleWrite { text: text.into() });
     }
     if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            pci,
+            configuration,
+            dword,
+            read,
+            equals,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, pci, "pci")
+        && identifier_is(source, configuration, "configuration")
+        && identifier_is(source, dword, "dword")
+        && identifier_is(source, read, "read")
+        && identifier_is(source, equals, "equals")
+    {
+        let request = parse_pci_configuration_dword_request(source, fields, *span)?;
+        if request != CompilerPciConfigurationDwordRequest::initial_q35_virtio_rng_identity() {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                *span,
+                "the initial Q35 profile admits only the sealed segment-zero 00:05.0 register-zero virtio-rng identity observation",
+            ));
+        }
+        return Ok(CompilerSystemsOperation::ObservePciConfigurationDword { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
         && let [receiver, debug, break_operation] = items.as_slice()
         && identifier_is(source, receiver, context_name)
         && identifier_is(source, debug, "debug")
@@ -6154,6 +6183,105 @@ fn analyze_operation(
         *span,
         "operation is not admitted by this live systems entry context",
     ))
+}
+
+fn parse_pci_configuration_dword_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerPciConfigurationDwordRequest, Diagnostic> {
+    const LABELS: [&str; 6] = [
+        "segment",
+        "bus",
+        "device",
+        "function",
+        "register-offset-bytes",
+        "expected-value",
+    ];
+    if fields.len() != LABELS.len() {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-CONFIG",
+            span,
+            "PCI configuration dword observation requires exactly segment, bus, device, function, register-offset-bytes, and expected-value",
+        ));
+    }
+    let mut values = [0_u64; 6];
+    for ((field, expected_label), value) in fields.iter().zip(LABELS).zip(&mut values) {
+        let Some(label) = field.label else {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                field.value.span(),
+                format!("PCI configuration dword observation requires named `{expected_label}`"),
+            ));
+        };
+        if source.slice(label) != expected_label {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                label,
+                format!(
+                    "PCI configuration dword observation requires `{expected_label}` in source order"
+                ),
+            ));
+        }
+        *value = parse_storage_natural(source, &field.value)?;
+    }
+    let request = CompilerPciConfigurationDwordRequest {
+        segment: u16::try_from(values[0]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                span,
+                "PCI segment exceeds 65535",
+            )
+        })?,
+        bus: u8::try_from(values[1]).map_err(|_| {
+            source_diagnostic(source, "E-SYSTEMS-PCI-CONFIG", span, "PCI bus exceeds 255")
+        })?,
+        device: u8::try_from(values[2]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                span,
+                "PCI device exceeds 31",
+            )
+        })?,
+        function: u8::try_from(values[3]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                span,
+                "PCI function exceeds 7",
+            )
+        })?,
+        register_offset_bytes: u8::try_from(values[4]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                span,
+                "PCI register offset exceeds 252",
+            )
+        })?,
+        expected_value: u32::try_from(values[5]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG",
+                span,
+                "PCI expected value exceeds 32 bits",
+            )
+        })?,
+    };
+    if !request.is_well_formed() {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-CONFIG",
+            span,
+            "PCI configuration request requires device 0..31, function 0..7, and a four-byte-aligned register offset in 0..252",
+        ));
+    }
+    Ok(request)
 }
 
 fn analyze_disposition(
@@ -6336,6 +6464,7 @@ mod tests {
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
+                SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -6475,6 +6604,14 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_MEMORY_DESCRIBED".into(),
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 1,
+                    request: CompilerPciConfigurationDwordRequest::initial_q35_virtio_rng_identity(
+                    ),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7047,7 +7184,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 141);
+        assert_eq!(program.bootstrap.handler.operations.len(), 143);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7075,6 +7212,7 @@ mod tests {
                 SYSTEMS_CRITICAL_ENTER,
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
+                SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -7151,6 +7289,26 @@ mod tests {
                 text: "TOPAL_KERNEL_MEMORY_OK".into(),
             })
         );
+    }
+
+    #[test]
+    fn requires_the_sealed_bounded_pci_configuration_observation() {
+        // TOPAL-SYSTEMS-PCI-CONFIG-001.
+        for source in [
+            memory_source().replace("expected-value is 272898804", "expected-value is 0"),
+            memory_source().replace(
+                "register-offset-bytes is 0,\n                                                                    expected-value",
+                "register-offset-bytes is 2,\n                                                                    expected-value",
+            ),
+            memory_source().replace("device is 5", "device is 32"),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-PCI-CONFIG");
+        }
     }
 
     #[test]

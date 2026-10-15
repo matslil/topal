@@ -78,6 +78,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                       critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
                                                                       restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 0,
+                                                                    expected-value is 272898804
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"
