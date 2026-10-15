@@ -773,6 +773,12 @@ privilege-changing execution transition. Constructed code shall validate the
 ordered pair, the moved terminator, and complete bounded-stack consumption.
 Wrong order, value, termination, aliasing, or consumption shall fail closed.
 
+The entry adapter shall publish native `AT_CLKTCK` with Linux `USER_HZ` value
+100 after `AT_SECURE` and before `AT_NULL`. It shall remain distinct from
+hardware and scheduler frequencies. Constructed code shall validate its exact
+order and value, the moved terminator, preserved executable-name alias, and
+complete bounded-stack consumption; disagreement shall fail closed.
+
 The initial x86-64 thread-pointer adapter shall accept only
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` for the live initial
 thread and an executable user return continuation. `SET_FS` shall require zero
