@@ -389,6 +389,13 @@ zero-second/ten-nanosecond pair under page-fault recovery, retain no pointer,
 and agree with the qualified HPET conversion. Structural and pinned-QEMU
 evidence shall prove exact output, null-output success, and balanced storage.
 
+The initial userspace syscall adapter shall return x86-64 Linux `-ENOSYS` for
+every number not selected by an implemented dispatch arm. The fallback shall
+return through the retained executable continuation without inspecting unused
+arguments or changing state. Structural and pinned-QEMU evidence shall prove
+one deliberate unsupported call, its exact result, and a later successful
+implemented call.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
