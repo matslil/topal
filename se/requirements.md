@@ -836,6 +836,14 @@ bits, wrong ranges, absent mappings, executable publication, stale access,
 content loss, or incomplete invalidation shall fail closed or return the
 declared Linux error without changing the prior state.
 
+The adapter shall accept Linux `madvise(MADV_DONTNEED)` for the exact active
+anonymous page and a nonzero length no greater than one base page. It shall
+eagerly zero the complete backing through kernel authority while preserving the
+mapping generation and its current inaccessible, read-only, or read-write
+non-executable protection. Unsupported advice or ranges, absent mappings,
+partial zeroing, state change, or stale contents shall fail closed or return the
+declared Linux error without changing the prior contents or state.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
