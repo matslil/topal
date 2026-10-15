@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/64";
+    "topal.provider-object.x86_64-qemu-pc-q35/65";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1045,6 +1045,20 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump_if(0x82, "fail");
     continuation.bind("clock-gettime-order-ok")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]);
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00, 0x48, 0x89, 0xe6]);
+    continuation.bytes(&[0xb8, 0xe5, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x08, 0x0a]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00, 0x31, 0xf6]);
+    continuation.bytes(&[0xb8, 0xe5, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // bounded stdout payload
     for (offset, value) in [
         (0_u8, u64::from_le_bytes(*b"TOPAL_KE")),
@@ -1946,6 +1960,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "identity-one");
     code.bytes(&[0x3d, 0xe4, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "clock-gettime");
+    code.bytes(&[0x3d, 0xe5, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "clock-getres");
     code.bytes(&[0x3d, 0x9e, 0x00, 0x00, 0x00]);
     code.jump_if(0x84, "arch-prctl");
     code.bytes(&[0x3d, 0xda, 0x00, 0x00, 0x00]);
@@ -2357,6 +2373,52 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
     code.bind("clock-gettime-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("clock-getres")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x01]);
+    code.jump_if(0x85, "clock-getres-einval");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "clock-getres-success");
+    code.bytes(&[0x49, 0x89, 0xf1, 0x49, 0x89, 0xf0, 0x49, 0x83, 0xc0, 0x10]);
+    code.jump_if(0x82, "clock-getres-efault");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "clock-getres-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "clock-getres-candidate-ok");
+    code.bind("clock-getres-second-range")?;
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "clock-getres-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "clock-getres-efault");
+    code.bind("clock-getres-candidate-ok")?;
+    code.bytes(&[0x48, 0x83, 0xec, 0x10, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x44, 0x24, 0x08, 0x0a, 0, 0, 0]);
+    code.bytes(&[0x49, 0x89, 0xe0, 0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "clock-getres-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "clock-getres-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("clock-getres-copy-loop")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x10]);
+    code.bind("clock-getres-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11, 0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x83, 0xfa, 0x10]);
+    code.jump_if(0x85, "clock-getres-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    code.bind("clock-getres-success")?;
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("clock-getres-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    code.bind("clock-getres-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("clock-getres-einval")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
@@ -5547,6 +5609,12 @@ mod tests {
                     .windows(5)
                     .any(|bytes| bytes == [0x3d, 0xe4, 0, 0, 0])
                 && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0x3d, 0xe5, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x44, 0x24, 0x08, 0x0a, 0, 0, 0])
+                && user_syscall
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_6000_u64.to_le_bytes())
                 && user_syscall
@@ -5561,7 +5629,7 @@ mod tests {
                 && user_syscall
                     .windows(9)
                     .any(|bytes| bytes == [0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0, 0, 0]),
-            "the userspace adapter must retain bounded VM lifecycle and monotonic clock dispatch"
+            "the userspace adapter must retain bounded VM lifecycle, monotonic clock, and clock-resolution dispatch"
         );
         assert_eq!(
             entry_payload
@@ -5571,6 +5639,15 @@ mod tests {
                 .count(),
             2,
             "constructed code must prove two monotonic clock observations"
+        );
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0xe5, 0, 0, 0, 0x0f, 0x05])
+                .count(),
+            2,
+            "constructed code must prove exact and null monotonic clock-resolution queries"
         );
         assert_eq!(
             entry_payload

@@ -461,6 +461,7 @@ user-syscall-handler is fn (
     nanosleep-nanoseconds is 0,
     nanosleep-remainder-candidate is 0,
     clock-gettime-result is 0,
+    clock-getres-result is 0,
     write-descriptor is 1,
     write-maximum-bytes is 256,
     read-descriptor is 0,
