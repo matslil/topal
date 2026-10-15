@@ -721,6 +721,14 @@ owns the native tag and stack layout; source observes only the coherent initial
 process fact. This does not add credential mutation, capabilities, security
 modules, secure environment handling, or a general auxiliary-vector builder.
 
+The bounded userspace-accounting refinement adds Linux `AT_CLKTCK` with value
+100 after `AT_SECURE` and before `AT_NULL`. This is the baseline's native
+`USER_HZ` process-entry contract, not a hardware-counter frequency or scheduler
+timer period. The provider owns its native layout while constructed code proves
+the ordered fact and bounded consumption. This does not add process accounting,
+CPU-time clocks, interval timers, scheduler ticks, or a general auxiliary-
+vector builder.
+
 The initial x86-64 thread-pointer refinement permits Linux-compatible
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
 initial thread. A nonzero selected FS base must lie within an already-owned
