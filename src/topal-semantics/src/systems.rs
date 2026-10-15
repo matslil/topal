@@ -352,6 +352,7 @@ pub enum SystemsDisposition {
         prlimit64_result: u64,
         rt_sigprocmask_result: u64,
         anonymous_page_bytes: u64,
+        mprotect_result: u64,
         munmap_result: u64,
         exit_group_status: u64,
     },
@@ -1233,6 +1234,7 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 prlimit64_result: 0,
                 rt_sigprocmask_result: 0,
                 anonymous_page_bytes: 4096,
+                mprotect_result: 0,
                 munmap_result: 0,
                 exit_group_status: 0,
             })
@@ -3724,6 +3726,7 @@ fn model_user_execution_transition(
                     prlimit64_result: _,
                     rt_sigprocmask_result: _,
                     anonymous_page_bytes: _,
+                    mprotect_result: _,
                     munmap_result: _,
                     exit_group_status,
                 } => (
@@ -5374,6 +5377,7 @@ mod tests {
                         prlimit64_result: 0,
                         rt_sigprocmask_result: 0,
                         anonymous_page_bytes: 4096,
+                        mprotect_result: 0,
                         munmap_result: 0,
                         exit_group_status: 0,
                     },

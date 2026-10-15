@@ -479,6 +479,7 @@ user-syscall-handler is fn (
     prlimit64-result is 0,
     rt-sigprocmask-result is 0,
     anonymous-page-bytes is 4096,
+    mprotect-result is 0,
     munmap-result is 0,
     exit-group-status is 0
   )

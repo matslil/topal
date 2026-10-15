@@ -766,6 +766,37 @@ selected addresses, translation formats or instructions, VMA collections,
 multiple pages, file backing, page-fault policy, sharing, overcommit,
 concurrent edits, or general mapping authority to source.
 
+### TOPAL-SYSTEMS-USER-ANON-PROTECT-001 — Bounded anonymous-page protection
+
+While the sole initial user context is live and its bounded anonymous mapping
+generation is active, the profile MAY admit Linux-compatible `mprotect` only
+for the exact provider-selected page address, a nonzero length no greater than
+one base page, and protection equal to none, read-only, or read-write. Any
+executable or unsupported protection bit, different address, excessive or zero
+length, or non-active reservation SHALL return the declared Linux error without
+changing reservation, protection, or contents.
+
+On success the provider SHALL replace the active translation with the requested
+abstract permission, SHALL preserve the mapping generation and every backing
+byte, SHALL retain non-executability, SHALL complete the target-qualified
+publication and invalidation protocol before user return, SHALL record the new
+private protection state, and SHALL return zero. None SHALL make the user
+translation non-present while the reservation remains active; a later admitted
+protection change SHALL restore access to the same generation and contents.
+
+`munmap` and terminal cleanup SHALL revoke an active generation from any of the
+three protection states. A second `mmap` while protection is none SHALL still
+return `-ENOMEM`; only complete unmap makes the reservation available for a
+fresh zero-filled generation.
+
+Executable publication, writable-and-executable state, state or content change
+after rejected input, access contradicting the recorded permission, generation
+change, incomplete invalidation, duplicate result, or stale access SHALL be
+invalid. This rule SHALL NOT expose syscall numbers, native protection bits,
+selected addresses, page-table formats or instructions, protection keys,
+multiple pages, partial splitting, concurrent edits, or general VMA authority
+to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

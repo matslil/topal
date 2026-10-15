@@ -826,6 +826,16 @@ terminal completion. Source teardown shall consume the non-present reservation
 and return the exact frame. Early access, stale contents, aliasing, duplicate
 activation, incomplete invalidation, or wrong backing return shall fail closed.
 
+The bounded initial-process adapter shall accept Linux `mprotect` for the exact
+active anonymous page, a nonzero length no greater than one base page, and only
+none, read-only, or read-write protection. It shall retain the active mapping
+generation and contents while replacing its provider-private translation with
+the requested non-executable state and completing target invalidation before
+return. The inaccessible state shall remain active and restorable. Unsupported
+bits, wrong ranges, absent mappings, executable publication, stale access,
+content loss, or incomplete invalidation shall fail closed or return the
+declared Linux error without changing the prior state.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

@@ -353,6 +353,17 @@ shall return the exact frame. Structural and pinned-QEMU evidence shall prove
 absence before activation, complete zeroing, publication, direct access,
 revocation, re-zeroed reuse, terminal state, and exact backing return.
 
+The bounded anonymous-protection adapter shall dispatch Linux x86-64 syscall
+10 only for the exact live anonymous page, a nonzero one-page-or-smaller range,
+and `PROT_NONE`, `PROT_READ`, or `PROT_READ | PROT_WRITE`. It shall preserve
+the active generation and backing contents while replacing the PTE with a
+non-present, R/NX, or RW/NX state, perform ordered invalidation before return,
+and retain private state sufficient for `munmap` and terminal cleanup from
+every protection. Rejected requests shall preserve the prior PTE and state.
+Structural and pinned-QEMU evidence shall prove every admitted transition,
+retained contents across inaccessible state, active-map rejection while none,
+revocation from a protected state, and non-executable publication.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
