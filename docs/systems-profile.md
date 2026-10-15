@@ -830,6 +830,13 @@ continue after a capability probe. This is kernel dispatch policy rather than
 a machine-provider operation and does not make an unsupported interface
 available.
 
+The bounded user-yield refinement permits Linux-compatible `sched_yield` for
+the sole runnable initial thread. With no eligible peer, the kernel preserves
+the same context and private process state and returns zero through the ordinary
+syscall continuation. Runnable selection remains kernel policy and no provider
+context switch occurs. This does not add user scheduling collections,
+priorities, affinity, multiple threads, migration, or SMP scheduling.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

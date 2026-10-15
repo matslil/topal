@@ -485,7 +485,8 @@ user-syscall-handler is fn (
     mprotect-result is 0,
     munmap-result is 0,
     exit-group-status is 0,
-    unsupported-syscall-error is 38
+    unsupported-syscall-error is 38,
+    sched-yield-result is 0
   )
 
 lang systems artifact (

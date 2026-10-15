@@ -947,7 +947,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 36
+        || fields.len() != 37
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -984,6 +984,7 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[33], "munmap-result")? != 0
         || field_natural(source, &fields[34], "exit-group-status")? != 0
         || field_natural(source, &fields[35], "unsupported-syscall-error")? != 38
+        || field_natural(source, &fields[36], "sched-yield-result")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -1028,6 +1029,7 @@ fn analyze_user_syscall_handler(
         munmap_result: 0,
         exit_group_status: 0,
         unsupported_syscall_error: 38,
+        sched_yield_result: 0,
     };
     Ok(CompilerSystemsHandler {
         name: name.to_owned(),

@@ -359,6 +359,7 @@ pub enum SystemsDisposition {
         munmap_result: u64,
         exit_group_status: u64,
         unsupported_syscall_error: u64,
+        sched_yield_result: u64,
     },
     Fatal {
         message: String,
@@ -1245,6 +1246,7 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 munmap_result: 0,
                 exit_group_status: 0,
                 unsupported_syscall_error: 38,
+                sched_yield_result: 0,
             })
     {
         return Err(SystemsModelError::new(
@@ -3741,6 +3743,7 @@ fn model_user_execution_transition(
                     munmap_result: _,
                     exit_group_status,
                     unsupported_syscall_error: _,
+                    sched_yield_result: _,
                 } => (
                     *getpid_result,
                     LinuxUtsName {
@@ -5396,6 +5399,7 @@ mod tests {
                         munmap_result: 0,
                         exit_group_status: 0,
                         unsupported_syscall_error: 38,
+                        sched_yield_result: 0,
                     },
                     effects: vec![
                         SYSTEMS_USER_SYSCALL_DISPATCH.into(),

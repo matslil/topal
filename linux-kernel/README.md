@@ -575,6 +575,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded monotonic `clock_gettime`](step-4-bounded-monotonic-clock-gettime.md)
 - [Step 4 bounded monotonic `clock_getres`](step-4-bounded-monotonic-clock-getres.md)
 - [Step 4 unsupported-syscall `ENOSYS` fallback](step-4-unsupported-syscall-enosys.md)
+- [Step 4 bounded initial `sched_yield`](step-4-initial-sched-yield.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
