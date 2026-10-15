@@ -816,6 +816,16 @@ update. Wrong size or operation, invalid extents, partial transfer, wrong
 update order or values, retained pointers, or state surviving teardown shall
 return the declared Linux error or fail closed as applicable.
 
+The prepared initial address space shall accept one additional affine frame as
+an opaque non-present anonymous-page reservation without publishing a user
+translation or exposing its address. The bounded initial-process adapter shall
+activate it only for a supported private anonymous Linux `mmap`, zero the
+complete frame before ordered RW/NX publication, revoke it for matching
+`munmap`, reject overlapping activation, and revoke any live generation at
+terminal completion. Source teardown shall consume the non-present reservation
+and return the exact frame. Early access, stale contents, aliasing, duplicate
+activation, incomplete invalidation, or wrong backing return shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

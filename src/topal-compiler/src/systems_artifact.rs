@@ -32,7 +32,8 @@ use topal_language::compiler::{
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
-    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
     SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
     SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
@@ -79,7 +80,10 @@ use crate::{
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING_SYMBOL, X86_SYSTEMS_USER_COMPLETE_SYMBOL,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL, X86_SYSTEMS_USER_ENTER_SYMBOL,
     X86_SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE_SYMBOL,
@@ -92,8 +96,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/63";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/61";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/64";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/62";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -108,7 +112,7 @@ pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 45] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 47] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -145,6 +149,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 45] = [
     X86_SYSTEMS_CONTEXT_RETIRE_SYMBOL,
     X86_SYSTEMS_CONTEXT_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_PREPARE_SYMBOL,
     X86_SYSTEMS_USER_ENTER_SYMBOL,
     X86_SYSTEMS_USER_COMPLETE_SYMBOL,
@@ -974,6 +980,14 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
             X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL,
         ),
         (
+            SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
+        ),
+        (
+            SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+            X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
+        ),
+        (
             SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
             X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
         ),
@@ -1091,6 +1105,8 @@ enum ProviderSymbol {
     PermitUserMappingExecute,
     SealUserMappingImmutableData,
     PermitUserMappingWritableData,
+    ReserveAnonymousUserMapping,
+    ReleaseAnonymousUserMapping,
     UnmapUserAddressSpace,
     PrepareUserProbe,
     EnterUserContext,
@@ -1159,6 +1175,12 @@ impl ProviderSymbol {
             Self::PermitUserMappingWritableData => {
                 X86_SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA_SYMBOL
             }
+            Self::ReserveAnonymousUserMapping => {
+                X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL
+            }
+            Self::ReleaseAnonymousUserMapping => {
+                X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL
+            }
             Self::UnmapUserAddressSpace => X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
             Self::PrepareUserProbe => X86_SYSTEMS_USER_PREPARE_SYMBOL,
             Self::EnterUserContext => X86_SYSTEMS_USER_ENTER_SYMBOL,
@@ -1218,6 +1240,8 @@ impl ProviderSymbol {
             | Self::PermitUserMappingExecute
             | Self::SealUserMappingImmutableData
             | Self::PermitUserMappingWritableData
+            | Self::ReserveAnonymousUserMapping
+            | Self::ReleaseAnonymousUserMapping
             | Self::UnmapUserAddressSpace
             | Self::PrepareUserProbe
             | Self::EnterUserContext
@@ -1407,9 +1431,11 @@ enum RootUserExecutionState {
     UserMappingExecutable(u8),
     UserMappingImmutableData(u8),
     UserMappingWritableData(u8),
+    AnonymousUserMappingReserved,
     AddressSpaceVerified,
     PreparedWithResidentImage,
     CompletedWithResidentImage,
+    CompletedWithResidentImageAnonymousReleased,
     CompletedWithExecutableImage,
     CompletedImageRevoked,
     Revoked,
@@ -1457,6 +1483,8 @@ struct ProviderSymbols {
     permit_user_mapping_execute: SymbolId,
     seal_user_mapping_immutable_data: SymbolId,
     permit_user_mapping_writable_data: SymbolId,
+    reserve_anonymous_user_mapping: SymbolId,
+    release_anonymous_user_mapping: SymbolId,
     unmap_user_address_space: SymbolId,
     prepare_user_probe: SymbolId,
     enter_user_context: SymbolId,
@@ -2636,7 +2664,7 @@ impl RootEncoder {
 
     fn prepare_user_probe(&mut self, process_identity: u64) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.user_execution != RootUserExecutionState::UserMappingWritableData(2)
+            || self.user_execution != RootUserExecutionState::AnonymousUserMappingReserved
             || self.physical_frame_count.is_some()
             || process_identity != 1
         {
@@ -2834,12 +2862,51 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn reserve_anonymous_user_mapping(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::UserMappingWritableData(2)
+            || self.physical_frame_count != Some(1)
+        {
+            return Err(CompileError::Tool(
+                "x86 anonymous reservation requires both finalized image mappings and one source-owned frame"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // anonymous frame in rsi
+        self.call_checked_bool(ProviderSymbol::ReserveAnonymousUserMapping)?;
+        self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+        self.physical_frame_count = None;
+        self.user_execution = RootUserExecutionState::AnonymousUserMappingReserved;
+        Ok(())
+    }
+
+    fn release_anonymous_user_mapping(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.user_execution != RootUserExecutionState::CompletedWithResidentImage
+            || self.physical_frame_count.is_some()
+        {
+            return Err(CompileError::Tool(
+                "x86 anonymous release requires returned user execution and its live reservation"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.call(ProviderSymbol::ReleaseAnonymousUserMapping);
+        self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
+        self.jump_to_fatal_if(0x84)?;
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
+        self.physical_frame_count = Some(1);
+        self.user_execution = RootUserExecutionState::CompletedWithResidentImageAnonymousReleased;
+        Ok(())
+    }
+
     fn unmap_user_address_space(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || !matches!(
                 self.user_execution,
                 RootUserExecutionState::CompletedWithExecutableImage
-                    | RootUserExecutionState::CompletedWithResidentImage
+                    | RootUserExecutionState::CompletedWithResidentImageAnonymousReleased
             )
             || self.physical_frame_count.is_some()
         {
@@ -2855,7 +2922,7 @@ impl RootEncoder {
         self.physical_frame_count = Some(1);
         let generation = match self.user_execution {
             RootUserExecutionState::CompletedWithExecutableImage => 1,
-            RootUserExecutionState::CompletedWithResidentImage => 2,
+            RootUserExecutionState::CompletedWithResidentImageAnonymousReleased => 2,
             _ => unreachable!("finalized mapping checked above"),
         };
         self.user_execution = match generation {
@@ -3196,6 +3263,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::PermitUserMappingWritableData,
         ),
+        reserve_anonymous_user_mapping: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReserveAnonymousUserMapping,
+        ),
+        release_anonymous_user_mapping: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReleaseAnonymousUserMapping,
+        ),
         unmap_user_address_space: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::UnmapUserAddressSpace,
@@ -3371,6 +3446,8 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 getrlimit_result: 0,
                 prlimit64_result: 0,
                 rt_sigprocmask_result: 0,
+                anonymous_page_bytes: 4096,
+                munmap_result: 0,
                 exit_group_status: 0,
             })
     {
@@ -3703,6 +3780,12 @@ fn encode_operations(
             CompilerSystemsOperation::PermitUserMappingWritableData => {
                 encoder.permit_user_mapping_writable_data()?;
             }
+            CompilerSystemsOperation::ReserveAnonymousUserMapping => {
+                encoder.reserve_anonymous_user_mapping()?;
+            }
+            CompilerSystemsOperation::ReleaseAnonymousUserMapping => {
+                encoder.release_anonymous_user_mapping()?;
+            }
             CompilerSystemsOperation::UnmapUserAddressSpace => {
                 encoder.unmap_user_address_space()?;
             }
@@ -3818,6 +3901,12 @@ fn append_root(
             }
             ProviderSymbol::PermitUserMappingWritableData => {
                 provider_symbols.permit_user_mapping_writable_data
+            }
+            ProviderSymbol::ReserveAnonymousUserMapping => {
+                provider_symbols.reserve_anonymous_user_mapping
+            }
+            ProviderSymbol::ReleaseAnonymousUserMapping => {
+                provider_symbols.release_anonymous_user_mapping
             }
             ProviderSymbol::UnmapUserAddressSpace => provider_symbols.unmap_user_address_space,
             ProviderSymbol::PrepareUserProbe => provider_symbols.prepare_user_probe,
@@ -4058,6 +4147,16 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     mapping_identity,
                 } => format!(
                     "{identity}:address-space={address_space_identity}:mapping={mapping_identity}"
+                ),
+                CompilerSystemsTransition::ReserveAnonymousUserMapping {
+                    address_space_identity,
+                    reservation_identity,
+                }
+                | CompilerSystemsTransition::ReleaseAnonymousUserMapping {
+                    address_space_identity,
+                    reservation_identity,
+                } => format!(
+                    "{identity}:address-space={address_space_identity}:reservation={reservation_identity}"
                 ),
                 CompilerSystemsTransition::StoreUserMappingByte { mapping_identity }
                 | CompilerSystemsTransition::InstallUserMappingEntryTrampoline {
@@ -4302,7 +4401,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1819);
+        assert_eq!(relocation_targets.len(), 1827);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4398,7 +4497,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            6
+            7
         );
         assert_eq!(
             relocation_targets
@@ -4463,14 +4562,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            52
+            54
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            63
+            66
         );
         assert_eq!(
             relocation_targets
@@ -4530,7 +4629,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            39,
+            41,
             "root must derive opaque storage for atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -4639,6 +4738,8 @@ mod tests {
                 "topal_x86_systems_user_permit_initial_mapping_execute",
                 "topal_x86_systems_user_seal_initial_mapping_immutable_data",
                 "topal_x86_systems_user_permit_initial_mapping_writable_data",
+                "topal_x86_systems_user_reserve_initial_anonymous_mapping",
+                "topal_x86_systems_user_release_initial_anonymous_mapping",
                 "topal_x86_systems_user_unmap_initial_frame",
                 "topal_x86_systems_user_prepare_initial_probe",
                 "topal_x86_systems_user_complete_initial_backing",
@@ -4720,10 +4821,10 @@ mod tests {
         assert_eq!(decoded.schema, X86_SYSTEMS_ARTIFACT_REVISION);
         assert_eq!(decoded.target, "x86_64-unknown-none");
         assert_eq!(decoded.outputs.len(), 4);
-        assert_eq!(decoded.placements.len(), 63);
+        assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 198);
+        assert_eq!(decoded.semantic_trace.len(), 202);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4746,173 +4847,181 @@ mod tests {
         assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY));
         assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_USER_MAPPING_LOAD_BYTE));
         assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA));
+        assert!(decoded.semantic_trace[132].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(
+            decoded.semantic_trace[133].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS)
+        );
         assert_eq!(
-            decoded.semantic_trace[132],
+            decoded.semantic_trace[134],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_READY")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[133],
+            decoded.semantic_trace[135],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_BOOT_RESOURCE_OK")
             )
         );
-        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
+        assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
         assert_eq!(
-            decoded.semantic_trace[161],
+            decoded.semantic_trace[163],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_READ_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[165],
+            decoded.semantic_trace[167],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[166],
+            decoded.semantic_trace[168],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[167],
+            decoded.semantic_trace[169],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[168],
+            decoded.semantic_trace[170],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[169],
+            decoded.semantic_trace[171],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[170],
+            decoded.semantic_trace[172],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[171],
+            decoded.semantic_trace[173],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[172],
+            decoded.semantic_trace[174],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[173],
+            decoded.semantic_trace[175],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[174],
+            decoded.semantic_trace[176],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[175],
+            decoded.semantic_trace[177],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[176],
+            decoded.semantic_trace[178],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[177],
+            decoded.semantic_trace[179],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[178],
+            decoded.semantic_trace[180],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[179],
+            decoded.semantic_trace[181],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[180],
+            decoded.semantic_trace[182],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[181],
+            decoded.semantic_trace[183],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[182],
+            decoded.semantic_trace[184],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[183],
+            decoded.semantic_trace[185],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
-        assert!(decoded.semantic_trace[184].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[185], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[186].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert!(
+            decoded.semantic_trace[186].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
+        );
         assert_eq!(decoded.semantic_trace[187], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[188].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[189].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[191].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[192], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[188].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[189], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[190].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[191], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[192].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[193].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(191..194);
-        decoded.semantic_trace.drain(164..190);
-        decoded.semantic_trace.drain(120..134);
+        assert!(decoded.semantic_trace[195].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[196], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[197].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(195..198);
+        decoded.semantic_trace.drain(166..194);
+        decoded.semantic_trace.drain(120..136);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
         assert_eq!(decoded.semantic_trace[1], "topal.systems.entry.bootstrap/1");

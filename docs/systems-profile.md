@@ -755,6 +755,17 @@ user extents under fault recovery; `SIGKILL` and `SIGSTOP` are always removed
 from an installed mask. This defines thread-local mask state only, not signal
 generation, queuing, action registration, delivery, restart, or return.
 
+The bounded initial-anonymous-mapping refinement adds one affine page
+reservation to a prepared user address space. `user address space reserve
+anonymous` consumes one owned frame without publishing a user mapping and
+returns an opaque reservation whose address remains provider-private. During
+the sole user execution, Linux-compatible anonymous `mmap` may zero and
+activate that page and `munmap` may revoke it; repeated activate/revoke
+generations reuse the same reservation only after complete revocation.
+`user address space release anonymous` consumes the terminally non-present
+reservation, returns the exact frame, and preserves address-space ownership.
+This is one bounded runtime page, not a VMA collection or general mapping API.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

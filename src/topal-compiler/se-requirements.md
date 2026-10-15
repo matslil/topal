@@ -341,6 +341,18 @@ pinned-QEMU evidence shall prove all operations, null candidates, exact values,
 unblockable-bit removal, error checks, update-before-output ordering, and state
 clearing.
 
+The bounded runtime anonymous-page adapter shall lower one source-owned
+single-frame reservation to a non-present provider-selected x86-64 user PTE.
+Linux x86-64 syscall 9 shall admit only the bounded null-address, one-page-or-
+smaller, RW, private-anonymous, descriptor-minus-one, zero-offset shape, zero
+the complete frame before ordered RW/NX publication, and return the selected
+address. Syscall 11 shall revoke that exact page with ordered invalidation and
+succeed when it is already absent. Repeated generations shall remain
+exclusive; terminal completion shall revoke an active page; source release
+shall return the exact frame. Structural and pinned-QEMU evidence shall prove
+absence before activation, complete zeroing, publication, direct access,
+revocation, re-zeroed reuse, terminal state, and exact backing return.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

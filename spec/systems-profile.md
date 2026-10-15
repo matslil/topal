@@ -731,6 +731,41 @@ number, operation encodings, bit positions, native layout, pending queues,
 actions, delivery, signal frames, restart policy, or general signal authority
 to source.
 
+### TOPAL-SYSTEMS-USER-ANON-PAGE-001 — Bounded runtime anonymous page
+
+`user address space reserve anonymous` SHALL consume one owned single-frame
+extent and a matching prepared address-space authority, SHALL produce one
+opaque affine reservation tied to both identities, and SHALL leave its
+provider-selected user translation non-present. It SHALL NOT expose a numeric
+address, target entry, page-table representation, or retained source copy of
+the frame authority.
+
+While the sole initial user context is live, the profile MAY admit
+Linux-compatible `mmap` only for a null address, nonzero length no greater than
+one base page, read-write protection, private anonymous flags, descriptor
+minus one, and offset zero. If the reservation is non-present, the provider
+SHALL zero the complete frame before ordered RW/NX publication, create one
+fresh active generation, and return its page-aligned provider-selected user
+address. Activation while already active SHALL return `-ENOMEM`; unsupported
+arguments SHALL return `-EINVAL` without changing reservation state.
+
+Matching Linux-compatible `munmap` with the selected address and nonzero
+length no greater than one base page SHALL completely revoke an active
+translation with ordered target completion and return zero. The same valid
+call while non-present SHALL be a successful no-op. Terminal user completion
+SHALL revoke any active generation. `user address space release anonymous`
+SHALL require and consume the terminally non-present reservation, SHALL return
+the exact original single-frame extent, and SHALL preserve the separately
+owned address-space authority.
+
+Pre-publication user access, incomplete zeroing, writable-and-executable
+publication, overlapping active generations, stale access after revocation,
+identity change, duplicate release, active release, or wrong frame return
+SHALL be invalid. This rule SHALL NOT expose syscall numbers, native flags,
+selected addresses, translation formats or instructions, VMA collections,
+multiple pages, file backing, page-fault policy, sharing, overcommit,
+concurrent edits, or general mapping authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
