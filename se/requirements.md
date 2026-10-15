@@ -779,6 +779,12 @@ hardware and scheduler frequencies. Constructed code shall validate its exact
 order and value, the moved terminator, preserved executable-name alias, and
 complete bounded-stack consumption; disagreement shall fail closed.
 
+The adapter shall publish native `AT_PLATFORM` after `AT_CLKTCK` and before
+`AT_NULL`, pointing to a complete NUL-terminated `x86_64` string inside the
+initialized stack block. The platform string shall be distinct from the fixed
+`argv[0]`/`AT_EXECFN` executable-name object. Constructed code shall validate
+the tag, pointer, bytes, termination, alias separation, and bounded consumption.
+
 The initial x86-64 thread-pointer adapter shall accept only
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` for the live initial
 thread and an executable user return continuation. `SET_FS` shall require zero

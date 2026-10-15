@@ -305,6 +305,13 @@ executable-name string address fixed, and validate the pair, moved terminator,
 and exact enlarged consumption in constructed code. Structural and pinned-QEMU
 evidence shall prove order, value, fixed aliasing, alignment, and continuation.
 
+The adapter shall place native `AT_PLATFORM` after `AT_CLKTCK` and before
+`AT_NULL`, pointing to a distinct in-block NUL-terminated `x86_64` string while
+keeping the executable-name address fixed. Constructed code shall validate the
+tag, exact pointer, all bytes, terminator, alias separation, moved `AT_NULL`,
+and exact enlarged consumption. Structural and pinned-QEMU evidence shall prove
+the complete pointer-bearing fact and continued execution.
+
 The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
 codes `0x1002` and `0x1003`, a live initial context, and a return continuation
 inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or

@@ -729,6 +729,14 @@ the ordered fact and bounded consumption. This does not add process accounting,
 CPU-time clocks, interval timers, scheduler ticks, or a general auxiliary-
 vector builder.
 
+The bounded platform-identity refinement adds Linux `AT_PLATFORM` after
+`AT_CLKTCK` and before `AT_NULL`. Its value points to a distinct bounded
+NUL-terminated native platform string; the initial x86-64 profile publishes
+`x86_64`. `argv[0]` and `AT_EXECFN` continue to alias only the executable-name
+string. This reports an already selected ABI and does not add runtime target
+selection, compatibility personalities, capability masks, or a general
+auxiliary-vector builder.
+
 The initial x86-64 thread-pointer refinement permits Linux-compatible
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
 initial thread. A nonzero selected FS base must lie within an already-owned
