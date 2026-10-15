@@ -704,6 +704,24 @@ stack access SHALL be invalid. This rule SHALL NOT add privilege transitions,
 capabilities, security modules, environment filtering, `AT_RANDOM`, or a
 general auxiliary-vector builder.
 
+### TOPAL-SYSTEMS-USER-AUXV-CLKTCK-001 — Userspace accounting tick rate
+
+The sole initial process MAY receive one native `AT_CLKTCK` auxiliary-vector
+entry. It SHALL immediately follow `AT_SECURE`, SHALL precede the unique
+`AT_NULL` terminator, and SHALL contain Linux `USER_HZ` value 100. The value
+SHALL NOT be derived from or interpreted as the qualified hardware clock period
+or scheduler timer frequency.
+
+The provider SHALL own the native tag, word layout, placement, and initial
+stack construction. Constructed user code SHALL validate the exact ordered tag
+and value, the following terminator, preserved `argv[0]`/`AT_EXECFN` alias, and
+complete bounded-block consumption before continuing.
+
+A missing, duplicate, reordered, or different value, confused clock identity,
+broken alias, incomplete consumption, or unbounded access SHALL be invalid.
+This rule SHALL NOT add process accounting, CPU-time clocks, interval timers,
+scheduler ticks, `times`, or a general auxiliary-vector builder.
+
 ### TOPAL-SYSTEMS-USER-RLIMIT-STACK-001 — Initial stack-limit query
 
 The initial-process profile MAY dispatch Linux-compatible

@@ -299,6 +299,12 @@ Constructed code shall validate the pair, terminator, and exact enlarged block
 consumption. Structural and pinned-QEMU evidence shall prove placement, value,
 alias identity, stack alignment, and continued application execution.
 
+The adapter shall place native `AT_CLKTCK` with value 100 after `AT_SECURE` and
+before the unique `AT_NULL`, shift the bounded block while keeping the
+executable-name string address fixed, and validate the pair, moved terminator,
+and exact enlarged consumption in constructed code. Structural and pinned-QEMU
+evidence shall prove order, value, fixed aliasing, alignment, and continuation.
+
 The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
 codes `0x1002` and `0x1003`, a live initial context, and a return continuation
 inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or
