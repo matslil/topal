@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/71";
+    "topal.provider-object.x86_64-qemu-pc-q35/72";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -102,6 +102,10 @@ pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispat
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL: &str =
     "topal_x86_systems_pci_configuration_read_dword_equals";
+pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
+    "topal_x86_systems_pci_region_configuration_gateway_read_equals";
+pub const X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL: &str =
+    "topal_x86_systems_pci_region_configuration_gateway_write";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 pub(crate) const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
 const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
@@ -181,6 +185,68 @@ impl X86Instruction {
     }
 }
 
+#[derive(Clone, Copy)]
+enum PciRegionGatewayOperation {
+    ReadEquals,
+    Write,
+}
+
+fn pci_region_configuration_gateway(
+    operation: PciRegionGatewayOperation,
+) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x89, 0xd1]); // preserve target offset in r9d
+    code.bytes(&[0x41, 0x89, 0xfa]); // preserve configuration selector in r10d
+
+    for (selector_delta, value) in [(4_u8, 0_u8), (8, 1), (12, 2)] {
+        code.bytes(&[0x41, 0x8d, 0x42, selector_delta]); // selector in eax
+        code.bytes(&[0x66, 0xba, 0xf8, 0x0c, 0xef]); // select through 0xcf8
+        code.bytes(&[0x66, 0xba, 0xfc, 0x0c]); // configuration data port
+        match value {
+            0 => code.bytes(&[0x89, 0xf0]),       // BAR index from esi
+            1 => code.bytes(&[0x44, 0x89, 0xc8]), // target offset from r9d
+            2 => code.bytes(&[0x89, 0xc8]),       // width from ecx
+            _ => unreachable!(),
+        }
+        code.bytes(&[0xef]);
+    }
+
+    code.bytes(&[0x41, 0x8d, 0x42, 0x10]); // configuration data selector
+    code.bytes(&[0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c]);
+    code.bytes(&[0x83, 0xf9, 0x01]); // exact byte access
+    code.jump_if(0x84, "byte");
+    code.bytes(&[0x83, 0xf9, 0x04]); // exact dword access
+    code.jump_if(0x85, "fail");
+    match operation {
+        PciRegionGatewayOperation::ReadEquals => {
+            code.bytes(&[0xed, 0x44, 0x39, 0xc0]); // in eax, dx; cmp eax, r8d
+            code.jump_if(0x85, "fail");
+        }
+        PciRegionGatewayOperation::Write => {
+            code.bytes(&[0x44, 0x89, 0xc0, 0xef]); // mov eax, r8d; out dx, eax
+        }
+    }
+    code.jump("success");
+
+    code.bind("byte")?;
+    match operation {
+        PciRegionGatewayOperation::ReadEquals => {
+            code.bytes(&[0xec, 0x44, 0x38, 0xc0]); // in al, dx; cmp al, r8b
+            code.jump_if(0x85, "fail");
+        }
+        PciRegionGatewayOperation::Write => {
+            code.bytes(&[0x44, 0x89, 0xc0, 0xee]); // mov eax, r8d; out dx, al
+        }
+    }
+
+    code.bind("success")?;
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedSystemsProviderObject {
     pub plan: X86SystemsProviderPlan,
@@ -219,6 +285,18 @@ pub fn generate_x86_64_systems_provider_object(
             X86Instruction::OutputByteToPort,
             X86Instruction::Return,
         ],
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+        &pci_region_configuration_gateway(PciRegionGatewayOperation::ReadEquals)?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
+        &pci_region_configuration_gateway(PciRegionGatewayOperation::Write)?,
     );
     append_function(
         &mut object,
@@ -4375,6 +4453,58 @@ mod tests {
             let data = section.data().unwrap();
             let start = usize::try_from(symbol.address()).unwrap();
             assert_eq!(&data[start..start + expected.len()], expected);
+        }
+        for (name, read) in [
+            (X86_SYSTEMS_PCI_REGION_READ_SYMBOL, true),
+            (X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL, false),
+        ] {
+            let symbol = file.symbol_by_name(name).unwrap();
+            let section = file
+                .section_by_index(symbol.section_index().unwrap())
+                .unwrap();
+            let data = section.data().unwrap();
+            let start = usize::try_from(symbol.address()).unwrap();
+            let end = start + usize::try_from(symbol.size()).unwrap();
+            let bytes = &data[start..end];
+            assert_eq!(
+                bytes
+                    .windows(5)
+                    .filter(|window| *window == [0x66, 0xba, 0xf8, 0x0c, 0xef])
+                    .count(),
+                4,
+                "gateway access must select BAR, offset, width, and data fields"
+            );
+            assert_eq!(
+                bytes
+                    .windows(4)
+                    .filter(|window| *window == [0x66, 0xba, 0xfc, 0x0c])
+                    .count(),
+                4,
+                "gateway access must address BAR, offset, width, and data fields"
+            );
+            if read {
+                assert!(
+                    bytes
+                        .windows(4)
+                        .any(|window| window == [0xed, 0x44, 0x39, 0xc0])
+                );
+                assert!(
+                    bytes
+                        .windows(4)
+                        .any(|window| window == [0xec, 0x44, 0x38, 0xc0])
+                );
+            } else {
+                assert!(
+                    bytes
+                        .windows(4)
+                        .any(|window| window == [0x44, 0x89, 0xc0, 0xef])
+                );
+                assert!(
+                    bytes
+                        .windows(4)
+                        .any(|window| window == [0x44, 0x89, 0xc0, 0xee])
+                );
+            }
         }
         let validator = file.symbol_by_name(X86_SYSTEMS_BOOT_MEMORY_SYMBOL).unwrap();
         assert!(validator.size() > 100);

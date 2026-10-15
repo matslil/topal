@@ -272,6 +272,215 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK"
                                                                   restored console write "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK"
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 3
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 3
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 0,
+                                                                    width-bytes is 4,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 4,
+                                                                    width-bytes is 4,
+                                                                    value is 805306368
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 0,
+                                                                    width-bytes is 4,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 4,
+                                                                    width-bytes is 4,
+                                                                    value is 257
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 8,
+                                                                    width-bytes is 4,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 12,
+                                                                    width-bytes is 4,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 8,
+                                                                    width-bytes is 4,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 12,
+                                                                    width-bytes is 4,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 11
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 20,
+                                                                    width-bytes is 1,
+                                                                    value is 11
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

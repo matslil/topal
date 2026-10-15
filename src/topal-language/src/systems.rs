@@ -28,6 +28,8 @@ pub use topal_semantics::{
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
     PciConfigurationDwordRequest as CompilerPciConfigurationDwordRequest,
+    PciRegionRegisterDirection as CompilerPciRegionRegisterDirection,
+    PciRegionRegisterRequest as CompilerPciRegionRegisterRequest,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
     SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE,
     SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -49,10 +51,11 @@ pub use topal_semantics::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
+    SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
     SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
     SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
     SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
@@ -6145,6 +6148,54 @@ fn analyze_operation(
         return Ok(CompilerSystemsOperation::ObservePciConfigurationDword { request });
     }
     if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            pci,
+            region,
+            register,
+            direction,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, pci, "pci")
+        && identifier_is(source, region, "region")
+        && identifier_is(source, register, "register")
+        && identifier_is(source, direction, "write")
+    {
+        let request = parse_pci_region_register_request(
+            source,
+            fields,
+            *span,
+            CompilerPciRegionRegisterDirection::Write,
+        )?;
+        return Ok(CompilerSystemsOperation::AccessPciRegionRegister { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            pci,
+            region,
+            register,
+            read,
+            equals,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, pci, "pci")
+        && identifier_is(source, region, "region")
+        && identifier_is(source, register, "register")
+        && identifier_is(source, read, "read")
+        && identifier_is(source, equals, "equals")
+    {
+        let request = parse_pci_region_register_request(
+            source,
+            fields,
+            *span,
+            CompilerPciRegionRegisterDirection::ReadEquals,
+        )?;
+        return Ok(CompilerSystemsOperation::AccessPciRegionRegister { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
         && let [receiver, debug, break_operation] = items.as_slice()
         && identifier_is(source, receiver, context_name)
         && identifier_is(source, debug, "debug")
@@ -6281,6 +6332,152 @@ fn parse_pci_configuration_dword_request(
             "E-SYSTEMS-PCI-CONFIG",
             span,
             "PCI configuration request requires device 0..31, function 0..7, and a four-byte-aligned register offset in 0..252",
+        ));
+    }
+    Ok(request)
+}
+
+fn parse_pci_region_register_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+    direction: CompilerPciRegionRegisterDirection,
+) -> Result<CompilerPciRegionRegisterRequest, Diagnostic> {
+    const LABELS: [&str; 11] = [
+        "segment",
+        "bus",
+        "device",
+        "function",
+        "access-capability-offset-bytes",
+        "bar",
+        "region-offset-bytes",
+        "region-length-bytes",
+        "register-offset-bytes",
+        "width-bytes",
+        "value",
+    ];
+    if fields.len() != LABELS.len() {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-REGION",
+            span,
+            "PCI region-register access requires exactly the sealed function, capability, BAR, region, register, width, and value fields",
+        ));
+    }
+    let mut values = [0_u64; 11];
+    for ((field, expected_label), value) in fields.iter().zip(LABELS).zip(&mut values) {
+        let Some(label) = field.label else {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                field.value.span(),
+                format!("PCI region-register access requires named `{expected_label}`"),
+            ));
+        };
+        if source.slice(label) != expected_label {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                label,
+                format!("PCI region-register access requires `{expected_label}` in source order"),
+            ));
+        }
+        *value = parse_storage_natural(source, &field.value)?;
+    }
+    let request = CompilerPciRegionRegisterRequest {
+        segment: u16::try_from(values[0]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI segment exceeds 65535",
+            )
+        })?,
+        bus: u8::try_from(values[1]).map_err(|_| {
+            source_diagnostic(source, "E-SYSTEMS-PCI-REGION", span, "PCI bus exceeds 255")
+        })?,
+        device: u8::try_from(values[2]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI device exceeds 31",
+            )
+        })?,
+        function: u8::try_from(values[3]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI function exceeds 7",
+            )
+        })?,
+        access_capability_offset_bytes: u8::try_from(values[4]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI access capability offset exceeds 255",
+            )
+        })?,
+        bar: u8::try_from(values[5]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI BAR index exceeds 255",
+            )
+        })?,
+        region_offset_bytes: u32::try_from(values[6]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI region offset exceeds 32 bits",
+            )
+        })?,
+        region_length_bytes: u32::try_from(values[7]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI region length exceeds 32 bits",
+            )
+        })?,
+        register_offset_bytes: u32::try_from(values[8]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI register offset exceeds 32 bits",
+            )
+        })?,
+        width_bytes: u8::try_from(values[9]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI register width exceeds 255",
+            )
+        })?,
+        direction,
+        value: u32::try_from(values[10]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-REGION",
+                span,
+                "PCI register value exceeds 32 bits",
+            )
+        })?,
+    };
+    if !request.is_well_formed()
+        || !CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-REGION",
+            span,
+            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation sequence",
         ));
     }
     Ok(request)
@@ -6467,6 +6664,8 @@ mod tests {
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+                SYSTEMS_PCI_REGION_READ,
+                SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -6732,6 +6931,89 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK".into(),
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 1,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [0],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 2,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [1],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 3,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [2],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 4,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [3],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 5,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [4],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 6,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [5],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 7,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [6],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 8,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [7],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 9,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [8],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 10,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [9],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 11,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [10],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 12,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [11],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 13,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [12],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 14,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [13],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 15,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [14],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 16,
+                    request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                        [15],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7304,7 +7586,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 167);
+        assert_eq!(program.bootstrap.handler.operations.len(), 184);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7333,6 +7615,8 @@ mod tests {
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+                SYSTEMS_PCI_REGION_READ,
+                SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -7479,6 +7763,65 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-PCI-CONFIG"
+        );
+    }
+
+    #[test]
+    fn requires_the_complete_ordered_virtio_pci_feature_negotiation() {
+        // TOPAL-SYSTEMS-PCI-REGION-001, TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001.
+        let mut malformed = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION[0];
+        malformed.register_offset_bytes = 1;
+        malformed.width_bytes = 4;
+        assert!(!malformed.is_well_formed());
+        malformed = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION[0];
+        malformed.region_length_bytes = 20;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::AccessPciRegionRegister { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(indices.len(), 16);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(indices[1]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations[indices[1]] =
+            duplicated.bootstrap.handler.operations[indices[0]].clone();
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(indices[1], indices[2]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
         );
     }
 
