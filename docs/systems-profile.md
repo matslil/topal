@@ -784,6 +784,14 @@ identity and the current inaccessible, read-only, or read-write non-executable
 protection. This is one exact-page discard contract, not a silent hint, lazy
 fault-backed reclaim, other advice classes, or general memory-pressure policy.
 
+The bounded userspace-clock refinement permits Linux-compatible
+`clock_gettime(CLOCK_MONOTONIC)` for the initial process. It converts one
+qualified provider monotonic observation into normalized native seconds and
+nanoseconds, publishes the complete result under fault recovery, and preserves
+nondecreasing order across completed calls. Counter selection, frequency,
+rollover, and conversion remain provider-private. This does not define
+realtime, vDSO, timers, adjustment, clock namespaces, or SMP migration.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

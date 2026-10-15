@@ -373,6 +373,15 @@ Structural and pinned-QEMU evidence shall prove advice while inaccessible,
 overlapping-map rejection, restored full zero observation, later mutation, and
 unchanged protection semantics.
 
+The bounded userspace-clock adapter shall dispatch Linux x86-64 syscall 228
+only for `CLOCK_MONOTONIC`, a live initial context, an executable return, and a
+complete writable 16-byte candidate. It shall sample the qualified 64-bit Q35
+HPET source once, validate its 10 ns period, normalize ticks to native seconds
+and nanoseconds, and copy the complete staged pair under page-fault recovery.
+Structural and pinned-QEMU evidence shall prove two calls, normalized fields,
+nondecreasing order, exact zero results, private target details, and balanced
+temporary storage.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

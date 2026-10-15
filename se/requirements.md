@@ -844,6 +844,15 @@ non-executable protection. Unsupported advice or ranges, absent mappings,
 partial zeroing, state change, or stale contents shall fail closed or return the
 declared Linux error without changing the prior contents or state.
 
+The initial-process adapter shall accept Linux
+`clock_gettime(CLOCK_MONOTONIC)` with one complete writable native timespec
+candidate. It shall obtain one qualified monotonic provider observation,
+normalize it to nonnegative seconds and nanoseconds below one billion, publish
+the complete pair under fault recovery, retain no pointer, and preserve
+nondecreasing order across successful calls. Unsupported clocks, invalid
+extents, partial output, unnormalized values, or time regression shall return
+the declared Linux error or fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
