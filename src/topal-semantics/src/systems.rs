@@ -358,6 +358,7 @@ pub enum SystemsDisposition {
         mprotect_result: u64,
         munmap_result: u64,
         exit_group_status: u64,
+        unsupported_syscall_error: u64,
     },
     Fatal {
         message: String,
@@ -1243,11 +1244,12 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 mprotect_result: 0,
                 munmap_result: 0,
                 exit_group_status: 0,
+                unsupported_syscall_error: 38,
             })
     {
         return Err(SystemsModelError::new(
             "E-SYSTEMS-USER-CONTEXT",
-            "the initial user-syscall handler must dispatch the sealed read, write, brk, getpid, uname, nanosleep, and exit_group protocol",
+            "the initial user-syscall handler must dispatch the sealed implemented calls and unsupported-syscall fallback",
         ));
     }
     Ok(())
@@ -3738,6 +3740,7 @@ fn model_user_execution_transition(
                     mprotect_result: _,
                     munmap_result: _,
                     exit_group_status,
+                    unsupported_syscall_error: _,
                 } => (
                     *getpid_result,
                     LinuxUtsName {
@@ -5392,6 +5395,7 @@ mod tests {
                         mprotect_result: 0,
                         munmap_result: 0,
                         exit_group_status: 0,
+                        unsupported_syscall_error: 38,
                     },
                     effects: vec![
                         SYSTEMS_USER_SYSCALL_DISPATCH.into(),

@@ -484,7 +484,8 @@ user-syscall-handler is fn (
     madvise-result is 0,
     mprotect-result is 0,
     munmap-result is 0,
-    exit-group-status is 0
+    exit-group-status is 0,
+    unsupported-syscall-error is 38
   )
 
 lang systems artifact (

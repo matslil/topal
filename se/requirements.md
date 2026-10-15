@@ -861,6 +861,14 @@ nanoseconds. Nonnull output shall be complete and fault-contained. Unsupported
 clocks, inconsistent resolution, retained pointers, or partial output shall
 return the declared Linux error or fail closed.
 
+The initial-process syscall adapter shall return Linux `-ENOSYS` for every
+syscall number not selected by an implemented dispatch arm. The fallback shall
+use the ordinary executable return continuation without reading unused
+arguments, copying user memory, or changing kernel or process state. Evidence
+shall prove the exact result and successful continuation into a subsequent
+implemented syscall. Success, process termination, or provider-owned syscall
+selection shall fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

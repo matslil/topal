@@ -798,6 +798,14 @@ of the qualified provider source through an optional complete native timespec
 output. The initial x86-64 profile reports ten nanoseconds. This adds no new
 clock identity, timer service, or portable counter representation.
 
+The bounded unsupported-syscall refinement returns Linux-compatible `-ENOSYS`
+for every syscall number not selected by the initial process's implemented
+dispatch set. Failure follows the ordinary syscall return continuation without
+reading unused arguments or mutating process or kernel state, so userspace may
+continue after a capability probe. This is kernel dispatch policy rather than
+a machine-provider operation and does not make an unsupported interface
+available.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

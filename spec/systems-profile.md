@@ -859,6 +859,25 @@ retained pointers, duplicate results, wrong lifecycle state, or non-executable
 return SHALL be invalid. This rule SHALL NOT expose clock encodings, counters,
 frequencies, MMIO, realtime policy, vDSO, timers, or adjustment to source.
 
+### TOPAL-SYSTEMS-USER-ENOSYS-001 — Unsupported syscall fallback
+
+While the sole initial user context is live and its return continuation lies in
+the finalized executable mapping, any syscall number not selected by an
+implemented dispatch arm SHALL return the native Linux `-ENOSYS` result through
+the ordinary syscall return path.
+
+The fallback SHALL NOT read or validate unused arguments, access user memory,
+mutate kernel or process state, consume an observation, or terminate the user
+context. After receiving the result, the same context SHALL remain able to
+invoke an implemented syscall. Adding an implementation for a syscall SHALL
+replace fallback selection for that number with the implementation's own
+validated contract.
+
+Success, a fabricated result, argument-dependent behavior, state mutation,
+provider-owned syscall selection, non-executable return, or terminal
+disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
+seccomp, audit, tracing, or a general Topal error mechanism.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
